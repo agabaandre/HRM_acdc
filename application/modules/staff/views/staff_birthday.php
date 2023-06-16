@@ -18,7 +18,7 @@
         <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
             <div class="table-responsive">
                 <h3 style="text-align: center;">Today</h3>
-                <table id="example2" class="table table-bordered table-striped">
+                <table class="table mydata table-bordered table-striped">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -59,7 +59,7 @@
         <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
             <div class="table-responsive">
                 <h3 style="text-align: center;">Tomorrow</h3>
-                <table id="example3" class="table table-bordered table-striped">
+                <table  class="table mydata table-bordered table-striped">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -100,7 +100,7 @@
         <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab">
             <div class="table-responsive">
                 <h3 style="text-align: center;">Next 7 days</h3>
-                <table id="example4" class="table table-bordered table-striped">
+                <table class="table mydata table-bordered table-striped">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -141,7 +141,7 @@
         <div class="tab-pane fade" id="month" role="tabpanel" aria-labelledby="month-tab">
             <div class="table-responsive">
                 <h3 style="text-align: center;">Next 30 days</h3>
-                <table id="example4" class="table table-bordered table-striped">
+                <table class="table mydata table-bordered table-striped">
                     <thead>
                         <tr>
                             <th>#</th>
