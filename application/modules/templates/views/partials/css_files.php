@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!--favicon-->
-    <link rel="icon" href="<?php echo base_url() ?><?php echo base_url() ?>assets/images/africacdc_2.png" type="image/png" />
+    <link rel="icon" href="<?php echo base_url()?>assets/images/africacdc_2.png" type="image/png" />
     <!--plugins-->
     <link href="<?php echo base_url() ?>assets/plugins/simplebar/css/simplebar.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css" rel="stylesheet" />
