@@ -18,8 +18,8 @@ class Staff_mdl extends CI_Model
         // if (@$search['nationality_id'])
         // $query->where('nationality_id', $search->nationality_id);
         //implement ci-pagination later
-       // $results = $query->with('contracts', 'contracts.funder')->take(20)->skip(20)->get();
-        $results = $query->with('contracts', 'contracts.funder')->get();
+        $results = $query->with('contracts', 'contracts.funder')->take(20)->skip(20)->get();
+        //$results = $query->with('contracts', 'contracts.funder')->get();
 
         return $results;
     }
