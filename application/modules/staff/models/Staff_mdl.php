@@ -26,13 +26,16 @@ class Staff_mdl extends CI_Model
         return $results;
     }
 
-    public function get_status($flag = null)
+    public function get_status($flag)
     {
         $query = Employee::orderBy("lname", "desc");
 
         $results = $query->with('contracts', 'contracts.funder')
-        ->whereHas('contracts', function (Builder $query) use ($flag) {
-            $query->where('staff_contracts.status_id', '=', $flag);
+        ->when($flag, function ($query, $flag) {
+            $query->whereHas('contracts', function (Builder $query) use ($flag) {
+                $query->where('status_id', $flag);
+            });
+               
         })
             ->take(20)
             ->skip(0)
@@ -40,6 +43,7 @@ class Staff_mdl extends CI_Model
 
         return $results;
     }
+
 
  
     

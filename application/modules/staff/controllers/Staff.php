@@ -25,10 +25,10 @@ class Staff extends MX_Controller
 	}
 	public function contract_status($status){
 		$data['module'] = $this->module;
-		if ($status = 2) {
+		if ($status == 2) {
 			$data['title'] = "Due Contracts";
 		}
-		else if ($status = 3) {
+		else if ($status == 3) {
 			$data['title'] = "Expired Contracts";
 		}
 		
