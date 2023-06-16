@@ -37,17 +37,6 @@ class Staff extends MX_Controller
 		render('contract_status', $data);
 
 	}
-	public function staff_birthday()
-	{
-		$data['module'] = $this->module;
-		$data['title'] = "Staff Birthday";
-		$data['today'] = $this->staff_mdl->getBirthdaysForToday();
-		$data['tomorrow'] = $this->staff_mdl->getBirthdaysForTomorrow();
-		$data['week'] = $this->staff_mdl->getBirthdaysForNextSevenDays();
-		$data['month'] = $this->staff_mdl->getBirthdaysForNextThirtyDays();
-		//dd($data['month']);
-		render('staff_birthday', $data);
-	}
 
 	
 }

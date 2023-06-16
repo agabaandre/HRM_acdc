@@ -38,7 +38,15 @@ if (!function_exists('render_dashboard')) {
     }
 }
 
-
+if (!function_exists('calculate_age')) {
+    function calculate_age($birthdate)
+    {
+        $birthdate = new DateTime($birthdate);
+        $today = new DateTime();
+        $age = $birthdate->diff($today)->y;
+        return $age;
+    }
+}
 
 //render-front-main website
 if (!function_exists('render_site')) {

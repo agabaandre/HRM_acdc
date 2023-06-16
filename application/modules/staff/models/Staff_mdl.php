@@ -43,7 +43,56 @@ class Staff_mdl extends CI_Model
 
         return $results;
     }
+    public function getBirthdaysForToday()
+    {
+        // Get the current date
+        $currentDate = date('Y-m-d');
 
+        // Retrieve employees with birthdays for today
+        return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') = DATE_FORMAT('$currentDate', '%m-%d')")
+        ->with('contracts')
+        ->get();
+    }
+
+    public function getBirthdaysForTomorrow()
+    {
+        // Get the date for tomorrow
+        $tomorrowDate = date('Y-m-d', strtotime('+1 day'));
+
+        // Retrieve employees with birthdays for tomorrow
+        return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') = DATE_FORMAT('$tomorrowDate', '%m-%d')")
+        ->with('contracts')
+        ->get();
+    }
+
+    public function getBirthdaysForNextSevenDays()
+    {
+        // Get the current date
+        $currentDate = date('Y-m-d');
+
+        // Get the date for 7 days from now
+        $nextSevenDays =date('Y-m-d', strtotime('+7 days'));
+
+        // Retrieve employees with birthdays in the next 7 days
+        return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') BETWEEN DATE_FORMAT('$currentDate', '%m-%d') AND DATE_FORMAT('$nextSevenDays', '%m-%d')")
+        ->with('contracts')
+        ->get();
+    }
+
+    public function getBirthdaysForNextThirtyDays()
+    {
+        // Get the current date
+        $currentDate = date('Y-m-d');
+
+        // Get the date for 30 days from now
+        $nextThirtyDays = date('Y-m-d', strtotime('+30 days'));
+
+        // Retrieve employees with birthdays in the next 30 days
+        return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') BETWEEN DATE_FORMAT('$currentDate', '%m-%d') AND DATE_FORMAT('$nextThirtyDays', '%m-%d')") 
+        ->with('contracts')
+        ->get();
+
+    }
 
  
     
