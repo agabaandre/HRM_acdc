@@ -45,8 +45,8 @@
               <td><a href="<?php echo base_url()?>staff/profile/<?= $data->SAPNO?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
               <td><?= $data->gender ?></td>
               <td><?= $data->nationality->nationality ?></td>
-              <td><?= @$data->contracts[0]->job_name ?></td>
-              <td><?= @$data->contracts[0]->jobacting_name ?></td>
+              <td><?= @character_limiter($data->contracts[0]->job_name,15) ?></td>
+              <td><?= @character_limiter($data->contracts[0]->jobacting_name,15) ?></td>
               <td><?= @$data->contracts[0]->division_name ?></td>
               <td><?= @$data->contracts[0]->station_name ?></td>
               <td><?= @$data->work_email ?></td>

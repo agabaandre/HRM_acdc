@@ -8,7 +8,6 @@
             <th>Name</th>
             <th>Gender</th>
             <th>Job</th>
-            <th>Grade</th>
             <th>Contract Type</th>
             <th>Contract Status</th>
             <th>Contract Start Date</th>
@@ -16,7 +15,7 @@
             <th>Contract Comments</th>
             <th>Contracting Organisation</th>
             <th>Nationality</th>
-
+            <th>Grade</th>
             <th>Acting Job</th>
             <th>Division</th>
             <th>Duty Station</th>
@@ -39,16 +38,15 @@
               <td><?= $i++ ?></td>
               <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
               <td><?= $data->gender ?></td>
-              <td><?= @$data->contracts[0]->job_name ?></td>
-              <td><?= @$data->contracts[0]->grade_name ?></td>
+              <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
               <td><?= @$data->contracts[0]->contract_type_name ?></td>
               <td><?= @$data->contracts[0]->status ?></td>
               <td><?= @$data->contracts[0]->start_date ?></td>
               <td><?= @$data->contracts[0]->end_date ?></td>
-              <td><?= @$data->contracts[0]->comments ?></td>
+              <td><?= @character_limiter($data->contracts[0]->comments, 100) ?></td>
               <td><?= @$data->contracts[0]->contractor_name ?></td>
               <td><?= $data->nationality->nationality ?></td>
-
+              <td><?= @$data->contracts[0]->grade_name ?></td>
               <td><?= @$data->contracts[0]->jobacting_name ?></td>
               <td><?= @$data->contracts[0]->division_name ?></td>
               <td><?= @$data->contracts[0]->station_name ?></td>

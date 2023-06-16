@@ -5,7 +5,7 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
 class Contracts extends Eloquent{
     protected $table = 'staff_contracts';
-    public $appends = ['status','funder_name',"grade_name","job_name","contractor_name",'station_name','jobacting_name','division_name'];
+    public $appends = ['status','funder_name',"grade_name","job_name","contractor_name",'station_name','jobacting_name','division_name','contract_type_name'];
 
     public function funder(){
         return $this->belongsTo(Funder::class, 'funder_id', 'funder_id');
@@ -65,5 +65,11 @@ class Contracts extends Eloquent{
 
         $job_acting = Capsule::table("jobs_acting")->get()->pluck("job_acting", "job_acting_id");
         return $job_acting[$this->job_acting_id];
+    }
+    public function getContractTypeNameAttribute()
+    {
+
+        $contract_types = Capsule::table("contract_types")->get()->pluck("contract_type", "contract_type_id");
+        return $contract_types[$this->contract_type_id];
     }
 }
