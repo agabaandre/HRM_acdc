@@ -95,7 +95,7 @@
 </script>
 <script>
 	$(document).ready(function() {
-		$('#example2').DataTable({
+		$('.mydata').DataTable({
 			dom: 'Bfrtip',
 			"paging": true,
 			"lengthChange": true,

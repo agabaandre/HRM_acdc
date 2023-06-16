@@ -5,7 +5,7 @@
   <div class="card-body">
 
     <div class="table-responsive">
-      <table id="example2" class="table table-striped table-bordered">
+      <table  class="table mydata table-striped table-bordered">
         <thead>
           <tr>
             <th>#</th>
