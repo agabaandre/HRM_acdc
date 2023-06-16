@@ -42,7 +42,7 @@
               <td><?=$i++?></td>
               <td><?= $data->SAPNO ?></td>
               <td><?= $data->title ?></td>
-              <td><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+              <td><a href="<?php echo base_url()?>staff/profile/<?= $data->SAPNO?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
               <td><?= $data->gender ?></td>
               <td><?= $data->nationality->nationality ?></td>
               <td><?= @$data->contracts[0]->job_name ?></td>
