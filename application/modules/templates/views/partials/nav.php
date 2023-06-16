@@ -49,7 +49,7 @@
 
 
         <li class="nav-item dropdown">
-            <a href="staff_bd.php" class="nav-link <?php echo activelink('staff_bd', $this->uri->segment(1)) ?>">
+            <a href="<?php echo base_url()?>staff/staff_birthday" class="nav-link <?php echo activelink('staff_birthday', $this->uri->segment(2)) ?>">
                 <div class="parent-icon"><i class='bx bx-donate-heart'></i>
                 </div>
                 <div class="menu-title">Staff Birthdays</div>
