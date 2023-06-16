@@ -4,7 +4,7 @@
 
 
         <li class="nav-item dropdown">
-            <a href="<?php echo base_url()?>dashboard" class="nav-link <?php echo activelink('dashboard', $this->uri->segment(1)) ?>">
+            <a href="<?php echo base_url() ?>dashboard" class="nav-link <?php echo activelink('dashboard', $this->uri->segment(1)) ?>">
                 <div class="parent-icon"><i class="bx bx-category"></i>
                 </div>
                 <div class="menu-title">Staff Dashboard</div>
@@ -13,7 +13,7 @@
 
 
         <li class="nav-item dropdown">
-            <a href="<?php echo base_url()?>staff" class="nav-link <?php echo activelink('staff', $this->uri->segment(1)) ?>">
+            <a href="<?php echo base_url() ?>staff" class="nav-link <?php echo activelink('staff', $this->uri->segment(1)) ?>">
                 <div class="parent-icon"><i class='bx bx-user'></i>
                 </div>
                 <div class="menu-title">Staff</div>
@@ -22,7 +22,7 @@
         </li>
 
         <li class="nav-item dropdown">
-            <a href="due.php" class="nav-link <?php echo activelink('due', $this->uri->segment(1)) ?>">
+            <a href="<?= base_url() ?>staff/contract_status/2" class="nav-link <?php echo activelink('2', $this->uri->segment(3)) ?>">
                 <div class="parent-icon"><i class="bx bx-category"></i>
                 </div>
                 <div class="menu-title">Contracts Due</div>
@@ -31,7 +31,7 @@
 
 
         <li class="nav-item dropdown">
-            <a href="expired.php" class="nav-link <?php echo activelink('expired', $this->uri->segment(1)) ?>">
+            <a href="<?= base_url() ?>staff/contract_status/3" class="nav-link <?php echo activelink('3', $this->uri->segment(3)) ?>">
                 <div class="parent-icon"><i class='bx bx-user-x'></i>
                 </div>
                 <div class="menu-title">Expired Contracts</div>
