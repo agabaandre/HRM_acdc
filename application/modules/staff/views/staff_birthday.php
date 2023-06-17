@@ -35,10 +35,11 @@
                     </thead>
                     <tbody>
                         <!-- Loop through data and display rows -->
-                        <tr>
-                            <?php
-                            $i = 1;
-                            foreach ($today as $data) : ?>
+
+                        <?php
+                        $i = 1;
+                        foreach ($today as $data) : ?>
+                            <tr>
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
                                 <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
@@ -50,8 +51,8 @@
                                 <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
                                 <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
 
-                        </tr>
-                    <?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -59,7 +60,7 @@
         <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
             <div class="table-responsive">
                 <h3 style="text-align: center;">Tomorrow</h3>
-                <table  class="table mydata table-bordered table-striped">
+                <table class="table mydata table-bordered table-striped">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -76,10 +77,11 @@
                     </thead>
                     <tbody>
                         <!-- Loop through data and display rows -->
-                        <tr>
-                            <?php
-                            $i = 0;
-                            foreach ($tomorrow as $data) : ?>
+
+                        <?php
+                        $i = 0;
+                        foreach ($tomorrow as $data) : ?>
+                            <tr>
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
                                 <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
@@ -91,8 +93,8 @@
                                 <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
                                 <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
 
-                        </tr>
-                    <?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -117,10 +119,11 @@
                     </thead>
                     <tbody>
                         <!-- Loop through data and display rows -->
-                        <tr>
-                            <?php
-                            $i = 1;
-                            foreach ($week as $data) : ?>
+
+                        <?php
+                        $i = 1;
+                        foreach ($week as $data) : ?>
+                            <tr>
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
                                 <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
@@ -132,8 +135,8 @@
                                 <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
                                 <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
 
-                        </tr>
-                    <?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -158,10 +161,12 @@
                     </thead>
                     <tbody>
                         <!-- Loop through data and display rows -->
+
+                        <?php
+                        $i = 1;
+                        foreach ($month as $data) : ?> 
                         <tr>
-                            <?php
-                            $i = 1;
-                            foreach ($month as $data) : ?>
+
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
                                 <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
@@ -173,8 +178,8 @@
                                 <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
                                 <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
 
-                        </tr>
-                    <?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
