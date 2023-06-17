@@ -30,8 +30,10 @@ class Staff extends MX_Controller
 		}
 		else if ($status == 3) {
 			$data['title'] = "Expired Contracts";
+		} 
+		else if ($status == 4) {
+			$data['title'] = "Former Staff";
 		}
-		
 		$data['staff'] = $this->staff_mdl->get_status($status);
 	
 		render('contract_status', $data);

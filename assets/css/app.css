@@ -2014,11 +2014,15 @@ input::placeholder {
 .user-box {
     display: flex;
     align-items: center;
-    height: 60px;
-    border-left: 1px solid #f0f0f0;
+    height: inherit;
+    color:#FFF;
+    border-right: 0px solid #574040 !important;
+    border-bottom-right-radius: 0px !important;
     margin-left: 1rem;
 }
-
+.user-info .user-name{
+    color:#FFF !important;
+}
 .dropdown-large {
     position: relative;
 }
