@@ -1,0 +1,26 @@
+# Use the official PHP 8.1.13 image
+FROM php:8.1.13-fpm
+
+# Install additional PHP extensions
+RUN apt-get update && apt-get install -y \
+    php8.1-cli \
+    php8.1-common \
+    php8.1-mysql \
+    php8.1-zip \
+    php8.1-gd \
+    php8.1-mbstring \
+    php8.1-curl \
+    php8.1-xml \
+    php8.1-bcmath
+
+# Install and enable opcache
+RUN pecl install opcache && docker-php-ext-enable opcache
+
+# Copy custom opcache configuration file
+COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+# Update PHP configuration
+RUN echo "memory_limit = 5200M" >> /usr/local/etc/php/conf.d/docker-php-config.ini \
+    && echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/docker-php-config.ini \
+    && echo "post_max_size = 1028M" >> /usr/local/etc/php/conf.d/docker-php-config.ini \
+    && echo "upload_max_filesize = 1028M" >> /usr/local/etc/php/conf.d/docker-php-config.ini
