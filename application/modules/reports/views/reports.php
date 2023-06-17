@@ -5,7 +5,7 @@
   <div class="card-body">
 
     <div class="table-responsive">
-      <table  class="table mydata table-striped table-bordered">
+      <table class="table mydata table-striped table-bordered">
         <thead>
           <tr>
             <th>#</th>
@@ -33,20 +33,21 @@
           </tr>
         </thead>
         <tbody>
+
           <?php
           //dd($staff->toArray());
           $i = 1;
           foreach ($staff as $data) : ?>
-            <tr>
 
-              <td><?=$i++?></td>
+            <tr>
+              <td><?= $i++ ?></td>
               <td><?= $data->SAPNO ?></td>
               <td><?= $data->title ?></td>
-              <td><a href="<?php echo base_url()?>staff/profile/<?= $data->SAPNO?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+              <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
               <td><?= $data->gender ?></td>
               <td><?= $data->nationality->nationality ?></td>
-              <td><?= @character_limiter($data->contracts[0]->job_name,15) ?></td>
-              <td><?= @character_limiter($data->contracts[0]->jobacting_name,15) ?></td>
+              <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
+              <td><?= @character_limiter($data->contracts[0]->jobacting_name, 15) ?></td>
               <td><?= @$data->contracts[0]->division_name ?></td>
               <td><?= @$data->contracts[0]->station_name ?></td>
               <td><?= @$data->work_email ?></td>
@@ -63,8 +64,6 @@
 
 
               <td><a href="<?= base_url() ?>staff/update">Edit</a> | <a href="<?= base_url() ?>staff/profile">Profie</a></td>
-
-
 
 
             </tr>
