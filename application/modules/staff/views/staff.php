@@ -70,8 +70,12 @@
                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 
                     </div>
-                    <div class="col-md-12 d-flex justify-content-center">
-                      <button type="button" class="btn btn-primary" onclick="printPage()" data-bs-dismiss="modal">Print</button>
+                    <div class="toolbar hidden-print">
+                      <div class="text-end">
+                        <button type="button" class="btn btn-dark btn-sm btn-print" onclick="printPage()"><i class="fa fa-print"></i> Print</button>
+                        <button type="button" class="btn btn-secondary btn-sm "><i class="fa fa-file-pdf-o"></i> Export as PDF</button>
+                      </div>
+                      <hr>
                     </div>
                     <div class="modal-body" id="worker_profile">
                       <div class="col-md-12 d-flex justify-content-center p-5">
@@ -128,7 +132,7 @@
                 // Print button functionality
                 function printPage() {
                   // Hide the print button before printing
-                  document.querySelector(".btn-primary").style.display = "none";
+                  document.querySelector(".btn-print").style.display = "none";
 
                   // Print only the worker's profile
                   var printContents = document.getElementById("worker_profile").innerHTML;

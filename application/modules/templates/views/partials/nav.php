@@ -51,6 +51,8 @@
 		                    <div class="menu-title">Leave Application</div>
 		                </a>
 		                <ul class="dropdown-menu">
+		                    <li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/application"><i class="bx bx-right-arrow-alt"></i>Apply</a>
+		                    </li>
 		                    <li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/approve"><i class="bx bx-right-arrow-alt"></i>Approve Leave</a>
 		                    </li>
 		                    <li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/status"><i class="bx bx-right-arrow-alt"></i>My Leave Status</a>
