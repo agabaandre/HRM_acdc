@@ -1,8 +1,4 @@
 <div class="card">
-  <div class="col-md-12" style="float: right;">
-    <button type="button" class="btn   btn-dark btn-sm btn-bordered" data-bs-toggle="modal" data-bs-target="#add_item">+ Add New Staff</button>
-  </div>
-  <div class="card-body">
 
     <div class="table-responsive">
       <table class="table mydata table-striped table-bordered">
@@ -28,8 +24,6 @@
             <th>Contract Status</th>
             <th>Contract Start Date</th>
             <th>Contract End Date</th>
-            <th>Contract Comments</th>
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -60,12 +54,6 @@
               <td><?= @$data->contracts[0]->status ?></td>
               <td><?= @$data->contracts[0]->start_date ?></td>
               <td><?= @$data->contracts[0]->end_date ?></td>
-              <td><?= @$data->contracts[0]->comments ?></td>
-
-
-              <td><a href="<?= base_url() ?>staff/update">Edit</a> | <a href="<?= base_url() ?>staff/profile">Profie</a></td>
-
-
             </tr>
           <?php endforeach; ?>
         </tbody>

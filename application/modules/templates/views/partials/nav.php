@@ -24,7 +24,7 @@
 
 					<li class="nav-item dropdown has-arrow">
 						<a href="#" class="nav-link <?php echo activelink('staff', $this->uri->segment(1)) ?> has-arrow">
-							<div class="parent-icon"><i class='bx bx-user'></i>
+							<div class="parent-icon"><i class='fa fa-user'></i>
 							</div>
 							<div class="menu-title">Staff</div>
 						</a>
@@ -46,7 +46,8 @@
 
 					<li class="nav-item dropdown">
 						<a href="<?php echo base_url() ?>leave/request" class="nav-link  <?php echo activelink('leave', $this->uri->segment(1)) ?>">
-							<div class="parent-icon"><i class='bx bx-user'></i>
+							<div class="parent-icon"><i class="fa fa-plane-departure"></i>
+
 							</div>
 							<div class="menu-title">Leave Application</div>
 						</a>
@@ -61,7 +62,7 @@
 					</li>
 					<li class="nav-item dropdown">
 						<a href="<?php echo base_url() ?>leave" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
-							<div class="parent-icon"><i class='bx bx-user'></i>
+							<div class="parent-icon"><i class='fa fa-line-chart'></i>
 							</div>
 							<div class="menu-title">Performance Appraisal</div>
 						</a>
@@ -74,7 +75,7 @@
 					</li>
 					<li class="nav-item dropdown">
 						<a href="#" class="nav-link  <?php echo activelink('tasks', $this->uri->segment(1)) ?>">
-							<div class="parent-icon"><i class='bx bx-user'></i>
+							<div class="parent-icon"><i class='fa fa-calendar'></i>
 							</div>
 							<div class="menu-title">Task Analysis</div>
 						</a>
@@ -85,30 +86,27 @@
 					</li>
 
 					<li class="nav-item dropdown">
-						<a href="#" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
-							<div class="parent-icon"><i class='bx bx-user'></i>
+						<a href="<?php echo base_url() ?>reports" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+							<div class="parent-icon"><i class='fa fa-th'></i>
 							</div>
 							<div class="menu-title">Reports</div>
 						</a>
-						<ul class="dropdown-menu">
-							<li> <a class="dropdown-item" href="#"><i class="bx bx-right-arrow-alt"></i>Staff Report</a>
-							</li>
-						</ul>
+
 					</li>
 
 					<li class="nav-item dropdown">
-						<a href="" class="nav-link <?php echo activelink('system_settings', $this->uri->segment(1)) ?>">
-							<div class="parent-icon"><i class="bx bx-line-chart"></i>
+						<a href="<?php echo base_url() ?>settings" class="nav-link <?php echo activelink('settings', $this->uri->segment(1)) ?>">
+							<div class="parent-icon"><i class="fa fa-cog"></i>
 							</div>
 							<div class="menu-title">Settings</div>
 						</a>
 
 					</li>
 					<li class="nav-item dropdown">
-						<a href="#" class="nav-link <?php echo activelink('change_password', $this->uri->segment(1)) ?>">
-							<div class="parent-icon"><i class='bx bx-bookmark-heart'></i>
+						<a href="<?php echo base_url() ?>auth/users" class="nav-link <?php echo activelink('auth', $this->uri->segment(1)) ?>">
+							<div class="parent-icon"><i class='fa fa-users'></i>
 							</div>
-							<div class="menu-title">Change Password</div>
+							<div class="menu-title">Users</div>
 						</a>
 
 					</li>
