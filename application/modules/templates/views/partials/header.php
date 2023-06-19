@@ -128,9 +128,8 @@
 				<ul class="dropdown-menu dropdown-menu-end">
 					<li><a class="dropdown-item" href="<?php echo base_url() ?>/auth/profile"><i class="bx bx-user"></i><span>Profile</span></a>
 					</li>
-					<li><a class="dropdown-item" href="<?php echo base_url() ?>/auth/change_password"><i class="bx bx-cog"></i><span>Settings</span></a>
+					<li><a class="dropdown-item" class="passchange nav-link dropdown-toggle" data-toggle="modal" role="button" data-target="#changepassword"><i class="bx bx-cog"></i><span>Change Password</span></a>
 					</li>
-
 					<li>
 						<div class="dropdown-divider mb-0"></div>
 					</li>

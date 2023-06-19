@@ -132,8 +132,10 @@ a {
 .dropup-center {
     position: relative;
     border: 1px solid #d3d3c2 !important;
-    border-bottom-right-radius: 10px !important;
-    border-bottom-left-radius: 10px !important;
+    border-top-right-radius: 3px !important;
+    border-top-left-radius: 3px !important;
+    border-bottom-right-radius: 3px !important;
+    border-bottom-left-radius: 3px !important;
 }
 
 .page-footer {

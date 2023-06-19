@@ -2,7 +2,7 @@
 
 use Illuminate\Database\Eloquent\Builder;
 
-class Staff_mdl extends CI_Model
+class Reports_mdl extends CI_Model
 {
 
     public function __construct()

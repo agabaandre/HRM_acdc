@@ -30,10 +30,12 @@
             </div>
           </div>
           <div class="col-md-3">
-            <button type="submit" class="btn btn-primary">Apply Filters</button>
-            <button type="button" id="reset-filters" class="btn btn-secondary">Reset Filters</button>
+            <div class="form-group" style="margin-top:20px;">
+              <button type="submit" class="btn  btn-sm btn-secondary">Apply Filters</button>
+              <button type="button" id="reset-filters" class="btn  btn-sm btn-danger">Reset Filters</button>
+            </div>
           </div>
-        </div>
+          </div>
       </form>
 
       <table id="leave-table" class="table">
