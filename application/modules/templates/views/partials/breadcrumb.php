@@ -9,7 +9,7 @@
                     <ol class="breadcrumb mb-0 p-0">
                         <li class="breadcrumb-item"><a href="javascript:;"></a>
                         </li>
-                        <li class="breadcrumb-item active" aria-current="page"><?= @ucwords($this->uri->segment(2)); ?></li>
+                        <li class="breadcrumb-item active" aria-current="page"><?=$title ?></li>
                     </ol>
                 </nav>
             </div>

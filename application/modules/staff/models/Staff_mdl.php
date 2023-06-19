@@ -93,8 +93,30 @@ class Staff_mdl extends CI_Model
         ->get();
 
     }
+    public function insert_staff($data)
+    {
+        $sapno = $data['SAPNO'];
+        $nationality_id = $data['nationality_id'];
+        $gender = $data['gender'];
+
+        // Check if a record already exists with the given SAP number, nationality ID, and gender
+        $existing_record = $this->db->get_where('staff', array('SAPNO' => $sapno, 'nationality_id' => $nationality_id, 'gender' => $gender))->row();
+
+        if ($existing_record) {
+            // Record already exists, update the existing record
+            $this->db->where('staff_id', $existing_record->staff_id);
+            $this->db->update('staff', $data);
+
+            return $existing_record->staff_id; // Return the staff ID of the updated record
+        } else {
+            // Record does not exist, create a new record
+            $this->db->insert('staff', $data);
+
+            return $this->db->insert_id(); // Return the staff ID of the newly created record
+        }
+    }
+}
 
  
     
   
-}
