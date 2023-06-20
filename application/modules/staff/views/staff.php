@@ -72,7 +72,7 @@
 
                     </div>
                     <div class="toolbar hidden-print">
-                      <div class="text-end">
+                      <div class="text-end" style="margin-right:10px;">
                         <a href="#" data-bs-toggle="modal" class="btn   btn-dark btn-sm btn-bordered btn-print" data-bs-target="#edit_profile">Edit</a>
                         <a href="#" class="btn   btn-dark btn-sm btn-bordered btn-print" onclick="printPage()">Print</a>
                         <a href="#" class="btn   btn-dark btn-sm btn-bordered btn-print">Export as PDF</a>
@@ -134,7 +134,7 @@
               <!-- edit model -->
               <!-- edit employee data model -->
               <div class="modal fade" id="edit_profile" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-dialog modal-dialog-centered modal-fullscreen">
                   <div class="modal-content">
                     <div class="modal-header">
                       <h5 class="modal-title" id="add_item_label">Employee Profile</h5>

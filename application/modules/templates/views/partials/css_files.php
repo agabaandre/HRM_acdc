@@ -42,9 +42,6 @@
     <!-- Modal -->
     <link rel="stylesheet" href="<?php echo base_url() ?>assets/jquery-ui-1.8.7.custom/development-bundle/themes/base/jquery.ui.all.css">
     <link rel="stylesheet" href="jquery-ui-1.8.7.custom/development-bundle/themes/base/jquery.ui.all.css">
-    <script src="<?php echo base_url() ?>jquery-ui-1.8.7.custom/development-bundle/jquery-1.4.4.js"></script>
-    <script src="<?php echo base_url() ?>jquery-ui-1.8.7.custom/development-bundle/ui/jquery.ui.core.js"></script>
-    <script src="j<?php echo base_url() ?>query-ui-1.8.7.custom/development-bundle/ui/jquery.ui.widget.js"></script>
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script src="https://code.highcharts.com/modules/export-data.js"></script>
