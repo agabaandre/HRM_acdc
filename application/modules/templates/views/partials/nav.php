@@ -108,6 +108,10 @@
 							</div>
 							<div class="menu-title">Users</div>
 						</a>
+						<ul class="dropdown-menu">
+							<li> <a class="dropdown-item" href="<?php echo base_url()?>permissions"><i class="bx bx-right-arrow-alt"></i>User Permissions</a>
+							</li>
+						</ul>
 
 					</li>
 				</ul>

@@ -122,18 +122,30 @@
 </script>
 <script type="text/javascript">
 	$(document).ready(function() {
-		// $.notify("Hello","success");
-		var isPassChanged = <?php echo $pass_changed = $this->session->userdata('changed'); ?>;
+		// // $.notify("Hello","success");
+		// var isPassChanged = <?php echo $pass_changed = $this->session->userdata('changed'); ?>;
 
-		if (isPassChanged != 1) {
-			console.log(isPassChanged);
-			// $('#changepassword').modal('show');
-		}
+		// if (isPassChanged != 1) {
+		// 	console.log(isPassChanged);
+		// 	// $('#changepassword').modal('show');
+		// }
 	});
+</script>
+<script>
+	//change Password
+	function checker() {
+		$first = $('#new').val();
+		$confirm = $('#confirm').val();
+		if (($first !== $confirm) && $first !== "") {
+			$('.error').html('<font color="red">Passwords Do not Match</font>');
+		} else {
+			$('.error').html('<font color="green">Passwords Match</font>');
+		}
+	} //checker
 	$('#change_pass').submit(function(e) {
 		e.preventDefault();
 		var data = $(this).serialize();
-		var url = '<?php echo base_url(); ?>auth/changePass'
+		var url = '<?php echo base_url()?>/auth/changePass'
 		console.log(data);
 		$.ajax({
 			url: url,
@@ -141,54 +153,20 @@
 			data: data,
 			success: function(res) {
 				if (res == "OK") {
-					$('.changed').html("<center><font color='green'>Password Changed Successful</font></center>");
+					$('.changed').html("<center><font color='green'>Password change effective</font></center>");
 				} else {
 					$('.changed').html("<center>" + res + "</center>");
 				}
 				console.log(res);
 			} //success
-		}); 
+		}); // ajax
 	}); //form submit
 </script>
 
 
-<!-- change password Modal -->
-<div id="changepassword" class="modal fade" role="dialog">
-	<div class="modal-dialog">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h4 class="modal-title">Change Password</h4>
-				<br />
-
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-					<span aria-hidden="true">×</span>
-				</button>
-			</div>
-			<div class="modal-body">
-				<p class="changed" style="color:#005662;"></p>
-				<form method="post" id="change_pass">
-
-					<div class="form-group">
-						<label>Old Password</label>
-						<input type="password" class="form-control" name="oldpass" id="old">
-					</div>
 
 
-					<div class="form-group">
-						<label>New Password</label>
-						<input type="password" class="form-control" name="newpass" id="new" onkeyup="checker();" required>
-						<p class="help-block error"></p>
-					</div>
-					<div class="form-group">
-						<label>Confirm New Password</label>
-						<input type="hidden" value='1' name="changed">
-						<input type="hidden" value='<?php echo $this->session->userdata('user_id'); ?>' name="user_id">
-						<input type="password" class="form-control" name="confirm" id="confirm" onkeyup="checker();" required>
-						<p class="help-block error"></p>
-					</div>
-			</div>
-			<!-- change password Modal -->
 
-			</body>
+</body>
 
-			</html>
+</html>
