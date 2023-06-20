@@ -61,7 +61,7 @@
 						</ul>
 					</li>
 					<li class="nav-item dropdown">
-						<a href="<?php echo base_url() ?>leave" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+						<a href="<?php echo base_url() ?>performance" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 							<div class="parent-icon"><i class='fa fa-line-chart'></i>
 							</div>
 							<div class="menu-title">Performance Appraisal</div>
@@ -103,13 +103,17 @@
 
 					</li>
 					<li class="nav-item dropdown">
-						<a href="<?php echo base_url() ?>auth/users" class="nav-link <?php echo activelink('auth', $this->uri->segment(1)) ?>">
+						<a href="<?php echo base_url() ?>auth/users" class="nav-link <?php echo activelink('auth', $this->uri->segment(1), 'permissions') ?>">
 							<div class="parent-icon"><i class='fa fa-users'></i>
 							</div>
 							<div class="menu-title">Users</div>
 						</a>
 						<ul class="dropdown-menu">
-							<li> <a class="dropdown-item" href="<?php echo base_url()?>permissions"><i class="bx bx-right-arrow-alt"></i>User Permissions</a>
+							<li> <a class="dropdown-item" href="<?php echo base_url() ?>auth/users"><i class="bx bx-right-arrow-alt"></i>Manage Users</a>
+							</li>
+						</ul>
+						<ul class="dropdown-menu">
+							<li> <a class="dropdown-item" href="<?php echo base_url() ?>permissions"><i class="bx bx-right-arrow-alt"></i>User Permissions</a>
 							</li>
 						</ul>
 

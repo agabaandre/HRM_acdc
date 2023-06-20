@@ -80,21 +80,21 @@
 <!--end switcher-->
 <!-- Bootstrap JS -->
 <script src="<?php echo base_url() ?>assets/js/bootstrap.bundle.min.js"></script>
-<!--plugins-->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" integrity="sha512-fD9DI5bZwQxOi7MhYWnnNPlvXdp/2Pj3XSTRrFs5FQa4mizyGLnJcN6tuvUS6LbmgN1ut+XGSABKvjN0H6Aoow==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="<?php echo base_url() ?>assets/js/jquery.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/simplebar/js/simplebar.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/legacy.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/picker.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/picker.time.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/picker.date.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/moment.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.min.js"></script>
 <!--app JS-->
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
 <script src="<?php echo base_url() ?>assets/js/app.js"></script>
-<script>
-	$(document).ready(function() {
-		$('#example').DataTable();
-	});
-</script>
 <script>
 	$(document).ready(function() {
 		$('.mydata').DataTable({
@@ -145,7 +145,7 @@
 	$('#change_pass').submit(function(e) {
 		e.preventDefault();
 		var data = $(this).serialize();
-		var url = '<?php echo base_url()?>/auth/changePass'
+		var url = '<?php echo base_url() ?>/auth/changePass'
 		console.log(data);
 		$.ajax({
 			url: url,
@@ -162,7 +162,34 @@
 		}); // ajax
 	}); //form submit
 </script>
-
+<script>
+	$('.datepicker').pickadate({
+			selectMonths: true,
+			selectYears: true
+		}),
+		$('.timepicker').pickatime()
+</script>
+<script>
+	$('.staffdatepicker').pickadate({
+			selectMonths: true,
+			selectYears: true
+		}),
+		$('.stafftimepicker').pickatime()
+</script>
+<script>
+	$(function() {
+		$('.date-time').bootstrapMaterialDatePicker({
+			format: 'YYYY-MM-DD HH:mm'
+		});
+		$('.date').bootstrapMaterialDatePicker({
+			time: false
+		});
+		$('.time').bootstrapMaterialDatePicker({
+			date: false,
+			format: 'HH:mm'
+		});
+	});
+</script>
 
 
 
