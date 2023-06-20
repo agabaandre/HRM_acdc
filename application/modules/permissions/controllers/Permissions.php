@@ -63,6 +63,16 @@ class Permissions extends MX_Controller
       redirect('permissions');
     }
   }
+  public function addGroup()
+  {
+    $data = $this->input->post();
+    $post_d = $this->perms_mdl->addGroup($data);
+    if ($post_d) {
+      $msg = "Group is Saved successfully";
+      Modules::run('utility/setFlash', $msg);
+      redirect('permissions');
+    }
+  }
   public function assignPermissions()
   {
     $this->session->set_flashdata('group', $this->input->post('group'));

@@ -64,4 +64,14 @@ class Permissions_mdl extends CI_Model
 		}
 		return false;
 	}
+	public function addGroup($data)
+	{
+		if (count($data) > 0) {
+		
+			$save =$this->db->insert('user_groups', $data);
+		
+			return $save;
+		}
+		return false;
+	}
 }

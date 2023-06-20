@@ -106,7 +106,7 @@ $gpermissions = Modules::run('permissions/groupPermissions', $this->session->fla
                 $this->load->view('add_perm_modal');
                 ?>
 
-        
+
               </table>
 
 
@@ -120,7 +120,7 @@ $gpermissions = Modules::run('permissions/groupPermissions', $this->session->fla
 <div id="newgrp" class="modal fade">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <form id="addgroup" class="addgroup" action="<?= base_url('permissions/addGroup') ?>" method="post" enctype="multipart/form-data">
+      <?php echo form_open_multipart(base_url('permissions/addGroup'), array('id' => 'addGroup', 'class' => 'addGroup')); ?>
         <div class="modal-header">
           <h4 class="modal-title">Add group</h4>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
