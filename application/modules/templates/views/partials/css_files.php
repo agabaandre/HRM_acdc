@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="<?php echo base_url(); ?>assets/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
     <link rel="stylesheet" href="<?php echo base_url(); ?>assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
     <link rel="stylesheet" href="<?php echo base_url(); ?>assets/plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -19,7 +19,6 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css">
     <link href="<?php echo base_url() ?>assets/css/icons.css" rel="stylesheet">
-    <link href="<?php echo base_url() ?>assets/css/app.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/css/bootstrap-extended.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/plugins/simplebar/css/simplebar.css" rel="stylesheet" />
@@ -31,6 +30,7 @@
     <link rel="stylesheet" href="<?php echo base_url() ?>assets/css/semi-dark.css" />
     <link rel="stylesheet" href="<?php echo base_url() ?>assets/css/header-colors.css" />
     <!-- loader-->
+    <link href="<?php echo base_url() ?>assets/css/app.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/css/pace.min.css" rel="stylesheet" />
     <script src="<?php echo base_url() ?>assets/js/pace.min.js"></script>
     <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.css" rel="stylesheet" />
