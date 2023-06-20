@@ -471,12 +471,12 @@ if (!function_exists('translate')) {
     }
 }
 if (!function_exists('activelink')) {
-    function activelink($link, $uri_segment)
+    function activelink($link, $uri_segment, $child=FALSE)
     {
 
         $flink = $link;
 
-        if ($uri_segment == $flink) {
+        if ($uri_segment == $flink || $uri_segment == $child) {
             return "active";
         } else {
             return $flink;

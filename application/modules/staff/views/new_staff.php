@@ -33,7 +33,7 @@
 
              <div class="form-group">
                  <label for="date_of_birth">Date of Birth:</label>
-                 <input type="date" class="form-control" name="date_of_birth" id="date_of_birth" required>
+                 <input type="text" class="form-control datepicker" name="date_of_birth" id="date_of_birth" required>
              </div>
 
              <div class="form-group">
@@ -47,7 +47,7 @@
          </div>
 
          <div class="col-md-6">
-            <br>
+             <br>
              <div class="form-group" style="margin-top:15px;">
                  <label for="nationality_id">Nationality:</label>
                  <select class="form-control" name="nationality_id" id="nationality_id" required>
@@ -61,7 +61,7 @@
 
              <div class="form-group">
                  <label for="initiation_date">Initiation Date:</label>
-                 <input type="date" class="form-control" name="initiation_date" id="initiation_date" required>
+                 <input type="text" class="form-control datepicker" name="initiation_date" id="initiation_date" required>
              </div>
 
              <div class="form-group">

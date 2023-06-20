@@ -1,5 +1,3 @@
-
-
 <div class="card">
 
   <div class="card-body">
@@ -13,8 +11,16 @@
           </div>
           <div class="form-group">
             <label for="start_date" class="form-label">Start Date</label>
-            <input type="date" class="form-control" id="start_date" name="start_date" required>
+            <input type="text" class="form-control datepicker" id="start_date" name="start_date" required>
           </div>
+          <div class="form-group">
+            <label for="end_date" class="form-label">End Date</label>
+            <input type="text" class="form-control datepicker" id="end_date" name="end_date" required>
+          </div>
+          <!-- Additional fields as per your requirements -->
+        </div>
+        <div class="col-md-6">
+
           <div class="form-group">
             <label for="leave_id" class="form-label">Leave Type</label>
             <select class="form-select" id="leave_id" name="leave_id" required>
@@ -24,13 +30,6 @@
                 <option value="<?php echo $leave_type['leave_id']; ?>"><?php echo $leave_type['leave_name']; ?></option>
               <?php endforeach; ?>
             </select>
-          </div>
-          <!-- Additional fields as per your requirements -->
-        </div>
-        <div class="col-md-6">
-          <div class="form-group">
-            <label for="end_date" class="form-label">End Date</label>
-            <input type="date" class="form-control" id="end_date" name="end_date" required>
           </div>
           <div class="form-group">
             <label for="requested_days" class="form-label">Requested Days</label>
