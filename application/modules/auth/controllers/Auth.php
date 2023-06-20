@@ -146,6 +146,12 @@ class Auth extends MX_Controller
     $postdata = $this->input->post();
     echo $res = $this->auth_mdl->changePass($postdata);
   }
+
+  public function change_password(){
+    $data['title'] = "Change Password";
+    $data['module'] = "auth";
+    render('users/change_pass', $data);
+  }
   public function resetPass()
   {
     $postdata = $this->input->post();
@@ -214,12 +220,5 @@ class Auth extends MX_Controller
     $this->image_lib->watermark();
   }
   //permissions management
-
-  public function frontend_logout()
-  {
-    session_unset();
-    session_destroy(); 
-    redirect( base_url());
-  }
 
 }
