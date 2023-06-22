@@ -9,13 +9,16 @@
                     <ol class="breadcrumb mb-0 p-0">
                         <li class="breadcrumb-item"><a href="javascript:;"></a>
                         </li>
-                        <li class="breadcrumb-item active" aria-current="page"><?=$title ?></li>
+                        <li class="breadcrumb-item active" aria-current="page"><?= $title ?></li>
                     </ol>
                 </nav>
             </div>
-        
+
         </div>
         <!--end breadcrumb-->
-
+        <div id="preloader">
+            <div id="status">
+            </div>
+        </div>
         <div class="card">
             <div class="card-body">

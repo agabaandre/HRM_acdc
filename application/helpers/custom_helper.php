@@ -51,7 +51,7 @@ if (!function_exists('calculate_age')) {
 //render-front-main website
 if (!function_exists('render_site')) {
 
-    function render_site($view, $data = [],$is_home=false, $plain = false)
+    function render_site($view, $data = [], $is_home = false, $plain = false)
     {
 
         $data['view'] = $view;
@@ -365,33 +365,35 @@ if (!function_exists('render_csv_data')) {
 
 
 if (!function_exists('share_buttons')) {
-	function share_buttons($link,$subject="Check this  Africa CDC  resource"){
+    function share_buttons($link, $subject = "Check this  Africa CDC  resource")
+    {
 
-		$data['link']   = $link;
+        $data['link']   = $link;
         $data['subject'] = $subject;
 
-		$ci =& get_instance();
+        $ci = &get_instance();
 
-		$ci->load->view('templates/share_buttons',$data);
-	}
+        $ci->load->view('templates/share_buttons', $data);
+    }
 }
 
 
 if (!function_exists('user_session')) {
-    function user_session($return_array=false){
-        $ci =& get_instance();
-        if($return_array):
-            return ($ci->session->userdata('region'))? $ci->session->userdata(): ['is_logged_in'=>false,'is_admin'=>false];
-        else:
-            return ($ci->session->userdata('region'))? (Object) $ci->session->userdata(): (Object) ['is_logged_in'=>false,'is_admin'=>false];
+    function user_session($return_array = false)
+    {
+        $ci = &get_instance();
+        if ($return_array) :
+            return ($ci->session->userdata('region')) ? $ci->session->userdata() : ['is_logged_in' => false, 'is_admin' => false];
+        else :
+            return ($ci->session->userdata('region')) ? (object) $ci->session->userdata() : (object) ['is_logged_in' => false, 'is_admin' => false];
         endif;
-
     }
 }
 
 if (!function_exists('is_guest')) {
-    function is_guest(){
-        return (@user_session()->user)?false:true;
+    function is_guest()
+    {
+        return (@user_session()->user) ? false : true;
     }
 }
 
@@ -404,7 +406,6 @@ if (!function_exists('is_valid_image')) {
             return TRUE;
         } else {
             return FALSE;
-
         }
     }
 }
@@ -412,7 +413,7 @@ if (!function_exists('can_access')) {
 
     function can_access($permission)
     {
-        $ci = & get_instance();
+        $ci = &get_instance();
         $permissions = $ci->session->userdata('user')->permissions;
         return in_array($permission, $permissions);
     }
@@ -430,7 +431,7 @@ if (!function_exists('can_access_multi')) {
 
         // dd($permission_ids);
 
-        $ci = & get_instance();
+        $ci = &get_instance();
 
         // Get ID's of all user permissions
         $user_permissions = $ci->session->userdata('user')->permissions;
@@ -452,7 +453,7 @@ if (!function_exists('get_permission_id')) {
 
     function get_permission_id($permission)
     {
-        $ci = & get_instance();
+        $ci = &get_instance();
         $ci->db->select('id');
         $ci->db->where('name', $permission);
         $query = $ci->db->get('permissions');
@@ -467,11 +468,10 @@ if (!function_exists('translate')) {
     function translate()
     {
         include('langauge.php');
-        
     }
 }
 if (!function_exists('activelink')) {
-    function activelink($link, $uri_segment, $child=FALSE)
+    function activelink($link, $uri_segment, $child = FALSE)
     {
 
         $flink = $link;
@@ -529,24 +529,32 @@ if (!function_exists('dateDiff')) {
 }
 //select data from the db automatically
 if (!function_exists('select_field')) {
-    function select_field($name,$table)
-{?>
-    <select name="<?php echo $name.'_d';?>" class="form-control select2bs4" required="">
+    function select_field($name, $table)
+    { ?>
+        <select name="<?php echo $name . '_d'; ?>" class="form-control select2bs4" required="">
 
             <option value="" disabled>Select Value</option>
             <?php
-                $CI=&get_instance();
-                 $query = $CI->db->get($table)->result();
-            foreach ($query as $data):?>
-            <option value="" disabled>N/A</option>
-            <option value="<?php echo @$data->$name.'_id'?>" d><?php echo @$data->$name;?></option>
-           <?php endforeach;
+            $CI = &get_instance();
+            $query = $CI->db->get($table)->result();
+            foreach ($query as $data) : ?>
+                <option value="" disabled>N/A</option>
+                <option value="<?php echo @$data->$name . '_id' ?>" d><?php echo @$data->$name; ?></option>
+            <?php endforeach;
 
-           
-              
+
+
             ?>
-    </select>
-   <?php  
+        </select>
+    <?php
     }
 }
- 	                       
+//select data from the db automatically
+if (!function_exists('select_field')) {
+    function selected_fields($dbval, $frontval) 
+    {
+        if ($dbval== $frontval) {
+            return "selected";
+        }
+    }
+}

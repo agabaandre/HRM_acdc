@@ -1,14 +1,14 @@
-<div class="card">
-    <div class="row">
-        <div class="col col-md-4"></div>
 
+    <div class="row">
         <div class="col col-md-4">
-            <div class="modal-content">
-                <div class="modal-header">
+
+        </div>
+
+        <div class="col-md-4">
+          
                     <h5 class="modal-title" id="changepasswordModalLabel">Change Password</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
+                    
+    
                     <p class="changed" style="color:#005662;"></p>
                     <?php echo form_open_multipart(base_url('auth/change_pass'), array('id' => 'changpass', 'class' => 'user_form')); ?>
 
@@ -28,15 +28,14 @@
                         <input type="password" class="form-control" name="confirm" id="confirm" onkeyup="checker();" required>
                         <p class="help-block error"></p>
                     </div>
-                </div>
+            
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
                 </form>
-            </div>
+          
         </div>
-        <div class="col col-md-4"></div>
+        <div class="col-lg-4"></div>
 
     </div>
-</div>

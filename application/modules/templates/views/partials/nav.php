@@ -67,9 +67,9 @@
 							<div class="menu-title">Performance Appraisal</div>
 						</a>
 						<ul class="dropdown-menu">
-							<li> <a class="dropdown-item" href="#"><i class="bx bx-right-arrow-alt"></i>Performance Plan</a>
+							<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance"><i class="bx bx-right-arrow-alt"></i>Performance Plan</a>
 							</li>
-							<li> <a class="dropdown-item" href="#"><i class="bx bx-right-arrow-alt"></i>Performance Appraisal</a>
+							<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/appraisal"><i class="bx bx-right-arrow-alt"></i>Performance Appraisal</a>
 							</li>
 						</ul>
 					</li>

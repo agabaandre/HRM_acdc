@@ -25,6 +25,17 @@ class Staff_mdl extends CI_Model
 
         return $results;
     }
+    public function update_staff($data){
+        $this->db->where('staff_id', $data['staff_id']);
+        $query =$this->db->update("staff",$data);
+        return $query;
+    }
+    public function update_contract($data)
+    {
+        $this->db->where('staff_id', $data['staff_id']);
+        $query = $this->db->update('staff_contracts',$data);
+        return $query;
+    }
 
     public function get_status($flag)
     {
@@ -33,7 +44,7 @@ class Staff_mdl extends CI_Model
         $results = $query->with('contracts', 'contracts.funder')
         ->when($flag, function ($query, $flag) {
             $query->whereHas('contracts', function (Builder $query) use ($flag) {
-                $query->where('status_id', $flag);
+                $query->where('status_id','=', $flag);
             });
                
         })
@@ -93,28 +104,67 @@ class Staff_mdl extends CI_Model
         ->get();
 
     }
-    public function insert_staff($data)
+
+    public function add_staff($sapno, $title, $fname, $lname, $oname, $dob, $gender, $nationality_id, $initiation_date, $tel_1, $tel_2, $whatsapp, $work_email, $private_email, $physical_location)
     {
-        $sapno = $data['SAPNO'];
-        $nationality_id = $data['nationality_id'];
-        $gender = $data['gender'];
-
-        // Check if a record already exists with the given SAP number, nationality ID, and gender
-        $existing_record = $this->db->get_where('staff', array('SAPNO' => $sapno, 'nationality_id' => $nationality_id, 'gender' => $gender))->row();
-
-        if ($existing_record) {
-            // Record already exists, update the existing record
-            $this->db->where('staff_id', $existing_record->staff_id);
-            $this->db->update('staff', $data);
-
-            return $existing_record->staff_id; // Return the staff ID of the updated record
-        } else {
-            // Record does not exist, create a new record
+        $data = array(
+            'SAPNO' => $sapno,
+            'title' => $title,
+            'fname' => $fname,
+            'lname' => $lname,
+            'oname' => $oname,
+            'date_of_birth' => $dob,
+            'gender' => $gender,
+            'nationality_id' => $nationality_id,
+            'initiation_date' => $initiation_date,
+            'tel_1' => $tel_1,
+            'tel_2' => $tel_2,
+            'whatsapp' => $whatsapp,
+            'work_email' => $work_email,
+            'private_email' => $private_email,
+            'physical_location' => $physical_location,
+            'created_at' =>date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        );
+        $sapold = $this->db->query("SELECT * from staff where SAPNO='$sapno'")->num_rows();
+        if ($sapold == 0) {
             $this->db->insert('staff', $data);
-
-            return $this->db->insert_id(); // Return the staff ID of the newly created record
         }
+        else{
+            $this->db->where('SAPNO', $sapno);
+            $this->db->update('staff', $data);
+        }
+        return $this->db->insert_id();
     }
+
+    public function add_contract_information($staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, $duty_station_id, $division_id, $start_date, $end_date, $status_id, $file_name, $comments)
+    {
+        $data = array(
+            'staff_id' => $staff_id,
+            'job_id' => $job_id,
+            'job_acting_id' => $job_acting_id,
+            'grade_id' => $grade_id,
+            'contracting_institution_id' => $contracting_institution_id,
+            'funder_id' => $funder_id,
+            'first_supervisor' => $first_supervisor,
+            'second_supervisor' => $second_supervisor,
+            'contract_type_id' => $contract_type_id,
+            'duty_station_id' => $duty_station_id,
+            'division_id' => $division_id,
+            'start_date' => $start_date,
+            'end_date' => $end_date,
+            'status_id' => $status_id,
+            'file_name' => $file_name,
+            'comments' => $comments,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+
+        );
+
+        $this->db->insert('staff_contracts', $data);
+        return $this->db->insert_id();
+    }
+
 }
 
  

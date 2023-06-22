@@ -101,6 +101,7 @@ class Auth extends MX_Controller
     $page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0; //default starting point for limits 
     $data['links'] = $this->pagination->create_links();
     $data['users'] = $this->auth_mdl->getAll($config['per_page'], $page, $searchkey);
+    $data['divisions'] = $this->db->get('divisions')->result();
     $data['module'] = "auth";
     $data['title'] = "User Management";
     $data['uptitle'] = "User Management";
@@ -175,20 +176,23 @@ class Auth extends MX_Controller
   public function updateProfile()
   {
     $postdata = $this->input->post();
-    $username = $postdata['username'];
+    $data['username'] = $postdata['username'];
+    $data['name'] = $postdata['name'];
+    $data['email'] = $postdata['email '];
+    $data['langauge'] = $postdata['langauge'];
     if (!empty($_POST['photo'])) {
       //if user changed image
       $data = $_POST['photo'];
       list($type, $data) = explode(';', $data);
       list(, $data)      = explode(',', $data);
       $data = base64_decode($data);
-      $imageName = $username . time() . '.png';
-      unlink('./assets/images/sm/' . $this->session->userdata('photo'));
+      $imageName = $data['username'] . time() . '.png';
+      unlink('./uploads/staff/' . $this->session->userdata('photo'));
       $this->session->set_userdata('photo', $imageName);
-      file_put_contents('./assets/images/sm/' . $imageName, $data);
+      file_put_contents('./uploads/staff/' . $imageName, $data);
       $postdata['photo'] = $imageName;
       //water mark the photo
-      $path = './assets/images/sm/' . $imageName;
+      $path = './uploads/staff/' . $imageName;
       //$this->photoMark($path);
     } else {
       $postdata['photo'] = $this->session->userdata('photo');
@@ -201,7 +205,7 @@ class Auth extends MX_Controller
     }
     $alert = '<div class="alert alert-info"><a class="pull-right" href="#" data-dismiss="alert">X</a>' . $msg . '</div>';
     $this->session->set_flashdata('msg', $alert);
-    redirect("auth/myprofile");
+    redirect(SELF::profile());
   }
   public function photoMark($imagepath)
   {
