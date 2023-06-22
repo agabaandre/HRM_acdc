@@ -14,10 +14,15 @@ $gpermissions = Modules::run('permissions/groupPermissions', $this->session->fla
             </div>
             <?php //print_r($gpermissions); 
             ?>
+
+            <?php echo $this->session->flashdata("msg"); ?>
+            <script>
+              anim4_noti();
+            </script>
             <div class="panel-body">
               <a class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#newgrp">Create a group</a>
               <a class="btn btn-danger btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#permsModal">Add Permission</a>
-              <?php echo $this->session->flashdata("msg"); ?>
+
               <hr>
               <?php echo form_open_multipart(base_url('permissions/assignPermissions'), array('id' => 'permissions', 'class' => 'permissions')); ?>
               <div class="form-group">
@@ -121,19 +126,19 @@ $gpermissions = Modules::run('permissions/groupPermissions', $this->session->fla
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <?php echo form_open_multipart(base_url('permissions/addGroup'), array('id' => 'addGroup', 'class' => 'addGroup')); ?>
-        <div class="modal-header">
-          <h4 class="modal-title">Add group</h4>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header">
+        <h4 class="modal-title">Add group</h4>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="padding-left: 3em;">
+        <div class="mb-3">
+          <input type="text" placeholder="Group Name" name="group_name" class="form-control">
         </div>
-        <div class="modal-body" style="padding-left: 3em;">
-          <div class="mb-3">
-            <input type="text" placeholder="Group Name" name="group_name" class="form-control">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Save</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
       </form>
     </div>
   </div>

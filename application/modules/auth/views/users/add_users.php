@@ -1,7 +1,6 @@
 <?php
 
 $usergroups = Modules::run("permissions/getUserGroups");
-$rccs = Modules::run("geoareas/getrcc");
 
 
 ?>
@@ -73,28 +72,17 @@ $rccs = Modules::run("geoareas/getrcc");
           </div>
           <div class="col-sm-4">
             <div class="form-group">
-              <label>RCC</label>
-              <select onChange="getCountries($(this).val());" name="access1[]" class="form-control select2 sregion" style="width:100%;" multiple>
-                <?php foreach ($rccs as $rcc) :
+              <label>Division</label>
+              <select  name="dvision_id" class="form-control select2 sregion" style="width:100%;">
+                <?php foreach ($divisions as $division) :
                 ?>
-                  <option value="<?php echo $rcc->id; ?>"><?php echo $rcc->region_name; ?></option>
+                  <option value="<?php echo $division->division_id; ?>"><?php echo $division->division_name; ?></option>
                 <?php endforeach; ?>
               </select>
 
             </div>
           </div>
 
-          <div class="col-sm-4">
-            <div class="form-group">
-              <label>Country</label>
-              <select name="access2[]" class="form-control select2 scountry" style="width:100%;" multiple>
-
-
-              </select>
-
-
-            </div>
-          </div>
           <div class="col-sm-4">
 
           </div>

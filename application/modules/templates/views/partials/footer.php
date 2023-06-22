@@ -92,8 +92,34 @@
 <script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/picker.date.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/moment.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.min.js"></script>
-<!--app JS-->
-<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/select2/js/select2.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/smart-wizard/js/jquery.smartWizard.min.js"></script>
+<script>
+	$('.select2').select2({
+		theme: 'bootstrap4',
+		width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
+		placeholder: $(this).data('placeholder'),
+		allowClear: Boolean($(this).data('allow-clear')),
+	});
+
+	$('.select2').select2({
+		dropdownParent: $('#renew_contract')
+	});
+
+
+	$('.multiple-select').select2({
+		theme: 'bootstrap4',
+		width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
+		placeholder: $(this).data('placeholder'),
+		allowClear: Boolean($(this).data('allow-clear')),
+
+	});
+</script>
+<script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/notifications/js/notifications.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/notifications/js/notification-custom-script.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js">
+</script>
 <script src="<?php echo base_url() ?>assets/js/app.js"></script>
 <script>
 	$(document).ready(function() {
@@ -121,15 +147,7 @@
 	});
 </script>
 <script type="text/javascript">
-	$(document).ready(function() {
-		// // $.notify("Hello","success");
-		// var isPassChanged = <?php echo $pass_changed = $this->session->userdata('changed'); ?>;
-
-		// if (isPassChanged != 1) {
-		// 	console.log(isPassChanged);
-		// 	// $('#changepassword').modal('show');
-		// }
-	});
+	//pos1_success_noti();
 </script>
 <script>
 	//change Password
@@ -187,6 +205,91 @@
 		$('.time').bootstrapMaterialDatePicker({
 			date: false,
 			format: 'HH:mm'
+		});
+	});
+</script>
+<script>
+	$(document).ready(function() {
+		// Toolbar extra buttons
+		var btnFinish = $('<button></button>').text('Finish').addClass('btn btn-info').on('click', function() {
+			alert('Finish Clicked');
+		});
+		var btnCancel = $('<button></button>').text('Cancel').addClass('btn btn-danger').on('click', function() {
+			$('#smartwizard').smartWizard("reset");
+		});
+		// Step show event
+		$("#smartwizard").on("showStep", function(e, anchorObject, stepNumber, stepDirection, stepPosition) {
+			$("#prev-btn").removeClass('disabled');
+			$("#next-btn").removeClass('disabled');
+			if (stepPosition === 'first') {
+				$("#prev-btn").addClass('disabled');
+			} else if (stepPosition === 'last') {
+				$("#next-btn").addClass('disabled');
+			} else {
+				$("#prev-btn").removeClass('disabled');
+				$("#next-btn").removeClass('disabled');
+			}
+		});
+		// Smart Wizard
+		$('#smartwizard').smartWizard({
+			selected: 0,
+			theme: 'arrows',
+			transition: {
+				animation: 'slide-horizontal', // Effect on navigation, none/fade/slide-horizontal/slide-vertical/slide-swing
+			},
+			toolbarSettings: {
+				toolbarPosition: 'both', // both bottom
+
+			}
+		});
+		// External Button Events
+		$("#reset-btn").on("click", function() {
+			// Reset wizard
+			$('#smartwizard').smartWizard("reset");
+			return true;
+		});
+		$("#prev-btn").on("click", function() {
+			// Navigate previous
+			$('#smartwizard').smartWizard("prev");
+			return true;
+		});
+		$("#next-btn").on("click", function() {
+			// Navigate next
+			$('#smartwizard').smartWizard("next");
+			return true;
+		});
+		// Demo Button Events
+		$("#got_to_step").on("change", function() {
+			// Go to step
+			var step_index = $(this).val() - 1;
+			$('#smartwizard').smartWizard("goToStep", step_index);
+			return true;
+		});
+		$("#is_justified").on("click", function() {
+			// Change Justify
+			var options = {
+				justified: $(this).prop("checked")
+			};
+			$('#smartwizard').smartWizard("setOptions", options);
+			return true;
+		});
+		$("#animation").on("change", function() {
+			// Change theme
+			var options = {
+				transition: {
+					animation: $(this).val()
+				},
+			};
+			$('#smartwizard').smartWizard("setOptions", options);
+			return true;
+		});
+		$("#theme_selector").on("change", function() {
+			// Change theme
+			var options = {
+				theme: $(this).val()
+			};
+			$('#smartwizard').smartWizard("setOptions", options);
+			return true;
 		});
 	});
 </script>

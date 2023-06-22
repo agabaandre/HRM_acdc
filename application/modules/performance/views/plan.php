@@ -58,7 +58,8 @@
   <div class="card-body">
     <div class="container mt-5">
       <div class="table-responsive">
-        <table id="example" class="table table-striped table-bordered">
+        <button id="add-row" type="button" class="btn btn-primary">Add Row</button>
+        <table id="objectives" class="table table-striped table-bordered">
           <thead>
             <tr>
               <th>#</th>
@@ -67,7 +68,6 @@
               <th tyle="width:25%;">Deliverables and KPIs<br>Deliverables - the evidence that the result has been achieved; KPI’s gives an indication of how well the result was achieved</th>
               <th tyle="width:20%;">Weight<br>The total weight of all objectives should be 100%</th>
               <th>Remarks</th>
-              <th><button id="add-row" type="button" class="btn btn-primary">Add Row</button></th>
             </tr>
           </thead>
           <tbody>
@@ -98,7 +98,6 @@
                   <textarea name="comments1" rows="4" cols="50" class="form-control"></textarea>
                 </div>
               </td>
-              <td></td>
             </tr>
           </tbody>
         </table>
@@ -264,16 +263,15 @@
       rowCount++;
 
       var newRow = '<tr>' +
-        '<td><b>' + rowCount + '</b></td>' +
+        '<td><b>' + rowCount + '</b><br><i class = "fa fa-minus remove-row"></i> </td>' +
         '<td><div class="form-group"><div class="summernote" data-target="objective' + rowCount + '"></div></div></td>' +
         '<td><div class="form-group"><input type="date" class="form-control" name="timeline' + rowCount + '" required></div></td>' +
         '<td><div class="form-group"><div class="summernote" data-target="deliverable' + rowCount + '"></div></div></td>' +
         '<td><div class="form-group"><input type="text" class="form-control" name="weight' + rowCount + '" required></div></td>' +
         '<td><div class="form-group"><textarea name="comments' + rowCount + '" rows="4" cols="50" class="form-control"></textarea></div></td>' +
-        '<td><button class="btn btn-danger remove-row" type="button">Delete</button></td>' +
         '</tr>';
 
-      $('# tbody').append(newRow);
+      $('#objectives tbody').append(newRow);
       $('.summernote').summernote({
         height: 100
       });

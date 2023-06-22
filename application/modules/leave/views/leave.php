@@ -36,6 +36,10 @@
             <input type="number" class="form-control" id="requested_days" name="requested_days" required>
           </div>
           <div class="form-group">
+            <label for="requested_days" class="form-label">Supporting Officer during Leave</label>
+            <input type="number" class="form-control" id="requested_days" name="requested_days" required>
+          </div>
+          <div class="form-group">
             <label for="remarks" class="form-label">Remarks</label>
             <textarea class="form-control" id="remarks" name="remarks"></textarea>
           </div>

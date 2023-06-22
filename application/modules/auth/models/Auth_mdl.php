@@ -144,7 +144,7 @@ class Auth_mdl extends CI_Model
 	}
 	public function updateProfile($postdata)
 	{
-		$uid = $postdata['id'];
+		$uid = $postdata['user_id'];
 		$this->db->where('user_id', $uid);
 		$done = $this->db->update($this->table, $postdata);
 
@@ -152,6 +152,28 @@ class Auth_mdl extends CI_Model
 			return "Update Successful";
 		} else {
 			return "Update Failed";
+		}
+	}
+	public function saveProfile($language, $username, $name, $email, $photo)
+	{
+		// Perform the necessary operations to save the profile data
+		// Replace this with your actual logic to save the data to the database or any other storage
+
+		// Example: Saving to a database table named 'profiles'
+		$data = array(
+			'language' => $language,
+			'username' => $username,
+			'name' => $name,
+			'email' => $email,
+			'photo' => $photo
+		);
+
+		$this->db->insert('user', $data);
+
+		if ($this->db->affected_rows() > 0) {
+			return true;
+		} else {
+			return false;
 		}
 	}
 

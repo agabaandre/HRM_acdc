@@ -19,6 +19,12 @@ class Performance extends MX_Controller
 		$data['title'] = "Performance Plan";
 		render('plan', $data);
 	}
+	public function appraisal()
+	{
+		$data['module'] = $this->module;
+		$data['title'] = "Performance Plan";
+		render('plan', $data);
+	}
 	
 
 	

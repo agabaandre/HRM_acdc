@@ -35,7 +35,8 @@
 	user-select: none;
 	margin-left: .2rem;
 	margin-right: .2rem;
-	cursor: pointer
+	cursor: pointer;
+	border-radius: 10px !important;
 }
 .sw .toolbar>.btn.disabled, .sw .toolbar>.btn:disabled {
 	opacity: .65
@@ -281,12 +282,12 @@
 }
 .sw-theme-arrows>.nav .nav-link.active {
 	color: #fff!important;
-	border-color: #0d6efd!important;
-	background: #0d6efd!important;
+	border-color: #404751!important;
+	background: #404751!important;
 	cursor: pointer
 }
 .sw-theme-arrows>.nav .nav-link.active::after {
-	border-left-color: #0d6efd!important
+	border-left-color: #404751!important
 }
 .sw-theme-arrows>.nav .nav-link.done {
 	color: #fff;

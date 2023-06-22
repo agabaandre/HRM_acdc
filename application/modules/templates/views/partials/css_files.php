@@ -18,7 +18,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.2.2/css/tom-select.min.css" integrity="sha512-BrNXB6PRnf32ZqstFiYQT/L7aVZ45FGojXbBx8nybK/NBhxFQPHsr36jH11I2YoUaA5UFqTRF14xt3VVMWfCOg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link href="<?php echo base_url() ?>assets/css/icons.css" rel="stylesheet">
+    <link href="<?php echo base_url() ?>assets/plugins/smart-wizard/css/smart_wizard_all.min.css" rel="stylesheet" type="text/css" />
     <link href="<?php echo base_url() ?>assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/css/bootstrap-extended.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/plugins/simplebar/css/simplebar.css" rel="stylesheet" />
@@ -29,10 +31,14 @@
     <link rel="stylesheet" href="<?php echo base_url() ?>assets/css/dark-theme.css" />
     <link rel="stylesheet" href="<?php echo base_url() ?>assets/css/semi-dark.css" />
     <link rel="stylesheet" href="<?php echo base_url() ?>assets/css/header-colors.css" />
+
     <!-- loader-->
+    <link href="<?php echo base_url() ?>assets/plugins/select2/css/select2.min.css" rel="stylesheet" />
+    <link href="<?php echo base_url() ?>assets/plugins/select2/css/select2-bootstrap4.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/css/app.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/css/pace.min.css" rel="stylesheet" />
     <script src="<?php echo base_url() ?>assets/js/pace.min.js"></script>
+    <link rel="stylesheet" href="<?php echo base_url() ?>assets/plugins/notifications/css/lobibox.min.css" />
     <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.time.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.date.css" rel="stylesheet" />
@@ -41,28 +47,19 @@
     <!-- Bootstrap CSS -->
     <!-- Modal -->
     <link rel="stylesheet" href="<?php echo base_url() ?>assets/jquery-ui-1.8.7.custom/development-bundle/themes/base/jquery.ui.all.css">
-    <link rel="stylesheet" href="jquery-ui-1.8.7.custom/development-bundle/themes/base/jquery.ui.all.css">
+    <link rel="stylesheet" href="<?php echo base_url() ?>jquery-ui-1.8.7.custom/development-bundle/themes/base/jquery.ui.all.css">
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script src="https://code.highcharts.com/modules/export-data.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
     <script type="text/javascript">
-        (function($) {
-            //jquery stuff
-            $(function() {
-                $(".dob1").datepicker({
-                    changeMonth: true,
-                    changeYear: true,
-                    showOn: "both",
-                    buttonImage: "images/datepicker_icon.jpg",
-                    buttonImageOnly: true
-                });
+        $(window).on('load', function() {
 
-            });
-            //end jquery stuff
-        })
+            $('#status').delay(900).fadeOut(1000); // will first fade out the loading animation
+            $('#preloader').delay(900).fadeOut(1000); // will fade out the white div
+
+        });
     </script>
-
 
 <body>
     <!--wrapper-->
