@@ -143,7 +143,7 @@ class Auth extends MX_Controller
   }
 
   public function acdc_users(){
-    $this->db->query("SELECT * from staff where work_email IS NOT NULL or work_email!=''")
+    $this->db->query("SELECT * from staff where work_email IS NOT NULL or work_email!=''");
 
   }
 
