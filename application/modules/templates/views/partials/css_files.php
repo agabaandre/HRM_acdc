@@ -23,6 +23,7 @@
     <link href="<?php echo base_url() ?>assets/plugins/smart-wizard/css/smart_wizard_all.min.css" rel="stylesheet" type="text/css" />
     <link href="<?php echo base_url() ?>assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/css/bootstrap-extended.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?php echo base_url() ?>assets/plugins/notifications/css/lobibox.min.css" />
     <link href="<?php echo base_url() ?>assets/plugins/simplebar/css/simplebar.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/plugins/metismenu/css/metisMenu.min.css" rel="stylesheet" />
@@ -37,8 +38,6 @@
     <link href="<?php echo base_url() ?>assets/plugins/select2/css/select2-bootstrap4.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/css/app.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/css/pace.min.css" rel="stylesheet" />
-    <script src="<?php echo base_url() ?>assets/js/pace.min.js"></script>
-    <link rel="stylesheet" href="<?php echo base_url() ?>assets/plugins/notifications/css/lobibox.min.css" />
     <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.time.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.date.css" rel="stylesheet" />

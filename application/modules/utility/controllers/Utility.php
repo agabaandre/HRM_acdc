@@ -38,7 +38,8 @@ class Utility extends MX_Controller {
 
 	public function setFlash($msg){
 
-		$this->session->set_flashdata('msg',$msg);
+		//$this->session->set_flashdata('msg',$msg);
+		$this->session->set_tempdata($msg, 3);
 
 	}
 

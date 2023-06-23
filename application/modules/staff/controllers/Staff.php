@@ -56,12 +56,16 @@ class Staff extends MX_Controller
 		$data = $this->input->post();
 		$q= $this->staff_mdl->update_contract($data);
 		if ($q) {
-			$data['success'] = 'Staff information saved successfully.';
-			Modules::run('utility/setFlash', $data['success']);
+			$msg = array(
+				'msg' => 'Staff Updated successfully.',
+				'type' => 'success'
+			);
 		}
 		else{
-			$data['danger'] = 'Failed to Save';
-			Modules::run('utility/setFlash', $data['danger']);
+			$msg = array(
+				'msg' => 'Updated Failed!.',
+				'type' => 'error'
+			);
 
 		}
 		redirect('staff');
@@ -71,11 +75,17 @@ class Staff extends MX_Controller
 		$data = $this->input->post();
 		$q = $this->staff_mdl->update_staff($data);
 		if ($q) {
-			$data['success'] = 'Staff information saved successfully.';
-			Modules::run('utility/setFlash', $data['success']);
+			$msg = array(
+				'msg' => 'Staff Updated successfully.',
+				'type' => 'success'
+			);
+			Modules::run('utility/setFlash', $msg);
 		} else {
-			$data['danger'] = 'Failed to Save';
-			Modules::run('utility/setFlash', $data['danger']);
+			$msg = array(
+				'msg' => 'Staff update Failed .',
+				'type' => 'error'
+			);
+			Modules::run('utility/setFlash', $msg);
 
 		}
 		redirect('staff');
@@ -130,19 +140,28 @@ class Staff extends MX_Controller
 				$contract_id = $this->staff_mdl->add_contract_information($staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, $duty_station_id, $division_id, $start_date, $end_date, $status_id, $file_name, $comments);
 				if ($contract_id) {
 					// Successfully saved staff, contact, and contract information
-					$data['success'] = 'Staff information saved successfully.';
-					Modules::run('utility/setFlash', $data['success']);
+					$msg = array(
+						'msg' => 'Staff information saved successfully.',
+						'type' => 'success'
+					);
+					Modules::run('utility/setFlash', $msg);
 					redirect('staff/new');
 				} else {
 					// Failed to save contact or contract information
-					$data['danger'] = 'Failed to save contract information. Please try again.';
-					Modules::run('utility/setFlash', $data['danger']);
+					$msg = array(
+						'msg' =>'Failed, please Retry',
+						'type' => 'error'
+					);
+					Modules::run('utility/setFlash', $msg);
 					redirect('staff/new');
 				}
 			} else {
 				// Failed to save staff information
-				$data['danger'] = 'Failed to save staff information. Please try again.';
-				Modules::run('utility/setFlash', $data['danger']);
+				$msg = array(
+					'msg' => 'Failed, please Retry',
+					'type' => 'error'
+				);
+				Modules::run('utility/setFlash', $msg);
 				redirect('self/new');
 			}
 		}
