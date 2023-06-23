@@ -142,6 +142,11 @@ class Auth extends MX_Controller
     } //no photo
   }
 
+  public function acdc_users(){
+    $this->db->query("SELECT * from staff where work_email IS NOT NULL or work_email!=''")
+
+  }
+
   public function changePass()
   {
     $postdata = $this->input->post();
@@ -203,7 +208,7 @@ class Auth extends MX_Controller
     } else {
       $msg = $res . " .But may be if you changed your photo";
     }
-    $alert = '<div class="alert alert-info"><a class="pull-right" href="#" data-dismiss="alert">X</a>' . $msg . '</div>';
+    $msg = '<div class="alert alert-info"><a class="pull-right" href="#" data-dismiss="alert">X</a>' . $msg . '</div>';
     $this->session->set_flashdata('msg', $alert);
     redirect(SELF::profile());
   }

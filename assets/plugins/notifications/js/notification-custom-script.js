@@ -38,13 +38,13 @@ function error_noti() {
 	});
 }
 
-function success_noti() {
-	Lobibox.notify('success', {
+function success_noti(message,type) {
+	Lobibox.notify(type, {
 		pauseDelayOnHover: true,
 		continueDelayOnInactiveTab: false,
 		position: 'top right',
-		icon: 'bx bx-check-circle',
-		msg: 'Lorem ipsum dolor sit amet hears farmer indemnity inherent.'
+		icon: 'bx bx-info-circle',
+		msg:message
 	});
 }
 /* Rounded corners Notifications */

@@ -3,7 +3,9 @@
     <a href="<?php echo base_url() ?>staff/new" class="btn   btn-dark btn-sm btn-bordered">+ Add New Staff</a>
   </div>
   <div class="card-body">
-
+  <div class="justify-content-center">
+    <?php //print_r($this->session->tempdata());?>
+  </div>
     <div class="table-responsive">
       <table class="table mydata table-striped table-bordered">
         <thead>

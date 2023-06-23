@@ -81,6 +81,10 @@
 <!-- Bootstrap JS -->
 <script src="<?php echo base_url() ?>assets/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo base_url() ?>assets/js/jquery.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/notifications/js/notifications.min.js"></script>
+<script src="<?php echo base_url() ?>assets/js/pace.min.js"></script>
+<script src="<?php echo base_url() ?>assets/plugins/notifications/js/notification-custom-script.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/simplebar/js/simplebar.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
@@ -93,7 +97,35 @@
 <script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/moment.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/select2/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+<script src="<?php echo base_url() ?>assets/js/app.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/smart-wizard/js/jquery.smartWizard.min.js"></script>
+<script>
+	$(document).ready(function() {
+
+		var message = "<?php echo $this->session->tempdata('msg'); ?>";
+		var msgtype = "<?php echo $this->session->tempdata('type'); ?>";
+		if (msgtype !== '') {
+			show_notification(message, msgtype);
+		}
+		<?php
+		      $_SESSION['type'] = '';
+		      $_SESSION['msg'] = '';
+		?>
+
+	});
+</script>
+<script>
+	function show_notification(message, msgtype) {
+		Lobibox.notify(msgtype, {
+			pauseDelayOnHover: true,
+			continueDelayOnInactiveTab: false,
+			position: 'top right',
+			icon: 'bx bx-check-circle',
+			msg: message
+		});
+	}
+</script>
 <script>
 	$('.select2').select2({
 		theme: 'bootstrap4',
@@ -115,12 +147,6 @@
 
 	});
 </script>
-<script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/notifications/js/notifications.min.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/notifications/js/notification-custom-script.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js">
-</script>
-<script src="<?php echo base_url() ?>assets/js/app.js"></script>
 <script>
 	$(document).ready(function() {
 		$('.mydata').DataTable({
