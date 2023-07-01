@@ -134,9 +134,9 @@
 		allowClear: Boolean($(this).data('allow-clear')),
 	});
 
-	$('.select2').select2({
-		dropdownParent: $('#renew_contract')
-	});
+	// $('.select2').select2({
+	// 	dropdownParent: $('#renew_contract')
+	// });
 
 
 	$('.multiple-select').select2({

@@ -25,6 +25,9 @@ class Staff_mdl extends CI_Model
 
         return $results;
     }
+    public function all_staff_attributes(){
+      return  $query = Employee::all();
+    }
     public function update_staff($data){
         $this->db->where('staff_id', $data['staff_id']);
         $query =$this->db->update("staff",$data);
