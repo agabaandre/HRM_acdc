@@ -29,8 +29,6 @@ class Auth extends MX_Controller
    
 
     if ($auth) {
-      $adata['region']      = $this->auth_mdl->access_level1($adata['user_id']);
-      $adata['country']     = $this->auth_mdl->access_level2($adata['user_id']);
       $adata['permissions'] = $this->auth_mdl->user_permissions($adata['role']);
       $adata['is_admin']    = true;
       $_SESSION['user'] = (object)$adata;
@@ -142,8 +140,33 @@ class Auth extends MX_Controller
     } //no photo
   }
 
-  public function acdc_users(){
-    $this->db->query("SELECT * from staff where work_email IS NOT NULL or work_email!=''");
+  public function acdc_users($job=FALSE){
+  $final=array();
+  $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2) and staff.staff_id not in (SELECT DISTINCT staff_id from user)")->result();
+    foreach ($staffs as $staff):
+      $users['username'] = explode('@', $staff->work_email)[0];
+      $users['email'] = $staff->work_email;
+      $users['name'] = $staff->lname . ' ' . $staff->fname;
+      $users['division_id'] = $staff->division_id;
+      $users['status'] = 1;
+      $users['staff_id'] = $staff->staff_id;
+      $users['password'] =$this->argonhash->make(setting()->default_password);
+      $users['role'] = 17;
+      $this->db->replace('user', $users);
+    endforeach;
+     $accts = $this->db->affected_rows();
+   
+
+    $msg = array(
+      'msg' => $accts .'Staff Accounts Created .',
+      'type' => 'info'
+    );
+    Modules::run('utility/setFlash', $msg);
+    if (!$job) {
+      redirect('auth/users');
+    }
+    
+
 
   }
 
@@ -209,7 +232,7 @@ class Auth extends MX_Controller
       $msg = $res . " .But may be if you changed your photo";
     }
     $msg = '<div class="alert alert-info"><a class="pull-right" href="#" data-dismiss="alert">X</a>' . $msg . '</div>';
-    $this->session->set_flashdata('msg', $alert);
+    $this->session->set_flashdata('msg', $msg);
     redirect(SELF::profile());
   }
   public function photoMark($imagepath)

@@ -7,7 +7,7 @@ class Auth_mdl extends CI_Model
 	{
 		parent::__construct();
 		$this->table = "user";
-		$this->default_password = setting()->default_password;
+		$this->default_password = $this->argonhash->make(setting()->default_password);
 	}
 	public function login($postdata)
 	{
@@ -67,32 +67,12 @@ class Auth_mdl extends CI_Model
 			"password" => $this->default_password,
 			"name" => $postdata['name'],
 			"role" => $postdata['role'],
+			"division_id" => $postdata['division'],
 			"status" => "1"
 
 		);
 		$qry = $this->db->insert($this->table, $user);
 		$last_id = $this->db->insert_id();
-
-		if ($qry) {
-
-			foreach ($postdata['access1'] as $access) :
-
-				$access1 = array(
-					"user_id" => $last_id,
-					"access_id" => $access
-				);
-				$this->db->insert("user_access_level1", $access1);
-			endforeach;
-
-			foreach ($postdata['access2'] as $accessr) :
-
-				$data = array(
-					"user_id" => $last_id,
-					"access_id" => $accessr
-				);
-				$this->db->insert("user_access_level2", $data);
-			endforeach;
-		}
 
 		//insert access levels
 		$rows = $this->db->affected_rows();
@@ -103,6 +83,7 @@ class Auth_mdl extends CI_Model
 		}
 	}
 
+	
 	// update user's details
 	public function updateUser($postdata)
 	{
@@ -252,20 +233,6 @@ class Auth_mdl extends CI_Model
 			return $save;
 		}
 		return false;
-	}
-	public function access_level1($user_id)
-	{
-		$this->db->where("user_id", $user_id);
-		$this->db->join("regions", "user_access_level1.access_id=regions.id");
-		$query = $this->db->get('user_access_level1');
-		return $query->result_array();
-	}
-	public function access_level2($user_id)
-	{
-		$this->db->where("user_id", $user_id);
-		$this->db->join("nationalities", "user_access_level2.access_id=nationalities.nationality_id");
-		$query = $this->db->get('user_access_level2');
-		return $query->result_array();
 	}
 
 	public function user_permissions($role)

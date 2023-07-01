@@ -11,10 +11,10 @@ $usergroups = Modules::run("permissions/getUserGroups");
     <div class="card card-default">
       <div class="card-header">
         <h4 class="card-title">Add User</h4>
-         <hr>
+        <hr>
       </div>
       <!-- /.card-header -->
-     
+
       <div class="card-body">
 
 
@@ -24,6 +24,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
           <div class="col-md-12">
             <button type="submit" class="btn btn-primary btn-sm">Save</button>
             <button type="reset" class="btn  btn-secondary btn-sm">Reset All</button>
+            <a href="<?php echo base_url() ?>auth/acdc_users" class="btn btn-success btn-sm">Auto Generate Users from the Staff List </a>
           </div>
           <div class="col-md-12" style="margin:0 auto;">
             <span class="status"></span>
@@ -53,27 +54,22 @@ $usergroups = Modules::run("permissions/getUserGroups");
           <div class="col-sm-4">
             <!-- textarea -->
             <div class="form-group">
-              <label>Username</label>
-              <input type="text" required name="username" autocomplete="off" class="form-control" placeholder="Username" required />
-            </div>
-          </div>
-          <div class="col-sm-4">
-            <!-- textarea -->
-            <div class="form-group">
-              <label>Default Password</label>
-              <input type="text" required name="password" value="<?php echo setting()->default_password; ?> " class="form-control" readonly />
+              <label style="color:coral">Username Default Password are system generated</label>
+              <div style="display:none;">
+                <input type="text" required name="password" value="<?php $this->argonhash->make(setting()->default_password); ?>" class="form-control" />
+              </div>
             </div>
           </div>
           <div class="col-sm-4">
             <div class="form-group">
-              <label>Email</label>
+              <label>Work Email</label>
               <input type="email" required name="email" class="form-control" placeholder="Email" required />
             </div>
           </div>
           <div class="col-sm-4">
             <div class="form-group">
               <label>Division</label>
-              <select  name="dvision_id" class="form-control select2 sregion" style="width:100%;">
+              <select name="dvision" class="form-control select2 sregion" style="width:100%;">
                 <?php foreach ($divisions as $division) :
                 ?>
                   <option value="<?php echo $division->division_id; ?>"><?php echo $division->division_name; ?></option>
@@ -103,7 +99,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
     <div class="card card-default">
       <div class="card-header">
         <h4 class="card-title">User List</h4>
-         <hr>
+        <hr>
         <br>
 
         <form class="form-horizontal" action="<?php echo base_url() ?>auth/users" method="post" style="margin-top: 4px !important;">
@@ -134,9 +130,9 @@ $usergroups = Modules::run("permissions/getUserGroups");
               <th style="width:2%;">#</th>
               <th>Name</th>
               <th>Username</th>
+              <th>Email</th>
               <th>User Group</th>
-              <th>RCC</th>
-              <th>Country</th>
+              <th>Division</th>
               <th>Actions</th>
 
 
@@ -151,19 +147,21 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
               <tr>
                 <td><?php echo $no; ?>. </td>
-                <td><?php echo $user->user_id; ?></td>
+                <td><?php echo $user->name; ?></td>
+                <td><?php echo $user->email; ?></td>
                 <td><?php echo $user->username; ?></td>
-                <td><?php echo $user->group_name; ?></td>
-                <td><?php echo @access_level1($user->user_id); ?></td>
-                <td><?php echo @access_level2($user->user_id); ?></td>
-                <td><a data-toggle="modal" data-target="#user<?php echo $user->user_id; ?>" href="#">Edit</a>
+                <td><span class="badge text-bg-primary"><?php echo $user->group_name; ?></span></td>
+                <td><?php echo @acdc_division($user->division_id); ?></td>
+
+                <td><span class="badge text-bg-info"><a data-toggle="modal" data-target="#user<?php echo $user->user_id; ?>" href="#">Edit</a></span>
 
                   <?php if ($user->status == 1) { ?>
 
-                    <a data-toggle="modal" data-target="#block<?php echo $user->user_id; ?>" href="#">Block</a>
+                    <span class="badge text-bg-warning"><a data-toggle="modal" data-target="#block<?php echo $user->user_id; ?>" href="#">Block</a></span>
                   <?php } else { ?>
 
-                    <a data-toggle="modal" data-target="#unblock<?php echo $user->user_id; ?>" href="#">Activate</a>
+
+                    <span class="badge text-bg-danger"><a data-toggle="modal" data-target="#unblock<?php echo $user->user_id; ?>" href="#">Activate</a></span>
 
                   <?php } ?>
 

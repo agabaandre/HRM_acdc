@@ -558,3 +558,13 @@ if (!function_exists('select_field')) {
         }
     }
 }
+
+if (!function_exists('acdc_division')) {
+
+    function acdc_division($division)
+    {
+        $ci = &get_instance();
+    return $ci->db->query("SELECT division_name from divisions where division_id='$division'")->row()->division_name;
+    
+    }
+}
