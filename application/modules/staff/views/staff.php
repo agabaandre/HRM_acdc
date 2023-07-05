@@ -19,7 +19,6 @@
             <th>Job</th>
             <th>Division</th>
             <th>Acting Job</th>
-
             <th>Duty Station</th>
             <th>Email</th>
             <th>Telephone</th>

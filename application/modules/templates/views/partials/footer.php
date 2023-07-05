@@ -319,6 +319,21 @@
 		});
 	});
 </script>
+<script>
+  // Function to calculate requested_days
+  function calculateRequestedDays() {
+    var startDate = new Date($("#start_date").val());
+    var endDate = new Date($("#end_date").val());
+    var timeDiff = endDate.getTime() - startDate.getTime();
+    var daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    
+    // Update the requested_days field
+    $("#requested_days").val(daysDiff);
+  }
+  
+  // Event listener for start_date and end_date change
+  $("#start_date, #end_date").on("change", calculateRequestedDays);
+</script>
 
 
 

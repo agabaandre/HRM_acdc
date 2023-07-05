@@ -28,12 +28,17 @@ class Auth extends MX_Controller
     unset($adata['password']);
    
 
-    if ($auth) {
+    if ($auth && $adata['role']==17) {
+      $adata['permissions'] = $this->auth_mdl->user_permissions($adata['role']);
+      $adata['is_admin']    = true;
+      $_SESSION['user'] = (object)$adata;
+      redirect('auth/profile');
+    } else if ($auth && $adata['role']!= 17) {
       $adata['permissions'] = $this->auth_mdl->user_permissions($adata['role']);
       $adata['is_admin']    = true;
       $_SESSION['user'] = (object)$adata;
       redirect('dashboard/index');
-    } 
+     }
     else {
       redirect('auth/index');
     }
@@ -201,39 +206,65 @@ class Auth extends MX_Controller
     $res = $this->auth_mdl->unblockUser($postdata);
     echo $res;
   }
-  public function updateProfile()
+  public function update_profile()
   {
     $postdata = $this->input->post();
     $data['username'] = $postdata['username'];
+    $data['user_id'] = $postdata['user_id'];
     $data['name'] = $postdata['name'];
-    $data['email'] = $postdata['email '];
+    $data['email'] = $postdata['email'];
     $data['langauge'] = $postdata['langauge'];
-    if (!empty($_POST['photo'])) {
-      //if user changed image
-      $data = $_POST['photo'];
-      list($type, $data) = explode(';', $data);
-      list(, $data)      = explode(',', $data);
-      $data = base64_decode($data);
-      $imageName = $data['username'] . time() . '.png';
-      unlink('./uploads/staff/' . $this->session->userdata('photo'));
-      $this->session->set_userdata('photo', $imageName);
-      file_put_contents('./uploads/staff/' . $imageName, $data);
-      $postdata['photo'] = $imageName;
-      //water mark the photo
-      $path = './uploads/staff/' . $imageName;
-      //$this->photoMark($path);
+    $data['staff_id'] = $postdata['staff_id'];
+    $is_error = false;
+    // Load the Upload library
+    $this->load->library('upload');
+    // For each get the file name and upload it
+     $files = $_FILES;
+    // Get the cover
+     $photo = $files['photo'];
+    // Get the publication document
+    // If the cover is not empty, upload it
+    if (!empty($photo['name'])) {
+      // Chnage the file name to cover with the extension and timestamp
+      $photo['name'] = str_replace(' ','_',$data['name']).time().pathinfo($photo['name'], PATHINFO_EXTENSION);
+      $config['upload_path']   = './uploads/staff/';
+      $config['allowed_types'] = 'gif|jpg|png|jpeg';
+      $config['file_name']     = $photo['name'];
+      
+      $this->upload->initialize($config);
+      // If the upload fails, set the error message
+      if (!$this->upload->do_upload('photo')) {
+        $this->session->set_flashdata('error', $this->upload->display_errors());
+        $is_error = true;
+      } else {
+        // If the upload is successful, get the file name
+        $photo = $this->upload->data('file_name');
+        $data['photo'] = $photo;
+        $this->session->userdata('user')->photo = $photo;
+
+      }
+      }
+
+
+    //dd($data);
+    $this->session->userdata('user')->langauge = $data['langauge'];
+    $res = $this->auth_mdl->updateProfile($data);
+  
+    if ($res) {
+      $msg = array(
+        'msg' => $res,
+        'type' => 'success'
+      );
+      Modules::run('utility/setFlash', $msg);
+      redirect('auth/profile');
     } else {
-      $postdata['photo'] = $this->session->userdata('photo');
+      $msg = array(
+        'msg' => $res,
+        'type' => 'error'
+      );
+      redirect('auth/profile');
     }
-    $res = $this->auth_mdl->updateProfile($postdata);
-    if ($res == 'ok') {
-      $msg = "Your profile has been Updated successfully";
-    } else {
-      $msg = $res . " .But may be if you changed your photo";
-    }
-    $msg = '<div class="alert alert-info"><a class="pull-right" href="#" data-dismiss="alert">X</a>' . $msg . '</div>';
-    $this->session->set_flashdata('msg', $msg);
-    redirect(SELF::profile());
+   
   }
   public function photoMark($imagepath)
   {

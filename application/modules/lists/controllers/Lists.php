@@ -86,6 +86,12 @@ class Lists extends MX_Controller
 		//dd($data);
 		return $data;
 	}
+	public function leave()
+	{
+		$data = $this->lists_mdl->leave();
+		//dd($data);
+		return $data;
+	}
 
 	
 }

@@ -24,7 +24,7 @@ class Leave_mdl extends CI_Model
         $this->db->where('request_id', $request_id);
         $this->db->update('staff_leave');
     }
-
+//get for approval
     public function get_leaves($status, $start_date, $end_date)
     {
         // Fetch the leave data from the 'staff_leave' table based on the specified filters
@@ -32,6 +32,7 @@ class Leave_mdl extends CI_Model
         $this->db->from('staff_leave l');
         $this->db->join('staff s', 'l.staff_id = s.staff_id');
         $this->db->join('leave_types lt', 'l.leave_id = lt.leave_id');
+    
 
         if ($status) {
             $this->db->where('l.approval_status', $status);
@@ -71,6 +72,18 @@ class Leave_mdl extends CI_Model
         $this->db->order_by('l.created_at', 'desc');
 
         return $this->db->get()->result_array();
+    }
+    
+    public function save_leave($data){
+        $query = $this->db->insert('staff_leave', $data);
+       if($query){
+            return 'Application Submitted';
+       }
+       else{
+            return 'Failed to Submit Application';
+
+
+       }
     }
 
 

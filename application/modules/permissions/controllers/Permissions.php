@@ -81,10 +81,14 @@ class Permissions extends MX_Controller
       $groupId = $data['group'];
       $permissions = $data['permissions'];
       $insert_data = array();
+      if($groupId == $this->session->userdata('user')->role){
+        $this->session->userdata('user')->permissions = $permissions;
+      }
       foreach ($permissions as $perm) {
         $row = array("group_id" => $groupId, "permission_id" => $perm);
         array_push($insert_data, $row);
       }
+      
       $post_d = $this->perms_mdl->assignPermissions($groupId, $insert_data);
       if ($post_d) {
         $msg = "Assignments have been Saved successfully";

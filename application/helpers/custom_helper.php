@@ -313,7 +313,31 @@ if (!function_exists('flash_form')) {
         $ci->session->set_flashdata($key, $data);
     }
 }
+if (!function_exists('current_contract')) {
+    function current_contract($staff_id)
+    {
+    $ci = &get_instance();
+    return $ci->db->query("SELECT max(staff_contract_id) as current_contract from staff_contracts where staff_id ='$staff_id'")->row()->current_contract;
+    }
+}
+if (!function_exists('current_head_of_departmemnt')) {
+    function current_head_of_departmemnt($division)
+    {
+        $ci = &get_instance();
+        $division_id = $ci->db->query("SELECT division_head from divisions where division_id='$division'")->row()->division_head;
+        return $division_id;
 
+    }
+}
+if (!function_exists('get_supervisor')) {
+    function get_supervisor($contract_id)
+    {
+        $ci = &get_instance();
+        $ci->db->where('staff_contract_id', $contract_id);
+        $result = $ci->db->get('staff_contracts')->row();
+        return $result;
+    }
+}
 if (!function_exists('clear_form')) {
     function clear_form($key = 'form_data')
     {
@@ -323,8 +347,19 @@ if (!function_exists('clear_form')) {
     }
 }
 
+if (!function_exists('clear_form')) {
+    function date_difference($start_date, $end_date)
+    {
 
+        $start = new DateTime($start_date);
+        $end = new DateTime($end_date);
 
+        $interval = $start->diff($end);
+
+        $days_difference = $interval->days;
+
+    }
+}
 function check_logged_in()
 {
 
@@ -399,7 +434,7 @@ if (!function_exists('is_guest')) {
 
 if (!function_exists('is_valid_image')) {
 
-    function is_valid_image($name, $path = './uploads/publications/')
+    function is_valid_image($name, $path = './uploads/staff/')
     {
         $image = $path . $name;
         if (file_exists($image)) {
