@@ -123,17 +123,28 @@ class Auth_mdl extends CI_Model
 			return "The old password you provided is wrong";
 		}
 	}
-	public function updateProfile($postdata)
+	public function updateProfile($data)
 	{
-		$uid = $postdata['user_id'];
-		$this->db->where('user_id', $uid);
-		$done = $this->db->update($this->table, $postdata);
+		$user_id = $data['user_id'];
+		$this->db->where('user_id', $user_id);
+		$done = $this->db->update($this->table, $data);
 
 		if ($done) {
+			if ($data['staff_id'] != 0):
+				$staff_data['staff_id'] = $data['staff_id'];
+				$staff_data['photo'] = $data['photo'];
+			$this->update_staff_table($staff_data);
+			endif;
 			return "Update Successful";
 		} else {
 			return "Update Failed";
 		}
+	}
+	public function update_staff_table($staff_data){
+		
+		$this->db->where('staff_id', $staff_data['staff_id']);
+		$done = $this->db->update('staff', $staff_data);
+
 	}
 	public function saveProfile($language, $username, $name, $email, $photo)
 	{

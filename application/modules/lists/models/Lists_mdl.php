@@ -20,6 +20,7 @@ class Lists_mdl extends CI_Model
         $this->load->model("Nationality");
         $this->load->model("Stations");
         $this->load->model("Status");
+        $this->load->model("leavetype");
     }
 
     public function supervisor(){
@@ -69,6 +70,10 @@ class Lists_mdl extends CI_Model
     public function status()
     {
         return status::all();
+    }
+    public function leave()
+    {
+        return leavetype::all();
     }
 
 

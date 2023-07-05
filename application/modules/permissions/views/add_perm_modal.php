@@ -6,7 +6,8 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form id="savepermissions" class="savpermissions" action="<?= base_url('permissions/savePermissions') ?>" method="post" enctype="multipart/form-data">
+        <?php echo form_open_multipart(base_url('permissions/savePermissions'), array('id' => 'savepermissions', 'class' => 'savepermissions')); ?>
+       
           <div class="mb-3">
             <label for="definition" class="form-label">Definition</label>
             <input type="text" name="definition" class="form-control" title="Permission Description">

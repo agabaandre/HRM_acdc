@@ -9,38 +9,39 @@
                 <div class="col-md-12">
                     <form id="leave-filter-form" method="get" action="<?= base_url('leave/status'); ?>">
                         <div class="row mb-3">
+
                             <div class="col-md-3">
-                                <label for="status">Status:</label>
-                                <select name="status" id="status" class="form-control">
+                                <label for="start_date">Start Date:</label>
+                                <input type="text" name="start_date" id="start_date" class="form-control datepicker">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="end_date">End Date:</label>
+                                <input type="text" name="end_date" id="end_date" class="form-control datepicker">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="end_date">Status:</label>
+                                <select class="form-control select2" name="status">
                                     <option value="">All</option>
                                     <option value="Pending">Pending</option>
                                     <option value="Approved">Approved</option>
                                     <option value="Rejected">Rejected</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label for="start_date">Start Date:</label>
-                                <input type="date" name="start_date" id="start_date" class="form-control">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="end_date">End Date:</label>
-                                <input type="date" name="end_date" id="end_date" class="form-control">
-                            </div>
+
                             <div class="col-md-3">
                                 <button type="submit" class="btn btn-primary mt-4">Apply Filters</button>
                             </div>
+
                         </div>
                     </form>
                     <table id="leave-table" class="table table-striped">
                         <thead>
                             <tr>
                                 <th>Staff ID</th>
-                                <th>First Name</th>
-                                <th>Last Name</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
+                                <th>Leave Start Date</th>
+                                <th>Requested Days</th>
                                 <th>Leave Type</th>
-                                <th>Status</th>
+                                <th>Overall Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -48,10 +49,8 @@
                             <?php foreach ($leaves as $leave) : ?>
                                 <tr data-status="<?= $leave['approval_status']; ?>">
                                     <td><?= $leave['staff_id']; ?></td>
-                                    <td><?= $leave['fname']; ?></td>
-                                    <td><?= $leave['lname']; ?></td>
                                     <td><?= $leave['start_date']; ?></td>
-                                    <td><?= $leave['end_date']; ?></td>
+                                    <td><?= date_difference($leave['end_date'], $leave['start_date']); ?></td>
                                     <td><?= $leave['leave_name']; ?></td>
                                     <td><?= $leave['approval_status']; ?></td>
                                     <td>

@@ -99,7 +99,7 @@
 								<a class="dropdown-item" href="javascript:;">
 									<div class="d-flex align-items-center">
 										<div class="user-online">
-											<img src="<?php echo base_url() ?>assets/images/pp.png" class="msg-avatar" alt="user avatar">
+											<img src="<?php echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo; ?>" class="msg-avatar" alt="user avatar">
 										</div>
 										<div class="flex-grow-1">
 											<h6 class="msg-name">Systems Adminstrator <span class="msg-time float-end">5 sec
@@ -119,7 +119,7 @@
 			</div>
 			<div class="user-box dropdown">
 				<a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-					<img src="<?php echo base_url() ?>assets/images/pp.png" class="user-img" alt="user avatar">
+					<img src="<?php echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo; ?>" class="user-img" alt="user avatar">
 					<div class="user-info ps-3">
 						<p class="user-name mb-0"><?php echo $this->session->userdata('user')->name; ?></p>
 						<p class="designattion mb-0"></p>

@@ -4,7 +4,11 @@
         <div class="card box-widget widget-user">
             <div class="widget-user-header testbgpattern1"></div>
             <div class="widget-user-image">
-                <img src="<?php echo base_url() ?>assets/images/staff/<?php echo @$this->session->userdata('user')->image; ?>">
+                <img class="img-fluid img-thumbnail" src="<?php echo base_url() ?>uploads/staff/<?php if (is_valid_image($this->session->userdata('user')->photo)) {
+                                                                                                    echo $this->session->userdata('user')->photo;
+                                                                                                } else {
+                                                                                                    echo 'author.png';
+                                                                                                } ?>" style="width:200px; border-radius:7px;">
             </div>
             <div class="card-body text-center">
                 <div class="item-user pro-user">
@@ -42,33 +46,26 @@
         <div class="card">
             <div class="card-body">
                 <div class="mb-4 main-content-label">Personal Information</div>
-                <?php echo form_open_multipart(base_url('auth/updateProfile'), array('id' => 'profile', 'class' => 'profile')); ?>
+                <?php echo form_open_multipart(base_url('auth/update_profile'), array('id' => 'profile', 'class' => 'profile')); ?>
                 <div class="form-group ">
                     <div class="row">
                         <div class="col-md-3">
                             <label class="form-label">Language</label>
                         </div>
+                        <input type="hidden" name="staff_id" value="<?php echo $this->session->userdata('user')->staff_id ?>">
                         <input type="hidden" name="user_id" value="<?php echo $this->session->userdata('user')->user_id ?>">
                         <div class="col-md-9">
-                            <?php //echo translate(); 
-                            ?>
+                            <?php $langs = array('aa' => 'Afar', 'am' => 'Amharic', 'ar' => 'Arabic', 'en' => 'English', 'fr' => 'French', 'ha' => 'Hausa', 'rw' => 'Kinyarwanda', 'ln' => 'Lingala', 'pr' => 'Portuguese', 'sw' => 'Swahili'); ?>
                             <select class="form-control" name="langauge">
+                                <?php foreach ($langs as $key => $value) : ?>
 
-                                <option value="aa">Afar</option>
-                                <option value="am">Amharic</option>
-                                <option value="ar">Arabic</option>
-                                <option value="en" selected>English</option>
-                                <option value="fr">French</option>
-                                <option value="ha">Hausa</option>
-                                <option value="rw">Kinyarwanda</option>
-                                <option value="ln">Lingala</option>
-                                <option value="mg">Malagasy</option>
-                                <option value="pt">Portuguese</option>
-                                <option value="so">Somali</option>
-                                <option value="sw">Swahili</option>
-                                <option value="wo">Wolof</option>
-                                <option value="yo">Yoruba</option>
-                                <option value="zu">Zulu</option>
+                                    <option value='<?php echo $key ?>' <?php if ($key == $this->session->userdata('user')->langauge) {
+                                                                            echo 'selected';
+                                                                        } ?>><?php echo $value ?></option>
+
+                                <?php endforeach; ?>
+
+
                             </select>
 
 
@@ -83,7 +80,7 @@
                             <label class="form-label">User Name</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="username" placeholder="" value="<?php echo $this->session->userdata('user')->username; ?>">
+                            <input type="text" class="form-control" name="username" placeholder="" value="<?php echo $this->session->userdata('user')->username; ?>" readonly>
                         </div>
                     </div>
                 </div>
@@ -93,7 +90,7 @@
                             <label class="form-label"> Name</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo $this->session->userdata('user')->name; ?>">
+                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo $this->session->userdata('user')->name; ?>" readonly>
                         </div>
                     </div>
                 </div>
@@ -125,12 +122,15 @@
                 <div class="form-group ">
                     <div class="row">
                         <div class="col-md-3">
-                            <label class="form-label">Profile Image</label>
+                            <label class="form-label">Profile Image (Image should be less than 1MB)</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="file" class="form-control" name="photo">
+                            <input type="file" class="form-control" name="photo" value="<?php echo $this->session->userdata('user')->photo; ?>">
 
                         </div>
+                        <?php if (!empty($this->session->userdata('user')->photo)) { ?>
+                            <img src="<?php echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo; ?>" style="width:180px; height: 150px;">
+                        <?php } ?>
                     </div>
                 </div>
 

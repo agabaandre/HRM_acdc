@@ -15,7 +15,7 @@
 			</div>
 			<nav class="navbar navbar-expand-xl w-100">
 				<ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
-
+                <?php if (in_array('76', $permissions)): ?>
 					<li class="nav-item dropdown">
 						<a href="<?php echo base_url() ?>dashboard" class="nav-link <?php echo activelink('dashboard', $this->uri->segment(1)) ?>">
 							<div class="parent-icon"><i class="bx bx-category"></i>
@@ -23,8 +23,7 @@
 							<div class="menu-title">Staff Dashboard</div>
 						</a>
 					</li>
-
-
+					<?php endif;?>
 					<li class="nav-item dropdown has-arrow">
 						<a href="#" class="nav-link <?php echo activelink('staff', $this->uri->segment(1)) ?> has-arrow">
 							<div class="parent-icon"><i class='fa fa-user'></i>
@@ -56,7 +55,7 @@
 
 						</ul>
 					</li>
-                     <?php if (in_array('72', $permissions)): ?>
+                     <?php if (in_array('37', $permissions)): ?>
 					<li class="nav-item dropdown">
 						<a href="<?php echo base_url() ?>leave/request" class="nav-link  <?php echo activelink('leave', $this->uri->segment(1)) ?>">
 							<div class="parent-icon"><i class="fa fa-plane-departure"></i>
@@ -67,10 +66,10 @@
 						<ul class="dropdown-menu">
 							<li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/request"><i class="bx bx-right-arrow-alt"></i>Apply</a>
 							</li>
-							<?php if (in_array('72', $permissions)): ?>
+					
 							<li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/approve_leave"><i class="bx bx-right-arrow-alt"></i>Approve Leave</a>
 							</li>
-							<?php endif; ?>
+
 							<li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/status"><i class="bx bx-right-arrow-alt"></i>My Leave Status</a>
 							</li>
 						</ul>
@@ -88,14 +87,14 @@
 							<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance"><i class="bx bx-right-arrow-alt"></i>Performance Plan</a>
 							</li>
 							<?php endif; ?>
-							 <?php if (in_array('39', $permissions)): ?>
+							 <!-- <?php if (in_array('39', $permissions)): ?>
 							<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/appraisal"><i class="bx bx-right-arrow-alt"></i>Performance Appraisal</a>
-							</li>
+							</li> -->
 							<?php endif; ?>
 						</ul>
 					</li>
 					<?php endif; ?>
-					 <?php if (in_array('75', $permissions)): ?>
+					 <!-- <?php if (in_array('75', $permissions)): ?>
 					<li class="nav-item dropdown">
 						<a href="#" class="nav-link  <?php echo activelink('tasks', $this->uri->segment(1)) ?>">
 							<div class="parent-icon"><i class='fa fa-calendar'></i>
@@ -107,7 +106,7 @@
 							</li>
 						</ul>
 					</li>
-					<?php endif; ?>
+					<?php endif; ?> -->
 					 <?php if (in_array('15', $permissions)): ?>
 
 					<li class="nav-item dropdown">
