@@ -95,22 +95,31 @@ class Leave extends MX_Controller
 		}
 	}
 
-	public function approve($request_id)
+	public function approve($request_id,$role,$action)
 	{
-		$this->leave_mdl->approve_leave($request_id);
-		$leave = $this->leave_mdl->get_leave($request_id);
-		$response['status'] = 'success';
-		$response['leave'] = $leave;
-		echo json_encode($response);
-	}
-
-	public function reject($leave_id)
-	{
-		$this->leave_mdl->approve_leave($leave_id);
-		$leave = $this->leave_mdl->get_leave($leave_id);
-		$response['status'] = 'success';
-		$response['leave'] = $leave;
-		echo json_encode($response);
+	
+		if ($action==16){
+			$message='Approved';
+		}
+		if ($action == 32) {
+			$message = 'Rejected';
+		}
+		//dd($role);
+		$res = $this->leave_mdl->approve_leave($request_id,$message,$role);
+		if ($res) {
+			$msg = array(
+				'msg' => 'Successfully '.$message,
+				'type' => 'success'
+			);
+			Modules::run('utility/setFlash', $msg);
+			redirect('leave/status');
+		} else {
+			$msg = array(
+				'msg' => 'Failed',
+				'type' => 'error'
+			);
+		}
+		redirect('leave/approve_leave');
 	}
 
 	public function approve_leave()
@@ -122,8 +131,8 @@ class Leave extends MX_Controller
 		$start_date = $this->input->get('start_date');
 		$end_date = $this->input->get('end_date');
 		$staff_id = $this->session->userdata();
-		$data['leaves'] = $this->leave_mdl->get_leaves($status, $start_date, $end_date,$staff_id);
-		dd($data);
+		$data['leaves'] = $this->leave_mdl->get_approval_leaves($status, $start_date, $end_date,$staff_id);
+		//dd($data);
 		render('approval', $data);
 	}
 
@@ -137,9 +146,8 @@ class Leave extends MX_Controller
 		$status = $this->input->get('status');
 		$start_date = $this->input->get('start_date');
 		$end_date = $this->input->get('end_date');
-
 		// Get the leave data with filters and ordering
-		$data['leaves'] = $this->leave_mdl->get_leaves($status, $start_date, $end_date);
+		$data['leaves'] = $this->leave_mdl->staff_leave_status($status, $start_date, $end_date);
 		render('leave_status', $data);
 	}
 

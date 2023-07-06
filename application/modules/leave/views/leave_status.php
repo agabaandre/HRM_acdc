@@ -41,20 +41,25 @@
                                 <th>Leave Start Date</th>
                                 <th>Requested Days</th>
                                 <th>Leave Type</th>
+                                <th>Level Status</th>
                                 <th>Overall Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($leaves as $leave) : ?>
-                                <tr data-status="<?= $leave['approval_status']; ?>">
-                                    <td><?= $leave['staff_id']; ?></td>
+                            <?php
+                            $i = 1;
+                            foreach ($leaves as $leave) : ?>
+                                <tr data-status="<?= $leave['overall_status']; ?>" <?php if ($leave['overall_status'] == 'Approved') { ?>style="background:#d2f0d7 !important" ;<?php } else if($leave['overall_status'] == 'Rejected') { ?>style="background:#ffcdcd !important" ; <?php } ?>>
+                                    <td><?= $i++; ?></td>
                                     <td><?= $leave['start_date']; ?></td>
                                     <td><?= date_difference($leave['end_date'], $leave['start_date']); ?></td>
                                     <td><?= $leave['leave_name']; ?></td>
-                                    <td><?= $leave['approval_status']; ?></td>
+                                    <td><?= $leave['approval_status'] . '-(SS) <br/> ' . $leave['approval_status1'] . '-(HR) <br/> ' . $leave['approval_status2'] . '-(S) <br/> ' . $leave['approval_status3'] . '-(HoD)<br/> '; ?></td>
+
+                                    <td><?= $leave['overall_status']; ?></td>
                                     <td>
-                                        <?php if ($leave['approval_status'] === 'Rejected') : ?>
+                                        <?php if (($leave['approval_status'] == 'Rejected') OR ($leave['approval_status1'] == 'Rejected') OR ($leave['approval_status2'] == 'Rejected') OR ($leave['approval_status3'] == 'Rejected') )  : ?>
                                             <button class="reapply-btn btn btn-primary" data-leave-id="<?= $leave['leave_id']; ?>">Re-apply</button>
                                         <?php endif; ?>
                                     </td>
