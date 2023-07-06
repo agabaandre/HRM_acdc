@@ -329,6 +329,18 @@ if (!function_exists('current_head_of_departmemnt')) {
 
     }
 }
+if (!function_exists('leave_balance')) {
+    function leave_balance($staff_id,$leave_id)
+    {
+        $ci = &get_instance();
+        $leave_count = $ci->db->query("SELECT leave_days from leave_types where leave_id='$leave_id'")->row()->leave_days;
+
+        $sum  = $ci->db->query("SELECT SUM(requested_days) as sum_approved from staff_leave where  approval_status='Approved' and approval_status1='Approved' and approval_status2='Approved' and approval_status3='Approved' and leave_id='$leave_id' and staff_id='$staff_id'")->row()->sum_approved;
+
+        $balance= $leave_count-$sum;
+        return $balance;
+    }
+}
 if (!function_exists('get_supervisor')) {
     function get_supervisor($contract_id)
     {
