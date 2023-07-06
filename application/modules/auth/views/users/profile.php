@@ -4,11 +4,13 @@
         <div class="card box-widget widget-user">
             <div class="widget-user-header testbgpattern1"></div>
             <div class="widget-user-image">
-                <img class="img-fluid img-thumbnail" src="<?php echo base_url() ?>uploads/staff/<?php if (is_valid_image($this->session->userdata('user')->photo)) {
-                                                                                                    echo $this->session->userdata('user')->photo;
-                                                                                                } else {
-                                                                                                    echo 'author.png';
-                                                                                                } ?>" style="width:200px; border-radius:7px;">
+
+
+                <img class="img-fluid img-thumbnail" src="<?php if (isset($this->session->userdata('user')->photo)) {
+                                                                echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo;
+                                                            } else {
+                                                                echo base_url() ?>uploads/staff/author.png;
+					<?php } ?>" style="width:200px; border-radius:7px;">
             </div>
             <div class="card-body text-center">
                 <div class="item-user pro-user">
@@ -128,7 +130,7 @@
                             <input type="file" class="form-control" name="photo" value="<?php echo $this->session->userdata('user')->photo; ?>">
 
                         </div>
-                        <?php if (!empty($this->session->userdata('user')->photo)) { ?>
+                        <?php if (isset($this->session->userdata('user')->photo)) { ?>
                             <img src="<?php echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo; ?>" style="width:180px; height: 150px;">
                         <?php } ?>
                     </div>
