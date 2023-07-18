@@ -144,7 +144,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                     <label class="form-label">Is training recommended for this staff member?</label>
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" id="training_recommended" value="Yes">
-                      <label class="form-check-label" for="training-recommended">Yes</label>
+                      <label class="form-check-label">Yes</label>
                     </div>
                   </div>
                   <section class="required_trainings">
@@ -161,12 +161,11 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                     </div>
                     <div class="mb-3">
                       <label for="training-contribution" class="form-label">How will the recommended training(s) contribute to the staff member’s development and the department’s work?</label>
-                      <textarea id="training-contribution" class="form-control" rows="3">Performance management dashboard for Africa CDC
-                  MIS to grow into a fully functional unit/division</textarea>
+                      <textarea id="training-contribution" class="form-control" rows="3"></textarea>
                     </div>
                     <div class="mb-3">
                       <label class="form-label">Selection of courses in line with training needs.</label>
-                      <select class="form-control multiple multiple-select" name="required_trainings">
+                      <select class="form-control multiple-select" name="required_trainings">
                         <option value="Cisco Networking Essentials">Cisco Networking Essentials</option>
                         <option value="Advanced Database Management">Advanced Database Management</option>
                         <option value="React">React</option>

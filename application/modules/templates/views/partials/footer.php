@@ -141,6 +141,7 @@
 
 	$('.multiple-select').select2({
 		theme: 'bootstrap4',
+		multiple: true,
 		width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
 		placeholder: $(this).data('placeholder'),
 		allowClear: Boolean($(this).data('allow-clear')),
@@ -463,7 +464,7 @@
 
 <script>
 	$(document).ready(function() {
-		const trainingRecommendedCheckbox = $('#training-recommended');
+		const trainingRecommendedCheckbox = $('#training_recommended');
 		const requiredTrainingsSection = $('.required_trainings');
 
 		// Initially hide the required_trainings section
