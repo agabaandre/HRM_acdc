@@ -116,6 +116,15 @@ class Auth extends MX_Controller
     $res = $this->auth_mdl->addUser($postdata);
     echo $res;
   }
+  public function contract_info($staff_id){
+    $current_contract = current_contract($staff_id);
+    $this->db->where('staff_contract_id',$current_contract);
+    $this->db->join('jobs', 'staff_contracts.job_id=jobs.job_id');
+    $this->db->join('staff', 'staff.staff_id=staff_contracts.staff_id');
+    $this->db->join('jobs_acting', 'staff_contracts.job_acting_id=jobs_acting.job_acting_id');
+    $data=  $this->db->get('staff_contracts')->row();
+    return $data;
+  }
   public function updateUser()
   {
     $postdata = $this->input->post();

@@ -1,291 +1,255 @@
-<div class="card-header">
-  <div class="row">
-    <div class="col-md-12">
-      <div class="table-responsive">
-        <table class="table table-striped table-bordered">
-          <tr>
-            <th colspan="4">
-              <h4>A. Personnel Details</h4>
-            </th>
-          </tr>
-          <tr>
-            <td><b>Name</b></td>
-            <td></td>
-            <td><b>Personnel Number</b></td>
-            <td>87000098</td>
-          </tr>
-          <tr>
-            <td><b>Position</b></td>
-            <td></td>
-            <td><b>In this Position since</b></td>
-            <td></td>
-          </tr>
-          <tr>
-            <td><b>Directorate/Department</b></td>
-            <td></td>
-            <td><b>Division/Unit</b></td>
-            <td></td>
-          </tr>
-          <tr>
-            <td colspan="4"><b>Current performance period</b></td>
-          </tr>
-          <tr>
-            <td colspan="4">January 2023 - December 2023</td>
-          </tr>
-          <tr>
-            <td colspan="4"><b>Name of direct supervisor</b></td>
-          </tr>
-          <tr>
-            <td colspan="4"></td>
-          </tr>
-          <tr>
-            <td colspan="4"><b>Name of second supervisor</b></td>
-          </tr>
-          <tr>
-            <td colspan="4"></td>
-          </tr>
-        </table>
-      </div>
-    </div>
+<?php
+$session = $this->session->userdata('user');
+$staff_id = $this->session->userdata('user')->staff_id;
+$contract = Modules::run('auth/contract_info', $staff_id);
+//dd($contract)
+?>
+<style>
+  .overflow-content {
+    overflow: auto;
+    min-height: 800px;
 
-    <div class="col-md-12">
-      <!-- Content for the second column goes here -->
-    </div>
-  </div>
-</div>
+  }
+</style>
+<form action="<?php echo base_url() ?>performance/save_ppa">
+  <div class="container">
 
-<div class="card">
-  <div class="card-body">
-    <div class="container mt-5">
-      <div class="table-responsive">
-        <button id="add-row" type="button" class="btn btn-primary">Add Row</button>
-        <table id="objectives" class="table table-striped table-bordered">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th style="width:25%;">Objective<br>Statement of the result that needs to be achieved</th>
-              <th tyle="width:5%;">Time Line<br>Timeframe within which the result is to be achieved</th>
-              <th tyle="width:25%;">Deliverables and KPIs<br>Deliverables - the evidence that the result has been achieved; KPI’s gives an indication of how well the result was achieved</th>
-              <th tyle="width:20%;">Weight<br>The total weight of all objectives should be 100%</th>
-              <th>Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><b>1</b></td>
-              <td>
-                <div class="form-group">
-                  <div class="summernote" data-target="objective1"></div>
+    <div cllass="row">
+      <!-- SmartWizard html -->
+      <div id="smartwizard">
+        <ul class="nav">
+          <li>
+            <a class="nav-link" href="#step-1"> <strong>Step 1</strong>
+              <br>Personal Information</a>
+          </li>
+          <li>
+            <a class="nav-link" href="#step-2"> <strong>Step 2</strong>
+              <br>Objectives</a>
+          </li>
+          <li>
+            <a class="nav-link" href="#step-3"> <strong>Step 3</strong>
+              <br>Core Values</a>
+          </li>
+          <li>
+            <a class="nav-link" href="#step-4"> <strong>Step 4</strong>
+              <br>Training</a>
+          </li>
+          <li>
+            <a class="nav-link" href="#step-5"> <strong>Step 5</strong>
+              <br>Sign Off</a>
+          </li>
+
+        </ul>
+        <div class="tab-content">
+          <div id="step-1" class="tab-pane" role="tabpanel" aria-labelledby="step-1">
+            <h3>Step 1:</h3>
+            <h4>A. Staff Details</h4>
+            <div class="row">
+              <div class="col-md-6 col-lg-6">
+                <div class="mb-3">
+                  <label for="name" class="form-label">Name</label>
+                  <input type="text" id="name" class="form-control" name="name" value="<?= $session->name ?>" disabled>
                 </div>
-              </td>
-              <td>
-                <div class="form-group">
-                  <input type="date" class="form-control" name="timeline1" required>
+                <div class="mb-3">
+                  <label for="personnel-number" class="form-label">Personnel Number</label>
+                  <input type="text" name="personnel_number" id="personnel-number" class="form-control" value="<?= $contract->tel_1 ?>" disabled>
                 </div>
-              </td>
-              <td>
-                <div class="form-group">
-                  <div class="summernote" data-target="deliverable1"></div>
+                <div class="mb-3">
+                  <label for="position" class="form-label">Position</label>
+                  <input type="text" name="position" id="position" class="form-control" value="<?= $contract->job_name ?>" disabled>
                 </div>
-              </td>
-              <td>
-                <div class="form-group">
-                  <input type="text" class="form-control" name="weight1" required>
+                <div class="mb-3">
+                  <label for="position-since" class="form-label">In this Position since</label>
+                  <input type="text" id="position-since" class="form-control" value="<?= $contract->start_date ?>" disabled>
                 </div>
-              </td>
-              <td>
-                <div class="form-group">
-                  <textarea name="comments1" rows="4" cols="50" class="form-control"></textarea>
+              </div>
+              <div class="col-md-6 col-lg-6">
+                <div class="mb-3">
+                  <label for="unit" class="form-label">Division</label>
+                  <input type="text" id="division" name="dvision" class="form-control" value="<?php echo acdc_division($contract->division_id); ?>" disabled>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+                <div class="mb-3">
+                  <label for="performance-period" class="form-label">Current performance period</label>
+                  <select class="form-control" name="performance-period" readonly>
+                    <?php echo periods(); ?>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="supervisor" class="form-label">Name of direct supervisor</label>
+                  <input type="text" class="form-control" name="supervisor_id" id="supervisor_id" data='<?= get_supervisor(current_contract($session->staff_id))->first_supervisor ?>' value="<?php echo staff_name(get_supervisor(current_contract($session->staff_id))->first_supervisor) ?>" name="supervisor_id" readonly>
+                </div>
+                <div class="mb-3">
+                  <label for="second-supervisor" class="form-label">Name of second supervisor</label>
+                  <input type="text" class="form-control" name="supervisor2_id" data='<?= get_supervisor(current_contract($session->staff_id))->second_supervisor ?>' id="supervisor2_id" name="supervisor2_id" value="<?php echo @staff_name(get_supervisor(current_contract($session->staff_id))->second_supervisor) ?>" readonly>
+                </div>
+              </div>
+            </div>
+          </div>
 
 
+          <div id="step-2" class="tab-pane" style="overflow-y: auto!important;" role="tabpanel" aria-labelledby="step-2">
+            <h3>Step 2: </h3>
+            <div class="mt-4">
+              <button class="btn btn-primary" onclick="addObjective()">Create New Objective</button>
+            </div>
 
+            <h4>B. Performance Objectives</h4>
+            <div class="row new-objectives">
 
+            </div>
+          </div>
 
-    <table id="example" class="table table-striped table-bordered">
-      <tr>
-        <h4>C. Competencies </h4>
-      </tr>
-      <tr>All staff members shall be assessed against AU Values and Core and Functional Competencies; in
-        addition to AU Values and Core and Functional Competencies, staff with Managerial
-        responsibilities will also be rated on the Leadership competencies</tr>
+          <!-- Include other objectives here -->
+          <div id="step-3" class="tab-pane" role="tabpanel" aria-labelledby="step-3">
+            <h3>Step 3: </h3>
 
-      <tr>
-        <td colspan="3">
-          <h6>
-            <center>AU Values<br>Respect for diversity and team work - Think Africa above all -
-              Transparency and Accountability - Integrity and Impartiality<br>Efficiency and
-              Professionalism - Information and Knowledge sharing</center>
-          </h6>
-        </td>
+            <h4>C. Competencies</h4>
+            <div class="row">
+              <div class="col-md-4">
+                <h3>AU Values</h3>
+                <ul class="list-group">
+                  <li class="list-group-item">Respect for diversity and team work</li>
+                  <li class="list-group-item">Think Africa above all</li>
+                </ul>
+              </div>
+              <div class="col-md-4">
+                <h3>Core Competencies</h3>
+                <ul class="list-group">
+                  <li class="list-group-item">Building Relationships</li>
+                  <li class="list-group-item">Responsibility</li>
+                  <li class="list-group-item">Learning Orientation</li>
+                  <li class="list-group-item">Communicating with impact</li>
+                </ul>
+              </div>
+              <div class="col-md-4">
+                <h3>Functional Competencies</h3>
+                <ul class="list-group">
+                  <li class="list-group-item">Conceptual Thinking and Problem Solving</li>
+                  <li class="list-group-item">Job Knowledge</li>
+                  <li class="list-group-item">Drive for Results</li>
+                  <li class="list-group-item">Innovative and taking initiative</li>
+                </ul>
+              </div>
+            </div>
 
-      </tr>
+          </div>
 
+          <div id="step-4" class="tab-pane" role="tabpanel" aria-labelledby="step-4">
+            <h3>Step 4: </h3>
 
-      <tr>
-        <td>
-          <h4>
-            <center>Core</center>
-          </h4>
-        </td>
-        <td>
-          <h4>
-            <center>Functional</center>
-          </h4>
-        </td>
-        <td>
-          <h4>
-            <center> Leadership</center>
-          </h4>
-        </td>
+            <h1>D. Personal Development Plan</h4>
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="mb-3">
+                    <label class="form-label">Is training recommended for this staff member?</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="training_recommended" value="Yes">
+                      <label class="form-check-label" for="training-recommended">Yes</label>
+                    </div>
+                  </div>
+                  <section class="required_trainings">
+                    <div class="mb-3">
+                      <label for="skill-area" class="form-label">If yes, in what subject/ skill area(s) is the training recommended for this staff member?</label>
+                      <select class="form-control multiple-select" name="required_skills">
+                        <option value="HR and Management">HR and Management</option>
+                        <option value="Leadership and Governance">Leadership and Governance</option>
+                        <option value="ICT Essentails">Accounting</option>
+                        <option value="Cyber Security">Cyber Security</option>
+                        <option value="Cyber Security">Languages</option>
 
-      </tr>
-      <tr>
-        <td>
-          <center>Building Relationships</center>
-        </td>
-        <td>
-          <center>Conceptual Thinking and Problem Solving</center>
-        </td>
-        <td>
-          <center> Strategic Perspective</center>
-        </td>
+                      </select>
+                    </div>
+                    <div class="mb-3">
+                      <label for="training-contribution" class="form-label">How will the recommended training(s) contribute to the staff member’s development and the department’s work?</label>
+                      <textarea id="training-contribution" class="form-control" rows="3">Performance management dashboard for Africa CDC
+                  MIS to grow into a fully functional unit/division</textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Selection of courses in line with training needs.</label>
+                      <select class="form-control multiple multiple-select" name="required_trainings">
+                        <option value="Cisco Networking Essentials">Cisco Networking Essentials</option>
+                        <option value="Advanced Database Management">Advanced Database Management</option>
+                        <option value="React">React</option>
+                        <option value="Chinese">Chinese</option>
+                        <option value="French">French</option>
+                        <option value="Cyber Security">Cyber Security</option>
 
-      </tr>
-      <tr>
-        <td>
-          <center>Responsibility</center>
-        </td>
-        <td>
-          <center>Job Knowledge </center>
-        </td>
-        <td>
-          <center> Developing Others</center>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <center>Learning Orientation</center>
-        </td>
-        <td>
-          <center>Drive for Results</center>
-        </td>
-        <td>
-          <center> Driving Change</center>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <center>Communicating with impact</center>
-        </td>
-        <td>
-          <center>Innovative and taking initiative</center>
-        </td>
-        <td>
-          <center> Managing Risk</center>
-        </td>
-      </tr>
+                      </select>
+                    </div>
+                  </section>
+                </div>
+              </div>
+          </div>
 
-    </table>
+          <div id="step-5" class="tab-pane" role="tabpanel" aria-labelledby="step-5">
+            <h3>Step 5: </h3>
+            <h1>E. Staff and Supervisor Sign Off</h1>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Staff</label>
+                  <label class="form-label">I hereby confirm that this PPA has been developed in consultation with my supervisor and that it is aligned with the departmental objectives.
 
+                    I fully understand my performance objectives and what I am expected to deliver during this performance period.
 
-    <table id="example" class="table table-striped table-bordered">
-      <tr>
-        <h4>D. Personal Development Plan </h4>
-      </tr>
+                    I am also aware of the competencies that I will be assessed on for the same period.
 
-      <tr>
-        <td colspan="2">
-          1. Is training recommended for this staff member?
-          <select name="is_training" class="form-control">
-            <option value="No">No</option>
-            <option value="Yes">Yes</option>
-          </select>
-        </td>
+                  </label>
+                  <input class="form-check-input" type="checkbox" id="staff_sign_off" name="staff_sign_off" value="1" required>
+                  <label class="form-check-label" for="staff_sign_off">Confirm</label>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Staff Signature</label>
+                  <input type="text" class="form-control" value="<?php echo @$session->signature_id; ?>">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Date</label>
+                  <input type="text" class="form-control" disabled value="<?php echo date('j F, Y'); ?>" name="staff_sign_off_date">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label">Supervisor</label>
+                  <label>I hereby confirm that this PPA has been developed in consultation with the staff member and that it is aligned with the departmental objectives. The staff fully understands what is expected of them during the performance period and is also aware of the competencies that they will be assess against.
 
+                    I commit to providing supervision...
 
-      </tr>
-      <tr>
-        <td colspan="2">
-          2. If yes, in what subject/ skill area(s) is the training recommended for this staff
-          member?<br>
-          <div class="form-group"><textarea name="subject" rows="4" cols="100"></textarea></div>
+                  </label>
+                  <input class="form-check-input" type="checkbox" id="staff_sign_off" required>
+                  <label class="form-check-label" for="staff_sign_off">Confirm</label>
 
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Supervisor Signature</label>
+                  <input type="text" class="form-control">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Date</label>
+                  <input type="text" class="form-control" disabled value="<?php echo date('j F, Y'); ?>">
+                </div>
+              </div>
+              <div class="col-md-12 col-lg-12">
+                <div class="row">
+                  <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                  </div>
+                  <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">Save & Submit</button>
+                  </div>
+                  <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">Recall</button>
+                  </div>
 
-        </td>
+                </div>
+              </div>
 
-
-      </tr>
-      <tr>
-        <td colspan="2">
-          3. How will the recommended training(s) contribute to the staff member’s development and the
-          department’s work?<br>
-          <div class="form-group"><textarea name="contribution" rows="4" cols="100"></textarea></div>
-
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2">
-          4. Selection of courses in line with training needs.<br>
-          &nbsp;&nbsp;&nbsp;&nbsp;4.1. With reference to the current AUC Learning and Development
-          (L&D) Catalogue, please list the recommended course(s) for this staff member:<br>
-          <div class="form-group"><textarea name="courses" rows="4" cols="100"></textarea></div><br>
-          &nbsp;&nbsp;&nbsp;&nbsp;4.2. Where applicable, please provide details of highly
-          recommendable course(s) for this staff member that are not listed in the AUC L&D
-          Catalogue.<br>
-          <div class="form-group"><textarea name="details" rows="4" cols="100"></textarea></div>
-        </td>
-      </tr>
-
-      <tr>
-        <td align="right"><button type="submit" name="Save" class="btn btn-primary btn-lg align-right">Save </button></td>
-      </tr>
-    </table>
-
-  </div>
-  </form>
+</form>
 
 </div>
 </div>
+
+</form>
 </div>
-<script>
-  $(document).ready(function() {
-    var rowCount = 1;
-
-    // Add new row
-    $('#add-row').click(function() {
-      rowCount++;
-
-      var newRow = '<tr>' +
-        '<td><b>' + rowCount + '</b><br><i class = "fa fa-minus remove-row"></i> </td>' +
-        '<td><div class="form-group"><div class="summernote" data-target="objective' + rowCount + '"></div></div></td>' +
-        '<td><div class="form-group"><input type="date" class="form-control" name="timeline' + rowCount + '" required></div></td>' +
-        '<td><div class="form-group"><div class="summernote" data-target="deliverable' + rowCount + '"></div></div></td>' +
-        '<td><div class="form-group"><input type="text" class="form-control" name="weight' + rowCount + '" required></div></td>' +
-        '<td><div class="form-group"><textarea name="comments' + rowCount + '" rows="4" cols="50" class="form-control"></textarea></div></td>' +
-        '</tr>';
-
-      $('#objectives tbody').append(newRow);
-      $('.summernote').summernote({
-        height: 100
-      });
-    });
-
-    // Remove row
-    $(document).on('click', '.remove-row', function() {
-      $(this).closest('tr').remove();
-      rowCount--;
-    });
-
-    // Initialize Summernote
-    $('.summernote').summernote({
-      height: 100
-    });
-  });
-</script>
+</div>
+</div>
+</div>
