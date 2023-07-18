@@ -122,7 +122,7 @@
 					<img src="<?php if (isset($this->session->userdata('user')->photo)) {
 						echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo;
 					} else {
-						echo base_url() ?>uploads/staff/author.png;
+						echo base_url() ?>uploads/staff/author.png
 					<?php } ?>" class="user-img" alt="user avatar">
 					<div class="user-info ps-3">
 						<p class="user-name mb-0"><?php echo $this->session->userdata('user')->name; ?></p>

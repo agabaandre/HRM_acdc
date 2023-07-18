@@ -350,6 +350,15 @@ if (!function_exists('get_supervisor')) {
         return $result;
     }
 }
+if (!function_exists('get_photo')) {
+    function get_photo($staff_id)
+    {
+        $ci = &get_instance();
+        $ci->db->where('staff_id', $staff_id);
+        $result = $ci->db->get('user')->row()->photo;
+        return $result;
+    }
+}
 if (!function_exists('clear_form')) {
     function clear_form($key = 'form_data')
     {
@@ -613,5 +622,32 @@ if (!function_exists('acdc_division')) {
         $ci = &get_instance();
     return $ci->db->query("SELECT division_name from divisions where division_id='$division'")->row()->division_name;
     
+    }
+}
+
+
+if (!function_exists('periods')) {
+
+    function periods()
+    {
+        $currentYear = date('Y');
+        $nextYear = $currentYear + 1;
+        $months = array(
+            'January', 'February', 'March', 'April', 'May', 'June', 'July',
+            'August', 'September', 'October', 'November', 'December'
+        );
+        $periods = '<option value="January ' . $currentYear . ' - December ' . $currentYear . '">January ' . $currentYear . ' - December ' . $currentYear . '</option>';
+        $periods .= '<option value="January ' . $nextYear . ' - December ' . $nextYear . '">January ' . $nextYear . ' - December ' . $nextYear . '</option>';
+
+        return $periods;
+    }
+}
+if (!function_exists('get_staff_name')) {
+
+    function staff_name($id)
+    {
+        $ci = &get_instance();
+        $query = $ci->db->query("SELECT lname, fname from staff where staff_id=$id")->row();
+        return $query->lname. ' '. $query->fname;
     }
 }

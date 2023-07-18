@@ -109,8 +109,8 @@
 			show_notification(message, msgtype);
 		}
 		<?php
-		      $_SESSION['type'] = '';
-		      $_SESSION['msg'] = '';
+		$_SESSION['type'] = '';
+		$_SESSION['msg'] = '';
 		?>
 
 	});
@@ -243,6 +243,19 @@
 		var btnCancel = $('<button></button>').text('Cancel').addClass('btn btn-danger').on('click', function() {
 			$('#smartwizard').smartWizard("reset");
 		});
+
+
+		// Smart Wizard
+		$('#smartwizard').smartWizard({
+			autoAdjustHeight: false,
+			selected: 0,
+			theme: 'arrows',
+			toolbarSettings: {
+				toolbarPosition: 'both', // both bottom
+			},
+
+		});
+
 		// Step show event
 		$("#smartwizard").on("showStep", function(e, anchorObject, stepNumber, stepDirection, stepPosition) {
 			$("#prev-btn").removeClass('disabled');
@@ -254,18 +267,6 @@
 			} else {
 				$("#prev-btn").removeClass('disabled');
 				$("#next-btn").removeClass('disabled');
-			}
-		});
-		// Smart Wizard
-		$('#smartwizard').smartWizard({
-			selected: 0,
-			theme: 'arrows',
-			transition: {
-				animation: 'slide-horizontal', // Effect on navigation, none/fade/slide-horizontal/slide-vertical/slide-swing
-			},
-			toolbarSettings: {
-				toolbarPosition: 'both', // both bottom
-
 			}
 		});
 		// External Button Events
@@ -318,21 +319,165 @@
 			return true;
 		});
 	});
+
+	var objectiveCounter = 0;
+
+
+	// Handle form submission
+	function appendActivity(objCounter) {
+
+		// Get the activity name from the input field
+		const activityName = $(`#activityName${objCounter}`).val();
+		console.log(activityName);
+		console.log(objCounter);
+
+		// Append the activity to the table
+		const newRow = $("<tr>");
+		newRow.append($("<td>").text(activityName));
+
+		$(`#activities${objCounter}`).append(newRow);
+
+		// Clear the input field and close the modal
+		$(`#activityName${objCounter}`).val("");
+		$("#createActivityModal").modal("hide");
+	};
+
+	// Handle form submission
+	function appendKPI(objCounter) {
+		event.preventDefault(); // Prevent form submission to avoid page reload
+
+		// Get the activity name from the input field
+		const kpiName = $(`#kpiName${objCounter}`).val();
+
+		console.log(kpiName);
+		console.log(objCounter);
+
+		// Append the activity to the table
+		const newRow = $("<tr>");
+		newRow.append($("<td>").text(kpiName));
+		$(`#kpitable${objCounter}`).append(newRow);
+
+		// Clear the input field and close the modal
+		$(`#kpiName${objCounter}`).val("");
+		$("#createkpiModal").modal("hide");
+	};
+
+	function addObjective() {
+
+		objectiveCounter++;
+		var objectiveSection = document.getElementById('step-2');
+		var objectiveDiv = document.createElement('div');
+
+		objectiveDiv.innerHTML = `<div class="obj${objectiveCounter}">
+     <div class="mt-4">
+            <button class="btn btn-primary" onclick="addObjective()">Add Objective</button>
+            <button class="btn btn-danger" onclick="removeObjective(${objectiveCounter})">Remove Objective</button>
+     </div>
+      <div class="mb-3">
+         <label for="objective${objectiveCounter}" class="form-label"><h4>Objective ${objectiveCounter}</h4></label>
+         <input type="text" id="objective${objectiveCounter}" name="objective[${objectiveCounter}][]" class="form-control">
+      </div>
+      <div class="mb-3">
+         <label for="timeline${objectiveCounter}" class="form-label">Time Line</label>
+        <input type="text" id="timeline${objectiveCounter}" name="timeline[${objectiveCounter}][]" class="form-control datepicker">
+      </div>
+      <div class="mb-3">
+         <label for="deliverables${objectiveCounter}" class="form-label">Deliverables and KPIs</label>
+         <input type="text" id="deliverables${objectiveCounter}" name="deliverables[${objectiveCounter}][]" class="form-control">
+      </div>
+      <div class="mb-3">
+         <label for="weight${objectiveCounter}" class="form-label">Weight</label>
+         <input type="number" maxlength="2" id="weight${objectiveCounter}" name="weight[${objectiveCounter}][]" class="form-control">
+      </div>
+
+       <div class="row">
+	   <div class="col-md-6 col-lg-6">
+              <table class="table table-striped mt-4" id="kpiTable">
+                <thead>
+                  <tr>
+                    <th scope="col">
+                      <h5>KPIs</h5>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id='kpitable${objectiveCounter}'>
+				    <tr><td><input type="text" class="form-control" id="kpiName${objectiveCounter}" name="kpiName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]" required objective="${objectiveCounter}"></td></tr><tr>
+					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]" required objective="${objectiveCounter}"></td></tr><tr>
+					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]" required objective="${objectiveCounter}"></td></tr><tr>
+					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]" required objective="${objectiveCounter}"></td></tr><tr>
+
+                </tbody>
+              </table>
+
+            </div>
+            <div class="col-md-6 col-lg-6">
+           
+              <table class="table table-striped mt-4" id="activityTable${objectiveCounter}">
+                <thead>
+                  <tr>
+                    <th scope="col">
+                      <h5>Activities</h5>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id='activities${objectiveCounter}'>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+            
+                </tbody>
+              </table>
+            </div></div>
+
+<hr style="border:4px dotted #f62718;"></div>`;
+
+		$('.new-objectives').append(objectiveDiv);
+
+	}
+</script>
+
+<script>
+	function removeObjective(objId) {
+		$('.obj' + objId).remove();
+		objectiveCounter--;
+	}
 </script>
 <script>
-  // Function to calculate requested_days
-  function calculateRequestedDays() {
-    var startDate = new Date($("#start_date").val());
-    var endDate = new Date($("#end_date").val());
-    var timeDiff = endDate.getTime() - startDate.getTime();
-    var daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-    
-    // Update the requested_days field
-    $("#requested_days").val(daysDiff);
-  }
-  
-  // Event listener for start_date and end_date change
-  $("#start_date, #end_date").on("change", calculateRequestedDays);
+	// Function to calculate requested_days
+	function calculateRequestedDays() {
+		var startDate = new Date($("#start_date").val());
+		var endDate = new Date($("#end_date").val());
+		var timeDiff = endDate.getTime() - startDate.getTime();
+		var daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+		// Update the requested_days field
+		$("#requested_days").val(daysDiff);
+	}
+
+	// Event listener for start_date and end_date change
+	$("#start_date, #end_date").on("change", calculateRequestedDays);
+</script>
+
+<script>
+	$(document).ready(function() {
+		const trainingRecommendedCheckbox = $('#training-recommended');
+		const requiredTrainingsSection = $('.required_trainings');
+
+		// Initially hide the required_trainings section
+		requiredTrainingsSection.hide();
+
+		// Add an event listener to the checkbox to show/hide the section
+		trainingRecommendedCheckbox.on('change', function() {
+			if (trainingRecommendedCheckbox.is(':checked')) {
+				requiredTrainingsSection.show();
+			} else {
+				requiredTrainingsSection.hide();
+			}
+		});
+	});
 </script>
 
 

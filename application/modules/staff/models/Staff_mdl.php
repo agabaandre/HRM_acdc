@@ -13,14 +13,14 @@ class Staff_mdl extends CI_Model
     public function get_all()
     {
        
-      $query = Employee::orderBy("lname", "desc");
+      $query = Employee::orderBy("lname", "asc");
        
 
         // if (@$search['nationality_id'])
         // $query->where('nationality_id', $search->nationality_id);
         //implement ci-pagination later
         $results = $query->with('contracts', 'contracts.funder')
-        ->take(20)->skip(20)->get();
+        ->take(400)->skip(0)->get();
         //$results = $query->with('contracts', 'contracts.funder')->get();
 
         return $results;
@@ -51,7 +51,7 @@ class Staff_mdl extends CI_Model
             });
                
         })
-            ->take(20)
+            ->take(400)
             ->skip(0)
             ->get();
 

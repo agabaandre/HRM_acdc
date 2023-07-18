@@ -20,11 +20,14 @@ class Lists_mdl extends CI_Model
         $this->load->model("Nationality");
         $this->load->model("Stations");
         $this->load->model("Status");
-        $this->load->model("leavetype");
+        $this->load->model("leaveType");
+        $this->load->model("AuValues");
+         $this->load->model("leaveType");
+        $this->load->model("leaveType");
     }
 
     public function supervisor(){
-            return employee::all();
+            return employee::orderBy('lname','ASC')->get();
     }
     public function divisions()
     {

@@ -1,67 +1,21 @@
 <!-- Col -->
-<?php
-$staff_id = $this->session->userdata('user')->staff_id;
-$contract = Modules::run('auth/contract_info', $staff_id);
-
-?>
 <div class="row">
-
     <div class="col-md-5 col-lg-4 col-xl-3 col-xs-12 col-md-pull-2">
-
-        <div class="email-header d-xl-flex align-items-center">
-            <div class="d-flex align-items-center text-muted">
-                <div class="email-toggle-btn"><i class="bx bx-menu"></i>
-                </div>
-
-                <div class="">
-                    <!-- <span class="alert-count">1</span> -->
-                    <a href="<?php echo base_url() ?>leave/request" type="button" class="btn btn-grey ms-2">Leave Request<i class="fa fa-plane-departure"></i>
-                    </a>
-                </div>
-                <div class="">
-
-                    <a href="<?php echo base_url() ?>leave/approve_leave" type="button" class="btn btn-grey ms-2">Approve Leave<i class="fa fa-ok"></i>
-                    </a>
-                </div>
-                <div class="">
-                    <a href="<?php echo base_url() ?>leave/status" type="button" class="btn btn-outline accordionbtn-grey ms-2">Leave Status<i class="fa fa-circle-ok"></i>
-                    </a>
-                </div>
-                <div class="">
-                    <a href="<?php echo base_url() ?>performance" type="button" class="btn btn-outline btn-grey ms-2">My PPA<i class="fa fa-line-chart"></i>
-                    </a>
-                </div>
-                <div class="">
-                    <a href="<?php echo base_url() ?>performance/approve" type="button" class="btn btn-outline btn-grey ms-2">Approve Appraisal<i class="fa fa-ok"></i>
-                    </a>
-                </div>
-            </div>
-            <div class="flex-grow-1 mx-xl-2 my-2 my-xl-0">
-
-            </div>
-            <div class="ms-auto d-flex align-items-center">
-
-            </div>
-        </div>
         <div class="card box-widget widget-user">
             <div class="widget-user-header testbgpattern1"></div>
-            <div class="widget-user-image" style="margin:0 auto;">
+            <div class="widget-user-image">
+
+
                 <img class="img-fluid img-thumbnail" src="<?php if (isset($this->session->userdata('user')->photo)) {
                                                                 echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo;
-                                                                                            } else {
-                                                                                                echo base_url() ?>uploads/staff/author.png
+                                                            } else {
+                                                                echo base_url() ?>uploads/staff/author.png
 					<?php } ?>" style="width:200px; border-radius:7px;">
             </div>
-            <?php //dd($contract);
-            ?>
             <div class="card-body text-center">
                 <div class="item-user pro-user">
-                    <h4 class="pro-user-username tx-15 pt-2 mt-4 mb-1" style="color:black;"><?php echo $this->session->userdata('user')->name; ?></h4>
-                    <h6><?php
-                        echo $contract->job_name;
-                        ?>
-                    </h6>
-                    <p class="pro-user-desc tx-13 mb-3 font-weight-normal badge text-bg-success" style="color:white !important;"><?php echo $this->session->userdata('user')->group_name; ?></p>
+                    <h4 class="pro-user-username tx-15 pt-2 mt-4 mb-1"><?php echo $this->session->userdata('user')->name; ?></h4>
+                    <h6 class="pro-user-desc tx-13 mb-3 font-weight-normal text-muted"><?php echo $this->session->userdata('user')->group_name; ?></h6>
                 </div>
             </div>
 
@@ -73,15 +27,15 @@ $contract = Modules::run('auth/contract_info', $staff_id);
             <div class="card-body">
                 <div class="form-group">
                     <label class="form-label">Old Password</label>
-                    <input type="password" class="form-control" value="">
+                    <input type="password" class="form-control" value="password">
                 </div>
                 <div class="form-group">
                     <label class="form-label">New Password</label>
-                    <input type="new_password" class="form-control" value="">
+                    <input type="new_password" class="form-control" value="password">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Confirm Password</label>
-                    <input type="new_password" class="form-control" value="">
+                    <input type="new_password" class="form-control" value="password">
                 </div>
             </div>
             <div class="card-footer text-right"><a href="#" class="btn btn-success">Update</a> <a href="#" class="btn btn-danger">Cancel</a></div>
@@ -95,51 +49,34 @@ $contract = Modules::run('auth/contract_info', $staff_id);
             <div class="card-body">
                 <div class="mb-4 main-content-label">Personal Information</div>
                 <?php echo form_open_multipart(base_url('auth/update_profile'), array('id' => 'profile', 'class' => 'profile')); ?>
-                <div class="form-group">
+                <div class="form-group ">
                     <div class="row">
                         <div class="col-md-3">
                             <label class="form-label">Language</label>
                         </div>
-                        <input type="hidden" name="staff_id" value="<?php echo $staff_id = $this->session->userdata('user')->staff_id ?>">
+                        <input type="hidden" name="staff_id" value="<?php echo $this->session->userdata('user')->staff_id ?>">
                         <input type="hidden" name="user_id" value="<?php echo $this->session->userdata('user')->user_id ?>">
                         <div class="col-md-9">
-
                             <?php $langs = array('aa' => 'Afar', 'am' => 'Amharic', 'ar' => 'Arabic', 'en' => 'English', 'fr' => 'French', 'ha' => 'Hausa', 'rw' => 'Kinyarwanda', 'ln' => 'Lingala', 'pr' => 'Portuguese', 'sw' => 'Swahili'); ?>
                             <select class="form-control" name="langauge">
                                 <?php foreach ($langs as $key => $value) : ?>
+
                                     <option value='<?php echo $key ?>' <?php if ($key == $this->session->userdata('user')->langauge) {
                                                                             echo 'selected';
                                                                         } ?>><?php echo $value ?></option>
+
                                 <?php endforeach; ?>
+
+
                             </select>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Contract Start Date</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="contract_start_date" value="<?php echo $contract->start_date; ?>" readonly>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Contract End Date</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="contract_end_date" value="<?php echo $contract->end_date; ?>" readonly>
-                        </div>
-                    </div>
-                </div>
-                <!-- Add more contact fields as needed -->
 
+                        </div>
+                    </div>
+                </div>
                 <div class="mb-4 main-content-label"></div>
-                <div class="form-group">
+
+                <div class="form-group ">
                     <div class="row">
                         <div class="col-md-3">
                             <label class="form-label">User Name</label>
@@ -149,18 +86,17 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                         </div>
                     </div>
                 </div>
-
-                <div class="form-group">
+                <div class="form-group ">
                     <div class="row">
                         <div class="col-md-3">
-                            <label class="form-label">Name</label>
+                            <label class="form-label"> Name</label>
                         </div>
                         <div class="col-md-9">
                             <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo $this->session->userdata('user')->name; ?>" readonly>
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group ">
                     <div class="row">
                         <div class="col-md-3">
                             <label class="form-label">Email</label>
@@ -170,70 +106,41 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                         </div>
                     </div>
                 </div>
-                <?php //echo dd($contract); 
-                ?>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Primary Number</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="tel_1" value="<?php echo $contract->tel_1; ?>">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Alternative Number</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="tel_2" value="<?php echo $contract->tel_2; ?>">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">WhatsApp Number</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="whatsapp" value="<?php echo $contract->whatsapp; ?>">
-                        </div>
-                    </div>
-                </div>
 
-
-                <div class="form-group">
+                <div class="form-group ">
                     <div class="row">
                         <div class="col-md-3">
                             <i class="bx bx-info-square"></i>
                             <label class="form-label">Role</label>
                         </div>
                         <div class="col-md-9">
+
                             <span class="badge text-bg-info">
                                 <?php echo $this->session->userdata('user')->group_name; ?>
                             </span>
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group ">
                     <div class="row">
                         <div class="col-md-3">
                             <label class="form-label">Profile Image (Image should be less than 1MB)</label>
                         </div>
                         <div class="col-md-9">
                             <input type="file" class="form-control" name="photo" value="<?php echo $this->session->userdata('user')->photo; ?>">
+
                         </div>
                         <?php if (isset($this->session->userdata('user')->photo)) { ?>
                             <img src="<?php echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo; ?>" style="width:180px; height: 150px;">
                         <?php } ?>
                     </div>
                 </div>
+
             </div>
-            <div class="card-footer">
+            <div class=" card-footer">
                 <button type="submit" class="btn btn-success waves-effect waves-light">Update Profile</button>
             </div>
+
             </form>
         </div>
     </div>

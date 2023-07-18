@@ -25,6 +25,10 @@ class Performance extends MX_Controller
 		$data['title'] = "Performance Plan";
 		render('plan', $data);
 	}
+	function save_ppa(){
+		$data= $this->input->post();
+		dd($data);
+	}
 	
 
 	
