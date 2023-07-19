@@ -355,15 +355,18 @@ if (!function_exists('get_photo')) {
     {
         $ci = &get_instance();
         $ci->db->where('staff_id', $staff_id);
-        $result = $ci->db->get('user')->row()->photo;
-       if(!empty($result)){
-            return $result;
-       }
-       else{
-            return FALSE;
-       }
-        
+        $query = $ci->db->get('user');
+
+        if ($query->num_rows() > 0) {
+            $result = $query->row()->photo;
+            if (!empty($result)) {
+                return $result;
+            }
+        }
+
+        return FALSE;
     }
+
 }
 if (!function_exists('clear_form')) {
     function clear_form($key = 'form_data')
