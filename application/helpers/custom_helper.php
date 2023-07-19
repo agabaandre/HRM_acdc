@@ -356,7 +356,13 @@ if (!function_exists('get_photo')) {
         $ci = &get_instance();
         $ci->db->where('staff_id', $staff_id);
         $result = $ci->db->get('user')->row()->photo;
-        return $result;
+       if(!empty($result)){
+            return $result;
+       }
+       else{
+            return FALSE;
+       }
+        
     }
 }
 if (!function_exists('clear_form')) {
