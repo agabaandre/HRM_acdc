@@ -89,7 +89,7 @@
 
 
                 <?php if (($leave['approval_status1'] == 'Pending') && ($leave['approval_status'] == 'Approved') && ($this->session->userdata('user')->role == 20)) : ?>
-                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/hr/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Accept Support Role</a>
+                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/hr/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Approve HR</a>
                   <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/hr/32" class="btn btn-danger reject-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Reject</a>
                 <?php elseif ($leave['approval_status1'] == 'Approved') : ?>
                   <span class="text-success">Approved by HR </span><br />
