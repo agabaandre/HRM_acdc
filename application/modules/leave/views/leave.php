@@ -19,11 +19,11 @@
 
         <div class="form-group">
           <label for="start_date" class="form-label">Start Date *</label>
-          <input type="text" class="form-control datepicker" id="start_date" name="start_date" required>
+          <input type="text" class="form-control datepicker" id="start_date" name="start_date" value="<?php echo @$leave['start_date'] ?>" required>
         </div>
         <div class="form-group">
           <label for="end_date" class="form-label">End Date *</label>
-          <input type="text" class="form-control datepicker" id="end_date" name="end_date" required>
+          <input type="text" class="form-control datepicker" id="end_date" value="<?php echo @$leave['end_date'] ?>" name="end_date" required>
         </div>
         <div class="form-group">
           <label for="requested_days" class="form-label">Requested Days</label>
@@ -31,7 +31,7 @@
         </div>
         <div class="form-group">
           <label for="mobile_leave" class="form-label">Phone Contact while on Leave *</label>
-          <input type="text" class="form-control" id="mobile_leave" name="mobile_leave" required>
+          <input type="text" class="form-control" id="mobile_leave" name="mobile_leave" value="<?php echo @$leave['mobile_leave'] ?>" required>
         </div>
         <!-- Additional fields as per your requirements -->
         <input type="hidden" class="form-control" id="supervisor_id" value="<?php echo get_supervisor(current_contract($this->session->userdata('user')->staff_id))->first_supervisor ?>" name="supervisor_id" required>
@@ -40,7 +40,7 @@
       <div class="col-md-6">
         <div class="form-group">
           <label for="email_leave" class="form-label">Email Contact while on Leave *</label>
-          <input type="text" class="form-control" id="email_leave" name="email_leave" required>
+          <input type="text" class="form-control" id="email_leave" name="email_leave" value="<?php echo @$leave['email_leave'] ?>" required>
         </div>
 
         <div class="form-group">
@@ -75,7 +75,7 @@
         </div>
         <div class="form-group">
           <label for="remarks" class="form-label">Remarks *</label>
-          <textarea class="form-control" id="remarks" name="remarks" required></textarea>
+          <textarea class="form-control" id="remarks" name="remarks" required>value="<?php echo @$leave['remarks'] ?>"</textarea>
         </div>
         <!-- Additional fields as per your requirements -->
       </div>
