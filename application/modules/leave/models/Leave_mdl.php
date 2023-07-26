@@ -69,10 +69,11 @@ class Leave_mdl extends CI_Model
         $this->db->from('staff_leave l');
         $this->db->join('staff s', 'l.staff_id = s.staff_id');
         $this->db->join('leave_types lt', 'l.leave_id = lt.leave_id');
-        $this->db->where('s.staff_id!=', $this->session->userdata('user')->staff_id);
+        $this->db->where('s.staff_id=', $this->session->userdata('user')->staff_id);
         $this->db->or_where('l.supervisor_id', $this->session->userdata('user')->staff_id);
         $this->db->or_where('l.supporting_staff', $this->session->userdata('user')->staff_id);
         $this->db->or_where('l.division_head', $this->session->userdata('user')->staff_id);
+        
 
         if ($status) {
             $this->db->where('l.approval_status', $status);
