@@ -16,39 +16,42 @@ class Leave_mdl extends CI_Model
          if ($role=='supporting_staff'){
             $data['approval_status'] = $message;
          }
-         else if ($role == 'supervisor') {
+         else if ($role == 'hr') {
             $data['approval_status1'] = $message;
-         }
-          else if ($role == 'hod') {
-            $data['approval_status2'] = $message;
-            //get leave status at all levels to give a final overall status
-            $status = $this->get_leave_status($request_id);
-            if(($status->approval_status=='Approved')&& ($status->approval_status1 == 'Approved')&& ($status->approval_status2 == 'Approved')&& ($status->approval_status3 == 'Approved')){
-                $data['overall_status'] = 'Approved';
-            }
-            else
-            {
-                $data['overall_status'] = 'Rejected';
-            }
-            
-         }
-         else if  ($role == 'hr'){
+         } else if ($role == 'supervisor') {
 
+            $data['approval_status2'] = $message;
+        }
+          else if ($role == 'hod') {
             $data['approval_status3'] = $message;
-         }
-        //dd($data);
-        $data['updated_at'] = date('Y-m-d H:i:s');
+        }
+            //get leave status at all levels to give a final overall status
         
-              $this->db->where('request_id', $request_id);
-           $res = $this->db->update('staff_leave',$data);
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        $this->db->where('request_id', $request_id);
+        $res = $this->db->update('staff_leave',$data);
+       // final_status
+        $status = $this->get_leave_status($request_id);
+        if ($status->approval_status3 == 'Approved') {
+            $data['overall_status'] = 'Approved';
+        } else {
+            $data['overall_status'] = 'Rejected';
+        }
+        $this->final_status($data,$request_id);
+        return $res;
+    }
+    public function final_status($data, $request_id){
+        $this->db->where('request_id', $request_id);
+        $res = $this->db->update('staff_leave', $data);
         return $res;
     }
 
     public function get_leave_status($request_id)
     {
         // Update the approval_status field to 'Approved' in the 'staff_leave' table for the specified leave ID
-        $this->db->where('leave_id', $request_id);
-        return $this->db->get('staff_leave')->row();
+              $this->db->where('request_id', $request_id);
+             $result = $this->db->get('staff_leave')->row();
+        return $result;
     }
 
     public function reject_leave($request_id)

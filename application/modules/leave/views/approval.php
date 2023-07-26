@@ -57,7 +57,11 @@
           <?php
           $i = 1;
           foreach ($leaves as $leave) : ?>
-            <tr data-status="<?php echo $leave['approval_status']; ?>">
+            <tr <?php if($leave['overall_status']== 'Approved'){
+              echo "class='table-success'";} else if
+                ($leave['overall_status'] == 'Rejected') {
+                  echo "class='table-warning'";}
+            ; ?>>
               <td><?php echo $i++; ?>
               <td><?php echo $leave['fname'] . ' ' . $leave['lname']; ?></td>
               <td><?php echo $leave['leave_name']; ?></td>
@@ -71,43 +75,43 @@
                                             } ?></td>
               <td><?php echo $leave['remarks']; ?></td>
 
-              <td><?php if (!empty($leave['supporting_documentation'])) : ?><a href='<?php echo base_url() ?>/staff/leave/<?php echo $leave['supporting_documentation']; ?>'>Request Support File</a><?php endif; ?></td>
+              <td><?php if (!empty($leave['supporting_documentation']) && ($this->session->userdata('user')->role == 20)) : ?><a href='<?php echo base_url() ?>/staff/leave/<?php echo $leave['supporting_documentation']; ?>'>Request Support File</a><?php endif; ?></td>
 
               <td style="font-weight:bold;">
-                <!-- <approval level1 -->
-                <?php if (($leave['approval_status'] == 'Pending') && ($this->session->userdata('user')->staff_id == $leave['supporting_staff'])) : ?>
+                <!-- <approval level0 -->
+                <?php if (($leave['approval_status'] == 'Pending')) : ?>
                   <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/supporting_staff/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Accept Support Role</a>
-                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/supporting_staff/32" class="btn btn-danger reject-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Reject</a>
+                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/supporting_staff/32" class="btn btn-danger reject-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Reject Support Role</a>
                 <?php endif; ?>
                 <?php if ($leave['approval_status'] == 'Approved') : ?>
-                  <span class="text-success">Approved Level1</span><br />
+                  <span class="text-success">Support Role Accepted</span><br />
                 <?php endif; ?>
                 <?php if ($leave['approval_status'] == 'Rejected') :
                 ?>
-                  <span class="text-danger">Rejected Level1</span><br />
+                  <span class="text-danger">Support Role Rejected</span><br />
                 <?php endif;
                 ?>
-                <!-- <approval level2> -->
+                <!-- <approval level1> -->
 
 
-                <?php if (($leave['approval_status1'] == 'Pending') && ($leave['approval_status'] == 'Approved') && ($this->session->userdata('user')->role == 20)) : ?>
-                  <a href="<?php echo base_url() ?>leave//<?php echo $leave['request_id'] ?>/hr/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Approve HR</a>
+                <?php if (($leave['approval_status'] == 'Approved') && ($leave['approval_status1'] == 'Pending')) : ?>
+                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/hr/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Approve</a>
                   <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/hr/32" class="btn btn-danger reject-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Reject</a>
                 <?php endif; ?>
                 <?php if ($leave['approval_status1'] == 'Approved') : ?>
-                    <span approveclass="text-success">Approved by HR </span><br />
+                  <span class="text-success">Approved by HR </span><br />
                 <?php endif; ?>
                 <?php if ($leave['approval_status1'] == 'Rejected') :
                 ?>
-                    <span class="text-danger">Rejected by HR</span> <br />
+                  <span class="text-danger">Rejected by HR</span> <br />
                 <?php endif; ?>
-      
-
-                <!-- <approval level3> -->
 
 
-                <?php if (($leave['approval_status1'] == 'Pending') && ($leave['approval_status'] == 'Approved') && ($leave['approval_status1'] == 'Approved') && ($this->session->userdata('user')->staff_id == $leave['supervisor_id'])) : ?>
-                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/supervisor/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Accepted by Supervisor</a>
+                <!-- <approval level2> -->
+
+
+                <?php if (($leave['approval_status1'] == 'Approved') && ($leave['approval_status2'] == 'Pending')) : ?>
+                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/supervisor/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Approve</a>
                   <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/supervisor/32" class="btn btn-danger reject-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Reject</a>
                 <?php endif; ?>
                 <?php if ($leave['approval_status2'] == 'Approved') : ?>
@@ -119,20 +123,26 @@
                 <?php endif;
                 ?>
 
-                <!-- <approval level4> -->
+                <!-- <approval level3> -->
 
-                <?php if (($leave['approval_status1'] == 'Pending') && ($leave['approval_status'] == 'Approved') && ($leave['approval_status1'] == 'Approved') && ($this->session->userdata('user')->staff_id == $leave['division_head'])) : ?>
-                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/hod/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Accepted by HoD</a>
+                <?php if (($leave['approval_status2'] == 'Approved') && ($leave['approval_status3'] == 'Pending') && ($leave['approval_status1'] == 'Approved')) : ?>
+                  <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/hod/16" class="btn btn-success approve-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Approve</a>
                   <a href="<?php echo base_url() ?>leave/approve/<?php echo $leave['request_id'] ?>/hod/32" class="btn btn-danger reject-btn" data-leave-id="<?php echo $leave['leave_id']; ?>">Reject</a>
                 <?php endif; ?>
-                <?php if ($leave['approval_status3'] == 'Approved') : ?><br />
-                  <span class="text-success">Approved by Hod |</span>
+                <?php if ($leave['approval_status3'] == 'Approved') : ?>
+                  <span class="text-success">Approved by Hod</span><br/>
                 <?php endif; ?>
                 <?php if ($leave['approval_status3'] == 'Rejected') :
                 ?>
-                  <span class="text-danger">Rejected by HoD |</span><br />
+                  <span class="text-danger">Rejected by HoD</span><br/>
                 <?php endif;
                 ?>
+                <?php if($leave['approval_status3'] == 'Rejected'|| $leave['approval_status2'] == 'Rejected'|| $leave['approval_status1'] == 'Rejected'|| $leave['approval_status'] == 'Rejected'){?>
+
+                  
+                <?php } ?>
+
+
               </td>
             </tr>
           <?php endforeach; ?>

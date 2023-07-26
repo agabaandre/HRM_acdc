@@ -112,7 +112,7 @@ class Leave extends MX_Controller
 				'type' => 'success'
 			);
 			Modules::run('utility/setFlash', $msg);
-			redirect('leave/status');
+			redirect('leave/approve_leave');
 		} else {
 			$msg = array(
 				'msg' => 'Failed',
