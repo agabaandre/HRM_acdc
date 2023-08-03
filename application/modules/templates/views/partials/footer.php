@@ -374,30 +374,42 @@
             <button class="btn btn-primary" onclick="addObjective()">Add Objective</button>
             <button class="btn btn-danger" onclick="removeObjective(${objectiveCounter})">Remove Objective</button>
      </div>
+	 
       <div class="mb-3">
          <label for="objective${objectiveCounter}" class="form-label"><h4>Objective ${objectiveCounter}</h4></label>
          <input type="text" id="objective${objectiveCounter}" name="objective[${objectiveCounter}][]" class="form-control">
+      </div>
+
+	 <div class="mb-3">
+           
+              <table class="table table-striped mt-4" id="activityTable${objectiveCounter}">
+                <thead>
+                  <tr>
+                    <th scope="col">
+                      <h6>Activities</h6>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id='activities${objectiveCounter}'>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+            
+                </tbody>
+              </table>
       </div>
       <div class="mb-3">
          <label for="timeline${objectiveCounter}" class="form-label">Time Line</label>
         <input type="text" id="timeline${objectiveCounter}" name="timeline[${objectiveCounter}][]" class="form-control datepicker">
       </div>
       <div class="mb-3">
-         <label for="deliverables${objectiveCounter}" class="form-label">Deliverables and KPIs</label>
-         <input type="text" id="deliverables${objectiveCounter}" name="deliverables[${objectiveCounter}][]" class="form-control">
-      </div>
-      <div class="mb-3">
-         <label for="weight${objectiveCounter}" class="form-label">Weight</label>
-         <input type="number" maxlength="2" id="weight${objectiveCounter}" name="weight[${objectiveCounter}][]" class="form-control">
-      </div>
-
-       <div class="row">
-	   <div class="col-md-6 col-lg-6">
               <table class="table table-striped mt-4" id="kpiTable">
                 <thead>
                   <tr>
                     <th scope="col">
-                      <h5>KPIs</h5>
+                      <h6>Deliverables and KPIs</h6>
                     </th>
                   </tr>
                 </thead>
@@ -411,27 +423,12 @@
                 </tbody>
               </table>
 
-            </div>
-            <div class="col-md-6 col-lg-6">
-           
-              <table class="table table-striped mt-4" id="activityTable${objectiveCounter}">
-                <thead>
-                  <tr>
-                    <th scope="col">
-                      <h5>Activities</h5>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody id='activities${objectiveCounter}'>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-            
-                </tbody>
-              </table>
-            </div></div>
+      </div>
+      <div class="mb-3">
+         <label for="weight${objectiveCounter}" class="form-label">Weight</label>
+         <input type="number" maxlength="2" id="weight${objectiveCounter}" name="weight[${objectiveCounter}][]" class="form-control">
+      </div>
+
 
 <hr style="border:4px dotted #f62718;"></div>`;
 
