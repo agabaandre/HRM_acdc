@@ -20,7 +20,9 @@
 		"php": ">=5.3.7",
 		"illuminate/database": "^8.83",
 		"symfony/var-dumper": "^5.4",
-		"illuminate/pagination": "^8.83"
+		"illuminate/pagination": "^8.83",
+		"shufo/laravel-opensearch": "^0.1.4",
+		"thybag/php-sharepoint-lists-api": "dev-master"
 	},
 	"suggest": {
 		"paragonie/random_compat": "Provides better randomness in PHP 5.x"
