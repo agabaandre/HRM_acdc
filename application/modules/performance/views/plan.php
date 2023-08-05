@@ -98,7 +98,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
           <div id="step-4" class="tab-pane" role="tabpanel" aria-labelledby="step-4">
             <h3>Step 3: </h3>
 
-            <h1>D. Personal Development Plan</h4>
+            <h1>C. Personal Development Plan</h4>
               <div class="row">
                 <div class="col-md-12">
                   <div class="mb-3">
@@ -143,7 +143,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
 
           <div id="step-5" class="tab-pane" role="tabpanel" aria-labelledby="step-5">
             <h3>Step 4: </h3>
-            <h1>E. Staff and Supervisor Sign Off</h1>
+            <h1>D. Sign Off</h1>
             <div class="row">
               <div class="col-md-6">
                 <div class="mb-3">
