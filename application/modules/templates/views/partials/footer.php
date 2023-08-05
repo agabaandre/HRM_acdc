@@ -370,10 +370,7 @@
 		var objectiveDiv = document.createElement('div');
 
 		objectiveDiv.innerHTML = `<div class="obj${objectiveCounter}">
-     <div class="mt-4">
-            <button class="btn btn-primary" onclick="addObjective()">+</button>
-            <button class="btn btn-danger" onclick="removeObjective(${objectiveCounter})">-</button>
-     </div>
+ 
 	 
       <div class="mb-3">
          <label for="objective${objectiveCounter}" class="form-label"><h4>Objective ${objectiveCounter}</h4></label>
@@ -428,6 +425,10 @@
          <label for="weight${objectiveCounter}" class="form-label">Weight</label>
          <input type="number" maxlength="2" id="weight${objectiveCounter}" name="weight[${objectiveCounter}][]" class="form-control">
       </div>
+	      <div class="mt-4">
+            <button class="btn btn-primary" onclick="addObjective()">+</button>
+            <button class="btn btn-danger" onclick="removeObjective(${objectiveCounter})">-</button>
+     </div>
 
 
 <hr style="border:4px dotted #f62718;"></div>`;
