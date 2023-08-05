@@ -27,15 +27,11 @@ $contract = Modules::run('auth/contract_info', $staff_id);
               <br>Objectives</a>
           </li>
           <li>
-            <a class="nav-link" href="#step-3"> <strong>Step 3</strong>
-              <br>Core Values</a>
-          </li>
-          <li>
-            <a class="nav-link" href="#step-4"> <strong>Step 4</strong>
+            <a class="nav-link" href="#step-4"> <strong>Step 3</strong>
               <br>Training</a>
           </li>
           <li>
-            <a class="nav-link" href="#step-5"> <strong>Step 5</strong>
+            <a class="nav-link" href="#step-5"> <strong>Step 4</strong>
               <br>Sign Off</a>
           </li>
 
@@ -99,43 +95,8 @@ $contract = Modules::run('auth/contract_info', $staff_id);
             </div>
           </div>
 
-          <!-- Include other objectives here -->
-          <div id="step-3" class="tab-pane" role="tabpanel" aria-labelledby="step-3">
-            <h3>Step 3: </h3>
-
-            <h4>C. Competencies</h4>
-            <div class="row">
-              <div class="col-md-4">
-                <h3>AU Values</h3>
-                <ul class="list-group">
-                  <li class="list-group-item">Respect for diversity and team work</li>
-                  <li class="list-group-item">Think Africa above all</li>
-                </ul>
-              </div>
-              <div class="col-md-4">
-                <h3>Core Competencies</h3>
-                <ul class="list-group">
-                  <li class="list-group-item">Building Relationships</li>
-                  <li class="list-group-item">Responsibility</li>
-                  <li class="list-group-item">Learning Orientation</li>
-                  <li class="list-group-item">Communicating with impact</li>
-                </ul>
-              </div>
-              <div class="col-md-4">
-                <h3>Functional Competencies</h3>
-                <ul class="list-group">
-                  <li class="list-group-item">Conceptual Thinking and Problem Solving</li>
-                  <li class="list-group-item">Job Knowledge</li>
-                  <li class="list-group-item">Drive for Results</li>
-                  <li class="list-group-item">Innovative and taking initiative</li>
-                </ul>
-              </div>
-            </div>
-
-          </div>
-
           <div id="step-4" class="tab-pane" role="tabpanel" aria-labelledby="step-4">
-            <h3>Step 4: </h3>
+            <h3>Step 3: </h3>
 
             <h1>D. Personal Development Plan</h4>
               <div class="row">
@@ -181,7 +142,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
           </div>
 
           <div id="step-5" class="tab-pane" role="tabpanel" aria-labelledby="step-5">
-            <h3>Step 5: </h3>
+            <h3>Step 4: </h3>
             <h1>E. Staff and Supervisor Sign Off</h1>
             <div class="row">
               <div class="col-md-6">
