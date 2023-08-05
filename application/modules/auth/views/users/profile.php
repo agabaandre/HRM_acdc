@@ -230,6 +230,19 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                         <?php } ?>
                     </div>
                 </div>
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">Employee Signature (Image should be less than 1MB)</label>
+                        </div>
+                        <div class="col-md-9">
+                            <input type="file" class="form-control" name="signature" value="<?php echo $this->session->userdata('user')->photo; ?>">
+                        </div>
+                        <?php if (isset($this->session->userdata('user')->signature)) { ?>
+                            <img src="<?php echo base_url() ?>uploads/staff/signature/<?php echo $this->session->userdata('user')->signature; ?>" style="width:180px; height: 150px;">
+                        <?php } ?>
+                    </div>
+                </div>
             </div>
             <div class="card-footer">
                 <button type="submit" class="btn btn-success waves-effect waves-light">Update Profile</button>

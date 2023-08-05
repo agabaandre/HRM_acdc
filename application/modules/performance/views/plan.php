@@ -125,16 +125,8 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                       <textarea id="training-contribution" class="form-control" rows="3"></textarea>
                     </div>
                     <div class="mb-3">
-                      <label class="form-label">Selection of courses in line with training needs.</label>
-                      <select class="form-control multiple-select" name="required_trainings">
-                        <option value="Cisco Networking Essentials">Cisco Networking Essentials</option>
-                        <option value="Advanced Database Management">Advanced Database Management</option>
-                        <option value="React">React</option>
-                        <option value="Chinese">Chinese</option>
-                        <option value="French">French</option>
-                        <option value="Cyber Security">Cyber Security</option>
-
-                      </select>
+                      <label class="form-label">Selection of courses in line with training needs. For Multiple Courses Separate using a Semi-colon (;)</label>
+                
                     </div>
                   </section>
                 </div>
@@ -145,7 +137,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
             <h3>Step 4: </h3>
             <h1>D. Sign Off</h1>
             <div class="row">
-              <div class="col-md-6">
+              <div class="col-md-12 ">
                 <div class="mb-3">
                   <label class="form-label">Staff</label>
                   <label class="form-label">I hereby confirm that this PPA has been developed in consultation with my supervisor and that it is aligned with the departmental objectives.
