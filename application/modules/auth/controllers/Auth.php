@@ -231,8 +231,8 @@ class Auth extends MX_Controller
      $files = $_FILES;
     // Get the cover
      $photo = $files['photo'];
-    // Get the publication document
-    // If the cover is not empty, upload it
+    $signature = $files['siganture'];
+    //passport
     if (!empty($photo['name'])) {
       // Chnage the file name to cover with the extension and timestamp
       $photo['name'] = str_replace(' ','_',$data['name']).time().pathinfo($photo['name'], PATHINFO_EXTENSION);
@@ -253,6 +253,27 @@ class Auth extends MX_Controller
 
       }
       }
+
+    //passport
+    if (!empty($signature['name'])) {
+      // Chnage the file name to cover with the extension and timestamp
+      $signature['name'] = str_replace(' ', '_', $data['name']) . time() . pathinfo($signature['name'], PATHINFO_EXTENSION);
+      $config['upload_path']   = './uploads/staff/signature';
+      $config['allowed_types'] = 'gif|jpg|png|jpeg';
+      $config['file_name']     = $signature['name'];
+
+      $this->upload->initialize($config);
+      // If the upload fails, set the error message
+      if (!$this->upload->do_upload('signature')) {
+        $this->session->set_flashdata('error', $this->upload->display_errors());
+        $is_error = true;
+      } else {
+        // If the upload is successful, get the file name
+        $signature = $this->upload->data('file_name');
+        $data['signature'] = $signature;
+        $this->session->userdata('user')->signature = $signature;
+      }
+    }
 
 
     //dd($data);

@@ -133,6 +133,7 @@ class Auth_mdl extends CI_Model
 			if ($data['staff_id'] != 0):
 				$staff_data['staff_id'] = $data['staff_id'];
 				$staff_data['photo'] = $data['photo'];
+				$staff_data['signature'] = $data['signature'];
 			$this->update_staff_table($staff_data);
 			endif;
 			return "Update Successful";
