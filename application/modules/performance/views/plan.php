@@ -207,25 +207,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 </div>
               </div>
               <div class="col-md-6">
-                <div class="mb-3">
-                  <label class="form-label">Supervisor</label>
-                  <label>I hereby confirm that this PPA has been developed in consultation with the staff member and that it is aligned with the departmental objectives. The staff fully understands what is expected of them during the performance period and is also aware of the competencies that they will be assess against.
-
-                    I commit to providing supervision...
-
-                  </label>
-                  <input class="form-check-input" type="checkbox" id="staff_sign_off" required>
-                  <label class="form-check-label" for="staff_sign_off">Confirm</label>
-
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Supervisor Signature</label>
-                  <input type="text" class="form-control">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Date</label>
-                  <input type="text" class="form-control" disabled value="<?php echo date('j F, Y'); ?>">
-                </div>
+            
               </div>
               <div class="col-md-12 col-lg-12">
                 <div class="row">

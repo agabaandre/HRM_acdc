@@ -183,7 +183,7 @@ public function curlgetHttp($endpoint, $headers, $username, $password) {
 		$baseUrl = 'https://hmis.health.go.ug/api/organisationUnits';
 
 		// Initial URL to fetch the first page
-		$url = $baseUrl . '?fields=id,name,parent[id,name,parent[id,name]]&level=5';
+		$url = $baseUrl . '?fields=id,name,parent[id,name,parent[id,name]]&level=2';
 
 		// Initialize the data array
 		$allData = array();
@@ -194,10 +194,10 @@ public function curlgetHttp($endpoint, $headers, $username, $password) {
 		do {
 			// Fetch data from the current URL
 			$data = $this->curlgetHttp($url,$headr,'moh-ict.aagaba','Agaba@432');
-
+			dd($data);
 			// Add the organization units data to the main array
-			$allData = array_merge($allData, $data['organisationUnits']);
-
+			$allData = array_merge($allData, $data->organisationUnits);
+			//dd($allData);
 			// Check if there's a next page and update the URL
 			if (isset($data['pager']['nextPage'])) {
 				$url = $data['pager']['nextPage'];
@@ -222,15 +222,13 @@ public function curlgetHttp($endpoint, $headers, $username, $password) {
 			$id = $organisationUnit['id'];
 			$name = $organisationUnit['name'];
 			$parentId = $organisationUnit['parent']['id'];
-			$parentName = $organisationUnit['parent']['name'];
-			$grandparentId = $organisationUnit['parent']['parent']['id'];
-			$grandparentName = $organisationUnit['parent']['parent']['name'];
+			
 
 			// Write the row to the CSV file
-			fputcsv($fileHandle, [$id, $name, $parentId, $parentName, $grandparentId, $grandparentName]);
+			fputcsv($fileHandle, [$id, $name, $parentId,]);
 		}
-		array_push($rows, $organisationUnit);
-		dd($rows);
+		//array_push($rows, $organisationUnit);
+		//dd($rows);
 
 		// Close the CSV file
 		fclose($fileHandle);

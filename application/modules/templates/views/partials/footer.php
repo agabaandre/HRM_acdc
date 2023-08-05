@@ -371,8 +371,8 @@
 
 		objectiveDiv.innerHTML = `<div class="obj${objectiveCounter}">
      <div class="mt-4">
-            <button class="btn btn-primary" onclick="addObjective()">Add Objective</button>
-            <button class="btn btn-danger" onclick="removeObjective(${objectiveCounter})">Remove Objective</button>
+            <button class="btn btn-primary" onclick="addObjective()">+</button>
+            <button class="btn btn-danger" onclick="removeObjective(${objectiveCounter})">-</button>
      </div>
 	 
       <div class="mb-3">
