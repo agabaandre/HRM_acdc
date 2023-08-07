@@ -86,7 +86,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
           <div id="step-2" class="tab-pane" style="overflow-y: auto!important;" role="tabpanel" aria-labelledby="step-2">
             <h3>Step 2: </h3>
             <div class="mt-4">
-              <button class="btn btn-primary" onclick="addObjective()">Create Objective</button>
+              <button class="btn btn-dark px-5 radius-30" onclick="addObjective()">Create Objective</button>
             </div>
 
             <h4>B. Performance Objectives</h4>
@@ -126,7 +126,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                     </div>
                     <div class="mb-3">
                       <label class="form-label">Selection of courses in line with training needs. For Multiple Courses Separate using a Semi-colon (;)</label>
-
+                      <textarea id="training_courses" class="form-control" rows="3"></textarea>
                     </div>
                   </section>
                 </div>
