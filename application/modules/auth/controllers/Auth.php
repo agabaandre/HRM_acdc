@@ -227,18 +227,17 @@ class Auth extends MX_Controller
     // Load the Upload library
     $this->load->library('upload');
     // For each get the file name and upload it
-     $files = $_FILES;
     // Get the cover
-    $photo = $files['photo'];
-    $signature = $files['signature'];
+    $photo = $_FILES['photo'];
+    $signature = $_FILES['signature'];
     //passport
     if (!empty($photo['name'])) {
       // Chnage the file name to cover with the extension and timestamp
-      $photo['name'] = str_replace(' ','_',$data['name']).time().pathinfo($photo['name'], PATHINFO_EXTENSION);
+      $photo['name'] = str_replace(' ', '_', $data['name']) . time() . pathinfo($photo['name'], PATHINFO_EXTENSION);
       $config['upload_path']   = './uploads/staff/';
       $config['allowed_types'] = 'gif|jpg|png|jpeg';
       $config['file_name']     = $photo['name'];
-      
+
       $this->upload->initialize($config);
       // If the upload fails, set the error message
       if (!$this->upload->do_upload('photo')) {
@@ -249,15 +248,14 @@ class Auth extends MX_Controller
         $photo = $this->upload->data('file_name');
         $data['photo'] = $photo;
         $this->session->userdata('user')->photo = $photo;
-
       }
-      }
+    }
 
     //passport
     if (!empty($signature['name'])) {
       // Chnage the file name to cover with the extension and timestamp
       $signature['name'] = str_replace(' ', '_', $data['name']) . time() . pathinfo($signature['name'], PATHINFO_EXTENSION);
-      $config['upload_path']   = './uploads/staff/signature';
+      $config['upload_path']   = './uploads/staff/signature/';
       $config['allowed_types'] = 'gif|jpg|png|jpeg';
       $config['file_name']     = $signature['name'];
 
@@ -266,6 +264,7 @@ class Auth extends MX_Controller
       if (!$this->upload->do_upload('signature')) {
         $this->session->set_flashdata('error', $this->upload->display_errors());
         $is_error = true;
+        //dd($this->upload->display_errors());
       } else {
         // If the upload is successful, get the file name
         $signature = $this->upload->data('file_name');
@@ -273,12 +272,12 @@ class Auth extends MX_Controller
         $this->session->userdata('user')->signature = $signature;
       }
     }
+  
 
 
-    //dd($data);
     $this->session->userdata('user')->langauge = $data['langauge'];
     $res = $this->auth_mdl->updateProfile($data);
-  
+
     if ($res) {
       $msg = array(
         'msg' => $res,
@@ -293,7 +292,6 @@ class Auth extends MX_Controller
       );
       redirect('auth/profile');
     }
-   
   }
   public function photoMark($imagepath)
   {
