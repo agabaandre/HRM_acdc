@@ -147,7 +147,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                     I am also aware of the competencies that I will be assessed on for the same period.
 
                   </label>
-                  <input class="form-check-input" type="checkbox" id="staff_sign_off" name="staff_sign_off" value="1" required>
+                  <input class="form-check-input form-control" type="checkbox" id="staff_sign_off" name="staff_sign_off" value="1" required>
                   <label class="form-check-label" for="staff_sign_off">Confirm</label>
                 </div>
                 <div class="mb-3">
@@ -167,13 +167,13 @@ $contract = Modules::run('auth/contract_info', $staff_id);
               <div class="col-md-12 col-lg-12">
                 <div class="row">
                   <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" class="btn btn-secondary px-5 radius-30">Save</button>
                   </div>
                   <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary">Save & Submit</button>
+                    <button type="submit" class="btn btn-success px-5 radius-30">Save & Submit</button>
                   </div>
                   <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary">Recall</button>
+                    <button type="submit" class="btn btn-warning px-5 radius-30">Recall</button>
                   </div>
 
                 </div>

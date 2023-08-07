@@ -99,7 +99,7 @@
 <script src="<?php echo base_url() ?>assets/plugins/select2/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src = "<?php echo base_url() ?>assets/js/app.js" >
+<script src="<?php echo base_url() ?>assets/js/app.js">
 </script>
 <script src="<?php echo base_url() ?>assets/plugins/smart-wizard/js/jquery.smartWizard.min.js"></script>
 <script>
@@ -401,7 +401,7 @@
       </div>
       <div class="mb-3">
          <label for="timeline${objectiveCounter}" class="form-label">Time Line</label>
-        <input type="text" id="timeline${objectiveCounter}" name="timeline[${objectiveCounter}][]" class="form-control datepicker">
+        <input type="date" id="timeline${objectiveCounter}" name="timeline[${objectiveCounter}][]" class="form-control" min="<?= date('Y-m-d'); ?>" style="width:200px !important; border:solid 0px #000;">
       </div>
       <div class="mb-3">
               <table class="table table-striped mt-4" id="kpiTable">
