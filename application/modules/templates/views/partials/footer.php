@@ -426,8 +426,8 @@
          <input type="number" maxlength="2" id="weight${objectiveCounter}" name="weight[${objectiveCounter}][]" class="form-control">
       </div>
 	      <div class="mt-4">
-            <button class="btn btn-primary" onclick="addObjective()">+</button>
-            <button class="btn btn-danger" onclick="removeObjective(${objectiveCounter})">-</button>
+            <button class="btn btn-primary" title ="Add Objective" onclick="addObjective()">+</button>
+            <button class="btn btn-danger" title ="Delete Objective" onclick="removeObjective(${objectiveCounter})">-</button>
      </div>
 
 
