@@ -75,7 +75,7 @@
         </div>
         <div class="form-group">
           <label for="remarks" class="form-label">Remarks *</label>
-          <textarea class="form-control" id="remarks" name="remarks" required>value="<?php echo @$leave['remarks'] ?>"</textarea>
+          <textarea class="form-control" id="remarks" name="remarks" required> <?php echo @$leave['remarks'] ?>"</textarea>
         </div>
         <!-- Additional fields as per your requirements -->
       </div>

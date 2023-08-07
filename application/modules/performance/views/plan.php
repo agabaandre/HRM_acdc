@@ -86,7 +86,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
           <div id="step-2" class="tab-pane" style="overflow-y: auto!important;" role="tabpanel" aria-labelledby="step-2">
             <h3>Step 2: </h3>
             <div class="mt-4">
-              <button class="btn btn-primary" onclick="addObjective()">Create New Objective</button>
+              <button class="btn btn-primary" onclick="addObjective()">Create Objective</button>
             </div>
 
             <h4>B. Performance Objectives</h4>
