@@ -131,6 +131,9 @@ class Auth_mdl extends CI_Model
 
 		if ($done) {
 			if ($data['staff_id'] != 0):
+				$staff_data['tel_1'] = $this->input->post('tel_1');
+				$staff_data['tel_2'] = $this->input->post('tel_2');
+				$staff_data['whatsapp'] = $this->input->post('whatsapp');
 				$staff_data['staff_id'] = $data['staff_id'];
 				$staff_data['photo'] = $data['photo'];
 				$staff_data['signature'] = $data['signature'];

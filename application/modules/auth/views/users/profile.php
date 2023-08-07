@@ -166,7 +166,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Email</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" name="email" class="form-control" placeholder="Email" value="<?php echo $this->session->userdata('user')->email; ?>">
+                            <input type="text" name="work_email" class="form-control" placeholder="Email" value="<?php echo $this->session->userdata('user')->email; ?>">
                         </div>
                     </div>
                 </div>
@@ -236,10 +236,10 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Employee Signature (Image should be less than 1MB)</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="file" class="form-control" name="signature" value="<?php echo $this->session->userdata('user')->photo; ?>">
+                            <input type="file" class="form-control" name="signature" value="<?php echo $this->session->userdata('user')->signature; ?>">
                         </div>
                         <?php if (isset($this->session->userdata('user')->signature)) { ?>
-                            <img src="<?php echo base_url() ?>uploads/staff/signature/<?php echo $this->session->userdata('user')->signature; ?>" style="width:180px; height: 150px;">
+                            <img src="<?php echo base_url() ?>uploads/staff/signature/<?php echo $this->session->userdata('user')->signature; ?>" style="width:100px; height: 80px;">
                         <?php } ?>
                     </div>
                 </div>

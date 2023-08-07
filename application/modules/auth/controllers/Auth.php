@@ -221,7 +221,6 @@ class Auth extends MX_Controller
     $data['username'] = $postdata['username'];
     $data['user_id'] = $postdata['user_id'];
     $data['name'] = $postdata['name'];
-    $data['email'] = $postdata['email'];
     $data['langauge'] = $postdata['langauge'];
     $data['staff_id'] = $postdata['staff_id'];
     $is_error = false;
@@ -230,8 +229,8 @@ class Auth extends MX_Controller
     // For each get the file name and upload it
      $files = $_FILES;
     // Get the cover
-     $photo = $files['photo'];
-    $signature = $files['siganture'];
+    $photo = $files['photo'];
+    $signature = $files['signature'];
     //passport
     if (!empty($photo['name'])) {
       // Chnage the file name to cover with the extension and timestamp
