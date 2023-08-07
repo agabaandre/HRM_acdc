@@ -126,7 +126,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                     </div>
                     <div class="mb-3">
                       <label class="form-label">Selection of courses in line with training needs. For Multiple Courses Separate using a Semi-colon (;)</label>
-                
+
                     </div>
                   </section>
                 </div>
@@ -152,7 +152,9 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Staff Signature</label>
-                  <input type="text" class="form-control" value="<?php echo @$session->signature_id; ?>">
+                  <?php if (isset($this->session->userdata('user')->signature)) { ?>
+                    <img src="<?php echo base_url() ?>uploads/staff/signature/<?php echo $this->session->userdata('user')->signature; ?>" style="width:100px; height: 80px;">
+                  <?php } ?>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Date</label>
@@ -160,7 +162,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 </div>
               </div>
               <div class="col-md-6">
-            
+
               </div>
               <div class="col-md-12 col-lg-12">
                 <div class="row">
