@@ -325,62 +325,16 @@
 
 	var objectiveCounter = 0;
 
-
-	// Handle form submission
-	function appendActivity(objCounter) {
-
-		// Get the activity name from the input field
-		const activityName = $(`#activityName${objCounter}`).val();
-		console.log(activityName);
-		console.log(objCounter);
-
-		// Append the activity to the table
-		const newRow = $("<tr>");
-		newRow.append($("<td>").text(activityName));
-
-		$(`#activities${objCounter}`).append(newRow);
-
-		// Clear the input field and close the modal
-		$(`#activityName${objCounter}`).val("");
-		$("#createActivityModal").modal("hide");
-	};
-
-	// Handle form submission
-	function appendKPI(objCounter) {
-		event.preventDefault(); // Prevent form submission to avoid page reload
-
-		// Get the activity name from the input field
-		const kpiName = $(`#kpiName${objCounter}`).val();
-
-		console.log(kpiName);
-		console.log(objCounter);
-
-		// Append the activity to the table
-		const newRow = $("<tr>");
-		newRow.append($("<td>").text(kpiName));
-		$(`#kpitable${objCounter}`).append(newRow);
-
-		// Clear the input field and close the modal
-		$(`#kpiName${objCounter}`).val("");
-		$("#createkpiModal").modal("hide");
-	};
-
 	function addObjective() {
-
-		objectiveCounter++;
-		var objectiveSection = document.getElementById('step-2');
-		var objectiveDiv = document.createElement('div');
-
-		objectiveDiv.innerHTML = `<div class="obj${objectiveCounter}">
- 
-	 
+		if (objectiveCounter < 5) {
+			var objectiveSection = document.getElementById('step-2');
+			var objectiveDiv = document.createElement('div');
+			objectiveDiv.innerHTML = `<div class="obj${objectiveCounter}">
       <div class="mb-3">
-         <label for="objective${objectiveCounter}" class="form-label"><h4>Objective ${objectiveCounter}</h4></label>
-         <input type="text" id="objective${objectiveCounter}" name="objective[${objectiveCounter}][]" class="form-control">
+         <label for="objective${objectiveCounter}" class="form-label"><h4>Objective ${objectiveCounter+1}</h4></label>
+         <input type="text" id="objective${objectiveCounter}" name="objective[${objectiveCounter}][]" class="form-control" required>
       </div>
-
 	 <div class="mb-3">
-           
               <table class="table table-striped mt-4" id="activityTable${objectiveCounter}">
                 <thead>
                   <tr>
@@ -391,17 +345,17 @@
                 </thead>
                 <tbody id='activities${objectiveCounter}'>
 				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off"  objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off"  objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off"  objective="${objectiveCounter}"></td></tr><tr>
+				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off"  objective="${objectiveCounter}"></td></tr><tr>
             
                 </tbody>
               </table>
       </div>
       <div class="mb-3">
          <label for="timeline${objectiveCounter}" class="form-label">Time Line</label>
-        <input type="date" id="timeline${objectiveCounter}" name="timeline[${objectiveCounter}][]" class="form-control" min="<?= date('Y-m-d'); ?>" style="width:200px !important; border:solid 0px #000;">
+        <input type="date" id="timeline${objectiveCounter}" name="timeline[${objectiveCounter}][]" class="form-control" min="<?= date('Y-m-d'); ?>" style="width:200px !important; border:solid 0px #000;" required>
       </div>
       <div class="mb-3">
               <table class="table table-striped mt-4" id="kpiTable">
@@ -414,30 +368,33 @@
                 </thead>
                 <tbody id='kpitable${objectiveCounter}'>
 				    <tr><td><input type="text" class="form-control" id="kpiName${objectiveCounter}" name="kpiName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]" required objective="${objectiveCounter}"></td></tr><tr>
-					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]" required objective="${objectiveCounter}"></td></tr><tr>
-					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]" required objective="${objectiveCounter}"></td></tr><tr>
-					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]" required objective="${objectiveCounter}"></td></tr><tr>
-
+					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]"  objective="${objectiveCounter}"></td></tr><tr>
+					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]"  objective="${objectiveCounter}"></td></tr><tr>
+					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]"  objective="${objectiveCounter}"></td></tr><tr>
+					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]"  objective="${objectiveCounter}"></td></tr><tr>
                 </tbody>
               </table>
-
-      </div>
+		</div>
       <div class="mb-3">
          <label for="weight${objectiveCounter}" class="form-label">Weight</label>
-         <input type="number" maxlength="2" id="weight${objectiveCounter}" name="weight[${objectiveCounter}][]" class="form-control">
+         <input type="number" maxlength="2" id="weight${objectiveCounter}" name="weight[${objectiveCounter}][]" class="form-control" max="100" min="0">
       </div>
 	      <div class="mt-4">
             <button class="btn btn-primary" title ="Add Objective" onclick="addObjective()">+</button>
             <button class="btn btn-danger" title ="Delete Objective" onclick="removeObjective(${objectiveCounter})">-</button>
      </div>
-
-
 <hr style="border:4px dotted #f62718;"></div>`;
-
-		$('.new-objectives').append(objectiveDiv);
-
+			$('.new-objectives').append(objectiveDiv);
+			objectiveCounter++;
+		} else {
+			show_notification('Maximum Number of Allowed objecives is 5','error');
+		}
 	}
+
+
+	$(document).ready(function() {
+		addObjective(); // Add first objective
+	});
 </script>
 
 <script>
