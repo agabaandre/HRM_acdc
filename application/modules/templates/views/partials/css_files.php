@@ -59,50 +59,6 @@
 
         });
     </script>
-    <style>
-        /* Reset default input styles */
-        input[type="date"] {
-            -webkit-appearance: none;
-            appearance: none;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-            width: 100%;
-        }
-
-        /* Apply material design styles */
-        .material-datepicker {
-            background-color: white;
-            border: 1px solid #aaa;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 10px;
-        }
-
-        .material-datepicker::-webkit-calendar-picker-indicator {
-            display: none;
-        }
-
-        .material-datepicker::before {
-            content: "\f073";
-            /* FontAwesome calendar icon */
-            font-family: FontAwesome;
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #aaa;
-            pointer-events: none;
-        }
-
-        /* Style the focused state */
-        .material-datepicker:focus {
-            border-color: #4CAF50;
-            outline: none;
-        }
-    </style>
-
 
 <body>
     <!--wrapper-->
