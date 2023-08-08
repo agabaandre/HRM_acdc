@@ -36,7 +36,8 @@ class Performance extends MX_Controller
 			'unique_key'=> $unique_key,
 			'supervisor_id' => $data['supervisor_id'],
 			'supervisor2_id' => $data['supervisor2_id'],
-			'required_skills' => $data['required_skills'],
+			'training_contributions' => $data['training_contributions'],
+			'recommended_trainings' => $data['recommended_trainings'],
 			'staff_sign_off' => $data['staff_sign_off']
 		);
 		//dd($data);

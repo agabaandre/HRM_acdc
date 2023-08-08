@@ -126,11 +126,11 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                   </div>
                   <div class="mb-3">
                     <label for="training-contribution" class="form-label">How will the recommended training(s) contribute to the staff member’s development and the department’s work?</label>
-                    <textarea id="training-contribution" class="form-control" rows="3"></textarea>
+                    <textarea id="training-contribution" class="form-control" rows="3" name="training_contributions"></textarea>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Selection of courses in line with training needs. For Multiple Courses Separate using a Semi-colon (;)</label>
-                    <textarea id="training_courses" class="form-control" rows="3"></textarea>
+                    <textarea id="training_courses" class="form-control" rows="3" name="recommended_trainings"></textarea>
                   </div>
                 </section>
               </div>
