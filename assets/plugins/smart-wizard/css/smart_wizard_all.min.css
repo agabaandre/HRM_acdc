@@ -220,11 +220,11 @@
 }
 .sw-theme-arrows .toolbar>.btn {
 	color: #fff;
-	background-color: #17a2b8;
-	border: 1px solid #17a2b8;
+	background-color: #404751 !important;
+	border: 1px solid #404751 !important;
 	padding: .375rem .75rem;
-	border-radius: .25rem;
-	font-weight: 400
+	font-weight: 400;
+	border-radius:0px;
 }
 .sw-theme-arrows>.nav {
 	overflow: hidden;
