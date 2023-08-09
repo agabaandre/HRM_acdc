@@ -10,38 +10,41 @@ $contract = Modules::run('auth/contract_info', $staff_id);
 
         <div class="email-header d-xl-flex align-items-center">
             <div class="d-flex align-items-center text-muted">
-                <div class="email-toggle-btn"><i class="bx bx-menu"></i>
-                </div>
+                
+                    <div class="">
+                        <!-- <span class="alert-count">1</span> -->
+                        <a href="<?php echo base_url() ?>leave/request" type="button" class="btn btn-grey ms-2">Leave Request<i class=""></i>
+                        </a>
+                    </div>
+                    <div class="">
 
-                <div class="">
-                    <!-- <span class="alert-count">1</span> -->
-                    <a href="<?php echo base_url() ?>leave/request" type="button" class="btn btn-grey ms-2">Leave Request<i class="fa fa-plane-departure"></i>
-                    </a>
+                        <a href="<?php echo base_url() ?>leave/approve_leave" type="button" class="btn btn-grey ms-2">Approve Leave<i class="fa fa-ok"></i>
+                        </a>
+                    </div>
+                    <div class="">
+                        <a href="<?php echo base_url() ?>leave/status" type="button" class="btn btn-outline accordionbtn-grey ms-2">Leave Status<i class=""></i>
+                        </a>
+                    </div>
+                    <div class="">
+                        <a href="<?php echo base_url() ?>performance" type="button" class="btn btn-outline btn-grey ms-2">Submit Plan<i class=""></i>
+                        </a>
+                    </div>
+                    <div class="">
+                        <a href="<?php echo base_url() ?>performance" type="button" class="btn btn-outline btn-grey ms-2">My Plans<i class=""></i>
+                        </a>
+                    </div>
+                    <div class="">
+                        <a href="<?php echo base_url() ?>performance/approve" type="button" class="btn btn-outline btn-grey ms-2">Approvals<i class="fa fa-ok"></i>
+                        </a>
+                    </div>
                 </div>
-                <div class="">
-
-                    <a href="<?php echo base_url() ?>leave/approve_leave" type="button" class="btn btn-grey ms-2">Approve Leave<i class="fa fa-ok"></i>
-                    </a>
-                </div>
-                <div class="">
-                    <a href="<?php echo base_url() ?>leave/status" type="button" class="btn btn-outline accordionbtn-grey ms-2">Leave Status<i class="fa fa-circle-ok"></i>
-                    </a>
-                </div>
-                <div class="">
-                    <a href="<?php echo base_url() ?>performance" type="button" class="btn btn-outline btn-grey ms-2">My PPA<i class="fa fa-line-chart"></i>
-                    </a>
-                </div>
-                <div class="">
-                    <a href="<?php echo base_url() ?>performance/approve" type="button" class="btn btn-outline btn-grey ms-2">Approve Appraisal<i class="fa fa-ok"></i>
-                    </a>
-                </div>
-            </div>
-            <div class="flex-grow-1 mx-xl-2 my-2 my-xl-0">
+           
+            <!-- <div class="flex-grow-1 mx-xl-2 my-2 my-xl-0">
 
             </div>
             <div class="ms-auto d-flex align-items-center">
 
-            </div>
+            </div> -->
         </div>
         <div class="card box-widget widget-user">
             <div class="widget-user-header testbgpattern1"></div>

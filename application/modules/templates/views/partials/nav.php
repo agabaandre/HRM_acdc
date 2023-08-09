@@ -86,13 +86,18 @@
 							</a>
 							<ul class="dropdown-menu">
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance"><i class="bx bx-right-arrow-alt"></i>Performance Plan</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance"><i class="bx bx-right-arrow-alt"></i>Submit Plan</a>
 									</li>
 								<?php endif; ?>
-								<!-- <?php if (in_array('39', $permissions)) : ?>
-							<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/appraisal"><i class="bx bx-right-arrow-alt"></i>Performance Appraisal</a>
-							</li> -->
-							<?php endif; ?>
+								<?php if (in_array('38', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/plans"><i class="bx bx-right-arrow-alt"></i>My Plans</a>
+									</li>
+								<?php endif; ?>
+								<?php if (in_array('38', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/approvals"><i class="bx bx-right-arrow-alt"></i>Approvals</a>
+									</li>
+								<?php endif; ?>
+						
 							</ul>
 						</li>
 					<?php endif; ?>
