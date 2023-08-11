@@ -41,7 +41,6 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Staff ID</th>
                                 <th>SAP NO</th>
                                 <th>Name</th>
                                 <th>Position</th>
@@ -61,7 +60,6 @@
                             foreach ($leaves as $leave) : ?>
                                 <tr data-status="<?= $leave['overall_status']; ?>" <?php if ($leave['overall_status'] == 'Approved') { ?>style="background:#d2f0d7 !important" ;<?php } else if ($leave['overall_status'] == 'Rejected') { ?>style="background:#ffcdcd !important" ; <?php } ?>>
                                     <td><?= $i++; ?></td>
-                                    <td><?= $leave['staff_id']; ?></td>
                                     <td><?= $leave['SAPNO']; ?></td>
                                     <td><?= $leave['lname'] . ' ' . $leave['fname'] . ' ' . $leave['oname']; ?></td>
                                     <td></td>
