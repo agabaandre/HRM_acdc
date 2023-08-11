@@ -97,7 +97,6 @@ if ($end_date) {
             FROM staff_leave l
             JOIN staff s ON l.staff_id = s.staff_id 
             JOIN leave_types lt ON l.leave_id = lt.leave_id 
-            RIGHT JOIN user_groups u ON u.id = 20
             WHERE l.overall_status = 'Pending'
             $where
             AND (
@@ -105,7 +104,7 @@ if ($end_date) {
                 l.staff_id = $staff_id OR 
                 l.supporting_staff = $staff_id OR 
                 l.division_head = $staff_id OR 
-                u.id = 20
+                staff_id IN(SELECT staff_id from user where role=20)
             )  
             ORDER BY l.start_date DESC");
 
