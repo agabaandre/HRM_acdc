@@ -37,7 +37,9 @@ class Leave_mdl extends CI_Model
         } else {
             $data['overall_status'] = 'Rejected';
         }
-        $this->final_status($data,$request_id);
+        if ($role == 'hod') {
+            $this->final_status($data, $request_id);
+        }
         return $res;
     }
     public function final_status($data, $request_id){
@@ -93,7 +95,7 @@ $query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name
             JOIN staff s ON l.staff_id = s.staff_id 
             JOIN leave_types lt ON l.leave_id = lt.leave_id 
             WHERE l.overall_status = 'Pending' $where
-            AND (l.supervisor_id = $staff_id OR l.staff_id = $staff_id OR l.supporting_staff = $staff_id OR l.division_head = $staff_id) 
+            AND (l.supervisor_id = $staff_id OR l.staff_id = $staff_id OR l.supporting_staff = $staff_id OR l.division_head = $staff_id OR staff_id IN(select staff_id from user where role=20)) 
             ORDER BY l.start_date DESC");
 
 return $query->result_array();
