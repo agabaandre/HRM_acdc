@@ -73,8 +73,10 @@
 
 								<li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/status"><i class="bx bx-right-arrow-alt"></i>My Leave Status</a>
 								</li>
-								<li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/status/all"><i class="bx bx-right-arrow-alt"></i>Leave Status</a>
-								</li>
+								<?php if (in_array('77', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/status/all"><i class="bx bx-right-arrow-alt"></i>Leave Status</a>
+									</li>
+								<?php endif; ?>
 							</ul>
 						</li>
 					<?php endif; ?>
