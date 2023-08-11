@@ -103,7 +103,7 @@ return $query->result_array();
     public function staff_leave_status($status, $start_date, $end_date,$param)
     {
         // Fetch the leave data from the 'staff_leave' table based on the specified filters
-        $this->db->select('l.*,n.nationality, s.*');
+        $this->db->select('l.*,n.nationality, s.*, lt.*');
         $this->db->from('staff_leave l');
         $this->db->join('staff s', 'l.staff_id = s.staff_id');
         $this->db->join('leave_types lt', 'l.leave_id = lt.leave_id');
