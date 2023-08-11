@@ -97,7 +97,7 @@ if ($end_date) {
             FROM staff_leave l
             JOIN staff s ON l.staff_id = s.staff_id 
             JOIN leave_types lt ON l.leave_id = lt.leave_id 
-            LEFT JOIN user_groups u ON u.id = 20
+            RIGHT JOIN user_groups u ON u.id = 20
             WHERE l.overall_status = 'Pending'
             $where
             AND (
