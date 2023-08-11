@@ -10,7 +10,7 @@
                     <a class="btn btn-primary px-5 radius-30" href="<?php echo base_url() ?>leave/request"><i class="fa fa-plus"></i>Leave Application</a>
 
 
-                    <form id="leave-filter-form" method="get" action="<?= base_url('leave/status'); ?>">
+                    <form id="leave-filter-form" method="get" action="<?= base_url('leave/status/all'); ?>">
                         <div class="row mb-3">
 
                             <div class="col-md-3">
@@ -41,12 +41,17 @@
                         <thead>
                             <tr>
                                 <th>Staff ID</th>
+                                <th>SAP NO</th>
+                                <th>Name</th>
+                                <th>Position</th>
+                                <th>Nationality</th>
+                                <th>Duty Station</th>
                                 <th>Leave Start Date</th>
                                 <th>Requested Days</th>
                                 <th>Leave Type</th>
-                                <th>Level Status</th>
-                                <th>Overall Status</th>
-                                <th>Action</th>
+                                <th>Approval Status</th>
+                                <th>Overall Approval</th>
+
                             </tr>
                         </thead>
                         <tbody>
@@ -54,7 +59,12 @@
                             $i = 1;
                             foreach ($leaves as $leave) : ?>
                                 <tr data-status="<?= $leave['overall_status']; ?>" <?php if ($leave['overall_status'] == 'Approved') { ?>style="background:#d2f0d7 !important" ;<?php } else if ($leave['overall_status'] == 'Rejected') { ?>style="background:#ffcdcd !important" ; <?php } ?>>
-                                    <td><?= $leave['staff_id']++; ?></td>
+                                    <td><?= $leave['staff_id']; ?></td>
+                                    <td><?= $leave['SAPNO']; ?></td>
+                                    <td><?= $leave['lname'] . '' . $leave['fname']; ?></td>
+                                    <td></td>
+                                    <td><?= $leave['nationality']; ?></td>
+                                    <td></td>
                                     <td><?= $leave['start_date']; ?></td>
                                     <td><?= date_difference($leave['end_date'], $leave['start_date']); ?></td>
                                     <td><?= $leave['leave_name']; ?></td>
