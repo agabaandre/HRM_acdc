@@ -65,26 +65,38 @@ class Leave_mdl extends CI_Model
     public function get_approval_leaves($status, $start_date, $end_date)
     {
         // Fetch the leave data from the 'staff_leave' table based on the specified filters
-        $staff_id = $this->session->userdata('user')->staff_id;
-        $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name FROM staff_leave l JOIN staff s ON l.staff_id = s.staff_id JOIN
-       leave_types lt ON l.leave_id = lt.leave_id WHERE l.overall_status= 'Pending' AND ((l.supervisor_id'=$staff_id) OR (l.staff_id=$staff_id) OR (l.supporting_staff=$staff_id) OR (l.division_head=$staff_id))");
-    
 
+$staff_id = $this->session->userdata('user')->staff_id;
 
-        if ($status) {
-            $this->db->where('l.approval_status', $status);
-        }
+$status = isset($status) ? $status : '';
+$start_date = isset($start_date) ? $start_date : '';
+$end_date = isset($end_date) ? $end_date : '';
 
-        if ($start_date) {
-            $this->db->where('l.start_date >=', date('Y-m-d', strtotime($start_date)));
-        }
+$where = "";
 
-        if ($end_date) {
-            $this->db->where('l.end_date <=', date('Y-m-d',strtotime($end_date)));
-        }
-        $this->db->order_by('l.start_date','DESC');
+if ($status) {
+    $where .= "AND l.approval_status = '$status'";
+}
 
-        return $this->db->get()->result_array();
+if ($start_date) {
+    $sdate = date('Y-m-d', strtotime($start_date));
+    $where .= " AND l.start_date >= '$sdate'";
+}
+
+if ($end_date) {
+    $e_date = date('Y-m-d', strtotime($end_date));
+    $where .= " AND l.end_date <= '$e_date'";
+}
+
+$query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name 
+            FROM staff_leave l 
+            JOIN staff s ON l.staff_id = s.staff_id 
+            JOIN leave_types lt ON l.leave_id = lt.leave_id 
+            WHERE l.overall_status = 'Pending' $where
+            AND (l.supervisor_id = $staff_id OR l.staff_id = $staff_id OR l.supporting_staff = $staff_id OR l.division_head = $staff_id) 
+            ORDER BY l.start_date DESC");
+
+return $query->result();
     }
     public function staff_leave_status($status, $start_date, $end_date)
     {
