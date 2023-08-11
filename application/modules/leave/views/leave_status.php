@@ -7,6 +7,9 @@
             <!-- Leave application status table -->
             <div class="row">
                 <div class="col-md-12">
+                    <a class="btn btn-primary px-5 radius-30" href="<?php echo base_url() ?>leave/request"><i class="fa fa-plus"></i>Leave Application</a>
+
+
                     <form id="leave-filter-form" method="get" action="<?= base_url('leave/status'); ?>">
                         <div class="row mb-3">
 
@@ -50,7 +53,7 @@
                             <?php
                             $i = 1;
                             foreach ($leaves as $leave) : ?>
-                                <tr data-status="<?= $leave['overall_status']; ?>" <?php if ($leave['overall_status'] == 'Approved') { ?>style="background:#d2f0d7 !important" ;<?php } else if($leave['overall_status'] == 'Rejected') { ?>style="background:#ffcdcd !important" ; <?php } ?>>
+                                <tr data-status="<?= $leave['overall_status']; ?>" <?php if ($leave['overall_status'] == 'Approved') { ?>style="background:#d2f0d7 !important" ;<?php } else if ($leave['overall_status'] == 'Rejected') { ?>style="background:#ffcdcd !important" ; <?php } ?>>
                                     <td><?= $i++; ?></td>
                                     <td><?= $leave['start_date']; ?></td>
                                     <td><?= date_difference($leave['end_date'], $leave['start_date']); ?></td>
@@ -59,7 +62,7 @@
 
                                     <td><?= $leave['overall_status']; ?></td>
                                     <td>
-                                        <?php if (($leave['approval_status'] == 'Rejected') OR ($leave['approval_status1'] == 'Rejected') OR ($leave['approval_status2'] == 'Rejected') OR ($leave['approval_status3'] == 'Rejected') )  : ?>
+                                        <?php if (($leave['approval_status'] == 'Rejected') or ($leave['approval_status1'] == 'Rejected') or ($leave['approval_status2'] == 'Rejected') or ($leave['approval_status3'] == 'Rejected')) : ?>
                                             <button class="reapply-btn btn btn-primary" data-leave-id="<?= $leave['leave_id']; ?>">Re-apply</button>
                                         <?php endif; ?>
                                     </td>
