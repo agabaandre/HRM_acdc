@@ -65,16 +65,11 @@ class Leave_mdl extends CI_Model
     public function get_approval_leaves($status, $start_date, $end_date)
     {
         // Fetch the leave data from the 'staff_leave' table based on the specified filters
-        $this->db->select('l.*, s.fname, s.lname, lt.leave_name');
-        $this->db->from('staff_leave l');
-        $this->db->join('staff s', 'l.staff_id = s.staff_id');
-        $this->db->join('leave_types lt', 'l.leave_id = lt.leave_id');
-        $this->db->where('l.overall_status=', 'Pending');
-        $this->db->or_where('l.supervisor_id', $this->session->userdata('user')->staff_id);
-        $this->db->or_where('l.staff_id', $this->session->userdata('user')->staff_id);
-        $this->db->or_where('l.supporting_staff', $this->session->userdata('user')->staff_id);
-        $this->db->or_where('l.division_head', $this->session->userdata('user')->staff_id);
-        
+        $staff_id = $this->session->userdata('user')->staff_id;
+        $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name FROM staff_leave l JOIN staff s ON l.staff_id = s.staff_id JOIN
+       leave_types lt ON l.leave_id = lt.leave_id WHERE l.overall_status= 'Pending' AND ((l.supervisor_id'=$staff_id) OR (l.staff_id=$staff_id) OR (l.supporting_staff=$staff_id) OR (l.division_head=$staff_id))");
+    
+
 
         if ($status) {
             $this->db->where('l.approval_status', $status);
@@ -87,6 +82,7 @@ class Leave_mdl extends CI_Model
         if ($end_date) {
             $this->db->where('l.end_date <=', date('Y-m-d',strtotime($end_date)));
         }
+        $this->db->order_by('l.start_date','DESC');
 
         return $this->db->get()->result_array();
     }

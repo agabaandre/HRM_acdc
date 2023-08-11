@@ -191,21 +191,14 @@ public function curlgetHttp($endpoint, $headers, $username, $password) {
 		$headr[] = 'Content-length: 0';
 		$headr[] = 'Content-type: application/json';
 
-		do {
 			// Fetch data from the current URL
 			$data = $this->curlgetHttp($url,$headr,'moh-ict.aagaba','Agaba@432');
-			dd($data);
+			 
+		   dd($data);
+
 			// Add the organization units data to the main array
-			$allData = array_merge($allData, $data->organisationUnits);
-			//dd($allData);
-			// Check if there's a next page and update the URL
-			if (isset($data['pager']['nextPage'])) {
-				$url = $data['pager']['nextPage'];
-			} else {
-				// If there's no next page, break the loop
-				break;
-			}
-		} while (true);
+			
+	
 
 		// CSV file name
 		$csvFile = 'organisation_units.csv';
@@ -219,9 +212,9 @@ public function curlgetHttp($endpoint, $headers, $username, $password) {
 		// Loop through the organization units data and write each row to the CSV file
 		$rows = array();
 		foreach ($allData as $organisationUnit) {
-			$id = $organisationUnit['id'];
-			$name = $organisationUnit['name'];
-			$parentId = $organisationUnit['parent']['id'];
+			$id = $organisationUnit->id;
+			$name = $organisationUnit->name;
+			$parentId = $organisationUnit->parent->id;
 			
 
 			// Write the row to the CSV file
