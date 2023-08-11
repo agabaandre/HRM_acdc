@@ -96,7 +96,7 @@ $query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name
             AND (l.supervisor_id = $staff_id OR l.staff_id = $staff_id OR l.supporting_staff = $staff_id OR l.division_head = $staff_id) 
             ORDER BY l.start_date DESC");
 
-return $query->result();
+return $query->result_array();
     }
     public function staff_leave_status($status, $start_date, $end_date)
     {
