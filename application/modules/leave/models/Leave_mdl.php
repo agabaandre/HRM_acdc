@@ -93,12 +93,20 @@ if ($end_date) {
 }
 
 
-$query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name 
-            FROM staff_leave l,user_groups u 
+        $query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name 
+            FROM staff_leave l
             JOIN staff s ON l.staff_id = s.staff_id 
             JOIN leave_types lt ON l.leave_id = lt.leave_id 
-            WHERE l.overall_status = 'Pending' $where
-            AND ((l.supervisor_id = $staff_id OR l.staff_id = $staff_id OR l.supporting_staff = $staff_id OR l.division_head = $staff_id) OR (u.id = 20)) )  
+            LEFT JOIN user_groups u ON u.id = 20
+            WHERE l.overall_status = 'Pending'
+            $where
+            AND (
+                l.supervisor_id = $staff_id OR 
+                l.staff_id = $staff_id OR 
+                l.supporting_staff = $staff_id OR 
+                l.division_head = $staff_id OR 
+                u.id = 20
+            )  
             ORDER BY l.start_date DESC");
 
 return $query->result_array();
