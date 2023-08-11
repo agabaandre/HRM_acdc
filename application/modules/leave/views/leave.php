@@ -1,3 +1,4 @@
+
 <div class="card">
 
   <div class="card-body">
@@ -7,6 +8,7 @@
       <div class="col-md-12">
       </div>
       <div class="col-md-6">
+<?php //print_r($this->session->userdata('user')); ?>
 
         <div class="form-group">
           <label for="staff_id" class="form-label">Staff Name</label>
