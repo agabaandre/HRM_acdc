@@ -68,9 +68,7 @@ class Leave_mdl extends CI_Model
 
 $staff_id = $this->session->userdata('user')->staff_id;
 $role = $this->session->userdata('user')->role;
-if($role = 20){
 
-}
 
 $status = isset($status) ? $status : '';
 $start_date = isset($start_date) ? $start_date : '';
@@ -93,19 +91,12 @@ if ($end_date) {
 }
 
 
-        $query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name 
-            FROM staff_leave l
+$query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name 
+            FROM staff_leave l 
             JOIN staff s ON l.staff_id = s.staff_id 
             JOIN leave_types lt ON l.leave_id = lt.leave_id 
-            WHERE l.overall_status = 'Pending'
-            $where
-            AND (
-                l.supervisor_id = $staff_id OR 
-                l.staff_id = $staff_id OR 
-                l.supporting_staff = $staff_id OR 
-                l.division_head = $staff_id OR 
-                staff_id IN(SELECT staff_id from user where role=20)
-            )  
+            WHERE l.overall_status = 'Pending' $where
+            AND (l.supervisor_id = $staff_id OR l.staff_id = $staff_id OR l.supporting_staff = $staff_id OR l.division_head = $staff_id) 
             ORDER BY l.start_date DESC");
 
 return $query->result_array();
