@@ -49,7 +49,6 @@
             <th>Requested Days</th>
             <th>Leave Balance (Days)</th>
             <th>Remarks</th>
-            <th>Supporting File</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -74,8 +73,6 @@
                                               '<span class="text-danger">' . $balance . '</span>';
                                             } ?></td>
               <td><?php echo $leave['remarks']; ?></td>
-
-              <td><?php if (!empty($leave['supporting_documentation']) && ($this->session->userdata('user')->role == 20)) : ?><a href='<?php echo base_url() ?>/staff/leave/<?php echo $leave['supporting_documentation']; ?>'>Request Support File</a><?php endif; ?></td>
 
               <td style="font-weight:bold;">
                 <!-- <approval level0 -->
