@@ -108,7 +108,6 @@ if ($end_date) {
                 u.id = 20
             )  
             ORDER BY l.start_date DESC");
-        dd($query);
 
 return $query->result_array();
     }
