@@ -67,8 +67,6 @@ class Leave_mdl extends CI_Model
         // Fetch the leave data from the 'staff_leave' table based on the specified filters
 
 $staff_id = $this->session->userdata('user')->staff_id;
-$role = $this->session->userdata('user')->role;
-
 
 $status = isset($status) ? $status : '';
 $start_date = isset($start_date) ? $start_date : '';
@@ -89,7 +87,6 @@ if ($end_date) {
     $e_date = date('Y-m-d', strtotime($end_date));
     $where .= " AND l.end_date <= '$e_date'";
 }
-
 
 $query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name 
             FROM staff_leave l 
