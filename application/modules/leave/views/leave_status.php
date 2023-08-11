@@ -40,6 +40,7 @@
                     <table id="leave-table" class="table table-striped">
                         <thead>
                             <tr>
+                                <th>#</th>
                                 <th>Staff ID</th>
                                 <th>Leave Start Date</th>
                                 <th>Requested Days</th>
@@ -54,6 +55,7 @@
                             $i = 1;
                             foreach ($leaves as $leave) : ?>
                                 <tr data-status="<?= $leave['overall_status']; ?>" <?php if ($leave['overall_status'] == 'Approved') { ?>style="background:#d2f0d7 !important" ;<?php } else if ($leave['overall_status'] == 'Rejected') { ?>style="background:#ffcdcd !important" ; <?php } ?>>
+                                    <td><?= $i++; ?></td>
                                     <td><?= $leave['staff_id']++; ?></td>
                                     <td><?= $leave['start_date']; ?></td>
                                     <td><?= date_difference($leave['end_date'], $leave['start_date']); ?></td>
