@@ -100,14 +100,18 @@ $query = $this->db->query("SELECT l.*, s.fname, s.lname, lt.leave_name
 
 return $query->result_array();
     }
-    public function staff_leave_status($status, $start_date, $end_date)
+    public function staff_leave_status($status, $start_date, $end_date,$param)
     {
         // Fetch the leave data from the 'staff_leave' table based on the specified filters
-        $this->db->select('l.*, s.fname, s.lname, lt.leave_name');
+        $this->db->select('l.*,n.nationality, s.fname, s.lname, lt.leave_name');
         $this->db->from('staff_leave l');
         $this->db->join('staff s', 'l.staff_id = s.staff_id');
         $this->db->join('leave_types lt', 'l.leave_id = lt.leave_id');
-        $this->db->where('s.staff_id',$this->session->userdata('user')->staff_id);
+        $this->db->join('nationalities n', 's.nationality_id = n.nationality_id');
+        
+        if ($param != 'all') {
+            $this->db->where('s.staff_id', $this->session->userdata('user')->staff_id);
+        }
 
         if ($status) {
             $this->db->where('l.overall_status', $status);

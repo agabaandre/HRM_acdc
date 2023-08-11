@@ -73,6 +73,8 @@
 
 								<li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/status"><i class="bx bx-right-arrow-alt"></i>My Leave Status</a>
 								</li>
+								<li> <a class="dropdown-item" href="<?php echo base_url() ?>leave/status/all"><i class="bx bx-right-arrow-alt"></i>Leave Status</a>
+								</li>
 							</ul>
 						</li>
 					<?php endif; ?>
@@ -97,7 +99,7 @@
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/approvals"><i class="bx bx-right-arrow-alt"></i>Approvals</a>
 									</li>
 								<?php endif; ?>
-						
+
 							</ul>
 						</li>
 					<?php endif; ?>

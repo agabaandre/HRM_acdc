@@ -228,18 +228,24 @@ public function curlgetHttp($endpoint, $headers, $username, $password) {
 
 		echo "Data has been saved to $csvFile";
 	}
-	public function status()
+	public function status($param=FALSE)
 	{
 		$data['module'] = $this->module;
-		$data['title'] = "My Leave Status";
+		$data['title'] = "Leave Status";
 		// Get the filter values from the query parameters
 		$data['module'] = $this->module;
-		$data['title'] = "My Leave Status";
+		$data['title'] = "Leave Status";
 		$status = $this->input->get('status');
 		$start_date = $this->input->get('start_date');
 		$end_date = $this->input->get('end_date');
+		if($param=='all'){
+			$view = 'staff_leave';
+		}
+		else{
+			$view = 'leave_status';
+		}
 		// Get the leave data with filters and ordering
-		$data['leaves'] = $this->leave_mdl->staff_leave_status($status, $start_date, $end_date);
-		render('leave_status', $data);
+		$data['leaves'] = $this->leave_mdl->staff_leave_status($status, $start_date, $end_date,$param);
+		render($view, $data);
 	}
 }
