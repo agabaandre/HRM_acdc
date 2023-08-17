@@ -58,7 +58,8 @@ class Performance extends MX_Controller
 				'ppa_id'=>$last_id,
 				'unique_key'=> $unique_key,
 				'objective'=> $objective,
-				'timeline'=>$data['timeline'][$i][0],
+				'timeline_start'=>$data['timeline_start'][$i][0],
+				'timeline_end' => $data['timeline_end'][$i][0],
 				'weight'=> $data['weight'][$i][0],
 				'staff_id'=> $staff_id
 				
