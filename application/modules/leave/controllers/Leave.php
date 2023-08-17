@@ -183,50 +183,75 @@ public function curlgetHttp($endpoint, $headers, $username, $password) {
 		$baseUrl = 'https://hmis.health.go.ug/api/organisationUnits';
 
 		// Initial URL to fetch the first page
-		$url = $baseUrl . '?fields=id,name,parent[id,name,parent[id,name]]&level=2';
+		$url = $baseUrl . '?fields=id,name,geometry,parent[id,name,parent[id,name,parent[id,name]]]&level=5&paging=false';
 
+		// Initialize the data array
+		$allData = array();
+		// $headr[] = 'Content-length: 0';
+		// $headr[] = 'Content-type: application/json';
+
+			// Fetch data from the current URL
+		$data = $this->curlgetHttp($url,$headr=[],'moh-ict.aagaba','Agaba@432');
+
+		$csvFile = 'organisation_units.csv';
+		$organisationUnits = $data->organisationUnits;
+		foreach ($organisationUnits as $organisationUnit):
+			$csv['facility_id'] = $organisationUnit->id;
+		    $csv['facility'] = $organisationUnit->name;
+		    $csv['latitude'] = $organisationUnit->geometry->coordinates[1];
+		    $csv['longitude'] = $organisationUnit->geometry->coordinates[0];
+		    $csv['subcounty_id'] = $organisationUnit->parent->id;
+		    $csv['subcounty'] = $organisationUnit->parent->name;
+		    $csv['district_id'] = $organisationUnit->parent->parent->id;
+	     	$csv['district_name'] = $organisationUnit->parent->parent->name;
+			$csv['region_id'] = $organisationUnit->parent->parent->parent->id;
+			$csv['region_name'] = $organisationUnit->parent->parent->parent->name;
+			array_push($allData, $csv);
+		endforeach;
+		render_csv_data($allData, $csvFile);
+	}
+
+	public function dhis_orgunits()
+	{
+
+		ignore_user_abort(true);
+		ini_set('max_execution_time', 0);
 		// Initialize the data array
 		$allData = array();
 		$headr = array();
 		$headr[] = 'Content-length: 0';
 		$headr[] = 'Content-type: application/json';
 
-			// Fetch data from the current URL
-			$data = $this->curlgetHttp($url,$headr,'moh-ict.aagaba','Agaba@432');
-			 
-		   dd($data);
+		// Base URL for the API endpoint
+		$baseUrl = 'https://hmis.health.go.ug/api/organisationUnits';
 
-			// Add the organization units data to the main array
-			
-	
+		// Initial URL to fetch the first page
+		$url = $baseUrl . '?fields=id,name,parent[id,name,parent[id,name]]&level=2';
 
-		// CSV file name
-		$csvFile = 'organisation_units.csv';
+		// Fetch data from the current URL
+		$data = $this->curlgetHttp($url, $headr, 'moh-ict.aagaba', 'Agaba@432');
+		
+		//dd($data);
+		$pages = 0;
+		//dd($resp);
 
-		// Open the CSV file for writing
-		$fileHandle = fopen($csvFile, 'w');
+		// for ($currentPage = 1; $currentPage <= $pages; $currentPage++) {
+		// 	$response = $this->curlgetHttp($currentPage);
+		// 	foreach ($response->data as $mydata) {
 
-		// Write the CSV header
-		fputcsv($fileHandle, ['ID', 'Name', 'Parent ID', 'Parent Name', 'Grandparent ID', 'Grandparent Name']);
+		// 		$data = array(
 
-		// Loop through the organization units data and write each row to the CSV file
-		$rows = array();
-		foreach ($allData as $organisationUnit) {
-			$id = $organisationUnit->id;
-			$name = $organisationUnit->name;
-			$parentId = $organisationUnit->parent->id;
-			
+		// 			"emp_code" => $mydata->emp_code,
+		// 			"biotime_emp_id" => $mydata->id,
+		// 			"biotime_facility_id" => $mydata->area[0]->id,
+		// 			"biotime_fac_id" => $mydata->area[0]->area_code
+		// 		);
+		// 		$message = $this->db->replace('biotime_enrollment', $data);
+		// 		// array_push($rows, $data);
+		// 	}
+		// }
+		// dd($data);
 
-			// Write the row to the CSV file
-			fputcsv($fileHandle, [$id, $name, $parentId,]);
-		}
-		//array_push($rows, $organisationUnit);
-		//dd($rows);
-
-		// Close the CSV file
-		fclose($fileHandle);
-
-		echo "Data has been saved to $csvFile";
 	}
 	public function status($param=FALSE)
 	{

@@ -352,10 +352,18 @@
                 </tbody>
               </table>
       </div>
-      <div class="mb-3">
-         <label for="timeline${objectiveCounter}" class="form-label">Time Line</label>
-        <input type="date" id="timeline${objectiveCounter}" name="timeline[${objectiveCounter}][]" class="form-control" min="<?= date('Y-m-d'); ?>" style="width:200px !important; border:solid 0px #000;" required>
-      </div>
+      <div class="col-md-12 mb-4 row">
+	    <div class="col-md-4">
+         <label for="timeline_start${objectiveCounter}" class="form-label">Time Line(Start)</label>
+        <input type="date" id="timeline_start${objectiveCounter}" name="timeline_start[${objectiveCounter}][]" class="form-control" min="<?= date('Y-m-d'); ?>" style="width:200px !important;" required>
+		</div>
+		<div class="col-md-4">
+         <label for="timeline_end${objectiveCounter}" class="form-label">Time Line(End)</label>
+        <input type="date" id="timeline_end${objectiveCounter}" name="timeline_end[${objectiveCounter}][]" class="form-control" min="<?= date('Y-m-d'); ?>" style="width:200px !important;"  required>
+        </div>
+		<div class="col-md-4">
+		</div>
+	 </div>
       <div class="mb-3">
               <table class="table table-striped mt-4" id="kpiTable">
                 <thead>
@@ -386,7 +394,7 @@
 			$('.new-objectives').append(objectiveDiv);
 			objectiveCounter++;
 		} else {
-			show_notification('Maximum Number of Allowed objecives is 5','error');
+			show_notification('Maximum Number of Allowed objecives is 5', 'error');
 		}
 	}
 
