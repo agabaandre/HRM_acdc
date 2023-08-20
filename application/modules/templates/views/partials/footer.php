@@ -353,13 +353,15 @@
               </table>
       </div>
       <div class="col-md-12 mb-4 row">
+	  <label for="timeline_start${objectiveCounter}" class="form-label">Time Line</label>
 	    <div class="col-md-4">
-         <label for="timeline_start${objectiveCounter}" class="form-label">Time Line(Start)</label>
-        <input type="date" id="timeline_start${objectiveCounter}" name="timeline_start[${objectiveCounter}][]" class="form-control" min="<?= date('Y-m-d'); ?>" style="width:200px !important;" required>
+		         
+         <label for="timeline_start${objectiveCounter}" class="form-label">Start Date</label>
+        <input type="date" id="timeline_start${objectiveCounter}" name="timeline_start[${objectiveCounter}][]" class="form-control" max="<?= date('Y') . '-12-31'; ?>" min="<?= date('Y') . '-01-01'; ?>" style="width:200px !important;" required>
 		</div>
 		<div class="col-md-4">
-         <label for="timeline_end${objectiveCounter}" class="form-label">Time Line(End)</label>
-        <input type="date" id="timeline_end${objectiveCounter}" name="timeline_end[${objectiveCounter}][]" class="form-control" min="<?= date('Y-m-d'); ?>" style="width:200px !important;"  required>
+         <label for="timeline_end${objectiveCounter}" class="form-label">End Date</label>
+        <input type="date" id="timeline_end${objectiveCounter}" name="timeline_end[${objectiveCounter}][]" class="form-control" max="<?= date('Y') . '-12-31'; ?>" min="<?= date('Y') . '-01-01'; ?>" style="width:200px !important;"  required>
         </div>
 		<div class="col-md-4">
 		</div>
