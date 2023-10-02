@@ -19,4 +19,11 @@ class Settings extends MX_Controller
 		$data['title'] = "Settings";
 		render('settings', $data);
 	}
+
+	public function duty_stations()
+	{
+		$data['module'] = $this->module;
+		$data['title'] = "Settings";
+		render('settings', $data);
+	}
 }
