@@ -43,42 +43,14 @@ class Performance extends MX_Controller
 			'kpis' => json_encode($data['kpiName']),
 			'skill_areas'=>json_encode($data['required_skills']),
 			'staff_sign_off' => $this->session->userdata('user')->signature,
-			'staff_sign_off_date'=>date('Y-m-d H:i:s')
+			'staff_sign_off_date'=>date('Y-m-d H:i:s'),
+			'timeline_start' =>json_encode($data['timeline_start']),
+			'timeline_end' => json_encode($data['timeline_end']),
+			'weight' => json_encode($data['weight'])
+
 
 		);
-		//dd($primary);
-		
 		 $this->db->insert('ppa_primary', $primary);
-		//  $last_id =$this->db->insert_id();
-		// $last_id = 2;
-		// if ($last_id > 0):
-
-		// 	//save skills
-		// $this->save_skills($last_id, $unique_key,$staff_id,$data);
-		// for ($i=0; $i < count($data['objective']) ; $i++):
-		// 	$objectives = $data['objective'][$i];
-
-		// 	foreach ($objectives as $objective):
-		// 		//objective
-		// 	$obj = array(
-		// 		'ppa_id'=>$last_id,
-		// 		'unique_key'=> $unique_key,
-		// 		'objective'=> $objective,
-		// 		'timeline_start'=>$data['timeline_start'][$i][0],
-		// 		'timeline_end' => $data['timeline_end'][$i][0],
-		// 		'weight'=> $data['weight'][$i][0],
-		// 		'staff_id'=> $staff_id
-				
-		// 	);
-					
-		// 		$this->db->insert('ppa_objective', $obj);
-		// 		$objective_id = $this->db->insert_id();
-		// 		//objectve activities
-		// 			$res1 = $this->save_obj_activities($objective_id, $unique_key, $i, $data, $last_id, $staff_id);
-		// 			$res2 = $this->save_obj_kpi($objective_id, $unique_key, $i, $data, $last_id,$staff_id);
-		// endforeach;
-		// endfor;
-		// endif;
 
 		if($this->db->affected_rows()>0) {
 			$msg = array(
@@ -97,52 +69,6 @@ class Performance extends MX_Controller
 	
 
 		
-	}
-	function save_obj_activities($objective_id, $unique_key, $i, $data,$last_id,$staff_id){
-
-	  $activities = $data['activityName'][$i];
-
-		foreach ($activities as $activity):
-
-			$act = array(
-				'ppa_id' => $last_id,
-				'unique_key' => $unique_key,
-				'objective_id' => $objective_id,
-				'activity_name' => $activity,
-				'staff_id' => $staff_id
-			);
-			$this->db->insert('ppa_activities',$act);
-		endforeach;
-	}
-	function save_obj_kpi($objective_id, $unique_key, $i, $data, $last_id,$staff_id)
-	{
-
-		$kpis = $data['kpiName'][$i];
-
-		foreach ($kpis as $kpi) :
-
-			$kdata = array(
-				'ppa_id' => $last_id,
-				'unique_key' => $unique_key,
-				'objective_id' => $objective_id,
-				'kpi_name' => $kpi,
-				'staff_id' => $staff_id
-			);
-			$this->db->insert('ppa_kpis', $kdata);
-		endforeach;
-	}
-	function save_skills($last_id, $unique_key, $staff_id, $data){
-        $skills = $data['required_skills'];
-		foreach ($skills as $skill):
-			$ins = array(
-				'ppa_id' => $last_id,
-				'unique_key' => $unique_key,
-				'staff_id' => $staff_id,
-				'skill_id' => $skill
-			);
-			$this->db->insert('ppa_required_skills',$ins);
-		endforeach;
-
 	}
 	
 
