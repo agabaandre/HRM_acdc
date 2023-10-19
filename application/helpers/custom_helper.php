@@ -130,7 +130,7 @@ if (!function_exists('truncate')) {
 }
 
 if (!function_exists('paginate')) {
-    function paginate($route, $totals, $perPage = 20, $segment = 3)
+    function pagination($route, $totals, $perPage = 20, $segment = 3)
     {
         $ci = &get_instance();
         $config = array();
@@ -633,6 +633,32 @@ if (!function_exists('acdc_division')) {
     
     }
 }
+
+// if (!function_exists('filters')) {
+
+// 	function filters($division)
+// 	{
+// 		//select and dropdown are the form supported filters
+// 		$ci = &get_instance($filters=[],$cols);
+// 		$columns="col-md-".$cols;
+// 		foreach($filters as $key=>$value) {
+// 			echo "div class='$columns'";
+// 			if($value=='select'){
+// 				echo "<select class='form-control' name='$key' select2>";
+// 				echo "</select>";
+// 			}
+// 			else if($value){
+// 				echo '';
+// 			}
+			
+      
+// 			echo"<div>;
+// 		}
+		
+// 	}
+//   }
+// }
+
 
 
 if (!function_exists('periods')) {

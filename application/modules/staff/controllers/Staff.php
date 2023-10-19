@@ -15,14 +15,82 @@ class Staff extends MX_Controller
 
 	public function index()
 	{
+
 		$data['module'] = $this->module;
 		$data['title'] = "Staff";
-		$data['staff'] = $this->staff_mdl->get_all();
-		
-
-		//dd($data['staff']);
-		render('staff', $data);
+		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
+		$filters = $this->input->post();
+		$data['staffs'] = $this->staff_mdl->get_staff_data($per_page = 20, $page, $filters);
+		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
+		render('staff_ajax', $data);
 	}
+	// }
+	// public function get_staff_data_ajax()
+	// {
+	// 	$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
+	// 	$filters = $this->input->post();
+	// 	$data['staffs'] = $this->staff_mdl->get_staff_data($per_page = 20, $page, $filters);
+	// 	$data['links'] = pagination('staff/index', count($data['staffs']), 3);
+	// 	$html_content = $this->load->view('staff_ajax', $data, true);
+	// 	$this->output
+	// 		->set_content_type('application/json')
+	// 		->set_output(json_encode(['html' => $html_content]));
+
+		
+	// }
+	// Getting All Contracts
+	public function staff_contracts($staff_id)
+	{
+		$data['module'] = $this->module;
+		$filters = array('staff_id' => $staff_id);
+		$data['this_staff'] = $this->staff_mdl->get_staff_data($start=1, $limit=0, $filters);
+		$data['contracts'] = $this->staff_mdl->get_staff_contracts($staff_id);
+		$data['title'] = $data['this_staff']['lname']." ".$data['this_staff']['fname']." | SAPNO: ".$data['this_staff']['SAPNO'];
+		render('staff_contracts', $data);
+	}
+	// Getting latest Contract
+	public function latest_staff_contract($staff_id)
+	{
+		$data = $this->staff_mdl->get_latest_contracts($staff_id);
+		//dd($data);
+		return $data;
+	}
+
+	// New Contract
+	public function new_contract($staff_id){
+		$data['module'] = $this->module;
+		$data['title'] = "New Contract";
+		$data['staff_id'] = $staff_id;
+		$data['staffs'] = $this->staff_mdl->get_all();
+		
+		render('new_contract', $data);
+	}
+
+	// Add New Contract
+	public function add_new_contract(){
+		$data['module'] = $this->module;
+		$staff_id = $this->input->post('staff_id');
+		$this->staff_mdl->add_new_contract('staff_contracts');
+		redirect('staff/staff_contracts/'.$staff_id);
+	}
+
+	// Renew Contract
+	public function renew_contract($staff_contract_id, $staff_id){
+		$data['module'] = $this->module;
+		$renew = 1;
+		$data['renewed_contract'] = $this->staff_mdl->renew_contract('staff_contracts', $staff_contract_id, $renew);
+		redirect('staff/staff_contracts/'.$staff_id);
+	}
+
+	// End Contract
+	public function end_contract($staff_contract_id, $staff_id){
+		$data['module'] = $this->module;
+		$end = 3;
+		$data['ended_contract'] = $this->staff_mdl->end_contract('staff_contracts', $staff_contract_id, $end);
+		redirect('staff/staff_contracts/'.$staff_id);
+	}
+	
+
 	public function contract_status($status){
 		$data['module'] = $this->module;
 		if ($status == 2) {

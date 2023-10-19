@@ -22,7 +22,8 @@
 		"symfony/var-dumper": "^5.4",
 		"illuminate/pagination": "^8.83",
 		"shufo/laravel-opensearch": "^0.1.4",
-		"thybag/php-sharepoint-lists-api": "dev-master"
+		"thybag/php-sharepoint-lists-api": "dev-master",
+		"phpmailer/phpmailer": "^6.8"
 	},
 	"suggest": {
 		"paragonie/random_compat": "Provides better randomness in PHP 5.x"

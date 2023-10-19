@@ -1,7 +1,5 @@
-		<!--navigation-->
-
-		?>
-
+	
+         
 		<div class="nav-container primary-menu">
 			<div class="mobile-topbar-header">
 				<div>
@@ -94,7 +92,7 @@
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/plans"><i class="bx bx-right-arrow-alt"></i>My Plans</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/myplans"><i class="bx bx-right-arrow-alt"></i>My Plans</a>
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>
