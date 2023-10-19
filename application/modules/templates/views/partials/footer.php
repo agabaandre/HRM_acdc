@@ -159,7 +159,32 @@
 			"ordering": true,
 			"info": true,
 			"autoWidth": true,
-			"responsive": true,
+			// "responsive": true,
+			lengthMenu: [
+				[25, 50, 100, 150, -1],
+				['25', '50', '100', '150', '200', 'Show all']
+			],
+			buttons: [
+				'copyHtml5',
+				'excelHtml5',
+				'csvHtml5',
+				'pdfHtml5',
+				'pageLength',
+			]
+		});
+	});
+</script>
+<script>
+	$(document).ready(function() {
+		$('.mydata').DataTable({
+			dom: 'Bfrtip',
+			"paging": true,
+			"lengthChange": true,
+			"searching": true,
+			"ordering": true,
+			"info": true,
+			"autoWidth": true,
+			"responsive": false,
 			lengthMenu: [
 				[25, 50, 100, 150, -1],
 				['25', '50', '100', '150', '200', 'Show all']

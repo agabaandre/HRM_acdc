@@ -1,4 +1,7 @@
 <?php
+
+use SebastianBergmann\Type\FalseType;
+
 defined('BASEPATH') or exit('No direct script access allowed');
 
 class Performance extends MX_Controller
@@ -47,8 +50,6 @@ class Performance extends MX_Controller
 			'timeline_start' =>json_encode($data['timeline_start']),
 			'timeline_end' => json_encode($data['timeline_end']),
 			'weight' => json_encode($data['weight'])
-
-
 		);
 		 $this->db->insert('ppa_primary', $primary);
 
@@ -66,8 +67,24 @@ class Performance extends MX_Controller
 			);
 		}
 		redirect('performance');
-	
 
+		
+	}
+
+
+	public function myplans()
+	{
+		$id = $this->input->get('staff_id');
+		$period = @urldecode($this->input->get('period'));
+		$data['module'] = $this->module;
+		$data['title'] = "Staff Performance Plans";
+		$status = $this->input->get('status');
+		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
+		$data['plans'] = $this->per_mdl->myplans($per_page=10, $page, $id, $period, $status);
+		//dd($data['plans']);
+		$data['links'] = pagination('performance/myplans', count($data['plans']),3);
+
+	render('staff_ppa', $data);
 		
 	}
 	

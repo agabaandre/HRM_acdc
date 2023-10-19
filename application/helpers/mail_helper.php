@@ -8,16 +8,18 @@ if (!function_exists('fire_email')) {
   function fire_email ($title, $message_body, $receiver) {
       $mail = new PHPMailer(true);
       try {
+			$ci = &get_instance();
+			$settings = $ci->db->query('select * from setting')->row();
          //Server settings
          $mail->SMTPDebug = 0;//SMTP::DEBUG_SERVER;                      //Enable verbose debug output
          $mail->isSMTP();                                            //Send using SMTP
-         $mail->Host       = 'precisionconceptsug.com';                     //Set the SMTP server to send through
+         $mail->Host       = $settings->mail_host;                   //Set the SMTP server to send through
          $mail->SMTPAuth   = true;                                   //Enable SMTP authentication
-         $mail->Username   = 'demo@precisionconceptsug.com';                     //SMTP username
-         $mail->Password   = 'Microinfo@12';                               //SMTP password
+         $mail->Username   = $settings->mail_username;                     //SMTP username
+			$mail->Password = str_replace('-staffpaahahjbewyugqjhqbqb','',$settings->password);                                //SMTP password
          $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;    
-         //$mail->SMTPAutoTLS = false;
-         //$mail->SMTPSecure = false;        //Enable implicit TLS encryption
+         // $mail->SMTPAutoTLS = true;
+         // $mail->SMTPSecure = true;        //Enable implicit TLS encryption
          $mail->Port       = 465; //587; //465;                                    //TCP port to connect to; use 587 if you have set `SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS`
 
          //Recipients

@@ -22,8 +22,8 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
         <div class="row">
           <div class="col-md-12">
-            <button type="submit" class="btn btn-primary btn-sm">Save</button>
-            <button type="reset" class="btn  btn-secondary btn-sm">Reset All</button>
+            <button type="submit" class="btn btn-success">Save</button>
+            <button type="reset" class="btn  btn-secondary">Reset All</button>
             <a href="<?php echo base_url() ?>auth/acdc_users" class="btn btn-success btn-sm">Auto Generate Users from the Staff List </a>
           </div>
           <div class="col-md-12" style="margin:0 auto;">

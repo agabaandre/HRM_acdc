@@ -24,6 +24,7 @@
             <th>Telephone</th>
             <th>WhatsApp</th>
             <th>Funder</th>
+            <th>Option</th>
           </tr>
         </thead>
         <tbody>
@@ -57,6 +58,9 @@
               <td><?= @$data->tel_1 . ' / ' . $data->tel_2 ?></td>
               <td><?= @$data->whatsapp ?></td>
               <td><?= @$data->contracts[0]->funder_name ?></td>
+              <td class="text text-center">
+                <a class="" onclick="return confirm('You are about to Renew this contract, Continue??? ');" href="<?php echo base_url();?>staff/renew_contract/<?php echo $data->contracts[0]->staff_contract_id."/".$data->contracts[0]->staff_id; ?>">Renew</a>
+              </td>
 
 
               <!-- edit employee contract -->
