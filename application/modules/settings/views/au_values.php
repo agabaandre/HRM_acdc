@@ -17,8 +17,8 @@ $permissions = $session->permissions;
 				<input type="hidden" name="redirect" value="au">
 				<div class="row">
 					<div class="col-md-12">
-						<button type="submit" class="btn btn-success">Save</button>
-						<button type="reset" class="btn  btn-secondary">Reset All</button>
+						<button type="submit" class="btn btn-success"><i class="fa fa-save"></i>Save</button>
+						<button type="reset" class="btn  btn-secondary"><i class="fa fa-undo"></i>Reset</button>
 					</div>
 					<div class="col-md-12" style="margin:0 auto;">
 						<span class="status"></span>
@@ -170,7 +170,7 @@ $permissions = $session->permissions;
 								<td><?php echo $au->score_1; ?></td>
 								<td><?php echo $au->category; ?></td>
 								<td><?php echo $au->version; ?></td>
-								<td><span class="badge text-bg-info"><a data-bs-toggle="modal" data-bs-target="#update_au_values<?php echo $au->id; ?>" href="#">Edit</a></span>
+								<td><button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#update_au_values<?php echo $au->id; ?>" href="#"><i class="fa fa-edit"></i>Edit</button>
 								</td>
 							</tr>
 						<?php
