@@ -3,7 +3,8 @@
 		<div class="table-responsive">
 			<div class="row">
 				<div class="col-md-12">
-					<p class="justify-content-left"><?php echo $links;?><p>
+					<p class="justify-content-left"><?php echo $links; ?>
+					<p>
 					<table id="leave-table" class="table table-striped">
 						<thead>
 							<tr>
@@ -50,9 +51,8 @@
 										<?php endif; ?>
 									</td>
 									<td>
-										<a class="btn btn-danger btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#permsModal<?= $plan['id']; ?>">Preview PPA</a>
-										<a class="btn btn-danger btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#permsModal<?= $plan['id']; ?>">Print PPA</a>
-										<button class="changes-btn btn btn-warning" data-leave-id="<?= $plan['id']; ?>"><?= $plan['overall_status'] ?></button>
+										<a class="btn btn-danger pull-right" data-bs-toggle="modal" data-bs-target="#permsModal<?= $plan['id']; ?>"><i class="fa fa-eye"></i> Preview PPA</a>
+										<button class="changes-btn btn btn-warning" data-leave-id="<?= $plan['id']; ?>"><i class="fa fa-bell"></i><?= $plan['overall_status'] ?></button>
 									</td>
 								</tr>
 							<?php endforeach; ?>
@@ -99,6 +99,7 @@
 						</div>
 					</div>
 					<div class="modal-footer">
+						<a class="btn btn-danger pull-right" data-bs-toggle="modal" data-bs-target="#permsModal<?= $plan['id']; ?>">Print PPA</a>
 						<button type="submit" class="btn btn-success">Confirm</button>
 						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 					</div>

@@ -18,8 +18,8 @@ $permissions = $session->permissions;
 				<input type="hidden" name="redirect" value="leave">
 				<div class="row">
 					<div class="col-md-12">
-						<button type="submit" class="btn btn-success">Save</button>
-						<button type="reset" class="btn  btn-secondary">Reset All</button>
+						<button type="submit" class="btn btn-success"><i class="fa fa-save"></i>Save</button>
+						<button type="reset" class="btn  btn-secondary"><i class="fa fa-undo"></i>Reset</button>
 						<!-- <a href="<?php echo base_url() ?>auth/acdc_users" class="btn btn-success btn-sm">Auto Generate Users from the Staff List </a> -->
 					</div>
 					<div class="col-md-12" style="margin:0 auto;">
@@ -97,7 +97,7 @@ $permissions = $session->permissions;
 								<td><?php echo $leave->leave_days; ?></td>
 								<td><?php echo $leave->is_accrued; ?></td>
 								<td><?php echo $leave->accrual_rate; ?></td>
-								<td><span class="badge text-bg-info"><a data-bs-toggle="modal" data-bs-target="#update_leave_types<?php echo $leave->leave_id; ?>" href="#">Edit</a></span>
+								<td><button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#update_leave_types<?php echo $leave->leave_id; ?>" href="#"><i class="fa fa-edit"></i>Edit</button>
 								</td>
 							</tr>
 

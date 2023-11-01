@@ -35,30 +35,100 @@
 			?>
 		</div>
 		<?php echo form_open_multipart(base_url('staff/save_ppa'), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
-		<div class="row m-3">
-			<div class="col-md-4">
-				<label>Staff Name</label>
+		<div class="row">
+			<div class="col-md-3">
+				<label>Name</label>
 				<input type="text" name="name" class="form-control">
 			</div>
+
+			<div class="col-md-3">
+				<label>Gender</label>
+				<select class="form-control select2" name="nataionality_id">
+					<option value="Male">Female
+					</option>
+					<option value="Male">Male
+					</option>
+				</select>
+			</div>
+			<div class="col-md-3">
+				<label>SAP NO</label>
+				<input type="text" name="name" class="form-control">
+			</div>
+
+			<div class="col-md-3">
+				<label>Initiation Date Between</label>
+				<input type="date" name="name" class="form-control">
+				<input type="date" name="name" class="form-control">
+			</div>
+
+
 		</div>
-		<div class="col-md-4">
-			<label>Staff Name</label>
-			<input type="text" name="name" class="form-control">
+
+		<div class="row">
+			<div class="col-md-3">
+				<label>Nationaility</label>
+				<select class="form-control select2" name="nataionality_id" multiple>
+					<?php $nationalities = $this->db->get('nationalities')->result();
+					foreach ($nationalities as $nationality) : ?>
+						<option value="<?php echo $nationality->nationality_id; ?>"><?php echo $nationality->nationality; ?>
+						</option>
+					<?php endforeach;
+
+					?>
+
+				</select>
+			</div>
+			<div class="col-md-3">
+				<label>Job</label>
+				<select class="form-control select2" name="nataionality_id" multiple>
+					<?php $jobs = $this->db->get('jobs')->result();
+					foreach ($jobs as $job) : ?>
+						<option value="<?php echo $job->job_id; ?>"><?php echo $job->job_name; ?>
+						</option>
+					<?php endforeach;
+
+					?>
+
+				</select>
+			</div>
+			<div class="col-md-3">
+				<label>Division</label>
+				<select class="form-control select2" name="division_id" multiple>
+					<?php $divisions = $this->db->get('divisions')->result();
+					foreach ($divisions as $division) : ?>
+						<option value="<?php echo $division->division_id; ?>"><?php echo $division->division_name; ?>
+						</option>
+					<?php endforeach;
+
+					?>
+
+				</select>
+			</div>
+			<div class="col-md-3">
+				<label>Duty Station</label>
+				<select class="form-control select2" name="division_id" multiple>
+					<?php $duty_stations = $this->db->get('duty_stations')->result();
+					foreach ($duty_stations as $duty_station) : ?>
+						<option value="<?php echo $duty_station->duty_station_id; ?>"><?php echo $duty_station->duty_station_name; ?>
+						</option>
+					<?php endforeach;
+
+					?>
+
+				</select>
+			</div>
 		</div>
+	
+	
+			<button type="submit" class="btn btn-secondary mt-2"><i class="fa fa-exchange-alt"></i>Apply</button>
+			<a href type="submit" class="btn btn-secondary mt-2"><i class="fa fa-file-csv"></i>Export</button>
+	
 	</div>
-	<div class="row m-3">
-		<div class="col-md-4">
-			<label>Nationaility</label>
-			<select class="form-control" name="gender">
-				<option value="Male">Male</option>
-				<option value="female">Female</option>
-			</select>
-		</div>
-	</div>
+
 
 	</form>
 	<?php echo $links ?>
-	<div class="table-responsive">
+	<div class=" table-responsive">
 		<table class="table table-striped table-bordered">
 			<thead>
 				<tr>
@@ -82,10 +152,10 @@
 
 
 				<?php
-				//dd($staff->toArray());
+
 				$i = 1;
 				foreach ($staffs as $data) :
-					// dd($data);
+
 				?>
 
 					<tr>
@@ -94,9 +164,9 @@
 						<td><?= $data->SAPNO ?></td>
 						<td><?= $data->title ?></td>
 						<td><img class="img-fluid img-thumbnail" src="<?php if (get_photo($data->staff_id)) {
-																														echo base_url() ?>uploads/staff/<?php echo @get_photo($data->staff_id);
-																																														} else {
-																																															echo base_url() ?>uploads/staff/author.png
+																			echo base_url() ?>uploads/staff/<?php echo @get_photo($data->staff_id);
+																										} else {
+																											echo base_url() ?>uploads/staff/author.png
 					    <?php } ?>" style="width:50px; border-radius:7px;"></td>
 						<td><a href="#" data-bs-toggle="modal" data-bs-target="#add_profile<?php echo $data->staff_id; ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
 						<td><?= $data->gender ?></td>
@@ -108,7 +178,9 @@
 
 						<td><?= $data->duty_station_name; ?></td>
 						<td><?= $data->work_email; ?></td>
-						<td><?= $data->tel_1 . ' / ' . $data->tel_2 ?></td>
+						<td><?= @$data->tel_1 ?> <?php if (!empty($data->tel_2)) {
+														echo '  ' . $data->tel_2;
+													} ?></td>
 						<td><?= $data->whatsapp ?></td>
 
 
@@ -136,9 +208,9 @@
 										<div class="row">
 											<div class="col-md-4">
 												<img src="<?php if (get_photo($data->staff_id)) {
-																		echo base_url() ?>uploads/staff/<?php echo @get_photo($data->staff_id);
-																																		} else {
-																																			echo base_url() ?>uploads/staff/author.png
+																echo base_url() ?>uploads/staff/<?php echo @get_photo($data->staff_id);
+																							} else {
+																								echo base_url() ?>uploads/staff/author.png
 					            <?php } ?>" class="img-fluid img-thumbnail" alt="user avatar" style="width:180px;">
 											</div>
 
@@ -154,7 +226,9 @@
 												<h4>Contact Information</h4>
 												<ul>
 													<li><strong>Email:</strong> <?= @$data->work_email ?></li>
-													<li><strong>Telephone:</strong> <?= @$data->tel_1 . ' / ' . $data->tel_2 ?></li>
+													<li><strong>Telephone:</strong> <?= @$data->tel_1 ?> <?php if (!empty($data->tel_2)) {
+																												echo '  ' . $data->tel_2;
+																											} ?></li>
 													<li><strong>WhatsApp:</strong> <?= @$data->whatsapp ?></li>
 												</ul>
 												<h4>Contract Information</h4>
@@ -277,8 +351,8 @@
 														foreach ($lists as $list) :
 														?>
 															<option value="<?php echo $list->nationality_id; ?>" <?php if ($list->nationality_id == $data->nationality_id) {
-																																											echo "selected";
-																																										} ?>><?php echo $list->status; ?><?php echo $list->nationality; ?></option>
+																														echo "selected";
+																													} ?>><?php echo $list->status; ?><?php echo $list->nationality; ?></option>
 														<?php endforeach; ?>
 														<!-- Add more options as needed -->
 													</select>

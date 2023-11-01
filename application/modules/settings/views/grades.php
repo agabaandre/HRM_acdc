@@ -21,8 +21,8 @@ $permissions = $session->permissions;
 				<input type="hidden" name="redirect" value="grade">
 				<div class="row">
 					<div class="col-md-12">
-						<button type="submit" class="btn btn-success">Save</button>
-						<button type="reset" class="btn  btn-secondary">Reset All</button>
+						<button type="submit" class="btn btn-success"><i class="fa fa-save"></i>Save</button>
+						<button type="reset" class="btn  btn-secondary"><i class="fa fa-undo"></i>Reset</button>
 						<!-- <a href="<?php echo base_url() ?>auth/acdc_users" class="btn btn-success btn-sm">Auto Generate Users from the Staff List </a> -->
 					</div>
 					<div class="col-md-12" style="margin:0 auto;">
@@ -81,7 +81,7 @@ $permissions = $session->permissions;
 							<tr>
 								<td><?php echo $no; ?>. </td>
 								<td><?php echo $grade->grade; ?></td>
-								<td><span class="badge text-bg-info"><a data-bs-toggle="modal" data-bs-target="#update_grades<?php echo $grade->grade_id; ?>" href="#">Edit</a></span>
+								<td><button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#update_grades<?php echo $grade->grade_id; ?>" href="#"><i class="fa fa-edit"></i>Edit</button>
 								</td>
 							</tr>
 

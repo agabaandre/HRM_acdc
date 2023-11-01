@@ -22,7 +22,7 @@ class Staff extends MX_Controller
 		$filters = $this->input->post();
 		$data['staffs'] = $this->staff_mdl->get_staff_data($per_page = 20, $page, $filters);
 		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
-		render('staff_ajax', $data);
+		render('staff_table', $data);
 	}
 	// }
 	// public function get_staff_data_ajax()
@@ -65,6 +65,25 @@ class Staff extends MX_Controller
 		
 		render('new_contract', $data);
 	}
+	public function test_email(){
+		$mailto = send_email_async('agabaandre@gmail.com','Africa CDC TEST EMAIL','This is a test emal from Africa CDC for mail notifications');
+		if ($mailto) {
+			Modules::run('utility/setFlash', 'SENT test MAIL');	
+		}
+		redirect('staff');
+
+	}
+
+	function timer_after($time,$function)
+	{
+		// Access the event loop
+		$loop = $this->reactphp_lib->getLoop();
+		$loop->addTimer($time, function () {
+			
+		});
+		$this->reactphp_lib->run();
+	}
+
 
 	// Add New Contract
 	public function add_new_contract(){

@@ -324,7 +324,7 @@ if (!function_exists('current_head_of_departmemnt')) {
     function current_head_of_departmemnt($division)
     {
         $ci = &get_instance();
-        $division_id = $ci->db->query("SELECT division_head from divisions where division_id='$division'")->row()->division_head;
+        @$division_id = $ci->db->query("SELECT division_head from divisions where division_id='$division'")->row()->division_head;
         return $division_id;
 
     }
@@ -633,33 +633,6 @@ if (!function_exists('acdc_division')) {
     
     }
 }
-
-// if (!function_exists('filters')) {
-
-// 	function filters($division)
-// 	{
-// 		//select and dropdown are the form supported filters
-// 		$ci = &get_instance($filters=[],$cols);
-// 		$columns="col-md-".$cols;
-// 		foreach($filters as $key=>$value) {
-// 			echo "div class='$columns'";
-// 			if($value=='select'){
-// 				echo "<select class='form-control' name='$key' select2>";
-// 				echo "</select>";
-// 			}
-// 			else if($value){
-// 				echo '';
-// 			}
-			
-      
-// 			echo"<div>;
-// 		}
-		
-// 	}
-//   }
-// }
-
-
 
 if (!function_exists('periods')) {
 
