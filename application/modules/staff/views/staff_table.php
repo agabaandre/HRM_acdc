@@ -119,10 +119,10 @@
 			</div>
 		</div>
 	
-	
+	<div class="row col-md-12">
 			<button type="submit" class="btn btn-secondary mt-2"><i class="fa fa-exchange-alt"></i>Apply</button>
 			<a href type="submit" class="btn btn-secondary mt-2"><i class="fa fa-file-csv"></i>Export</button>
-	
+					</div>
 	</div>
 
 
