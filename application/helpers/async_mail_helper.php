@@ -21,7 +21,7 @@ if (!function_exists('send_email_async')) {
                 $mailer->Host = $settings->mail_host;
                 $mailer->SMTPAuth = true;
                 $mailer->Username = $settings->mail_username;
-				$mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;    
+				//$mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;    
                 $mailer->Password = $settings->password;
                 //$mailer->SMTPSecure = $settings->mail_encryption;
                 $mailer->Port = $settings->mail_smtp_port;
