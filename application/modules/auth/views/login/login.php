@@ -75,7 +75,7 @@
                   </div>
 
                   <div class="form-body">
-                    <?php echo form_open_multipart(base_url('auth/login'), array('id' => 'login', 'class' => 'login')); ?>
+                    <?php echo form_open_multipart(base_url('index.php/auth/login'), array('id' => 'login', 'class' => 'login')); ?>
 
 
                       <div class="col-12">

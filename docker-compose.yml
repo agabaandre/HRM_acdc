@@ -1,33 +1,39 @@
-version: "3.8"
+version: '3.8'
+
 services:
-  mariadb:
-    image: mariadb:latest
+  apache_php:
+    image: php:8.2.4-apache
+    container_name: apache_php
+    restart: always
     volumes:
-      - db_data:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: test 
-      MYSQL_DATABASE: staff
-      MYSQL_USER: root
-      MYSQL_PASSWORD: test
-
-  php:
-    build:
-      context: .
-      dockerfile: Dockerfile-php
-    volumes:
-      - codeigniter_data:/var/www/html
-    depends_on:
-      - mariadb
-
-  apache:
-    build:
-      context: .
-      dockerfile: Dockerfile-apache
+      - .:/var/www/tools.africacdc.org/tools/public_dashboards
     ports:
-      - "80:80"
+      - "808:80"
+    environment:
+      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_PORT: ${MYSQL_PORT}
     depends_on:
-      - php
+      - mysql_client
+    networks:
+      - app-network
+    working_dir: /var/www/tools.africacdc.org/tools/public_dashboards
+   
 
-volumes:
-  db_data:
-  codeigniter_data:
+  mysql_client:
+    image: mysql:5.7.42
+    container_name: mysql_client
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_HOST: ${MYSQL_HOST}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

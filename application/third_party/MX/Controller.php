@@ -1,7 +1,7 @@
 <?php (defined('BASEPATH')) or exit('No direct script access allowed');
 
 /** load the CI class for Modular Extensions **/
-require dirname(__FILE__) . '/Base.php';
+require_once dirname(__FILE__) . '/Base.php';
 
 /**
  * Modular Extensions - HMVC

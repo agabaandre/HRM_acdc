@@ -1,14 +1,17 @@
-<?php
-use Mpdf\Mpdf;
-use Mpdf\Config\Config;
-
+<?php 
+if (!defined('BASEPATH')) exit('No direct script access allowed');
+ 
+include_once APPPATH.'/third_party/mpdf/mpdf.php';
+ 
 class M_pdf {
+ 
+public $param;
 public $pdf;
-
-public function __construct()
+public function __construct($param = "'c', 'A4-L'")
 {
-$config = new Config();
-$config->set('orientation', 'L'); // 'L' for landscape, 'P' for portrait
-$this->pdf = new Mpdf($config);
+    $this->param =$param;
+    $this->pdf = new mPDF($this->param);
 }
 }
+
+?>
