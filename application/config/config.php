@@ -37,7 +37,7 @@ if (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] 
 $dirname = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/';
 $root = $protocol . $_SERVER['HTTP_HOST'] . $dirname;
 
-$config["base_url"] = 'http://localhost/HRM_acdc_new/';
+$config["base_url"] = $root;
 /*
 |--------------------------------------------------------------------------
 | Index File

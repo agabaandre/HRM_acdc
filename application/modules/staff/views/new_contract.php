@@ -14,7 +14,10 @@
             <div class="tab-content">
                 <!-- <div id="step-2" class="tab-pane" role="tabpanel" aria-labelledby="step-"> -->
                 <?php echo validation_errors(); ?>
-                        <?php echo form_open('staff/add_new_contract'); ?>
+                        <?php echo form_open('staff/add_new_contract');
+                       // dd($staffs);
+                         $staffs = $staffs[0];
+                        ?>
                     <div class="row">
 
                         <div class="col-md-6">
@@ -28,12 +31,15 @@
                                     foreach ($jobs as $job) :
                                     ?>
 
-                                        <option value="<?php echo $job->job_id; ?>"><?php echo $job->job_name; ?></option>
+                                        <option value="<?php echo $job->job_id; ?>" <?php if ($job->job_id == $staffs->job_id) {
+                                                                              echo "selected";} ?>><?php echo $job->job_name; ?></option>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
                                 </select>
                             </div>
                             <input type="hidden" name="staff_id" value="<?php echo $staff_id; ?>">
+                                  <!-- Old staff contract-->
+                            <input type="hidden" name="staff_contract_id" value="<?php echo $staffs->staff_contract_id; ?>">
 
                             <div class="form-group">
                                 <label for="job_acting_id">Job Acting:</label>
@@ -43,7 +49,9 @@
                                     foreach ($jobsacting as $joba) :
                                     ?>
 
-                                        <option value="<?php echo $joba->job_acting_id; ?>"><?php echo $joba->job_acting; ?></option>
+                                        <option value="<?php echo $joba->job_acting_id; ?>" <?php if ($joba->job_acting_id == $staffs->job_acting_id) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $joba->job_acting; ?></option>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
                                 </select>
@@ -57,7 +65,9 @@
                                     foreach ($lists as $list) :
                                     ?>
 
-                                        <option value="<?php echo $list->grade_id; ?>"><?php echo $list->grade; ?></option>
+                                        <option value="<?php echo $list->grade_id; ?>" <?php if ($list->grade_id == $staffs->grade_id) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $list->grade; ?></option>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
                                 </select>
@@ -70,7 +80,9 @@
                                     <?php $lists = Modules::run('lists/contractors');
                                     foreach ($lists as $list) :
                                     ?>
-                                        <option value="<?php echo $list->contracting_institution_id; ?>"><?php echo $list->contracting_institution; ?></option>
+                                        <option value="<?php echo $list->contracting_institution_id; ?>" <?php if ($list->contracting_institution_id == $staffs->contracting_institution_id) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $list->contracting_institution; ?></option>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
                                 </select>
@@ -83,7 +95,9 @@
                                     <?php $lists = Modules::run('lists/funder');
                                     foreach ($lists as $list) :
                                     ?>
-                                        <option value="<?php echo $list->funder_id; ?>"><?php echo $list->funder; ?></option>
+                                        <option value="<?php echo $list->funder_id; ?>" <?php if ($list->funder_id == $staffs->funder_id) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $list->funder; ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -96,7 +110,9 @@
                                     foreach ($lists as $list) :
                                     ?>
                                         <?php if($list->staff_id != $staff_id){ ?>
-                                        <option value="<?php echo $list->staff_id; ?>"><?php echo $list->lname . ' ' . $list->fname; ?></option>
+                                        <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $staffs->first_supervisor) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $list->lname . ' ' . $list->fname; ?></option>
                                         <?php } ?>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
@@ -111,7 +127,9 @@
                                     foreach ($lists as $list) :
                                     ?>
                                         <?php if($list->staff_id != $staff_id){ ?>
-                                        <option value="<?php echo $list->staff_id; ?>"><?php echo $list->lname . ' ' . $list->fname; ?></option>
+                                        <option value="<?php echo $list->staff_id; ?>"  <?php if ($list->staff_id == $staffs->second_supervisor) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $list->lname . ' ' . $list->fname; ?></option>
                                         <?php } ?>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
@@ -124,7 +142,9 @@
                                     <?php $lists = Modules::run('lists/contracttype');
                                     foreach ($lists as $list) :
                                     ?>
-                                        <option value="<?php echo $list->contract_type_id; ?>"><?php echo $list->contract_type; ?></option>
+                                        <option value="<?php echo $list->contract_type_id; ?>" <?php if ($list->contract_type_id == $staffs->contract_type_id) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $list->contract_type; ?></option>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
                                 </select>
@@ -137,7 +157,9 @@
                                     <?php $lists = Modules::run('lists/stations');
                                     foreach ($lists as $list) :
                                     ?>
-                                        <option value="<?php echo $list->duty_station_id; ?>"><?php echo $list->duty_station_name; ?></option>
+                                        <option value="<?php echo $list->duty_station_id; ?>" <?php if ($list->duty_station_id == $staffs->duty_station_id) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $list->duty_station_name; ?></option>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
                                 </select>
@@ -149,7 +171,9 @@
                                     <?php $lists = Modules::run('lists/divisions');
                                     foreach ($lists as $list) :
                                     ?>
-                                        <option value="<?php echo $list->division_id; ?>"><?php echo $list->division_name; ?></option>
+                                        <option value="<?php echo $list->division_id; ?>" <?php if ($list->division_id == $staffs->division_id) {
+                                                                              echo "selected";
+                                                                            } ?>><?php echo $list->division_name; ?></option>
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
                                 </select>
@@ -157,7 +181,7 @@
 
                             <div class="form-group">
                                 <label for="start_date">Start Date:</label>
-                                <input type="date" class="form-control" name="start_date" id="start_date" required>
+                                <input type="date" class="form-control" value="<?php echo date('mm/dd/yyyy')?>" name="start_date" id="start_date" required >
                             </div>
 
                             <div class="form-group">
@@ -177,6 +201,26 @@
                                 <label for="file_name">File Name:</label>
                                 <input type="text" class="form-control" name="file_name" id="file_name" required>
                             </div>
+
+                            <div class="form-group">
+                            <label for="file_name">Previous Contract Status:</label>
+                            <select class="form-control" name="previous_contract_status_id" id="status_id" required>
+                              <?php 
+                              $lists = Modules::run('lists/status');
+                              foreach ($lists as $list) :
+                                  if (in_array($list->status_id, [5, 6])) { // Only allow status_id 5 and 6
+                              ?>
+                                      <option value="<?php echo $list->status_id; ?>" 
+                                          <?php if ($list->status_id == $staffs->status_id) {
+                                              echo "selected";
+                                          } ?>>
+                                          <?php echo $list->status; ?>
+                                      </option>
+                              <?php 
+                                  }
+                              endforeach; 
+                              ?>
+                          </select>
 
                             <div class="form-group">
                                 <label for="comments">Comments:</label>

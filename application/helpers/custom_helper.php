@@ -659,3 +659,59 @@ if (!function_exists('get_staff_name')) {
         return $query->lname. ' '. $query->fname;
     }
 }
+
+if (!function_exists('generate_user_avatar')) {
+function generate_user_avatar($surname, $other_name, $image_path)
+{
+    // Check if the image exists and is not null
+    if (!empty($image_path) && file_exists($image_path)) {
+        return '<img src="' . $image_path . '" class="user-avatar" alt="User Avatar">';
+    }
+
+    // Get the initials (First letter of Surname & Other Name)
+    $surname_initial = !empty($surname) ? strtoupper(substr($surname, 0, 1)) : '';
+    $other_name_initial = !empty($other_name) ? strtoupper(substr($other_name, 0, 1)) : '';
+
+    // Generate the initials-based avatar
+    $initials = $surname_initial . $other_name_initial;
+    $bg_color = generate_random_color($surname . $other_name); // Unique background color
+
+    return '<div class="avatar-placeholder" style="background-color:' . $bg_color . '; color: #fff; 
+            width: 50px; height: 50px; display: flex; align-items: center; border:#fff 1px solid;
+            justify-content: center; border-radius: 50%; font-size: 18px; font-weight: bold;">
+                ' . $initials . '
+            </div>';
+}
+
+// Function to generate a random color based on name hash
+function generate_random_color($name)
+{
+    $hash = md5($name);
+    return '#' . substr($hash, 0, 6);
+}
+
+}
+
+if (!function_exists('log_user_action')) {
+    function log_user_action($action)
+    {
+        $CI =& get_instance(); // Get CodeIgniter instance
+
+        // Get the logged-in user's ID (change session key if needed)
+        $user_id = $CI->session->userdata('user')->id ?? null;
+
+
+        // Capture user IP and user agent
+        $ip_address = $CI->input->ip_address();
+        $user_agent = $CI->input->user_agent();
+
+        // Insert log into database
+        $data = [
+            'user_id' => $user_id,
+            'action' => $action,
+            'ip_address' => $ip_address,
+            'user_agent' => $user_agent
+        ];
+        $CI->db->insert('user_logs', $data);
+    }
+}

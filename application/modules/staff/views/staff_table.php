@@ -34,38 +34,31 @@
 			<?php //print_r($this->session->tempdata());
 			?>
 		</div>
-		<?php echo form_open_multipart(base_url('staff/save_ppa'), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
+		<?php echo form_open_multipart(base_url('staff'), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
 		<div class="row">
 			<div class="col-md-3">
-				<label>Name</label>
-				<input type="text" name="name" class="form-control">
+				<label>Surname</label>
+				<input type="text" name="lname" class="form-control">
+			</div>
+			<div class="col-md-3">
+				<label>Firstname</label>
+				<input type="text" name="fname" class="form-control">
 			</div>
 
-			<div class="col-md-3">
+			<div class="col-md-2">
 				<label>Gender</label>
-				<select class="form-control select2" name="nataionality_id">
-					<option value="Male">Female
-					</option>
+				<select class="form-control select2" name="gender">
 					<option value="Male">Male
+					</option>
+					<option value="Female">Female
 					</option>
 				</select>
 			</div>
-			<div class="col-md-3">
+			<div class="col-md-2">
 				<label>SAP NO</label>
-				<input type="text" name="name" class="form-control">
+				<input type="text" name="SAPNO" class="form-control">
 			</div>
-
-			<div class="col-md-3">
-				<label>Initiation Date Between</label>
-				<input type="date" name="name" class="form-control">
-				<input type="date" name="name" class="form-control">
-			</div>
-
-
-		</div>
-
-		<div class="row">
-			<div class="col-md-3">
+			<div class="col-md-2">
 				<label>Nationaility</label>
 				<select class="form-control select2" name="nataionality_id" multiple>
 					<?php $nationalities = $this->db->get('nationalities')->result();
@@ -78,47 +71,11 @@
 
 				</select>
 			</div>
-			<div class="col-md-3">
-				<label>Job</label>
-				<select class="form-control select2" name="nataionality_id" multiple>
-					<?php $jobs = $this->db->get('jobs')->result();
-					foreach ($jobs as $job) : ?>
-						<option value="<?php echo $job->job_id; ?>"><?php echo $job->job_name; ?>
-						</option>
-					<?php endforeach;
 
-					?>
 
-				</select>
-			</div>
-			<div class="col-md-3">
-				<label>Division</label>
-				<select class="form-control select2" name="division_id" multiple>
-					<?php $divisions = $this->db->get('divisions')->result();
-					foreach ($divisions as $division) : ?>
-						<option value="<?php echo $division->division_id; ?>"><?php echo $division->division_name; ?>
-						</option>
-					<?php endforeach;
-
-					?>
-
-				</select>
-			</div>
-			<div class="col-md-3">
-				<label>Duty Station</label>
-				<select class="form-control select2" name="division_id" multiple>
-					<?php $duty_stations = $this->db->get('duty_stations')->result();
-					foreach ($duty_stations as $duty_station) : ?>
-						<option value="<?php echo $duty_station->duty_station_id; ?>"><?php echo $duty_station->duty_station_name; ?>
-						</option>
-					<?php endforeach;
-
-					?>
-
-				</select>
-			</div>
 		</div>
-	
+
+		
 	
 			<button type="submit" class="btn btn-secondary mt-2"><i class="fa fa-exchange-alt"></i>Apply</button>
 			<a href="#" class="btn btn-secondary mt-2"><i class="fa fa-file-csv"></i>Export</a>
@@ -163,11 +120,16 @@
 						<td><?= $i++ ?></td>
 						<td><?= $data->SAPNO ?></td>
 						<td><?= $data->title ?></td>
-						<td><img class="img-fluid img-thumbnail" src="<?php if (get_photo($data->staff_id)) {
-																			echo base_url() ?>uploads/staff/<?php echo @get_photo($data->staff_id);
-																										} else {
-																											echo base_url() ?>uploads/staff/author.png
-					    <?php } ?>" style="width:50px; border-radius:7px;"></td>
+						<td>
+							<?php 
+							$surname=$data->lname;
+							$other_name=$data->fname;
+							$image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
+							echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
+							
+							?>
+							
+						</td>
 						<td><a href="#" data-bs-toggle="modal" data-bs-target="#add_profile<?php echo $data->staff_id; ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
 						<td><?= $data->gender ?></td>
 
@@ -205,17 +167,16 @@
 												<img src="<?php echo base_url() ?>/assets/images/AU_CDC_Logo-800.png" width="300">
 											</div>
 										</div>
-										<div class="row">
-											<div class="col-md-4">
-												<img src="<?php if (get_photo($data->staff_id)) {
-																echo base_url() ?>uploads/staff/<?php echo @get_photo($data->staff_id);
-																							} else {
-																								echo base_url() ?>uploads/staff/author.png
-					            <?php } ?>" class="img-fluid img-thumbnail" alt="user avatar" style="width:180px;">
-											</div>
+										<div class="row justify-content-center">
+											<!-- <div class="col-md-4" style="width:180px;">
+											
+											</div> -->
 
-											<div class="col-md-8">
-												<h2><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h2>
+											<div class="col-md-8 ">
+											    <div class ="photo justify-content-center"><?=@$staff_photo?>
+												<br>
+												<h3>Name: <?=$data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h3>
+												</div>
 												<h4>Personal Information</h4>
 												<ul>
 													<li><strong>SAPNO:</strong> <?= $data->SAPNO ?></li>
@@ -238,9 +199,11 @@
 
 												?>
 
-												<ul>
-													<li style="display: inline;"><a href="<?php echo base_url(); ?>staff/staff_contracts/<?php echo $cont->staff_id; ?>" class="badge text-bg-success">Contract history</a></li>
-												</ul>
+											
+												<a href="<?php echo base_url(); ?>staff/staff_contracts/<?php echo $cont->staff_id; ?>" 
+												class="btn btn-primary no-print">
+													Manage Contracts <i class="fa fa-th"></i>
+												</a>
 
 												<ul>
 													<li><strong>Job:</strong> <?= @character_limiter($cont->job_name, 15) ?></li>

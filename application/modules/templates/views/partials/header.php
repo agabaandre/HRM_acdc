@@ -119,11 +119,17 @@
 			</div>
 			<div class="user-box dropdown">
 				<a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-					<img src="<?php if (isset($this->session->userdata('user')->photo)) {
-						echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo;
-					} else {
-						echo base_url() ?>uploads/staff/author.png
-					<?php } ?>" class="user-img" alt="user avatar">
+				
+					<?php 
+						$full_name = $this->session->userdata('user')->name;
+						$name_parts = explode(" ", trim($full_name), 2); 
+						$surname = isset($name_parts[1]) ? $name_parts[1] : ''; 
+						$other_name = $name_parts[0];
+						$image_path=base_url().'uploads/staff/'.$this->session->userdata('user')->photo;
+						echo  $staff_photo = generate_user_avatar( $other_name,$surname, $image_path);
+							
+					?>
+					
 					<div class="user-info ps-3">
 						<p class="user-name mb-0"><?php echo $this->session->userdata('user')->name; ?></p>
 						<p class="designattion mb-0"></p>

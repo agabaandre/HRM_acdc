@@ -24,6 +24,7 @@
                             <th>#</th>
                             <th>Title</th>
                             <th>Name</th>
+                            <th>Photo</th>
                             <th>Grade</th>
                             <th>DOB</th>
                             <th>Age</th>
@@ -42,7 +43,17 @@
                             <tr>
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
-                                <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+                                <td><a href="<?php echo base_url()?>staff/staff_contracts/<?=$data->staff_id;?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+                                <td>
+                                    <?php 
+                                    $surname=$data->lname;
+                                    $other_name=$data->fname;
+                                    $image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
+                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
+                                    
+                                    ?>
+                                    
+                                </td>
                                 <td><?= @$data->contracts[0]->grade_name ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
@@ -66,6 +77,7 @@
                             <th>#</th>
                             <th>Title</th>
                             <th>Name</th>
+                            <th>Photo</th>
                             <th>Grade</th>
                             <th>DOB</th>
                             <th>Age</th>
@@ -84,7 +96,18 @@
                             <tr>
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
-                                <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+                                <td><a href="<?php echo base_url()?>staff/staff_contracts/<?=$data->staff_id;?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+           
+                                <td>
+                                    <?php 
+                                    $surname=$data->lname;
+                                    $other_name=$data->fname;
+                                    $image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
+                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
+                                    
+                                    ?>
+                                    
+                                </td>
                                 <td><?= @$data->contracts[0]->grade_name ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
@@ -108,6 +131,7 @@
                             <th>#</th>
                             <th>Title</th>
                             <th>Name</th>
+                            <th>Photo</th>
                             <th>Grade</th>
                             <th>DOB</th>
                             <th>Age</th>
@@ -126,7 +150,18 @@
                             <tr>
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
-                                <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+                                <td><a href="<?php echo base_url()?>staff/staff_contracts/<?=$data->staff_id;?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+           
+                                <td>
+                                    <?php 
+                                    $surname=$data->lname;
+                                    $other_name=$data->fname;
+                                    $image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
+                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
+                                    
+                                    ?>
+                                    
+                                </td>
                                 <td><?= @$data->contracts[0]->grade_name ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
@@ -150,6 +185,7 @@
                             <th>#</th>
                             <th>Title</th>
                             <th>Name</th>
+                            <th>Photo</th>
                             <th>Grade</th>
                             <th>DOB</th>
                             <th>Age</th>
@@ -169,7 +205,18 @@
 
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
-                                <td><a href="<?php echo base_url() ?>staff/profile/<?= $data->SAPNO ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+                                <td><a href="<?php echo base_url()?>staff/staff_contracts/<?=$data->staff_id;?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
+           
+                                <td>
+                                    <?php 
+                                    $surname=$data->lname;
+                                    $other_name=$data->fname;
+                                    $image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
+                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
+                                    
+                                    ?>
+                                    
+                                </td>
                                 <td><?= @$data->contracts[0]->grade_name ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
