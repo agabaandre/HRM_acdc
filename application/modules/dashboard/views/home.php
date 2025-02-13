@@ -3,6 +3,7 @@
   <div class="col">
     <!--<div class="card rounded-4 bg-gradient-worldcup">-->
     <div class="card rounded-4" style="background:rgba(52, 143, 65, 1);">
+    <a href="<?php echo base_url() ?>staff">
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
           <div>
@@ -12,13 +13,14 @@
             </h5>
             <h5 style="color:#FFFFFF;">
               <?php echo $staff . ' '; ?>
-              <p class="medium"> <a href="<?php echo base_url() ?>staff" style="color:#FFFFFF;"> View</a></p>
+              <p class="medium">
             </h5>
           </div>
           <div class="fs-1 text-white"><i class='bx bxs-wallet'></i>
           </div>
         </div>
       </div>
+    </a>
     </div>
 
   </div>
@@ -26,6 +28,7 @@
   <div class="col">
     <!--<div class="card rounded-4 bg-gradient-worldcup">-->
     <div class="card rounded-4" style=" background:#4a4a4a;">
+    <a href="<?= base_url() ?>staff/contract_status/2"> 
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
           <div>
@@ -36,13 +39,14 @@
             </h5>
             <h5 style="color:#FFFFFF;">
               <?php echo $expired; ?>
-              <p class="medium"> <a href="<?= base_url() ?>staff/contract_status/2" style="color:#FFFFFF;"> View</a></p>
+             
             </h5>
           </div>
           <div class="fs-1 text-white"><i class='bx bxs-wallet'></i>
           </div>
         </div>
       </div>
+    </a>
     </div>
 
   </div>
@@ -50,7 +54,9 @@
   <div class="col">
     <!--<div class="card rounded-4 bg-gradient-smile">-->
     <div class="card rounded-4" style=" background:#b4a269;">
+    <a href="<?= base_url() ?>staff/contract_status/3">
       <div class="card-body">
+        
         <div class="d-flex align-items-center justify-content-between">
           <div>
             <h5>
@@ -58,18 +64,20 @@
             </h5>
             <h5 style="color:#FFFFFF;">
               <?php echo $expired; ?>
-              <p class="medium"> <a href="<?= base_url() ?>staff/contract_status/3" style="color:#FFFFFF;"> View</a></p>
+              
             </h5>
           </div>
           <div class="fs-1 text-white"><i class='bx bxs-wallet'></i>
           </div>
         </div>
       </div>
+    </a>
     </div>
   </div>
   <div class="col">
     <!--<div class="card rounded-4 bg-gradient-pinki">-->
     <div class="card rounded-4" style=" background:#9F2241;">
+      <a href="<?= base_url() ?>geographical/countries">
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
           <div>
@@ -78,7 +86,7 @@
             </h5>
             <h5 style="color:#FFFFFF;">
               <?php echo $member_states; ?>
-              <p class="medium"> <a href="<?= base_url() ?>geographical/countries" style="color:#FFFFFF;"> View</a></p>
+           
             </h5>
           </div>
           <div class="fs-1 text-white"><i class='bx bxs-bar-chart-alt-2'></i>
@@ -86,6 +94,7 @@
         </div>
       </div>
     </div>
+  </a>
   </div>
 </div>
 <!--end row-->
@@ -159,6 +168,21 @@
           <figure class="highcharts-figure">
             <div id="container4"></div>
           </figure>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-12 d-flex">
+    <div class="card rounded-4 w-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div>
+            <h6 class="mb-0">Staff Birthdays</h6>
+          </div>
+
+        </div>
+        <div>
+          <?=Modules::run('staff/staff_birthday');?>
         </div>
       </div>
     </div>

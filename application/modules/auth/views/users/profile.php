@@ -48,15 +48,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
         </div>
         <div class="card box-widget widget-user">
             <div class="widget-user-header testbgpattern1"></div>
-            <div class="widget-user-image" style="margin:0 auto;">
-                <img class="img-fluid img-thumbnail" src="<?php if (isset($this->session->userdata('user')->photo)) {
-                                                                echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo;
-                                                                                            } else {
-                                                                                                echo base_url() ?>uploads/staff/author.png
-					<?php } ?>" style="width:200px; border-radius:7px;">
-            </div>
-            <?php //dd($contract);
-            ?>
+    
             <div class="card-body text-center">
                 <div class="item-user pro-user">
                     <h4 class="pro-user-username tx-15 pt-2 mt-4 mb-1" style="color:black;"><?php echo $this->session->userdata('user')->name; ?></h4>

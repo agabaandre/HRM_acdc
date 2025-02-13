@@ -13,55 +13,131 @@ class Staff_mdl extends CI_Model
 	}
 
 
-	public function get_staff_data($limit,$start, $filters)
-	{
-		if (count($filters) > 0) {
-			foreach ($filters as $key => $value) {
-				$this->db->where($key, $value);
+	public function get_active_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
+{
+    $this->db->select('staff.*, staff_contracts.*, jobs.*, jobs_acting.*, grades.*, 
+                        contracting_institutions.*, funders.*, contract_types.*, 
+                        duty_stations.*, divisions.*, status.*, nationalities.*');
+    
+    $this->db->from('staff'); // Explicitly selecting the base table
+	//
+    $active_staff =array('1,2');
+	           $this->db->where_in('staff_contracts.status_id',$active_staff);
+	if (!empty($filters)) { // Ensure filters are not empty
+		foreach ($filters as $key => $value) {
+			if (!empty($value)&&($key!='staff_id')) { // Apply only if value is not empty
+				$this->db->like("staff.$key", $value,'start'); // Use table alias
+			}
+			elseif($key=='staff_id'){
+				$this->db->where("staff.$key", $value);
+
 			}
 		}
-		$this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id');
-		$this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
-		$this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
-		$this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
-		$this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id');
-		$this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id');
-		$this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id');
-		$this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id');
-		$this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id');
-		$this->db->join('status', 'status.status_id = staff_contracts.status_id');
-		$this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id');
-		if ($limit) {
-		$this->db->limit($limit, $start);
-		}
-		$query = $this->db->get('staff');
-		if (count($filters) > 0) {
-			return $query->row_array();
-		} else {
-			return $query->result();
+	}
+	
+
+    // Joins with Aliases
+    $this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id');
+    $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
+    $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
+    $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
+    $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id');
+    $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id');
+    $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id');
+    $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id');
+    $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id');
+    $this->db->join('status', 'status.status_id = staff_contracts.status_id');
+    $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id');
+
+    // Apply pagination limit
+    if ($limit) {
+        $this->db->limit($limit, $start);
+    }
+
+    $query = $this->db->get();
+
+	//dd($this->db->last_query());
+
+
+    return  $query->result();
+}
+
+public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
+{
+    $this->db->select('staff.*, staff_contracts.*, jobs.*, jobs_acting.*, grades.*, 
+                        contracting_institutions.*, funders.*, contract_types.*, 
+                        duty_stations.*, divisions.*, status.*, nationalities.*');
+    
+    $this->db->from('staff'); // Explicitly selecting the base table
+	//
+	if (!empty($filters)) { // Ensure filters are not empty
+		foreach ($filters as $key => $value) {
+			if (!empty($value)&&($key!='staff_id')) { // Apply only if value is not empty
+				$this->db->like("staff.$key", $value,'start'); // Use table alias
+			}
+			elseif($key=='staff_id'){
+				$this->db->where("staff.$key", $value);
+
+			}
 		}
 	}
+	
+
+    // Joins with Aliases
+    $this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id');
+    $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
+    $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
+    $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
+    $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id');
+    $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id');
+    $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id');
+    $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id');
+    $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id');
+    $this->db->join('status', 'status.status_id = staff_contracts.status_id');
+    $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id');
+
+    // Apply pagination limit
+    if ($limit) {
+        $this->db->limit($limit, $start);
+    }
+
+    $query = $this->db->get();
+
+	//dd($this->db->last_query());
+
+
+    return  $query->result();
+}
 
 	// Get staff contracts
 	public function get_staff_contracts($id)
 	{
 		$this->db->select('*');
-		$this->db->from('staff_contracts');
+		$this->db->from('staff_contracts');  // Select from staff_contracts
+	
+		// Specify the table alias in WHERE clause
 		$this->db->where('staff_contracts.staff_id', $id);
-		$this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
-		$this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
-		$this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
-		$this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id');
-		$this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id');
-		$this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id');
-		$this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id');
-		$this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id');
-		$this->db->join('status', 'status.status_id = staff_contracts.status_id');
-		$this->db->join('staff', 'staff.staff_id = staff_contracts.staff_id');
-		$this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id');
-		$query = $this->db->get();
+	
+		// Join Tables with Aliases
+		$this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id', 'left');
+		$this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id', 'left');
+		$this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id', 'left');
+		$this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id', 'left');
+		$this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id', 'left');
+		$this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id', 'left');
+		$this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id', 'left');
+		$this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id', 'left');
+		$this->db->join('status', 'status.status_id = staff_contracts.status_id', 'left');
+		$this->db->join('staff', 'staff.staff_id = staff_contracts.staff_id', 'left');  // Avoid ambiguity
+		$this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id', 'left');
+	
+		$this->db->order_by('staff_contracts.start_date', 'DESC');
+	
+		$query = $this->db->get(); // Removed redundant 'staff_contracts' argument
 		return $query->result();
 	}
+	
+
 	// Get staff contracts
 	public function get_latest_contracts($id)
 	{
@@ -85,7 +161,7 @@ class Staff_mdl extends CI_Model
 	}
 
 	// New Contract
-	public function add_new_contract($table_name)
+	public function add_new_contract($data)
 	{
 		$data = array(
 			'staff_id' => $this->input->post('staff_id'),
@@ -102,34 +178,12 @@ class Staff_mdl extends CI_Model
 			'start_date' => $this->input->post('start_date'),
 			'end_date' => $this->input->post('end_date'),
 			'status_id' => $this->input->post('status_id'),
-			'file_name' => $this->input->post('file_name'),
 			'comments' => $this->input->post('comments'),
 		);
-		$this->db->insert($table_name, $data);
+		$this->db->insert('staff_contracts', $data);
 		return true;
 	}
 
-	// Renew Contract
-	public function renew_contract($table_name, $staff_contract_id, $renew)
-	{
-		$renew_data = array(
-			'status_id' => $renew
-		);
-		$this->db->where('staff_contract_id', $staff_contract_id);
-		$this->db->update($table_name, $renew_data);
-		return true;
-	}
-
-	// End Contract
-	public function end_contract($table_name, $staff_contract_id, $end)
-	{
-		$end_data = array(
-			'status_id' => $end
-		);
-		$this->db->where('staff_contract_id', $staff_contract_id);
-		$this->db->update($table_name, $end_data);
-		return true;
-	}
 
 	public function max_contract($staff_id)
 	{
@@ -150,27 +204,30 @@ class Staff_mdl extends CI_Model
 	}
 	public function update_contract($data)
 	{
-		$this->db->where('staff_id', $data['staff_id']);
+		$this->db->where('staff_contract_id', $data['staff_contract_id']);
 		$query = $this->db->update('staff_contracts', $data);
 		return $query;
 	}
 
+
 	public function get_status($flag)
 	{
-		$query = Employee::orderBy("lname", "desc");
-
-		$results = $query->with('contracts', 'contracts.funder')
-			->when($flag, function ($query, $flag) {
+		return Employee::with(['contracts' => function ($query) use ($flag) {
+				if (!is_null($flag)) {
+					$query->where('status_id', $flag);
+				}
+			}, 'contracts.funder'])
+			->when($flag, function ($query) use ($flag) {
 				$query->whereHas('contracts', function (Builder $query) use ($flag) {
-					$query->where('status_id', '=', $flag);
+					$query->where('status_id', $flag);
 				});
 			})
+			->orderBy("lname", "desc")
 			->take(400)
 			->skip(0)
 			->get();
-
-		return $results;
 	}
+
 	public function getBirthdaysForToday()
 	{
 		// Get the current date

@@ -1,117 +1,10 @@
-<style>
-
-    @media print{
-        .hidden{
-          display: none;
-        }
-        @page{
-            margin-top: 0;
-            margin-bottom: 0;
-            display: flex;
-            justify-content: center;
-            atdgn-items: center;
-            height: 100%;
-            /* html, body{
-                height: 100%;
-                  width: 100%;
-            } */
-        }
-        /* body{
-          padding-top: 72px;
-          padding-bottom: 72px;
-        } */
-    }
-
-</style>
-
-
-
-
-
-<div class="container">
-  <div class="row">
-    <?php $this_staff=$contracts[0];
-    //dd($contracts);
-       
-
-    ?>
-        <div class="col-lg-10">
-              <img src="<?php if (get_photo($this_staff->staff_id)) {
-                          echo base_url() ?>uploads/staff/<?php echo @get_photo($this_staff->staff_id);
-                                                        } else {
-                                                          echo base_url() ?>uploads/staff/author.png
-          <?php } ?>" class="img-fluid img-thumbnail" alt="user avatar" style="width:180px;">
-        </div>
-        <div class="col-md-2">
-        <a href="<?php echo base_url() ?>staff/new_contract/<?php echo $this_staff->staff_id; ?>" class="btn btn-outline-dark btn-sm btn-bordered ">+ Add New Contract</a>
-    </div>
-        <div class="col-md-8">
-            <h2><?= $this_staff->lname . ' ' . $this_staff->fname; ?></h2>
-            <h4>Personal Information</h4>
-            <td><strong>SAPNO:</strong> <?= $this_staff->SAPNO ?></td>
-            <td><strong>Nationality:</strong> <?php echo $this_staff->nationality?></td>
-        </div>
-    </div>
- 
-    <hr>
-  </div>
-  <div class="row">
-    <div class="col-lg-12">
-      <table class="table mydata table-striped table-bordered hidden">
-        <thead>
-          <tr>
-          <th>#</th>
-          <th>Job</th>
-          <th>Acting Job</th>
-          <th>Division</th>
-          <th>Duty Station</th>
-          <th>Funder</th>
-          <th>Contractor</th>
-          <th>Grade</th>
-          <th>Type</th>
-          <th>Start Date</th>
-          <th>End Date</th>
-          <th>Comment</th>
-          <th>Status</th>
-          <th>Option</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php $i = 1; ?>
-          <?php foreach($contracts as $contract ){ ?>
-            <tr>
-                  <td><?=$i++?></td>
-                  <td><?= @character_limiter($contract->job_name, 15) ?></td>
-                  <td><?= @character_limiter($contract->job_acting, 15) ?></td>
-                  <td><?= $contract->division_name ?></td>
-                  <td><?= $contract->duty_station_name ?></td>
-                  <td><?= $contract->funder ?></td>
-                  <td><?= $contract->contracting_institution ?></td>
-                  <td> <?= $contract->grade ?></td>
-                  <td> <?= $contract->contract_type ?></td>
-                  <td> <?= $contract->start_date ?></td>
-                  <td><?= $contract->end_date ?></td>
-                  <td><?= $contract->comments; ?></td>
-                  
-                  <td><?= $contract->status; ?></td>
-              <td class="text text-center">
-              
-                <a class="" onclick="return confirm('You are about to Edit this contract, Continue??? ');" href="#" data-bs-toggle="modal" data-bs-target="#renew_contract<?=$contract->staff_contract_id?>">Edit</a>
-
-            
-
-              </td>
-            </tr>
-
-
-            
-              <!-- edit employee contract -->
-              <div class="modal fade" id="renew_contract<?=$contract->staff_contract_id?>" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
+  <!-- edit employee contract -->
+  <div class="modal fade" id="renew_contract" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                   <div class="modal-content">
                     <div class="modal-header">
 
-                      <h5 class="modal-title" id="add_item_label">Edit Contract: <?= $this_staff->lname . ' ' . $this_staff->fname . ' ' . @$this_staff->oname ?> </h5>
+                      <h5 class="modal-title" id="add_item_label">Edit Contract: <?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?> </h5>
                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
 
@@ -121,7 +14,9 @@
                       <?php echo validation_errors(); ?>
                       <?php echo form_open('staff/update_contract'); 
                       $readonly='';
-                    
+                      if($status==3){
+                      $readonly = "disabled";
+                      }
                       
                     
                       
@@ -130,8 +25,7 @@
                       <div class="row">
                         <div class="col-md-6">
                           <h4>Contract Information</h4>
-                           <input type="hidden" name="staff_contract_id" value="<?php echo $contract->staff_contract_id; ?>">
-                           <input type="hidden" name="staff_id" value="<?php echo $contract->staff_id; ?>">
+                           <input type="hidden" name="staff_id" value="<?php echo $data->staff_id; ?>">
                           <div class="form-group">
                             <label for="job_id">Job:</label>
                             <select class="form-control select2" name="job_id" id="job_id" required <?=$readonly?>>
@@ -140,11 +34,9 @@
 
                               $jobs = Modules::run('lists/jobs');
                               foreach ($jobs as $job) :
-
-                               
                               ?>
 
-                                <option value="<?php echo $job->job_id; ?>" <?php if ($job->job_id == $contract->job_id) {
+                                <option value="<?php echo $job->job_id; ?>" <?php if ($job->job_id == $data->contracts[0]->job_id) {
                                                                               echo "selected";
                                                                             } ?>><?php echo $job->job_name; ?></option>
                               <?php endforeach; ?>
@@ -160,7 +52,7 @@
                               foreach ($jobsacting as $joba) :
                               ?>
 
-                                <option value="<?php echo $joba->job_acting_id; ?>" <?php if ($joba->job_acting_id == $contract->job_acting_id) {
+                                <option value="<?php echo $joba->job_acting_id; ?>" <?php if ($joba->job_acting_id == $data->contracts[0]->job_acting_id) {
                                                                                       echo "selected";
                                                                                     } ?>><?php echo $joba->job_acting; ?></option>
                               <?php endforeach; ?>
@@ -176,7 +68,7 @@
                               foreach ($lists as $list) :
                               ?>
 
-                                <option value="<?php echo $list->grade_id; ?>" <?php if ($list->grade_id == $contract->grade_id) {
+                                <option value="<?php echo $list->grade_id; ?>" <?php if ($list->grade_id == $data->contracts[0]->grade_id) {
                                                                                   echo "selected";
                                                                                 } ?>><?php echo $list->grade; ?></option>
                               <?php endforeach; ?>
@@ -191,7 +83,7 @@
                               <?php $lists = Modules::run('lists/contractors');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->contracting_institution_id; ?>" <?php if ($list->contracting_institution_id == $contract->contracting_institution_id) {
+                                <option value="<?php echo $list->contracting_institution_id; ?>" <?php if ($list->contracting_institution_id == $data->contracts[0]->contracting_institution_id) {
                                                                                                     echo "selected";
                                                                                                   } ?>><?php echo $list->contracting_institution; ?></option>
                               <?php endforeach; ?>
@@ -206,7 +98,7 @@
                               <?php $lists = Modules::run('lists/funder');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->funder_id; ?>" <?php if ($list->funder_id == $contract->funder_id) {
+                                <option value="<?php echo $list->funder_id; ?>" <?php if ($list->funder_id == $data->contracts[0]->funder_id) {
                                                                                   echo "selected";
                                                                                 } ?>><?php echo $list->funder; ?></option>
                               <?php endforeach; ?>
@@ -220,7 +112,7 @@
                               <?php $lists = Modules::run('lists/supervisor');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $contract->staff_id) {
+                                <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $data->staff_id) {
                                                                                   echo "selected";
                                                                                 } ?>><?php echo $list->lname . ' ' . $list->fname; ?></option>
                               <?php endforeach; ?>
@@ -235,7 +127,7 @@
                               <?php $lists = Modules::run('lists/supervisor');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $contract->staff_id) {
+                                <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $data->staff_id) {
                                                                                   echo "selected";
                                                                                 } ?>><?php echo $list->lname . ' ' . $list->fname; ?></option>
                               <?php endforeach; ?>
@@ -249,7 +141,7 @@
                               <?php $lists = Modules::run('lists/contracttype');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->contract_type_id; ?>" <?php if ($list->contract_type_id == $contract->contract_type_id) {
+                                <option value="<?php echo $list->contract_type_id; ?>" <?php if ($list->contract_type_id == $data->contracts[0]->contract_type_id) {
                                                                                           echo "selected";
                                                                                         } ?>><?php echo $list->contract_type; ?></option>
                               <?php endforeach; ?>
@@ -264,7 +156,7 @@
                               <?php $lists = Modules::run('lists/stations');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->duty_station_id; ?>" <?php if ($list->duty_station_id == $contract->duty_station_id) {
+                                <option value="<?php echo $list->duty_station_id; ?>" <?php if ($list->duty_station_id == $data->contracts[0]->duty_station_id) {
                                                                                         echo "selected";
                                                                                       } ?>><?php echo $list->duty_station_name; ?></option>
                               <?php endforeach; ?>
@@ -278,7 +170,7 @@
                               <?php $lists = Modules::run('lists/divisions');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->division_id; ?>" <?php if ($list->division_id == $contract->division_id) {
+                                <option value="<?php echo $list->division_id; ?>" <?php if ($list->division_id == $data->contracts[0]->division_id) {
                                                                                     echo "selected";
                                                                                   } ?>><?php echo $list->division_name; ?></option>
                               <?php endforeach; ?>
@@ -288,12 +180,12 @@
 
                           <div class="form-group">
                             <label for="start_date">Start Date:</label>
-                            <input type="text" class="form-control datepicker" value="<?php echo $contract->start_date; ?>" name="start_date" id="start_date" required <?=$readonly?>>
+                            <input type="text" class="form-control datepicker" value="<?php echo $data->contracts[0]->start_date; ?>" name="start_date" id="start_date" required <?=$readonly?>>
                           </div>
 
                           <div class="form-group">
                             <label for="end_date">End Date:</label>
-                            <input type="text" class="form-control datepicker" value="<?php echo $contract->end_date; ?>" name="end_date" id="end_date" required <?=$readonly?>>
+                            <input type="text" class="form-control datepicker" value="<?php echo $data->contracts[0]->end_date; ?>" name="end_date" id="end_date" required <?=$readonly?>>
                           </div>
 
                           <div class="form-group">
@@ -302,18 +194,26 @@
                               <?php 
                               $lists = Modules::run('lists/status');
                               foreach ($lists as $list) :
-                           
+                                  if (in_array($list->status_id, [4, 7])&&($status==3)) { // Only allow status_id 6 and 7
                               ?>
                                       <option value="<?php echo $list->status_id; ?>" 
-                                          <?php if ($list->status_id == $contract->status_id) {
+                                          <?php if ($list->status_id == $data->contracts[0]->status_id) {
                                               echo "selected";
                                           } ?>>
                                           <?php echo $list->status; ?>
                                       </option>
-                            
+                              <?php 
+                                  }
+                                  else{ ?>
+                                    <option value="<?php echo $list->status_id; ?>" 
+                                    <?php if ($list->status_id == $data->contracts[0]->status_id) {
+                                        echo "selected";
+                                    } ?>>
+                                    <?php echo $list->status; ?>
+                                </option>
 
 
-                                <?php  
+                                <?php  }
                               endforeach; 
                               ?>
                           </select>
@@ -327,7 +227,7 @@
 
                           <div class="form-group">
                             <label for="comments">Comments:</label>
-                            <textarea class="form-control" name="comments" id="comments" rows="3"><?php echo $contract->comments; ?></textarea>
+                            <textarea class="form-control" name="comments" id="comments" rows="3"><?php echo $data->contracts[0]->comments; ?></textarea>
                           </div>
 
 
@@ -355,11 +255,3 @@
               </div>
 
               <!-- Edit contract -->
-            <?php } ?>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-

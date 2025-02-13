@@ -31,14 +31,18 @@
 						<ul class="dropdown-menu">
 							<?php if (in_array('72', $permissions)) : ?>
 								<?php if (in_array('71', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff"><i class="bx bx-right-arrow-alt"></i>Staff List</a>
-									</li>
+									
 
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff/new"><i class="bx bx-right-arrow-alt"></i>Add New Staff</a>
 									</li>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff"><i class="bx bx-right-arrow-alt"></i>Current Staff List</a>
+									</li>
+									
 									<li> <a class="dropdown-item" href="<?= base_url() ?>staff/contract_status/2"><i class="bx bx-right-arrow-alt"></i>Contracts Due</a>
 									</li>
 									<li> <a class="dropdown-item" href="<?= base_url() ?>staff/contract_status/3"><i class="bx bx-right-arrow-alt"></i>Contracts Expired</a>
+									</li>
+									<li> <a class="dropdown-item" href="<?= base_url() ?>staff/contract_status/7"><i class="bx bx-right-arrow-alt"></i>Under Renewal</a>
 									</li>
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff/contract_status/4"><i class="bx bx-right-arrow-alt"></i>Former Staff</a>
 									</li>
@@ -103,19 +107,39 @@
 							</ul>
 						</li>
 					<?php endif; ?>
-					<!-- <?php if (in_array('75', $permissions)) : ?>
-					<li class="nav-item dropdown">
-						<a href="#" class="nav-link  <?php echo activelink('tasks', $this->uri->segment(1)) ?>">
-							<div class="parent-icon"><i class='fa fa-calendar'></i>
-							</div>
-							<div class="menu-title">Task Analysis</div>
-						</a>
-						<ul class="dropdown-menu">
-							<li> <a class="dropdown-item" href="#"><i class="bx bx-right-arrow-alt"></i>Weekly Tasks</a>
-							</li>
-						</ul>
-					</li>
-					<?php endif; ?> -->
+					<?php if  (in_array('77', $permissions)): ?>
+						<li class="nav-item dropdown">
+							<a href="<?php echo base_url() ?>performance" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+								<div class="parent-icon"><i class='fa fa-line-chart'></i>
+								</div>
+								<div class="menu-title">Domain Controller</div>
+							</a>
+							<ul class="dropdown-menu">
+								<?php if (in_array('38', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>admanager/list_accounts"><i class="bx bx-right-arrow-alt"></i>Accounts</a>
+									</li>
+								<?php endif; ?>
+				
+							</ul>
+						</li>
+					<?php endif; ?>
+
+					<?php if  (in_array('77', $permissions)): ?>
+						<li class="nav-item dropdown">
+							<a href="<?php echo base_url() ?>performance" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+								<div class="parent-icon"><i class='fa fa-bar-chart'></i>
+								</div>
+								<div class="menu-title">Planner</div>
+							</a>
+							<ul class="dropdown-menu">
+								<?php if (in_array('38', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>planner"><i class="bx bx-right-arrow-alt"></i>Add Activities</a>
+									</li>
+								<?php endif; ?>
+				
+							</ul>
+						</li>
+					<?php endif; ?>
 					<?php if (in_array('15', $permissions)) : ?>
 
 						<li class="nav-item dropdown">
@@ -149,11 +173,14 @@
 							<ul class="dropdown-menu">
 								<li> <a class="dropdown-item" href="<?php echo base_url() ?>auth/users"><i class="bx bx-right-arrow-alt"></i>Manage Users</a>
 								</li>
-							</ul>
-							<ul class="dropdown-menu">
 								<li> <a class="dropdown-item" href="<?php echo base_url() ?>permissions"><i class="bx bx-right-arrow-alt"></i>User Permissions</a>
 								</li>
+								<li> <a class="dropdown-item" href="<?php echo base_url() ?>auth/logs"><i class="bx bx-right-arrow-alt"></i>Audit Logs</a>
+								</li>
+							
+							
 							</ul>
+						
 
 
 						</li>
