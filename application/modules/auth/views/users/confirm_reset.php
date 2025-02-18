@@ -1,4 +1,4 @@
-<div class="modal fade" id="reset<?php echo $user->id; ?>">
+<div class="modal fade" id="reset<?php echo $user->user_id; ?>">
 	<form class="reset" action="<?php echo base_url(); ?>auth/resetPass" method="post">
 		<div class="modal-dialog">
 			<div class="modal-content">

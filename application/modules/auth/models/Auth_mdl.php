@@ -11,52 +11,76 @@ class Auth_mdl extends CI_Model
 	}
 	public function login($postdata)
 	{
-		$username = $postdata['username'];
-		if (!filter_var($username, FILTER_VALIDATE_EMAIL)) {
-			//login using username
-			$this->db->where("username", $username);
-			$this->db->where("status", 1);
-			$this->db->join('user_groups', 'user_groups.id=user.role');
-			$qry = $this->db->get($this->table);
-			$rows = $qry->num_rows();
-			if ($rows !== 0) {
-				$person = $qry->row();
-				return $person;
-			}
-		} else {
-			//login using email
-			$this->db->where("email", $username);
-			$this->db->where("status", 1);
-			$this->db->join('user_groups', 'user_groups.id=user.role');
-			$qry = $this->db->get($this->table);
-			$rows = $qry->num_rows();
-			if ($rows !== 0) {
-				$person = $qry->row();
-				return $person;
-			}
-		}
+	            $email = $postdata['email'];
+				$this->db->select('*'); // Select columns from the staff table
+				$this->db->from('staff'); // Set the main table
+				$this->db->join('user', 'user.auth_staff_id = staff.staff_id'); // Join with the users table
+				$this->db->join('user_groups', 'user_groups.id = user.role'); // Join with the user_groups table
+				$this->db->where('user.status', 1);
+				$this->db->where('staff.work_email',"$email"); // Add condition for active users
+
+				// Execute the query
+
+				$qry = $this->db->get();
+
+				// Check if any rows are returned
+				if ($qry->num_rows() > 0) {
+					// Fetch the first row as an object
+					$person = $qry->row();
+					return $person;
+				} else {
+					// Return false or an empty result if no rows are found
+					return false;
+				}
 	}
 
 	public function getAll($start, $limit, $key)
 	{
+		$this->db->select('staff.*, user.*, user_groups.*'); // Select required columns
+		$this->db->from('staff'); // Set the main table
+	
+		// Add search conditions
 		if (!empty($key)) {
-			$this->db->like("username", "$key", "both");
-			$this->db->or_like("name", "$key", "both");
+			$this->db->group_start(); // Start a group for OR conditions
+			$this->db->like("staff.work_email", "$key", "both");
+			$this->db->or_like("staff.fname", "$key", "both");
+			$this->db->or_like("staff.lname", "$key", "both");
+			$this->db->group_end(); // End the group
 		}
-		$this->db->limit($start, $limit);
-		$this->db->join('user_groups', 'user_groups.id=user.role', 'left');
-		$qry = $this->db->get($this->table);
+	
+		// Join the staff table with a unique alias (staff1)
+		$this->db->join('user', 'user.auth_staff_id = staff.staff_id');
+	
+		// Join the user_groups table
+		$this->db->join('user_groups', 'user_groups.id = user.role');
+	
+		// Add limit and offset
+		$this->db->limit( $start,$limit);
+	
+		// Execute the query
+		$qry = $this->db->get();
 		return $qry->result();
 	}
 	public function count_Users($key)
-	{
-		if (!empty($key)) {
-			$this->db->like("username", "$key", "both");
-			$this->db->or_like("name", "$key", "both");
-		}
-		$qry = $this->db->get($this->table);
-		return $qry->num_rows();
-	}
+{
+    $this->db->from('staff'); // Set the main table
+
+    // Add search conditions
+    if (!empty($key)) {
+        $this->db->group_start(); // Start a group for OR conditions
+        $this->db->like("staff.work_email", "$key", "both");
+        $this->db->or_like("staff.fname", "$key", "both");
+        $this->db->or_like("staff.lname", "$key", "both");
+        $this->db->group_end(); // End the group
+    }
+
+    // Join the staff table with a unique alias (staff1)
+	$this->db->join('user', 'user.auth_staff_id = staff.staff_id');
+
+    // Execute the query
+    $qry = $this->db->get();
+    return $qry->num_rows();
+}
 	public function addUser($postdata)
 	{
 

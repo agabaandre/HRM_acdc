@@ -1,149 +1,109 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!--favicon-->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <link rel="icon" href="<?php echo base_url()?><?php echo base_url()?>assets/images/africacdc_2.png" type="image/png" />
-    <!--plugins-->
-    <link href="<?php echo base_url()?>assets/plugins/simplebar/css/simplebar.css" rel="stylesheet" />
-    <link href="<?php echo base_url()?>assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css" rel="stylesheet" />
-    <link href="<?php echo base_url()?>assets/plugins/metismenu/css/metisMenu.min.css" rel="stylesheet" />
-    <link href="<?php echo base_url()?>assets/plugins/fullcalendar/css/main.min.css" rel="stylesheet" />
-    <link href="<?php echo base_url()?>assets/plugins/datatable/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
-    <!-- loader-->
-    <link href="<?php echo base_url()?>assets/css/pace.min.css" rel="stylesheet" />
-    <script src="<?php echo base_url()?>assets/js/pace.min.js"></script>
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/export-data.js"></script>
-    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
-    <!-- Bootstrap CSS -->
-    <link href="<?php echo base_url()?>assets/css/bootstrap.min.css" rel="stylesheet">
-    <link href="<?php echo base_url()?>assets/css/bootstrap-extended.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-    <link href="<?php echo base_url()?>assets/css/app.css" rel="stylesheet">
-    <link href="<?php echo base_url()?>assets/css/icons.css" rel="stylesheet">
-    <!-- Theme Style CSS -->
-    <link rel="stylesheet" href="<?php echo base_url()?>assets/css/dark-theme.css" />
-    <link rel="stylesheet" href="<?php echo base_url()?>assets/css/semi-dark.css" />
-    <link rel="stylesheet" href="<?php echo base_url()?>assets/css/header-colors.css" />
-    <link rel="stylesheet" href="jquery-ui-1.8.7.custom/development-bundle/themes/base/jquery.ui.all.css">
-    <script src="jquery-ui-1.8.7.custom/development-bundle/jquery-1.4.4.js"></script>
-    <script src="jquery-ui-1.8.7.custom/development-bundle/ui/jquery.ui.core.js"></script>
-    <script src="jquery-ui-1.8.7.custom/development-bundle/ui/jquery.ui.widget.js"></script>
-    <script src="jquery-ui-1.8.7.custom/development-bundle/ui/jquery.ui.datepicker.js"></script>
-
-    <script type="text/javascript">
-        (function ($) {
-            //jquery stuff
-            $(function () {
-                $(".dob1").datepicker({
-                    changeMonth: true,
-                    changeYear: true,
-                    showOn: "both",
-                    buttonImage: "images/datepicker_icon.jpg",
-                    buttonImageOnly: true
-                });
-
-            });
-            //end jquery stuff
-        })(jQuery);
-        //no conflict jquery
-        jQuery.noConflict();
-    </script>
-    <title>Africa CDC</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+    <link rel="stylesheet" href="<?php echo base_url()?>assets/css/login-style.css">
+    <title>Africa CDC Staff Tracker</title>
 </head>
+<body>
+    <div id="logreg-forms">
+    <?php echo form_open_multipart(base_url('index.php/auth/login'), array('id' => 'login', 'class' => 'login')); ?>
 
-<body class="bg-login">
-  <!--wrapper-->
-  <div class="wrapper">
-    <div class="section-authentication-signin d-flex align-items-center justify-content-center my-5 my-lg-0">
-      <div class="container-fluid">
-        <div class="row row-cols-1 row-cols-lg-2 row-cols-xl-3">
-          <div class="col mx-auto">
-            <div class="card rounded-4">
-              <div class="card-body">
-                <div class="border p-4 rounded-4">
-                  <div class="text-center">
-                    <img src="<?php echo base_url()?>assets/images/africacdc_2.png" width="250" alt="" />
-                    <p class="mb-4">Please login before enter the page</p>
-                  </div>
-                  <div class="panel-title text-center">
-                    <h2>STAFF TRACKER </h2>
-                  </div>
-
-                  <div class="form-body">
-                    <?php echo form_open_multipart(base_url('index.php/auth/login'), array('id' => 'login', 'class' => 'login')); ?>
-
-
-                      <div class="col-12">
-                        <input type="text" class="form-control rounded-5" name="username" placeholder="Username"
-                          autocomplete="off" focus>
-                      </div>
-                      <div class="col-12">
-
-                        <input class="form-control rounded-5" type="password" name="password"
-                          placeholder="Enter Password">
-                      </div>
-                      <div class="col-md-6">
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="flexSwitchCheckChecked">
-                          <label class="form-check-label" for="flexSwitchCheckChecked">Remember Me</label>
-                        </div>
-                      </div>
-                      <!--	<div class="col-md-6 text-end">
-                        <a href="authentication-forgot-password.html">Forgot Password ?</a>
-                      </div> -->
-                      <div class="col-12">
-                        <div class="d-grid">
-                          <button class="btn btn-gradient-info rounded-5" type="submit" name="Submit"><i
-                              class="bx bxs-lock-open"></i>Sign in</button>
-                        </div>
-                      </div>
-
-
-
-                    </form>
-
-
-                  </div>
-                </div>
-              </div>
+            <h1 class="h3 mb-3 font-weight-normal" style="text-align: center"> Sign in</h1>
+            <div class="social-login">
+                <button class="btn facebook-btn social-btn" type="button"><span><i class="fab fa-microsoft"></i> Sign in with Staff</span> </button>
             </div>
-          </div>
-        </div>
-        <!--end row-->
-      </div>
+            <p style="text-align:center"> OR  </p>
+
+            <input type="email" id="inputEmail" name ="email" class="form-control" placeholder="Email address" required="" autofocus="">
+            <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required="">
+            
+            <button class="btn btn-success btn-block" type="submit"><i class="fas fa-sign-in-alt"></i> Sign in</button>
+            <!-- <a href="#" id="forgot_pswd">Forgot password?</a> -->
+            <hr>
+            <!-- <p>Don't have an account!</p>  -->
+            <!-- <button class="btn btn-primary btn-block" type="button" id="btn-signup"><i class="fas fa-user-plus"></i> Sign up New Account</button> -->
+            </form>
+
+            <form action="/reset/password/" class="form-reset">
+                <input type="email" id="resetEmail" class="form-control" placeholder="Email address" required="" autofocus="">
+                <button class="btn btn-primary btn-block" type="submit">Reset Password</button>
+                <a href="#" id="cancel_reset"><i class="fas fa-angle-left"></i> Back</a>
+            </form>
+            
+            <form action="/signup/" class="form-signup">
+                <div class="social-login">
+                    <button class="btn facebook-btn social-btn" type="button"><span><i class="fab fa-facebook-f"></i> Sign up with Outlook</span> </button>
+                </div>
+          
+                
+                <p style="text-align:center">OR</p>
+
+                <input type="text" id="user-name" class="form-control" placeholder="Full name" required="" autofocus="">
+                <input type="email" id="user-email" class="form-control" placeholder="Email address" required autofocus="">
+                <input type="password" id="user-pass" class="form-control" placeholder="Password" required autofocus="">
+                <input type="password" id="user-repeatpass" class="form-control" placeholder="Repeat Password" required autofocus="">
+
+                <button class="btn btn-primary btn-block" type="submit"><i class="fas fa-user-plus"></i> Sign Up</button>
+                <a href="#" id="cancel_signup"><i class="fas fa-angle-left"></i> Back</a>
+            </form>
+            <br>
+            
     </div>
-  </div>
-  <!--end wrapper-->
-  <!-- Bootstrap JS -->
-  <script src="assets/js/bootstrap.bundle.min.js"></script>
-  <!--plugins-->
-  <script src="assets/js/jquery.min.js"></script>
-  <script src="assets/plugins/simplebar/js/simplebar.min.js"></script>
-  <script src="assets/plugins/metismenu/js/metisMenu.min.js"></script>
-  <script src="assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
-  <!--Password show & hide js -->
-  <script>
-    $(document).ready(function () {
-      $("#show_hide_password a").on('click', function (event) {
-        event.preventDefault();
-        if ($('#show_hide_password input').attr("type") == "text") {
-          $('#show_hide_password input').attr('type', 'password');
-          $('#show_hide_password i').addClass("bx-hide");
-          $('#show_hide_password i').removeClass("bx-show");
-        } else if ($('#show_hide_password input').attr("type") == "password") {
-          $('#show_hide_password input').attr('type', 'text');
-          $('#show_hide_password i').removeClass("bx-hide");
-          $('#show_hide_password i').addClass("bx-show");
-        }
-      });
-    });
+    <p style="text-align:center">
+        <a href="http://bit.ly/2RjWFMfunction toggleResetPswd(e){
+    e.preventDefault();
+    $('#logreg-forms .form-signin').toggle() // display:block or none
+    $('#logreg-forms .form-reset').toggle() // display:block or none
+}
+
+function toggleSignUp(e){
+    e.preventDefault();
+    $('#logreg-forms .form-signin').toggle(); // display:block or none
+    $('#logreg-forms .form-signup').toggle(); // display:block or none
+}
+
+$(()=>{
+    // Login Register Form
+    $('#logreg-forms #forgot_pswd').click(toggleResetPswd);
+    $('#logreg-forms #cancel_reset').click(toggleResetPswd);
+    $('#logreg-forms #btn-signup').click(toggleSignUp);
+    $('#logreg-forms #cancel_signup').click(toggleSignUp);
+})g" target="_blank" style="color:black">Copyright Africa CDC <?php echo date('Y')?></a>
+    </p>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script>
+      function toggleResetPswd(e){
+    e.preventDefault();
+    $('#logreg-forms .form-signin').toggle() // display:block or none
+    $('#logreg-forms .form-reset').toggle() // display:block or none
+}
+
+function toggleSignUp(e){
+    e.preventDefault();
+    $('#logreg-forms .form-signin').toggle(); // display:block or none
+    $('#logreg-forms .form-signup').toggle(); // display:block or none
+}
+
+$(()=>{
+    // Login Register Form
+    $('#logreg-forms #forgot_pswd').click(toggleResetPswd);
+    $('#logreg-forms #cancel_reset').click(toggleResetPswd);
+    $('#logreg-forms #btn-signup').click(toggleSignUp);
+    $('#logreg-forms #cancel_signup').click(toggleSignUp);
+})
+  
+  
   </script>
-  <!--app JS-->
-  <script src="assets/js/app.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-<div class="modal fade" id="block<?php echo $user->id; ?>">
+<div class="modal fade" id="block<?php echo $user->user_id; ?>">
 <form class="block" action="<?php echo base_url(); ?>auth/blockUser" method="post">
 	<div class="modal-dialog">
 			<div class="modal-content">

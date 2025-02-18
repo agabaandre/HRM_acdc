@@ -1,34 +1,3 @@
-/*
-Template Name: Amdash Admin
-Author: codervent
-Email: codervent@gmail.com
-File: app.css
-*/
-
-
-/*  
-  - Google Font
-  - General
-  - Sidebar
-  - Header
-  - Metismenu
-  - Extra CSS
-  - Invoice Page
-  - Chat box
-  - Email box
-  - Compose Mail
-  - Navs and Tabs
-  - Background Colors
-  - Authentication
-  - Buttons 
-  - Pricing Table
-  - Forms
-  - Responsive
-*/
-
-
-/* General */
-
 body {
     font-size: 14px;
     color: #4c5258;
@@ -59,15 +28,17 @@ a {
     width: 50px;
     height: 50px;
     position: absolute;
-    left: 60%;
+    left: 50%;
     top: 50%;
-    background-image: url("assets/images/loader2.gif");
+    /* Go one directory up (..) to assets/, then into images/ */
+    background-image: url("../images/loader.gif");
     z-index: 9999;
     background-repeat: no-repeat;
     background-position: center;
     background-size: cover;
     margin: -50px 0 0 -50px;
 }
+
 
 .mobile-topbar-header {
     display: none;

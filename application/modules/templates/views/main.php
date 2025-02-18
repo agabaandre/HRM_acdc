@@ -1,6 +1,6 @@
 <?php
 $session = $this->session->userdata('user');
-$permissions = $session->permissions;
+ $permissions = $session->permissions;
 require_once('partials/css_files.php');
 require_once('partials/header.php');
 include("partials/nav.php");
