@@ -99,7 +99,7 @@
 								<a class="dropdown-item" href="javascript:;">
 									<div class="d-flex align-items-center">
 										<div class="user-online">
-											<img src="<?php echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo; ?>" class="msg-avatar" alt="user avatar">
+											
 										</div>
 										<div class="flex-grow-1">
 											<h6 class="msg-name">Systems Adminstrator <span class="msg-time float-end">5 sec

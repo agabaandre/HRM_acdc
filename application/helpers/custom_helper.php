@@ -354,7 +354,7 @@ if (!function_exists('get_photo')) {
     function get_photo($staff_id)
     {
         $ci = &get_instance();
-        $ci->db->where('staff_id', $staff_id);
+        $ci->db->where('auth_staff_id', $staff_id);
         $query = $ci->db->get('user');
 
         if ($query->num_rows() > 0) {
@@ -365,6 +365,24 @@ if (!function_exists('get_photo')) {
         }
 
         return FALSE;
+    }
+
+}
+if (!function_exists('job_output')) {
+    function job_output($output_id)
+    {
+        $ci = &get_instance();
+        $ci->db->where('output_id', $output_id);
+        $query = $ci->db->get('quarterly_outputs');
+
+        if ($query->num_rows() > 0) {
+            $result = $query->row()->name;
+            if (!empty($result)) {
+                return $result;
+            }
+        }
+
+        return 'NA';
     }
 
 }
@@ -698,7 +716,7 @@ if (!function_exists('log_user_action')) {
         $CI =& get_instance(); // Get CodeIgniter instance
 
         // Get the logged-in user's ID (change session key if needed)
-        $user_id = $CI->session->userdata('user')->id ?? null;
+        $user_id = $CI->session->userdata('user')->user_id ?? null;
 
 
         // Capture user IP and user agent

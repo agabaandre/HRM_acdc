@@ -25,6 +25,10 @@ class Dashboard extends MX_Controller
 		$data['staff_by_member_state'] = $this->dash_mdl->staff_by_member_state();
 		$data['staff_by_contract'] = $this->dash_mdl->staff_by_contract();
 		$data['staff_by_division'] = $this->dash_mdl->staff_by_division();
+		$data['today'] = $this->staff_mdl->getBirthdaysForToday();
+		$data['tomorrow'] = $this->staff_mdl->getBirthdaysForTomorrow();
+		$data['week'] = $this->staff_mdl->getBirthdaysForNextSevenDays();
+		$data['month'] = $this->staff_mdl->getBirthdaysForNextThirtyDays();
 		$data['uptitle'] = "Main Dashboard";
 		//dd($this->dash_mdl->get_all());
 

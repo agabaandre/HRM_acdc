@@ -1,5 +1,5 @@
 <!-- Default modal Size -->
-<div class="modal fade" id="user<?php echo $user->id; ?>">
+<div class="modal fade" id="user<?php echo $user->user_id; ?>">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -20,10 +20,8 @@
           <strong style="margin-right: 1em;"> Name </strong>
           <input type="text" name="name" value="<?php echo $user->name; ?>" class="form-control" style="width:100%" required>
 
-          <strong style="margin-right: 1em;">User Name </strong>
-          <input type="text" name="username" value="<?php echo $user->username; ?>" class="form-control" style="width:100%" readonly>
           <strong style="margin-right: 1em;">Email </strong>
-          <input type="text" name="email" value="<?php echo $user->email; ?>" class="form-control" style="width:100%">
+          <input type="text" name="email" value="<?php echo $user->work_email; ?>" class="form-control" style="width:100%">
 
           <strong style="margin-right: 1em;">User Group </strong>
           <select name="role" style="width:100%;" class="form-control role select2" required>
@@ -38,28 +36,7 @@
             <?php endforeach; ?>
           </select>
         </div>
-        <div class="col-md-12" style="margin: 0 auto">
-          <div class="form-group">
-            <label>RCC</label>
-            <select onChange="getCountries($(this).val());" name="access1" class="form-control select2 sregion" style="width:100%;" multiple>
-              <?php foreach ($rcc as $district) :
-              ?>
-                <option value="<?php echo $district->region_name; ?>"><?php echo $district->region_name; ?></option>
-              <?php endforeach; ?>
-            </select>
-
-          </div>
-
-          <br>
-          <div class="form-group">
-            <label>Country</label>
-            <select id="scountry" name="access2" class="form-control select2 scountry" style="width:100%;" multiple>
-
-
-            </select>
-
-
-          </div>
+    
           <br><br>
           <input type="hidden" name="id" value="<?php echo $user->id; ?>">
 

@@ -1,7 +1,7 @@
 <div class="row">
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url() ?>auth/users">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -18,7 +18,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/duty_stations">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -36,7 +36,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/contracting_institutions">
-			<div class="card border-gradient border-gradient-success rounded-8">
+			<div class="card border-gradient border-dark rounded-2">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -53,7 +53,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/contract_types">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -70,7 +70,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/divisions">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -87,7 +87,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/grades">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -104,7 +104,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/jobs">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -121,7 +121,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/jobs_acting">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -139,7 +139,7 @@
 	</div>
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/au_values">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -156,7 +156,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/funders">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -175,7 +175,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/leave_types">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -195,7 +195,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/sysvariables">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -213,7 +213,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/training_skills">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">
@@ -234,7 +234,7 @@
 
 	<div class="col-12 col-lg-3">
 		<a href="<?php echo base_url(); ?>settings/regions">
-			<div class="card border-gradient border-gradient-success rounded-4 overflow-hidden">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
 				<div class="card-body">
 					<div class="d-flex align-items-center justify-content-between">
 						<div class="">

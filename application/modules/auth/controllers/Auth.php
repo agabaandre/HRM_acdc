@@ -18,34 +18,35 @@ class Auth extends MX_Controller
   {
     $postdata = $this->input->post();
     $password = $this->input->post('password');
-    $hash = $this->argonhash->make($password);
-    $data = $this->auth_mdl->login($postdata);
-    
-    $adata = (array)$data;
-
-   // dd($adata);
-   
-
-    // $auth = ($this->argonhash->check($password, $adata['password']));
-    $auth = true;
-    unset($adata['password']);
-   
-
-    if ($auth && $adata['role']==17) {
-      $adata['permissions'] = $this->auth_mdl->user_permissions($adata['role']);
-      $adata['is_admin']    = true;
-      $_SESSION['user'] = (object)$adata;
+    // Fetch user data
+    $data['users'] = $this->auth_mdl->login($postdata);
+    $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
+    $users_array = (array)$data['users'];
+    $contract_array = (array)$data['contract'];
+    $users = array_merge($users_array, $contract_array);
+    $hashedPassword = $this->argonhash->make($password);
+    $auth = ($this->argonhash->check($password, $hashedPassword));
+    //dd($users);
+  
+    if ($auth && $users['role']==17) {
+      unset($users['password']);
+      $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+      $users['is_admin']    = false;
+      $_SESSION['user'] = (object)$users;
       redirect('auth/profile');
     } else if ($auth && $adata['role']!= 17) {
-      $adata['permissions'] = $this->auth_mdl->user_permissions($adata['role']);
-      $adata['is_admin']    = true;
-      $_SESSION['user'] = (object)$adata;
+      unset($users['password']);
+      $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+      $users['is_admin']    = true;
+      $_SESSION['user'] = (object)$users;
       redirect('dashboard/index');
      }
     else {
-      redirect('auth/index');
+      redirect('auth');
     }
   }
+
+
 
   public function profile()
   {
@@ -107,6 +108,7 @@ class Auth extends MX_Controller
     $page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0; //default starting point for limits 
     $data['links'] = $this->pagination->create_links();
     $data['users'] = $this->auth_mdl->getAll($config['per_page'], $page, $searchkey);
+   // dd($this->db->last_query());
     $data['divisions'] = $this->db->get('divisions')->result();
     $data['module'] = "auth";
     $data['title'] = "User Management";

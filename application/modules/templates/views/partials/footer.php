@@ -80,7 +80,7 @@
 <!--end switcher-->
 <!-- Bootstrap JS -->
 <script src="<?php echo base_url() ?>assets/js/bootstrap.bundle.min.js"></script>
-<script src="<?php echo base_url() ?>assets/js/jquery.min.js"></script>
+<!-- <script src="<?php echo base_url() ?>assets/js/jquery.min.js"></script> -->
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/notifications.min.js"></script>
 <script src="<?php echo base_url() ?>assets/js/pace.min.js"></script>
@@ -99,6 +99,7 @@
 <script src="<?php echo base_url() ?>assets/plugins/select2/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
 <script src="<?php echo base_url() ?>assets/js/app.js">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 </script>
 <script src="<?php echo base_url() ?>assets/plugins/smart-wizard/js/jquery.smartWizard.min.js"></script>
 <script>
@@ -209,12 +210,13 @@
 		}); // ajax
 	}); //form submit
 </script>
+<!-- date picker on employee form -->
 <script>
-	$('.datepicker').pickadate({
-			selectMonths: true,
-			selectYears: true
-		}),
-		$('.timepicker').pickatime()
+	// $('.datepicker').pickadate({
+	// 		selectMonths: true,
+	// 		selectYears: true
+	// 	}),
+	// 	$('.timepicker').pickatime()
 </script>
 <script>
 	$('.staffdatepicker').pickadate({
@@ -413,6 +415,7 @@
 		objectiveCounter--;
 	}
 </script>
+
 <script>
 	// Function to calculate requested_days
 	function calculateRequestedDays() {
@@ -447,16 +450,72 @@
 		});
 	});
 
-	const today = new Date();
-	today.setHours(0, 0, 0, 0); // Set time to beginning of the day
 
-	const datepickers = document.querySelectorAll('.datepicker');
-	datepickers.forEach(datepicker => {
-		new bootstrap.Datepicker(datepicker, {
-			startDate: today, // Disable dates before today
-		});
-	});
 </script>
+
+<script>
+    // Initialize Summernote on the textarea
+    $(document).ready(function() {
+      $('#summernote').summernote({
+        placeholder: 'Type here.................',
+        tabsize: 2,
+        height: 250,
+        toolbar: [
+          // customize the toolbar as needed
+          ['style', ['style']],
+          ['font', ['bold', 'italic', 'underline', 'clear']],
+          ['fontname', ['fontname']],
+          ['color', ['color']],
+          ['para', ['ul', 'ol', 'paragraph']],
+          ['insert', ['link', 'picture', 'video']],
+          ['view', ['fullscreen', 'codeview', 'help']]
+        ],
+		// Remove default image upload (base64) behavior
+        callbacks: {
+          onImageUpload: function(files) {
+            for (var i = 0; i < files.length; i++) {
+              uploadImage(files[i]);
+            }
+          }
+        }
+      });
+    });
+
+
+
+function uploadImage(file) {
+  var data = new FormData();
+  data.append("file", file);
+  
+  // Append CSRF token
+  var csrfName = "<?= $this->security->get_csrf_token_name(); ?>";
+  var csrfHash = "<?= $this->security->get_csrf_hash(); ?>";
+  data.append(csrfName, csrfHash);
+
+  $.ajax({
+    url: '<?php echo base_url()?>upload/image_upload', // Replace with your server-side upload script
+    type: 'POST',
+    data: data,
+    cache: false,
+    contentType: false,
+    processData: false,
+    success: function(response) {
+      // Assuming your server returns a JSON object with the image URL
+      var imageUrl = response.url || response;
+      $('#summernote').summernote('insertImage', imageUrl);
+    },
+    error: function(jqXHR, textStatus, errorThrown) {
+      console.error("Image upload failed: " + textStatus + " " + errorThrown);
+    }
+  });
+}
+
+  </script>
+	
+
+  
+
+
 
 
 
