@@ -126,7 +126,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form action="<?php echo site_url('taskplanner/add_outputs'); ?>" method="post">
+        <form action="<?php echo site_url('tasks/add_outputs'); ?>" method="post">
           <div class="form-group">
             <label for="name">Name:</label>
             <input type="text" id="name" name="name" class="form-control" required>
@@ -185,7 +185,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form action="<?php echo site_url('taskplanner/edit_outputs'); ?>" method="post">
+        <form action="<?php echo site_url('tasks/edit_outputs'); ?>" method="post">
           <input type="hidden" name="quarterly_output_id" id="edit_quarterly_output_id">
           <div class="form-group mb-2">
             <input type="hidden" id="edit_unit_id" name="unit_id" class="form-control" required>
@@ -238,7 +238,7 @@
         Are you sure you want to delete the data?
       </div>
       <div class="modal-footer">
-        <form action="<?php echo site_url('taskplanner/delete_outputs'); ?>" method="post">
+        <form action="<?php echo site_url('tasks/delete_outputs'); ?>" method="post">
           <input type="hidden" name="quarterly_output_id" id="delete_quarterly_output_id">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-danger">Yes, Delete</button>
