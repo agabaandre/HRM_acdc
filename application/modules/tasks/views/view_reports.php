@@ -47,9 +47,9 @@
                     <?php
                     // Remove HTML tags and limit to 100 characters
                     $cleanDescription = strip_tags($report->description);
-                    if (strlen($cleanDescription) > 200) {
-                        echo substr($cleanDescription, 0, 200) . '...';
-                        echo ' <a href="#" data-bs-toggle="modal" data-bs-target="#reportModal-' . $report->report_id . '">Read More</a>';
+                    if (strlen($cleanDescription) > 10) {
+                        echo substr($cleanDescription, 0, 10) . '...';
+                        echo ' <a href="#" data-bs-toggle="modal" data-bs-target="#reportModal-' . $report->report_id . '">Read More and Approve</a>';
                     } else {
                         echo $cleanDescription;
                     }
