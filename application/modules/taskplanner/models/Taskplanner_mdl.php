@@ -44,6 +44,7 @@ class Taskplanner_mdl extends CI_Model {
         activities.quarterly_output_id, 
         quarterly_outputs.name AS quarterly_output_name, 
         activities.start_date, 
+        activities.priority, 
         activities.end_date, 
         activities.comments, 
         activities.staff_id, 
@@ -117,4 +118,56 @@ class Taskplanner_mdl extends CI_Model {
     return $query->result();
     
     }
+
+    public function get_reports_full($staff_id = null, $output_id = null, $start_date = null, $end_date = null, $limit = null, $offset = null) {
+        $this->db->select('
+            activities.activity_id, 
+            activities.activity_name, 
+            activities.quarterly_output_id, 
+            quarterly_outputs.name AS quarterly_output_name, 
+            activities.start_date, 
+            activities.end_date, 
+            activities.comments, 
+            activities.staff_id, 
+            activities.priority, 
+            activities.status AS activity_status,
+            DATEDIFF(activities.end_date, activities.start_date)+1 AS activity_days,
+            reports.report_id,
+            reports.report_date,
+            reports.description AS report_description,
+            reports.status AS report_status,
+            reports.created_at AS report_created_at,
+            reports.updated_at AS report_updated_at
+        ');
+        $this->db->from('activities');
+        
+        // Join the quarterly_outputs table
+        $this->db->join('quarterly_outputs', 'quarterly_outputs.quarterly_output_id = activities.quarterly_output_id');
+        
+        // Join the reports table using activity_id
+        $this->db->join('reports', 'reports.activity_id = activities.activity_id', 'left');
+        
+        // Apply filters if provided
+        if (!empty($staff_id)) {
+            $this->db->where('activities.staff_id', $staff_id);
+        }
+        if (!empty($output_id)) {
+            $this->db->where('activities.quarterly_output_id', $output_id);
+        }
+        if (!empty($start_date)) {
+            $this->db->where('activities.start_date >=', $start_date);
+        }
+        if (!empty($end_date)) {
+            $this->db->where('activities.end_date <=', $end_date);
+        }
+        
+        // Apply limit and offset for pagination
+        if ($limit !== null) {
+            $this->db->limit($limit, $offset);
+        }
+        
+        $query = $this->db->get();
+        return $query->result();
+    }
+    
 }

@@ -79,8 +79,11 @@
 </div>
 <!--end switcher-->
 <!-- Bootstrap JS -->
+
 <script src="<?php echo base_url() ?>assets/js/bootstrap.bundle.min.js"></script>
-<!-- <script src="<?php echo base_url() ?>assets/js/jquery.min.js"></script> -->
+  <!-- jQuery UI Library -->
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/notifications.min.js"></script>
 <script src="<?php echo base_url() ?>assets/js/pace.min.js"></script>
@@ -102,6 +105,9 @@
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 </script>
 <script src="<?php echo base_url() ?>assets/plugins/smart-wizard/js/jquery.smartWizard.min.js"></script>
+
+  <!-- FullCalendar & Bootstrap JS Bundle -->
+
 <script>
 	$(document).ready(function() {
 
@@ -152,6 +158,19 @@
 </script>
 <script>
 	$(document).ready(function() {
+		$(function() {
+			var priorities = ["Low", "Medium", "High"];
+			$("#edit_priority").autocomplete({
+			source: priorities
+			});
+		});
+
+		$(".datepicker").datepicker({
+			dateFormat: 'yy-mm-dd',
+			changeMonth: true,
+			changeYear: true
+		});
+
 		$('.mydata').DataTable({
 			dom: 'Bfrtip',
 			"paging": true,
@@ -456,7 +475,7 @@
 <script>
     // Initialize Summernote on the textarea
     $(document).ready(function() {
-      $('#summernote').summernote({
+      $('.summernote').summernote({
         placeholder: 'Type here.................',
         tabsize: 2,
         height: 250,

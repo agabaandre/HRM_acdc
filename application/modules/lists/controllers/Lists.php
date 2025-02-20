@@ -93,5 +93,16 @@ class Lists extends MX_Controller
 		return $data;
 	}
 
+	public function get_units_by_division($id)
+	{
+		$this->db->where('division_id', $id);
+		$data = $this->db->get('units')->result();
+		
+		$this->output
+			 ->set_content_type('application/json')
+			 ->set_output(json_encode($data));
+	}
+	
+
 	
 }

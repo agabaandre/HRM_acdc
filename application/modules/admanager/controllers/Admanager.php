@@ -5,7 +5,8 @@ class Admanager extends CI_Controller {
 
     public function __construct() {
         parent::__construct();
-        $this->load->library('adldap');
+        // $this->load->library('adldap');
+        $this->module='admanager';
     }
 
     public function list_accounts() {
@@ -50,4 +51,17 @@ class Admanager extends CI_Controller {
             echo "Account not found";
         }
     }
+    public function expired_accounts($status){
+		$data['module'] = $this->module;
+	
+		if ($status == 3) {
+			$data['title'] = "Expired Accounts";
+		} 
+		
+		$data['staff'] = $this->staff_mdl->get_status($status);
+	
+	
+		render('manage_domains', $data);
+
+	}
 }

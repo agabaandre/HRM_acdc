@@ -29,6 +29,7 @@
                         <th>Activity Name</th>
                         <th>Start Date</th>
                         <th>End Date</th>
+                        <th>Priority</th>
                         <th>Days</th>
                         <th>Comments</th>
                     </tr>
@@ -46,14 +47,27 @@
 
                             <!-- Start Date -->
                             <td>
-                                <input type="text" name="start_date" class="form-control form-control-md datepicker" required autocomplete="false">
+                                <input type="text" name="start_date" class="form-control form-control-md datepicker" required autocomplete="off">
                                 <div class="invalid-feedback">Please select a start date.</div>
                             </td>
 
                             <!-- End Date -->
                             <td>
-                                <input type="text" name="end_date" class="form-control form-control-md datepicker" required autocomplete="false">
+                                <input type="text" name="end_date" class="form-control form-control-md datepicker" required autocomplete="off">
                                 <div class="invalid-feedback">Please select an end date.</div>
+                            </td>
+                            <td>
+                        
+                                            <select name="week" class="form-control form-control-md"  required>
+                                                <option value="Low">Low</option>
+                                                <option value="Medium">Medium</option>
+                                                <option value="High">High</option>
+                                           
+                                               
+                                                    
+                                            </select>
+                  
+                                <div class="invalid-feedback">Please set the Priority .</div>
                             </td>
 
                             <td>
@@ -97,11 +111,11 @@
         </div>
         <div class="col-md-3">
             <label for="filterStartDate">Start Date:</label>
-            <input type="text" id="filterStartDate" class="form-control datepicker">
+            <input type="text" id="filterStartDate" class="form-control datepicker" autocomplete="off">
         </div>
         <div class="col-md-3">
             <label for="filterEndDate">End Date:</label>
-            <input type="text" id="filterEndDate" class="form-control datepicker">
+            <input type="text" id="filterEndDate" class="form-control datepicker" autocomplete="off">
         </div>
         <div class="col-md-2">
             <button id="applyFilters" class="btn btn-primary mt-4">Apply Filters</button>
@@ -119,6 +133,7 @@
                 <th>Start Date</th>
                 <th>End Date</th>
                 <th>Days</th>
+                <th>Priority</th>
                 <th>Comments</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -152,6 +167,9 @@
                         <label>End Date</label>
                         <input type="text" id="edit_end_date" class="form-control datepicker" required>
                     </div>
+                    <label>Priority (Low, Medium, High)</label>
+                    <input type="text" id="edit_priority" class="form-control" required>
+
                     <div class="form-group">
                         <label>Comments</label>
                         <textarea id="edit_comments" class="form-control"></textarea>
@@ -190,8 +208,21 @@
                         <input type="text" id="report_end_date" class="form-control" disabled autocomplete="false">
                     </div>
                     <div class="form-group">
+                    <label for="output">Report Week:</label>
+                    <?php $unit_id = $this->session->userdata('user')->unit_id; ?>
+                                            <select name="week" class="form-control form-control-md"  required>
+                                                <option value="1">Week 1</option>
+                                                <option value="2">Week 2</option>
+                                                <option value="3">Week 3</option>
+                                                <option value="4">Week 4</option>
+                                               
+                                                    
+                                            </select>
+                                            <div class="invalid-feedback">Please select a Quarterly Output.</div>
+                    </div>
+                    <div class="form-group">
                         <label>Report</label>
-                        <textarea id="summernote" class="form-control" rows="20"></textarea>
+                        <textarea id="description" class="form-control summernote" rows="20"></textarea>
                     </div>
                     <div class="form-group"><br>
                     <button type="submit" class="btn btn-success">Submit Report</button>
@@ -236,7 +267,9 @@ $(document).ready(function() {
             { data: 'quarterly_output_name' },
             { data: 'start_date' },
             { data: 'end_date' },
+            
             { data: 'activity_days' },
+            { data: 'priority' },
             { data: 'comments' },
             { 
                 data: 'status', 
@@ -262,6 +295,7 @@ $(document).ready(function() {
                                'data-name="'+row.activity_name+'" ' +
                                'data-start_date="'+row.start_date+'" ' +
                                'data-end_date="'+row.end_date+'" ' +
+                               'data-priority="'+row.priority+'" ' +
                                'data-comments="'+row.comments+'">Edit</button> ' +
                                '<button class="btn btn-sm btn-success report-btn" ' +
                                'data-reportid="'+row.activity_id+'" ' +
@@ -355,6 +389,7 @@ $(document).ready(function() {
         $('#edit_activity_name').val(activity.name);
         $('#edit_start_date').val(activity.start_date);
         $('#edit_end_date').val(activity.end_date);
+        $('#edit_priority').val(activity.priority);
         $('#edit_comments').val(activity.comments);
         $('#activityModal').modal('show');
     });
@@ -379,6 +414,7 @@ $(document).ready(function() {
             activity_name: $('#edit_activity_name').val(),
             start_date: $('#edit_start_date').val(),
             end_date: $('#edit_end_date').val(),
+            priority: $('#edit_priority').val(),
             comments: $('#edit_comments').val()
         };
         formData[csrfName] = csrfHash;
@@ -413,14 +449,14 @@ $(document).ready(function() {
             url: '<?php echo base_url("taskplanner/add_report"); ?>',
             type: 'POST',
             data: {
-                activity_id: $('#activity_id').val(),
-                report_date: $('#report_date').val(),
+                activity_id: $('#report_activity_id').val(),
                 description: $('#description').val(),
                 [csrfName]: csrfHash
             },
             dataType: 'json',
             success: function (response) {
                 $('#reportModal').modal('hide');
+
                 show_notification('Report added successfully', 'success');
                 table.ajax.reload();
             },

@@ -25,19 +25,6 @@ class Staff extends MX_Controller
 		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
 		render('staff_table', $data);
 	}
-
-	public function all_staff()
-	{
-
-		$data['module'] = $this->module;
-		$data['title'] = "Staff";
-		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
-		$filters = $this->input->post();
-		$data['staffs'] = $this->staff_mdl->get_all_staff_data($per_page = 20, $page, $filters);
-		//dd($data);
-		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
-		render('all_staff', $data);
-	}
 	// }
 	public function get_staff_data_ajax()
 	{
@@ -110,16 +97,12 @@ class Staff extends MX_Controller
 	public function add_new_contract(){
 		$data['module'] = $this->module;
 		$data = $this->input->post();
-		$new_contract = $this->staff_mdl->add_new_contract($data);
-		//dd($new_contract);
-		$staffid = $this->input->post('staff_id');
+		$this->staff_mdl->add_new_contract($data);
 		$update['staff_id'] = $data['staff_id'];
-		$update['staff_contract_id']=$this->staff_mdl->previous_contract($staffid, $new_contract);
+		$update['staff_contract_id']= $data['staff_contract_id'];
 		$update['status_id']=$data['previous_contract_status_id'];
-		//dd($update['staff_contract_id']);
-	
-		$this->staff_mdl->update_contract($update);
 		
+		$this->staff_mdl->update_contract($update);
 		redirect("staff/staff_contracts/".$staffid);
 	}
 

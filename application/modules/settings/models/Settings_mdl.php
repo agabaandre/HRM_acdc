@@ -83,6 +83,13 @@ class Settings_mdl extends CI_Model
                 'region_name' => $this->input->post('region_name'),
             );
         }
+        elseif($table === 'units'){
+            $data = array(
+                'unit_name' => $this->input->post('unit_name'),
+                'staff_id' => $this->input->post('staff_id'),
+                'division_id' => $this->input->post('division_id'),
+            );
+        }
         $this->db->insert($table, $data);
         return true;
 
@@ -152,6 +159,13 @@ class Settings_mdl extends CI_Model
         }elseif($table === 'regions'){
             $data = array(
                 'region_name' => $this->input->post('region_name'),
+            );
+        }
+        elseif($table === 'units'){
+            $data = array(
+                'unit_name' => $this->input->post('unit_name'),
+                'staff_id' => $this->input->post('staff_id'),
+                'division_id' => $this->input->post('division_id'),
             );
         }
         $this->db->where($column_name, $caller_value);

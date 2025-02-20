@@ -118,6 +118,17 @@ class Settings extends MX_Controller
 		render('contracting_institutions', $data);
 	}
 
+	public function units()
+	{
+
+		$this->load->model('settings_mdl');
+		$data['units'] = $this->settings_mdl->get_content('units');
+
+		$data['module'] = $this->module;
+		$data['title'] = "Units";
+		render('units', $data);
+	}
+
 	public function contract_types()
 	{
 		$this->load->model('settings_mdl');

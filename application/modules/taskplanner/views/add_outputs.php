@@ -50,7 +50,7 @@
             <h5>Quarterly Output List</h5>
         </div>
         <div class="card-body">
-        <table class="table table-bordered">
+        <table class="table table-bordered mydata">
       <thead>
         <tr>
           <th>#</th>
@@ -153,7 +153,7 @@
           <div class="form-group">
             <label for="start_date">Start Date:</label>
             <div class="input-group">
-                <input type="text" id="start_date" name="start_date" class="form-control datepicker" required>
+                <input type="text" id="start_date" name="start_date" class="form-control datepicker" required autocomplete="off">
                 <span class="input-group-text">
                 <i class="fa fa-calendar"></i>
                 </span>
@@ -162,7 +162,7 @@
             <div class="form-group">
             <label for="end_date">End Date:</label>
             <div class="input-group">
-                <input type="text" id="end_date" name="end_date" class="form-control datepicker" required>
+                <input type="text" id="end_date" name="end_date" class="form-control datepicker" required autocomplete="off">
                 <span class="input-group-text">
                 <i class="fa fa-calendar"></i>
                 </span>
@@ -213,11 +213,11 @@
           </div>
           <div class="form-group mb-2">
             <label for="edit_start_date">Start Date:</label>
-            <input type="date" id="edit_start_date" name="start_date" class="form-control" required>
+            <input type="date" id="edit_start_date" name="start_date" class="form-control" required autocomplete="off">
           </div>
           <div class="form-group mb-3">
             <label for="edit_end_date">End Date:</label>
-            <input type="date" id="edit_end_date" name="end_date" class="form-control" required>
+            <input type="date" id="edit_end_date" name="end_date" class="form-control" required autocomplete="off">
           </div>
           <button type="submit" class="btn btn-primary">Save Changes</button>
         </form>

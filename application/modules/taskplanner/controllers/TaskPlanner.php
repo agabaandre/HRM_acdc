@@ -100,13 +100,6 @@ class Taskplanner extends MX_Controller {
        render('submit_report',$data);
     }
 
-    // View Reports
-    public function view_reports() {
-		$data['title'] = "View Reports";
-		$data['module'] = 'taskplanner';
-        $data['reports'] = $this->taskplanner_mdl->get_reports($this->session->userdata('staff_id'));
-       render('view_reports', $data);
-    }
 
     public function fetch_activities() {
         // Get filter values from AJAX request
@@ -180,7 +173,28 @@ class Taskplanner extends MX_Controller {
             'data'    => $data
         ]);
     }
-    
+    public function add_report() {
+        
+        $csrf_token = $this->security->get_csrf_token_name();
+        if (isset($data[$csrf_token])) {
+            unset($data[$csrf_token]);
+        }
+       
+            $data['activity_id']= $this->input->post('activity_id');
+        	$data['report_date'] = date('Y-m-d');
+            $data['description']= $this->input->post('description');
+            $data['status']	= 'pending';
+        
+        // Insert the data into the 'quarterly_outputs' table
+        $this->db->insert('reports', $data);
+        
+        // Return JSON response with a success message
+        echo json_encode([
+            'status'  => 'success',
+            'message' => 'Saved successfully',
+            'data'    => $data
+        ]);
+    }
     public function edit_outputs() {
         // Get all POST data
         $data = $this->input->post();
@@ -225,6 +239,18 @@ class Taskplanner extends MX_Controller {
         // Return JSON response with a success message
         echo json_encode(['status' => 'success', 'message' => 'Deleted', 'data' => $data]);
     }
+      // View Activities
+      public function view_reports() {
+		$data['title'] = "Activity Report";
+		$data['module'] = 'taskplanner';
+        $output_id = $this->input->get('output');
+        $start_date = $this->input->get('start_date');
+        $end_date = $this->input->get('end_date');
+        $staff_id = $this->session->userdata('user')->staff_id;
+        $data['reports'] = $this->taskplanner_mdl->get_reports($staff_id,$output_id, $start_date, $end_date);
+       render('view_reports', $data);
+    }
+
  
     
 

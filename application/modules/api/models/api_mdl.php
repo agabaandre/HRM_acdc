@@ -62,11 +62,11 @@ class Staff_mdl extends CI_Model
     return  $query->result();
 }
 
-
-
 public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 {
-    $this->db->select('staff.*, nationalities.*');
+    $this->db->select('staff.*, staff_contracts.*, jobs.*, jobs_acting.*, grades.*, 
+                        contracting_institutions.*, funders.*, contract_types.*, 
+                        duty_stations.*, divisions.*, status.*, nationalities.*');
     
     $this->db->from('staff'); // Explicitly selecting the base table
 	//
@@ -84,16 +84,16 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 	
 
     // Joins with Aliases
-    // $this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id');
-    // $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
-    // $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
-    // $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
-    // $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id');
-    // $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id');
-    // $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id');
-    // $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id');
-    // $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id');
-    // $this->db->join('status', 'status.status_id = staff_contracts.status_id');
+    $this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id');
+    $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
+    $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
+    $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
+    $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id');
+    $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id');
+    $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id');
+    $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id');
+    $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id');
+    $this->db->join('status', 'status.status_id = staff_contracts.status_id');
     $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id');
 
     // Apply pagination limit
@@ -182,14 +182,7 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 			'comments' => $this->input->post('comments'),
 		);
 		$this->db->insert('staff_contracts', $data);
-		if ($this->db->affected_rows() > 0) {
-			return $this->db->insert_id();
-		} else {
-			// Log or handle the error:
-			$error = $this->db->error();
-			log_message('error', 'DB Insert Error: ' . $error['message']);
-			return false;
-		}
+		return true;
 	}
 
 
@@ -199,24 +192,6 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 		$this->db->where('staff_id', "$staff_id");
 		return $contract = $this->db->from('staff_contracts')->get()->row()->staff_contract_id;
 	}
-	public function previous_contract($staff_id, $new_contract_id)
-	{
-		$this->db->select('staff_contract_id');
-		$this->db->from('staff_contracts');
-		$this->db->where('staff_contract_id !=', $new_contract_id);
-		$this->db->where('staff_id', $staff_id);
-		$this->db->order_by('staff_contract_id', 'DESC');
-		$this->db->limit(1);
-		
-		$query = $this->db->get();
-		
-		if ($query->num_rows() > 0) {
-			return $query->row()->staff_contract_id;
-		}
-		
-		return null;
-	}
-	
 
 	public function all_staff_attributes()
 	{
@@ -234,7 +209,6 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 		$query = $this->db->update('staff_contracts', $data);
 		return $query;
 	}
-
 
 
 	public function get_status($flag)
