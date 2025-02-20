@@ -36,11 +36,13 @@
 
     ?>
         <div class="col-lg-10">
-              <img src="<?php if (get_photo($this_staff->staff_id)) {
-                          echo base_url() ?>uploads/staff/<?php echo @get_photo($this_staff->staff_id);
-                                                        } else {
-                                                          echo base_url() ?>uploads/staff/author.png
-          <?php } ?>" class="img-fluid img-thumbnail" alt="user avatar" style="width:180px;">
+        <?php 
+							$surname=$this_staff->lname;
+							$other_name=$this_staff->fname;
+							$image_path=base_url().'uploads/staff/'.@get_photo($this_staff->staff_id);
+							echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
+							
+							?>
         </div>
         <div class="col-md-2">
         <a href="<?php echo base_url() ?>staff/new_contract/<?php echo $this_staff->staff_id; ?>" class="btn btn-outline-dark btn-sm btn-bordered ">+ Add New Contract</a>

@@ -259,12 +259,16 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 	{
 		// Get the current date
 		$currentDate = date('Y-m-d');
-
-		// Retrieve employees with birthdays for today
+	
+		// Retrieve employees with birthdays for today and with contracts having status_id in (1, 2)
 		return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') = DATE_FORMAT('$currentDate', '%m-%d')")
+			->whereHas('contracts', function ($query) {
+				$query->whereIn('status_id', [1, 2]);
+			})
 			->with('contracts')
 			->get();
 	}
+	
 
 	public function getBirthdaysForTomorrow()
 	{
@@ -273,6 +277,9 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 
 		// Retrieve employees with birthdays for tomorrow
 		return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') = DATE_FORMAT('$tomorrowDate', '%m-%d')")
+		->whereHas('contracts', function ($query) {
+			$query->whereIn('status_id', [1, 2]);
+		})
 			->with('contracts')
 			->get();
 	}
@@ -287,6 +294,9 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 
 		// Retrieve employees with birthdays in the next 7 days
 		return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') BETWEEN DATE_FORMAT('$currentDate', '%m-%d') AND DATE_FORMAT('$nextSevenDays', '%m-%d')")
+		->whereHas('contracts', function ($query) {
+			$query->whereIn('status_id', [1, 2]);
+		})
 			->with('contracts')
 			->get();
 	}
@@ -301,6 +311,9 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 
 		// Retrieve employees with birthdays in the next 30 days
 		return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') BETWEEN DATE_FORMAT('$currentDate', '%m-%d') AND DATE_FORMAT('$nextThirtyDays', '%m-%d')")
+		->whereHas('contracts', function ($query) {
+			$query->whereIn('status_id', [1, 2]);
+		})
 			->with('contracts')
 			->get();
 	}
