@@ -1,7 +1,7 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Taskplanner_mdl extends CI_Model {
+class Tasks_mdl extends CI_Model {
 
     // Add Activity
     public function add_activity($data) {
