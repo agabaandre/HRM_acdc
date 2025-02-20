@@ -65,10 +65,14 @@ class Auth extends MX_Controller
 
     // Merge user and contract data into one array
     $users = array_merge((array)$user, (array)$contract);
-
+    $hashedPassword = $this->argonhash->make($password);
     // Verify the password using the stored hash
     $storedHash = $user->password;
-    $auth = $this->argonhash->check($password, $storedHash);
+   // dd($hashedPassword.' '.$storedHash);
+
+    $auth = $this->argonhash->check($hashedPassword, $storedHash);
+
+    //dd($auth);
 
     if ($auth) {
         // Remove the password field
