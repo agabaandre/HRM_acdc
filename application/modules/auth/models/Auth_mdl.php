@@ -11,13 +11,13 @@ class Auth_mdl extends CI_Model
 	}
 	public function login($postdata)
 	{
-	            $email = $postdata['email'];
+	            $email = trim($postdata['email']);
 				$this->db->select('*'); // Select columns from the staff table
 				$this->db->from('staff'); // Set the main table
 				$this->db->join('user', 'user.auth_staff_id = staff.staff_id'); // Join with the users table
 				$this->db->join('user_groups', 'user_groups.id = user.role'); // Join with the user_groups table
 				$this->db->where('user.status', 1);
-				$this->db->where('staff.work_email',"$email"); // Add condition for active users
+				$this->db->where(trim('staff.work_email'),"$email"); // Add condition for active users
 
 				// Execute the query
 
@@ -27,7 +27,7 @@ class Auth_mdl extends CI_Model
 				if ($qry->num_rows() > 0) {
 					// Fetch the first row as an object
 					$person = $qry->row();
-					dd($person);
+					//dd($person);
 					return $person;
 				} else {
 					// Return false or an empty result if no rows are found
