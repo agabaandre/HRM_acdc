@@ -64,7 +64,8 @@ class Auth extends MX_Controller
       $users = array_merge($users_array, $contract_array);
   
       // Use the stored hash from the database
-      $storedHash = $this->argonhash->make($password);
+      $storedHash = $this->argonhash->make($
+    );
       //$storedHash = $data['users']->password;
       $auth = $this->argonhash->check($password, $storedHash);
   
@@ -77,16 +78,51 @@ class Auth extends MX_Controller
               $users['is_admin'] = false;
               $_SESSION['user'] = (object)$users;
               redirect('dashboard/index');
-          } else {
-              $users['is_admin'] = true;
-              $_SESSION['user'] = (object)$users;
-              redirect('auth/profile');
           }
       } else {
           redirect('auth');
       }
   }
   
+
+//   public function login()
+// {
+//   $postdata = $this->input->post();
+//   $password = trim($this->input->post('password'));
+//     // Prepare post data
+//   $data['users'] = $this->auth_mdl->login($postdata);
+//   $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
+//     // If a valid user is found
+//     if (!empty($data['users'] ->user_id)) {
+//         $user_group = $data['users']->role;
+       
+//   //dd($userdata);
+//         // Check user login state and redirect accordingly
+//         if (!$userdata['isLoggedIn']) {
+//             $this->cache->memcached->save('facility', $userdata['facility_id'], 43600);
+//             $this->session->set_flashdata('msg', "Unauthorized access detected.");
+//             redirect("auth");
+//         } else {
+//             $this->session->set_userdata($userdata);
+//             redirect("dashboard");
+//         }
+//     } else {
+//         // Handle login failure
+  
+//         redirect("auth");
+//     }
+// }
+
+  public function validate_password($post_password,$dbpassword){
+    $auth = ($this->argonhash->check($post_password, $dbpassword));
+    if ($auth) {
+      return TRUE;
+    }
+    else{
+      return FALSE;
+    }
+    
+  }
 
   public function profile()
   {
