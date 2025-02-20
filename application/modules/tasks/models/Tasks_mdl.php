@@ -75,6 +75,49 @@ class Tasks_mdl extends CI_Model {
     return $query->result();
     
     }
+    public function get_pending_activities($staff_id=null, $output_id = null, $start_date = null, $end_date = null,$limit = null, $offset = null) {
+       $unit_id = $this->session->userdata('user')->unit_id;
+        $this->db->select('
+        activities.activity_id, 
+        activities.activity_name, 
+        activities.quarterly_output_id, 
+        quarterly_outputs.name AS quarterly_output_name, 
+        activities.start_date, 
+        activities.priority, 
+        activities.end_date, 
+        activities.comments, 
+        activities.staff_id, 
+        activities.status,
+        DATEDIFF(activities.end_date, activities.start_date)+1 AS activity_days
+    ');
+    $this->db->where()('status',0);
+    $this->db->where('unit_id',$unit_id);
+    $this->db->from('activities');
+    
+    // Apply filters if provided
+    if (!empty($output_id)) {
+        $this->db->where('activities.quarterly_output_id', $output_id);
+    }
+    if (!empty($start_date)) {
+        $this->db->where('activities.start_date >=', $start_date);
+    }
+    if (!empty($end_date)) {
+        $this->db->where('activities.end_date <=', $end_date);
+    }
+    
+    // Join the quarterly_outputs table
+
+    $this->db->join('quarterly_outputs', 'quarterly_outputs.quarterly_output_id = activities.quarterly_output_id');
+    $this->db->join('units','quarterly_outputs.unit_id=units.unit_id' );
+        // Apply limit and offset for pagination
+    if ($limit !== null) {
+            $this->db->limit($limit, $offset);
+    }
+    
+    $query = $this->db->get();
+    return $query->result();
+    
+    }
     public function get_activities_count($output_id = null, $start_date = null, $end_date = null) {
         $this->db->select('COUNT(*) as total');
         $this->db->from('activities');

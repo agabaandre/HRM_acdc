@@ -83,6 +83,15 @@ class Tasks extends MX_Controller {
        render('view_activities', $data);
     }
 
+      // View Activities
+      public function approve_activities() {
+ 
+            $data['module'] = 'tasks';
+            $data['title'] = "Approve Activities";
+            $data['outputs'] = $this->tasks_mdl->get_quarterly_output();
+           render('add_activity', $data);
+        }
+
     // Submit Report
     public function submit_report($activity_id) {
 		$data['title'] = "Submit Report";
@@ -111,6 +120,17 @@ class Tasks extends MX_Controller {
         // Fetch activities from the model
         $activities = $this->tasks_mdl->get_activities($staff_id, $output_id, $start_date, $end_date);
 
+        // Return JSON response
+        echo json_encode($activities);
+    }
+    public function fetch_pending_activities() {
+        // Get filter values from AJAX request
+        $output_id = $this->input->get('output');
+        $start_date = $this->input->get('start_date');
+        $end_date = $this->input->get('end_date');
+        $staff_id = $this->session->userdata('user')->staff_id;
+        // Fetch activities from the model
+        $activities = $this->tasks_mdl->get_pending_activities($staff_id, $output_id, $start_date, $end_date);
         // Return JSON response
         echo json_encode($activities);
     }

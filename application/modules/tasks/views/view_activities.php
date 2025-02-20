@@ -16,7 +16,7 @@
                 <td><?php echo $activity->start_date; ?></td>
                 <td><?php echo $activity->end_date; ?></td>
                 <td>
-                    <a href="<?php echo site_url('tasks/submit_report/' . $activity->activity_id); ?>" class="btn btn-sm btn-primary">Submit Report</a>
+                    <a href="<?php echo site_url('taskplanner/submit_report/' . $activity->activity_id); ?>" class="btn btn-sm btn-primary">Submit Report</a>
                 </td>
             </tr>
             <?php endforeach; ?>
