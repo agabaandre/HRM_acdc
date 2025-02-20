@@ -134,20 +134,20 @@
 								<div class="menu-title">Planner</div>
 							</a>
 							<ul class="dropdown-menu">
-							<?php if (in_array('79', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/S"><i class="bx bx-right-arrow-alt"></i>Calendar</a>
+							<!-- <?php if (in_array('79', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/calendar"><i class="bx bx-right-arrow-alt"></i>Calendar</a>
 									</li>
-								<?php endif; ?>
+								<?php endif; ?> -->
 								<?php if (in_array('79', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/outputs"><i class="bx bx-right-arrow-alt"></i>Add Outputs</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/outputs"><i class="bx bx-right-arrow-alt"></i>Add Outputs</a>
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('81', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/activity"><i class="bx bx-right-arrow-alt"></i>Add Activities</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/activity"><i class="bx bx-right-arrow-alt"></i>Add Activities</a>
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('75', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/view_reports"><i class="bx bx-right-arrow-alt"></i>Manage Weekly Report</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/view_reports"><i class="bx bx-right-arrow-alt"></i>Manage Weekly Report</a>
 									</li>
 								<?php endif; ?>
 

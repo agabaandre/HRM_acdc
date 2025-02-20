@@ -5,7 +5,7 @@ class Taskplanner extends MX_Controller {
 
     public function __construct() {
         parent::__construct();
-        $this->load->model('taskplanner_mdl');
+        $this->load->model('tasks_mdl', 'tasks_mdl');
 		
     }
 
@@ -14,7 +14,7 @@ class Taskplanner extends MX_Controller {
  
 		$data['module'] = 'taskplanner';
 		$data['title'] = "Add Activity";
-        $data['outputs'] = $this->taskplanner_mdl->get_quarterly_output();
+        $data['outputs'] = $this->tasks_mdl->get_quarterly_output();
        render('add_activity', $data);
     }
 
@@ -59,7 +59,7 @@ class Taskplanner extends MX_Controller {
 				);
 
                 // Save activity to the database
-                $this->taskplanner_mdl->add_activity($activity_data);
+                $this->tasks_mdl->add_activity($activity_data);
             
 
             // Return success response
@@ -79,7 +79,7 @@ class Taskplanner extends MX_Controller {
     public function view_activities() {
 		$data['title'] = "View Activity";
 		$data['module'] = 'taskplanner';
-        $data['activities'] = $this->taskplanner_mdl->get_activities($staff_id,$output_id, $start_date, $end_date);
+        $data['activities'] = $this->tasks_mdl->get_activities($staff_id,$output_id, $start_date, $end_date);
        render('view_activities', $data);
     }
 
@@ -94,7 +94,7 @@ class Taskplanner extends MX_Controller {
                 'description' => $this->input->post('description'),
                 'status' => 'pending'
             );
-            $this->taskplanner_mdl->submit_report($data);
+            $this->tasks_mdl->submit_report($data);
             redirect('taskplanner/view_reports');
         }
        render('submit_report',$data);
@@ -109,7 +109,7 @@ class Taskplanner extends MX_Controller {
         $staff_id = $this->session->userdata('user')->staff_id;
 
         // Fetch activities from the model
-        $activities = $this->taskplanner_mdl->get_activities($staff_id, $output_id, $start_date, $end_date);
+        $activities = $this->tasks_mdl->get_activities($staff_id, $output_id, $start_date, $end_date);
 
         // Return JSON response
         echo json_encode($activities);
@@ -143,7 +143,7 @@ class Taskplanner extends MX_Controller {
  
 		$data['module'] = 'taskplanner';
 		$data['title'] = "Quarterly Outputs";
-        $data['quarterly_outputs'] = $this->taskplanner_mdl->get_outputs($output_id, $start_date, $end_date);
+        $data['quarterly_outputs'] = $this->tasks_mdl->get_outputs($output_id, $start_date, $end_date);
        render('add_outputs', $data);
     }
 
@@ -247,7 +247,7 @@ class Taskplanner extends MX_Controller {
         $start_date = $this->input->get('start_date');
         $end_date = $this->input->get('end_date');
         $staff_id = $this->session->userdata('user')->staff_id;
-        $data['reports'] = $this->taskplanner_mdl->get_reports($staff_id,$output_id, $start_date, $end_date);
+        $data['reports'] = $this->tasks_mdl->get_reports($staff_id,$output_id, $start_date, $end_date);
        render('view_reports', $data);
     }
 

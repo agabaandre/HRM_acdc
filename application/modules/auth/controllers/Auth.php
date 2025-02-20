@@ -207,14 +207,12 @@ class Auth extends MX_Controller
 
   public function acdc_users($job=FALSE){
   $final=array();
-  $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2) and staff.staff_id not in (SELECT DISTINCT staff_id from user)")->result();
+  $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2) and staff.staff_id not in (SELECT DISTINCT auth_staff_id from user)")->result();
     foreach ($staffs as $staff):
-      $users['username'] = explode('@', $staff->work_email)[0];
       $users['email'] = $staff->work_email;
       $users['name'] = $staff->lname . ' ' . $staff->fname;
-      $users['division_id'] = $staff->division_id;
       $users['status'] = 1;
-      $users['staff_id'] = $staff->staff_id;
+      $users['auth_staff_id'] = $staff->staff_id;
       $users['password'] =$this->argonhash->make(setting()->default_password);
       $users['role'] = 17;
       $this->db->replace('user', $users);

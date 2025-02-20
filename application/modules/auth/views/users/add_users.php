@@ -34,6 +34,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
       </div>
       <!-- /.card-header -->
       <div class="card-body">
+        <a href="<?php echo base_url()?>auth/acdc_users" class="btn btn-success" target="_blanks"><i class="fa fa-users"></i>Render New Users</a>
 
         <?php echo $links; ?>
 
