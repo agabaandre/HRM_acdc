@@ -35,7 +35,7 @@
 
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff/new"><i class="bx bx-right-arrow-alt"></i>Add New Staff</a>
 									</li>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff/all_staff"><i class="bx bx-right-arrow-alt"></i>All Staff</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff/all_staff"><i class="bx bx-right-arrow-alt"></i>All Staff(With Former Staff)</a>
 									</li>
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff"><i class="bx bx-right-arrow-alt"></i>Current Staff List</a>
 									</li>
