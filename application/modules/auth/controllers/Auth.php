@@ -24,9 +24,9 @@ class Auth extends MX_Controller
     $users_array = (array)$data['users'];
     $contract_array = (array)$data['contract'];
     $users = array_merge($users_array, $contract_array);
-    $hashedPassword = $data['users']->password;
+    //$hashedPassword = $data['users']->password;
     //dd($hashedPassword);
-    //$hashedPassword = $this->argonhash->make($password);
+    $hashedPassword = $this->argonhash->make($password);
     $auth = ($this->argonhash->check($password, $hashedPassword));
     //dd($users);
     if($auth){
