@@ -67,7 +67,7 @@ class Auth extends MX_Controller
       //$storedHash = $this->argonhash->make($password);
       $dbpassword = $data['users']->password;
       $auth = $this->validate_password($post_password,$dbpassword);
-  
+      dd($auth);
       if ($auth && !empty($data['users']) ) {
           unset($users['password']);
              $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
