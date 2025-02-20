@@ -28,18 +28,19 @@ class Auth extends MX_Controller
     $auth = ($this->argonhash->check($password, $hashedPassword));
     //dd($users);
   
-    if ($auth && $users['role']==17) {
+    if ($auth && $users['role']==10) {
       unset($users['password']);
       $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
       $users['is_admin']    = false;
       $_SESSION['user'] = (object)$users;
-      redirect('auth/profile');
-    } else if ($auth && $adata['role']!= 17) {
+      redirect('dashboard/index');
+    } else if ($auth && $adata['role']!= 10) {
       unset($users['password']);
       $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
       $users['is_admin']    = true;
       $_SESSION['user'] = (object)$users;
-      redirect('dashboard/index');
+      redirect('auth/profile');
+     
      }
     else {
       redirect('auth');
