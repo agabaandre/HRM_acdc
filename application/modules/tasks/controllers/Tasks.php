@@ -136,6 +136,30 @@ class Tasks extends MX_Controller {
         echo json_encode(['status' => 'success', 'message' => 'Activity updated successfully', 'data' => $data]);
     }
 
+    //update report status
+
+    public function update_status() {
+        // Get all POST data
+        $data = $this->input->post();
+    
+        // Extract the activity ID and remove it from the update data
+        $id = $data['report_id'];
+        unset($data['report_id']);
+        
+        // Optionally, remove CSRF token from data if present
+        $csrf_token = $this->security->get_csrf_token_name();
+        if(isset($data[$csrf_token])){
+            unset($data[$csrf_token]);
+        }
+    
+        // Update the activity record where activity_id equals $id
+        $this->db->where('report_id', $id);
+        $this->db->update('reports', $data);
+    
+        // Return JSON response with a success message
+        echo json_encode(['status' => 'success', 'message' => 'Activity updated successfully', 'data' => $data]);
+    }
+
 
 
       // Add Activity
