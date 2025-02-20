@@ -4,7 +4,7 @@
         <!-- Quarterly Output -->
         <div class="form-group col-md-4 col-lg-4 col-sm-12 mb-4">
           <label for="output"><h5>Output:</h5></label>
-          <?php $unit_id = $this->session->userdata('user')->unit_id; ?>
+          <?php @$unit_id = $this->session->userdata('user')->unit_id; ?>
                                 <select name="quarterly_output_id" class="form-control form-control-md"  required>
                                     <option value="">Select Output</option>
                                     <?php foreach ($outputs as $deliverable): ?>
