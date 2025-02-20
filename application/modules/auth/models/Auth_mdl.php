@@ -17,7 +17,7 @@ class Auth_mdl extends CI_Model
 				$this->db->join('user', 'user.auth_staff_id = staff.staff_id'); // Join with the users table
 				$this->db->join('user_groups', 'user_groups.id = user.role'); // Join with the user_groups table
 				$this->db->where('user.status', 1);
-				$this->db->where(trim('staff.work_email'),"$email"); // Add condition for active users
+				$this->db->where(trim('staff.work_email'),$email); // Add condition for active users
 
 				// Execute the query
 
