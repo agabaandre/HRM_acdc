@@ -147,7 +147,11 @@
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('75', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/view_reports"><i class="bx bx-right-arrow-alt"></i>Manage Weekly Report</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/approve_activities"><i class="bx bx-right-arrow-alt"></i>Approve Activities</a>
+									</li>
+								<?php endif; ?>
+								<?php if (in_array('75', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/view_reports"><i class="bx bx-right-arrow-alt"></i>Approve Weekly Report</a>
 									</li>
 								<?php endif; ?>
 
@@ -156,14 +160,14 @@
 					<?php endif; ?>
 					<?php if (in_array('15', $permissions)) : ?>
 
-						<li class="nav-item dropdown">
+						<!-- <li class="nav-item dropdown">
 							<a href="<?php echo base_url() ?>reports" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class='fa fa-th'></i>
 								</div>
 								<div class="menu-title">Reports</div>
 							</a>
 
-						</li>
+						</li> -->
 					<?php endif; ?>
 					<?php if (in_array('15', $permissions)) : ?>
 
