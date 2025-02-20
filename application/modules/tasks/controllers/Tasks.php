@@ -78,7 +78,7 @@ class Tasks extends MX_Controller {
     // View Activities
     public function view_activities() {
 		$data['title'] = "View Activity";
-		$data['module'] = 'taskplanner';
+		$data['module'] = 'tasks';
         $data['activities'] = $this->tasks_mdl->get_activities($staff_id,$output_id, $start_date, $end_date);
        render('view_activities', $data);
     }
@@ -86,7 +86,7 @@ class Tasks extends MX_Controller {
     // Submit Report
     public function submit_report($activity_id) {
 		$data['title'] = "Submit Report";
-		$data['module'] = 'taskplanner';
+		$data['module'] = 'tasks';
         if ($_POST) {
             $data = array(
                 'activity_id' => $activity_id,
@@ -141,7 +141,7 @@ class Tasks extends MX_Controller {
       // Add Activity
       public function outputs($output_id=NULL, $start_date=NULL, $end_date=NULL) {
  
-		$data['module'] = 'taskplanner';
+		$data['module'] = 'tasks';
 		$data['title'] = "Quarterly Outputs";
         $data['quarterly_outputs'] = $this->tasks_mdl->get_outputs($output_id, $start_date, $end_date);
        render('add_outputs', $data);
@@ -242,7 +242,7 @@ class Tasks extends MX_Controller {
       // View Activities
       public function view_reports() {
 		$data['title'] = "Activity Report";
-		$data['module'] = 'taskplanner';
+		$data['module'] = 'tasks';
         $output_id = $this->input->get('output');
         $start_date = $this->input->get('start_date');
         $end_date = $this->input->get('end_date');
