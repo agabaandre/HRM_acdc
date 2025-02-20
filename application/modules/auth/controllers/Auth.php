@@ -68,7 +68,7 @@ class Auth extends MX_Controller
       //$storedHash = $data['users']->password;
       $auth = $this->argonhash->check($password, $storedHash);
   
-      if ($auth) {
+      if ($auth && !empty($data['users']) ) {
           unset($users['password']);
              $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
               $users['is_admin'] = false;
