@@ -95,3 +95,71 @@
         </tbody>
     </table>
 </div>
+
+<script>
+$(document).ready(function() {
+    // Handler for Approve button click
+    $('.approve-report').on('click', function() {
+        let reportId = $(this).data('report-id');
+        // Get supervisor comment if present
+        let commentSelector = '#supervisorComment-' + reportId;
+        let supervisorComment = $(commentSelector).length ? $(commentSelector).val() : '';
+        
+        $.ajax({
+            url: '<?php echo base_url("tasks/update_status"); ?>',
+            type: 'POST',
+            data: {
+                report_id: reportId,
+                status: 'approved',
+                supervisor_comment: supervisorComment,
+                '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+            },
+            dataType: 'json',
+            success: function(response) {
+                if(response.status === 'success') {
+                    show_notification(response.message, 'success');
+                    // Hide the modal on success
+                    $('#reportModal-' + reportId).modal('hide');
+                } else {
+                    show_notification(response.message, 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                show_notification('An error occurred. Please try again.', 'error');
+            }
+        });
+    });
+
+    // Handler for Reject button click
+    $('.reject-report').on('click', function() {
+        let reportId = $(this).data('report-id');
+        // Get supervisor comment if present
+        let commentSelector = '#supervisorComment-' + reportId;
+        let supervisorComment = $(commentSelector).length ? $(commentSelector).val() : '';
+
+        $.ajax({
+            url: '<?php echo base_url("tasks/update_status"); ?>',
+            type: 'POST',
+            data: {
+                report_id: reportId,
+                status: 'rejected',
+                supervisor_comment: supervisorComment,
+                '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+            },
+            dataType: 'json',
+            success: function(response) {
+                if(response.status === 'success') {
+                    show_notification(response.message, 'success');
+                    // Hide the modal on success
+                    $('#reportModal-' + reportId).modal('hide');
+                } else {
+                    show_notification(response.message, 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                show_notification('An error occurred. Please try again.', 'error');
+            }
+        });
+    });
+});
+</script>
