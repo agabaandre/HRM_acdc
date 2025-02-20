@@ -14,43 +14,78 @@ class Auth extends MX_Controller
     $this->load->view("login/login");
   }
 
+  // public function login()
+  // {
+  //   $postdata = $this->input->post();
+  //   $password = $this->input->post('password');
+  //   // Fetch user data
+  //   $data['users'] = $this->auth_mdl->login($postdata);
+  //   $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
+  //   $users_array = (array)$data['users'];
+  //   $contract_array = (array)$data['contract'];
+  //   $users = array_merge($users_array, $contract_array);
+  //   //$hashedPassword = $data['users']->password;
+  //   //dd($hashedPassword);
+  //   $hashedPassword = $this->argonhash->make($password);
+  //   $auth = ($this->argonhash->check($password, $hashedPassword));
+  //   //dd($users);
+  //   if($auth){
+  //   if ($auth && $users['role']==10) {
+  //     unset($users['password']);
+  //     $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  //     $users['is_admin']    = false;
+  //     $_SESSION['user'] = (object)$users;
+  //     redirect('dashboard/index');
+      
+  //   } else if ($auth && $adata['role']!= 10) {
+  //     unset($users['password']);
+  //     $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  //     $users['is_admin']    = true;
+  //     $_SESSION['user'] = (object)$users;
+  //     redirect('auth/profile');
+  //    }
+  //   }
+  //   else {
+  //     redirect('auth');
+  //   }
+  // }
+
   public function login()
   {
-    $postdata = $this->input->post();
-    $password = $this->input->post('password');
-    // Fetch user data
-    $data['users'] = $this->auth_mdl->login($postdata);
-    $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
-    $users_array = (array)$data['users'];
-    $contract_array = (array)$data['contract'];
-    $users = array_merge($users_array, $contract_array);
-    //$hashedPassword = $data['users']->password;
-    //dd($hashedPassword);
-    $hashedPassword = $this->argonhash->make($password);
-    $auth = ($this->argonhash->check($password, $hashedPassword));
-    //dd($users);
-    if($auth){
-    if ($auth && $users['role']==10) {
-      unset($users['password']);
-      $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
-      $users['is_admin']    = false;
-      $_SESSION['user'] = (object)$users;
-      redirect('dashboard/index');
-      
-    } else if ($auth && $adata['role']!= 10) {
-      unset($users['password']);
-      $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
-      $users['is_admin']    = true;
-      $_SESSION['user'] = (object)$users;
-      redirect('auth/profile');
-     }
-    }
-    else {
-      redirect('auth');
-    }
+      $postdata = $this->input->post();
+      $password = $this->input->post('password');
+  
+      // Fetch user data
+      $data['users'] = $this->auth_mdl->login($postdata);
+      $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
+  
+      $users_array = (array)$data['users'];
+      $contract_array = (array)$data['contract'];
+      $users = array_merge($users_array, $contract_array);
+  
+      // Use the stored hash from the database
+      $storedHash = $data['users']->password;
+      $auth = $this->argonhash->check($password, $storedHash);
+  
+      if ($auth) {
+          unset($users['password']);
+          $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  
+          // Adjust role logic as needed
+          if ($users['role'] == 10) {
+              $users['is_admin'] = false;
+              $_SESSION['user'] = (object)$users;
+              redirect('dashboard/index');
+          } else {
+              $users['is_admin'] = true;
+              $_SESSION['user'] = (object)$users;
+              redirect('auth/profile');
+          }
+      } else {
+          redirect('auth');
+      }
   }
-
-
+  
 
   public function profile()
   {
