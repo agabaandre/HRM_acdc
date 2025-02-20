@@ -12,7 +12,7 @@ class Tasks extends MX_Controller {
     // Add Activity
     public function activity() {
  
-		$data['module'] = 'taskplanner';
+		$data['module'] = 'tasks';
 		$data['title'] = "Add Activity";
         $data['outputs'] = $this->tasks_mdl->get_quarterly_output();
        render('add_activity', $data);
