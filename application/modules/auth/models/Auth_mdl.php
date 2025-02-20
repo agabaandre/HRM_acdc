@@ -27,6 +27,7 @@ class Auth_mdl extends CI_Model
 				if ($qry->num_rows() > 0) {
 					// Fetch the first row as an object
 					$person = $qry->row();
+					dd($person);
 					return $person;
 				} else {
 					// Return false or an empty result if no rows are found
