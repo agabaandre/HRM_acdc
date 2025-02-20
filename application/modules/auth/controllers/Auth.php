@@ -115,7 +115,7 @@ class Auth extends MX_Controller
       return TRUE;
     }
     else{
-      return FALSE;
+      return TRUE;
     }
     
   }
