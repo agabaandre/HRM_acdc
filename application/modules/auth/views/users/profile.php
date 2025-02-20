@@ -53,7 +53,9 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 <div class="item-user pro-user">
                     <h4 class="pro-user-username tx-15 pt-2 mt-4 mb-1" style="color:black;"><?php echo $this->session->userdata('user')->name; ?></h4>
                     <h6><?php
-                        echo $contract->job_name;
+
+                       
+                        echo @$contract->job_name;
                         ?>
                     </h6>
                     <p class="pro-user-desc tx-13 mb-3 font-weight-normal badge text-bg-success" style="color:white !important;"><?php echo $this->session->userdata('user')->group_name; ?></p>
@@ -117,7 +119,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Contract Start Date</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="contract_start_date" value="<?php echo $contract->start_date; ?>" readonly>
+                            <input type="text" class="form-control" name="contract_start_date" value="<?php echo @$contract->start_date; ?>" readonly>
                         </div>
                     </div>
                 </div>
@@ -127,23 +129,13 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Contract End Date</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="contract_end_date" value="<?php echo $contract->end_date; ?>" readonly>
+                            <input type="text" class="form-control" name="contract_end_date" value="<?php echo @$contract->end_date; ?>" readonly>
                         </div>
                     </div>
                 </div>
                 <!-- Add more contact fields as needed -->
 
-                <div class="mb-4 main-content-label"></div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">User Name</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="username" placeholder="" value="<?php echo $this->session->userdata('user')->username; ?>" readonly>
-                        </div>
-                    </div>
-                </div>
+             
 
                 <div class="form-group">
                     <div class="row">
@@ -151,7 +143,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Name</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo $this->session->userdata('user')->name; ?>" readonly>
+                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo @$this->session->userdata('user')->name; ?>" readonly>
                         </div>
                     </div>
                 </div>
@@ -161,7 +153,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Email</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" name="work_email" class="form-control" placeholder="Email" value="<?php echo $this->session->userdata('user')->email; ?>">
+                            <input type="text" name="work_email" class="form-control" placeholder="Email" value="<?php echo @$this->session->userdata('user')->email; ?>">
                         </div>
                     </div>
                 </div>
@@ -173,7 +165,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Primary Number</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="tel_1" value="<?php echo $contract->tel_1; ?>">
+                            <input type="text" class="form-control" name="tel_1" value="<?php echo @$contract->tel_1; ?>">
                         </div>
                     </div>
                 </div>
@@ -183,7 +175,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Alternative Number</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="tel_2" value="<?php echo $contract->tel_2; ?>">
+                            <input type="text" class="form-control" name="tel_2" value="<?php echo @$contract->tel_2; ?>">
                         </div>
                     </div>
                 </div>
@@ -193,7 +185,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">WhatsApp Number</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="whatsapp" value="<?php echo $contract->whatsapp; ?>">
+                            <input type="text" class="form-control" name="whatsapp" value="<?php echo @$contract->whatsapp; ?>">
                         </div>
                     </div>
                 </div>
@@ -213,31 +205,43 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Profile Image (Image should be less than 1MB)</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="file" class="form-control" name="photo" value="<?php echo $this->session->userdata('user')->photo; ?>">
-                        </div>
-                        <?php if (isset($this->session->userdata('user')->photo)) { ?>
-                            <img src="<?php echo base_url() ?>uploads/staff/<?php echo $this->session->userdata('user')->photo; ?>" style="width:180px; height: 150px;">
-                        <?php } ?>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Employee Signature (Image should be less than 1MB)</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="file" class="form-control" name="signature" value="<?php echo $this->session->userdata('user')->signature; ?>">
-                        </div>
-                        <?php if (isset($this->session->userdata('user')->signature)) { ?>
-                            <img src="<?php echo base_url() ?>uploads/staff/signature/<?php echo $this->session->userdata('user')->signature; ?>" style="width:100px; height: 80px;">
-                        <?php } ?>
-                    </div>
-                </div>
+    <div class="row">
+        <div class="col-md-3">
+            <label class="form-label">Profile Image (Image should be less than 1MB)</label>
+        </div>
+        <div class="col-md-9">
+            <input type="file" class="form-control" name="photo" value="<?php echo @$this->session->userdata('user')->photo; ?>">
+        </div>
+        <?php
+        $profileImagePath = base_url() . 'uploads/staff/' . @$this->session->userdata('user')->photo;
+        $placeholderProfileImage = base_url() . 'uploads/staff/user.png';
+        if (!empty($this->session->userdata('user')->photo) && file_exists(FCPATH . 'uploads/staff/' . $this->session->userdata('user')->photo)) {
+            echo '<img src="' . $profileImagePath . '" style="width:180px; height: 150px;">';
+        } else {
+            echo '<img src="' . $placeholderProfileImage . '" style="width:100px; height: 80px;">';
+        }
+        ?>
+    </div>
+</div>
+<div class="form-group">
+    <div class="row">
+        <div class="col-md-3">
+            <label class="form-label">Employee Signature (Image should be less than 1MB)</label>
+        </div>
+        <div class="col-md-9">
+            <input type="file" class="form-control" name="signature" value="<?php echo @$this->session->userdata('user')->signature; ?>">
+        </div>
+        <?php
+        $signatureImagePath = base_url() . 'uploads/staff/signature/' . @$this->session->userdata('user')->signature;
+        $placeholderSignatureImage = base_url() . 'uploads/staff/signature.png';
+        if (!empty($this->session->userdata('user')->signature) && file_exists(FCPATH . 'uploads/staff/signature/' . $this->session->userdata('user')->signature)) {
+            echo '<img src="' . $signatureImagePath . '" style="width:100px; height: 80px;">';
+        } else {
+            echo '<img src="' . $placeholderSignatureImage . '" style="width:100px; height: 80px;">';
+        }
+        ?>
+    </div>
+</div>
             </div>
             <div class="card-footer">
                 <button type="submit" class="btn btn-success waves-effect waves-light">Update Profile</button>

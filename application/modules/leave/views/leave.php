@@ -14,8 +14,8 @@
           <label for="staff_id" class="form-label">Staff Name</label>
           <input type="text" class="form-control" value="<?php echo $this->session->userdata('user')->name ?>" id="staff_name" name="name" readonly>
           <input type="hidden" class="form-control" value="<?php echo $this->session->userdata('user')->staff_id ?>" id="staff_id" name="staff_id" readonly>
-          <input type="hidden" class="form-control" value="<?php echo current_contract($this->session->userdata('user')->staff_id) ?>" id="staff_id" name="contract_id" readonly>
-          <input type="hidden" class="form-control" value="<?php echo current_head_of_departmemnt($this->session->userdata('user')->division_id) ?>" id="division_id" name="division_head" readonly>
+          <input type="hidden" class="form-control" value="<?php echo @current_contract($this->session->userdata('user')->auth_staff_id) ?>" id="staff_id" name="contract_id" readonly>
+          <input type="hidden" class="form-control" value="<?php echo @current_head_of_departmemnt($this->session->userdata('user')->division_id) ?>" id="division_id" name="division_head" readonly>
         </div>
 
 
@@ -36,8 +36,8 @@
           <input type="text" class="form-control" id="mobile_leave" name="mobile_leave" value="<?php echo @$leave['mobile_leave'] ?>" required>
         </div>
         <!-- Additional fields as per your requirements -->
-        <input type="hidden" class="form-control" id="supervisor_id" value="<?php echo get_supervisor(current_contract($this->session->userdata('user')->staff_id))->first_supervisor ?>" name="supervisor_id" required>
-        <input type="hidden" class="form-control" id="supervisor2_id" name="supervisor2_id" value="<?php echo get_supervisor(current_contract($this->session->userdata('user')->staff_id))->second_supervisor ?>" required>
+        <input type="hidden" class="form-control" id="supervisor_id" value="<?php echo @get_supervisor(current_contract($this->session->userdata('user')->staff_id))->first_supervisor ?>" name="supervisor_id" required>
+        <input type="hidden" class="form-control" id="supervisor2_id" name="supervisor2_id" value="<?php echo @get_supervisor(current_contract($this->session->userdata('user')->staff_id))->second_supervisor ?>" required>
       </div>
       <div class="col-md-6">
         <div class="form-group">
@@ -53,7 +53,7 @@
             <?php $lists = Modules::run('lists/leave');
             foreach ($lists as $list) :
             ?>
-              <option value="<?php echo $list->leave_id; ?>"><?php echo $list->leave_name; ?></option>
+              <option value="<?php echo $list->leave_id; ?>"><?php echo @$list->leave_name; ?></option>
             <?php endforeach; ?>
           </select>
         </div>
