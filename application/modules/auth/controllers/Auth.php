@@ -62,8 +62,7 @@ class Auth extends MX_Controller
       $users_array = (array)$data['users'];
       $contract_array = (array)$data['contract'];
       $users = array_merge($users_array, $contract_array);
-
-      dd($data);
+      
   
       // Use the stored hash from the database
       //$storedHash = $this->argonhash->make($password);
