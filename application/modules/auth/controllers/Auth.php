@@ -53,7 +53,7 @@ class Auth extends MX_Controller
   public function login()
   {
       $postdata = $this->input->post();
-      $password = trim($this->input->post('password'));
+      $post_password = trim($this->input->post('password'));
   
       // Fetch user data
       $data['users'] = $this->auth_mdl->login($postdata);
@@ -64,9 +64,9 @@ class Auth extends MX_Controller
       $users = array_merge($users_array, $contract_array);
   
       // Use the stored hash from the database
-      $storedHash = $this->argonhash->make($password);
-      //$storedHash = $data['users']->password;
-      $auth = $this->argonhash->check($password, $storedHash);
+      //$storedHash = $this->argonhash->make($password);
+      $dbpassword = $data['users']->password;
+      $auth = $this->validate_password($post_password,$dbpassword);
   
       if ($auth && !empty($data['users']) ) {
           unset($users['password']);
