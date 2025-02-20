@@ -95,7 +95,7 @@ class Tasks extends MX_Controller {
                 'status' => 'pending'
             );
             $this->tasks_mdl->submit_report($data);
-            redirect('taskplanner/view_reports');
+            redirect('tasks/view_reports');
         }
        render('submit_report',$data);
     }
