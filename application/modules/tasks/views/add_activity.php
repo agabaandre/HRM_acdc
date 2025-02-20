@@ -245,7 +245,7 @@ $(document).ready(function() {
     // Initialize DataTable with AJAX source.
     var table = $('#activitiesTable').DataTable({
         ajax: {
-            url: '<?php echo base_url("taskplanner/fetch_activities"); ?>',
+            url: '<?php echo base_url("tasks/fetch_activities"); ?>',
             dataSrc: '',
             data: function (d) {
                 // If you have filters, attach them here.
@@ -362,7 +362,7 @@ $(document).ready(function() {
             return;
         }
         $.ajax({
-            url: '<?php echo base_url("taskplanner/add_activity"); ?>',
+            url: '<?php echo base_url("tasks/add_activity"); ?>',
             type: 'POST',
             data: $(this).serialize(),
             dataType: 'json',
@@ -421,7 +421,7 @@ $(document).ready(function() {
         var $submitButton = $(this).find('button[type="submit"]');
         $submitButton.prop('disabled', true);
         $.ajax({
-            url: '<?php echo base_url("taskplanner/update_activity"); ?>',
+            url: '<?php echo base_url("tasks/update_activity"); ?>',
             type: 'POST',
             data: formData,
             dataType: 'json',
@@ -446,7 +446,7 @@ $(document).ready(function() {
         var csrfName = "<?= $this->security->get_csrf_token_name(); ?>";
         var csrfHash = "<?= $this->security->get_csrf_hash(); ?>";
         $.ajax({
-            url: '<?php echo base_url("taskplanner/add_report"); ?>',
+            url: '<?php echo base_url("tasks/add_report"); ?>',
             type: 'POST',
             data: {
                 activity_id: $('#report_activity_id').val(),
@@ -472,7 +472,7 @@ $(document).ready(function() {
         let id = $('#activity_id').val();
         if (confirm("Are you sure you want to delete this activity?")) {
             $.ajax({
-                url: '<?php echo base_url("taskplanner/delete_activity"); ?>',
+                url: '<?php echo base_url("tasks/delete_activity"); ?>',
                 type: 'POST',
                 data: { id: id },
                 success: function (response) {

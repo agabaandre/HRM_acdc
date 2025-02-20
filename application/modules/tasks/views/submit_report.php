@@ -30,7 +30,7 @@
 
             // Submit the form via AJAX
             $.ajax({
-                url: '<?php echo base_url("taskplanner/submit_report/"); ?>' + activity_id, // Correct URL concatenation
+                url: '<?php echo base_url("tasks/submit_report/"); ?>' + activity_id, // Correct URL concatenation
                 type: 'POST',
                 data: $(this).serialize(),
                 dataType: 'json',
@@ -38,7 +38,7 @@
                     if (response.status === 'success') {
                         show_notification(response.message, 'success');
                         setTimeout(function() {
-                            window.location.href = '<?php echo base_url("taskplanner/view_reports"); ?>';
+                            window.location.href = '<?php echo base_url("tasks/view_reports"); ?>';
                         }, 1500); // Redirect after 1.5 seconds
                     } else {
                         show_notification(response.message, 'error');
