@@ -70,14 +70,11 @@ class Auth extends MX_Controller
   
       if ($auth) {
           unset($users['password']);
-          $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
-  
-          // Adjust role logic as needed
-          if ($users['role'] == 10) {
+             $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
               $users['is_admin'] = false;
               $_SESSION['user'] = (object)$users;
-              redirect('dashboard/index');
-          }
+              redirect('dashboard');
+          
       } else {
           redirect('auth');
       }
