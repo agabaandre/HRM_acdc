@@ -35,6 +35,8 @@
 
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff/new"><i class="bx bx-right-arrow-alt"></i>Add New Staff</a>
 									</li>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff/all_staff"><i class="bx bx-right-arrow-alt"></i>All Staff</a>
+									</li>
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>staff"><i class="bx bx-right-arrow-alt"></i>Current Staff List</a>
 									</li>
 									
@@ -116,7 +118,7 @@
 							</a>
 							<ul class="dropdown-menu">
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>admanager/list_accounts"><i class="bx bx-right-arrow-alt"></i>Accounts</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>admanager/expired_accounts/3"><i class="bx bx-right-arrow-alt"></i>Expired Accounts</a>
 									</li>
 								<?php endif; ?>
 				
@@ -132,6 +134,10 @@
 								<div class="menu-title">Planner</div>
 							</a>
 							<ul class="dropdown-menu">
+							<?php if (in_array('79', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/S"><i class="bx bx-right-arrow-alt"></i>Calendar</a>
+									</li>
+								<?php endif; ?>
 								<?php if (in_array('79', $permissions)) : ?>
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/outputs"><i class="bx bx-right-arrow-alt"></i>Add Outputs</a>
 									</li>
@@ -140,21 +146,11 @@
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/activity"><i class="bx bx-right-arrow-alt"></i>Add Activities</a>
 									</li>
 								<?php endif; ?>
-								<?php if (in_array('82', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/weekly"><i class="bx bx-right-arrow-alt"></i>Add Weekly Report</a>
+								<?php if (in_array('75', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/view_reports"><i class="bx bx-right-arrow-alt"></i>Manage Weekly Report</a>
 									</li>
 								<?php endif; ?>
 
-								<?php if (in_array('82', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/approve_activity"><i class="bx bx-right-arrow-alt"></i>Approve Activities</a>
-									</li>
-								<?php endif; ?>
-								<?php if (in_array('82', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>taskplanner/performance"><i class="bx bx-right-arrow-alt"></i>Performance Report</a>
-									</li>
-								<?php endif; ?>
-								
-				
 							</ul>
 						</li>
 					<?php endif; ?>

@@ -13,7 +13,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
 </style>
 <?php echo form_open_multipart(base_url('performance/save_ppa'), array('id' => 'leave', 'class' => 'leave')); ?>
 
-<div class="container">
+
 
   <div cllass="row">
     <!-- SmartWizard html -->
@@ -191,4 +191,3 @@ $contract = Modules::run('auth/contract_info', $staff_id);
       </div>
     </div>
   </div>
-</div>

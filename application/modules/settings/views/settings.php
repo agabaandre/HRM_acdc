@@ -249,6 +249,24 @@
 		</a>
 
 	</div>
+	<div class="col-12 col-lg-3">
+		<a href="<?php echo base_url(); ?>settings/units">
+			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
+				<div class="card-body">
+					<div class="d-flex align-items-center justify-content-between">
+						<div class="">
+							<h6 class="mb-0 text-muted">Units</h6>
+						</div>
+						<div class="widgets-icons rounded-circle  text-muted">
+							<i class='bx bx-building'></i>
+						</div>
+					</div>
+				</div>
+			</div>
+		</a>
+
+	</div>
+
 
 
 </div>
