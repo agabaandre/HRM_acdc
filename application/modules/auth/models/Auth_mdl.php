@@ -83,44 +83,50 @@ class Auth_mdl extends CI_Model
     return $qry->num_rows();
 }
 
+    public function get_logs($key = array(), $limit = 10, $offset = 0) {
+        // Retrieve filter values with defaults
+        $email     = isset($key['email']) ? $key['email'] : '';
+        $name      = isset($key['name']) ? $key['name'] : '';
+        $date_from = isset($key['date_from']) ? $key['date_from'] : '';
+        $date_to   = isset($key['date_to']) ? $key['date_to'] : '';
 
-public function getAlllogs($start, $limit, $key)
-{
-	$this->db->select('user_logs.*'); // Select required columns
-	$this->db->from('user_logs'); // Set the main table
+        // Start building the query
+        $this->db->select('*');
+        $this->db->from('user_logs');
 
-	// Add search conditions
-	if (!empty($key)) {
-		$this->db->group_start(); // Start a group for OR conditions
-		$this->db->like("email", "$key", "start");
-		$this->db->or_like("date_loged_in", "$key", "start");
-		$this->db->or_like("name", "$key", "start");
-		$this->db->group_end(); // End the group
-	}
+        // Add search conditions for email and name
+        if (!empty($email) || !empty($name)) {
+            $this->db->group_start();
+            if (!empty($email)) {
+                // Using "after" to search for emails that start with the given value
+                $this->db->like('email', $email, 'after');
+            }
+            if (!empty($name)) {
+                // Using "after" to search for names that start with the given value
+                $this->db->like('name', $name, 'after');
+            }
+            $this->db->group_end();
+        }
 
-	// Add limit and offset
-	$this->db->limit( $start,$limit);
+        // Add date range filter if both dates are provided
+        if (!empty($date_from) && !empty($date_to)) {
+            $this->db->where('date_loged_in >=', $date_from);
+            $this->db->where('date_loged_in <=', $date_to);
+        }
 
-	// Execute the query
-	$qry = $this->db->get();
-	return $qry->result();
-}
+        // Add limit and offset for pagination
+        $this->db->limit($limit, $offset);
+
+        // Execute the query and return the results
+        $query = $this->db->get();
+        return $query->result();
+    }
+
+
+
 public function count_logs($key)
 {
-$this->db->from('user_logs'); // Set the main table
-
-// Add search conditions
-if (!empty($key)) {
-	$this->db->group_start(); // Start a group for OR conditions
-	$this->db->like("email", "$key", "start");
-	$this->db->or_like("date_loged_in", "$key", "start");
-	$this->db->or_like("name", "$key", "start");
-	$this->db->group_end(); // End the group
-}
-
-
-// Execute the query
-$qry = $this->db->get();
+$qry = $this->db->get('user_logs');
 return $qry->num_rows();
 }
 	public function addUser($postdata)

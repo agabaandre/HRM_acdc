@@ -20,7 +20,7 @@
   </div>
   <div class="card-body">
     <!-- Filter Form -->
-    <form class="row g-3 mb-4" method="GET" action="<?php echo base_url('admin/userLogs'); ?>">
+    <form class="row g-3 mb-4" method="GET" action="<?php echo base_url('auth/userLogs'); ?>">
       <div class="col-md-3">
         <label for="filterName" class="form-label">User Name</label>
         <input type="text" class="form-control" id="filterName" name="name" placeholder="Search by name" value="<?php echo isset($_GET['name']) ? htmlspecialchars($_GET['name']) : ''; ?>">
@@ -43,11 +43,10 @@
       </div>
     </form>
 
-    <div class="mb-3">
-      <a class="btn btn-info btn-sm float-end" data-bs-toggle="modal" data-bs-target="#clearlogs">Clear Logs</a>
-    </div>
+
 
     <div class="table-responsive">
+      <?php echo $links?>
       <table class="table table-striped">
         <thead class="table-dark">
           <tr>
