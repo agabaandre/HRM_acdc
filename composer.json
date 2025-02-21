@@ -17,7 +17,7 @@
 		"source": "https://github.com/bcit-ci/CodeIgniter"
 	},
 	"require": {
-		"php": ">=5.3.7",
+		"php": ">=7.3",
 		"illuminate/database": "^8.83",
 		"symfony/var-dumper": "^5.4",
 		"illuminate/pagination": "^8.83",
