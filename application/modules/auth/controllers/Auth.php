@@ -202,8 +202,8 @@ class Auth extends MX_Controller
     $data['logs'] = $this->auth_mdl->get_logs($config['per_page'], $page, $searchkey);
    // dd($this->db->last_query());
     $data['module'] = "auth";
-    $data['title'] = "User Management";
-    $data['uptitle'] = "User Management";
+    $data['title'] = "User Access Logs";
+    $data['uptitle'] = "User Access Logs";
     render("users/user_logs", $data);
   }
   public function addUser()
