@@ -82,6 +82,47 @@ class Auth_mdl extends CI_Model
     $qry = $this->db->get();
     return $qry->num_rows();
 }
+
+
+public function getAlllogs($start, $limit, $key)
+{
+	$this->db->select('user_logs.*'); // Select required columns
+	$this->db->from('user_logs'); // Set the main table
+
+	// Add search conditions
+	if (!empty($key)) {
+		$this->db->group_start(); // Start a group for OR conditions
+		$this->db->like("email", "$key", "start");
+		$this->db->or_like("date_loged_in", "$key", "start");
+		$this->db->or_like("name", "$key", "start");
+		$this->db->group_end(); // End the group
+	}
+
+	// Add limit and offset
+	$this->db->limit( $start,$limit);
+
+	// Execute the query
+	$qry = $this->db->get();
+	return $qry->result();
+}
+public function count_logs($key)
+{
+$this->db->from('user_logs'); // Set the main table
+
+// Add search conditions
+if (!empty($key)) {
+	$this->db->group_start(); // Start a group for OR conditions
+	$this->db->like("email", "$key", "start");
+	$this->db->or_like("date_loged_in", "$key", "start");
+	$this->db->or_like("name", "$key", "start");
+	$this->db->group_end(); // End the group
+}
+
+
+// Execute the query
+$qry = $this->db->get();
+return $qry->num_rows();
+}
 	public function addUser($postdata)
 	{
 

@@ -1,7 +1,7 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-class Staff extends MX_Controller
+class Api extends MX_Controller
 {
 
 
@@ -10,7 +10,7 @@ class Staff extends MX_Controller
 		parent::__construct();
 
 		$this->module = "staff";
-		$this->load->model("staff_mdl",'staff_mdl');
+		// $this->load->model("staff_mdl",'staff_mdl');
 	}
 
 	public function index()
@@ -26,16 +26,13 @@ class Staff extends MX_Controller
 		render('staff_table', $data);
 	}
 	// }
-	public function get_staff_data_ajax()
+	public function staff_data()
 	{
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
 		$filters = $this->input->post();
 		$data['staffs'] = $this->staff_mdl->get_active_staff_data($per_page = 20, $page, $filters);
 		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
-		$html_content = $this->load->view('staff_ajax', $data, true);
-		$this->output
-			->set_content_type('application/json')
-			->set_output(json_encode(['html' => $html_content]));
+	json_encode($data['staffs']);
 
 		
 	}
