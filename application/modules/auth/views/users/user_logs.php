@@ -1,13 +1,7 @@
-<?php
-// Assuming $title and $logs are defined in your controller
-?>
 <style>
-  /* Adjust modal styling if needed */
   .modal {
     clear: both;
     position: fixed;
-    margin-left: 100px;
-    margin-top: 120px;
     z-index: 1050; /* BS5 default modal z-index */
     overflow-x: auto;
     overflow-y: auto;
@@ -31,11 +25,11 @@
       </div>
       <div class="col-md-3">
         <label for="filterFromDate" class="form-label">From Date</label>
-        <input type="date" class="form-control" id="filterFromDate" name="from_date" value="<?php echo isset($_GET['from_date']) ? htmlspecialchars($_GET['from_date']) : ''; ?>">
+        <input type="text" class="form-control datepicker" id="filterFromDate" name="from_date" value="<?php echo isset($_GET['from_date']) ? htmlspecialchars($_GET['from_date']) : ''; ?>">
       </div>
       <div class="col-md-3">
         <label for="filterToDate" class="form-label">To Date</label>
-        <input type="date" class="form-control" id="filterToDate" name="to_date" value="<?php echo isset($_GET['to_date']) ? htmlspecialchars($_GET['to_date']) : ''; ?>">
+        <input type="text" class="form-control datepicker" id="filterToDate" name="to_date" value="<?php echo isset($_GET['to_date']) ? htmlspecialchars($_GET['to_date']) : ''; ?>">
       </div>
       <div class="col-12">
         <button type="submit" class="btn btn-primary">Apply Filters</button>
