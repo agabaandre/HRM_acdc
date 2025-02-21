@@ -165,7 +165,7 @@ class Auth extends MX_Controller
 
   public function logs()
   {
-    $searchkey = $this->input->post('search_key');
+    $searchkey = $this->input->get();
     if (empty($searchkey)) {
       $searchkey = "";
     }
@@ -199,7 +199,7 @@ class Auth extends MX_Controller
     $this->pagination->initialize($config);
     $page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0; //default starting point for limits 
     $data['links'] = $this->pagination->create_links();
-    $data['logs'] = $this->auth_mdl->getAlllogs($config['per_page'], $page, $searchkey);
+    $data['logs'] = $this->auth_mdl->get_logs($config['per_page'], $page, $searchkey);
    // dd($this->db->last_query());
     $data['module'] = "auth";
     $data['title'] = "User Management";
