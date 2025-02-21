@@ -161,6 +161,51 @@ class Auth extends MX_Controller
     $data['uptitle'] = "User Management";
     render("users/add_users", $data);
   }
+
+
+  public function logs()
+  {
+    $searchkey = $this->input->post('search_key');
+    if (empty($searchkey)) {
+      $searchkey = "";
+    }
+    $this->load->library('pagination');
+    $config = array();
+    $config['base_url'] = base_url() . "auth/users";
+    $config['total_rows'] = $this->auth_mdl->count_logs($searchkey);
+    $config['per_page'] = 50; //records per page
+    $config['uri_segment'] = 3; //segment in url  
+    //pagination links styling
+    $config['full_tag_open'] = '<ul class="pagination">';
+    $config['full_tag_close'] = '</ul>';
+    $config['attributes'] = ['class' => 'page-link'];
+    $config['first_link'] = false;
+    $config['last_link'] = false;
+    $config['first_tag_open'] = '<li class="page-item">';
+    $config['first_tag_close'] = '</li>';
+    $config['prev_link'] = '&laquo';
+    $config['prev_tag_open'] = '<li class="page-item">';
+    $config['prev_tag_close'] = '</li>';
+    $config['next_link'] = '&raquo';
+    $config['next_tag_open'] = '<li class="page-item">';
+    $config['next_tag_close'] = '</li>';
+    $config['last_tag_open'] = '<li class="page-item">';
+    $config['last_tag_close'] = '</li>';
+    $config['cur_tag_open'] = '<li class="page-item active"><a href="#" class="page-link">';
+    $config['cur_tag_close'] = '<span class="sr-only">(current)</span></a></li>';
+    $config['num_tag_open'] = '<li class="page-item">';
+    $config['num_tag_close'] = '</li>';
+    $config['use_page_numbers'] = false;
+    $this->pagination->initialize($config);
+    $page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0; //default starting point for limits 
+    $data['links'] = $this->pagination->create_links();
+    $data['logs'] = $this->auth_mdl->getAlllogs($config['per_page'], $page, $searchkey);
+   // dd($this->db->last_query());
+    $data['module'] = "auth";
+    $data['title'] = "User Management";
+    $data['uptitle'] = "User Management";
+    render("users/user_logs", $data);
+  }
   public function addUser()
   {
     $postdata = $this->input->post();
