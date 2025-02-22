@@ -20,7 +20,7 @@
 
             <h1 class="h3 mb-3 font-weight-normal" style="text-align: center"> Sign in</h1>
             <div class="social-login">
-                <button class="btn  social-btn" type="button"><span><i class="fab fa-microsoft"></i> Sign in with Staff Email</span> </button>
+                <button class="btn btn-success social-btn" type="button"><span><i class="fab fa-microsoft"></i> Sign in with Staff Email</span> </button>
             </div>
             <p style="text-align:center"> OR  </p>
 
@@ -42,7 +42,7 @@
             
             <form action="/signup/" class="form-signup">
                 <div class="social-login">
-                    <button class="btn social-btn" type="button"><span><i class="fab fa-microsoft"></i> Sign in with Staff Email</span> </button>
+                    <button class="btn btn-success social-btn" type="button"><span><i class="fab fa-microsoft"></i> Sign in with Staff Email</span> </button>
                 </div>
           
                 
