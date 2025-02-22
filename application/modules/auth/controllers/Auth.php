@@ -252,7 +252,7 @@ class Auth extends MX_Controller
 
   public function acdc_users($job=FALSE){
   $final=array();
-  $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2) and staff.staff_id not in (SELECT DISTINCT auth_staff_id from user)")->result();
+  $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2,7) and staff.staff_id not in (SELECT DISTINCT auth_staff_id from user)")->result();
     foreach ($staffs as $staff):
       $users['name'] = $staff->lname . ' ' . $staff->fname;
       $users['status'] = 1;
