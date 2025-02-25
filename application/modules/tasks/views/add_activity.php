@@ -543,7 +543,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
         e.preventDefault();
         var activityId = $('#approvalModal').data('activity-id');
         $.ajax({
-            url: '<?php echo base_url("tasks/approve_activity"); ?>',
+            url: '<?php echo base_url("tasks/update_activity"); ?>',
             type: 'POST',
             data: {
                 activity_id: activityId,
@@ -574,7 +574,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
         e.preventDefault();
         var activityId = $('#approvalModal').data('activity-id');
         $.ajax({
-            url: '<?php echo base_url("tasks/approve_activity"); ?>',
+            url: '<?php echo base_url("tasks/update_activity"); ?>',
             type: 'POST',
             data: {
                 activity_id: activityId,

@@ -148,6 +148,12 @@ class Tasks extends MX_Controller {
         // Extract the activity ID and remove it from the update data
         $id = $data['activity_id'];
         unset($data['activity_id']);
+        if($data['action']=='reject'){
+            $data['status']=2;
+        }
+        else if ($data['action']=='approve'){
+            $data['status']=1;
+        }
         
         // Optionally, remove CSRF token from data if present
         $csrf_token = $this->security->get_csrf_token_name();
@@ -160,7 +166,7 @@ class Tasks extends MX_Controller {
         $this->db->update('activities', $data);
     
         // Return JSON response with a success message
-        echo json_encode(['status' => 'success', 'message' => 'Activity updated successfully', 'data' => $data]);
+        echo json_encode(['status' => 'success', 'message' => 'Successful', 'data' => $data]);
     }
 
     //update report status
