@@ -96,9 +96,12 @@
 					<th>Name</th>
 					<th>Gender</th>
 					<th>Job</th>
+				
 					<th>Division</th>
 					<th>Nationality</th>
 					<th>Acting Job</th>
+					<th>First Supervisor</th>
+					<th>Second Supervisor</th>
 					<th>Duty Station</th>
 					<th>Email</th>
 					<th>Telephone</th>
@@ -109,6 +112,8 @@
 
 
 				<?php
+				//dd($staffs);
+			//dd($cont);
 
 				$i = 1;
 				foreach ($staffs as $data) :
@@ -133,17 +138,22 @@
 						<td><a href="#" data-bs-toggle="modal" data-bs-target="#add_profile<?php echo $data->staff_id; ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
 						<td><?= $data->gender ?></td>
 
-						<td><?= @character_limiter($data->job_name, 4); ?></td>
+						<td><?= @character_limiter($data->job_name, 8); ?></td>
+					
 						<td><?= $data->division_name; ?></td>
 						<td><?= $data->nationality; ?></td>
-						<td><?= @character_limiter($data->job_acting, 4); ?></td>
+						<td><?= @character_limiter($data->job_acting, 8); ?></td>
+						<td><?= @staff_name($data->first_supervisor); ?></td>
+						<td><?= @staff_name($data->second_supervisor); ?></td>
 
 						<td><?= $data->duty_station_name; ?></td>
 						<td><?= $data->work_email; ?></td>
 						<td><?= @$data->tel_1 ?> <?php if (!empty($data->tel_2)) {
 														echo '  ' . $data->tel_2;
 													} ?></td>
-						<td><?= $data->whatsapp ?></td>
+						<td><?= $data->whatsapp ?>
+					
+					</td>
 
 
 						<div class="modal fade" id="add_profile<?php echo $data->staff_id; ?>" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
@@ -206,10 +216,13 @@
 												</a>
 
 												<ul>
+													
+													<li><strong>Duty Station:</strong> <?= $cont->duty_station_name ?></li>
+													<li><strong>Division:</strong> <?= $cont->division_name ?></li>
 													<li><strong>Job:</strong> <?= @character_limiter($cont->job_name, 15) ?></li>
 													<li><strong>Acting Job:</strong> <?= @character_limiter($cont->job_acting, 15) ?></li>
-													<li><strong>Division:</strong> <?= $cont->division_name ?></li>
-													<li><strong>Duty Station:</strong> <?= $cont->duty_station_name ?></li>
+													
+		
 													<li><strong>Funder:</strong> <?= $cont->funder ?></li>
 													<li><strong>Contracting Organisation:</strong> <?= $cont->contracting_institution ?></li>
 													<li><strong>Grade:</strong> <?= $cont->grade ?></li>
