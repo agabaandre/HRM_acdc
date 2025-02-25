@@ -68,23 +68,13 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
                 <td><span class="badge text-bg-primary"><?php echo $user->group_name; ?></span></td>
 
-                <td><a data-toggle="modal" data-target="#user<?php echo $user->user_id; ?>" href="#"><i class="fa fa-edit"></i>Edit</button>
-
-                  <?php if ($user->status == 1) { ?>
-
-                    <span class="badge text-bg-warning"><a data-toggle="modal" data-target="#block<?php echo $user->user_id; ?>" href="#">Block</a></span>
-                  <?php } else { ?>
-
-
-                    <span class="badge text-bg-danger"><a data-toggle="modal" data-target="#unblock<?php echo $user->user_id; ?>" href="#">Activate</a></span>
-
-                  <?php } ?>
-
-
-
-                  <a data-toggle="modal" data-target="#reset<?php echo $user->user_id; ?>" href="#">Reset</a>
-
+                <td>
+                  <a data-bs-toggle="modal" data-bs-target="#user<?php echo $user->user_id; ?>" href="#">
+                    <i class="fa fa-edit"></i> Edit
+                  </a>
                 </td>
+                  
+
 
               </tr>
 
@@ -141,207 +131,63 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
 
     $(document).ready(function() {
+      // Notification function using Lobibox
+function show_notification(message, msgtype) {
+    Lobibox.notify(msgtype, {
+        pauseDelayOnHover: true,
+        continueDelayOnInactiveTab: false,
+        position: 'top right',
+        icon: 'bx bx-check-circle',
+        msg: message
+    });
+}
 
-
-      //Submit new user data
-
-      $(".user_form").submit(function(e) {
-
-        e.preventDefault();
-
-        $('.status').html('<img style="max-height:50px" src="<?php echo base_url(); ?>assets/img/loading.gif">');
-        var formData = $(this).serialize();
-        // console.log(formData);
-        var url = "<?php echo base_url(); ?>auth/addUser";
-        $.ajax({
-          url: url,
-          method: 'post',
-          data: formData,
-          success: function(result) {
+// Submit user update
+$(".update_user").submit(function(e) {
+    e.preventDefault();
+    var formData = new FormData(this);
+    console.log(formData);
+    var url = "<?php echo base_url(); ?>auth/updateUser";
+    $.ajax({
+        url: url,
+        method: 'post',
+        contentType: false,
+        processData: false,
+        data: formData,
+        success: function(result) {
             console.log(result);
             setTimeout(function() {
-              $('.status').html(result);
-              $.notify(result, 'info');
-              $('.status').html('');
-              $('.clear').click();
-            }, 1000);
-
-
-          }
-        }); //ajax
-
-      }); //form submit
-
-
-      //Submit user update
-      $(".update_user").submit(function(e) {
-        e.preventDefault();
-        $('.status').html('<img style="max-height:50px" src="<?php echo base_url(); ?>assets/img/loading.gif">');
-        var formData = new FormData(this);
-        console.log(formData);
-        var url = "<?php echo base_url(); ?>auth/updateUser";
-        $.ajax({
-          url: url,
-          method: 'post',
-          contentType: false,
-          processData: false,
-          data: formData,
-          success: function(result) {
-
-            console.log(result);
-
-            setTimeout(function() {
-
-              $('.status').html(result);
-
-              $.notify(result, 'info');
-
-              $('.status').html('');
-
-              $('.clear').click();
-
+                $('.status').html(result);
+                show_notification('Successfully Updated', 'success'); // Using Lobibox notification
+                $('.status').html('');
+                $('.clear').click();
             }, 3000);
-
-
-          }
-        }); //ajax
-
-
-      }); //form submit
-
-
-
-      $(".reset").submit(function(e) {
-        e.preventDefault();
-        $('.status').html('<img style="max-height:50px" src="<?php echo base_url(); ?>assets/img/loading.gif">');
-        var formData = $(this).serialize();
-        console.log(formData);
-        var url = "<?php echo base_url(); ?>auth/resetPass";
-        $.ajax({
-          url: url,
-          method: 'post',
-          data: formData,
-          success: function(result) {
-            // console.log(result);
-            setTimeout(function() {
-              $('.status').html(result);
-              $.notify(result, 'info');
-              $('.status').html('');
-
-              $('.clear').click();
-
-            }, 3000);
-
-
-          }
-        }); //ajax
-
-
-      }); //form submit
-
-
-      //block user
-
-      $(".block").submit(function(e) {
-
-        e.preventDefault();
-
-
-        $('.status').html('<img style="max-height:50px" src="<?php echo base_url(); ?>assets/img/loading.gif">');
-
-
-
-        var formData = $(this).serialize();
-
-        console.log(formData);
-
-        var url = "<?php echo base_url(); ?>auth/blockUser";
-
-        $.ajax({
-          url: url,
-          method: 'post',
-          data: formData,
-          success: function(result) {
-
-            console.log(result);
-
-            setTimeout(function() {
-
-              $('.status').html(result);
-
-              $.notify(result, 'info');
-
-              $('.status').html('');
-
-              $('.clear').click();
-
-            }, 3000);
-
-
-          }
-        }); //ajax
-
-
-      }); //form submit
-
-
-      //block user
-
-      $(".unblock").submit(function(e) {
-
-        e.preventDefault();
-
-
-        $('.status').html('<img style="max-height:50px" src="<?php echo base_url(); ?>assets/img/loading.gif">');
-
-
-
-        var formData = $(this).serialize();
-
-        console.log(formData);
-
-        var url = "<?php echo base_url(); ?>auth/unblockUser";
-
-        $.ajax({
-          url: url,
-          method: 'post',
-          data: formData,
-          success: function(result) {
-
-            console.log(result);
-
-            setTimeout(function() {
-
-              $('.status').html(result);
-
-              $.notify(result, 'info');
-
-              $('.status').html('');
-
-              $('.clear').click();
-
-            }, 3000);
-
-
-          }
-        }); //ajax
-
-
-      }); //form submit
-
-
-    }); //doc ready
-
-
-    function getCountries(val) {
-      $.ajax({
-        method: "GET",
-        url: "<?php echo base_url(); ?>geoareas/getCountries",
-        data: 'region_data=' + val,
-        success: function(res) {
-          console.log(res);
-          $(".scountry").html(res);
         }
-      });
-    }
+    });
+});
+
+// Submit password reset
+$(".reset").submit(function(e) {
+    e.preventDefault();
+    var formData = $(this).serialize();
+    console.log(formData);
+    var url = "<?php echo base_url(); ?>auth/resetPass";
+    $.ajax({
+        url: url,
+        method: 'post',
+        data: formData,
+        success: function(result) {
+            setTimeout(function() {
+                $('.status').html(result);
+                show_notification('Successfully Updated', 'success'); // Using Lobibox notification
+                $('.status').html('');
+                $('.clear').click();
+            }, 3000);
+        }
+    });
+});
+}); //doc ready
+
+
+
   </script>
