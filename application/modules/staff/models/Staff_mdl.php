@@ -21,7 +21,11 @@ class Staff_mdl extends CI_Model
     
     $this->db->from('staff'); // Explicitly selecting the base table
 	//
+	@$lname =  $filters['lname'];
+	unset($filters['lname']);
+	
     $active_staff =array('1,2');
+
 	           $this->db->where_in('staff_contracts.status_id',$active_staff);
 	if (!empty($filters)) { // Ensure filters are not empty
 		foreach ($filters as $key => $value) {
@@ -33,6 +37,12 @@ class Staff_mdl extends CI_Model
 
 			}
 		}
+	}
+	if(!empty($lname)){
+		$this->db->group_start();
+		$this->db->like('lname', "$lname","both");
+		$this->db->or_like('fname', "$lname","both");
+		$this->db->group_end();
 	}
 	
 
