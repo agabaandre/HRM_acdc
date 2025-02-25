@@ -207,7 +207,7 @@
 
 
 
-												?>
+										
 
 											
 												<a href="<?php echo base_url(); ?>staff/staff_contracts/<?php echo $data->staff_id; ?>" 
