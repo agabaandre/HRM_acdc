@@ -108,8 +108,10 @@ public function auth($key){
 	$result = $this->db->get("divisions")->result_array();
 	$divisons =array();
 	foreach ($result as $row){
+		$data['id']= $row["division_id"];
 		$data['name'] = $row["division_name"];
 		// $data['division_head']=$row["division_head"];
+		
 		$divisons[]=$data;
 	}
 
