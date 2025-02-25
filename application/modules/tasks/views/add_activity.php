@@ -547,7 +547,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
             type: 'POST',
             data: {
                 activity_id: activityId,
-                action: 'approve', // Set status=1 on the server side
+                status: '1', // Set status=1 on the server side
                 '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
             },
             dataType: 'json',
@@ -566,6 +566,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
             error: function() {
                 show_notification('An error occurred. Please try again.', 'error');
             }
+            console.log(data);
         });
     });
 
@@ -578,7 +579,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
             type: 'POST',
             data: {
                 activity_id: activityId,
-                action: 'reject', // Set status=2 on the server side
+                status: '0', // Set status=2 on the server side
                 '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
             },
             dataType: 'json',
@@ -597,6 +598,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
             error: function() {
                 show_notification('An error occurred. Please try again.', 'error');
             }
+            
         });
     });
 
