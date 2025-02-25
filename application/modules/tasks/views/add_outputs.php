@@ -141,7 +141,7 @@
               $sessionunit = $this->session->userdata('user')->unit_id;
                foreach($units as $unit):
                ?>
-              <option value="<?php echo $id =$unit->unit_id?>" <?php if($sessionunit==$id){echo "se;ected"; }?>><?php echo $unit->unit_name?></option>
+              <option value="<?php echo $id =$unit->unit_id?>" <?php if($sessionunit==$id){echo "selected"; }?>><?php echo $unit->unit_name?></option>
               <?php
               endforeach; ?>
               ?>
