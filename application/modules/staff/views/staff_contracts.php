@@ -63,12 +63,14 @@
         <thead>
           <tr>
           <th>#</th>
+          <th>Duty Station</th>
+          <th>Division</th>
           <th>Job</th>
           <th>Acting Job</th>
-          <th>Division</th>
-          <th>Duty Station</th>
+          <th>First Supervisor</th>
+          <th>Second Supervisor</th>
           <th>Funder</th>
-          <th>Contractor</th>
+          <th>Contracting Institution</th>
           <th>Grade</th>
           <th>Type</th>
           <th>Start Date</th>
@@ -83,10 +85,13 @@
           <?php foreach($contracts as $contract ){ ?>
             <tr>
                   <td><?=$i++?></td>
+                  <td><?= $contract->duty_station_name ?></td>
+                  <td><?= $contract->division_name ?></td>
                   <td><?= @character_limiter($contract->job_name, 15) ?></td>
                   <td><?= @character_limiter($contract->job_acting, 15) ?></td>
-                  <td><?= $contract->division_name ?></td>
-                  <td><?= $contract->duty_station_name ?></td>
+                  <td><?= @staff_name($contract->first_supervisor); ?></td>
+					      	<td><?= @staff_name($contract->second_supervisor); ?></td>
+                
                   <td><?= $contract->funder ?></td>
                   <td><?= $contract->contracting_institution ?></td>
                   <td> <?= $contract->grade ?></td>
