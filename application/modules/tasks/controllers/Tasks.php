@@ -295,15 +295,44 @@ class Tasks extends MX_Controller {
     }
       // View Activities
       public function view_reports() {
-		$data['title'] = "Activity Report";
-		$data['module'] = 'tasks';
-        $output_id = $this->input->get('output');
-        $start_date = $this->input->get('start_date');
-        $end_date = $this->input->get('end_date');
+        $data['title'] = "Activity Reports";
+        $data['module'] = 'tasks';
+    
+        // Retrieve filter parameters from the GET request
+        $activity_name  = $this->input->get('activity_name');
+        $report_status  = $this->input->get('status');  // corresponds to Report Status filter
+        $employee_name  = $this->input->get('employee_name');
+        $period         = $this->input->get('period');
+        $output_id      = $this->input->get('output_id'); // updated input name to match view
+        $quarter        = $this->input->get('quarter');
+        $start_date     = $this->input->get('start_date');
+        $end_date       = $this->input->get('end_date');
+    
+        // Get the logged-in staff's id
         $staff_id = $this->session->userdata('user')->staff_id;
-        $data['reports'] = $this->tasks_mdl->get_reports_full($staff_id,$output_id, $start_date, $end_date);
-       render('view_reports', $data);
+    
+        // Optionally, you can set limit and offset if you plan to implement pagination
+        $limit = $this->input->get('limit') ? $this->input->get('limit') : null;
+        $offset = $this->input->get('offset') ? $this->input->get('offset') : null;
+    
+        // Fetch reports with all filters applied
+        $data['reports'] = $this->tasks_mdl->get_reports_full(
+            $staff_id,
+            $output_id,
+            $start_date,
+            $end_date,
+            $activity_name,
+            $report_status,
+            $employee_name,
+            $period,
+            $quarter,
+            $limit,
+            $offset
+        );
+    
+        render('view_reports', $data);
     }
+    
 
  
     
