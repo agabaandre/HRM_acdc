@@ -23,7 +23,7 @@ class Share extends MX_Controller
 		if($this->auth($key)){
 
 		$sql11 = "SELECT sc.start_date,sc.end_date,f.funder,s.SAPNO,st.status,ds.duty_station_name,s.title,s.fname,s.lname,s.oname,g.grade,s.date_of_birth,s.gender,j.job_name,ja.job_acting,ci.contracting_institution,ct.contract_type,n.nationality,d.division_name,sc.first_supervisor,sc.second_supervisor,ds.duty_station_name,s.initiation_date,s.tel_1,s.tel_2,s.whatsapp,s.work_email,s.private_email,s.physical_location FROM staff s,staff_contracts sc,grades g,nationalities n,divisions d,duty_stations ds,contracting_institutions ci,contract_types ct,jobs_acting ja,status st,jobs j,funders f WHERE n.nationality_id=s.nationality_id AND d.division_id=sc.division_id AND ds.duty_station_id=sc.duty_station_id AND ci.contracting_institution_id=sc.contracting_institution_id AND ct.contract_type_id=sc.contract_type_id AND s.staff_id=sc.staff_id AND sc.grade_id=g.grade_id AND ja.job_acting_id=sc.job_acting_id AND st.status_id=sc.status_id AND sc.status_id IN(1,2,3) AND j.job_id=sc.job_id AND f.funder_id=sc.funder_id AND s.work_email !='' AND sc.division_id != '' AND sc.division_id != '27' AND s.work_email NOT LIKE'xx%'";
-        $result = $this->$this->db->query($sql11)->result();
+        $result = $this->db->query($sql11)->result_array();
 		 
         foreach ($result as $row):
 		$row['start_date'] = date('m/d/Y', strtotime($row['start_date']));
