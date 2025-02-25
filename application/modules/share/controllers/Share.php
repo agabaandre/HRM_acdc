@@ -103,9 +103,18 @@ public function auth($key){
 
   public function divisions($key){
 	if($this->auth($key)){
+		$not_in = array(16,20,27);
+	$this->db->where_not_in("dvision_id",$not_in);
 	$result = $this->db->get("divisions")->result_array();
+	$divisons =array();
+	foreach ($result as $row){
+		$data['name'] = $row["division_name"];
+		// $data['division_head']=$row["division_head"];
+		$divisons=$data;
+	}
+
 	header('Content-Type: application/json');
-			echo json_encode($result);
+			echo json_encode($divisons);
 	}
 	else{
 		header('Content-Type: application/json');
