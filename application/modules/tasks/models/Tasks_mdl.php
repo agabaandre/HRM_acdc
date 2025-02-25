@@ -162,6 +162,7 @@ class Tasks_mdl extends CI_Model {
             $this->db->limit($limit, $offset);
     }
     $this->db->join('units','units.unit_id=quarterly_outputs.unit_id');
+  
     $query = $this->db->get();
     return $query->result();
     
