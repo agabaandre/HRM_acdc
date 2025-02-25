@@ -141,6 +141,7 @@ class Tasks_mdl extends CI_Model {
     $this->db->from('quarterly_outputs');
     
     // Apply filters if provided
+    
     if (!empty($output_id)) {
         $this->db->where('quarterly_outputs.quarterly_output_id', $output_id);
     }

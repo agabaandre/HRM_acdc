@@ -92,8 +92,11 @@ class Lists extends MX_Controller
 		//dd($data);
 		return $data;
 	}
-	public function units()
+	public function units($staff_id)
 	{
+		if(!empty($staff_id)){
+			$this->db->where('staff_id',$staff_id);
+		}
 		$data = $this->db->get('units')->result();
 		//dd($data);
 		return $data;

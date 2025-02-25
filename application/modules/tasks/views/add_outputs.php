@@ -135,7 +135,9 @@
           <div class="form-group">
             <label for="period">Unit:</label>
             <select id="period" name="unit_id" class="form-control" required>
-              <?php $units = Modules::run('lists/units');
+              <?php
+               $staff_id = $this->session->userdata('user')->staff_id;
+              $units = Modules::run('lists/units',$staff_id);
               $sessionunit = $this->session->userdata('user')->unit_id;
                foreach($units as $unit):
                ?>

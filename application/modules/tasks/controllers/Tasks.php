@@ -79,7 +79,7 @@ class Tasks extends MX_Controller {
     public function view_activities() {
 		$data['title'] = "View Activity";
 		$data['module'] = 'tasks';
-        $data['activities'] = $this->tasks_mdl->get_activities($staff_id,$output_id, $start_date, $end_date);
+        $data['activities'] = $this->tasks_mdl->get_activities();
        render('view_activities', $data);
     }
 
