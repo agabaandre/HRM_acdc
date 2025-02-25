@@ -34,9 +34,9 @@ class Share extends MX_Controller
 		$s = $row['second_supervisor'];
 		
 		
-		$row['first_supervisor_email'] = get_supervisor_mail($f);
+		$row['first_supervisor_email'] = $this->get_supervisor_mail($f);
 			
-		$row['second_supervisor_email'] = get_supervisor_mail($s);
+		$row['second_supervisor_email'] = $this->get_supervisor_mail($s);
 		
 	   
 		// Concatenate other name and last name as names
