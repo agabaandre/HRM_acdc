@@ -67,16 +67,26 @@ class Auth extends MX_Controller
       // Use the stored hash from the database
       //$storedHash = $this->argonhash->make($password);
       $dbpassword = $data['users']->password;
+      $role = $data['users']->role;
       $auth = $this->validate_password($post_password,$dbpassword);
       //dd($data['users']);
-      if ($auth && !empty($data['users']) ) {
+      if ($auth && !empty($data['users'])&& $role!=17 ) {
           unset($users['password']);
              $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
               $users['is_admin'] = false;
               $_SESSION['user'] = (object)$users;
               redirect('dashboard');
           
-      } else {
+      }
+      else if ($auth && !empty($data['users'])&& $role==17 ) {
+        unset($users['password']);
+           $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+            $users['is_admin'] = false;
+            $_SESSION['user'] = (object)$users;
+            redirect('auth/profile');
+        
+    }
+      else {
           redirect('auth');
       }
   }
