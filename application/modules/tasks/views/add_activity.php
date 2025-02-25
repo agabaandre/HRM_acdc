@@ -289,24 +289,24 @@ $(document).ready(function() {
                 data: null,
                 render: function(data, type, row) {
                     var user_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
-                    var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
+var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
+
                     if (row.status != 1 && row.staff_id == user_id) {
                         return '<button class="btn btn-sm btn-primary edit-btn" ' +
-                               'data-id="'+row.activity_id+'" ' +
-                               'data-name="'+row.activity_name+'" ' +
-                               'data-start_date="'+row.start_date+'" ' +
-                               'data-end_date="'+row.end_date+'" ' +
-                               'data-priority="'+row.priority+'" ' +
-                               'data-comments="'+row.comments+'">Edit</button> ' +
-                               '<button class="btn btn-sm btn-success report-btn" ' +
-                               'data-reportid="'+row.activity_id+'" ' +
-                               'data-reportname="'+row.activity_name+'" ' +
-                               'data-reportstart_date="'+row.start_date+'" ' +
-                               'data-reportend_date="'+row.end_date+'">Add report</button>';
+                            'data-id="' + row.activity_id + '" ' +
+                            'data-name="' + row.activity_name + '" ' +
+                            'data-start_date="' + row.start_date + '" ' +
+                            'data-end_date="' + row.end_date + '" ' +
+                            'data-priority="' + row.priority + '" ' +
+                            'data-comments="' + row.comments + '">Edit</button> ' +
+                            '<button class="btn btn-sm btn-success report-btn" ' +
+                            'data-reportid="' + row.activity_id + '" ' +
+                            'data-reportname="' + row.activity_name + '" ' +
+                            'data-reportstart_date="' + row.start_date + '" ' +
+                            'data-reportend_date="' + row.end_date + '">Add report</button>';
                     } else if (row.status != 1 && row.unit_head == unitlead_id) {
-                        return '3';
-                    }
-                    else{
+                        return '<a href="<?php echo base_url(); ?>approve/' + row.activity_id + '">Approve</a>';
+                    }else{
                          return "No actions available"
                     }
                 }
