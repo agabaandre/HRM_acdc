@@ -104,7 +104,7 @@ public function auth($key){
   public function divisions($key){
 	if($this->auth($key)){
 		$not_in = array(16,20,27);
-	$this->db->where_not_in("dvision_id",$not_in);
+	$this->db->where_not_in("division_id",$not_in);
 	$result = $this->db->get("divisions")->result_array();
 	$divisons =array();
 	foreach ($result as $row){
