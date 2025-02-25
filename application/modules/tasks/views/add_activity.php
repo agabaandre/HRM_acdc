@@ -313,7 +313,7 @@ $(document).ready(function() {
                     var user_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
                     var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
 
-                    if (row.status != 1 && row.staff_id == user_id) {
+                    if ((row.staff_id == user_id)||(row.unit_head == unitlead_id)) {
                         return '<button class="btn btn-sm btn-primary edit-btn" ' +
                             'data-id="' + row.activity_id + '" ' +
                             'data-name="' + row.activity_name + '" ' +
@@ -326,11 +326,12 @@ $(document).ready(function() {
                             'data-reportname="' + row.activity_name + '" ' +
                             'data-reportstart_date="' + row.start_date + '" ' +
                             'data-reportend_date="' + row.end_date + '">Add report</button>';
-                    } else if (row.status != 1 && row.unit_head == unitlead_id) {
-                        return '<button class="btn btn-sm btn-success btn-approve" ' +
-           'data-id="' + row.activity_id + '" ' +
-           'data-bs-toggle="modal" data-bs-target="#approveModal">Approve</button>';
-                    }else{
+        //             } else if (row.status != 1 && row.unit_head == unitlead_id) {
+        //                 return '<button class="btn btn-sm btn-success btn-approve" ' +
+        //    'data-id="' + row.activity_id + '" ' +
+        //    'data-bs-toggle="modal" data-bs-target="#approveModal">Approve</button>';
+                      }
+                    else{
                          return "No actions available"
                     }
                 }
@@ -581,7 +582,7 @@ $(document).ready(function() {
             type: 'POST',
             data: {
                 activity_id: activityId,
-                status: '0', // Set status=2 on the server side
+                status: '2', // Set status=2 on the server side
                 '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
             },
             dataType: 'json',

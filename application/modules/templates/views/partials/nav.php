@@ -148,8 +148,8 @@
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('75', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/approve_activities"><i class="bx bx-right-arrow-alt"></i>Approve Activities</a>
-									</li>
+									<!-- <li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/approve_activities"><i class="bx bx-right-arrow-alt"></i>Approve Activities</a>
+									</li> -->
 								<?php endif; ?>
 								<?php if (in_array('75', $permissions)) : ?>
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/view_reports"><i class="bx bx-right-arrow-alt"></i>Approve Weekly Report</a>
