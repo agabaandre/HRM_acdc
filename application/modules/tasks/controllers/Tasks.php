@@ -90,10 +90,10 @@ class Tasks extends MX_Controller {
             $data['title'] = "Approve Activities";
             $data['outputs'] = $this->tasks_mdl->get_quarterly_output();
             if(!empty($id)) {
-                $data['status']=1;
+                $update['status']=1;
                 $this->db->where('id', $id);
-                $this->db->update('activities',$data);
-                dd($this->db->last_query());
+                $this->db->update('activities',$update);
+                //dd($this->db->last_query());
             }
            render('add_activity', $data);
         }
