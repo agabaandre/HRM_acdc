@@ -84,11 +84,15 @@ class Tasks extends MX_Controller {
     }
 
       // View Activities
-      public function approve_activities() {
+      public function approve_activities($id=false) {
  
             $data['module'] = 'tasks';
             $data['title'] = "Approve Activities";
             $data['outputs'] = $this->tasks_mdl->get_quarterly_output();
+            if(!empty($id)) {
+                $data['status']=1;
+                $this->db->update('actvities',$data);
+            }
            render('add_activity', $data);
         }
 
