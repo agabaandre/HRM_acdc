@@ -304,15 +304,17 @@ $(document).ready(function() {
                                'data-reportstart_date="'+row.start_date+'" ' +
                                'data-reportend_date="'+row.end_date+'">Add report</button>';
                     } else if (row.status != 1 && row.unit_head == unitlead_id) {
-                        return '<a href='+"<?php echo base_url()?>approve/"+row.activity_id+' ><a>'
+                        return '3';
                     }
                     else{
-
+                         return "No actions available"
                     }
                 }
             }
         ]
-    });
+    }
+    //console.log(data);
+ );
 
     // When filters are applied, simply reload the table.
     $('#applyFilters').on('click', function(e) {
