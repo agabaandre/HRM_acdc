@@ -198,7 +198,7 @@ class Tasks extends MX_Controller {
         if (isset($data[$csrf_token])) {
             unset($data[$csrf_token]);
         }
-        $data ['unit_id'] = $this->session->userdata('user_id')->unit_id;
+        // $data ['unit_id'] = $this->session->userdata('user_id')->unit_id;
         // Insert the data into the 'quarterly_outputs' table
         $this->db->insert('quarterly_outputs', $data);
         

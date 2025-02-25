@@ -133,6 +133,20 @@
             <input type="hidden" id="unit_id" name="unit_id" class="form-control" value="<?php echo $this->session->userdata('user')->unit_id?>" required>
           </div>
           <div class="form-group">
+            <label for="period">Unit:</label>
+            <select id="period" name="unit_id" class="form-control" required>
+              <?php $units = Modules::run('lists/units');
+              $sessionunit = $this->session->userdata('user')->unit_id;
+               foreach($units as $unit):
+               ?>
+              <option value="<?php echo $id =$unit->unit_id?>" <?php if($sessionunit==$id){echo "se;ected"; }?>><?php echo $unit->unit_name?></option>
+              <?php
+              endforeach; ?>
+              ?>
+             
+            </select>
+          </div>
+          <div class="form-group">
             <label for="description">Description:</label>
             <textarea id="description" name="description" class="form-control" required></textarea>
           </div>
