@@ -232,24 +232,27 @@
         </div>
     </div>
 </div>
-<!-- Approve Modal -->
-<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+
+<!-- Approval Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="approveModalLabel">Confirm Approval</h5>
+        <h5 class="modal-title" id="approvalModalLabel">Update Activity Status</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        Are you sure you want to approve this activity?
+        <p>Are you sure you want to update the status of this activity?</p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <a href="#" class="btn btn-success" id="confirmApprove">Approve</a>
+        <button type="button" class="btn btn-success" id="confirmApprove">Approve</button>
+        <button type="button" class="btn btn-danger" id="confirmReject">Reject</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
 </div>
+
 
 
 <script>
@@ -524,44 +527,69 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
             msg: message
         });
     }
-
-// When the Approve button is clicked in the table, trigger the modal and set the activity id on the confirm button
-$(document).on('click', '.btn-approve', function(e) {
+    $(document).on('click', '.btn-approve', function(e) {
         e.preventDefault();
-        var activityId = $(this).data('id'); // assume the table's approve button has data-id
-        // Set the activity id on the confirm button as a data attribute
-        $('#confirmApprove').data('id', activityId);
+        var activityId = $(this).data('id'); // Activity ID from the table button
+        // Store the activity ID in the modal element
+        $('#approvalModal').data('activity-id', activityId);
         // Show the modal (Bootstrap 5)
-        var modalEl = document.getElementById('approveModal');
-        var approveModal = new bootstrap.Modal(modalEl);
-        approveModal.show();
+        var modalEl = document.getElementById('approvalModal');
+        var approvalModal = new bootstrap.Modal(modalEl);
+        approvalModal.show();
     });
 
-    // When the modal confirm button is clicked, submit the approval via AJAX
+    // Approve button handler in the modal
     $('#confirmApprove').on('click', function(e) {
         e.preventDefault();
-        var activityId = $(this).data('id'); // Retrieve the activity id set earlier
-
+        var activityId = $('#approvalModal').data('activity-id');
         $.ajax({
             url: '<?php echo base_url("tasks/approve_activity"); ?>',
             type: 'POST',
             data: {
                 activity_id: activityId,
-                action: 'approve',
+                action: 'approve', // Set status=1 on the server side
                 '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
             },
             dataType: 'json',
             success: function(response) {
-                if (response.status === 'success') {
+                if(response.status === 'success') {
                     show_notification(response.message, 'success');
                     // Hide the modal on success
-                    var modalEl = document.getElementById('approveModal');
-                    var approveModal = bootstrap.Modal.getInstance(modalEl);
-                    approveModal.hide();
-                    // Optionally, reload your DataTable if you have one:
-                    if (typeof table !== 'undefined') {
-                        table.ajax.reload();
-                    }
+                    var modalEl = document.getElementById('approvalModal');
+                    var approvalModal = bootstrap.Modal.getInstance(modalEl);
+                    approvalModal.hide();
+                    // Optionally, reload your DataTable or page data
+                } else {
+                    show_notification(response.message, 'error');
+                }
+            },
+            error: function() {
+                show_notification('An error occurred. Please try again.', 'error');
+            }
+        });
+    });
+
+    // Reject button handler in the modal
+    $('#confirmReject').on('click', function(e) {
+        e.preventDefault();
+        var activityId = $('#approvalModal').data('activity-id');
+        $.ajax({
+            url: '<?php echo base_url("tasks/approve_activity"); ?>',
+            type: 'POST',
+            data: {
+                activity_id: activityId,
+                action: 'reject', // Set status=2 on the server side
+                '<?php echo $this->security->get_csrf_token_name(); ?>': '<?php echo $this->security->get_csrf_hash(); ?>'
+            },
+            dataType: 'json',
+            success: function(response) {
+                if(response.status === 'success') {
+                    show_notification(response.message, 'success');
+                    // Hide the modal on success
+                    var modalEl = document.getElementById('approvalModal');
+                    var approvalModal = bootstrap.Modal.getInstance(modalEl);
+                    approvalModal.hide();
+                    // Optionally, reload your DataTable or page data
                 } else {
                     show_notification(response.message, 'error');
                 }
