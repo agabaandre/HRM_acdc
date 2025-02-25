@@ -70,7 +70,7 @@ class Share extends MX_Controller
    
     //Collect first and second supervisor email
     $result12 = $this->db->query("SELECT work_email FROM staff  WHERE staff_id=$h");
-   $row12 = $result12->row_array();
+   $row12 = $result12->result_array();
         
     return $row12['0'];
         
