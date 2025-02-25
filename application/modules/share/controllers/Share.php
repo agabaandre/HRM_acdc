@@ -110,7 +110,7 @@ public function auth($key){
 	foreach ($result as $row){
 		$data['name'] = $row["division_name"];
 		// $data['division_head']=$row["division_head"];
-		$divisons=$data;
+		$divisons[]=$data;
 	}
 
 	header('Content-Type: application/json');
