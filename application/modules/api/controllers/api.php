@@ -81,6 +81,20 @@ public function auth($key){
 
   }
 
+  public function get_divisions($key){
+	if($this->auth($key)){
+	$result = $this->db->get("divisions")->result_array();
+	header('Content-Type: application/json');
+			echo json_encode($result);
+	}
+	else{
+		header('Content-Type: application/json');
+		echo json_encode(array('success'=> false,'error'=> 'Invalid Reuest'));
+	}
+}
+
+
+
 
 	
 }
