@@ -35,6 +35,8 @@
  <?php 
  $session = $this->session->userdata('user');
  $permissions = $session->permissions;
+
+ //dd($session);
  
  if (in_array('79', $permissions)) : ?>
 <button type="button" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addModal">
