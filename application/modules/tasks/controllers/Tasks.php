@@ -188,7 +188,7 @@ class Tasks extends MX_Controller {
 		$data['module'] = 'tasks';
 		$data['title'] = "Quarterly Outputs";
         $data['quarterly_outputs'] = $this->tasks_mdl->get_outputs($output_id);
-        dd($this->db->last_query());
+        
        render('add_outputs', $data);
     }
 
