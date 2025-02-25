@@ -93,16 +93,18 @@ class Tasks extends MX_Controller {
                 $data = array(
                     'status' => 1
                 );
-                 $this->db->where('id', $id);
+                $this->db->where('id', $id);
                 if ($this->db->update('activities', $data)) {
                     // Successfully updated the activity status
+                    render('add_activity', $data);
                 } else {
                     // Handle update error (optional)
                     log_message('error', 'Failed to update activity status for ID: ' . $id);
+                    render('add_activity', $data);
                 }
             }
             
-           render('add_activity', $data);
+          
         }
 
     // Submit Report
