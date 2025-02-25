@@ -91,7 +91,7 @@ class Tasks extends MX_Controller {
             $data['outputs'] = $this->tasks_mdl->get_quarterly_output();
             if(!empty($id)) {
                 $update['status']=1;
-                $this->db->where('id', $id);
+                $this->db->where('activity_id', $id);
                 $this->db->update('activities',$update);
                 //dd($this->db->last_query());
             }
