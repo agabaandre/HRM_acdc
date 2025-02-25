@@ -165,11 +165,11 @@
 			});
 		});
 
-		$(".datepicker").datepicker({
-			dateFormat: 'yy-mm-dd',
-			changeMonth: true,
-			changeYear: true
-		});
+		// $(".datepicker").datepicker({
+		// 	dateFormat: 'yy-mm-dd',
+		// 	changeMonth: true,
+		// 	changeYear: true
+		// });
 
 		$('.mydata').DataTable({
 			dom: 'Bfrtip',
@@ -231,11 +231,11 @@
 </script>
 <!-- date picker on employee form -->
 <script>
-	// $('.datepicker').pickadate({
-	// 		selectMonths: true,
-	// 		selectYears: true
-	// 	}),
-	// 	$('.timepicker').pickatime()
+	$('.datepicker').pickadate({
+			selectMonths: true,
+			selectYears: true
+		}),
+		$('.timepicker').pickatime()
 </script>
 <script>
 	$('.staffdatepicker').pickadate({

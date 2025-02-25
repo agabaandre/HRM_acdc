@@ -236,11 +236,11 @@
 <script>
 $(document).ready(function() {
     // Initialize all date pickers
-    $(".datepicker").datepicker({
-        dateFormat: 'yy-mm-dd',
-        changeMonth: true,
-        changeYear: true
-    });
+    // $(".datepicker").datepicker({
+    //     dateFormat: 'yy-mm-dd',
+    //     changeMonth: true,
+    //     changeYear: true
+    // });
 
     // Initialize DataTable with AJAX source.
     var table = $('#activitiesTable').DataTable({
