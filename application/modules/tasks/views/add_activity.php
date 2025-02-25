@@ -289,6 +289,7 @@ $(document).ready(function() {
                 data: null,
                 render: function(data, type, row) {
                     var user_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
+                    var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
                     if (row.status != 1 && row.staff_id == user_id) {
                         return '<button class="btn btn-sm btn-primary edit-btn" ' +
                                'data-id="'+row.activity_id+'" ' +
@@ -302,7 +303,7 @@ $(document).ready(function() {
                                'data-reportname="'+row.activity_name+'" ' +
                                'data-reportstart_date="'+row.start_date+'" ' +
                                'data-reportend_date="'+row.end_date+'">Add report</button>';
-                    } else {
+                    } else (row.status != 1 && row.staff_id == unitlead_id) {
                         return 'No actions available';
                     }
                 }

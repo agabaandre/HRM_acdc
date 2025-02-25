@@ -11,8 +11,8 @@ $contract = Modules::run('auth/contract_info', $staff_id);
         <div class="email-header d-xl-flex align-items-center">
             <div class="d-flex align-items-center text-muted">
                 
-                    <div class="">
-                        <!-- <span class="alert-count">1</span> -->
+                    <!-- <div class="">
+                        
                         <a href="<?php echo base_url() ?>leave/request" type="button" class="btn btn-grey ms-2">Leave Request<i class=""></i>
                         </a>
                     </div>
@@ -37,7 +37,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                         <a href="<?php echo base_url() ?>performance/approve" type="button" class="btn btn-outline btn-grey ms-2">Approvals<i class="fa fa-ok"></i>
                         </a>
                     </div>
-                </div>
+                </div> -->
            
             <!-- <div class="flex-grow-1 mx-xl-2 my-2 my-xl-0">
 
