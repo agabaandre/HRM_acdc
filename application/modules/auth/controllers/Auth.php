@@ -321,7 +321,6 @@ class Auth extends MX_Controller
   public function update_profile()
   {
     $postdata = $this->input->post();
-    $data['username'] = $postdata['username'];
     $data['user_id'] = $postdata['user_id'];
     $data['name'] = $postdata['name'];
     $data['langauge'] = $postdata['langauge'];

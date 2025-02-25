@@ -144,7 +144,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Name</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo @$this->session->userdata('user')->name; ?>" readonly>
+                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo @$name = $this->session->userdata('user')->name; ?>" readonly>
                         </div>
                     </div>
                 </div>
@@ -214,13 +214,10 @@ $contract = Modules::run('auth/contract_info', $staff_id);
             <input type="file" class="form-control" name="photo" value="<?php echo @$this->session->userdata('user')->photo; ?>">
         </div>
         <?php
-        $profileImagePath = base_url() . 'uploads/staff/' . @$this->session->userdata('user')->photo;
-        $placeholderProfileImage = base_url() . 'uploads/staff/user.png';
-        if (!empty($this->session->userdata('user')->photo) && file_exists(FCPATH . 'uploads/staff/' . $this->session->userdata('user')->photo)) {
-            echo '<img src="' . $profileImagePath . '" style="width:180px; height: 150px;">';
-        } else {
-            echo '<img src="' . $placeholderProfileImage . '" style="width:100px; height: 80px;">';
-        }
+        $image_path = base_url() . 'uploads/staff/' . @$this->session->userdata('user')->photo;
+        $photo = $this->session->userdata('user')->photo;
+        echo  $staff_photo = generate_user_avatar( $name,$name, $image_path,$photo);
+       
         ?>
     </div>
 </div>

@@ -198,10 +198,15 @@ return $qry->num_rows();
 	public function updateProfile($data)
 	{
 		$user_id = $data['user_id'];
+		$data['auth_staff_id'] = $data['staff_id'];
+		unset($data['staff_id']);
 		$this->db->where('user_id', $user_id);
 		$done = $this->db->update($this->table, $data);
 
 		if ($done) {
+			$data['staff_id'] = $data['auth_staff_id'];
+			unset($data['auth_staff_id']);
+		
 			if ($data['staff_id'] != 0):
 				$staff_data['tel_1'] = $this->input->post('tel_1');
 				$staff_data['tel_2'] = $this->input->post('tel_2');

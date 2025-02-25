@@ -350,24 +350,7 @@ if (!function_exists('get_supervisor')) {
         return $result;
     }
 }
-if (!function_exists('get_photo')) {
-    function get_photo($staff_id)
-    {
-        $ci = &get_instance();
-        $ci->db->where('auth_staff_id', $staff_id);
-        $query = $ci->db->get('user');
 
-        if ($query->num_rows() > 0) {
-            $result = $query->row()->photo;
-            if (!empty($result)) {
-                return $result;
-            }
-        }
-
-        return FALSE;
-    }
-
-}
 if (!function_exists('job_output')) {
     function job_output($output_id)
     {
@@ -681,28 +664,30 @@ if (!function_exists('get_staff_name')) {
 
 
 if (!function_exists('generate_user_avatar')) {
-function generate_user_avatar($surname, $other_name, $image_path)
-{
-    // Check if the image exists and is not null
-    if (!empty($image_path) && file_exists($image_path)) {
-        return '<img src="' . $image_path . '" class="user-avatar" alt="User Avatar">';
+    function generate_user_avatar($surname, $other_name, $image_path,$photo=false)
+    {
+   
+         
+            if ((!empty($photo))) {
+                return '<img src="' . $image_path . '" class="user-img" alt="user avatar">';
+            }
+        
+    
+        // Get the initials (first letter of surname & other name)
+        $surname_initial = !empty($surname) ? strtoupper(substr($surname, 0, 1)) : '';
+        $other_name_initial = !empty($other_name) ? strtoupper(substr($other_name, 0, 1)) : '';
+    
+        // Generate the initials-based avatar
+        $initials = $surname_initial . $other_name_initial;
+        $bg_color = generate_random_color($surname . $other_name); // Unique background color
+    
+        return '<div class="avatar-placeholder" style="background-color:' . $bg_color . '; color: #fff; 
+                width: 50px; height: 50px; display: flex; align-items: center; border: 1px solid #fff;
+                justify-content: center; border-radius: 50%; font-size: 18px; font-weight: bold;">
+                    ' . $initials . '
+                </div>';
     }
-
-    // Get the initials (First letter of Surname & Other Name)
-    $surname_initial = !empty($surname) ? strtoupper(substr($surname, 0, 1)) : '';
-    $other_name_initial = !empty($other_name) ? strtoupper(substr($other_name, 0, 1)) : '';
-
-    // Generate the initials-based avatar
-    $initials = $surname_initial . $other_name_initial;
-    $bg_color = generate_random_color($surname . $other_name); // Unique background color
-
-    return '<div class="avatar-placeholder" style="background-color:' . $bg_color . '; color: #fff; 
-            width: 50px; height: 50px; display: flex; align-items: center; border:#fff 1px solid;
-            justify-content: center; border-radius: 50%; font-size: 18px; font-weight: bold;">
-                ' . $initials . '
-            </div>';
-}
-
+    
 // Function to generate a random color based on name hash
 function generate_random_color($name)
 {

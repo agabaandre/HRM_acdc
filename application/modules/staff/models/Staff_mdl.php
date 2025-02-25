@@ -387,4 +387,5 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 		$this->db->insert('staff_contracts', $data);
 		return $this->db->insert_id();
 	}
+	
 }

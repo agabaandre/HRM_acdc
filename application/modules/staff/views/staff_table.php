@@ -89,7 +89,7 @@
 					<th>#</th>
 					<th>SAPNO</th>
 					<th>Title</th>
-					<th>Image</th>
+					<th>Passport Photo</th>
 					<th>Name</th>
 					<th>Gender</th>
 					<th>Nationality</th>
@@ -128,8 +128,8 @@
 							<?php 
 							$surname=$data->lname;
 							$other_name=$data->fname;
-							$image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
-							echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
+							$image_path=base_url().'uploads/staff/'.@$data->photo;
+							echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$data->photo);
 							
 							?>
 							
