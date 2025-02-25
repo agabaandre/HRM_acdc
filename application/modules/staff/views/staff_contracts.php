@@ -222,7 +222,7 @@
                               <?php $lists = Modules::run('lists/supervisor');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $contract->staff_id) {
+                                <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $contract->first_supervisor) {
                                                                                   echo "selected";
                                                                                 } ?>><?php echo $list->lname . ' ' . $list->fname; ?></option>
                               <?php endforeach; ?>
@@ -237,7 +237,7 @@
                               <?php $lists = Modules::run('lists/supervisor');
                               foreach ($lists as $list) :
                               ?>
-                                <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $contract->staff_id) {
+                                <option value="<?php echo $list->staff_id; ?>" <?php if ($list->staff_id == $contract->second_supervisor) {
                                                                                   echo "selected";
                                                                                 } ?>><?php echo $list->lname . ' ' . $list->fname; ?></option>
                               <?php endforeach; ?>
