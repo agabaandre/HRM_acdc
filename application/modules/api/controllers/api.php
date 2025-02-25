@@ -9,7 +9,7 @@ class Api extends MX_Controller
 	{
 		parent::__construct();
 
-		$this->module = "staff";
+		$this->module = "api";
 		// $this->load->model("staff_mdl",'staff_mdl');
 	}
 
