@@ -223,14 +223,24 @@ class Tasks extends MX_Controller {
         if (isset($data[$csrf_token])) {
             unset($data[$csrf_token]);
         }
-       
+            $data['report_id']= $this->input->post('report_id');
             $data['activity_id']= $this->input->post('activity_id');
         	$data['report_date'] = date('Y-m-d');
             $data['description']= $this->input->post('description');
+            $data['week']= $this->input->post('week');
             $data['status']	= 'pending';
+            if(!empty($data['report_id'])){
+                $this->db->where('reports.report_id', $data['report_id']);
+                $this->db->update('reports',$data);
+
+            }
+            else{
+                 // Insert the data into the 'quarterly_outputs' table
+          $this->db->insert('reports', $data);
+
+            }
         
-        // Insert the data into the 'quarterly_outputs' table
-        $this->db->insert('reports', $data);
+       
         
         // Return JSON response with a success message
         echo json_encode([
@@ -291,7 +301,7 @@ class Tasks extends MX_Controller {
         $start_date = $this->input->get('start_date');
         $end_date = $this->input->get('end_date');
         $staff_id = $this->session->userdata('user')->staff_id;
-        $data['reports'] = $this->tasks_mdl->get_reports($staff_id,$output_id, $start_date, $end_date);
+        $data['reports'] = $this->tasks_mdl->get_reports_full($staff_id,$output_id, $start_date, $end_date);
        render('view_reports', $data);
     }
 

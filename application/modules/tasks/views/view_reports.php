@@ -35,6 +35,8 @@
                 <th>Activity Name</th>
                 <th>Report Date</th>
                 <th>Description</th>
+                <th>Quater</th>
+                <th>Week</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -44,21 +46,35 @@
                 <td><?php echo $report->activity_name; ?></td>
                 <td><?php echo $report->report_date; ?></td>
                 <td>
-                    <?php
-                    // Remove HTML tags and limit to 100 characters
-                    $cleanDescription = strip_tags($report->description);
-                    if (strlen($cleanDescription) > 10) {
-                        echo substr($cleanDescription, 0, 10) . '...';
-                        echo ' <a href="#" data-bs-toggle="modal" data-bs-target="#reportModal-' . $report->report_id . '">Read More and Approve</a>';
-                    } else {
-                        echo $cleanDescription;
-                    }
-                    ?>
+                <?php
+                // Remove HTML tags and limit to 10 characters (or adjust to 100 if desired)
+                $cleanDescription = strip_tags($report->report_description ?? '');
+                if (strlen($cleanDescription) > 10) {
+                    echo substr($cleanDescription, 0, 20) . '...';
+                    echo ' <a href="#" data-bs-toggle="modal" data-bs-target="#reportModal-' . $report->report_id . '">Read More and Approve</a>';
+                } else {
+                    echo $cleanDescription.' '.'<a href="#" data-bs-toggle="modal" data-bs-target="#reportModal-' . $report->report_id . '">Read More and Approve</a>';
+                }
+                ?>
                 </td>
+                <td><?php echo $report->period; ?></td>
+                <td><?php echo $report->week; ?></td>
                 <td>
-                    <span class="badge text-bg-<?php echo $report->status === 'approved' ? 'success' : ($report->status === 'rejected' ? 'danger' : 'warning'); ?>">
-                        <?php echo ucfirst($report->status); ?>
+                <?php 
+                $status = $report->report_status ?? ''; 
+                if ($status === ''): 
+                ?>
+                    <span class="badge text-bg-secondary">No Report</span>
+                <?php 
+                else: 
+                ?>
+                    <span class="badge text-bg-<?php echo $status === 'approved' ? 'success' : ($status === 'rejected' ? 'danger' : 'warning'); ?>">
+                        <?php echo ucfirst($status); ?>
                     </span>
+                <?php 
+                endif; 
+                ?>
+
                 </td>
             </tr>
             
@@ -69,20 +85,34 @@
                         <div class="modal-header">
                             <h5 class="modal-title" id="reportModalLabel-<?php echo $report->report_id; ?>">Report Details</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            
                         </div>
                         <div class="modal-body">
+                        <div class="">
+                            <?php
+                            $staff_id = $this->session->userdata('user')->staff_id;
+                            if(($report->report_status === 'pending')&&($report->unit_head==$staff_id)): ?>
+                            <button type="button" class="btn btn-success approve-report" data-report-id="<?php echo $report->report_id; ?>">Approve</button>
+                            <button type="button" class="btn btn-danger reject-report" data-report-id="<?php echo $report->report_id; ?>">Reject</button>
+                            <?php endif; ?>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+
                             <h5>Activity: <?php echo $report->activity_name; ?></h5>
-                            <p><?php echo $report->description; ?></p>
+                            <p><?php echo $report->report_description; ?></p>
+                          
                             
-                            <?php if($report->status === 'pending'): ?>
+                            <?php if($report->report_status === 'pending'): ?>
                             <div class="form-group">
-                                <label for="supervisorComment-<?php echo $report->report_id; ?>">Supervisor Comment</label>
+                                <label for="supervisorComment-<?php echo $report->report_id; ?>"> Supervisor Comment</label>
                                 <textarea class="form-control" id="supervisorComment-<?php echo $report->report_id; ?>" rows="3"></textarea>
                             </div>
                             <?php endif; ?>
                         </div>
                         <div class="modal-footer">
-                            <?php if($report->status === 'pending'): ?>
+                            <?php
+                            $staff_id = $this->session->userdata('user')->staff_id;
+                            if(($report->report_status === 'pending')&&($report->unit_head==$staff_id)): ?>
                             <button type="button" class="btn btn-success approve-report" data-report-id="<?php echo $report->report_id; ?>">Approve</button>
                             <button type="button" class="btn btn-danger reject-report" data-report-id="<?php echo $report->report_id; ?>">Reject</button>
                             <?php endif; ?>
@@ -120,8 +150,14 @@ $(document).ready(function() {
                     show_notification(response.message, 'success');
                     // Hide the modal on success
                     $('#reportModal-' + reportId).modal('hide');
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
                 } else {
                     show_notification(response.message, 'error');
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
                 }
             },
             error: function(xhr, status, error) {
@@ -152,8 +188,14 @@ $(document).ready(function() {
                     show_notification(response.message, 'success');
                     // Hide the modal on success
                     $('#reportModal-' + reportId).modal('hide');
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
                 } else {
                     show_notification(response.message, 'error');
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
                 }
             },
             error: function(xhr, status, error) {

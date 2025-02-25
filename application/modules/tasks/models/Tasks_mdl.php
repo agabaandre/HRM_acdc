@@ -37,47 +37,54 @@ class Tasks_mdl extends CI_Model {
         $this->db->order_by('period', 'ASC');
         return $this->db->get('quarterly_outputs')->result();
     }
-    public function get_activities($staff_id=null, $output_id = null, $start_date = null, $end_date = null,$limit = null, $offset = null) {
+    public function get_activities($staff_id = null, $output_id = null, $start_date = null, $end_date = null, $limit = null, $offset = null) {
         $this->db->select('
-        activities.activity_id, 
-        activities.activity_name, 
-        activities.quarterly_output_id, 
-        units.staff_id as unit_head,
-        quarterly_outputs.name AS quarterly_output_name, 
-        activities.start_date, 
-        activities.priority, 
-        activities.end_date, 
-        activities.comments, 
-        activities.staff_id, 
-        activities.status,
-        DATEDIFF(activities.end_date, activities.start_date)+1 AS activity_days
-    ');
-    $this->db->from('activities');
+            activities.activity_id, 
+            activities.activity_name, 
+            activities.quarterly_output_id, 
+            units.staff_id as unit_head,
+            quarterly_outputs.name AS quarterly_output_name, 
+            activities.start_date, 
+            activities.priority, 
+            activities.end_date, 
+            reports.report_id,
+            reports.status as report_status,
+            reports.description as report,
+            reports.report_date,
+            activities.comments, 
+            activities.staff_id, 
+            activities.status,
+            DATEDIFF(activities.end_date, activities.start_date)+1 AS activity_days
+        ');
+        $this->db->from('activities');
+        
+        // Apply filters if provided
+        if (!empty($output_id)) {
+            $this->db->where('activities.quarterly_output_id', $output_id);
+        }
+        if (!empty($start_date)) {
+            $this->db->where('activities.start_date >=', $start_date);
+        }
+        if (!empty($end_date)) {
+            $this->db->where('activities.end_date <=', $end_date);
+        }
+        
+        // Join the quarterly_outputs and units tables
+        $this->db->join('quarterly_outputs', 'quarterly_outputs.quarterly_output_id = activities.quarterly_output_id');
+        $this->db->join('units', 'units.unit_id = quarterly_outputs.unit_id');
     
-    // Apply filters if provided
-    if (!empty($output_id)) {
-        $this->db->where('activities.quarterly_output_id', $output_id);
-    }
-    if (!empty($start_date)) {
-        $this->db->where('activities.start_date >=', $start_date);
-    }
-    if (!empty($end_date)) {
-        $this->db->where('activities.end_date <=', $end_date);
-    }
+        // Use a LEFT JOIN for reports to include all activities
+        $this->db->join('reports', 'activities.activity_id = reports.activity_id', 'left');
     
-    // Join the quarterly_outputs table
-  
-    $this->db->join('quarterly_outputs', 'quarterly_outputs.quarterly_output_id = activities.quarterly_output_id');
-    $this->db->join ('units','units.unit_id =quarterly_outputs.unit_id');
         // Apply limit and offset for pagination
-    if ($limit !== null) {
+        if ($limit !== null) {
             $this->db->limit($limit, $offset);
+        }
+        
+        $query = $this->db->get();
+        return $query->result();
     }
     
-    $query = $this->db->get();
-    return $query->result();
-    
-    }
     public function get_pending_activities($staff_id=null, $output_id = null, $start_date = null, $end_date = null,$limit = null, $offset = null) {
        $unit_id = $this->session->userdata('user')->unit_id;
         $this->db->select('
@@ -186,22 +193,22 @@ class Tasks_mdl extends CI_Model {
             DATEDIFF(activities.end_date, activities.start_date)+1 AS activity_days,
             reports.report_id,
             reports.report_date,
+            reports.week,
+            quarterly_outputs.period,
+            units.staff_id as unit_head,
             reports.description AS report_description,
             reports.status AS report_status,
             reports.created_at AS report_created_at,
             reports.updated_at AS report_updated_at
         ');
         $this->db->from('activities');
-        
-        // Join the quarterly_outputs table
-        $this->db->join('quarterly_outputs', 'quarterly_outputs.quarterly_output_id = activities.quarterly_output_id');
-        
-        // Join the reports table using activity_id
-        $this->db->join('reports', 'reports.activity_id = activities.activity_id', 'left');
-        
+    
         // Apply filters if provided
         if (!empty($staff_id)) {
-            $this->db->where('activities.staff_id', $staff_id);
+            $this->db->group_start();
+                $this->db->where('activities.staff_id', $staff_id);
+                $this->db->or_where('units.staff_id', $staff_id);
+            $this->db->group_end();
         }
         if (!empty($output_id)) {
             $this->db->where('activities.quarterly_output_id', $output_id);
@@ -213,13 +220,23 @@ class Tasks_mdl extends CI_Model {
             $this->db->where('activities.end_date <=', $end_date);
         }
         
+        // Join the quarterly_outputs table first...
+        $this->db->join('quarterly_outputs', 'quarterly_outputs.quarterly_output_id = activities.quarterly_output_id');
+        // ...then join the units table using quarterly_outputs
+        $this->db->join('units', 'quarterly_outputs.unit_id = units.unit_id');
+        
+        // Join the reports table using activity_id with a LEFT JOIN so that all activities are included
+        $this->db->join('reports', 'reports.activity_id = activities.activity_id', 'left');
+        
         // Apply limit and offset for pagination
         if ($limit !== null) {
             $this->db->limit($limit, $offset);
         }
         
         $query = $this->db->get();
+        $this->db->last_query();
         return $query->result();
     }
+    
     
 }
