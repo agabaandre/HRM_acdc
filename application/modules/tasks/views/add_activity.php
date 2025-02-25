@@ -311,7 +311,7 @@ $(document).ready(function() {
                 data: null,
                 render: function(data, type, row) {
                     var user_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
-var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
+                    var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
 
                     if (row.status != 1 && row.staff_id == user_id) {
                         return '<button class="btn btn-sm btn-primary edit-btn" ' +
@@ -558,6 +558,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
                     var modalEl = document.getElementById('approvalModal');
                     var approvalModal = bootstrap.Modal.getInstance(modalEl);
                     approvalModal.hide();
+                    table.ajax.reload();
                     // Optionally, reload your DataTable or page data
                 } else {
                     show_notification(response.message, 'error');
@@ -568,7 +569,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
             }
           
         });
-        console.log(data);
+        
     });
 
     // Reject button handler in the modal
@@ -591,6 +592,7 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
                     var modalEl = document.getElementById('approvalModal');
                     var approvalModal = bootstrap.Modal.getInstance(modalEl);
                     approvalModal.hide();
+                    table.ajax.reload();
                     // Optionally, reload your DataTable or page data
                 } else {
                     show_notification(response.message, 'error');
