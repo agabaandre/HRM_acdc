@@ -12,7 +12,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
             <div class="d-flex align-items-center text-muted">
                 
                     <!-- <div class="">
-                        
+                    
                         <a href="<?php echo base_url() ?>leave/request" type="button" class="btn btn-grey ms-2">Leave Request<i class=""></i>
                         </a>
                     </div>
@@ -36,8 +36,8 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                     <div class="">
                         <a href="<?php echo base_url() ?>performance/approve" type="button" class="btn btn-outline btn-grey ms-2">Approvals<i class="fa fa-ok"></i>
                         </a>
-                    </div>
-                </div> -->
+                    </div> -->
+                </div>
            
             <!-- <div class="flex-grow-1 mx-xl-2 my-2 my-xl-0">
 
@@ -50,6 +50,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
             <div class="widget-user-header testbgpattern1"></div>
     
             <div class="card-body text-center">
+                <br>
                 <div class="item-user pro-user">
                     <h4 class="pro-user-username tx-15 pt-2 mt-4 mb-1" style="color:black;"><?php echo $this->session->userdata('user')->name; ?></h4>
                     <h6><?php
