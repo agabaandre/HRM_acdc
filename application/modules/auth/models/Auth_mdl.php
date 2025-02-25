@@ -159,7 +159,7 @@ return $qry->num_rows();
 	// update user's details
 	public function updateUser($postdata)
 	{
-		$uid = $postdata['id'];
+		$uid = $postdata['user_id'];
 		$this->db->where('user_id', $uid);
 		$query = $this->db->update($this->table, $postdata);
 		if ($query) {
