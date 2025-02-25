@@ -221,8 +221,9 @@
 													<li><strong>Division:</strong> <?= $cont->division_name ?></li>
 													<li><strong>Job:</strong> <?= @character_limiter($cont->job_name, 15) ?></li>
 													<li><strong>Acting Job:</strong> <?= @character_limiter($cont->job_acting, 15) ?></li>
-													
-		
+													<li><strong>First Supervisor:</strong><?= @staff_name($cont->first_supervisor); ?></li>
+													<li><strong>Second Supervisor:</strong> <?= @staff_name($cont->second_supervisor); ?></li>
+											
 													<li><strong>Funder:</strong> <?= $cont->funder ?></li>
 													<li><strong>Contracting Organisation:</strong> <?= $cont->contracting_institution ?></li>
 													<li><strong>Grade:</strong> <?= $cont->grade ?></li>
