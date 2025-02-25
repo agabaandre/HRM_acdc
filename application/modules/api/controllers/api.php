@@ -71,7 +71,7 @@ class Api extends MX_Controller
 
 	
 public function auth($key){
-    if($key=="YWZyY2FjZGNzdGFmZnRyYWNrZXI="){
+    if($key=="YWZyY2FjZGNzdGFmZnRyYWNrZXI"){
 		return true;
 	}
 		else{
