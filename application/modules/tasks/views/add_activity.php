@@ -566,8 +566,9 @@ var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
             error: function() {
                 show_notification('An error occurred. Please try again.', 'error');
             }
-            console.log(data);
+          
         });
+        console.log(data);
     });
 
     // Reject button handler in the modal
