@@ -58,14 +58,12 @@
                             </td>
                             <td>
                         
-                                            <select name="week" class="form-control form-control-md"  required>
+                            <select name="priority" class="form-control form-control-md" id="priority" required>
                                                 <option value="Low">Low</option>
                                                 <option value="Medium">Medium</option>
                                                 <option value="High">High</option>
                                            
-                                               
-                                                    
-                                            </select>
+                            </select>
                   
                                 <div class="invalid-feedback">Please set the Priority .</div>
                             </td>
@@ -135,7 +133,8 @@
                 <th>Days</th>
                 <th>Priority</th>
                 <th>Comments</th>
-                <th>Status</th>
+                <th>Reporting Date</th>
+                <!-- <th>Status</th> -->
                 <th>Actions</th>
             </tr>
         </thead>
@@ -168,7 +167,12 @@
                         <input type="text" id="edit_end_date" class="form-control datepicker" required>
                     </div>
                     <label>Priority (Low, Medium, High)</label>
-                    <input type="text" id="edit_priority" class="form-control" required>
+                    <select name="priority" class="form-control form-control-md"  id="edit_priority" required>
+                                                <option value="Low">Low</option>
+                                                <option value="Medium">Medium</option>
+                                                <option value="High">High</option>
+                                                    
+                    </select>
 
                     <div class="form-group">
                         <label>Comments</label>
@@ -202,6 +206,7 @@
                     <div class="form-group">
                         <label>Start Date</label>
                         <input type="text" id="report_start_date" class="form-control" disabled autocomplete="false">
+                        <input type="hidden" id="report_id" class="form-control" disabled autocomplete="false">
                     </div>
                     <div class="form-group">
                         <label>End Date</label>
@@ -210,7 +215,7 @@
                     <div class="form-group">
                     <label for="output">Report Week:</label>
                     <?php $unit_id = $this->session->userdata('user')->unit_id; ?>
-                                            <select name="week" class="form-control form-control-md"  required>
+                                            <select name="week" class="form-control form-control-md" id="report_week"  required>
                                                 <option value="1">Week 1</option>
                                                 <option value="2">Week 2</option>
                                                 <option value="3">Week 3</option>
@@ -222,10 +227,10 @@
                     </div>
                     <div class="form-group">
                         <label>Report</label>
-                        <textarea id="description" class="form-control summernote" rows="20"></textarea>
+                        <textarea id="report_description" class="form-control summernote" rows="20"></textarea>
                     </div>
                     <div class="form-group"><br>
-                    <button type="submit" class="btn btn-success">Submit Report</button>
+                    <button type="submit" class="btn btn-success">Submit/Update Report</button>
                 </div>
                 </form>
             </div>
@@ -293,39 +298,43 @@ $(document).ready(function() {
             { data: 'activity_days' },
             { data: 'priority' },
             { data: 'comments' },
-            { 
-                data: 'status', 
-                render: function(data, type, row) {
-                    if (data == 0) {
-                        return '<span class="badge text-bg-warning">Pending Approval</span>';
-                    } else if (data == 1) {
-                        return '<span class="badge text-bg-success">Approved</span>';
-                    } else if (data == 2) {
-                        return '<span class="badge text-bg-danger">Rejected</span>';
-                    } else {
-                        return data;
-                    }
-                }
-            },
+            { data: 'report_date' },
+            // { 
+            //     data: 'status', 
+            //     render: function(data, type, row) {
+            //         if (data == 0) {
+            //             return '<span class="badge text-bg-warning">Pending Approval</span>';
+            //         } else if (data == 1) {
+            //             return '<span class="badge text-bg-success">Approved</span>';
+            //         } else if (data == 2) {
+            //             return '<span class="badge text-bg-danger">Rejected</span>';
+            //         } else {
+            //             return data;
+            //         }
+            //     }
+            // },
             { 
                 data: null,
                 render: function(data, type, row) {
                     var user_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
                     var unitlead_id = "<?php echo $this->session->userdata('user')->staff_id; ?>";
+                    
 
-                    if ((row.staff_id == user_id)||(row.unit_head == unitlead_id)) {
+                    if (((row.staff_id == user_id)||(row.unit_head == unitlead_id))&&(row.report_status != 'approved')) {
+                
                         return '<button class="btn btn-sm btn-primary edit-btn" ' +
                             'data-id="' + row.activity_id + '" ' +
                             'data-name="' + row.activity_name + '" ' +
                             'data-start_date="' + row.start_date + '" ' +
                             'data-end_date="' + row.end_date + '" ' +
                             'data-priority="' + row.priority + '" ' +
-                            'data-comments="' + row.comments + '">Edit</button> ' +
+                            'data-comments="' + row.comments + '"><i class="fa fa-pencil"></i>Edit</button> ' +
                             '<button class="btn btn-sm btn-success report-btn" ' +
                             'data-reportid="' + row.activity_id + '" ' +
+                            'data-report_id="' + row.report_id + '" ' +
                             'data-reportname="' + row.activity_name + '" ' +
-                            'data-reportstart_date="' + row.start_date + '" ' +
-                            'data-reportend_date="' + row.end_date + '">Add report</button>';
+                            'data-reportstart_date="' + row.start_date + '" ' +'data-reportdescription="' + row.report + '" ' +
+                            'data-reportend_date="' + row.end_date + '"><i class="fa fa-book"></i>Report</button>';
         //             } else if (row.status != 1 && row.unit_head == unitlead_id) {
         //                 return '<button class="btn btn-sm btn-success btn-approve" ' +
         //    'data-id="' + row.activity_id + '" ' +
@@ -427,12 +436,19 @@ $(document).ready(function() {
 
     // Open Report Modal when a Report button is clicked
     $(document).on('click', '.report-btn', function () {
-        let activity = $(this).data();
-        $('#report_activity_id').val(activity.reportid);
-        $('#report_activity_name').val(activity.reportname);
-        $('#report_start_date').val(activity.reportstart_date);
-        $('#report_end_date').val(activity.reportend_date);
-        $('#reportModal').modal('show');
+       let activity = $(this).data();
+    $('#report_activity_id').val(activity.reportid);
+    $('#report_id').val(activity.report_id);
+    $('#report_activity_name').val(activity.reportname);
+    $('#report_start_date').val(activity.reportstart_date);
+    $('#report_end_date').val(activity.reportend_date);
+
+    // Get the current content from Summernote
+    var currentContent = $('#report_description').summernote('code');
+    // Append the new description to the existing content
+    $('#report_description').summernote('code',activity.reportdescription);
+
+    $('#reportModal').modal('show');
     });
 
     // Update Activity Form Submission with AJAX
@@ -480,8 +496,10 @@ $(document).ready(function() {
             url: '<?php echo base_url("tasks/add_report"); ?>',
             type: 'POST',
             data: {
+                report_id: $('#report_id').val(),
                 activity_id: $('#report_activity_id').val(),
-                description: $('#description').val(),
+                description: $('#report_description').val(),
+                week: $('#report_week').val(),
                 [csrfName]: csrfHash
             },
             dataType: 'json',
