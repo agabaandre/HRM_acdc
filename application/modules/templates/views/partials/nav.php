@@ -62,6 +62,31 @@
 					</li>
 					<?php if (($this->session->userdata('user')->staff_id != 0) && (in_array('37', $permissions))) : ?>
 
+<li class="nav-item dropdown">
+	<a href="<?php echo base_url() ?>leave/status" class="nav-link  <?php echo activelink('leave', $this->uri->segment(1)) ?>">
+		<div class="parent-icon"><i class="fa fa-clock"></i>
+
+		</div>
+		<div class="menu-title">Attendance</div>
+	</a>
+	<ul class="dropdown-menu">
+		<li> <a class="dropdown-item" href="<?php echo base_url() ?>attendance/upload"><i class="bx bx-right-arrow-alt"></i>Upload Data</a>
+		</li>
+
+		<li> <a class="dropdown-item" href="<?php echo base_url() ?>attendance/person"><i class="bx bx-right-arrow-alt"></i>Person Attendance</a>
+		</li>
+
+		<li> <a class="dropdown-item" href="<?php echo base_url() ?>attendance/status"><i class="bx bx-right-arrow-alt"></i>Time Logs</a>
+		</li>
+		<?php if (in_array('77', $permissions)) : ?>
+			<li> <a class="dropdown-item" href="<?php echo base_url() ?>attendance/time_sheet"><i class="bx bx-right-arrow-alt"></i>Time Sheet</a>
+			</li>
+		<?php endif; ?>
+	</ul>
+</li>
+<?php endif; ?>
+					<?php if (($this->session->userdata('user')->staff_id != 0) && (in_array('37', $permissions))) : ?>
+
 						<li class="nav-item dropdown">
 							<a href="<?php echo base_url() ?>leave/status" class="nav-link  <?php echo activelink('leave', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class="fa fa-plane-departure"></i>
