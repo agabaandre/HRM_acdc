@@ -92,6 +92,12 @@ class Lists extends MX_Controller
 		//dd($data);
 		return $data;
 	}
+	public function units()
+	{
+		$data = $this->db->get('units')->result();
+		//dd($data);
+		return $data;
+	}
 
 	public function get_units_by_division($id)
 	{
