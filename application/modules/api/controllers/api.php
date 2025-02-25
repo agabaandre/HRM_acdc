@@ -81,7 +81,7 @@ public function auth($key){
 
   }
 
-  public function get_divisions($key){
+  public function divisions($key){
 	if($this->auth($key)){
 	$result = $this->db->get("divisions")->result_array();
 	header('Content-Type: application/json');
