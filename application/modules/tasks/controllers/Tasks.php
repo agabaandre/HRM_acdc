@@ -187,7 +187,7 @@ class Tasks extends MX_Controller {
  
 		$data['module'] = 'tasks';
 		$data['title'] = "Quarterly Outputs";
-        $data['quarterly_outputs'] = $this->tasks_mdl->get_outputs($output_id, $start_date, $end_date);
+        $data['quarterly_outputs'] = $this->tasks_mdl->get_outputs($output_id);
        render('add_outputs', $data);
     }
 
@@ -198,15 +198,7 @@ class Tasks extends MX_Controller {
         if (isset($data[$csrf_token])) {
             unset($data[$csrf_token]);
         }
-        
-        // Convert date fields to valid MySQL date format (YYYY-MM-DD)
-        if (!empty($data['start_date'])) {
-            $data['start_date'] = date('Y-m-d', strtotime($data['start_date']));
-        }
-        if (!empty($data['end_date'])) {
-            $data['end_date'] = date('Y-m-d', strtotime($data['end_date']));
-        }
-        
+      
         // Insert the data into the 'quarterly_outputs' table
         $this->db->insert('quarterly_outputs', $data);
         
