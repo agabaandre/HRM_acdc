@@ -43,7 +43,7 @@
       <!-- Email Content -->
       <div class="content">
         <h1>Welcome to Africa CDC!</h1>
-        <p>Dear [Employee Name],</p>
+        <p>Dear <?php echo $name ?>,</p>
         <p>
           We are delighted to welcome you to the Africa CDC family. Your skills and experience will be a valuable addition to our team, and we look forward to working together to further our mission.
         </p>

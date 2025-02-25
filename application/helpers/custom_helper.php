@@ -678,6 +678,8 @@ if (!function_exists('get_staff_name')) {
     }
 }
 
+
+
 if (!function_exists('generate_user_avatar')) {
 function generate_user_avatar($surname, $other_name, $image_path)
 {

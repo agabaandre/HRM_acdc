@@ -18,12 +18,13 @@
         </thead>
         <tbody>
           <?php
-          //dd($staff->toArray());
+          // /dd($staff);
           $i = 1;
           foreach ($staff as $data) :
           
           ?>
             <tr>
+
 
               <td><?= $i++ ?></td>
               <td><a href="<?php echo base_url()?>staff/staff_contracts/<?=$data->staff_id;?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
