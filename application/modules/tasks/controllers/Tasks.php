@@ -89,22 +89,12 @@ class Tasks extends MX_Controller {
             $data['module'] = 'tasks';
             $data['title'] = "Approve Activities";
             $data['outputs'] = $this->tasks_mdl->get_quarterly_output();
-            if (!empty($id)) {
-                $data = array(
-                    'status' => 1
-                );
+            if(!empty($id)) {
+                $data['status']=1;
                 $this->db->where('id', $id);
-                if ($this->db->update('activities', $data)) {
-                    // Successfully updated the activity status
-                    render('add_activity', $data);
-                } else {
-                    // Handle update error (optional)
-                    log_message('error', 'Failed to update activity status for ID: ' . $id);
-                    render('add_activity', $data);
-                }
+                $this->db->update('activities',$data);
             }
-            
-          
+           render('add_activity', $data);
         }
 
     // Submit Report
