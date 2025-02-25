@@ -93,6 +93,7 @@ class Tasks extends MX_Controller {
                 $data['status']=1;
                 $this->db->where('id', $id);
                 $this->db->update('activities',$data);
+                dd($this->db->last_query());
             }
            render('add_activity', $data);
         }
