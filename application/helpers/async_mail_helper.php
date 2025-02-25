@@ -73,4 +73,8 @@ $ci->db->update('email_notifications', $data);
 // Handle logging exception if necessary
 }
 }
+
 }
+
+
+

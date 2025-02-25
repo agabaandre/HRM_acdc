@@ -79,7 +79,7 @@
           To view more details or any additional instructions regarding these activities, please click the button below.
         </p>
         <p>
-          <a href="<?php echo base_url()?>/" class="btn">View Details</a>
+          <a href="<?php echo base_url()?>" class="btn">View Details</a>
         </p>
         <p>
           Thank you for your hard work and dedication.

@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Contract Renewal Reminder</title>
+    <title>Contract Expiration Notice</title>
     <style type="text/css">
       body {
         margin: 0; padding: 0; background-color: #f4f4f4; font-family: Arial, sans-serif;
@@ -29,7 +29,7 @@
         line-height: 1.5;
       }
       .btn {
-        display: inline-block; background-color: #FF9800; color: #ffffff; padding: 10px 20px;
+        display: inline-block; background-color: #d9534f; color: #ffffff; padding: 10px 20px;
         text-decoration: none; border-radius: 5px;
       }
     </style>
@@ -42,16 +42,16 @@
       </div>
       <!-- Email Content -->
       <div class="content">
-        <h1>Contract Renewal Reminder</h1>
-        <p>Dear [Employee Name],</p>
+        <h1>Contract Expiration Notice</h1>
+        <p>Dear <?php echo $name ?>,</p>
         <p>
-          This is a friendly reminder that your current contract is due to expire on [Expiry Date]. We value your contribution to our organization and would like to discuss the renewal of your contract.
+          We wish to inform you that your contract expired on <?php echo $date2 ?>. We understand that this may require clarification, and we encourage you to reach out so we can discuss your current employment status.
         </p>
         <p>
-          Please contact your HR representative at your earliest convenience to review the terms and next steps.
+          Please contact the HR department as soon as possible to review the details and discuss the next steps.
         </p>
         <p>
-          Thank you for your ongoing dedication.
+          Thank you for your attention to this matter.
         </p>
         <p>
           Sincerely,<br>

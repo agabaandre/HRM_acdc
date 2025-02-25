@@ -14,4 +14,8 @@ class Employee extends Eloquent{
     {
         return $this->belongsTo(Nationality::class, "nationality_id", "nationality_id");
     }
+    public function emailstatus()
+    {
+        return $this->hasMany(emailstatus::class,"staff_id","staff_id");
+    }
 }

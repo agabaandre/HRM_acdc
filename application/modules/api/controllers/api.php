@@ -16,265 +16,70 @@ class Api extends MX_Controller
 	public function index()
 	{
 
-		$data['module'] = $this->module;
-		$data['title'] = "Staff";
-		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
-		$filters = $this->input->post();
-		$data['staffs'] = $this->staff_mdl->get_active_staff_data($per_page = 20, $page, $filters);
-		//dd($data);
-		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
-		render('staff_table', $data);
+	echo "Welcome to the staff Tracker API";
 	}
 	// }
-	public function staff_data()
+	public function staff($key)
 	{
-		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
-		$filters = $this->input->post();
-		$data['staffs'] = $this->staff_mdl->get_active_staff_data($per_page = 20, $page, $filters);
-		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
-	json_encode($data['staffs']);
+		if($this->auth($key)){
 
+		$sql11 = "SELECT sc.start_date,sc.end_date,f.funder,s.SAPNO,st.status,ds.duty_station_name,s.title,s.fname,s.lname,s.oname,g.grade,s.date_of_birth,s.gender,j.job_name,ja.job_acting,ci.contracting_institution,ct.contract_type,n.nationality,d.division_name,sc.first_supervisor,sc.second_supervisor,ds.duty_station_name,s.initiation_date,s.tel_1,s.tel_2,s.whatsapp,s.work_email,s.private_email,s.physical_location FROM staff s,staff_contracts sc,grades g,nationalities n,divisions d,duty_stations ds,contracting_institutions ci,contract_types ct,jobs_acting ja,status st,jobs j,funders f WHERE n.nationality_id=s.nationality_id AND d.division_id=sc.division_id AND ds.duty_station_id=sc.duty_station_id AND ci.contracting_institution_id=sc.contracting_institution_id AND ct.contract_type_id=sc.contract_type_id AND s.staff_id=sc.staff_id AND sc.grade_id=g.grade_id AND ja.job_acting_id=sc.job_acting_id AND st.status_id=sc.status_id AND sc.status_id IN(1,2,3) AND j.job_id=sc.job_id AND f.funder_id=sc.funder_id AND s.work_email !='' AND sc.division_id != '' AND sc.division_id != '27' AND s.work_email NOT LIKE'xx%'";
+        $result = $this->$this->db->query($sql11)->result();
+		 
+        foreach ($result as $row):
+		$row['start_date'] = date('m/d/Y', strtotime($row['start_date']));
+		$row['end_date'] = date('m/d/Y', strtotime($row['end_date']));
+		$row['date_of_birth'] = date('m/d/Y', strtotime($row['date_of_birth']));
+		$row['initiation_date'] = date('m/d/Y', strtotime($row['initiation_date']));
+		$f = $row['first_supervisor'];
+		$s = $row['second_supervisor'];
 		
-	}
-	// Getting All Contracts
-	public function staff_contracts($staff_id)
-	{
-		$data['module'] = $this->module;
-		$filters = array('staff_id' => $staff_id);
-		//$staff = $data['this_staff'] = $this->staff_mdl->get_all_staff_data($start=1, $limit=0, $filters);
-		//($this->db->last_query());
-		$data['contracts'] = $this->staff_mdl->get_staff_contracts($staff_id);
-	   //dd($data['contracts']);
-		$data['title'] = $data['contracts'][0]->lname." ".$data['contracts'][0]->fname;
-		render('staff_contracts', $data);
-	}
-	// Getting latest Contract
-	public function latest_staff_contract($staff_id)
-	{
-		$data = $this->staff_mdl->get_latest_contracts($staff_id);
-		//dd($data);
-		return $data;
-	}
-
-	// New Contract
-	public function new_contract($staff_id){
-		$data['module'] = $this->module;
 		
-		$data['staff_id'] = $staff_id;
-		$filters = array('staff_id' => $staff_id);
-		$data['staffs'] = $this->staff_mdl->get_all_staff_data($start=1, $limit=0, $filters);
-		$staffs = $data['staffs'];
-		//dd($staffs);
-		$data['title'] = $staffs[0]->lname." ".$staffs[0]->fname;
-		$data['contracts'] = $this->staff_mdl->get_staff_contracts($staff_id);
-		
-		render('new_contract', $data);
-	}
-	public function test_email(){
-		$mailto = send_email_async('agabaandre@gmail.com','Africa CDC TEST EMAIL','This is a test emal from Africa CDC for mail notifications');
-		if ($mailto) {
-			Modules::run('utility/setFlash', 'SENT test MAIL');	
-		}
-		redirect('staff');
-
-	}
-
-	function timer_after($time,$function)
-	{
-		// Access the event loop
-		$loop = $this->reactphp_lib->getLoop();
-		$loop->addTimer($time, function () {
+		$row['first_supervisor_email'] = get_supervisor_mail($f);
 			
-		});
-		$this->reactphp_lib->run();
-	}
-
-
-	// Add New Contract
-	public function add_new_contract(){
-		$data['module'] = $this->module;
-		$data = $this->input->post();
-		$this->staff_mdl->add_new_contract($data);
-		$update['staff_id'] = $data['staff_id'];
-		$update['staff_contract_id']= $data['staff_contract_id'];
-		$update['status_id']=$data['previous_contract_status_id'];
+		$row['second_supervisor_email'] = get_supervisor_mail($s);
 		
-		$this->staff_mdl->update_contract($update);
-		redirect("staff/staff_contracts/".$staffid);
-	}
-
-
-	public function contract_status($status){
-		$data['module'] = $this->module;
-		if ($status == 2) {
-			$data['title'] = "Due Contracts";
-		}
-		else if ($status == 3) {
-			$data['title'] = "Expired Contracts";
-		} 
-		else if ($status == 4) {
-			$data['title'] = "Former Staff";
-		}
-		else if ($status == 7) {
-			$data['title'] = "Under Renewal";
-		}
-		else if ($status == 6) {
-			$data['title'] = "Renewed Contracts";
-		}
-		else if ($status == 5) {
-			$data['title'] = "Re Assigned Staff";
-		}
-		$data['staff'] = $this->staff_mdl->get_status($status);
-	
-	
-		render('contract_status', $data);
-
-	}
-	public function staff_birthday()
-	{
-		$data['module'] = $this->module;
-		$data['title'] = "Staff Birthday";
-		$data['today'] = $this->staff_mdl->getBirthdaysForToday();
-		$data['tomorrow'] = $this->staff_mdl->getBirthdaysForTomorrow();
-		$data['week'] = $this->staff_mdl->getBirthdaysForNextSevenDays();
-		$data['month'] = $this->staff_mdl->getBirthdaysForNextThirtyDays();
-		//dd($data['month']);
-		render('staff_birthday', $data);
-	}
-
-	public function update_contract()
-	{
-		$data = $this->input->post();
-		$staffid = $data['staff_id'];
-		$q= $this->staff_mdl->update_contract($data);
-		if ($q) {
-			$msg = array(
-				'msg' => 'Staff Updated successfully.',
-				'type' => 'success'
-			);
+	   
+		// Concatenate other name and last name as names
+	 
+		
+		if(!empty($row['oname'])){
+		$row['name']=trim($row['fname']).' '.trim($row['oname']) . ' ' . trim($row['lname']);
 		}
 		else{
-			$msg = array(
-				'msg' => 'Updated Failed!.',
-				'type' => 'error'
-			);
-
+		$row['name']=trim($row['fname']).' '.trim($row['lname']);
 		}
-		redirect("staff/staff_contracts/".$staffid);
-	}
-	public function update_staff()
-	{
-		$data = $this->input->post();
-		$q = $this->staff_mdl->update_staff($data);
-		if ($q) {
-			$msg = array(
-				'msg' => 'Staff Updated successfully.',
-				'type' => 'success'
-			);
-			Modules::run('utility/setFlash', $msg);
-		} else {
-			$msg = array(
-				'msg' => 'Staff update Failed .',
-				'type' => 'error'
-			);
-			Modules::run('utility/setFlash', $msg);
-
+		
+		// Remove unnecessary keys
+		unset($row['fname']);
+		unset($row['lname']);
+		unset($row['oname']);
+		unset($row['first_supervisor']);
+		unset($row['second_supervisor']);
+		$data[] = $row;
+	     endforeach;
+				// Return JSON response
+		header('Content-Type: application/json');
+			echo json_encode($data);
 		}
-		redirect('staff');
+		else{
+			header('Content-Type: application/json');
+			echo json_encode(array('success'=> false,'error'=> 'Invalid Reuest'));
+		}
 	}
+		
 
-	// Controller: Staff.php
+	
+public function auth($key){
+    if($key=="YWZyY2FjZGNzdGFmZnRyYWNrZXI="){
+		return true;
+	}
+		else{
+			return false;
+		}
 
-// Method to load the form only
-public function new()
-{
-    $data['module'] = $this->module;
-    $data['title']  = "New Staff";
-    // Render the view with your form (e.g., new_staff.php)
-    render('new_staff', $data);
-}
 
-// Method to process the form submission via AJAX
-public function new_submit()
-{
-    // Check if it's a POST request
-    if ($this->input->post()) {
-
-        // Personal Information
-        $sapno          = $this->input->post('SAPNO');
-        $title          = $this->input->post('title');
-        $fname          = $this->input->post('fname');
-        $lname          = $this->input->post('lname');
-        $oname          = $this->input->post('oname');
-        $dob            = date('Y-m-d', strtotime($this->input->post('date_of_birth')));
-        $gender         = $this->input->post('gender');
-        $nationality_id = $this->input->post('nationality_id');
-        $initiation_date= date('Y-m-d', strtotime($this->input->post('initiation_date')));
-
-        // Contact Information
-        $tel_1            = $this->input->post('tel_1');
-        $tel_2            = $this->input->post('tel_2');
-        $whatsapp         = $this->input->post('whatsapp');
-        $work_email       = $this->input->post('work_email');
-        $private_email    = $this->input->post('private_email');
-        $physical_location= $this->input->post('physical_location');
-
-        // Contract Information
-        $job_id                    = $this->input->post('job_id');
-        $job_acting_id             = $this->input->post('job_acting_id');
-        $grade_id                  = $this->input->post('grade_id');
-        $contracting_institution_id= $this->input->post('contracting_institution_id');
-        $funder_id                 = $this->input->post('funder_id');
-        $first_supervisor          = $this->input->post('first_supervisor');
-        $second_supervisor         = $this->input->post('second_supervisor');
-        $contract_type_id          = $this->input->post('contract_type_id');
-        $duty_station_id           = $this->input->post('duty_station_id');
-        $division_id               = $this->input->post('division_id');
-        $unit_id                   = $this->input->post('unit_id');
-        $start_date                = date('Y-m-d', strtotime($this->input->post('start_date')));
-        $end_date                  = date('Y-m-d', strtotime($this->input->post('end_date')));
-        $status_id                 = $this->input->post('status_id');
-        $file_name                 = $this->input->post('file_name');
-        $comments                  = $this->input->post('comments');
-
-        // Save to database (first save staff, then contract information)
-        $staff_id = $this->staff_mdl->add_staff(
-            $sapno, $title, $fname, $lname, $oname, $dob, $gender, 
-            $nationality_id, $initiation_date, $tel_1, $tel_2, $whatsapp, 
-            $work_email, $private_email, $physical_location
-        );
-
-        if ($staff_id) {
-            $contract_id = $this->staff_mdl->add_contract_information(
-                $staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, 
-                $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, 
-                $duty_station_id, $division_id, $unit_id, $start_date, $end_date, 
-                $status_id, $file_name, $comments
-            );
-            if ($contract_id) {
-                $response = array(
-                    'msg'  => 'Staff information saved successfully.',
-                    'type' => 'success'
-                );
-            } else {
-                $response = array(
-                    'msg'  => 'Failed, please Retry',
-                    'type' => 'error'
-                );
-            }
-        } else {
-            $response = array(
-                'msg'  => 'Failed, please Retry',
-                'type' => 'error'
-            );
-        }
-        // Return JSON response
-        echo json_encode($response);
-    } else {
-        // If not POST, return an error message
-        echo json_encode(array('msg' => 'Invalid request', 'type' => 'error'));
-    }
-}
+  }
 
 
 	

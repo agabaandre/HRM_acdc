@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Contract Expiration Notice</title>
+    <title>Contract Renewal Reminder</title>
     <style type="text/css">
       body {
         margin: 0; padding: 0; background-color: #f4f4f4; font-family: Arial, sans-serif;
@@ -29,7 +29,7 @@
         line-height: 1.5;
       }
       .btn {
-        display: inline-block; background-color: #d9534f; color: #ffffff; padding: 10px 20px;
+        display: inline-block; background-color: #FF9800; color: #ffffff; padding: 10px 20px;
         text-decoration: none; border-radius: 5px;
       }
     </style>
@@ -42,23 +42,23 @@
       </div>
       <!-- Email Content -->
       <div class="content">
-        <h1>Contract Expiration Notice</h1>
-        <p>Dear [Employee Name],</p>
+        <h1>Due Contract Reminder</h1>
+        <p>Dear <?php echo $name ?>,</p>
         <p>
-          We wish to inform you that your contract expired on [Expiration Date]. We understand that this may require clarification, and we encourage you to reach out so we can discuss your current employment status.
+          This is a friendly reminder that your current contract is due to expire on <?php echo $date2 ?>. We value your contribution to Africa CDC.
         </p>
         <p>
-          Please contact the HR department as soon as possible to review the details and discuss the next steps.
+          Please contact HR  at your earliest convenience to review the terms and next steps.
         </p>
         <p>
-          Thank you for your attention to this matter.
+          Thank you for your ongoing dedication.
         </p>
         <p>
           Sincerely,<br>
           HR Team, Africa CDC
         </p>
         <p>
-          <a href="[Link to HR portal]" class="btn">Contact HR</a>
+          <a href="<?php echo base_url()?>staff" class="btn">Contact HR</a>
         </p>
       </div>
       <!-- Footer -->
