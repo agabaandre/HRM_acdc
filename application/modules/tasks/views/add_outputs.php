@@ -59,8 +59,7 @@
           <th>Description</th>
           <th>Financial Year</th>
           <th>Period</th>
-          <th>Start Date</th>
-          <th>End Date</th>
+       
           <th>Created By</th>
           <th>Actions</th>
         </tr>
@@ -76,8 +75,7 @@
             <td><?php echo $output->description; ?></td>
             <td><?php echo $output->financial_year; ?></td>
             <td><?php echo $output->period; ?></td>
-            <td><?php echo $output->start_date; ?></td>
-            <td><?php echo $output->end_date; ?></td>
+         
             <td><?php echo staff_name($output->created_by); ?></td>
             <td>
             <?php if ($session->staff_id===$output->created_by){?>
@@ -91,9 +89,8 @@
                  data-name="<?php echo htmlspecialchars($output->name); ?>"
                  data-description="<?php echo htmlspecialchars($output->description); ?>"
                  data-financial_year="<?php echo $output->financial_year; ?>"
-                 data-period="<?php echo $output->period; ?>"
-                 data-start_date="<?php echo $output->start_date; ?>"
-                 data-end_date="<?php echo $output->end_date; ?>">
+                 data-period="<?php echo $output->period; ?>">
+               
                 Edit
               </a>
               <!-- Delete Button -->
@@ -150,24 +147,7 @@
               <option value="Q4">Q4</option>
             </select>
           </div>
-          <div class="form-group">
-            <label for="start_date">Start Date:</label>
-            <div class="input-group">
-                <input type="text" id="start_date" name="start_date" class="form-control datepicker" required autocomplete="off">
-                <span class="input-group-text">
-                <i class="fa fa-calendar"></i>
-                </span>
-            </div>
-            </div>
-            <div class="form-group">
-            <label for="end_date">End Date:</label>
-            <div class="input-group">
-                <input type="text" id="end_date" name="end_date" class="form-control datepicker" required autocomplete="off">
-                <span class="input-group-text">
-                <i class="fa fa-calendar"></i>
-                </span>
-            </div>
-            </div>
+
 
           <button type="submit" class="btn btn-primary">Submit</button>
         </form>
@@ -211,14 +191,6 @@
               <option value="Q4">Q4</option>
             </select>
           </div>
-          <div class="form-group mb-2">
-            <label for="edit_start_date">Start Date:</label>
-            <input type="date" id="edit_start_date" name="start_date" class="form-control" required autocomplete="off">
-          </div>
-          <div class="form-group mb-3">
-            <label for="edit_end_date">End Date:</label>
-            <input type="date" id="edit_end_date" name="end_date" class="form-control" required autocomplete="off">
-          </div>
           <button type="submit" class="btn btn-primary">Save Changes</button>
         </form>
       </div>
@@ -259,8 +231,7 @@
     var description   = button.getAttribute('data-description');
     var financialYear = button.getAttribute('data-financial_year');
     var period        = button.getAttribute('data-period');
-    var startDate     = button.getAttribute('data-start_date');
-    var endDate       = button.getAttribute('data-end_date');
+   
 
     // Update the modal's form fields
     editModal.querySelector('#edit_quarterly_output_id').value = outputId;
@@ -269,8 +240,7 @@
     editModal.querySelector('#edit_description').value          = description;
     editModal.querySelector('#edit_financial_year').value       = financialYear;
     editModal.querySelector('#edit_period').value               = period;
-    editModal.querySelector('#edit_start_date').value           = startDate;
-    editModal.querySelector('#edit_end_date').value             = endDate;
+
   });
 
   // Delete Modal: Set the ID for deletion
