@@ -1,7 +1,7 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-class Api extends MX_Controller
+class Share extends MX_Controller
 {
 
 
@@ -9,8 +9,7 @@ class Api extends MX_Controller
 	{
 		parent::__construct();
 
-		$this->module = "api";
-		// $this->load->model("staff_mdl",'staff_mdl');
+		$this->module = "share";
 	}
 
 	public function index()
