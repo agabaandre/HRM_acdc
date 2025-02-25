@@ -91,10 +91,11 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 			}
 		}
 	}
-	
+	$staff = array(1,2,3,7);
+	$this->db->where_in('staff_contracts.status',$staff);
 
     // Joins with Aliases
-    // $this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id');
+    $this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id');
     // $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
     // $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
     // $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
