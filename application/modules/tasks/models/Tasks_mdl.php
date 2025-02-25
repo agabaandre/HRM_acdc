@@ -42,6 +42,7 @@ class Tasks_mdl extends CI_Model {
         activities.activity_id, 
         activities.activity_name, 
         activities.quarterly_output_id, 
+        units.staff_id as unit_head,
         quarterly_outputs.name AS quarterly_output_name, 
         activities.start_date, 
         activities.priority, 
@@ -65,7 +66,9 @@ class Tasks_mdl extends CI_Model {
     }
     
     // Join the quarterly_outputs table
+  
     $this->db->join('quarterly_outputs', 'quarterly_outputs.quarterly_output_id = activities.quarterly_output_id');
+    $this->db->join ('units','units.unit_id =quarterly_outputs.unit_id');
         // Apply limit and offset for pagination
     if ($limit !== null) {
             $this->db->limit($limit, $offset);

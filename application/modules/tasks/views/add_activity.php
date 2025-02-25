@@ -303,8 +303,11 @@ $(document).ready(function() {
                                'data-reportname="'+row.activity_name+'" ' +
                                'data-reportstart_date="'+row.start_date+'" ' +
                                'data-reportend_date="'+row.end_date+'">Add report</button>';
-                    } else (row.status != 1 && row.staff_id == unitlead_id) {
-                        return 'No actions available';
+                    } else if (row.status != 1 && row.unit_head == unit_lead_id) {
+                        return '<a href='+"<?php echo base_url()?>approve/"+row.activity_id+' ><a>'
+                    }
+                    else{
+
                     }
                 }
             }

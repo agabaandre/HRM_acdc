@@ -121,6 +121,7 @@ class Tasks extends MX_Controller {
         $activities = $this->tasks_mdl->get_activities($staff_id, $output_id, $start_date, $end_date);
 
         // Return JSON response
+       // dd($activities);
         echo json_encode($activities);
     }
     public function fetch_pending_activities() {
