@@ -144,7 +144,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Name</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo @$name = $this->session->userdata('user')->name; ?>" readonly>
+                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo @$name = $this->session->userdata('user')->name; ?>" disabled>
                         </div>
                     </div>
                 </div>
