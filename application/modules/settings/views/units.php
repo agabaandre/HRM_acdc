@@ -56,7 +56,7 @@ $permissions = $session->permissions;
                                     ?>
                                     
                                         <option value="<?php echo $list->staff_id; ?>" 
-                                                                            ><?php echo $list->lname . ' ' . $list->fname; ?></option>
+                                                                            ><?php echo $list->fname . ' ' . $list->lname; ?></option>
                                     
                                     <?php endforeach; ?>
                                     <!-- Add more options as needed -->
