@@ -30,9 +30,18 @@
                                               <td data-label="Duty Station"><?php echo $staff->division_name; ?></td>
                                               <td data-label="Duty Station"><?php echo $staff->duty_station_name; ?></td>
                                               <td data-label="JOB"><?php echo $staff->job_name; ?></td>
-                                              <td data-label="ATTENDANCE"><a class="btn btn-sm btn-default btn-outline"
+                                              <td data-label="ATTENDANCE">
+                                              <?php if (in_array('83', $permissions)) : ?>
+                                              <a class="btn btn-sm btn-default btn-outline"
+                                                   href="<?php echo base_url(); ?>attendance/identifier/<?php echo urlencode($staff->staff_id); ?>">
+                                                   <i class="fa fa-card" aria-hidden="true"></i>Add Identifier</a> 
+                                              <?php endif; ?> 
+                                              
+                                              <a class="btn btn-sm btn-default btn-outline"
                                                    href="<?php echo base_url(); ?>attendance/timelogs/<?php echo urlencode($staff->staff_id); ?>">
-                                                   <i class="fa fa-eye" aria-hidden="true"></i> Report</a></td>
+                                                   <i class="fa fa-eye" aria-hidden="true"></i> Report</a>
+                                                  
+                                                  </td>
                                               </tr>
                                               <?php   } ?>
                   </tbody>
