@@ -80,7 +80,7 @@ class Tasks_mdl extends CI_Model {
         if ($limit !== null) {
             $this->db->limit($limit, $offset);
         }
-        
+        $this->db->order_by('activities.end_date','ASC');
         $query = $this->db->get();
         return $query->result();
     }
@@ -123,6 +123,7 @@ class Tasks_mdl extends CI_Model {
     if ($limit !== null) {
             $this->db->limit($limit, $offset);
     }
+    $this->db->order_by('activities.end_date','ASC');
     
     $query = $this->db->get();
     return $query->result();
@@ -260,7 +261,7 @@ class Tasks_mdl extends CI_Model {
         if ($limit !== null) {
             $this->db->limit($limit, $offset);
         }
-    
+        $this->db->order_by('activities.end_date','ASC');
         $query = $this->db->get();
         return $query->result();
     }
