@@ -63,7 +63,7 @@
 					<?php if (($this->session->userdata('user')->staff_id != 0) && (in_array('37', $permissions))) : ?>
 
 <li class="nav-item dropdown">
-	<a href="<?php echo base_url() ?>leave/status" class="nav-link  <?php echo activelink('leave', $this->uri->segment(1)) ?>">
+	<a href="<?php echo base_url() ?>attendance/person" class="nav-link  <?php echo activelink('attendance', $this->uri->segment(1)) ?>">
 		<div class="parent-icon"><i class="fa fa-clock"></i>
 
 		</div>
