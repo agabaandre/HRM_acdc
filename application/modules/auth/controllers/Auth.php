@@ -63,7 +63,6 @@ class Auth extends MX_Controller
       $contract_array = (array)$data['contract'];
       $users = array_merge($users_array, $contract_array);
       
-  
       // Use the stored hash from the database
       //$storedHash = $this->argonhash->make($password);
       $dbpassword = $data['users']->password;
@@ -99,7 +98,7 @@ class Auth extends MX_Controller
       return TRUE;
     }
     else{
-      return TRUE;
+      return FALSE;
     }
     
   }

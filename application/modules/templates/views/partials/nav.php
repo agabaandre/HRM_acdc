@@ -60,8 +60,7 @@
 
 						</ul>
 					</li>
-					<?php if (($this->session->userdata('user')->staff_id != 0) && (in_array('37', $permissions))) : ?>
-
+<?php if (($this->session->userdata('user')->staff_id != 0) && (in_array('83', $permissions))) : ?>
 <li class="nav-item dropdown">
 	<a href="<?php echo base_url() ?>attendance/person" class="nav-link  <?php echo activelink('attendance', $this->uri->segment(1)) ?>">
 		<div class="parent-icon"><i class="fa fa-clock"></i>
@@ -78,10 +77,10 @@
 
 		<li> <a class="dropdown-item" href="<?php echo base_url() ?>attendance/status"><i class="bx bx-right-arrow-alt"></i>Time Logs</a>
 		</li>
-		<?php if (in_array('77', $permissions)) : ?>
+	
 			<li> <a class="dropdown-item" href="<?php echo base_url() ?>attendance/time_sheet"><i class="bx bx-right-arrow-alt"></i>Time Sheet</a>
 			</li>
-		<?php endif; ?>
+
 	</ul>
 </li>
 <?php endif; ?>

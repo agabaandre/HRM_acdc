@@ -66,7 +66,7 @@ class Staff_mdl extends CI_Model
 
     $query = $this->db->get();
 
-	//dd($this->db->last_query());
+	dd($this->db->last_query());
 
 
     return  $query->result();
