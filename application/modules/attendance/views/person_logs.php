@@ -11,6 +11,7 @@
                   <tr>
                       <th> Staff ID</th>
                       <th>Name</th>
+                      <th>Division Name</th>
                       <th>Duty Station</th>
                       <th>Job</th>
                    
@@ -19,13 +20,14 @@
                   </thead>
                   <tbody>
                   <?php 
-                  //dd($staffs);
+                  dd($staffs);
                   $i=1; foreach ($staffs as $staff) { 
                                                      ?>
                                               <tr>
                                               <td data-label="Staff ID"><?php echo $staff->id; ?></td>
                                               <td data-label="NAME"><?php echo $staff->lname. " ". $staff->fname; ?> 
                                               </td>
+                                              <td data-label="Duty Station"><?php echo $staff->division_name; ?></td>
                                               <td data-label="Duty Station"><?php echo $staff->duty_station_name; ?></td>
                                               <td data-label="JOB"><?php echo $staff->job_name; ?></td>
                                               <td data-label="ATTENDANCE"><a class="btn btn-sm btn-default btn-outline"
