@@ -16,7 +16,7 @@ class Attendance extends MX_Controller
 	  $data['staffs'] = $this->staff_mdl->get_active_staff_data();
 	  echo Modules::run("templates/main", $data);
 	}
-	public function employeeTimeLogs($id = FALSE, $print = false, $from = false, $to = false)
+	public function timelogs($id = FALSE, $print = false, $from = false, $to = false)
   {
 
 
