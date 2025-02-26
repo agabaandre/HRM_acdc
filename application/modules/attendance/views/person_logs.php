@@ -5,8 +5,8 @@
        <div class="row">
          <section class="col-lg-12 ">
          
-          ?>
-                <table id="mytab2" class="table table-bordered table-striped mytable">
+        
+                <table id="mytab2" class="table mydata table-bordered table-striped mytable">
                   <thead>
                   <tr>
                       <th> Staff ID</th>
@@ -20,18 +20,18 @@
                   </thead>
                   <tbody>
                   <?php 
-                  dd($staffs);
+                  //dd($staffs);
                   $i=1; foreach ($staffs as $staff) { 
                                                      ?>
                                               <tr>
-                                              <td data-label="Staff ID"><?php echo $staff->id; ?></td>
+                                              <td data-label="Staff ID"><?php echo $staff->staff_id; ?></td>
                                               <td data-label="NAME"><?php echo $staff->lname. " ". $staff->fname; ?> 
                                               </td>
                                               <td data-label="Duty Station"><?php echo $staff->division_name; ?></td>
                                               <td data-label="Duty Station"><?php echo $staff->duty_station_name; ?></td>
                                               <td data-label="JOB"><?php echo $staff->job_name; ?></td>
                                               <td data-label="ATTENDANCE"><a class="btn btn-sm btn-default btn-outline"
-                                                   href="<?php echo base_url(); ?>employees/employeeTimeLogs/<?php echo urlencode($staff->ihris_pid); ?>">
+                                                   href="<?php echo base_url(); ?>attendance/employeeTimeLogs/<?php echo urlencode($staff->staff_id); ?>">
                                                    <i class="fa fa-eye" aria-hidden="true"></i> Report</a></td>
                                               </tr>
                                               <?php   } ?>
