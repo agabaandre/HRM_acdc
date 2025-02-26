@@ -13,7 +13,7 @@ class Staff_mdl extends CI_Model
 	}
 
 
-	public function get_active_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
+	public function get_active_staff_data($limit=FALSE, $start=FALSE, $filters=array())
 {
     $this->db->select('staff.*, staff_contracts.*, jobs.*, jobs_acting.*, grades.*, 
                         contracting_institutions.*, funders.*, contract_types.*, 
