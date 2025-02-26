@@ -9,7 +9,7 @@
                 <table id="mytab2" class="table mydata table-bordered table-striped mytable">
                   <thead>
                   <tr>
-                      <th> Staff ID</th>
+                      <th>#</th>
                       <th>Name</th>
                       <th>Division Name</th>
                       <th>Duty Station</th>
@@ -24,7 +24,7 @@
                   $i=1; foreach ($staffs as $staff) { 
                                                      ?>
                                               <tr>
-                                              <td data-label="Staff ID"><?php echo $staff->staff_id; ?></td>
+                                              <td data-label="Staff ID"><?php echo $i++; ?></td>
                                               <td data-label="NAME"><?php echo $staff->lname. " ". $staff->fname; ?> 
                                               </td>
                                               <td data-label="Duty Station"><?php echo $staff->division_name; ?></td>
