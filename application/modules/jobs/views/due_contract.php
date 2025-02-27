@@ -58,7 +58,7 @@
           HR Team, Africa CDC
         </p>
         <p>
-          <a href="<?php echo base_url()?>staff" class="btn">Contact HR</a>
+          
         </p>
       </div>
       <!-- Footer -->
