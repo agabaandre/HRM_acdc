@@ -80,6 +80,7 @@ class Staff extends MX_Controller
 		$data['title'] = "Staff";
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
 		$filters = $this->input->post();
+		$filters['csv']=$csv;
 		$data['staffs'] = $this->staff_mdl->get_all_staff_data($per_page = 20, $page, $filters);
 		//dd($data);
 		$staffs= $data['staffs'];
