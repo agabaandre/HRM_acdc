@@ -34,6 +34,12 @@ class Dashboard extends MX_Controller
 
 		render('home', $data);
 	}
+	public function messages($staffid){
+					$this->db->where('staff_id', "$staffid");
+					$this->db->order_by('created_at', 'ASC');
+					$this->db->limit(10);
+		return $messages = $this->db->get('email_notifications')->result();
+	}
 	public function dashboardData()
 	{
 

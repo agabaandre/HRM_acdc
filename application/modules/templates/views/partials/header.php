@@ -55,9 +55,14 @@
 							</div>
 						</div>
 					</li>
+
+					<?php 
+							$staff_id = $this->session->userdata('user')->staff_id;
+							$messages =Modules::run("dashboard/messages",$staff_id); 
+					?>
 				
 					<li class="nav-item dropdown-large">
-						<a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"> <span class="alert-count">1</span>
+						<a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"> <span class="alert-count"><?=@count($messages);?></span>
 							<i class='bx bx-comment' style="color:#FFF;"></i>
 						</a>
 						<div class="dropdown-menu dropdown-menu-end">
@@ -67,6 +72,10 @@
 									<p class="msg-header-clear ms-auto">Marks all as read</p>
 								</div>
 							</a>
+
+						    <?php
+							foreach($messages as $message) {
+							?>
 							<div class="header-message-list">
 								<a class="dropdown-item" href="javascript:;">
 									<div class="d-flex align-items-center">
@@ -74,14 +83,15 @@
 											
 										</div>
 										<div class="flex-grow-1">
-											<h6 class="msg-name">Systems Adminstrator <span class="msg-time float-end">5 sec
+											<h6 class="msg-name"><?=ucwords($message->triger);?> <span class="msg-time float-end"><?=time_ago($message->created_at);?>
 													ago</span></h6>
-											<p class="msg-info">Please activate your account to continue ....</p>
+											<p class="msg-info"><?=$message->subject;?></p>
 										</div>
 									</div>
 								</a>
 
 							</div>
+							<?php } ?>
 							<a href="javascript:;">
 								<div class="text-center msg-footer">View All Messages</div>
 							</a>
