@@ -92,7 +92,7 @@ public function mark_due_contracts(){
                                     $data['email_to'] ="kibiyed@africacdc.org";
                                     $data['body']=$this->load->view('due_contract.php',$data,false);
 
-                                    // $this->log_message($email, $message, $subject);
+                                    $this->log_message($data['email_to'], $data['body'], $data['subject']);
 
                                     $SQLSC1 = $this->db->query("UPDATE staff_contracts SET status_id=2 WHERE staff_contract_id=$staff_contract_id");
                                 }elseif($dateDiff < 0){
