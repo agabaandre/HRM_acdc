@@ -243,6 +243,6 @@ public function cron_register(){
 }
 
 
- }
+ 
 
 
