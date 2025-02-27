@@ -145,32 +145,17 @@ public function staff_birthday() {
 }
 
 //cron register runs once a day
-public function cron_register() {
-    // Run send_mails every minute.
-    $this->send_mails();
+public function cron_register(){
 
-    // Get the current time in "HH:MM" format (24-hour clock).
-    $currentTime = date('H:i');
-
-    // Run staff_birthday every day at 23:00.
-    if ($currentTime == '23:00') {
-        echo "Birthday Job Running";
-         $this->staff_birthday();
-    }
-
-    // Run manage_accounts every day at 23:10.
-    if ($currentTime == '23:10') {
-        echo "Accounts Job Running";
-         $this->manage_accounts();
-    }
-
-    // Run mark_due_contracts every day at 23:30.
-    if ($currentTime == '23:30') {
-        echo "Contracts Job Running";
-         $this->mark_due_contracts();
-    }
+    //run everyday at 23:00
+    $this->staff_birthday();
+    //run everyday at 23:10
+    $this->manage_accounts();
+    //run everyday at 23:30
+    $this->mark_due_contracts();
+    
+    
 }
-
 
   // * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
 public function send_mails()
