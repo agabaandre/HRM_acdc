@@ -137,7 +137,8 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 	if($csv==1){
 		return  $query->result_array();
 	   }
-	   else{
+	   else
+	   {
 		return  $query->result();
 	
 	   }
