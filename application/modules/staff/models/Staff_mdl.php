@@ -21,8 +21,10 @@ class Staff_mdl extends CI_Model
     
     $this->db->from('staff'); // Explicitly selecting the base table
 	//
+	@$csv = $filters['csv'];
 	@$lname =  $filters['lname'];
 	unset($filters['lname']);
+	unset($filters['csv']);
 	
     $active_staff =array('1,2');
 
@@ -60,7 +62,7 @@ class Staff_mdl extends CI_Model
     $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id');
 
     // Apply pagination limit
-    if ($limit) {
+    if ($limit && $csv!=1) {
         $this->db->limit($limit, $start);
     }
 
@@ -68,8 +70,13 @@ class Staff_mdl extends CI_Model
 
 	//dd($this->db->last_query());
 
+   if($csv==1){
+    return  $query->result_array();
+   }
+   else{
+	return  $query->result();
 
-    return  $query->result();
+   }
 }
 
 
