@@ -112,9 +112,11 @@ if (!function_exists('push_email')) {
             // Send the email synchronously
             if ($mailer->send()) {
                 // Optionally, log success using $id and $next_run if needed.
+                logEmailStatus(1, $id, $next_run);
                 return true;
             } else {
                 // Optionally, log failure using $id and $next_run if needed.
+                logEmailStatus(0, $id, $next_run);
                 $error ='Email sending failed: ' . $mailer->ErrorInfo;
                 return false;
             }
