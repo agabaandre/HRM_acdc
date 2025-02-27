@@ -237,7 +237,7 @@
 
                           <div class="form-group">
                             <label for="second_supervisor">Second Supervisor:</label>
-                            <select class="form-control select2" name="second_supervisor" id="second_supervisor" required <?=$readonly?>>
+                            <select class="form-control select2" name="second_supervisor" id="second_supervisor" <?=$readonly?>>
                               <option value="">Select Second Supervisor</option>
                               <?php $lists = Modules::run('lists/supervisor');
                               foreach ($lists as $list) :
