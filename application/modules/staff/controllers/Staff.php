@@ -22,7 +22,7 @@ class Staff extends MX_Controller
 		$filters = $this->input->post();
 
 		$data['staffs'] = $this->staff_mdl->get_active_staff_data($per_page = 20, $page, $filters);
-		if($csv=1){
+		if($csv==1){
 			render_csv_data('Staff List', $data['staffs'],true);
 
 		}
