@@ -10,7 +10,7 @@
                     
     
                     <p class="changed" style="color:#005662;"></p>
-                    <?php echo form_open_multipart(base_url('auth/change_pass'), array('id' => 'changpass', 'class' => 'user_form')); ?>
+                    <?php echo form_open_multipart(base_url('auth/changePass'), array('id' => 'changpass', 'class' => 'user_form')); ?>
 
                     <div class="form-group">
                         <label for="old">Old Password</label>

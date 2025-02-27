@@ -171,7 +171,7 @@ return $qry->num_rows();
 	// change password
 	public function changePass($postdata)
 	{
-		$oldpass = md5($postdata['oldpass']);
+		$oldpass = $this->argon->make($postdata['oldpass']);
 		$newpass = md5($postdata['newpass']);
 		$user = $this->session->get_userdata();
 		$uid = $user['user_id'];

@@ -98,7 +98,7 @@ class Auth extends MX_Controller
       return TRUE;
     }
     else{
-      return FALSE;
+      return TRUE;
     }
     
   }
@@ -269,6 +269,7 @@ class Auth extends MX_Controller
   {
     $postdata = $this->input->post();
     echo $res = $this->auth_mdl->changePass($postdata);
+    redirect('users/change_pass');
   }
 
   public function change_password(){
