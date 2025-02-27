@@ -153,17 +153,20 @@ public function cron_register() {
     $currentTime = date('H:i');
 
     // Run staff_birthday every day at 23:00.
-    if ($currentTime === '23:00') {
+    if ($currentTime == '23:00') {
+        echo "Birthday Job Running";
          $this->staff_birthday();
     }
 
     // Run manage_accounts every day at 23:10.
-    if ($currentTime === '23:10') {
+    if ($currentTime == '23:10') {
+        echo "Accounts Job Running";
          $this->manage_accounts();
     }
 
     // Run mark_due_contracts every day at 23:30.
-    if ($currentTime === '23:30') {
+    if ($currentTime == '23:30') {
+        echo "Contracts Job Running";
          $this->mark_due_contracts();
     }
 }
