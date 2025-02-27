@@ -190,8 +190,10 @@ public function cron_register(){
 
                         $this->db->query("UPDATE email_notifications SET status = $status, next_dispatch = '$next_run' WHERE id = '$id'");
 
+                        dd($this->db->last_query());
 
-                        // $this->db->query("DELETE FROM email_notifications WHERE next_dispatch like '$today%' and status='1')");
+
+                        // $this->db->query("DELETE FROM email_notifications WHERE next_dispatch like '$today%' and status='1'");
                     } else {
                         echo "Failed to send message to " . $to . "\n";
                         $this->db->query("UPDATE email_notifications SET status = 0, next_dispatch = '$next_run' WHERE id = '$id'");
