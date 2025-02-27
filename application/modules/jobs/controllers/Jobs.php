@@ -240,7 +240,7 @@ public function cron_register(){
         return $contractEnd;
     }
     
-
+}
 
  
 
