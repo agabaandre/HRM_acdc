@@ -161,7 +161,7 @@ public function cron_register(){
     public function send_mails()
     {
         $today = date('Y-m-d');
-        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and id=1")->result();
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%'")->result();
         //dd($this->db->last_query());
 
         // Check if there are any messages to process
@@ -172,24 +172,26 @@ public function cron_register(){
                 $subject = $message->subject;
                 $id = $message->id;
                 $next_run = $this->getNextRunDate($message->end_date, $message->status);
+                $next_run = $next_run->format('Y-m-d');
+               // dd($next_run);
 
                 
                     $sending = push_email($to, $subject, $body, $id, $next_run);
                     if ($sending) {
                         echo "Test Message sent to " . $to . "\n";
-
                         $today = date("Y-m-d");
-                        $nextr = date("Y-m-d H:i:s", strtotime($next_run));
+    
+                       // dd($nextr);
                   
 
-                        if ($today == $nextr) {
+                        if ($today == $next_run) {
                             $status = 1;
                         } else {
                             $status = 0;
                         }
 
 
-                        $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$nextr' WHERE `email_notifications`.`id` = 1");
+                        $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = 1");
 
                         // dd($this->db->last_query());
 
