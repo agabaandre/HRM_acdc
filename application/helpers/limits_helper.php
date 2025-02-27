@@ -99,6 +99,7 @@ if (!function_exists('render_csv_data')) {
         $is_coloumn = $use_columns;
         if (!empty($datas)) {
              if ($is_coloumn) {
+                unset()
                     fputcsv($fh, array_keys(($datas[0])));
             foreach ($datas as $data) {
 

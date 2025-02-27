@@ -21,54 +21,59 @@ class Staff extends MX_Controller
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
 		$filters = $this->input->post();
 		$filters['csv']=$csv;
-		
 
 		$data['staffs'] = $this->staff_mdl->get_active_staff_data($per_page = 20, $page, $filters);
 		$staffs= $data['staffs'];
-		$file_name = 'Africa CDC Staff_'.date('dd-mm-yyy').'.csv';
+		$file_name = 'Africa CDC Staff_'.date('dd-mm-yyyy').'.csv';
 		if($csv==1){
-
-			$keysToRemove = [
-				'staff_contract_id',
-				'job_id',
-				'job_acting_id',
-				'grade_id',
-				'contracting_institution_id',
-				'funder_id',
-				'first_supervisor',
-				'second_supervisor',
-				'contract_type_id',
-				'duty_station_id',
-				'division_id',
-				'unit_id',
-				'flag',
-				'created_at',
-				'updated_at',
-				'status_id',
-				'division_head',
-				'focal_person',
-				'admin_assistant',
-				'finance_officer',
-				'region_id'
-
-
-
-
-			];
+            $staff = $this->remove_ids($staffs);
 			
-			// Loop through each key and unset it from the array
-			foreach ($keysToRemove as $key) {
-				unset($staffs[$key]);
-			}
-			render_csv_data($staffs, $file_name,true);
+			render_csv_data($staff, $file_name,true);
 
 		}
 		//dd($data);
 		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
 		render('staff_table', $data);
 	}
+	function remove_ids($staffs = []) {
+		$keysToRemove = [
+			'staff_contract_id',
+			'job_id',
+			'job_acting_id',
+			'grade_id',
+			'contracting_institution_id',
+			'funder_id',
+			'first_supervisor',
+			'second_supervisor',
+			'contract_type_id',
+			'duty_station_id',
+			'division_id',
+			'unit_id',
+			'flag',
+			'created_at',
+			'updated_at',
+			'status_id',
+			'division_head',
+			'focal_person',
+			'admin_assistant',
+			'finance_officer',
+			'region_id',
+			'email_status'
 
-	public function all_staff()
+		];
+		
+		// If it's an array of arrays:
+		foreach ($staffs as $index => $staff) {
+			foreach ($keysToRemove as $key) {
+				unset($staffs[$index][$key]);
+			}
+		}
+		
+		return $staffs;
+	}
+	
+	
+	public function all_staff($csv=false)
 	{
 
 		$data['module'] = $this->module;

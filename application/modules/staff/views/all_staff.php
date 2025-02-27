@@ -78,7 +78,7 @@
 		
 	
 			<button type="submit" class="btn btn-secondary mt-2"><i class="fa fa-exchange-alt"></i>Apply</button>
-			<a href="#" class="btn btn-secondary mt-2"><i class="fa fa-file-csv"></i>Export</a>
+			<a href="<?php echo base_url()?>staff/all_staff/1" class="btn btn-secondary mt-2"><i class="fa fa-file-csv"></i>Export</a>
 			
 	</div>
 
