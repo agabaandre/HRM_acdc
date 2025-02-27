@@ -140,7 +140,7 @@
           The Africa CDC Family
         </p>
         <p>
-          <a href="<?php echo base_url(); ?>staff" class="btn">Visit Your Dashboard</a>
+         
         </p>
       </div>
       <!-- Footer -->
