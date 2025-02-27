@@ -12,7 +12,6 @@ public function manage_accounts(){
     $final=array();
     $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2,7) and staff.staff_id not in (SELECT DISTINCT auth_staff_id from user)")->result();
       foreach ($staffs as $staff):
-        $users['email'] = $staff->work_email;
         $users['name'] = $staff->lname . ' ' . $staff->fname;
         $users['status'] = 1;
         $users['auth_staff_id'] = $staff->staff_id;
@@ -47,7 +46,7 @@ public function manage_accounts(){
          
       
           $msg = array(
-            'msg' => $accts .'Staff Accounts Created .',
+            'msg' => $accts .'Staff Accounts Disbaled .',
             'type' => 'info'
           );
           
@@ -146,11 +145,29 @@ public function staff_birthday() {
 }
 
 //cron register runs once a day
-public function cron_register(){
-    $this->staff_birthday();
-    $this->mark_due_contracts();
-    $this->manage_accounts();
+public function cron_register() {
+    // Run send_mails every minute.
+    $this->send_mails();
+
+    // Get the current time in "HH:MM" format (24-hour clock).
+    $currentTime = date('H:i');
+
+    // Run staff_birthday every day at 23:00.
+    if ($currentTime === '23:00') {
+         $this->staff_birthday();
+    }
+
+    // Run manage_accounts every day at 23:10.
+    if ($currentTime === '23:10') {
+         $this->manage_accounts();
+    }
+
+    // Run mark_due_contracts every day at 23:30.
+    if ($currentTime === '23:30') {
+         $this->mark_due_contracts();
+    }
 }
+
 
   // * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
 public function send_mails()
