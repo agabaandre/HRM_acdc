@@ -86,22 +86,38 @@ function logEmailStatus($status, $id, $next_run)
   
 }
 
-
-function golobal_log_email($trigger,$email, $message, $subject, $staff, $end_date = FALSE,$next=FALSE)
+function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_date = FALSE, $next = FALSE)
 {
-    $ci = &get_instance();
+    $ci =& get_instance();
     $data = array(
-                    'trigger'=>$trigger,
-                    'email_to' => $email,
-                    'body'=>$message,
-                    'staff_id'=>$staff,
-                    'subject'=>$subject,
-                    'end_date'=>$end_date,
-                    'next_dispatch'=>$next);
+        'trigger'       => $trigger,
+        'email_to'      => $email,
+        'body'          => $message,
+        'staff_id'      => $staff,
+        'subject'       => $subject,
+        'end_date'      => $end_date,
+        'next_dispatch' => $next
+    );
 
-    return $ci->db->insert('email_notifications',$data);
+    // Build the field names and values for the query.
+    $fields = array();
+    $values = array();
+    foreach ($data as $field => $value) {
+        $fields[] = $field;
+        // If the value is FALSE, insert a NULL value.
+        if ($value === FALSE) {
+            $values[] = 'NULL';
+        } else {
+            $values[] = $ci->db->escape($value);
+        }
+    }
 
+    // Build the INSERT IGNORE SQL query.
+    $sql = "INSERT IGNORE INTO email_notifications (`" . implode("`, `", $fields) . "`) VALUES (" . implode(", ", $values) . ")";
+
+    return $ci->db->query($sql);
 }
+
 
 }
 
