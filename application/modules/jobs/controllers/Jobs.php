@@ -219,11 +219,7 @@ public function cron_register(){
         // Define the thresholds (in days before contract end)
         $thresholds = [180, 30, 21, 14, 7, 6, 5, 4, 3, 2, 1];
         
-        // If the current difference exactly matches one of the thresholds,
-        // it's time to send an email. Set the next run for tomorrow.
-        if (in_array($diffDays, $thresholds)) {
-            return (new DateTime())->modify('+1 day');
-        }
+      
         
         // Otherwise, find the next upcoming threshold date.
         foreach ($thresholds as $threshold) {
