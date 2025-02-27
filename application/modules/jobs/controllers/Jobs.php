@@ -1,6 +1,6 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
-class Errors extends MX_Controller
+class Jobs extends MX_Controller
 {
     public function __construct()
     {
@@ -89,14 +89,10 @@ public function mark_due_contracts(){
                     if($dateDiff > 0 && $dateDiff <= 180){
                                     //$status= 'Due';
                                     $data['subject'] ="CONTRACT IS DUE FOR RENEWAL";
-                                    $data['email_to'] ="";
-                                    $data['body']=include('../views/due_contract.php');
+                                    $data['email_to'] ="kibiyed@africacdc.org";
+                                    $data['body']=$this->load->view('due_contract.php',$data,false);
 
-                                    
-
-
-
-                                    $this->log_message($email, $message, $subject);
+                                    // $this->log_message($email, $message, $subject);
 
                                     $SQLSC1 = $this->db->query("UPDATE staff_contracts SET status_id=2 WHERE staff_contract_id=$staff_contract_id");
                                 }elseif($dateDiff < 0){
