@@ -53,10 +53,12 @@ $mailer->isHTML(true); // Ensure the email is sent as HTML
 $loop->addTimer(0.0001, function () use ($mailer, $resolve, $reject, $id,$next_run) {
 if ($mailer->send()) {
 // Log success in the database
+dd($id);
 logEmailStatus(1, $id,$next_run);
 $resolve('Email sent successfully');
 } else {
 // Log failure in the database
+//dd($id);
 logEmailStatus(0, $id,$next_run);
 $reject('Email sending failed: ' . $mailer->ErrorInfo);
 }
@@ -72,16 +74,25 @@ $reject('Email sending failed: ' . $e->getMessage());
 
 function logEmailStatus($status, $id, $next_run)
 {
-try {
-$ci = &get_instance();
-$data =array('status' => $status,
-       'next_dispatch'=>$next_run);
+    try {
+        // Get the CodeIgniter instance
+        $ci =& get_instance();
+        
+        // Prepare the data array to update the record
+        $data = [
+            'status' => $status,
+            'next_dispatch' => $next_run
+        ];
+        
+        // Update the email_notifications table where the id matches
         $ci->db->where('id', $id);
         $ci->db->update('email_notifications', $data);
-} catch (Exception $e) {
-// Handle logging exception if necessary
+    } catch (Exception $e) {
+        // Log the error message using CodeIgniter's logging functionality
+        log_message('error', 'Error in logEmailStatus: ' . $e->getMessage());
+    }
 }
-}
+
 
 function golobal_log_email($trigger,$email, $message, $subject, $staff, $end_date = FALSE,$next=FALSE)
 {
