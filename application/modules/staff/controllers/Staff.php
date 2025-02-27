@@ -13,14 +13,19 @@ class Staff extends MX_Controller
 		$this->load->model("staff_mdl",'staff_mdl');
 	}
 
-	public function index()
+	public function index($csv=FALSE)
 	{
 
 		$data['module'] = $this->module;
 		$data['title'] = "Staff";
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
 		$filters = $this->input->post();
+
 		$data['staffs'] = $this->staff_mdl->get_active_staff_data($per_page = 20, $page, $filters);
+		if($csv=1){
+			render_csv_data('Staff List', $data['staffs'],true);
+
+		}
 		//dd($data);
 		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
 		render('staff_table', $data);
