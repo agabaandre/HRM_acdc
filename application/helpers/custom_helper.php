@@ -416,11 +416,13 @@ if (!function_exists('render_csv_data')) {
         $is_coloumn = true;
         if (!empty($datas)) {
             foreach ($datas as $data) {
-
                 if ($is_coloumn) {
-                    fputcsv($fh, array_keys(($data)));
+                    fputcsv($fh, array_map(function($key) {
+                        return ucwords(str_replace('_', ' ', $key));
+                    }, array_keys($data)));
                     $is_coloumn = false;
                 }
+                
                 fputcsv($fh, array_values($data));
             }
             fclose($fh);
