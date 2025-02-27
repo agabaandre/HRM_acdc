@@ -162,11 +162,7 @@ public function send_mails()
 {
      $today = date('Y-m-d');
       $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%'")->result();
-      //dd($this->db->last_query());
-     
-
-  
-       
+      //dd($this->db->last_query())  
       // Check if there are any messages to process
       if (count($messages) > 0) {
           foreach ($messages as $message) {
