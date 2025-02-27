@@ -208,23 +208,26 @@ public function cron_register(){
         }
     }
 
-  public function getNextRunDate($end) {
-    $current = new DateTime();
-    // Convert $end to a DateTime object if it's a string.
-    $contractEnd = is_string($end) ? new DateTime($end) : $end;
-  
-        // Calculate the difference in days between now and contract end date
+    public function getNextRunDate($end) { 
+        $current = new DateTime();
+        // Convert $end to a DateTime object if it's a string.
+        $contractEnd = is_string($end) ? new DateTime($end) : $end;
+    
+        // If the contract end date is today, return it as the final run date.
+        if ($contractEnd->format('Y-m-d') === $current->format('Y-m-d')) {
+            return $contractEnd;
+        }
+      
+        // Calculate the difference in days between now and the contract end date.
         $diffDays = (int)$current->diff($contractEnd)->format('%r%a');
         
-        // Define the thresholds (in days before contract end)
+        // Define the thresholds (in days before the contract end).
         $thresholds = [180, 30, 21, 14, 7, 6, 5, 4, 3, 2, 1];
         
-      
-        
-        // Otherwise, find the next upcoming threshold date.
+        // Find the next upcoming threshold date.
         foreach ($thresholds as $threshold) {
             if ($diffDays > $threshold) {
-                // Calculate when the contract will have $threshold days remaining
+                // Calculate when the contract will have $threshold days remaining.
                 $nextRun = clone $contractEnd;
                 $nextRun->modify("-{$threshold} days");
                 if ($nextRun > $current) {
@@ -236,7 +239,7 @@ public function cron_register(){
         // Fallback: if no threshold is found, schedule for the contract end date.
         return $contractEnd;
     }
-}
+    
 
 
  
