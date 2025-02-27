@@ -196,7 +196,7 @@ public function cron_register(){
 public function send_mails()
 {
     $today = date('Y-m-d');
-    $query = "SELECT * FROM email_notifications WHERE next_dispatch LIKE '{$today}%' and id=1";
+    $query = "SELECT * FROM email_notifications WHERE next_dispatch LIKE '{$today}%' and id=1 and status=0";
     $messages = $this->db->query($query)->result();
 
     if (count($messages) > 0) {
@@ -217,8 +217,17 @@ public function send_mails()
                     function ($result) use ($to, $id,$next_run) {
                        
                         echo "Message sent to " . $to . "\n";
-                         logEmailStatus(1, $id, $next_run);
-                      
+                        $today = date("Y-m-d");
+                        $nextr = date("Y-m-d", strtotime($next_run));
+                        
+                        if ($today == $nextr) {
+                            $status = 1;
+                        } else {
+                            $status = 0;
+                        }
+                        
+                       
+                        $this->db->query("UPDATE email_notifications SET status = $status, next_dispatch = '$next_run' WHERE id = '$id'");
 
 
 
@@ -235,7 +244,7 @@ public function send_mails()
                     function ($reason) use ($to,$id,$next_run) {
                        
                         echo "Failed to send message to " . $to . ". Reason: " . $reason . "\n";
-                        logEmailStatus(1, $id, $next_run);
+                        $this->db->query("UPDATE email_notifications SET status = 0, next_dispatch = '$next_run' WHERE id = '$id'");
                     }
                 );
             } catch (Exception $e) {
