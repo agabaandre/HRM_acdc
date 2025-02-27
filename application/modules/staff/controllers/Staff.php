@@ -82,6 +82,14 @@ class Staff extends MX_Controller
 		$filters = $this->input->post();
 		$data['staffs'] = $this->staff_mdl->get_all_staff_data($per_page = 20, $page, $filters);
 		//dd($data);
+		$staffs= $data['staffs'];
+		$file_name = 'All Africa CDC Staff_'.date('dd-mm-yyyy').'.csv';
+		if($csv==1){
+            $staff = $this->remove_ids($staffs);
+			
+			render_csv_data($staff, $file_name,true);
+
+		}
 		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
 		render('all_staff', $data);
 	}

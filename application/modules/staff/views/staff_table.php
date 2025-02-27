@@ -83,7 +83,7 @@
 	</form>
 	<?php echo $links ?>
 	<div class=" table-responsive">
-		<table class="table table-striped table-bordered">
+		<table class="table table-striped table-bordered mydata">
 			<thead>
 				<tr>
 					<th>#</th>

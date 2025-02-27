@@ -37,13 +37,10 @@
 		<?php echo form_open_multipart(base_url('staff'), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
 		<div class="row">
 			<div class="col-md-3">
-				<label>Surname</label>
+				<label>Name</label>
 				<input type="text" name="lname" class="form-control">
 			</div>
-			<div class="col-md-3">
-				<label>Firstname</label>
-				<input type="text" name="fname" class="form-control">
-			</div>
+
 
 			<div class="col-md-2">
 				<label>Gender</label>
@@ -86,18 +83,22 @@
 	</form>
 	<?php echo $links ?>
 	<div class=" table-responsive">
-		<table class="table table-striped table-bordered">
+		<table class="table table-striped table-bordered mydata">
 			<thead>
 				<tr>
 					<th>#</th>
 					<th>SAPNO</th>
 					<th>Title</th>
-					<th>Image</th>
+					<th>Passport Photo</th>
 					<th>Name</th>
 					<th>Gender</th>
-	
 					<th>Nationality</th>
-			
+					<th>Duty Station</th>
+					<th>Division</th>
+					<th>Job</th>
+					<th>Acting Job</th>
+					<th>First Supervisor</th>
+					<th>Second Supervisor</th>
 					<th>Email</th>
 					<th>Telephone</th>
 					<th>WhatsApp</th>
@@ -107,9 +108,14 @@
 
 
 				<?php
+				//dd($staffs);
+			//dd($cont);
 
 				$i = 1;
 				foreach ($staffs as $data) :
+
+			   $cont = Modules::run('staff/latest_staff_contract', $data->staff_id);
+			  // dd($cont);
 
 				?>
 
@@ -130,14 +136,24 @@
 						</td>
 						<td><a href="#" data-bs-toggle="modal" data-bs-target="#add_profile<?php echo $data->staff_id; ?>"><?= $data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></td>
 						<td><?= $data->gender ?></td>
-
 						<td><?= $data->nationality; ?></td>
+						<td><?= $cont->duty_station_name; ?></td>
+						<td><?= $cont->division_name; ?></td>
+						<td><?= @character_limiter($data->job_name, 30); ?></td>
+					
 						
+						<td><?= @character_limiter($cont->job_acting, 30); ?></td>
+						<td><?= @staff_name($cont->first_supervisor); ?></td>
+						<td><?= @staff_name($cont->second_supervisor); ?></td>
+
+					
 						<td><?= $data->work_email; ?></td>
 						<td><?= @$data->tel_1 ?> <?php if (!empty($data->tel_2)) {
 														echo '  ' . $data->tel_2;
 													} ?></td>
-						<td><?= $data->whatsapp ?></td>
+						<td><?= $data->whatsapp ?>
+					
+					</td>
 
 
 						<div class="modal fade" id="add_profile<?php echo $data->staff_id; ?>" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
@@ -187,11 +203,11 @@
 													<li><strong>WhatsApp:</strong> <?= @$data->whatsapp ?></li>
 												</ul>
 												<h4>Contract Information</h4>
-												<?php $cont = Modules::run('staff/latest_staff_contract', $data->staff_id);
+											
 
 
 
-												?>
+										
 
 											
 												<a href="<?php echo base_url(); ?>staff/staff_contracts/<?php echo $data->staff_id; ?>" 
@@ -200,10 +216,14 @@
 												</a>
 
 												<ul>
+													
+													<li><strong>Duty Station:</strong> <?= $cont->duty_station_name ?></li>
+													<li><strong>Division:</strong> <?= $cont->division_name ?></li>
 													<li><strong>Job:</strong> <?= @character_limiter($cont->job_name, 15) ?></li>
 													<li><strong>Acting Job:</strong> <?= @character_limiter($cont->job_acting, 15) ?></li>
-													<li><strong>Division:</strong> <?= $cont->division_name ?></li>
-													<li><strong>Duty Station:</strong> <?= $cont->duty_station_name ?></li>
+													<li><strong>First Supervisor:</strong><?= @staff_name($cont->first_supervisor); ?></li>
+													<li><strong>Second Supervisor:</strong> <?= @staff_name($cont->second_supervisor); ?></li>
+											
 													<li><strong>Funder:</strong> <?= $cont->funder ?></li>
 													<li><strong>Contracting Organisation:</strong> <?= $cont->contracting_institution ?></li>
 													<li><strong>Grade:</strong> <?= $cont->grade ?></li>
