@@ -70,6 +70,59 @@ $reject('Email sending failed: ' . $e->getMessage());
 });
 }
 
+
+if (!function_exists('push_email')) {
+    function push_email($to, $subject, $message, $id, $next_run)
+    {
+        
+            $ci = &get_instance();
+            $settings = $ci->db->query('SELECT * FROM setting')->row();
+
+            // Server settings
+            $mailer = new PHPMailer();
+            $mailer->isSMTP();
+            $mailer->SMTPDebug = 0;
+            $mailer->Host       = $settings->mail_host;
+            $mailer->SMTPAuth   = true;
+            $mailer->Username   = $settings->mail_username;
+            $mailer->Password   = $settings->password;
+            $mailer->Port       = $settings->mail_smtp_port;
+            $mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+
+            // Set email details
+            $mailer->setFrom($settings->mail_username, $settings->title);
+
+            // Process recipients: first address as main, others as CC
+            $emails = explode(';', $to);
+            if (count($emails) > 0) {
+                $primaryEmail = trim($emails[0]);
+                $mailer->addAddress($primaryEmail);
+                for ($i = 1; $i < count($emails); $i++) {
+                    $email = trim($emails[$i]);
+                    if (!empty($email)) {
+                        $mailer->addCC($email);
+                    }
+                }
+            }
+
+            $mailer->Subject = $subject;
+            $mailer->Body    = $message;
+            $mailer->isHTML(true);
+
+            // Send the email synchronously
+            if ($mailer->send()) {
+                // Optionally, log success using $id and $next_run if needed.
+                return true;
+            } else {
+                // Optionally, log failure using $id and $next_run if needed.
+                $error ='Email sending failed: ' . $mailer->ErrorInfo;
+                return false;
+            }
+        
+    }
+}
+
+
 function logEmailStatus($status, $id, $next_run)
 {
         // Get the CodeIgniter instance

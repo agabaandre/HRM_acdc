@@ -157,105 +157,53 @@ public function cron_register(){
     
 }
 
-  // * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
-// public function send_mails()
-// {
-//      $today = date('Y-m-d');
-//       $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and id=3")->result();
-//       //dd($this->db->last_query());
-  
-//       // Check if there are any messages to process
-//       if (count($messages) > 0) {
-//           foreach ($messages as $message) {
-//               $body = $message->body;
-//               $to = $message->email_to;
-//               $subject = $message->subject;
-//               $id = $message->id;
-//               $next_run =$this->getNextRunDate($message->end_date,$message->status);
-        
-//               try {
-//                   $sending = send_email_async($to, $subject, $body, $id,$next_run);
-//                   dd($sending);
-//                   if ($sending) {
-//                       echo "Message sent to " . $to . "\n";
+//   * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
+    public function send_mails()
+    {
+        $today = date('Y-m-d');
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and id=3")->result();
+        //dd($this->db->last_query());
 
-//                     $today = date('Y-m-d');
-//                    $this->db->query("DELETE FROM email_notifications WHERE next_dispatch like '$today%' and status='1')");
-//                   } else {
-//                       echo "Failed to send message to " . $to . "\n";
-//                   }
-//               } catch (Exception $e) {
-//                   echo "Error sending email to " . $to . ": " . $e->getMessage() . "\n";
-//               }
-//           }
-//       } else {
-//           echo "No messages to send.\n";
-//       }
-//   }
+        // Check if there are any messages to process
+        if (count($messages) > 0) {
+            foreach ($messages as $message) {
+                $body = $message->body;
+                $to = $message->email_to;
+                $subject = $message->subject;
+                $id = $message->id;
+                $next_run = $this->getNextRunDate($message->end_date, $message->status);
 
-public function send_mails()
-{
-    $today = date('Y-m-d');
-    $query = "SELECT * FROM email_notifications WHERE next_dispatch LIKE '{$today}%' and id=1 and status=0";
-    $messages = $this->db->query($query)->result();
+                try {
+                    $sending = push_email($to, $subject, $body, $id, $next_run);
+                    if ($sending) {
+                        echo "Message sent to " . $to . "\n";
 
-    if (count($messages) > 0) {
-        foreach ($messages as $message) {
-            $body     = $message->body;
-            $to       = $message->email_to;
-            $subject  = $message->subject;
-            $id       = $message->id;
-            $next_run = $this->getNextRunDate($message->end_date, $message->status);
-
-            try {
-                // send_email_async returns a React\Promise\Promise instance.
-                $promise = send_email_async($to, $subject, $body, $id, $next_run);
-
-                // Attach callbacks to handle the promise resolution.
-                $promise->then(
-                    // On success:
-                    function ($result) use ($to, $id,$next_run) {
-                       
-                    //     echo "Message sent to " . $to .$next_run . "\n";
-                    // //    dd( "". $id ."". $next_run ."");
                         $today = date("Y-m-d");
                         $nextr = date("Y-m-d", strtotime($next_run));
-                        
+
                         if ($today == $nextr) {
                             $status = 1;
                         } else {
                             $status = 0;
                         }
-                        
-                       
+
+
                         $this->db->query("UPDATE email_notifications SET status = $status, next_dispatch = '$next_run' WHERE id = '$id'");
 
 
-
-                        // After a successful send, delete the notification using its unique ID.
-                        // $deleteQuery  = "DELETE FROM email_notifications WHERE id = ? and status=?";
-                        // $deleteResult = $this->db->query($deleteQuery, [$id],1);
-
-                        // if (!$deleteResult) {
-                        //     $error = $this->db->error();
-                        //     echo "Failed to delete email notification for ID {$id}: " . json_encode($error) . "\n";
-                        // }
-                    },
-                    // On failure:
-                    function ($reason) use ($to,$id,$next_run) {
-                       
-                        echo "Failed to send message to " . $to . ". Reason: " . $reason . "\n";
+                        // $this->db->query("DELETE FROM email_notifications WHERE next_dispatch like '$today%' and status='1')");
+                    } else {
+                        echo "Failed to send message to " . $to . "\n";
                         $this->db->query("UPDATE email_notifications SET status = 0, next_dispatch = '$next_run' WHERE id = '$id'");
                     }
-                );
-            } catch (Exception $e) {
-                echo "Error sending email to " . $to . ": " . $e->getMessage() . "\n";
+                } catch (Exception $e) {
+                    echo "Error sending email to " . $to . ": " . $e->getMessage() . "\n";
+                }
             }
+        } else {
+            echo "No messages to send.\n";
         }
-    } else {
-        echo "No messages to send.\n";
     }
-}
 
   public function getNextRunDate($end, $status) {
     $current = new DateTime();
