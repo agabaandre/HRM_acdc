@@ -29,7 +29,7 @@
                 <p class="mb-0 text-white">Contracts Due <b style="font-size:9px; color:orange;">&lt; 2 Months</b></p>
               </h5>
               <h5 style="color:#FFFFFF;">
-                <?php echo $expired; ?>
+                <?php echo $two_months; ?>
               </h5>
             </div>
             <div class="fs-1 text-white"><i class='bx bxs-wallet'></i></div>
