@@ -173,7 +173,7 @@ public function cron_register(){
                 $id = $message->id;
                 $next_run = $this->getNextRunDate($message->end_date, $message->status);
 
-                try {
+                
                     $sending = push_email($to, $subject, $body, $id, $next_run);
                     if ($sending) {
                         echo "Message sent to " . $to . "\n";
@@ -198,11 +198,9 @@ public function cron_register(){
                         echo "Failed to send message to " . $to . "\n";
                         $this->db->query("UPDATE email_notifications SET status = 0, next_dispatch = '$next_run' WHERE id = '$id'");
                     }
-                } catch (Exception $e) {
-                    echo "Error sending email to " . $to . ": " . $e->getMessage() . "\n";
-                }
+                } 
             }
-        } else {
+     else {
             echo "No messages to send.\n";
         }
     }
