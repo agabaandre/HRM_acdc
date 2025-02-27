@@ -176,7 +176,7 @@ public function cron_register(){
                 
                     $sending = push_email($to, $subject, $body, $id, $next_run);
                     if ($sending) {
-                        echo "Message sent to " . $to . "\n";
+                        echo "Test Message sent to " . $to . "\n";
 
                         $today = date("Y-m-d");
                         $nextr = date("Y-m-d", strtotime($next_run));
