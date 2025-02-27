@@ -112,11 +112,10 @@ if (!function_exists('push_email')) {
             // Send the email synchronously
             if ($mailer->send()) {
                 // Optionally, log success using $id and $next_run if needed.
-                //logEmailStatus(1, $id, $next_run);
+                
                 return true;
             } else {
                 // Optionally, log failure using $id and $next_run if needed.
-               // logEmailStatus(0, $id, $next_run);
                 $error ='Email sending failed: ' . $mailer->ErrorInfo;
                 return false;
             }
@@ -155,22 +154,7 @@ function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_da
     );
 
     // Build the field names and values for the query.
-    $fields = array();
-    $values = array();
-    foreach ($data as $field => $value) {
-        $fields[] = $field;
-        // If the value is FALSE, insert a NULL value.
-        if ($value === FALSE) {
-            $values[] = 'NULL';
-        } else {
-            $values[] = $ci->db->escape($value);
-        }
-    }
-
-    // Build the INSERT IGNORE SQL query.
-    $sql = "INSERT IGNORE INTO email_notifications (`" . implode("`, `", $fields) . "`) VALUES (" . implode(", ", $values) . ")";
-
-    return $ci->db->query($sql);
+    return $ci->db->replace('email_notifications', $data);
 }
 
 
