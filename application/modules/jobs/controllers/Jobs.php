@@ -161,7 +161,7 @@ public function cron_register(){
     public function send_mails()
     {
         $today = date('Y-m-d');
-        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and id=3")->result();
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and id=1")->result();
         //dd($this->db->last_query());
 
         // Check if there are any messages to process
