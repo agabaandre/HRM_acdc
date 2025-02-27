@@ -180,6 +180,7 @@ public function cron_register(){
 
                         $today = date("Y-m-d");
                         $nextr = date("Y-m-d", strtotime($next_run));
+                  
 
                         if ($today == $nextr) {
                             $status = 1;
@@ -188,7 +189,7 @@ public function cron_register(){
                         }
 
 
-                        $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = 1");
+                        $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$nextr' WHERE `email_notifications`.`id` = 1");
 
                         // dd($this->db->last_query());
 
