@@ -171,7 +171,7 @@ public function cron_register(){
                 $to = $message->email_to;
                 $subject = $message->subject;
                 $id = $message->id;
-                $next_run = $this->getNextRunDate($message->end_date, $message->status);
+                $next_run = $this->getNextRunDate($message->end_date);
                 $next_run = $next_run->format('Y-m-d');
                // dd($next_run);
 
@@ -208,13 +208,11 @@ public function cron_register(){
         }
     }
 
-  public function getNextRunDate($end, $status) {
+  public function getNextRunDate($end) {
     $current = new DateTime();
     // Convert $end to a DateTime object if it's a string.
     $contractEnd = is_string($end) ? new DateTime($end) : $end;
-    
-    // For status 1, use thresholds to schedule next run dates
-    if ($status == 1) {
+  
         // Calculate the difference in days between now and contract end date
         $diffDays = (int)$current->diff($contractEnd)->format('%r%a');
         
@@ -240,9 +238,6 @@ public function cron_register(){
         }
         
         // Fallback: if no threshold is found, schedule for the contract end date.
-        return $contractEnd;
-    } else {
-        // For statuses other than 1, simply return the contract end date.
         return $contractEnd;
     }
 }
