@@ -53,8 +53,10 @@ $mailer->isHTML(true); // Ensure the email is sent as HTML
 $loop->addTimer(0.0001, function () use ($mailer, $resolve, $reject, $id,$next_run) {
 if ($mailer->send()) {
 // Log success in the database
-dd($id);
+
 logEmailStatus(1, $id,$next_run);
+$ci =& get_instance();
+dd($ci->db->last_query());
 $resolve('Email sent successfully');
 } else {
 // Log failure in the database
