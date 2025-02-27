@@ -74,12 +74,10 @@ function logEmailStatus($status, $id, $next_run)
 {
 try {
 $ci = &get_instance();
-$data = [
-'status' => $status,
-'next_dispatch'=>$next_run
-];
-$ci->db->where('id', $id);
-$ci->db->update('email_notifications', $data);
+$data =array('status' => $status,
+       'next_dispatch'=>$next_run);
+        $ci->db->where('id', $id);
+        $ci->db->update('email_notifications', $data);
 } catch (Exception $e) {
 // Handle logging exception if necessary
 }
