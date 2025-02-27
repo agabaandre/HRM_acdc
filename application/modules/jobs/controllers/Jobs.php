@@ -216,8 +216,8 @@ public function send_mails()
                     // On success:
                     function ($result) use ($to, $id,$next_run) {
                        
-                        echo "Message sent to " . $to .$next_run . "\n";
-                    //    dd( "". $id ."". $next_run ."");
+                    //     echo "Message sent to " . $to .$next_run . "\n";
+                    // //    dd( "". $id ."". $next_run ."");
                         $today = date("Y-m-d");
                         $nextr = date("Y-m-d", strtotime($next_run));
                         
