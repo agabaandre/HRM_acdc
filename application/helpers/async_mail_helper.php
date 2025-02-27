@@ -56,8 +56,8 @@ if ($mailer->send()) {
 
 logEmailStatus(1, $id,$next_run);
 $ci =& get_instance();
-dd($ci->db->last_query());
-$resolve('Email sent successfully');
+
+$resolve($ci->db->last_query());
 } else {
 // Log failure in the database
 //dd($id);
