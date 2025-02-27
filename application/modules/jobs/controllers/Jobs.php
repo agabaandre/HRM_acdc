@@ -161,7 +161,7 @@ public function cron_register(){
     public function send_mails()
     {
         $today = date('Y-m-d');
-        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and id=1")->result();
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1' and id=1")->result();
         //dd($this->db->last_query());
 
         // Check if there are any messages to process
@@ -174,15 +174,10 @@ public function cron_register(){
                 $next_run = $this->getNextRunDate($message->end_date);
                 $next_run = $next_run->format('Y-m-d');
                // dd($next_run);
-
-                
                     $sending = push_email($to, $subject, $body, $id, $next_run);
                     if ($sending) {
                         echo "Test Message sent to " . $to . "\n";
                         $today = date("Y-m-d");
-    
-                       // dd($nextr);
-                  
 
                         if ($today == $next_run) {
                             $status = 1;
@@ -190,16 +185,13 @@ public function cron_register(){
                             $status = 0;
                         }
 
+                    $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
+                    $this->db->query("DELETE FROM email_notifications WHERE next_dispatch < DATE_SUB(NOW(), INTERVAL 1 WEEK) AND status = '1'");
 
-                        $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = 1");
-
-                        // dd($this->db->last_query());
-
-
-                        // $this->db->query("DELETE FROM email_notifications WHERE next_dispatch like '$today%' and status='1'");
                     } else {
                         echo "Failed to send message to " . $to . "\n";
-                        $this->db->query("UPDATE email_notifications SET status = 0, next_dispatch = '$next_run' WHERE id = '$id'");
+                    $this->db->query("UPDATE `email_notifications` SET `status` = '0',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
+
                     }
                 } 
             }
