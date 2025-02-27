@@ -156,7 +156,7 @@ public function cron_register(){
 public function send_mails()
 {
      $today = date('Y-m-d');
-      $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and (status='0' or status='-1') ")->result();
+      $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%'")->result();
       //dd($this->db->last_query());
      
 
@@ -176,8 +176,8 @@ public function send_mails()
                   if ($sending) {
                       echo "Message sent to " . $to . "\n";
 
-                     
-                   $this->db->query('DELETE FROM email_notifications WHERE created_at < (NOW() - INTERVAL 3 DAY) and status=1');
+                    $today = date('Y-m-d');
+                   $this->db->query("DELETE FROM email_notifications WHERE next_dispatch like '$today%' and status='1')");
                   } else {
                       echo "Failed to send message to " . $to . "\n";
                   }
