@@ -48,7 +48,7 @@
           We wish to inform you that your contract expired on <?php echo $date2 ?>. We understand that this may require clarification, and we encourage you to reach out so we can discuss your current employment status.
         </p>
         <p>
-          Please contact the HR department as soon as possible to review the details and discuss the next steps.
+          Please contact your supervisor as soon as possible to review the details and discuss the next steps.
         </p>
         <p>
           Thank you for your attention to this matter.
@@ -58,12 +58,12 @@
           HR Team, Africa CDC
         </p>
         <p>
-          <a href="[Link to HR portal]" class="btn">Contact HR</a>
+          <a href="<?php echo base_url() ?>/staff" class="btn">HR Staff Portal</a>
         </p>
       </div>
       <!-- Footer -->
       <div class="footer">
-        <p>&copy; 2025 Africa CDC. All Rights Reserved.</p>
+        <p>&copy; <?php echo date('Y'); ?> Africa CDC. All Rights Reserved.</p>
       </div>
     </div>
   </body>

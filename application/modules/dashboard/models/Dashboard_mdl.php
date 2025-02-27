@@ -38,7 +38,7 @@ class Dashboard_mdl extends CI_Model
             $staff_contract_id = $rowst['staff_contract_id'];
             $staff_id = $rowst['staff_id'];
 
-            $dateDiff = dateDiff($date1, $date2);
+            $dateDiff = $this->dateDiff($date1, $date2);
 
             $SQLSTAFF = $this->db->query("UPDATE staff SET flag=1 WHERE staff_id=$staff_id");
 

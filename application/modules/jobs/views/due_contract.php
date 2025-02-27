@@ -48,7 +48,7 @@
           This is a friendly reminder that your current contract is due to expire on <?php echo $date2 ?>. We value your contribution to Africa CDC.
         </p>
         <p>
-          Please contact HR  at your earliest convenience to review the terms and next steps.
+          Please contact your supervisor at your earliest convenience to review the terms and next steps.
         </p>
         <p>
           Thank you for your ongoing dedication.
@@ -63,7 +63,7 @@
       </div>
       <!-- Footer -->
       <div class="footer">
-        <p>&copy; 2025 Africa CDC. All Rights Reserved.</p>
+        <p>&copy; <?php echo date('Y'); ?>Africa CDC. All Rights Reserved.</p>
       </div>
     </div>
   </body>

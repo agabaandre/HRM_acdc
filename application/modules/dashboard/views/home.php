@@ -26,7 +26,7 @@
           <div class="d-flex align-items-center justify-content-between">
             <div>
               <h5>
-                <p class="mb-0 text-white">Contracts Due <b style="font-size:9px; color:orange;">&lt; 2 Months</b></p>
+                <p class="mb-0 text-white">Contracts Due <b style="font-size:9px; color:orange;">&lt; 6 Months</b></p>
               </h5>
               <h5 style="color:#FFFFFF;">
                 <?php echo $two_months; ?>

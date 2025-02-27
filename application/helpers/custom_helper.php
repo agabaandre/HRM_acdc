@@ -662,7 +662,15 @@ if (!function_exists('get_staff_name')) {
         return $query->fname. ' '. $query->lname;
     }
 }
+if (!function_exists('staff_details')) {
 
+    function staff_details($id)
+    {
+        $ci = &get_instance();
+        $query = $ci->db->query("SELECT * from staff where staff_id='$id'")->row();
+        return $query;
+    }
+}
 
 
 if (!function_exists('generate_user_avatar')) {

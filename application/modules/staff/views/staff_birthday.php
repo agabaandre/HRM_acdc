@@ -1,4 +1,14 @@
-
+<div class="row">
+  <div class="col-12 col-lg-12 d-flex">
+    <div class="card rounded-1 w-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div>
+            
+          </div>
+        </div>
+        <div>
+          
     <ul class="nav nav-tabs" id="myTab" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">Today</button>
@@ -47,8 +57,8 @@
                                     <?php 
                                     $surname=$data->lname;
                                     $other_name=$data->fname;
-                                    $image_path=base_url().'uploads/staff/'.@$data->photo;
-                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$data->photo);
+                                    $image_path=base_url().'uploads/staff/'.$data->photo;
+                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
                                     
                                     ?>
                                     
@@ -101,8 +111,8 @@
                                     <?php 
                                     $surname=$data->lname;
                                     $other_name=$data->fname;
-                                    $image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
-                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$data->photo);
+                                    $image_path=base_url().'uploads/staff/'.$data->photo;
+                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
                                     
                                     ?>
                                     
@@ -155,8 +165,8 @@
                                     <?php 
                                     $surname=$data->lname;
                                     $other_name=$data->fname;
-                                    $image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
-                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$data->photo);
+                                    $image_path=base_url().'uploads/staff/'.$data->photo;
+                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
                                     
                                     ?>
                                     
@@ -210,8 +220,8 @@
                                     <?php 
                                     $surname=$data->lname;
                                     $other_name=$data->fname;
-                                    $image_path=base_url().'uploads/staff/'.@get_photo($data->staff_id);
-                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$data->photo);
+                                    $image_path=base_url().'uploads/staff/'.$data->photo;
+                                    echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path);
                                     
                                     ?>
                                     
@@ -231,3 +241,10 @@
             </div>
         </div>
     </div>
+
+        
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
