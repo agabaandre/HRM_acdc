@@ -188,7 +188,7 @@ public function cron_register(){
                         }
 
 
-                        $this->db->query("UPDATE `email_notifications` SET `status` = '1' WHERE `email_notifications`.`id` = 1");
+                        $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = 1");
 
                         // dd($this->db->last_query());
 
