@@ -63,7 +63,7 @@ function dateDiff($date1, $date2)
     
 //contract status job.            
 public function mark_due_contracts(){
-    $sql = "SELECT staff_contract_id, end_date, staff_id FROM staff_contracts WHERE status_id = 1 OR status_id = 2 LIMIT 2";
+    $sql = "SELECT staff_contract_id, end_date, staff_id FROM staff_contracts WHERE status_id = 1 OR status_id = 2";
     $result = $this->db->query($sql)->result_array();
 
     foreach($result as $row){
