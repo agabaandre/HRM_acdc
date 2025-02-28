@@ -154,7 +154,22 @@ function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_da
     );
 
     // Build the field names and values for the query.
-    return $ci->db->replace('email_notifications', $data);
+    $fields = array();
+    $values = array();
+    foreach ($data as $field => $value) {
+        $fields[] = $field;
+        // If the value is FALSE, insert a NULL value.
+        if ($value === FALSE) {
+            $values[] = 'NULL';
+        } else {
+            $values[] = $ci->db->escape($value);
+        }
+    }
+
+    // Build the INSERT IGNORE SQL query.
+    $sql = "INSERT IGNORE INTO email_notifications (`" . implode("`, `", $fields) . "`) VALUES (" . implode(", ", $values) . ")";
+
+    return $ci->db->query($sql);
 }
 
 
