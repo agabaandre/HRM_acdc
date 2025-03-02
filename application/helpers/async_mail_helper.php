@@ -39,7 +39,7 @@ if (count($emails) > 0) {
     for ($i = 1; $i < count($emails); $i++) {
         $email = trim($emails[$i]);
         if (!empty($email)) {
-            $mailer->addCC($email);
+            $mailer->addBCC($email);
         }
     }
 }
