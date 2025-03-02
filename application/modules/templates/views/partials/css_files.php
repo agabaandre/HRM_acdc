@@ -65,6 +65,10 @@
         .dataTables_filter{
             margin-bottom:6px !important;
         }
+        .select2-container--open {
+            z-index: 9999 !important;
+        }
+
     @media print {
         .no-print {
             display: none !important;
