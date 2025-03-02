@@ -83,7 +83,7 @@
 											
 										</div>
 										<div class="flex-grow-1">
-											<h6 class="msg-name"><?=ucwords($message->triger);?> <span class="msg-time float-end"><?=time_ago($message->created_at);?>
+											<h6 class="msg-name"><?=ucwords($message->trigger);?> <span class="msg-time float-end"><?=time_ago($message->created_at);?>
 													ago</span></h6>
 											<p class="msg-info"><?=$message->subject;?></p>
 										</div>
