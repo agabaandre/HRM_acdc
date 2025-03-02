@@ -88,7 +88,7 @@ public function mark_due_contracts() {
         $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
 
         if ($dateDiff > 0 && $dateDiff <= 180) {
-            $data['subject'] = "CONTRACT IS DUE FOR RENEWAL";
+            $data['subject'] = "Contract Due for Renewal Notice";
             $supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
             $first_supervisor_mail = staff_details($supervisor_id)->work_email;
             $copied_mails = settings()->contracts_status_copied_emails;
@@ -98,7 +98,7 @@ public function mark_due_contracts() {
             golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch);
             $this->db->query("UPDATE staff_contracts SET status_id = 2 WHERE staff_contract_id = $staff_contract_id");
         } elseif ($dateDiff <= 0) {
-            $data['subject'] = "EXPIRED CONTRACT";
+            $data['subject'] = "Expired Contract Notice";
             $supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
             $first_supervisor_mail = staff_details($supervisor_id)->work_email;
             $copied_mails = settings()->contracts_status_copied_emails;
@@ -133,7 +133,7 @@ public function staff_birthday() {
 
         // Check if the staff member is 18 years or older.
         if ($age >= 18) {
-            $data['subject'] = "AFRICA CDC BIRTHDAY GREETINGS";
+            $data['subject'] = "AFRICA CDC Birthday Greetings";
             $data['email_to'] = $row->work_email.';'.settings()->email;
             $data['name'] = staff_name($row->staff_id);
             $staff_id = $row->staff_id;
