@@ -53,59 +53,61 @@ public function manage_accounts(){
              echo json_encode($msg);
          }
 //get the date difference for contract status
-function dateDiff($date1, $date2)
-                {
-                    $date1_ts = strtotime($date1);
-                    $date2_ts = strtotime($date2);
-                    $diff = $date2_ts - $date1_ts;
-                    return round($diff / 86400);
+// Improved dateDiff function using DateTime and DateInterval
+function dateDiff($date1, $date2) {
+    $d1 = new DateTime($date1);
+    $d2 = new DateTime($date2);
+    // %r gives the sign and %a gives the total number of days
+    return (int)$d1->diff($d2)->format('%r%a');
 }
+
+// Contract status job.
+public function mark_due_contracts() {
+    // Calculate current date once
+    $today = new DateTime();
     
-//contract status job.            
-public function mark_due_contracts(){
-    $sql = "SELECT staff_contract_id, end_date, staff_id FROM staff_contracts WHERE status_id = 1 OR status_id = 2";
+    // Use IN for cleaner SQL
+    $sql = "SELECT staff_contract_id, end_date, staff_id FROM staff_contracts WHERE status_id IN (1,2)";
     $result = $this->db->query($sql)->result_array();
 
-    foreach($result as $row){
-        $date1 = date('Y-m-d');
-        $date2 = $row['end_date'];
+    foreach ($result as $row) {
         $staff_contract_id = $row['staff_contract_id'];
         $staff_id = $row['staff_id'];
+        $end_date = $row['end_date'];
+        
+        // Using DateTime::diff directly for efficiency
+        $dateDiff = (int)$today->diff(new DateTime($end_date))->format('%r%a');
+
+      // dd($dateDiff);
+        
         $data['name'] = staff_name($staff_id);
-        $dateDiff = dateDiff($date1, $date2);
-        $data['date2'] = $date2;
-        $data['remaining_days']= $dateDiff;
+        $data['date2'] = $end_date;
+        $data['remaining_days'] = $dateDiff;
 
-       
-    
+        // Update the flag for the staff member (ensure LIMIT is correct for your use-case)
+        $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
 
-        // Update the flag for the staff member
-        $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id LIMIT 8");
-
-        if($dateDiff > 0 && $dateDiff <= 360){
+        if ($dateDiff > 0 && $dateDiff <= 180) {
             $data['subject'] = "CONTRACT IS DUE FOR RENEWAL";
             $supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
-            //dd($supervisor_id);
-			$first_supervisor_mail =staff_details($supervisor_id)->work_email;
-			$copied_mails = settings()->contracts_status_copied_emails;
-			$data['email_to'] = staff_details($staff_id)->work_email.';'.$copied_mails.';'.	$first_supervisor_mail;
-            // Set the third parameter to true to return the view as a string
+            $first_supervisor_mail = staff_details($supervisor_id)->work_email;
+            $copied_mails = settings()->contracts_status_copied_emails;
+            $data['email_to'] = staff_details($staff_id)->work_email . ';' . $copied_mails . ';' . $first_supervisor_mail;
             $data['body'] = $this->load->view('due_contract', $data, true);
             $dispatch = date('Y-m-d H:i:s');
-            golobal_log_email('system',$data['email_to'], $data['body'], $data['subject'],$staff_id,$data['date2'],$dispatch);
+            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch);
             $this->db->query("UPDATE staff_contracts SET status_id = 2 WHERE staff_contract_id = $staff_contract_id");
-        } elseif($dateDiff < 0){
+        } elseif ($dateDiff <= 0) {
             $data['subject'] = "EXPIRED CONTRACT";
             $supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
-			$first_supervisor_mail =staff_details($supervisor_id)->work_email;
-			$copied_mails = settings()->contracts_status_copied_emails;
-			$data['email_to'] = staff_details($staff_id)->work_email.';'.$copied_mails.';'.	$first_supervisor_mail;
-            // Set the third parameter to true to return the view as a string
+            $first_supervisor_mail = staff_details($supervisor_id)->work_email;
+            $copied_mails = settings()->contracts_status_copied_emails;
+            $data['email_to'] = staff_details($staff_id)->work_email . ';' . $copied_mails . ';' . $first_supervisor_mail;
             $data['body'] = $this->load->view('expired_contract', $data, true);
             $dispatch = date('Y-m-d H:i:s');
-            golobal_log_email('system',$data['email_to'], $data['body'], $data['subject'],$staff_id,$data['date2'],$dispatch);
+            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch);
             $this->db->query("UPDATE staff_contracts SET status_id = 3 WHERE staff_contract_id = $staff_contract_id");
-        } elseif($dateDiff > 360){
+        } elseif ($dateDiff >180 ) {
             $this->db->query("UPDATE staff_contracts SET status_id = 1 WHERE staff_contract_id = $staff_contract_id");
         }
     }
