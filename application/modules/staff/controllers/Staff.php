@@ -247,7 +247,7 @@ class Staff extends MX_Controller
 		     $staff_id = $data['staff_id'];
 		        if($data['status_id']==7){
 				
-				$data['subject'] = "STAFF CONTRACT UNDER RENEWAL";
+				$data['subject'] = "Staff Contract Under Renewal Notice";
 				$data['date_2'] = date('Y-m-d');
 				$supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
 				$first_supervisor_mail =staff_details($supervisor_id)->work_email;
@@ -265,7 +265,7 @@ class Staff extends MX_Controller
 				}
 				else  if($data['status_id']==4){
 		
-				$data['subject'] = "STAFF CONTRACT SEPARATION";
+				$data['subject'] = "Staff Contract Separation Notice";
 				$data['date_2'] = date('Y-m-d');
 				$supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
 				$first_supervisor_mail =staff_details($supervisor_id)->work_email;
