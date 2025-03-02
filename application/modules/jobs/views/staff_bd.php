@@ -21,13 +21,13 @@
       }
       .header {
         text-align: center; 
-        padding: 10px 0;
+        padding: 5px 0;
       }
       .header img {
         max-width: 150px;
       }
       .content {
-        padding: 20px;
+        padding: 10px;
       }
       .footer {
         text-align: center; 
@@ -41,14 +41,7 @@
       p {
         line-height: 1.5;
       }
-      .btn {
-        display: inline-block; 
-        background-color: #FF9800; 
-        color: #ffffff; 
-        padding: 10px 20px;
-        text-decoration: none; 
-        border-radius: 5px;
-      }
+  
       
       /* Animation container for flying hearts and glittering flowers */
       .animation-container {
