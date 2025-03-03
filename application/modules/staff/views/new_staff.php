@@ -29,12 +29,12 @@
                             <h4>Personal Information</h4>
 
                             <div class="form-group">
-                                <label for="SAPNO">SAP Number:</label>
+                                <label for="SAPNO">SAP Number *:</label>
                                 <input type="text" class="form-control" name="SAPNO" id="SAPNO">
                             </div>
 
                             <div class="form-group">
-                                <label for="gender">Title:</label>
+                                <label for="gender">Title *:</label>
                                 <select class="form-control validate-required" name="title" id="title">
                                     <option value="">Select Title</option>
                                     <option value="Dr">Dr</option>
@@ -47,7 +47,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="fname">First Name:</label>
+                                <label for="fname">First Name *:</label>
                                 <input type="text" class="form-control validate-required" name="fname" id="fname">
                                 <div class="invalid-feedback">First Name is Required</div>
                             </div>
@@ -64,7 +64,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="date_of_birth">Date of Birth:</label>
+                                <label for="date_of_birth">Date of Birth *:</label>
                                 <input type="text" class="form-control datepicker validate-required" name="date_of_birth"
                                     id="date_of_birth" autocomplete="off">
                                     <div class="invalid-feedback">Must be above 18 years of Age.</div>
@@ -72,7 +72,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="gender">Gender:</label>
+                                <label for="gender">Gender *:</label>
                                 <select class="form-control validate-required" name="gender" id="gender">
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
@@ -81,7 +81,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="nationality_id">Nationality:</label>
+                                <label for="nationality_id">Nationality *:</label>
                                 <select class="form-control select2 validate-required" name="nationality_id" id="nationality_id">
                                     <?php $lists = Modules::run('lists/nationality');
                                     foreach ($lists as $list) :
@@ -101,11 +101,11 @@
                         </div>
 
                         <div class="col-md-6">
-                            <h4>Contact Information</h4>
+                            <h4>Contact Information </h4>
 
 
                             <div class="form-group">
-                                <label for="tel_1">Telephone 1:</label>
+                                <label for="tel_1">Telephone 1 *:</label>
                                 <input type="text" class="form-control validate-required" name="tel_1" id="tel_1">
                                 
                             </div>
@@ -121,7 +121,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="work_email">Work Email:</label>
+                                <label for="work_email">Work Email *:</label>
                                 <input type="email" class="form-control validate-required" name="work_email" id="work_email">
                                 <div class="invalid-feedback">Work Email  is Required</div>
                             </div>
@@ -150,7 +150,7 @@
                             <h4>Contract Information</h4>
 
                             <div class="form-group">
-                                <label for="job_id">Job:</label>
+                                <label for="job_id">Job *:</label>
                                 <select class="form-control select2 validate-required" name="job_id" id="job_id">
                                     <option value="">Select Job</option>
                                     <?php $jobs = Modules::run('lists/jobs');
@@ -179,7 +179,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="grade_id">Grade:</label>
+                                <label for="grade_id">Grade *:</label>
                                 <select class="form-control select2 validate-required" name="grade_id" id="grade_id">
                                     <option value="">Select Grade</option>
                                     <?php $lists = Modules::run('lists/grades');
@@ -195,7 +195,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="contracting_institution_id">Contracting Institution:</label>
+                                <label for="contracting_institution_id">Contracting Institution *:</label>
                                 <select class="form-control select2 validate-required" name="contracting_institution_id"
                                     id="contracting_institution_id">
                                     <option value="">Select Contracting Institution</option>
@@ -210,7 +210,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="funder_id">Funder:</label>
+                                <label for="funder_id">Funder *:</label>
                                 <select class="form-control select2 validate-required" name="funder_id" id="funder_id">
                                     <option value="">Select Funder</option>
                                     <?php $lists = Modules::run('lists/funder');
@@ -224,7 +224,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="first_supervisor">First Supervisor:</label>
+                                <label for="first_supervisor">First Supervisor *:</label>
                                 <select class="form-control select2 validate-required" name="first_supervisor" id="first_supervisor">
                                     <option value="">Select First Supervisor</option>
                                     <?php $lists = Modules::run('lists/supervisor');
@@ -254,7 +254,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="contract_type_id">Contract Type:</label>
+                                <label for="contract_type_id">Contract Type *:</label>
                                 <select class="form-control select2 validate-required" name="contract_type_id" id="contract_type_id"
                                     >
                                     <?php $lists = Modules::run('lists/contracttype');
@@ -270,7 +270,7 @@
                         </div>
                         <div class="col-md-6" style="margin-top:35px;">
                             <div class="form-group">
-                                <label for="duty_station_id">Duty Station:</label>
+                                <label for="duty_station_id">Duty Station *:</label>
                                 <select class="form-control select2 validate-required" name="duty_station_id" id="duty_station_id"
                                     >
                                     <?php $lists = Modules::run('lists/stations');
@@ -284,7 +284,7 @@
                                 <div class="invalid-feedback">Duty Station is Required</div>
                             </div>
                             <div class="form-group">
-                                <label for="division_id">Division:</label>
+                                <label for="division_id">Division *:</label>
                                 <select class="form-control select2 validate-required" name="division_id" id="division_id">
                                     <?php 
                                         $divisions = Modules::run('lists/divisions');
@@ -308,7 +308,7 @@
 
 
                             <div class="form-group">
-                                <label for="start_date">Start Date:</label>
+                                <label for="start_date">Start Date *:</label>
                                 <input type="text" class="form-control datepicker validate-required" name="start_date" id="start_date"
                                      autocomplete="off">
                                      <div class="invalid-feedback">Start Date is Required</div>
@@ -316,7 +316,7 @@
                             
 
                             <div class="form-group">
-                                <label for="end_date">End Date:</label>
+                                <label for="end_date">End Date *:</label>
                                 <input type="text" class="form-control datepicker validate-required" name="end_date" id="end_date"
                                      autocomplete="off">
                                      <div class="invalid-feedback">Must be greate than start date</div>
@@ -332,7 +332,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="file_name">File Name/Number:</label>
+                                <label for="file_name">File Name/Number *:</label>
                                 <input type="text" class="form-control validate-required" name="file_name" id="file_name">
                                 <div class="invalid-feedback">File Number/Name is Required</div>
                             </div>
