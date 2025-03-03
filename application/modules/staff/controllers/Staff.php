@@ -169,6 +169,7 @@ class Staff extends MX_Controller
 		$new_contract = $this->staff_mdl->add_new_contract($data);
 		//dd($new_contract);
 		$staffid = $this->input->post('staff_id');
+		$this->notify_contract_status_change($data);
 		$update['staff_id'] = $data['staff_id'];
 		$update['staff_contract_id']=$this->staff_mdl->previous_contract($staffid, $new_contract);
 		$update['status_id']=$data['previous_contract_status_id'];
@@ -261,7 +262,8 @@ class Staff extends MX_Controller
 				$id = $this->session->user_data('user')->staff_id;
 				$trigger=staff_name($id);
 				$dispatch = date('Y-m-d H:i:s');
-				return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch);
+				$entry_id = $staff_id.md5($data['subject']).md5($$data['date_2']);
+				return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,$entry_id);
 				}
 				else  if($data['status_id']==4){
 		
@@ -277,12 +279,29 @@ class Staff extends MX_Controller
 				$id = $this->session->user_data('user')->staff_id;
 				$trigger=staff_name($id);
 				$dispatch = date('Y-m-d H:i:s');
-				return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch);
+				$entry_id = $staff_id.md5($data['subject']).md5($data['date_2']);
+				return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,$entry_id);
 			
 				}
-				else{
-					return false;
-				}		
+				else  if($data['status_id']==1){
+		
+					$data['subject'] = "New Contract Notice";
+					
+					$supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
+					$first_supervisor_mail =staff_details($supervisor_id)->work_email;
+					$copied_mails = settings()->contracts_status_copied_emails;
+					$data['email_to'] = staff_details($staff_id)->work_email.';'.$copied_mails.';'.	$first_supervisor_mail;
+					$data['name'] = staff_name($staff_id);
+							// Load the view and return its output as a string.
+					$data['body'] = $this->load->view('emails/new_contract', $data, true);
+					$id = $this->session->user_data('user')->staff_id;
+					$trigger=staff_name($id);
+					$dispatch = date('Y-m-d H:i:s');
+					$data['date_2'] = date('Y-m-d');
+					$entry_id = $staff_id.md5($data['subject']).md5($data['date_2']);
+					return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,$entry_id);
+				
+					}	
 				
 	}
 	public function update_staff()

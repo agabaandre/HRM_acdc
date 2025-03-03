@@ -140,10 +140,11 @@ function logEmailStatus($status, $id, $next_run)
   
 }
 
-function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_date = FALSE, $next = FALSE)
+function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_date = FALSE, $next = FALSE,$entry_id=FALSE)
 {
     $ci =& get_instance();
     $data = array(
+        'entry_id'=> $entry_id,
         'trigger'       => $trigger,
         'email_to'      => $email,
         'body'          => $message,

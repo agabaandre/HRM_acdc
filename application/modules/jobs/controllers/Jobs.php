@@ -87,27 +87,29 @@ public function mark_due_contracts() {
         // Update the flag for the staff member (ensure LIMIT is correct for your use-case)
         $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
 
-        if ($dateDiff > 0 && $dateDiff <= 180) {
+        if ($dateDiff > 0 && $dateDiff <= 90) {
             $data['subject'] = "Contract Due for Renewal Notice";
             $supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
             $first_supervisor_mail = staff_details($supervisor_id)->work_email;
-            $copied_mails = settings()->contracts_status_copied_emails;
-            $data['email_to'] = staff_details($staff_id)->work_email . ';' . $copied_mails . ';' . $first_supervisor_mail;
+            //$copied_mails = settings()->contracts_status_copied_emails;
+            $data['email_to'] = staff_details($staff_id)->work_email . ';' . $first_supervisor_mail.';'.settings()->email;
             $data['body'] = $this->load->view('due_contract', $data, true);
             $dispatch = date('Y-m-d H:i:s');
-            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch);
+            $entry_id = $staff_id.md5($data['subject']).md5($end_date);
+            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,$entry_id);
             $this->db->query("UPDATE staff_contracts SET status_id = 2 WHERE staff_contract_id = $staff_contract_id");
         } elseif ($dateDiff <= 0) {
             $data['subject'] = "Expired Contract Notice";
             $supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
             $first_supervisor_mail = staff_details($supervisor_id)->work_email;
             $copied_mails = settings()->contracts_status_copied_emails;
-            $data['email_to'] = staff_details($staff_id)->work_email . ';' . $copied_mails . ';' . $first_supervisor_mail;
+            $data['email_to'] = staff_details($staff_id)->work_email . ';' . $first_supervisor_mail.';'.settings()->email.';'.$copied_mails;
             $data['body'] = $this->load->view('expired_contract', $data, true);
             $dispatch = date('Y-m-d H:i:s');
-            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch);
+            $entry_id = $staff_id.md5($data['subject']).md5($end_date);
+            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,$entry_id);
             $this->db->query("UPDATE staff_contracts SET status_id = 3 WHERE staff_contract_id = $staff_contract_id");
-        } elseif ($dateDiff >180 ) {
+        } elseif ($dateDiff >180) {
             $this->db->query("UPDATE staff_contracts SET status_id = 1 WHERE staff_contract_id = $staff_contract_id");
         }
     }
@@ -216,7 +218,7 @@ public function cron_register(){
         $diffDays = (int)$current->diff($contractEnd)->format('%r%a');
         
         // Define the thresholds (in days before the contract end).
-        $thresholds = [180, 30, 21, 14, 7, 6, 5, 4, 3, 2, 1];
+        $thresholds = [90, 30, 21, 14, 7, 6, 5, 4, 3, 2, 1];
         
         // Find the next upcoming threshold date.
         foreach ($thresholds as $threshold) {
