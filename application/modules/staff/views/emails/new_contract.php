@@ -60,10 +60,13 @@
         <h1>Congratulations on Your New Contract!</h1>
         <p>Dear <?php echo $name; ?>,</p>
         <p>
-          We are delighted to inform you that you have been awarded a new contract as of <?php echo $start_date; ?> ending on <?php echo $end_date; ?>.
+          We are pleased to announce your new contract, which starts on <?php echo $start_date; ?> and concludes on <?php echo $end_date; ?>.
         </p>
         <p>
-          Congratulations once again and welcome aboard for this exciting new chapter.
+          We value your contributions and trust you will continue to excel in your role. 
+        </p>
+        <p>
+          Thank you for your dedication.
         </p>
         <p>
           Sincerely,<br>
@@ -76,7 +79,7 @@
       </div>
       <!-- Footer -->
       <div class="footer">
-        <p>&copy; <?php echo date('Y')?> Africa CDC. All Rights Reserved.</p>
+        <p>&copy; <?php echo date('Y'); ?> Africa CDC. All Rights Reserved.</p>
       </div>
     </div>
   </body>
