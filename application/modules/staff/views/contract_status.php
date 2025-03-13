@@ -23,14 +23,10 @@
             <th>Telephone</th>
             <th>WhatsApp</th>
             <th>Funder</th>
-            <th>Option</th>
           </tr>
         </thead>
       </table>
     </div>
   </div>
 </div>
-
-<!-- Modal Placeholder -->
-<div id="editContractModalContainer"></div>
 

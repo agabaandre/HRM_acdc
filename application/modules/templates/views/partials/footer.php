@@ -610,9 +610,9 @@ $(document).ready(function() {
                 }},
                 { "data": "whatsapp" },
                 { "data": "funder" },
-                { "data": "status_id", "render": function (data, type, row) {
-                    return data == 3 ? `<a href="#" class="edit-contract" data-id="${row.staff_contract_id}" data-toggle="modal" data-target="#editContractModal">Edit</a>` : '';
-                }}
+                // { "data": "status_id", "render": function (data, type, row) {
+                //     return data == 3 ? `<a href="#" class="edit-contract" data-id="${row.staff_contract_id}" data-toggle="modal" data-target="#editContractModal">Edit</a>` : '';
+                // }}
             ]
         });
 
