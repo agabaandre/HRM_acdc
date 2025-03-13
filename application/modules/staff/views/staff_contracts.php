@@ -36,14 +36,6 @@
 
     ?>
         <div class="col-lg-10">
-        <?php 
-							$surname=$this_staff->lname;
-							$other_name=$this_staff->fname;
-							$image_path=base_url().'uploads/staff/'.$this_staff->staff_id;
-							echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$this_staff->staff_id);
-							
-							?>
-        </div>
         <div class="col-md-2">
         <a href="<?php echo base_url() ?>staff/new_contract/<?php echo $this_staff->staff_id; ?>" class="btn btn-outline-dark btn-sm btn-bordered ">+ Add New Contract</a>
     </div>
