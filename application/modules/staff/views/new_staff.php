@@ -5,8 +5,9 @@
         <br />
 
         <!-- SmartWizard html -->
-        <div id="smartwizard">
-            <ul class="nav">
+         <?php if(setting()->staff_multistep==1){
+        echo '<div id="smartwizard">
+             <ul class="nav">
                 <li>
                     <a class="nav-link" href="#step-1"> <strong>Step 1</strong>
                         <br>Personal Information</a>
@@ -16,10 +17,15 @@
                         <br>Contact Information</a>
                 </li>
 
-            </ul>
-            <div class="tab-content">
+            </ul>     <div class="tab-content">';
+         }
+          else{ echo "<div>";
+        }
+            ?> 
+       
+       
                 <div id="step-1" class="tab-pane" role="tabpanel" aria-labelledby="step-1">
-                    <h3>Step 1: </h3>
+                <?php if(setting()->staff_multistep==1){?> <h3>Step 1: </h3><?php }?>
                     <div class="row">
 
                         <div class="col-md-6">
@@ -29,7 +35,7 @@
                             <h4>Personal Information</h4>
 
                             <div class="form-group">
-                                <label for="SAPNO">SAP Number *:</label>
+                                <label for="SAPNO">SAP Number:</label>
                                 <input type="text" class="form-control" name="SAPNO" id="SAPNO">
                             </div>
 
@@ -143,7 +149,7 @@
                 </div>
 
                 <div id="step-2" class="tab-pane" role="tabpanel" aria-labelledby="step-2">
-                    <h3>Step 2: </h3>
+                <?php if(setting()->staff_multistep==1){?><h3>Step 2: </h3><?php } ?>
 
                     <div class="row">
                         <div class="col-md-6">
@@ -358,7 +364,9 @@
                 </div>
             </div>
         </div>
+        <?php if(setting()->staff_multistep==1){?>
     </div>
+    <?php }?>
 
     <script>
     $(document).ready(function() {

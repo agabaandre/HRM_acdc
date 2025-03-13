@@ -95,8 +95,8 @@ public function mark_due_contracts() {
             $data['email_to'] = staff_details($staff_id)->work_email . ';' . $first_supervisor_mail.';'.settings()->email;
             $data['body'] = $this->load->view('due_contract', $data, true);
             $dispatch = date('Y-m-d H:i:s');
-            $entry_id = $staff_id.md5($data['subject']).md5($end_date);
-            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,$entry_id);
+            $entry_id = $staff_id.'-DU-'.date('Y-m-d');
+            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,md5($entry_id));
             $this->db->query("UPDATE staff_contracts SET status_id = 2 WHERE staff_contract_id = $staff_contract_id");
         } elseif ($dateDiff <= 0) {
             $data['subject'] = "Expired Contract Notice";
@@ -106,8 +106,8 @@ public function mark_due_contracts() {
             $data['email_to'] = staff_details($staff_id)->work_email . ';' . $first_supervisor_mail.';'.settings()->email.';'.$copied_mails;
             $data['body'] = $this->load->view('expired_contract', $data, true);
             $dispatch = date('Y-m-d H:i:s');
-            $entry_id = $staff_id.md5($data['subject']).md5($end_date);
-            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,$entry_id);
+            $entry_id = $staff_id.'-EX-'.date('Y-m-d');
+            golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,md5($entry_id));
             $this->db->query("UPDATE staff_contracts SET status_id = 3 WHERE staff_contract_id = $staff_contract_id");
         } elseif ($dateDiff >180) {
             $this->db->query("UPDATE staff_contracts SET status_id = 1 WHERE staff_contract_id = $staff_contract_id");
@@ -143,7 +143,8 @@ public function staff_birthday() {
             // Load the view and return its output as a string.
             $data['body'] = $this->load->view('staff_bd', $data, true);
             $dispatch = date('Y-m-d H:i:s');
-            golobal_log_email('system',$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch);
+            $entry_id = $staff_id.'-BD-'.date('Y-m-d');
+            golobal_log_email('system',$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,md5($entry_id));
         }
     }
 }
@@ -165,7 +166,7 @@ public function cron_register(){
     public function send_mails()
     {
         $today = date('Y-m-d');
-        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1'")->result();
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1' and email_to NOT LIKE 'xx%'")->result();
         //dd($this->db->last_query());
 
         // Check if there are any messages to process
