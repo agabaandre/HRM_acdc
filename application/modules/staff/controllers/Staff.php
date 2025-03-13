@@ -201,12 +201,45 @@ class Staff extends MX_Controller
 		else if ($status == 5) {
 			$data['title'] = "Re Assigned Staff";
 		}
-		$data['staff'] = $this->staff_mdl->get_status($status);
+		
 	
-	
-		render('contract_status', $data);
-
+		 render('contract_status', $data);
 	}
+	public function contract_statuses($status) {
+		$data['module'] = $this->module;
+	
+		// Set Titles Based on Status
+		$titles = [
+			2 => "Due Contracts",
+			3 => "Expired Contracts",
+			4 => "Former Staff",
+			5 => "Re Assigned Staff",
+			6 => "Renewed Contracts",
+			7 => "Under Renewal"
+		];
+	
+		$data['title'] = $titles[$status] ?? "Contracts";
+	
+		// Fetch Staff Data
+		$staffData = $this->staff_mdl->get_status($status);
+	
+		// Ensure CSRF Token is Updated
+		$csrf = [
+			"csrf_token_name" => $this->security->get_csrf_token_name(),
+			"csrf_token_hash" => $this->security->get_csrf_hash()
+		];
+	
+		// Return Data with Updated CSRF Token
+		echo json_encode([
+			"draw" => $_POST['draw'] ?? null,
+			"recordsTotal" => count($staffData),
+			"recordsFiltered" => count($staffData),
+			"data" => $staffData,
+			"csrf" => $csrf // Include new CSRF token
+		]);
+	}
+	
+		
 	public function staff_birthday()
 	{
 		$data['module'] = $this->module;
@@ -262,8 +295,8 @@ class Staff extends MX_Controller
 				$id = $this->session->user_data('user')->staff_id;
 				$trigger=staff_name($id);
 				$dispatch = date('Y-m-d H:i:s');
-				$entry_id = $staff_id.md5($data['subject']).md5($$data['date_2']);
-				return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,$entry_id);
+				$entry_id = $staff_id.'UR'.date('Y-m-d');
+				return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,md5($entry_id));
 				}
 				else  if($data['status_id']==4){
 		
@@ -279,15 +312,13 @@ class Staff extends MX_Controller
 				$id = $this->session->user_data('user')->staff_id;
 				$trigger=staff_name($id);
 				$dispatch = date('Y-m-d H:i:s');
-				$entry_id = $staff_id.md5($data['subject']).md5($data['date_2']);
-				return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,$entry_id);
+				$entry_id = $staff_id.'-SP-'.date('Y-m-d');
+				return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,md5($entry_id));
 			
 				}
 				else  if($data['status_id']==1){
 		
 					$data['subject'] = "New Contract Notice";
-					
-					
 					$supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
 					$first_supervisor_mail =staff_details($supervisor_id)->work_email;
 					$copied_mails = settings()->contracts_status_copied_emails;
@@ -299,8 +330,8 @@ class Staff extends MX_Controller
 					$trigger=staff_name($id);
 					$dispatch = date('Y-m-d H:i:s');
 					$data['date_2'] = date('Y-m-d');
-					$entry_id = $staff_id.md5($data['subject']).md5($data['date_2']);
-					return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,$entry_id);
+					$entry_id = $staff_id.'-NC-'.date('Y-m-d');
+					return golobal_log_email($trigger,$data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'],$dispatch,md5($entry_id));
 				
 					}	
 				

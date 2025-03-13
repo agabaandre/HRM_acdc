@@ -89,8 +89,7 @@
 <script src="<?php echo base_url() ?>assets/js/pace.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/notification-custom-script.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/simplebar/js/simplebar.min.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js"></script>
+<script src="<?php echo base_url() ?>assets/js/app.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/legacy.js"></script>
@@ -101,7 +100,7 @@
 <script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/select2/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
-<script src="<?php echo base_url() ?>assets/js/app.js">
+
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 </script>
 <script src="<?php echo base_url() ?>assets/plugins/smart-wizard/js/jquery.smartWizard.min.js"></script>
@@ -529,7 +528,127 @@ function uploadImage(file) {
   });
 }
 
-  </script>
+$(document).ready(function() {
+    var csrfName = '<?php echo $this->security->get_csrf_token_name(); ?>';
+    var csrfHash = '<?php echo $this->security->get_csrf_hash(); ?>';
+    var flag = '<?php echo $this->uri->segment(3); ?>';
+
+    function initializeDataTable() {
+        // Destroy DataTable if already initialized
+        if ($.fn.DataTable.isDataTable('#staffTable')) {
+            $('#staffTable').DataTable().clear().destroy();
+        }
+
+        var table = $('#staffTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "ajax": {
+                "url": "<?php echo base_url('staff/contract_statuses/'); ?>" + flag,
+                "type": "POST",
+                "headers": {
+                    "X-CSRF-TOKEN": csrfHash  // Securely pass CSRF token
+                },
+                "data": function(d) {
+                    d[csrfName] = csrfHash; // Include CSRF token in every request
+                },
+                "dataSrc": function(json) {
+                    console.log("DataTables Response:", json); // Debugging
+
+                    if (!json || typeof json !== "object" || !json.data || !Array.isArray(json.data)) {
+                        console.error("Invalid DataTables JSON response:", json);
+                        return [];
+                    }
+
+                    return json.data;
+                },
+                "error": function(xhr, textStatus, errorThrown) {
+                    console.error("DataTables AJAX error:", textStatus, errorThrown);
+                    console.error("Server response:", xhr.responseText);
+                }
+            },
+            "dom": 'Bfrtip', // Add buttons to the DOM
+            "paging": true, // Enable pagination
+            "lengthChange": true, // Enable length change dropdown
+            "searching": true, // Enable search functionality
+            "ordering": true, // Enable column ordering
+            "info": true, // Show table information
+            "autoWidth": true, // Enable auto-width for columns
+            "lengthMenu": [
+                [25, 50, 100, 150, -1],
+                ['25', '50', '100', '150', '200', 'Show all']
+            ], // Custom length menu options
+            "buttons": [
+                'copyHtml5', // Copy to clipboard
+                'excelHtml5', // Export to Excel
+                'csvHtml5', // Export to CSV
+                'pdfHtml5', // Export to PDF
+                'pageLength' // Show page length dropdown
+            ],
+            "columns": [
+                { "data": null, "render": function (data, type, row, meta) { return meta.row + 1; } },
+                { "data": "staff_id", "render": function (data, type, row) {
+                    return `<a href="<?php echo base_url()?>staff/staff_contracts/${row.staff_id}">${row.fname} ${row.lname}</a>`;
+                }},
+                { "data": "gender" },
+                { "data": "job_name" },
+                { "data": "contract_type" },
+                { "data": "start_date" },
+                { "data": "end_date" },
+                { "data": "status" },
+                { "data": "comments", "render": function (data) { return data ? data.substr(0, 100) + '...' : ''; } },
+                { "data": "contracting_institution" },
+                { "data": "nationality" },
+                { "data": "grade" },
+                { "data": "division_name" },
+                { "data": "job_acting" },
+                { "data": "duty_station_name" },
+                { "data": "work_email" },
+                { "data": null, "render": function (data, type, row) {
+                    let tel1 = row.tel_1 ? `<a href="tel:${row.tel_1}">${row.tel_1}</a>` : '';
+                    let tel2 = row.tel_2 ? `<a href="tel:${row.tel_2}">${row.tel_2}</a>` : '';
+                    return tel1 + (tel1 && tel2 ? ' | ' : '') + tel2;
+                }},
+                { "data": "whatsapp" },
+                { "data": "funder" },
+                { "data": "status_id", "render": function (data, type, row) {
+                    return data == 3 ? `<a href="#" class="edit-contract" data-id="${row.staff_contract_id}" data-toggle="modal" data-target="#editContractModal">Edit</a>` : '';
+                }}
+            ]
+        });
+
+        return table;
+    }
+
+    var table = initializeDataTable();
+
+    // Handle edit button click
+    $(document).on("click", ".edit-contract", function() {
+        var contractId = $(this).data("id");
+
+        $.ajax({
+            url: "<?php echo base_url('staff/edit_contract/'); ?>" + contractId,
+            type: "POST",
+            data: { [csrfName]: csrfHash },
+            success: function(response) {
+                $("#editContractModalContainer").html(response);
+                $("#editContractModal").modal("show");
+            },
+            error: function(xhr, textStatus, errorThrown) {
+                console.error("Error loading edit modal:", textStatus, errorThrown);
+            }
+        });
+    });
+
+    // Ensure DataTable is not reinitialized on subsequent AJAX calls or page updates
+    $(document).ajaxComplete(function() {
+        if (!$.fn.DataTable.isDataTable('#staffTable')) {
+            table = initializeDataTable();
+        }
+    });
+});
+</script>
+
+
 	
 
   

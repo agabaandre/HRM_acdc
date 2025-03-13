@@ -17,8 +17,11 @@ $contract = Modules::run('auth/contract_info', $staff_id);
 
   <div cllass="row">
     <!-- SmartWizard html -->
-    <div id="smartwizard">
-      <ul class="nav">
+    <!-- SmartWizard html -->
+    <?php if(setting()->staff_multistep==1){
+        echo '<div id="smartwizard">
+        
+          <ul class="nav">
         <li>
           <a class="nav-link" href="#step-1"> <strong>Step 1</strong>
             <br>Personal Information</a>
@@ -26,20 +29,29 @@ $contract = Modules::run('auth/contract_info', $staff_id);
         <li>
           <a class="nav-link" href="#step-2"> <strong>Step 2</strong>
             <br>Objectives</a>
-        </li>
-        <li>
-          <a class="nav-link" href="#step-4"> <strong>Step 3</strong>
-            <br>Training</a>
-        </li>
-        <li>
-          <a class="nav-link" href="#step-5"> <strong>Step 4</strong>
-            <br>Sign Off</a>
-        </li>
+          </li>
+          <li>
+            <a class="nav-link" href="#step-4"> <strong>Step 3</strong>
+              <br>Training</a>
+          </li>
+          <li>
+            <a class="nav-link" href="#step-5"> <strong>Step 4</strong>
+              <br>Sign Off</a>
+          </li>
 
-      </ul>
-      <div class="tab-content">
+        </ul>
+        <div class="tab-content">
+        
+        
+        ';
+         }
+          else{ echo "<div class=''>";
+               
+        }
+            ?> 
+    
         <div id="step-1" class="tab-pane" role="tabpanel" aria-labelledby="step-1">
-          <h3>Step 1:</h3>
+        <?php if(setting()->staff_multistep==1){?><h3>Step 1:</h3><?php } ?>
           <h4>A. Staff Details</h4>
           <div class="row">
             <div class="col-md-6 col-lg-6">
@@ -88,7 +100,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
 
 
         <div id="step-2" class="tab-pane" style="overflow-y: auto!important;" role="tabpanel" aria-labelledby="step-2">
-          <h3>Step 2: </h3>
+        <?php if(setting()->staff_multistep==1){?><h3>Step 2:</h3><?php } ?>
           <div class="mt-4">
             <button class="btn btn-dark px-5 radius-30" onclick="addObjective()">Create Objective</button>
           </div>
@@ -100,7 +112,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
         </div>
 
         <div id="step-4" class="tab-pane" role="tabpanel" aria-labelledby="step-4">
-          <h3>Step 3: </h3>
+        <?php if(setting()->staff_multistep==1){?><h3>Step 3:</h3><?php } ?>
 
           <h1>C. Personal Development Plan</h4>
             <div class="row">
@@ -138,7 +150,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
         </div>
 
         <div id="step-5" class="tab-pane" role="tabpanel" aria-labelledby="step-5">
-          <h3>Step 4: </h3>
+        <?php if(setting()->staff_multistep==1){?><h3>Step 4:</h3><?php } ?>
           <h1>D. Sign Off</h1>
           <div class="row">
             <div class="col-md-12 ">
@@ -190,4 +202,6 @@ $contract = Modules::run('auth/contract_info', $staff_id);
         </form>
       </div>
     </div>
+    <?php if(setting()->staff_multistep==1){ ?>
   </div>
+  <?php } ?>

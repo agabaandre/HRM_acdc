@@ -271,24 +271,46 @@ public function get_all_staff_data($limit=FALSE, $start=FALSE, $filters=FALSE)
 	}
 
 
+	public function get_status($flag) 
+{
+	$queryBuilder = $this->db->select('
+	    staff.*,
+        staff_contracts.*,
+		nationalities.*,
+        jobs.job_name,
+        jobs_acting.job_acting,
+        grades.grade,
+        contracting_institutions.contracting_institution,
+        funders.funder,
+        contract_types.contract_type,
+        duty_stations.duty_station_name,
+        divisions.division_name,
+        status.status
+		
+        
+    ');
 
-	public function get_status($flag)
-	{
-		return Employee::with(['contracts' => function ($query) use ($flag) {
-				if (!is_null($flag)) {
-					$query->where('status_id', $flag);
-				}
-			}, 'contracts.funder'])
-			->when($flag, function ($query) use ($flag) {
-				$query->whereHas('contracts', function (Builder $query) use ($flag) {
-					$query->where('status_id', $flag);
-				});
-			})
-			->orderBy("lname", "desc")
-			->take(400)
-			->skip(0)
-			->get();
-	}
+    $this->db->from('staff_contracts');
+    $this->db->where('staff_contracts.status_id', $flag);
+
+    // Join necessary tables
+    $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id', 'left');
+    $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id', 'left');
+    $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id', 'left');
+    $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id', 'left');
+    $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id', 'left');
+    $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id', 'left');
+    $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id', 'left');
+    $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id', 'left');
+    $this->db->join('status', 'status.status_id = staff_contracts.status_id', 'left');
+    $this->db->join('staff', 'staff.staff_id = staff_contracts.staff_id', 'left');
+    $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id', 'left');
+
+    // Use DataTables for processing
+    $datatables = new Ngekoding\CodeIgniterDataTables\DataTables($queryBuilder);
+    return $datatables->asObject()->generate();
+}
+
 
 	public function getBirthdaysForToday()
 	{

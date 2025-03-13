@@ -19,7 +19,7 @@ class Performance extends MX_Controller
 	public function index()
 	{
 		$data['module'] = $this->module;
-		$data['title'] = "Performance Plan";
+		$data['title'] = "Performance Plan - ".$this->session->userdata('user')->name;
 		$data['skills'] = $this->db->get('training_skills')->result();
 		render('plan', $data);
 	}
