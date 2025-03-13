@@ -36,6 +36,8 @@
 
     ?>
         <div class="col-lg-10">
+     
+        </div>
         <div class="col-md-2">
         <a href="<?php echo base_url() ?>staff/new_contract/<?php echo $this_staff->staff_id; ?>" class="btn btn-outline-dark btn-sm btn-bordered ">+ Add New Contract</a>
     </div>
