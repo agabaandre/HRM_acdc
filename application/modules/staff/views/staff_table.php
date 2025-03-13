@@ -172,9 +172,9 @@
 										<hr>
 									</div>
 									<div class="modal-body" id="worker_profile">
-										<div class="col-md-12 d-flex justify-content-center p-5">
+										<div class="col-md-12 d-flex justify-content-center p-2">
 											<div>
-												<img src="<?php echo base_url() ?>/assets/images/AU_CDC_Logo-800.png" width="300">
+												<img src="<?php echo base_url() ?>/assets/images/AU_CDC_Logo-800.png" width="150">
 											</div>
 										</div>
 										<div class="row justify-content-center">
