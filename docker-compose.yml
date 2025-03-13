@@ -6,31 +6,31 @@ services:
     container_name: apache_php
     restart: always
     volumes:
-      - .:/var/www/tools.africacdc.org/tools/staff_new
+      - .:/var/www/tools.africacdc.org/tools/adcstaff
     ports:
       - "808:80"
     environment:
-      MYSQL_HOST: ${MYSQL_HOST}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_PORT: ${MYSQL_PORT}
+      MYSQL_HOST: ${DB_HOST}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_PORT: ${DB_PORT}
     depends_on:
       - mysql_client
     networks:
       - app-network
-    working_dir: /var/www/tools.africacdc.org/tools/staff_new
+    working_dir: /var/www/tools.africacdc.org/tools/acdcstaff
    
 
   mysql_client:
     image: mysql:5.7.42
     container_name: mysql_client
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_HOST: ${DB_HOST}
     networks:
       - app-network
 
