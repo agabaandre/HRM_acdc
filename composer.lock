@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b5f093d7b04a9b0b5291ad04aaf9d625",
+    "content-hash": "0cb18a4d15fda610f73eb51257ddd0d0",
     "packages": [
         {
             "name": "carbonphp/carbon-doctrine-types",
@@ -1344,25 +1344,28 @@
         },
         {
             "name": "ngekoding/codeigniter-datatables",
-            "version": "v1.0.5",
+            "version": "v1.0.9",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ngekoding/codeigniter-datatables.git",
-                "reference": "7d72b28815158995591e320a4fea3c91c75110d5"
+                "reference": "f98cf2d4a3a2194701b73950cd3c982e4921c5c8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ngekoding/codeigniter-datatables/zipball/7d72b28815158995591e320a4fea3c91c75110d5",
-                "reference": "7d72b28815158995591e320a4fea3c91c75110d5",
+                "url": "https://api.github.com/repos/ngekoding/codeigniter-datatables/zipball/f98cf2d4a3a2194701b73950cd3c982e4921c5c8",
+                "reference": "f98cf2d4a3a2194701b73950cd3c982e4921c5c8",
                 "shasum": ""
             },
             "require": {
                 "greenlion/php-sql-parser": "^4.5",
                 "php": ">=5.6",
-                "symfony/http-foundation": "^3.4"
+                "symfony/http-foundation": "*"
             },
             "type": "library",
             "autoload": {
+                "files": [
+                    "src/functions.php"
+                ],
                 "psr-4": {
                     "Ngekoding\\CodeIgniterDataTables\\": "src"
                 }
@@ -1380,9 +1383,9 @@
             "description": "DataTables server-side for CodeIgniter",
             "support": {
                 "issues": "https://github.com/ngekoding/codeigniter-datatables/issues",
-                "source": "https://github.com/ngekoding/codeigniter-datatables/tree/v1.0.5"
+                "source": "https://github.com/ngekoding/codeigniter-datatables/tree/v1.0.9"
             },
-            "time": "2022-07-13T00:55:45+00:00"
+            "time": "2025-02-22T10:39:23+00:00"
         },
         {
             "name": "opensearch-project/opensearch-php",
