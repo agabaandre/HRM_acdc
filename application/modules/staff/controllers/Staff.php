@@ -190,7 +190,11 @@ class Staff extends MX_Controller
 	}
 
 
-	public function contract_status($status){
+
+
+	public function contract_status($status, $csv=FALSE)
+	{
+
 		$data['module'] = $this->module;
 		if ($status == 2) {
 			$data['title'] = "Due Contracts";
@@ -210,9 +214,27 @@ class Staff extends MX_Controller
 		else if ($status == 5) {
 			$data['title'] = "Re Assigned Staff";
 		}
+		$page = ($this->uri->segment(4)) ? $this->uri->segment(4) : 0;
+		$filters = $this->input->post();
+		$filters['csv'] =$csv;
+		$filters['status_id'] =$status;	
 		
-	
-		 render('contract_status', $data);
+        $count = count($this->staff_mdl->get_status($filters));
+		$data['records'] = $count;
+		//dd($count);
+		$data['staffs'] = $this->staff_mdl->get_status($filters,$per_page = 20, $page);
+		//dd($data);
+		$staffs= $data['staffs'];
+		$file_name = $data['title'].'_Africa CDC Staff_'.date('dd-mm-yyyy').'.csv';
+		if($csv==1){
+            $staff = $this->remove_ids($staffs);
+			
+			render_csv_data($staff, $file_name,true);
+
+		}
+		//dd($data);
+		$data['links'] = pagination("staff/contract_status/".$status, $count, $per_page = 20);
+		render('contract_status', $data);
 	}
 	public function contract_statuses($status) {
 		$data['module'] = $this->module;
