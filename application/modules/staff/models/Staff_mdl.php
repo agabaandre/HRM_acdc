@@ -146,7 +146,7 @@ class Staff_mdl extends CI_Model
 		$query = $this->db->get();
 	
 		// Debugging query (Uncomment for debugging)
-		// echo $this->db->last_query(); exit;
+		 //echo $this->db->last_query(); exit;
 	
 		return ($csv == 1) ? $query->result_array() : $query->result();
 	}
