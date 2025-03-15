@@ -1,3 +1,8 @@
+<style>
+    .dt-buttons .btn-group .dataTables_paginate .paging_simple_numbers .dataTables_info{
+        display: none !important;
+   }
+</style>
 <h6 class="mb-0 text-uppercase"></h6>
 <hr />
 <div class="card">
@@ -40,7 +45,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="gender">Title *:</label>
+                                <label for="gender">Title:</label>
                                 <select class="form-control validate-required" name="title" id="title">
                                     <option value="">Select Title</option>
                                     <option value="Dr">Dr</option>
@@ -53,13 +58,13 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="fname">First Name *:</label>
+                                <label for="fname">First Name: <?php echo asterik();?></label>
                                 <input type="text" class="form-control validate-required" name="fname" id="fname">
                                 <div class="invalid-feedback">First Name is Required</div>
                             </div>
 
                             <div class="form-group">
-                                <label for="lname">Last Name / Surname:</label>
+                                <label for="lname">Last Name / Surname: <?php echo asterik();?></label>
                                 <input type="text" class="form-control validate-required" name="lname" id="lname">
                                 <div class="invalid-feedback">Surname is Required</div>
                             </div>
@@ -70,7 +75,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="date_of_birth">Date of Birth *:</label>
+                                <label for="date_of_birth">Date of Birth: <?php echo asterik();?></label>
                                 <input type="text" class="form-control datepicker validate-required" name="date_of_birth"
                                     id="date_of_birth" autocomplete="off">
                                     <div class="invalid-feedback">Must be above 18 years of Age.</div>
@@ -78,7 +83,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="gender">Gender *:</label>
+                                <label for="gender">Gender:<?php echo asterik();?></label>
                                 <select class="form-control validate-required" name="gender" id="gender">
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
@@ -87,7 +92,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="nationality_id">Nationality *:</label>
+                                <label for="nationality_id">Nationality: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="nationality_id" id="nationality_id">
                                     <?php $lists = Modules::run('lists/nationality');
                                     foreach ($lists as $list) :
@@ -100,8 +105,8 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="initiation_date">Initiation Date:</label>
-                                <input type="text" class="form-control datepicker" name="initiation_date"
+                                <label for="initiation_date">Initiation Date: <?php echo asterik();?></label>
+                                <input type="text" class="form-control datepicker validate-required" name="initiation_date"
                                     id="initiation_date"  autocomplete="off">
                             </div>
                         </div>
@@ -111,7 +116,7 @@
 
 
                             <div class="form-group">
-                                <label for="tel_1">Telephone 1 *:</label>
+                                <label for="tel_1">Telephone 1: <?php echo asterik();?></label>
                                 <input type="text" class="form-control validate-required" name="tel_1" id="tel_1">
                                 
                             </div>
@@ -127,13 +132,13 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="work_email">Work Email *:</label>
+                                <label for="work_email">Work Email: <?php echo asterik();?></label>
                                 <input type="email" class="form-control validate-required" name="work_email" id="work_email">
                                 <div class="invalid-feedback">Work Email  is Required</div>
                             </div>
                             <br>
                             <div class="form-group">
-                                <label for="private_email">Private Email:</label>
+                                <label for="private_email">Personal/Private Email:</label>
                                 <input type="email" class="form-control" name="private_email" id="private_email">
                             </div>
 
@@ -156,7 +161,7 @@
                             <h4>Contract Information</h4>
 
                             <div class="form-group">
-                                <label for="job_id">Job *:</label>
+                                <label for="job_id">Job: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="job_id" id="job_id">
                                     <option value="">Select Job</option>
                                     <?php $jobs = Modules::run('lists/jobs');
@@ -185,7 +190,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="grade_id">Grade *:</label>
+                                <label for="grade_id">Grade: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="grade_id" id="grade_id">
                                     <option value="">Select Grade</option>
                                     <?php $lists = Modules::run('lists/grades');
@@ -201,7 +206,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="contracting_institution_id">Contracting Institution *:</label>
+                                <label for="contracting_institution_id">Contracting Institution: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="contracting_institution_id"
                                     id="contracting_institution_id">
                                     <option value="">Select Contracting Institution</option>
@@ -216,7 +221,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="funder_id">Funder *:</label>
+                                <label for="funder_id">Funder: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="funder_id" id="funder_id">
                                     <option value="">Select Funder</option>
                                     <?php $lists = Modules::run('lists/funder');
@@ -230,7 +235,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="first_supervisor">First Supervisor *:</label>
+                                <label for="first_supervisor">First Supervisor: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="first_supervisor" id="first_supervisor">
                                     <option value="">Select First Supervisor</option>
                                     <?php $lists = Modules::run('lists/supervisor');
@@ -260,7 +265,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="contract_type_id">Contract Type *:</label>
+                                <label for="contract_type_id">Contract Type: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="contract_type_id" id="contract_type_id"
                                     >
                                     <?php $lists = Modules::run('lists/contracttype');
@@ -276,7 +281,7 @@
                         </div>
                         <div class="col-md-6" style="margin-top:35px;">
                             <div class="form-group">
-                                <label for="duty_station_id">Duty Station *:</label>
+                                <label for="duty_station_id">Duty Station: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="duty_station_id" id="duty_station_id"
                                     >
                                     <?php $lists = Modules::run('lists/stations');
@@ -290,7 +295,7 @@
                                 <div class="invalid-feedback">Duty Station is Required</div>
                             </div>
                             <div class="form-group">
-                                <label for="division_id">Division *:</label>
+                                <label for="division_id">Division: <?php echo asterik();?></label>
                                 <select class="form-control select2 validate-required" name="division_id" id="division_id">
                                     <?php 
                                         $divisions = Modules::run('lists/divisions');
@@ -314,7 +319,7 @@
 
 
                             <div class="form-group">
-                                <label for="start_date">Start Date *:</label>
+                                <label for="start_date">Start Date:<?php echo asterik();?></label>
                                 <input type="text" class="form-control datepicker validate-required" name="start_date" id="start_date"
                                      autocomplete="off">
                                      <div class="invalid-feedback">Start Date is Required</div>
@@ -322,7 +327,7 @@
                             
 
                             <div class="form-group">
-                                <label for="end_date">End Date *:</label>
+                                <label for="end_date">End Date: <?php echo asterik();?></label>
                                 <input type="text" class="form-control datepicker validate-required" name="end_date" id="end_date"
                                      autocomplete="off">
                                      <div class="invalid-feedback">Must be greate than start date</div>
@@ -338,8 +343,8 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="file_name">File Name/Number *:</label>
-                                <input type="text" class="form-control validate-required" name="file_name" id="file_name">
+                                <label for="file_name">File Name/Number:</label>
+                                <input type="hidden" class="form-control" name="file_name" id="file_name">
                                 <div class="invalid-feedback">File Number/Name is Required</div>
                             </div>
 
@@ -519,17 +524,23 @@ $(document).ready(function () {
         
         // If all validations pass, submit the form via AJAX
         $.ajax({
-            url: '<?php echo base_url("staff/new_submit"); ?>', // Make sure your form has the proper action attribute
-            type: "POST",
-            data: $(this).serialize(),
-            success: function (response) {
-                show_notification("Form submitted successfully!", "success");
-                // Optionally, reset the form or process the response further.
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                show_notification("There was an error submitting the form.", "error");
-            }
-        });
+                url: '<?php echo base_url("staff/new_submit"); ?>',
+                type: "POST",
+                data: $(this).serialize(),
+                success: function (response) {
+                    show_notification("Form submitted successfully!", "success");
+                    setTimeout(function(){
+                        window.location.href = '<?php echo base_url("staff/index"); ?>';
+                    }, 3000);
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    show_notification("There was an error submitting the form.", "error");
+                    setTimeout(function(){
+                        window.location.href = '<?php echo base_url("staff/index"); ?>';
+                    }, 3000);
+                }
+            });
+
     });
     
     // Optional: Validate individual fields on blur for immediate feedback

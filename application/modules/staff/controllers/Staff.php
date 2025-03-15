@@ -20,9 +20,12 @@ class Staff extends MX_Controller
 		$data['title'] = "Staff";
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
 		$filters = $this->input->post();
-		$filters['csv']=$csv;
-
-		$data['staffs'] = $this->staff_mdl->get_active_staff_data($per_page = 20, $page, $filters);
+		$filters['csv'] =$csv;
+		
+        $count = count($this->staff_mdl->get_active_staff_data($filters));
+		$data['records'] = $count;
+		//dd($count);
+		$data['staffs'] = $this->staff_mdl->get_active_staff_data($filters,$per_page = 20, $page);
 		$staffs= $data['staffs'];
 		$file_name = 'Africa CDC Staff_'.date('dd-mm-yyyy').'.csv';
 		if($csv==1){
@@ -32,7 +35,7 @@ class Staff extends MX_Controller
 
 		}
 		//dd($data);
-		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
+		$data['links'] = pagination('staff/index', $count, $per_page = 20);
 		render('staff_table', $data);
 	}
 	function remove_ids($staffs = []) {
@@ -292,7 +295,7 @@ class Staff extends MX_Controller
 					// Load the view and return its output as a string.
 				$data['body'] = $this->load->view('emails/under_review', $data, true);
 				//dd($data);
-				$id = $this->session->user_data('user')->staff_id;
+				$id = $this->session->userdata('user')->staff_id;
 				$trigger=staff_name($id);
 				$dispatch = date('Y-m-d H:i:s');
 				$entry_id = $staff_id.'UR'.date('Y-m-d');
@@ -309,7 +312,7 @@ class Staff extends MX_Controller
 				$data['name'] = staff_name($staff_id);
 						// Load the view and return its output as a string.
 				$data['body'] = $this->load->view('emails/separated', $data, true);
-				$id = $this->session->user_data('user')->staff_id;
+				$id = $this->session->userdata('user')->staff_id;
 				$trigger=staff_name($id);
 				$dispatch = date('Y-m-d H:i:s');
 				$entry_id = $staff_id.'-SP-'.date('Y-m-d');
@@ -326,7 +329,7 @@ class Staff extends MX_Controller
 					$data['name'] = staff_name($staff_id);
 							// Load the view and return its output as a string.
 					$data['body'] = $this->load->view('emails/new_contract', $data, true);
-					$id = $this->session->user_data('user')->staff_id;
+					$id = $this->session->userdata('user')->staff_id;
 					$trigger=staff_name($id);
 					$dispatch = date('Y-m-d H:i:s');
 					$data['date_2'] = date('Y-m-d');

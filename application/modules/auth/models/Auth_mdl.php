@@ -159,14 +159,24 @@ return $qry->num_rows();
 	// update user's details
 	public function updateUser($postdata)
 	{
-		$uid = $postdata['user_id'];
-		$this->db->where('user_id', $uid);
-		$query = $this->db->update($this->table, $postdata);
-		if ($query) {
-			return "User details updated";
-		} else {
-			return "No changes made";
+		if (!isset($postdata['user_id'])) {
+			return "User ID is required.";
 		}
+		
+		$uid = $postdata['user_id'];
+		unset($postdata['user_id']); // Remove user_id from update fields
+		
+		$this->db->where('user_id', $uid);
+		$this->db->update('user', $postdata);
+
+		//dd($this->db->last_query());
+		
+		if ($this->db->affected_rows() > 0) {
+			return "User details updated successfully.";
+		} else {
+			return "No changes made or user not found.";
+		}
+		
 	}
 	// change password
 	public function changePass($postdata)

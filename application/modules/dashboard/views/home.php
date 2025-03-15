@@ -1,12 +1,12 @@
 <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4">
   <div class="col">
-    <div class="card rounded-1" style="background:rgba(52, 143, 65, 1);">
+    <div class="card rounded-1" <?=getRandomAUColor()?>>
       <a href="<?php echo base_url() ?>staff">
         <div class="card-body">
           <div class="d-flex align-items-center justify-content-between">
             <div>
               <h5>
-                <p class="mb-0 text-white">Main Staff</p>
+                <p class="mb-0 text-white">Main Staff <b style="font-size:9px; color:black;">&lt; (Active & Due)</b></p>
               </h5>
               <h5 style="color:#FFFFFF;">
                 <?php echo $staff . ' '; ?>
@@ -20,13 +20,13 @@
   </div>
 
   <div class="col">
-    <div class="card rounded-1" style="background:#4a4a4a;">
+    <div class="card rounded-1" <?=getRandomAUColor()?>>
       <a href="<?= base_url() ?>staff/contract_status/2">
         <div class="card-body">
           <div class="d-flex align-items-center justify-content-between">
             <div>
               <h5>
-                <p class="mb-0 text-white">Contracts Due <b style="font-size:9px; color:orange;">&lt; 6 Months</b></p>
+                <p class="mb-0 text-white">Contracts Due <b style="font-size:9px; color:black;">&lt; 3 Months</b></p>
               </h5>
               <h5 style="color:#FFFFFF;">
                 <?php echo $two_months; ?>
@@ -38,9 +38,28 @@
       </a>
     </div>
   </div>
+  <div class="col">
+    <div class="card rounded-1" <?=getRandomAUColor()?>>
+      <a href="<?= base_url() ?>staff/contract_status/7">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <h5>
+                <p class="mb-0 text-white">Under Renewal</p>
+              </h5>
+              <h5 style="color:#FFFFFF;">
+                <?php echo $staff_renewal; ?>
+              </h5>
+            </div>
+            <div class="fs-1 text-white"><i class='bx bxs-bar-chart-alt-2'></i></div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
 
   <div class="col">
-    <div class="card rounded-1" style="background:#b4a269;">
+    <div class="card rounded-1" <?=getRandomAUColor()?>>
       <a href="<?= base_url() ?>staff/contract_status/3">
         <div class="card-body">
           <div class="d-flex align-items-center justify-content-between">
@@ -59,26 +78,9 @@
     </div>
   </div>
 
-  <div class="col">
-    <div class="card rounded-1" style="background:#9F2241;">
-      <a href="<?= base_url() ?>geographical/countries">
-        <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <h5>
-                <p class="mb-0 text-white">Member States</p>
-              </h5>
-              <h5 style="color:#FFFFFF;">
-                <?php echo $member_states; ?>
-              </h5>
-            </div>
-            <div class="fs-1 text-white"><i class='bx bxs-bar-chart-alt-2'></i></div>
-          </div>
-        </div>
-      </a>
-    </div>
-  </div>
+
 </div>
+
 <!--end row-->
 
 <div class="row">

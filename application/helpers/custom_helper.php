@@ -117,6 +117,7 @@ if (!function_exists('old')) {
     function old($field)
     {
         $ci = &get_instance();
+       // dd($ci->session->flashdata('form_data')['lname']);
         return ($ci->session->flashdata('form_data')) ? html_escape($ci->session->flashdata('form_data')[$field]) : null;
     }
 }
@@ -158,7 +159,8 @@ if (!function_exists('paginate')) {
         $config['cur_tag_close'] = '<span class="sr-only">(current)</span></a></li>';
         $config['num_tag_open'] = '<li class="page-item">';
         $config['num_tag_close'] = '</li>';
-        //$config['use_page_numbers'] = false;
+        $config['use_page_numbers'] = false;
+
 
         $ci->pagination->initialize($config);
 
@@ -245,6 +247,15 @@ if (!function_exists('setting')) {
         return $ci->db->get('setting')->row();
     }
 }
+if (!function_exists('getcountry')) {
+
+    function getcountry($id)
+    {
+        $ci = &get_instance();
+        $ci->db->where('nationality_id', $id);
+        return $ci->db->get('nationalities')->row()->nationality;
+    }
+}
 
 
 if (!function_exists('user_session')) {
@@ -256,11 +267,11 @@ if (!function_exists('user_session')) {
 }
 
 
-if (!function_exists('dd')) {
-    function dd($data)
+// 
+if (!function_exists('asterik')) {
+    function asterik()
     {
-        print_r($data);
-        exit();
+       return '<b style="color:red;">*</b>';
     }
 }
 
@@ -678,11 +689,12 @@ if (!function_exists('generate_user_avatar')) {
     {
    
          
-            if ((!empty($photo))) {
-                return '<img src="' . $image_path . '" class="user-img" alt="user avatar">';
-            }
+        if (!empty($photo)) {
+            return '<img src="' . $image_path . '" class="user-img" alt="user avatar" 
+                 style="cursor:pointer; width:80px; height:80px; border-radius:50%;" 
+                 onclick="openImageModal(\'' . $image_path . '\')">';
+        }
         
-    
         // Get the initials (first letter of surname & other name)
         $surname_initial = !empty($surname) ? strtoupper(substr($surname, 0, 1)) : '';
         $other_name_initial = !empty($other_name) ? strtoupper(substr($other_name, 0, 1)) : '';
@@ -728,5 +740,39 @@ if (!function_exists('log_user_action')) {
             'user_agent' => $user_agent
         ];
         $CI->db->insert('user_logs', $data);
+    }
+    function getRandomAUColor() {
+        // Define AU color palette with background colors
+        $colors = [
+            "#194F90", // AU Blue
+            "#348F41", // AU Green
+            "#1A5632", // AU Corporate Green
+            "#9F2241", // AU Red
+            "#B4A269", // AU Gold
+            "#58595B", // AU Grey Text
+            "#AE1857", // Plum
+            "#5B7E96", // Blue Grey
+            "#FFB71B", // Amber
+            "#1DCAD3", // Cyan
+            "#FF5C35", // Deep Orange
+            "#009383", // Teal
+            "#8F4899", // Purple
+            "#DAE343", // Lime
+            "#385CAD", // Mauve
+            "#E81F76"  // Pink
+        ];
+    
+        // Select a random background color
+        $bgColor = $colors[array_rand($colors)];
+    
+        // Convert HEX to RGB to determine brightness
+        list($r, $g, $b) = sscanf($bgColor, "#%02x%02x%02x");
+        $brightness = ($r * 299 + $g * 587 + $b * 114) / 1000; // Standard luminance formula
+    
+        // Choose text color based on brightness
+        $textColor = ($brightness < 128) ? "#FFFFFF" : "#000000"; // Dark background -> white text, Light background -> black text
+    
+        // Return inline CSS styles
+        return 'style="color: ' . $textColor . '; background: ' . $bgColor . ';"';
     }
 }

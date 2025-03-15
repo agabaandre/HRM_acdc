@@ -66,6 +66,14 @@ class Dashboard_mdl extends CI_Model
         return $result1 = $this->db->query($sql1)->num_rows();
 
     }
+    function staff_renewal()
+    {
+        //self::update_contract_status();
+        $sql1 = "SELECT s.staff_id FROM  staff s,staff_contracts sc WHERE s.staff_id=sc.staff_id AND sc.status_id IN(7)";
+
+        return $result1 = $this->db->query($sql1)->num_rows();
+
+    }
     public function due_contracts()
     {
         $sql3 = "SELECT staff_id AS due FROM  staff_contracts WHERE status_id=2 ";

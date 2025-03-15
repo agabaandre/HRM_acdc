@@ -13,7 +13,7 @@ class Staff_mdl extends CI_Model
 	}
 
 
-	public function get_active_staff_data($limit=FALSE, $start=FALSE, $filters=array())
+	public function get_active_staff_data($filters=array(),$limit=FALSE, $start=FALSE)
 {
     $this->db->select('staff.*, staff_contracts.*, jobs.*, jobs_acting.*, grades.*, 
                         contracting_institutions.*, funders.*, contract_types.*, 
@@ -32,7 +32,7 @@ class Staff_mdl extends CI_Model
 	if (!empty($filters)) { // Ensure filters are not empty
 		foreach ($filters as $key => $value) {
 			if (!empty($value)&&($key!='staff_id')) { // Apply only if value is not empty
-				$this->db->like("staff.$key", $value,'start'); // Use table alias
+				$this->db->where("staff.$key", $value); // Use table alias
 			}
 			elseif($key=='staff_id'){
 				$this->db->where("staff.$key", $value);
@@ -49,17 +49,17 @@ class Staff_mdl extends CI_Model
 	
 
     // Joins with Aliases
-    $this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id');
-    $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
-    $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
-    $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
-    $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id');
-    $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id');
-    $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id');
-    $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id');
-    $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id');
-    $this->db->join('status', 'status.status_id = staff_contracts.status_id');
-    $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id');
+    $this->db->join('staff_contracts', 'staff_contracts.staff_id = staff.staff_id','left');
+    $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id','left');
+    $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id','left');
+    $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id','left');
+    $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id','left');
+    $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id','left');
+    $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id','left');
+    $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id','left');
+    $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id','left');
+    $this->db->join('status', 'status.status_id = staff_contracts.status_id','left');
+    $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id','left');
 
     // Apply pagination limit
     if ($limit && $csv!=1) {
@@ -68,7 +68,7 @@ class Staff_mdl extends CI_Model
 
     $query = $this->db->get();
 
-	// dd($this->db->last_query());
+	 //dd($this->db->last_query());
 
    if($csv==1){
     return  $query->result_array();

@@ -1,6 +1,6 @@
               <!-- edit model -->
               <!-- edit employee data model -->
-              <div class="modal fade" id="update_institution<?php echo $unit->unit_id; ?>" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
+              <div class="modal fade " id="update_institution<?php echo $unit->unit_id; ?>" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
                   <div class="modal-content">
                     <div class="modal-header">
