@@ -24,7 +24,6 @@
 	}
 </style>
 
-
 <div class="card">
 	<div class="col-md-12" style="float: right;">
 		<a href="<?php echo base_url() ?>staff/new" class="btn   btn-dark btn-sm btn-bordered">+ Add New Staff</a>
@@ -34,20 +33,22 @@
 			<?php //print_r($this->session->tempdata());
 			?>
 		</div>
-		<?php echo form_open_multipart(base_url('staff'), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
+		<?php echo form_open_multipart(base_url('staff/all_staff'), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
 		<div class="row">
 			<div class="col-md-3">
 				<label>Name</label>
-				<input type="text" name="lname" class="form-control">
+				<input type="text" name="lname" class="form-control" value="<?php echo $this->input->post('lname')?>">
 			</div>
 
 
 			<div class="col-md-2">
 				<label>Gender</label>
 				<select class="form-control select2" name="gender">
-					<option value="Male">Male
+				<option value="">Select Gender
+				</option>
+					<option value="Male" <?php if($this->input->post('gender')=='Male'){ echo 'selected';}?>>Male
 					</option>
-					<option value="Female">Female
+					<option value="Female" <?php if($this->input->post('gender')=='Female'){ echo 'selected';}?>>Female
 					</option>
 				</select>
 			</div>
@@ -57,10 +58,13 @@
 			</div>
 			<div class="col-md-2">
 				<label>Nationaility</label>
-				<select class="form-control select2" name="nataionality_id" multiple>
+				<select class="form-control select2" name="nationality_id">
+				<option  value =''>Select Nationality</option>
 					<?php $nationalities = $this->db->get('nationalities')->result();
+					
 					foreach ($nationalities as $nationality) : ?>
-						<option value="<?php echo $nationality->nationality_id; ?>"><?php echo $nationality->nationality; ?>
+					     
+						<option value="<?php echo $n = $nationality->nationality_id; ?>"<?php if($this->input->post('nationality_id')==$n){ echo 'selected';}?>><?php echo $nationality->nationality; ?>
 						</option>
 					<?php endforeach;
 
@@ -68,22 +72,46 @@
 
 				</select>
 			</div>
-
+			<div class="col-md-2 mt-4" style="display:inline-flex;">
+			<button type="submit" class="btn btn-sm btn-secondary" style="margin-right:2px;"><i class="fa fa-exchange-alt"></i>Apply</button>
+			<a href="<?php echo base_url()?>staff/all_staff/1" class="btn btn-sm btn-secondary"><i class="fa fa-file-csv"></i>Export</a>
+            </div>
 
 		</div>
 
 		
 	
-			<button type="submit" class="btn btn-secondary mt-2"><i class="fa fa-exchange-alt"></i>Apply</button>
-			<a href="<?php echo base_url()?>staff/all_staff/1" class="btn btn-secondary mt-2"><i class="fa fa-file-csv"></i>Export</a>
+		
 			
 	</div>
 
 
 	</form>
+	<?php echo $records ." Total Staff";
+	if(!empty($this->input->post())){
+	?> 
+
+	<p>Result Limited By <?php foreach($this->input->post() as $key=>$value) :
+	if($value!= ""){
+		if($key=='nationality_id'){
+			$cname= getcountry($value);
+
+		}
+		else{
+			$cname=$value;
+		}
+		
+		echo ucwords(str_replace('nationality_id','Nationality', str_replace('lname','Name',$key))).': '. $cname. ',';
+	}
+	
+	
+	endforeach;
+	
+}?>
+	</p>
 	<?php echo $links ?>
 	<div class=" table-responsive">
-		<table class="table table-striped table-bordered mydata">
+		<table class="table table-striped table-bordered">
 			<thead>
 				<tr>
 					<th>#</th>
@@ -433,6 +461,8 @@
 <?php endforeach; ?>
 </tbody>
 </table>
+<?php echo $records ." Total Staff";?>
+<?php echo $links ?>
 </div>
 </div>
 </div>
