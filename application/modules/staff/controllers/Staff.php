@@ -76,16 +76,20 @@ class Staff extends MX_Controller
 	}
 	
 	
-	public function all_staff($csv=false)
+
+	public function all_staff($csv=FALSE)
 	{
 
 		$data['module'] = $this->module;
 		$data['title'] = "Staff";
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
 		$filters = $this->input->post();
-		$filters['csv']=$csv;
-		$data['staffs'] = $this->staff_mdl->get_all_staff_data($per_page = 20, $page, $filters);
-		//dd($data);
+		$filters['csv'] =$csv;
+		
+        $count = count($this->staff_mdl->get_all_staff_data($filters));
+		$data['records'] = $count;
+		//dd($count);
+		$data['staffs'] = $this->staff_mdl->get_all_staff_data($filters,$per_page = 20, $page);
 		$staffs= $data['staffs'];
 		$file_name = 'All Africa CDC Staff_'.date('dd-mm-yyyy').'.csv';
 		if($csv==1){
@@ -94,9 +98,11 @@ class Staff extends MX_Controller
 			render_csv_data($staff, $file_name,true);
 
 		}
-		$data['links'] = pagination('staff/index', count($data['staffs']), 3);
+		//dd($data);
+		$data['links'] = pagination('staff/index', $count, $per_page = 20);
 		render('all_staff', $data);
 	}
+
 	// }
 	public function get_staff_data_ajax()
 	{
