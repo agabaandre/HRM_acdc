@@ -277,47 +277,114 @@ class Staff_mdl extends CI_Model
 	}
 
 
-	public function get_status($flag) 
-{
-	$queryBuilder = $this->db->select('
-	    staff.*,
-        staff_contracts.*,
-		nationalities.*,
-        jobs.job_name,
-        jobs_acting.job_acting,
-        grades.grade,
-        contracting_institutions.contracting_institution,
-        funders.funder,
-        contract_types.contract_type,
-        duty_stations.duty_station_name,
-        divisions.division_name,
-        status.status
+// 	public function get_status($flag) 
+// {
+// 	$queryBuilder = $this->db->select('
+// 	    staff.*,
+//         staff_contracts.*,
+// 		nationalities.*,
+//         jobs.job_name,
+//         jobs_acting.job_acting,
+//         grades.grade,
+//         contracting_institutions.contracting_institution,
+//         funders.funder,
+//         contract_types.contract_type,
+//         duty_stations.duty_station_name,
+//         divisions.division_name,
+//         status.status
 		
         
-    ');
+//     ');
 
-    $this->db->from('staff_contracts');
-    $this->db->where('staff_contracts.status_id', $flag);
+//     $this->db->from('staff_contracts');
+//     $this->db->where('staff_contracts.status_id', $flag);
 
-    // Join necessary tables
-    $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id', 'left');
-    $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id', 'left');
-    $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id', 'left');
-    $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id', 'left');
-    $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id', 'left');
-    $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id', 'left');
-    $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id', 'left');
-    $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id', 'left');
-    $this->db->join('status', 'status.status_id = staff_contracts.status_id', 'left');
-    $this->db->join('staff', 'staff.staff_id = staff_contracts.staff_id', 'left');
-    $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id', 'left');
+//     // Join necessary tables
+//     $this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id', 'left');
+//     $this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id', 'left');
+//     $this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id', 'left');
+//     $this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id', 'left');
+//     $this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id', 'left');
+//     $this->db->join('contract_types', 'contract_types.contract_type_id = staff_contracts.contract_type_id', 'left');
+//     $this->db->join('duty_stations', 'duty_stations.duty_station_id = staff_contracts.duty_station_id', 'left');
+//     $this->db->join('divisions', 'divisions.division_id = staff_contracts.division_id', 'left');
+//     $this->db->join('status', 'status.status_id = staff_contracts.status_id', 'left');
+//     $this->db->join('staff', 'staff.staff_id = staff_contracts.staff_id', 'left');
+//     $this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id', 'left');
 
-    // Use DataTables for processing
-    $datatables = new Ngekoding\CodeIgniterDataTables\DataTables($queryBuilder);
-    return $datatables->asObject()->generate();
+//     // Use DataTables for processing
+//     $datatables = new Ngekoding\CodeIgniterDataTables\DataTables($queryBuilder);
+//     return $datatables->asObject()->generate();
+// }
+
+
+public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
+{
+	$this->db->select('
+		sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id, 
+		sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
+		s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
+		s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
+		ci.contracting_institution, ci.contracting_institution_id, 
+		ct.contract_type, n.nationality, d.division_name, 
+		sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, 
+		s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email,s.SAPNO,s.photo,
+		s.private_email, s.physical_location
+	');
+	
+	$this->db->from('staff s');
+	
+	// Joins with explicit aliasing
+	$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+	$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+	$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+	$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+	$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+	$this->db->join('contracting_institutions ci', 'ci.contracting_institution_id = sc.contracting_institution_id', 'left');
+	$this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
+	$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+	$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
+	$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+	$this->db->where('st.status_id', $filters['status_id']);
+
+	// Handle filters dynamically
+	@$csv = $filters['csv'];
+	@$lname = $filters['lname'];
+	unset($filters['lname']);
+	unset($filters['csv']);
+	unset($filters['status_id']);
+
+	if (!empty($filters)) {
+		foreach ($filters as $key => $value) {
+			if (!empty($value) && $key != 'staff_id') {
+				$this->db->where("s.$key", $value);
+			} elseif ($key == 'staff_id') {
+				$this->db->where("s.$key", $value);
+			}
+		}
+	}
+
+	// Search by last name or first name
+	if (!empty($lname)) {
+		$this->db->group_start();
+		$this->db->like('s.lname', $lname, 'both');
+		$this->db->or_like('s.fname', $lname, 'both');
+		$this->db->group_end();
+	}
+
+	
+	// Apply pagination limit if not exporting CSV
+	if ($limit && $csv != 1) {
+		$this->db->limit($limit, $start);
+	}
+
+	$query = $this->db->get();
+
+	// Debugging query (Uncomment for debugging)
+	 //echo $this->db->last_query(); exit;
+
+	return ($csv == 1) ? $query->result_array() : $query->result();
 }
-
-
 	public function getBirthdaysForToday()
 	{
 		// Get the current date
