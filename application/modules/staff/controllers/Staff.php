@@ -11,6 +11,7 @@ class Staff extends MX_Controller
 
 		$this->module = "staff";
 		$this->load->model("staff_mdl",'staff_mdl');
+		$watermark = FCPATH . "assets/images/watermark.png";
 	}
 
 	public function index($csv=FALSE)
@@ -275,10 +276,10 @@ class Staff extends MX_Controller
 	{
 		$data['module'] = $this->module;
 		$data['title'] = "Staff Birthday";
-		$data['today'] = $this->staff_mdl->getBirthdaysForToday();
-		$data['tomorrow'] = $this->staff_mdl->getBirthdaysForTomorrow();
-		$data['week'] = $this->staff_mdl->getBirthdaysForNextSevenDays();
-		$data['month'] = $this->staff_mdl->getBirthdaysForNextThirtyDays();
+		$data['today'] = $this->staff_mdl->getBirthdays(0);
+		$data['tomorrow'] = $this->staff_mdl->getBirthdays(1);
+		$data['week'] = $this->staff_mdl->getBirthdays(7);
+		$data['month'] = $this->staff_mdl->getBirthdays(30);
 		//dd($data['month']);
 		render('staff_birthday', $data);
 	}

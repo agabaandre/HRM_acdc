@@ -385,68 +385,63 @@ public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
 
 	return ($csv == 1) ? $query->result_array() : $query->result();
 }
-	public function getBirthdaysForToday()
-	{
-		// Get the current date
-		$currentDate = date('Y-m-d');
+public function getBirthdays($days)
+{
+    // Get the current date and the date for 30 days from now
+
+ // Assuming it returns an integer
+
+   
+   $currentDate = date('Y-m-d');
+   $nextDays = date('Y-m-d', strtotime($currentDate . "+$days days")); 
 	
-		// Retrieve employees with birthdays for today and with contracts having status_id in (1, 2)
-		return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') = DATE_FORMAT('$currentDate', '%m-%d')")
-			->whereHas('contracts', function ($query) {
-				$query->whereIn('status_id', [1, 2]);
-			})
-			->with('contracts')
-			->get();
-	}
+	
+;
 	
 
-	public function getBirthdaysForTomorrow()
-	{
-		// Get the date for tomorrow
-		$tomorrowDate = date('Y-m-d', strtotime('+1 day'));
+    $this->db->select('
+        sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id, 
+        sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
+        s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
+        s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
+        ci.contracting_institution, ci.contracting_institution_id, 
+        ct.contract_type, n.nationality, d.division_name, 
+        sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, 
+        s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.SAPNO, s.photo,
+        s.private_email, s.physical_location
+    ');
+    
+    $this->db->from('staff s');
+    
+    // Joins with explicit aliasing
+    $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+    $this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+    $this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+    $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+    $this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+    $this->db->join('contracting_institutions ci', 'ci.contracting_institution_id = sc.contracting_institution_id', 'left');
+    $this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
+    $this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+    $this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
+    $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
 
-		// Retrieve employees with birthdays for tomorrow
-		return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') = DATE_FORMAT('$tomorrowDate', '%m-%d')")
-		->whereHas('contracts', function ($query) {
-			$query->whereIn('status_id', [1, 2]);
-		})
-			->with('contracts')
-			->get();
-	}
+    // Filter by active contracts
+    $this->db->where_in('st.status_id', [1, 2,7]);
 
-	public function getBirthdaysForNextSevenDays()
-	{
-		// Get the current date
-		$currentDate = date('Y-m-d');
+    // Filter for employees with birthdays in the next 30 days
+    $this->db->where("DATE_FORMAT(s.date_of_birth, '%m-%d') BETWEEN DATE_FORMAT('$currentDate', '%m-%d') AND DATE_FORMAT('$nextDays', '%m-%d')");
 
-		// Get the date for 7 days from now
-		$nextSevenDays = date('Y-m-d', strtotime('+7 days'));
+    // Ensure only the latest contract per employee
+    $this->db->order_by('sc.staff_id', 'ASC'); 
+    $this->db->order_by('sc.staff_contract_id', 'DESC'); 
+    $this->db->group_by('sc.staff_id'); 
+	// Group by staff_id to get only one contract per employee
 
-		// Retrieve employees with birthdays in the next 7 days
-		return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') BETWEEN DATE_FORMAT('$currentDate', '%m-%d') AND DATE_FORMAT('$nextSevenDays', '%m-%d')")
-		->whereHas('contracts', function ($query) {
-			$query->whereIn('status_id', [1, 2]);
-		})
-			->with('contracts')
-			->get();
-	}
+    $query = $this->db->get()->result();
+	//echo $this->db->last_query(); exit;
+    return ($query);
+}
 
-	public function getBirthdaysForNextThirtyDays()
-	{
-		// Get the current date
-		$currentDate = date('Y-m-d');
-
-		// Get the date for 30 days from now
-		$nextThirtyDays = date('Y-m-d', strtotime('+30 days'));
-
-		// Retrieve employees with birthdays in the next 30 days
-		return Employee::whereRaw("DATE_FORMAT(date_of_birth, '%m-%d') BETWEEN DATE_FORMAT('$currentDate', '%m-%d') AND DATE_FORMAT('$nextThirtyDays', '%m-%d')")
-		->whereHas('contracts', function ($query) {
-			$query->whereIn('status_id', [1, 2]);
-		})
-			->with('contracts')
-			->get();
-	}
 
 	public function add_staff($sapno, $title, $fname, $lname, $oname, $dob, $gender, $nationality_id, $initiation_date, $tel_1, $tel_2, $whatsapp, $work_email, $private_email, $physical_location)
 	{
