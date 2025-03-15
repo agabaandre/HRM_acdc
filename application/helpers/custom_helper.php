@@ -775,4 +775,46 @@ if (!function_exists('log_user_action')) {
         // Return inline CSS styles
         return 'style="color: ' . $textColor . '; background: ' . $bgColor . ';"';
     }
+    function print_data($data, $file_name,$orient, $view, $watermark)  
+ {
+    // Load ML_pdf Library
+    $ci = &get_instance();
+    if($orient =='L'){
+    $ci->load->library('ML_pdf');
+    }
+    else{
+    $ci->load->library('M_pdf');
+    }
+
+    // Define PDF File Name
+    $filename = $file_name . ".pdf"; 
+
+    // Set Execution Time to Unlimited
+    ini_set('max_execution_time', 0);
+
+
+    // Load the Specified View Dynamically and Convert to HTML
+    $html = $ci ->load->view($view, $data, true);
+    $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+
+    // Set Watermark Image (if applicable)
+    if (!empty($watermark)) {
+        $ci->ml_pdf->pdf->SetWatermarkImage($watermark);
+        $ci->ml_pdf->pdf->showWatermarkImage = true;
+    }
+
+    // Set Footer with Timestamp and Source
+    date_default_timezone_set("Africa/Kampala");
+    $ci->ml_pdf->pdf->SetHTMLFooter(
+        "Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
+        "Source: iHRIS - Staff Tracker " . base_url()
+    );
+
+    // Generate the PDF with the Staff Profile Data
+    $ci->ml_pdf->pdf->WriteHTML($PDFContent);
+
+    // Output the PDF (Display in Browser)
+    $ci->ml_pdf->pdf->Output($filename, 'I');
+}
+
 }

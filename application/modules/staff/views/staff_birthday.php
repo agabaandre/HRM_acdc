@@ -48,7 +48,9 @@
 
                         <?php
                         $i = 1;
-                        foreach ($today as $data) : ?>
+                        foreach ($today as $data) : 
+                        //    dd($today);
+                        ?>
                             <tr>
                                 <td><?= $i++ ?></td>
                                 <td><?= $data->title ?></td>
@@ -63,13 +65,13 @@
                                     ?>
                                     
                                 </td>
-                                <td><?= @$data->contracts[0]->grade_name ?></td>
+                                <td><?= @$data->grade ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
                                 <td><?= $data->gender ?></td>
-                                <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
+                                <td><?= @character_limiter($data->job_name, 20) ?></td>
+                                <td><?= @character_limiter(@$data->duty_station_name, 20) ?></td>
+                                <td><?= @character_limiter(@$data->division_name, 20) ?></td>
 
                             </tr>
                         <?php endforeach; ?>
@@ -117,13 +119,13 @@
                                     ?>
                                     
                                 </td>
-                                <td><?= @$data->contracts[0]->grade_name ?></td>
+                                <td><?= @$data->grade ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
                                 <td><?= $data->gender ?></td>
-                                <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
+                                <td><?= @character_limiter($data->job_name, 30) ?></td>
+                                <td><?= @character_limiter(@$data->duty_station_name, 30) ?></td>
+                                <td><?= @character_limiter(@$data->division_name, 6) ?></td>
 
                             </tr>
                         <?php endforeach; ?>
@@ -171,13 +173,13 @@
                                     ?>
                                     
                                 </td>
-                                <td><?= @$data->contracts[0]->grade_name ?></td>
+                                <td><?= @$data->grade ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
                                 <td><?= $data->gender ?></td>
-                                <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
+                                <td><?= @character_limiter($data->job_name, 15) ?></td>
+                                <td><?= @character_limiter(@$data->duty_station_name, 20) ?></td>
+                                <td><?= @character_limiter(@$data->division_name, 6) ?></td>
 
                             </tr>
                         <?php endforeach; ?>
@@ -226,13 +228,13 @@
                                     ?>
                                     
                                 </td>
-                                <td><?= @$data->contracts[0]->grade_name ?></td>
+                                <td><?= @$data->grade ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
                                 <td><?= $data->gender ?></td>
-                                <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
+                                <td><?= @character_limiter($data->job_name, 15) ?></td>
+                                <td><?= @character_limiter(@$data->duty_station_name, 20) ?></td>
+                                <td><?= @character_limiter(@$data->division_name, 6) ?></td>
 
                             </tr>
                         <?php endforeach; ?>

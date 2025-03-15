@@ -105,26 +105,6 @@
       <div class="card-body">
         <div class="d-flex align-items-center">
           <div>
-            <h6 class="mb-0">Staff by Member State</h6>
-          </div>
-        </div>
-        <div>
-          <figure class="highcharts-figure">
-            <div id="container5"></div>
-          </figure>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<!--end row-->
-
-<div class="row">
-  <div class="col-12 col-lg-6 d-flex">
-    <div class="card rounded-1 w-100">
-      <div class="card-body">
-        <div class="d-flex align-items-center">
-          <div>
             <h6 class="mb-0">Staff by Contract Type</h6>
           </div>
         </div>
@@ -136,7 +116,13 @@
       </div>
     </div>
   </div>
-  <div class="col-12 col-lg-6 d-flex">
+  
+</div>
+<!--end row-->
+
+<div class="row">
+ <!-- //--- -->
+  <div class="col-12 col-lg-12 d-flex">
     <div class="card rounded-1 w-100">
       <div class="card-body">
         <div class="d-flex align-items-center">
@@ -147,6 +133,22 @@
         <div>
           <figure class="highcharts-figure">
             <div id="container4"></div>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-12 d-flex">
+    <div class="card rounded-1 w-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div>
+            <h6 class="mb-0">Staff by Member State</h6>
+          </div>
+        </div>
+        <div>
+          <figure class="highcharts-figure">
+            <div id="container5"></div>
           </figure>
         </div>
       </div>
@@ -220,13 +222,13 @@
                                     ?>
                                     
                                 </td>
-                                <td><?= @$data->contracts[0]->grade_name ?></td>
+                                <td><?= @$data->grade ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
                                 <td><?= $data->gender ?></td>
-                                <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
+                                <td><?= @character_limiter($data->job_name, 15) ?></td>
+                                <td><?= @character_limiter(@$data->duty_station_name, 20) ?></td>
+                                <td><?= @character_limiter(@$data->division_name, 6) ?></td>
 
                             </tr>
                         <?php endforeach; ?>
@@ -274,13 +276,13 @@
                                     ?>
                                     
                                 </td>
-                                <td><?= @$data->contracts[0]->grade_name ?></td>
+                                <td><?= @$data->grade ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
                                 <td><?= $data->gender ?></td>
-                                <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
+                                <td><?= @character_limiter($data->job_name, 15) ?></td>
+                                <td><?= @character_limiter(@$data->duty_station_name, 20) ?></td>
+                                <td><?= @character_limiter(@$data->division_name, 20) ?></td>
 
                             </tr>
                         <?php endforeach; ?>
@@ -328,13 +330,13 @@
                                     ?>
                                     
                                 </td>
-                                <td><?= @$data->contracts[0]->grade_name ?></td>
+                                <td><?= @$data->grade ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
                                 <td><?= $data->gender ?></td>
-                                <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
+                                <td><?= @character_limiter($data->job_name, 15) ?></td>
+                                <td><?= @character_limiter(@$data->duty_station_name, 20) ?></td>
+                                <td><?= @character_limiter(@$data->division_name, 6) ?></td>
 
                             </tr>
                         <?php endforeach; ?>
@@ -383,13 +385,13 @@
                                     ?>
                                     
                                 </td>
-                                <td><?= @$data->contracts[0]->grade_name ?></td>
+                                <td><?= @$data->grade ?></td>
                                 <td><?= $data->date_of_birth ?></td>
                                 <td><?= calculate_age($data->date_of_birth) ?></td>
                                 <td><?= $data->gender ?></td>
-                                <td><?= @character_limiter($data->contracts[0]->job_name, 15) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->station_name, 20) ?></td>
-                                <td><?= @character_limiter(@$data->contracts[0]->division_name, 6) ?></td>
+                                <td><?= @character_limiter($data->job_name, 15) ?></td>
+                                <td><?= @character_limiter(@$data->duty_station_name, 20) ?></td>
+                                <td><?= @character_limiter(@$data->division_name, 6) ?></td>
 
                             </tr>
                         <?php endforeach; ?>
