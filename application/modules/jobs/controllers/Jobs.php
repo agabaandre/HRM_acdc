@@ -117,7 +117,7 @@ public function mark_due_contracts() {
 
          
 public function staff_birthday() {
-    $todays = $this->staff_mdl->getBirthdaysForToday();
+    $todays = $this->staff_mdl->getBirthdays(0);
 
     foreach ($todays as $row) {
         // Try to create a DateTime object from the staff member's date_of_birth.

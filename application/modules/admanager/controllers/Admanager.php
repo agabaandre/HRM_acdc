@@ -57,8 +57,8 @@ class Admanager extends CI_Controller {
 		if ($status == 3) {
 			$data['title'] = "Expired Accounts";
 		} 
-		
-		$data['staff'] = $this->staff_mdl->get_status($status);
+		$state['status_id'] = $status;
+		$data['staff'] = $this->staff_mdl->get_status($state);
 	
 	
 		render('manage_domains', $data);
