@@ -321,7 +321,7 @@ class Staff_mdl extends CI_Model
 public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
 {
 	$this->db->select('
-		sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id, 
+		sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id,s.email_status, s.email_disabled_at,s.email_disabled_by,
 		sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
 		s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
 		s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
@@ -345,7 +345,24 @@ public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
 	$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
 	$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
 	$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
-	$this->db->where('st.status_id', $filters['status_id']);
+	$this->db->where_in('st.status_id', ['3,4']);
+	if(($this->uri->segment(2) == 'expired_accounts')&&($this->uri->segment(1) == 'admanager')){
+		$this->db->where('s.work_email IS NOT NULL', null, false); 
+		$this->db->where('s.email_status',1);
+		
+
+	}
+	else if (($this->uri->segment(2) == 'report') && ($this->uri->segment(1) == 'admanager')) {
+		$this->db->where('s.work_email IS NOT NULL', null, false);
+		$this->db->where('s.email_status', 0);
+	   if(!empty($filters['dateto'])){
+		$dfrom = $filters['datefrom'];
+		$dto = $filters['dateto'];
+	   
+		$this->db->where("s.email_disabled_at BETWEEN '$dfrom%' AND '$dto%'", null, false);
+	}
+	}
+	
 
 	// Handle filters dynamically
 	@$csv = $filters['csv'];
@@ -353,14 +370,17 @@ public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
 	unset($filters['lname']);
 	unset($filters['csv']);
 	unset($filters['status_id']);
+	unset($filters['datefrom']);
+	unset($filters['dateto']);
 
 	if (!empty($filters)) {
 		foreach ($filters as $key => $value) {
-			if (!empty($value) && $key != 'staff_id') {
+			if (!empty($value) && $key != 'staff_id' && $key != 'email_disabled_at') {
 				$this->db->where("s.$key", $value);
 			} elseif ($key == 'staff_id') {
 				$this->db->where("s.$key", $value);
 			}
+			
 		}
 	}
 
