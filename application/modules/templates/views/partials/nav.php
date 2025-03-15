@@ -136,14 +136,16 @@
 					<?php endif; ?>
 					<?php if  (in_array('77', $permissions)): ?>
 						<li class="nav-item dropdown">
-							<a href="<?php echo base_url() ?>performance" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+							<a href="<?php echo base_url() ?>admanager/expired_accounts/3" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class='fa fa-line-chart'></i>
 								</div>
 								<div class="menu-title">Domain Controller</div>
 							</a>
 							<ul class="dropdown-menu">
-								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>admanager/expired_accounts/3"><i class="bx bx-right-arrow-alt"></i>Expired Accounts</a>
+								<?php if (in_array('77', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>admanager/expired_accounts/3"><i class="bx bx-right-arrow-alt"></i>Accounts to Disable</a>
+									</li>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>admanager/report/3"><i class="bx bx-right-arrow-alt"></i>Disabled Accounts</a>
 									</li>
 								<?php endif; ?>
 				

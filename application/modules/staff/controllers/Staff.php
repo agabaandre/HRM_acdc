@@ -28,7 +28,7 @@ class Staff extends MX_Controller
 		//dd($count);
 		$data['staffs'] = $this->staff_mdl->get_active_staff_data($filters,$per_page = 20, $page);
 		$staffs= $data['staffs'];
-		$file_name = 'Africa CDC Staff_'.date('dd-mm-yyyy').'.csv';
+		$file_name = 'Africa CDC Staff_'.date('d-m-Y-H-i').'.csv';
 		if($csv==1){
             $staff = $this->remove_ids($staffs);
 			
@@ -92,7 +92,7 @@ class Staff extends MX_Controller
 		//dd($count);
 		$data['staffs'] = $this->staff_mdl->get_all_staff_data($filters,$per_page = 20, $page);
 		$staffs= $data['staffs'];
-		$file_name = 'All Africa CDC Staff_'.date('dd-mm-yyyy').'.csv';
+		$file_name = 'All Africa CDC Staff_'.date('d-m-Y-H-i').'.csv';
 		if($csv==1){
             $staff = $this->remove_ids($staffs);
 			
@@ -226,7 +226,7 @@ class Staff extends MX_Controller
 		$data['staffs'] = $this->staff_mdl->get_status($filters,$per_page = 20, $page);
 		//dd($data);
 		$staffs= $data['staffs'];
-		$file_name = $data['title'].'_Africa CDC Staff_'.date('dd-mm-yyyy').'.csv';
+		$file_name = $data['title'].'_Africa CDC Staff_'.date('d-m-Y-H-i').'.csv';
 		if($csv==1){
             $staff = $this->remove_ids($staffs);
 			
