@@ -76,6 +76,7 @@
 			<div class="col-md-2 mt-4" style="display:inline-flex;">
 			<button type="submit" class="btn btn-sm btn-secondary" style="margin-right:2px;"><i class="fa fa-exchange-alt"></i>Apply</button>
 			<a href="<?php echo base_url()?>staff/index/1" class="btn btn-sm btn-secondary"><i class="fa fa-file-csv"></i>Export</a>
+			<a href="<?php echo base_url()?>staff/index/1/1" class="btn btn-sm btn-secondary"><i class="fa fa-file-pdf"></i>PDF</a>
             </div>
 
 		</div>
