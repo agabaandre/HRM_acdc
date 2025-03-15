@@ -82,7 +82,7 @@
 
 <script src="<?php echo base_url() ?>assets/js/bootstrap.bundle.min.js"></script>
   <!-- jQuery UI Library -->
-  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/notifications.min.js"></script>
@@ -98,12 +98,14 @@
 <script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/picker.date.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/moment.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.min.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/select2/js/select2.min.js"></script>
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
-</script>
+
 <script src="<?php echo base_url() ?>assets/plugins/smart-wizard/js/jquery.smartWizard.min.js"></script>
+
+    <link href="https://unpkg.com/gijgo@1.9.14/css/gijgo.min.css" rel="stylesheet" type="text/css" />
 
   <!-- FullCalendar & Bootstrap JS Bundle -->
 
@@ -141,9 +143,7 @@
 		allowClear: Boolean($(this).data('allow-clear')),
 	});
 
-	// $('.select2').select2({
-	// 	dropdownParent: $('#renew_contract')
-	// });
+
 
 
 	$('.multiple-select').select2({
@@ -164,12 +164,6 @@
 			});
 		});
 
-		// $(".datepicker").datepicker({
-		// 	dateFormat: 'yy-mm-dd',
-		// 	changeMonth: true,
-		// 	changeYear: true
-		// });
-
 		$('.mydata').DataTable({
 			dom: 'Bfrtip',
 			"paging": true,
@@ -184,8 +178,6 @@
 				['25', '50', '100', '150', '200', 'Show all']
 			],
 			buttons: [
-				'copyHtml5',
-				'excelHtml5',
 				'csvHtml5',
 				'pdfHtml5',
 				'pageLength',
@@ -228,8 +220,9 @@
 		}); // ajax
 	}); //form submit
 </script>
+
 <!-- date picker on employee form -->
-<script>
+<!-- <script>
 	$('.datepicker').pickadate({
 			selectMonths: true,
 			selectYears: true
@@ -243,7 +236,6 @@
 		}),
 		$('.stafftimepicker').pickatime()
 </script>
-<script>
 	$(function() {
 		$('.date-time').bootstrapMaterialDatePicker({
 			format: 'YYYY-MM-DD HH:mm'
@@ -256,7 +248,7 @@
 			format: 'HH:mm'
 		});
 	});
-</script>
+</script> -->
 <script>
 	$(document).ready(function() {
 		// Toolbar extra buttons
@@ -341,6 +333,12 @@
 			$('#smartwizard').smartWizard("setOptions", options);
 			return true;
 		});
+		$(".datepicker").datepicker({
+                changeMonth: true,
+                changeYear: true,
+                yearRange: "1900:2100", // Set the year range
+                dateFormat: "yy-mm-dd"  // Set desired format
+        });
 	});
 
 	var objectiveCounter = 0;
@@ -578,8 +576,7 @@ $(document).ready(function() {
                 ['25', '50', '100', '150', '200', 'Show all']
             ], // Custom length menu options
             "buttons": [
-                'copyHtml5', // Copy to clipboard
-                'excelHtml5', // Export to Excel
+            
                 'csvHtml5', // Export to CSV
                 'pdfHtml5', // Export to PDF
                 'pageLength' // Show page length dropdown
@@ -646,6 +643,16 @@ $(document).ready(function() {
         }
     });
 });
+
+
+$(document).ready(function() {
+    $('.modal').on('shown.bs.modal', function () {
+        $(this).find('.select2').select2({
+            dropdownParent: $(this)
+        });
+    });
+});
+
 </script>
 
 

@@ -18,6 +18,7 @@ class Dashboard extends MX_Controller
 		$data['module'] = $this->dashmodule;
 		$data['title'] = "Main Dashboard";
 		$data['staff'] = $this->dash_mdl->all_staff();
+		$data['staff_renewal'] = $this->dash_mdl->staff_renewal();
 		$data['two_months'] = $this->dash_mdl->due_contracts();
 		$data['expired'] = $this->dash_mdl->expired_contracts();
 		$data['member_states'] = $this->dash_mdl->nationalities();

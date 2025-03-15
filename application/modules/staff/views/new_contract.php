@@ -4,15 +4,7 @@
     <div class="card-body">
         <br />
 
-        <!-- SmartWizard html -->
-        <div id="smartwizard">
-            <!-- <ul class="nav">
-                <li>
-                    <a class="nav-link" href="#step-2"> <strong><></strong></a>
-                </li>
-            </ul> -->
-            <div class="tab-content">
-                <!-- <div id="step-2" class="tab-pane" role="tabpanel" aria-labelledby="step-"> -->
+
                 <?php echo validation_errors(); ?>
                         <?php echo form_open('staff/add_new_contract');
                        // dd($staffs);
@@ -24,7 +16,7 @@
                             <h4>Assign New Contract</h4>
 
                             <div class="form-group">
-                                <label for="job_id">Job:</label>
+                                <label for="job_id">Job:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="job_id" id="job_id" required>
                                     <option value="">Select Job</option>
                                     <?php $jobs = Modules::run('lists/jobs');
@@ -43,7 +35,7 @@
 
                             <div class="form-group">
                                 <label for="job_acting_id">Job Acting:</label>
-                                <select class="form-control select2" name="job_acting_id" id="job_acting_id" required>
+                                <select class="form-control select2" name="job_acting_id" id="job_acting_id">
                                     <option value="">Select Job Acting</option>
                                     <?php $jobsacting = Modules::run('lists/jobsacting');
                                     foreach ($jobsacting as $joba) :
@@ -58,7 +50,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="grade_id">Grade:</label>
+                                <label for="grade_id">Grade:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="grade_id" id="grade_id" required>
                                     <option value="">Select Grade</option>
                                     <?php $lists = Modules::run('lists/grades');
@@ -74,7 +66,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="contracting_institution_id">Contracting Institution:</label>
+                                <label for="contracting_institution_id">Contracting Institution:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="contracting_institution_id" id="contracting_institution_id" required>
                                     <option value="">Select Contracting Institution</option>
                                     <?php $lists = Modules::run('lists/contractors');
@@ -89,7 +81,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="funder_id">Funder:</label>
+                                <label for="funder_id">Funder:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="funder_id" id="funder_id" required>
                                     <option value="">Select Funder</option>
                                     <?php $lists = Modules::run('lists/funder');
@@ -120,7 +112,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="second_supervisor">Second Supervisor:</label>
+                                <label for="second_supervisor">Second Supervisor:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="second_supervisor" id="second_supervisor" required>
                                     <option value="">Select Second Supervisor</option>
                                     <?php $lists = Modules::run('lists/supervisor');
@@ -137,7 +129,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="contract_type_id">Contract Type:</label>
+                                <label for="contract_type_id">Contract Type:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="contract_type_id" id="contract_type_id" required>
                                     <?php $lists = Modules::run('lists/contracttype');
                                     foreach ($lists as $list) :
@@ -152,7 +144,7 @@
                         </div>
                         <div class="col-md-6" style="margin-top:35px;">
                             <div class="form-group">
-                                <label for="duty_station_id">Duty Station:</label>
+                                <label for="duty_station_id">Duty Station:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="duty_station_id" id="duty_station_id" required>
                                     <?php $lists = Modules::run('lists/stations');
                                     foreach ($lists as $list) :
@@ -166,7 +158,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="division_id">Division:</label>
+                                <label for="division_id">Division:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="division_id" id="division_id" required>
                                     <?php $lists = Modules::run('lists/divisions');
                                     foreach ($lists as $list) :
@@ -181,7 +173,7 @@
 
 
                             <div class="form-group">
-                                <label for="unit_id">Unit:</label>
+                                <label for="unit_id">Unit:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="unit_id" id="unit_id">
                                     <option value="">Select a Unit</option>
                             
@@ -189,30 +181,30 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="start_date">Start Date:</label>
-                                <input type="date" class="form-control" value="<?php echo date('mm/dd/yyyy')?>" name="start_date" id="start_date" required >
+                                <label for="start_date">Start Date:<?php echo asterik()?></label>
+                                <input type="text" class="form-control datepicker" name="start_date" id="start_date" required>
                             </div>
 
                             <div class="form-group">
-                                <label for="end_date">End Date:</label>
-                                <input type="date" class="form-control" name="end_date" id="end_date" required>
+                                <label for="end_date">End Date:<?php echo asterik()?></label>
+                                <input type="text" class="form-control datepicker" name="end_date" id="end_date" required>
                             </div>
 
                             <div class="form-group">
-                                <label for="status_id">Contract Status:</label>
+                                <label for="status_id">Contract Status:<?php echo asterik()?></label>
                                 <select class="form-control" name="status_id" id="status_id" required>
                                     <option value="1">Active</option>
 
                                 </select>
                             </div>
 
-                            <div class="form-group">
-                                <label for="file_name">File Name:</label>
+                            <!-- <div class="form-group">
+                                <label for="file_name">File Name:<?php echo asterik()?></label>
                                 <input type="text" class="form-control" name="file_name" id="file_name" required>
-                            </div>
+                            </div> -->
 
                             <div class="form-group">
-                            <label for="file_name">Previous Contract Status:</label>
+                            <label for="file_name">Previous Contract Status:<?php echo asterik()?></label>
                             <select class="form-control" name="previous_contract_status_id" id="status_id" required>
                               <?php 
                               $lists = Modules::run('lists/status');
@@ -241,8 +233,7 @@
                             <div class="form-group" style="float:right;">
                                 <br>
                                 <label for="submit"></label>
-                                <input type="submit" class="btn btn-dark" name="submit" value="Submit">
-                                <input type="reset" class="btn btn-danger" name="submit" value="Reset">
+                                <input type="submit" class="btn btn-dark" name="submit" value="Save">
                             </div>
                             <?php echo form_close(); ?>
                         </div>
@@ -251,8 +242,7 @@
 
                 <!-- </div> -->
             </div>
-        </div>
-    </div>
+   
     
     <script>
     $(document).ready(function() {

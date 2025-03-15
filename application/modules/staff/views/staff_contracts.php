@@ -39,11 +39,10 @@
      
         </div>
         <div class="col-md-2">
-        <a href="<?php echo base_url() ?>staff/new_contract/<?php echo $this_staff->staff_id; ?>" class="btn btn-outline-dark btn-sm btn-bordered ">+ Add New Contract</a>
+        <a href="<?php echo base_url() ?>staff/new_contract/<?php echo $this_staff->staff_id; ?>" class="btn btn-dark btn-sm btn-bordered ">+New / Renew Contract</a>
     </div>
         <div class="col-md-8">
             <h2><?= $this_staff->lname . ' ' . $this_staff->fname; ?></h2>
-            <h4>Personal Information</h4>
             <td><strong>SAPNO:</strong> <?= $this_staff->SAPNO ?></td>
             <td><strong>Nationality:</strong> <?php echo $this_staff->nationality?></td>
         </div>
@@ -97,7 +96,7 @@
                   <td><?= $contract->status; ?></td>
               <td class="text text-center">
               
-                <a class="" onclick="return confirm('You are about to Edit this contract, Continue??? ');" href="#" data-bs-toggle="modal" data-bs-target="#renew_contract<?=$contract->staff_contract_id?>">Edit</a>
+                <a class="" href="#" data-bs-toggle="modal" data-bs-target="#renew_contract<?=$contract->staff_contract_id?>">Edit</a>
 
             
 
@@ -134,9 +133,9 @@
                            <input type="hidden" name="staff_contract_id" value="<?php echo $contract->staff_contract_id; ?>">
                            <input type="hidden" name="staff_id" value="<?php echo $contract->staff_id; ?>">
                           <div class="form-group">
-                            <label for="job_id">Job:</label>
+                            <label for="job_id">Job: <?php echo asterik()?></label>
                             <select class="form-control select2" name="job_id" id="job_id" required <?=$readonly?>>
-                              <option value="">Select Job</option>
+                              <option value="">Select Job </option>
                               <?php
 
                               $jobs = Modules::run('lists/jobs');
@@ -155,7 +154,7 @@
 
                           <div class="form-group">
                             <label for="job_acting_id">Job Acting:</label>
-                            <select class="form-control select2" name="job_acting_id" id="job_acting_id" required <?=$readonly?>>
+                            <select class="form-control select2" name="job_acting_id" id="job_acting_id" <?=$readonly?>>
                               <option value="">Select Job Acting</option>
                               <?php $jobsacting = Modules::run('lists/jobsacting');
                               foreach ($jobsacting as $joba) :
@@ -170,7 +169,7 @@
                           </div>
 
                           <div class="form-group">
-                            <label for="grade_id">Grade:</label>
+                            <label for="grade_id">Grade: <?php echo asterik()?></label>
                             <select class="form-control select2" name="grade_id" id="grade_id" required <?=$readonly?>>
                               <option value="">Select Grade</option>
                               <?php $lists = Modules::run('lists/grades');
@@ -186,7 +185,7 @@
                           </div>
 
                           <div class="form-group">
-                            <label for="contracting_institution_id">Contracting Institution:</label>
+                            <label for="contracting_institution_id">Contracting Institution: <?php echo asterik()?></label>
                             <select class="form-control select2" name="contracting_institution_id" id="contracting_institution_id" required <?=$readonly?>>
                               <option value="">Select Contracting Institution</option>
                               <?php $lists = Modules::run('lists/contractors');
@@ -201,7 +200,7 @@
                           </div>
 
                           <div class="form-group">
-                            <label for="funder_id">Funder:</label>
+                            <label for="funder_id">Funder: <?php echo asterik()?></label>
                             <select class="form-control select2" name="funder_id" id="funder_id" required <?=$readonly?>>
                               <option value="">Select Funder</option>
                               <?php $lists = Modules::run('lists/funder');
@@ -215,7 +214,7 @@
                           </div>
 
                           <div class="form-group">
-                            <label for="first_supervisor">First Supervisor:</label>
+                            <label for="first_supervisor">First Supervisor: <?php echo asterik()?></label>
                             <select class="form-control select2" name="first_supervisor" id="first_supervisor" required <?=$readonly?>>
                               <option value="">Select First Supervisor</option>
                               <?php $lists = Modules::run('lists/supervisor');
@@ -230,7 +229,7 @@
                           </div>
 
                           <div class="form-group">
-                            <label for="second_supervisor">Second Supervisor:</label>
+                            <label for="second_supervisor">Second Supervisor: <?php echo asterik()?></label>
                             <select class="form-control select2" name="second_supervisor" id="second_supervisor" <?=$readonly?>>
                               <option value="">Select Second Supervisor</option>
                               <?php $lists = Modules::run('lists/supervisor');
@@ -245,7 +244,7 @@
                           </div>
 
                           <div class="form-group">
-                            <label for="contract_type_id">Contract Type:</label>
+                            <label for="contract_type_id">Contract Type: <?php echo asterik()?></label>
                             <select class="form-control select2" name="contract_type_id" id="contract_type_id" required <?=$readonly?>>
                               <?php $lists = Modules::run('lists/contracttype');
                               foreach ($lists as $list) :
@@ -260,7 +259,7 @@
                         </div>
                         <div class="col-md-6" style="margin-top:35px;">
                           <div class="form-group">
-                            <label for="duty_station_id">Duty Station:</label>
+                            <label for="duty_station_id">Duty Station: <?php echo asterik()?></label>
                             <select class="form-control select2" name="duty_station_id" id="duty_station_id" required <?=$readonly?>>
                               <?php $lists = Modules::run('lists/stations');
                               foreach ($lists as $list) :
@@ -274,7 +273,7 @@
                           </div>
 
                           <div class="form-group">
-                            <label for="division_id">Division:</label>
+                            <label for="division_id">Division: <?php echo asterik()?></label>
                             <select class="form-control select2" name="division_id" id="division_id" required <?=$readonly?>>
                               <?php $lists = Modules::run('lists/divisions');
                               foreach ($lists as $list) :
@@ -288,18 +287,18 @@
                           </div>
 
                           <div class="form-group">
-                            <label for="start_date">Start Date:</label>
+                            <label for="start_date">Start Date: <?php echo asterik()?></label>
                             <input type="text" class="form-control datepicker" value="<?php echo $contract->start_date; ?>" name="start_date" id="start_date" required <?=$readonly?>>
                           </div>
 
                           <div class="form-group">
-                            <label for="end_date">End Date:</label>
+                            <label for="end_date">End Date: <?php echo asterik()?></label>
                             <input type="text" class="form-control datepicker" value="<?php echo $contract->end_date; ?>" name="end_date" id="end_date" required <?=$readonly?>>
                           </div>
 
                           <div class="form-group">
-                            <label for="status_id">Contract Status:</label>
-                          <select class="form-control" name="status_id" id="status_id" required>
+                            <label for="status_id">Contract Status: <?php echo asterik()?></label>
+                          <select class="form-control select2" name="status_id" id="status_id" required>
                               <?php 
                               $lists = Modules::run('lists/status');
                               foreach ($lists as $list) :
@@ -337,8 +336,8 @@
                           <div class="form-group" style="float:right;">
                             <br>
                             <label for="submit"></label>
-                            <input type="submit" class="btn btn-dark"  value="Submit">
-                            <input type="reset" class="btn btn-danger" value="Reset">
+                            <input type="submit" class="btn btn-dark"  value="Save">
+  
                           </div>
 
                           <?php echo form_close(); ?>

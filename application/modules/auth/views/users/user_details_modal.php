@@ -24,7 +24,7 @@
               <?php endforeach; ?>
             </select>
           </div>
-          <input type="hidden" name="user_id" value="<?php echo $user->id; ?>">
+          <input type="hidden" name="user_id" value="<?php echo $user->user_id; ?>">
           <div class="text-end">
             <button type="submit" class="btn btn-info">Save Changes</button>
           </div>
