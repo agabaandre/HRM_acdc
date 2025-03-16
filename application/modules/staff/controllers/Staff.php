@@ -48,6 +48,20 @@ class Staff extends MX_Controller
 		render('staff_table', $data);
 	}
 
+	public function profile($profile){
+        $filters['staff_id']=$profile;
+	
+		$data['staffs'] = $this->staff_mdl->get_all_staff_data($filters,$per_page = 20, $page=0);
+		
+	
+		$pdf_name = $data['staffs'][0]->lname.'_'.$data['staffs'][0]->fname.'_'.date('d-m-Y-H-i').'.pdf';
+		
+		$this->print_data($data, $pdf_name,'P','pdfs/staff_profile');
+		
+		
+
+	}
+
 	function print_data($staffs, $file_name,$orient,$view)  
 	{
 	   if($orient =='L'){
@@ -69,22 +83,46 @@ class Staff extends MX_Controller
 	   //exit;
 	   $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
 	   // Set Watermark Image (if applicable)
-	   if (!empty($watermark)) {
+		
+
+	   if($orient =='L'){
+		if (!empty($watermark)) {
 		$this->load->ml_pdf->pdf->SetWatermarkImage($watermark);
 		$this->load->ml_pdf->pdf->showWatermarkImage = true;
-	   }
-	   // Set Footer with Timestamp and Source
-	   date_default_timezone_set("Africa/Addis Ababa");
-	   $this->load->ml_pdf->pdf->SetHTMLFooter(
-		   "Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
-		   "Source: Africa CDC - Staff Tracker " . base_url()
-	   );
-   
-	   // Generate the PDF with the Staff Profile Data
-	   $this->load->ml_pdf->pdf->WriteHTML($PDFContent);
-   
-	   // Output the PDF (Display in Browser)
-	   $this->load->ml_pdf->pdf->Output($filename, 'I');
+		}
+		// Set Footer with Timestamp and Source
+		date_default_timezone_set("Africa/Addis Ababa");
+		$this->load->ml_pdf->pdf->SetHTMLFooter(
+			"Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
+			"Source: Africa CDC - Staff Tracker " . base_url()
+		);
+	
+		// Generate the PDF with the Staff Profile Data
+		$this->load->ml_pdf->pdf->WriteHTML($PDFContent);
+	
+		// Output the PDF (Display in Browser)
+		$this->load->ml_pdf->pdf->Output($filename, 'I');
+		}
+		else{
+		if (!empty($watermark)) {
+		$this->load->m_pdf->pdf->SetWatermarkImage($watermark);
+		$this->load->m_pdf->pdf->showWatermarkImage = true;
+		}
+		
+		// Set Footer with Timestamp and Source
+		date_default_timezone_set("Africa/Addis Ababa");
+		$this->load->m_pdf->pdf->SetHTMLFooter(
+			"Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
+			"Source: Africa CDC - Staff Tracker " . base_url()
+		);
+	
+		// Generate the PDF with the Staff Profile Data
+		$this->load->m_pdf->pdf->WriteHTML($PDFContent);
+	
+		// Output the PDF (Display in Browser)
+		$this->load->m_pdf->pdf->Output($filename, 'I');
+		}
+	   
    }
    
 	function remove_ids($staffs = []) {
