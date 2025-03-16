@@ -39,7 +39,7 @@
      $status = $this->uri->segment(3);
     echo form_open_multipart(base_url('staff/contract_status/'.$status), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
 		<div class="row">
-			<div class="col-md-3">
+			<div class="col-md-2">
 				<label>Name</label>
 				<input type="text" name="lname" class="form-control" value="<?php echo $this->input->post('lname')?>">
 			</div>
@@ -76,9 +76,9 @@
 
 				</select>
 			</div>
-			<div class="col-md-2 mt-4" style="display:inline-flex;">
-			<button type="submit" class="btn btn-sm btn-secondary" style="margin-right:2px;"><i class="fa fa-exchange-alt"></i>Apply</button>
-			<a href='<?php echo base_url("staff/contract_status/".$status."/1")?>' class="btn btn-sm btn-secondary"><i class="fa fa-file-csv"></i>Export</a>
+			<div class="col-md-3 mt-4" style="display:inline-flex;">
+			<button type="submit" class="btn btn-sm btn-success" style="margin-right:2px;"><i class="fa fa-exchange-alt"></i>Apply</button>
+			<a href='<?php echo base_url("staff/contract_status/".$status."/1")?>' class="btn btn-sm btn-secondary" style="margin-right:2px;"><i class="fa fa-file-csv"></i>Export</a>
 			<a href="<?php echo base_url("staff/contract_status/".$status."/0/1")?>" class="btn btn-sm btn-secondary"><i class="fa fa-file-pdf"></i>PDF</a>
            
             </div>
