@@ -38,8 +38,8 @@ class Staff extends MX_Controller
 		}
 		elseif($pdf==1){
 			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
-			$staffs = $data['staffs'];
-			$this->print_data($staffs, $pdf_name,'L','pdfs/staff');
+			
+			$this->print_data($data, $pdf_name,'L','pdfs/staff');
 		
 		}
 		//dd($data);
@@ -62,9 +62,9 @@ class Staff extends MX_Controller
 	   ini_set('max_execution_time', 0);
 	   // Load the Specified View Dynamically and Convert to HTML
 
-	   $data['staffs'] = $staffs;
+	   
 	  // dd($data);
-	   $html =  $this->load->view($view, $data,true);
+	   $html =  $this->load->view($view, $staffs,true);
 	   //exit;
 	   $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
 	   // Set Watermark Image (if applicable)
@@ -148,8 +148,8 @@ class Staff extends MX_Controller
 		}
 		elseif($pdf==1){
 			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
-			$staffs = $data['staffs'];
-			$this->print_data($staffs, $pdf_name,'L','pdfs/staff');
+			
+			$this->print_data($data, $pdf_name,'L','pdfs/staff');
 		
 		}
 		//dd($data);
@@ -288,8 +288,8 @@ class Staff extends MX_Controller
 		}
 		elseif($pdf==1){
 			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
-			$staffs = $data['staffs'];
-			$this->print_data($staffs, $pdf_name,'L','pdfs/staff');
+		
+			$this->print_data($data, $pdf_name,'L','pdfs/staff');
 		
 		}
 		

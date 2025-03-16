@@ -26,7 +26,7 @@
         <div class="header">
             <img src="<?php echo base_url(); ?>/assets/images/AU_CDC_Logo-800.png" alt="Africa CDC Logo">
         </div>
-        <div class="title">Staff Report</div>
+        <div class="title"><?php echo $title?></div>
         <div class="table-container">
             <table>
                 <thead>
