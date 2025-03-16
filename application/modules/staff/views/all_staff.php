@@ -196,14 +196,14 @@
 									<div class="toolbar hidden-print">
 										<div class="text-end" style="margin-right:10px;">
 											<a href="#" data-bs-toggle="modal" class="btn   btn-dark btn-sm btn-bordered btn-print" data-bs-target="#edit_profile<?php echo $data->staff_id; ?>">Edit</a>
-											<a href="#" class="btn   btn-dark btn-sm btn-bordered btn-print" onclick="printPage()">Print</a>
+											<a href="<?php echo base_url("staff/profile/".$data->staff_id)?>" class="btn   btn-dark btn-sm btn-bordered btn-print" onclick="">Print</a>
 										</div>
 										<hr>
 									</div>
 									<div class="modal-body" id="worker_profile">
 										<div class="col-md-12 d-flex justify-content-center p-5">
 											<div>
-												<img src="<?php echo base_url() ?>/assets/images/AU_CDC_Logo-800.png" width="300">
+												<img src="<?php echo base_url() ?>/assets/images/AU_CDC_Logo-800.png" width="150">
 											</div>
 										</div>
 										<div class="row justify-content-center">
