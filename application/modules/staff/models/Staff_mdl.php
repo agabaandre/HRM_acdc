@@ -45,9 +45,11 @@ class Staff_mdl extends CI_Model
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
+		@$pdf = $filters['pdf'];
 		@$lname = $filters['lname'];
 		unset($filters['lname']);
 		unset($filters['csv']);
+		unset($filters['pdf']);
 	
 		if (!empty($filters)) {
 			foreach ($filters as $key => $value) {
@@ -68,7 +70,7 @@ class Staff_mdl extends CI_Model
 		}
 		$this->db->order_by('fname','ASC');
 		// Apply pagination limit if not exporting CSV
-		if ($limit && $csv != 1) {
+		if (($limit && $csv != 1 && $pdf != 1))  {
 			$this->db->limit($limit, $start);
 		}
 	
@@ -116,9 +118,11 @@ class Staff_mdl extends CI_Model
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
+	    @$pdf = $filters['pdf'];
 		@$lname = $filters['lname'];
 		unset($filters['lname']);
 		unset($filters['csv']);
+		unset($filters['pdf']);
 	
 		if (!empty($filters)) {
 			foreach ($filters as $key => $value) {
@@ -139,7 +143,7 @@ class Staff_mdl extends CI_Model
 		}
 		$this->db->order_by('fname','ASC');
 		// Apply pagination limit if not exporting CSV
-		if ($limit && $csv != 1) {
+		if (($limit && $csv != 1 && $pdf != 1))  {
 			$this->db->limit($limit, $start);
 		}
 	
@@ -306,10 +310,13 @@ public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
 	$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
 	$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
 	$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
-	$this->db->where_in('st.status_id', ['3,4']);
+	
+	$this->db->where_in('sc.status_id', $filters['status_id']);
 	if(($this->uri->segment(2) == 'expired_accounts')&&($this->uri->segment(1) == 'admanager')){
 		$this->db->where('s.work_email IS NOT NULL', null, false); 
 		$this->db->where('s.email_status',1);
+		$this->db->where_in('st.status_id', ['3,4']);
+		
 		
 
 	}
@@ -327,9 +334,11 @@ public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
 
 	// Handle filters dynamically
 	@$csv = $filters['csv'];
+	@$pdf = $filters['pdf'];
 	@$lname = $filters['lname'];
 	unset($filters['lname']);
 	unset($filters['csv']);
+	unset($filters['pdf']);
 	unset($filters['status_id']);
 	unset($filters['datefrom']);
 	unset($filters['dateto']);
@@ -355,7 +364,7 @@ public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
 
 	$this->db->order_by('fname','ASC');
 	// Apply pagination limit if not exporting CSV
-	if ($limit && $csv != 1) {
+	if (($limit && $csv != 1 && $pdf != 1)) {
 		$this->db->limit($limit, $start);
 	}
 
