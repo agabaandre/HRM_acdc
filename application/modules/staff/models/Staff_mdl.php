@@ -94,9 +94,9 @@ class Staff_mdl extends CI_Model
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
 			ct.contract_type, n.nationality, d.division_name, 
-			sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, 
+			sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, sc.start_date,sc.end_date,sc.comments,
 			s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email,s.SAPNO,s.photo,
-			s.private_email, s.physical_location
+			s.private_email, s.physical_location,f.funder
 		');
 		
 		$this->db->from('staff s');
@@ -107,6 +107,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
 		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
 		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+		$this->db->join('funders f', 'f.funder_id = sc.funder_id', 'left');
 		$this->db->join('contracting_institutions ci', 'ci.contracting_institution_id = sc.contracting_institution_id', 'left');
 		$this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
 		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
