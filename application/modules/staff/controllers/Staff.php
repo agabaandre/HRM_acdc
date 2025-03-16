@@ -19,10 +19,11 @@ class Staff extends MX_Controller
 	{
 
 		$data['module'] = $this->module;
-		$data['title'] = "Staff";
+		$data['title'] = "Current Staff";
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
 		$filters = $this->input->post();
 		$filters['csv'] =$csv;
+		$filters['pdf'] =$pdf;
 		
         $count = count($this->staff_mdl->get_active_staff_data($filters));
 		$data['records'] = $count;
@@ -37,7 +38,7 @@ class Staff extends MX_Controller
 
 		}
 		elseif($pdf==1){
-			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
+			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.pdf';
 			
 			$this->print_data($data, $pdf_name,'L','pdfs/staff');
 		
@@ -57,7 +58,7 @@ class Staff extends MX_Controller
 	   }
 	   // Define PDF File Name
 	   $watermark = FCPATH . "assets/images/AU_CDC_Logo-800.png";
-	   $filename = $file_name . ".pdf"; 
+	   $filename = $file_name; 
 	   // Set Execution Time to Unlimited
 	   ini_set('max_execution_time', 0);
 	   // Load the Specified View Dynamically and Convert to HTML
@@ -129,10 +130,11 @@ class Staff extends MX_Controller
 	{
 
 		$data['module'] = $this->module;
-		$data['title'] = "Staff";
+		$data['title'] = "All Staff (Active, Due, Expired, Under Renewal)";
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
 		$filters = $this->input->post();
 		$filters['csv'] =$csv;
+		$filters['pdf'] =$pdf;
 		
         $count = count($this->staff_mdl->get_all_staff_data($filters));
 		$data['records'] = $count;
@@ -147,7 +149,7 @@ class Staff extends MX_Controller
 
 		}
 		elseif($pdf==1){
-			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
+			$pdf_name = 'Africa-CDC-All_Staff_'.date('d-m-Y-H-i').'.pdf';
 			
 			$this->print_data($data, $pdf_name,'L','pdfs/staff');
 		
@@ -271,6 +273,7 @@ class Staff extends MX_Controller
 		$page = ($this->uri->segment(4)) ? $this->uri->segment(4) : 0;
 		$filters = $this->input->post();
 		$filters['csv'] =$csv;
+		$filters['pdf'] =$pdf;
 		$filters['status_id'] =$status;	
 		
         $count = count($this->staff_mdl->get_status($filters));
@@ -287,10 +290,8 @@ class Staff extends MX_Controller
 
 		}
 		elseif($pdf==1){
-			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
-		
+			$pdf_name = str_replace(' ','',$data['title']) .'_Africa-CDC-Staff_'.date('d-m-Y-H-i').'.pdf';
 			$this->print_data($data, $pdf_name,'L','pdfs/staff');
-		
 		}
 		
 		//dd($data);
