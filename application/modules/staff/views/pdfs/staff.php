@@ -26,7 +26,7 @@
         <div class="header">
             <img src="<?php echo base_url(); ?>/assets/images/AU_CDC_Logo-800.png" alt="Africa CDC Logo">
         </div>
-        <div class="title">Contract Status Report</div>
+        <div class="title">Staff Report</div>
         <div class="table-container">
             <table>
                 <thead>
@@ -45,21 +45,26 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $i = 1; foreach ($staffs as $data) : ?>
+                    <?php $i = 1; foreach ($staffs as $data) : 
+                      
+                        ?>
                         <tr>
                             <td><?= $i++ ?></td>
                             <td><?= $data->SAPNO ?></td>
                             <td><?= $data->lname . ' ' . $data->fname ?></td>
                             <td><?= $data->gender ?></td>
                             <td><?= $data->nationality ?></td>
-                            <td><?= $cont->duty_station_name ?></td>
-                            <td><?= $cont->division_name ?></td>
-                            <td><?= $cont->job_name ?></td>
-                            <td><?= $cont->status ?></td>
-                            <td><?= staff_name($cont->first_supervisor) ?></td>
+                            <td><?= $data->duty_station_name ?></td>
+                            <td><?= $data->division_name ?></td>
+                            <td><?= $data->job_name ?></td>
+                            <td><?= $data->status ?></td>
+                            <td><?= staff_name($data->first_supervisor) ?></td>
                             <td><?= $data->work_email ?></td>
                         </tr>
-                    <?php endforeach; ?>
+                    <?php endforeach;
+                    //dd($staffs);
+                    ?>
+                    
                 </tbody>
             </table>
         </div>

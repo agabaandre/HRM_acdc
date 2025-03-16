@@ -11,10 +11,11 @@ class Staff extends MX_Controller
 
 		$this->module = "staff";
 		$this->load->model("staff_mdl",'staff_mdl');
-		$watermark = FCPATH . "assets/images/watermark.png";
+	
+
 	}
 
-	public function index($csv=FALSE)
+	public function index($csv=FALSE,$pdf=FALSE)
 	{
 
 		$data['module'] = $this->module;
@@ -28,17 +29,63 @@ class Staff extends MX_Controller
 		//dd($count);
 		$data['staffs'] = $this->staff_mdl->get_active_staff_data($filters,$per_page = 20, $page);
 		$staffs= $data['staffs'];
-		$file_name = 'Africa CDC Staff_'.date('d-m-Y-H-i').'.csv';
+		$file_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
 		if($csv==1){
             $staff = $this->remove_ids($staffs);
 			
 			render_csv_data($staff, $file_name,true);
 
 		}
+		elseif($pdf==1){
+			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
+			$staffs = $data['staffs'];
+			$this->print_data($staffs, $pdf_name,'L','pdfs/staff');
+		
+		}
 		//dd($data);
 		$data['links'] = pagination('staff/index', $count, $per_page = 20);
 		render('staff_table', $data);
 	}
+
+	function print_data($staffs, $file_name,$orient,$view)  
+	{
+	   if($orient =='L'){
+	   $this->load->library('ML_pdf');
+	   }
+	   else{
+	    $this->load->library('M_pdf');
+	   }
+	   // Define PDF File Name
+	   $watermark = FCPATH . "assets/images/AU_CDC_Logo-800.png";
+	   $filename = $file_name . ".pdf"; 
+	   // Set Execution Time to Unlimited
+	   ini_set('max_execution_time', 0);
+	   // Load the Specified View Dynamically and Convert to HTML
+
+	   $data['staffs'] = $staffs;
+	  // dd($data);
+	   $html =  $this->load->view($view, $data,true);
+	   //exit;
+	   $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+	   // Set Watermark Image (if applicable)
+	   if (!empty($watermark)) {
+		$this->load->ml_pdf->pdf->SetWatermarkImage($watermark);
+		$this->load->ml_pdf->pdf->showWatermarkImage = true;
+	   }
+	   // Set Footer with Timestamp and Source
+	   date_default_timezone_set("Africa/Addis Ababa");
+	   $this->load->ml_pdf->pdf->SetHTMLFooter(
+		   "Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
+		   "Source: Africa CDC - Staff Tracker " . base_url()
+	   );
+   
+	   // Generate the PDF with the Staff Profile Data
+	   $this->load->ml_pdf->pdf->WriteHTML($PDFContent);
+   
+	   // Output the PDF (Display in Browser)
+	   $this->load->ml_pdf->pdf->Output($filename, 'I');
+   }
+   
 	function remove_ids($staffs = []) {
 		$keysToRemove = [
 			'staff_contract_id',
@@ -78,7 +125,7 @@ class Staff extends MX_Controller
 	
 	
 
-	public function all_staff($csv=FALSE)
+	public function all_staff($csv=FALSE,$pdf=FALSE)
 	{
 
 		$data['module'] = $this->module;
@@ -92,12 +139,18 @@ class Staff extends MX_Controller
 		//dd($count);
 		$data['staffs'] = $this->staff_mdl->get_all_staff_data($filters,$per_page = 20, $page);
 		$staffs= $data['staffs'];
-		$file_name = 'All Africa CDC Staff_'.date('d-m-Y-H-i').'.csv';
+		$file_name = 'All-Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
 		if($csv==1){
             $staff = $this->remove_ids($staffs);
 			
 			render_csv_data($staff, $file_name,true);
 
+		}
+		elseif($pdf==1){
+			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
+			$staffs = $data['staffs'];
+			$this->print_data($staffs, $pdf_name,'L','pdfs/staff');
+		
 		}
 		//dd($data);
 		$data['links'] = pagination('staff/index', $count, $per_page = 20);
@@ -193,7 +246,7 @@ class Staff extends MX_Controller
 
 
 
-	public function contract_status($status, $csv=FALSE)
+	public function contract_status($status, $csv=FALSE,$pdf=FALSE)
 	{
 
 		$data['module'] = $this->module;
@@ -233,6 +286,13 @@ class Staff extends MX_Controller
 			render_csv_data($staff, $file_name,true);
 
 		}
+		elseif($pdf==1){
+			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.csv';
+			$staffs = $data['staffs'];
+			$this->print_data($staffs, $pdf_name,'L','pdfs/staff');
+		
+		}
+		
 		//dd($data);
 		$data['links'] = pagination("staff/contract_status/".$status, $count, $per_page = 20);
 		render('contract_status', $data);
