@@ -87,6 +87,8 @@ class Staff_mdl extends CI_Model
 
 	public function get_all_staff_data($filters = array(), $limit = FALSE, $start = FALSE)
 	{
+		 
+		$this->db->select(max('staff_contract_id'))
 		$this->db->select('
 			sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id, 
 			sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
@@ -115,7 +117,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
 	
 		// Apply all staff filter (status_id IN (1,2))
-		$this->db->where_in('sc.status_id', [1,2,3,7]);
+		$this->db->where_in('sc.status_id', [1,2,3,6,7]);
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
