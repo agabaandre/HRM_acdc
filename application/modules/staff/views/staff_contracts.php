@@ -302,7 +302,7 @@
                           <?php 
                               $lists = Modules::run('lists/status');
                               foreach ($lists as $list) :
-                                  if (in_array($list->status_id, [4, 7])) { // Only allow status_id 4 and 7
+                                  if (in_array($list->status_id, [1,4, 7])) { // Only allow status_id 4 and 7
                               ?>
                                       <option value="<?php echo $list->status_id; ?>" 
                                           <?php if ($list->status_id == $staffs->status_id) {
