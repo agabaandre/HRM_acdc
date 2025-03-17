@@ -237,7 +237,7 @@ class Staff extends MX_Controller
 		
 		$data['staff_id'] = $staff_id;
 		$filters = array('staff_id' => $staff_id);
-		$data['staffs'] = $this->staff_mdl->get_all_staff_data($start=1, $limit=0, $filters);
+		$data['staffs'] = $this->staff_mdl->get_all_staff_data($filters,$per_page = 20, $page=0);
 		$staffs = $data['staffs'];
 		//dd($staffs);
 		$data['title'] = $staffs[0]->lname." ".$staffs[0]->fname;
