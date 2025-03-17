@@ -30,9 +30,7 @@
                                 </select>
                             </div>
                             <input type="hidden" name="staff_id" value="<?php echo $staff_id; ?>">
-                                  <!-- Old staff contract-->
-                            <input type="hidden" name="staff_contract_id" value="<?php echo $staffs->staff_contract_id; ?>">
-
+                             
                             <div class="form-group">
                                 <label for="job_acting_id">Job Acting:</label>
                                 <select class="form-control select2" name="job_acting_id" id="job_acting_id">
