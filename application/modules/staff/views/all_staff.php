@@ -240,7 +240,7 @@
 
 											
 												<a href="<?php echo base_url(); ?>staff/staff_contracts/<?php echo $data->staff_id; ?>" 
-												class="btn btn-primary no-print">
+												class="btn btn-primary no-print" target="_blank">
 													Manage Contracts <i class="fa fa-th"></i>
 												</a>
 
