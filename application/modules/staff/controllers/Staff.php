@@ -333,7 +333,8 @@ class Staff extends MX_Controller
 		}
 		
 		//dd($data);
-		$data['links'] = pagination("staff/contract_status/".$status, $count, $per_page = 20);
+
+		$data['links'] = pagination("staff/contract_status/".$status, $count, $per_page = 20,4);
 		render('contract_status', $data);
 	}
 	public function contract_statuses($status) {
