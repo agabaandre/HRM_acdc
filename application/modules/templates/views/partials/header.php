@@ -78,7 +78,7 @@
 							?>
 							<div class="header-message-list">
 								<a class="dropdown-item" href="javascript:;">
-									<div class="d-flex align-items-center" style="margin:2px;">
+									<div class="d-flex align-items-center" style="margin:5px;">
 										<div class="user-online">
 											
 										</div>
