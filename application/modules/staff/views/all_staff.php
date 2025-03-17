@@ -24,6 +24,7 @@
 	}
 </style>
 
+
 <div class="card">
 	<div class="col-md-12" style="float: right;">
 		<a href="<?php echo base_url() ?>staff/new" class="btn   btn-dark btn-sm btn-bordered">+ Add New Staff</a>
@@ -35,7 +36,7 @@
 		</div>
 		<?php echo form_open_multipart(base_url('staff/all_staff'), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
 		<div class="row">
-			<div class="col-md-2">
+			<div class="col-md-3">
 				<label>Name</label>
 				<input type="text" name="lname" class="form-control" value="<?php echo $this->input->post('lname')?>">
 			</div>
@@ -111,6 +112,8 @@
 }?>
 	</p>
 	<?php echo $links ?>
+
+	
 	<div class=" table-responsive">
 		<table class="table table-striped table-bordered">
 			<thead>
@@ -141,6 +144,9 @@
 			//dd($cont);
 
 				$i = 1;
+				if($this->uri->segment(3)!= ""){
+					$i = $this->uri->segment(3);
+				}
 				foreach ($staffs as $data) :
 
 			   $cont = Modules::run('staff/latest_staff_contract', $data->staff_id);
@@ -183,6 +189,7 @@
 						<td><?= $data->whatsapp ?>
 					
 					</td>
+					
 
 
 						<div class="modal fade" id="add_profile<?php echo $data->staff_id; ?>" tabindex="-1" aria-labelledby="add_item_label" aria-hidden="true">
@@ -201,28 +208,37 @@
 										<hr>
 									</div>
 									<div class="modal-body" id="worker_profile">
-										<div class="col-md-12 d-flex justify-content-center p-5">
+										<div class="col-md-12 d-flex justify-content-center">
 											<div>
 												<img src="<?php echo base_url() ?>/assets/images/AU_CDC_Logo-800.png" width="150">
 											</div>
+										
+										</div>
+										<div class="col-md-12 d-flex justify-content-center">
+												<?=@$staff_photo?>
+												<br>
+												<h4>Name:  <?= $data->title.' '; ?><?=$data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h4>
 										</div>
 										<div class="row justify-content-center">
 											<!-- <div class="col-md-4" style="width:180px;">
 											
 											</div> -->
 
-											<div class="col-md-8 ">
-											    <div class ="photo justify-content-center"><?=@$staff_photo?>
-												<br>
-												<h3>Name: <?=$data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h3>
-												</div>
+											<div class="row">
+											 
+												
+												<div class="col-md-6">
 												<h4>Personal Information</h4>
 												<ul>
 													<li><strong>SAPNO:</strong> <?= $data->SAPNO ?></li>
-													<li><strong>Title:</strong> <?= $data->title ?></li>
+												
 													<li><strong>Gender:</strong> <?= $data->gender ?></li>
-													<li><strong>Nationality:</strong> <?php $data->nationality ?></li>
+													<li><strong>Date of Birth:</strong> <?= $data->date_of_birth ?></li>
+													<li><strong>Nationality:</strong> <?=$data->nationality ?></li>
+													<li><strong>Initiation Date:</strong> <?= $data->initiation_date; ?></li>
 												</ul>
+												</div>
+												<div class="col-md-6">
 												<h4>Contact Information</h4>
 												<ul>
 													<li><strong>Email:</strong> <?= @$data->work_email ?></li>
@@ -230,26 +246,25 @@
 																												echo '  ' . $data->tel_2;
 																											} ?></li>
 													<li><strong>WhatsApp:</strong> <?= @$data->whatsapp ?></li>
+													<li><strong>Physical Location:</strong> <?= @$data->physical_location ?></li>
 												</ul>
+												</div>
+												<div class="col-md-8">
 												<h4>Contract Information</h4>
-											
-
-
-
-										
-
-											
-												<a href="<?php echo base_url(); ?>staff/staff_contracts/<?php echo $data->staff_id; ?>" 
-												class="btn btn-primary no-print" target="_blank">
-													Manage Contracts <i class="fa fa-th"></i>
+			
+											<a href="<?php echo base_url(); ?>staff/staff_contracts/<?php echo $data->staff_id; ?>" target="_blank"
+												class="btn btn-primary no-print">
+													Manage Contracts <i class="fa fa-eye"></i>
 												</a>
 
 												<ul>
 													
 													<li><strong>Duty Station:</strong> <?= $cont->duty_station_name ?></li>
 													<li><strong>Division:</strong> <?= $cont->division_name ?></li>
-													<li><strong>Job:</strong> <?= @character_limiter($cont->job_name, 15) ?></li>
-													<li><strong>Acting Job:</strong> <?= @character_limiter($cont->job_acting, 15) ?></li>
+													<li><strong>Job:</strong> <?= @character_limiter($cont->job_name, 30) ?></li>
+													<?php if(!empty($cont->job_acting)||$cont->job_acting!='N/A'){ ?>
+													<li><strong>Acting Job:</strong> <?= @character_limiter($cont->job_acting, 30) ?></li>
+													<?php } ?>
 													<li><strong>First Supervisor:</strong><?= @staff_name($cont->first_supervisor); ?></li>
 													<li><strong>Second Supervisor:</strong> <?= @staff_name($cont->second_supervisor); ?></li>
 											
@@ -262,6 +277,7 @@
 													<li><strong>Contract End Date:</strong> <?= $cont->end_date ?></li>
 													<li><strong>Contract Comments:</strong> <?= $cont->comments ?></li>
 												</ul>
+												</div>
 												<?php ?>
 
 											</div>
@@ -297,12 +313,12 @@
 												<h4>Personal Information</h4>
 
 												<div class="form-group">
-													<label for="SAPNO">SAP Number:</label>
-													<input type="text" class="form-control" value="<?= $data->SAPNO ?>" name="SAPNO" id="SAPNO" readonly>
+													<label for="SAPNO">SAP Number:<?=asterik()?></label>
+													<input type="text" class="form-control" value="<?= $data->SAPNO ?>" name="SAPNO" id="SAPNO">
 												</div>
 
 												<div class="form-group">
-													<label for="gender">Title:</label>
+													<label for="gender">Title:<?=asterik()?></label>
 													<select class="form-control" name="title" id="title" required>
 														<?php if (!empty($data->title)) { ?>
 															<option value="<?php echo $data->title ?>"><?php echo $data->title ?></option>
@@ -318,13 +334,13 @@
 												</div>
 
 												<div class="form-group">
-													<label for="fname">First Name:</label>
+													<label for="fname">First Name:<?=asterik()?></label>
 													<input type="text" class="form-control" value="<?php echo $data->fname;   ?>" name="fname" id="fname" required>
 												</div>
 												<input type="hidden" name="staff_id" value="<?php echo $data->staff_id; ?>">
 
 												<div class="form-group">
-													<label for="lname">Last Name:</label>
+													<label for="lname">Last Name:<?=asterik()?></label>
 													<input type="text" class="form-control" name="lname" value="<?php echo $data->lname;   ?>" id="lname" required>
 												</div>
 
@@ -334,12 +350,12 @@
 												</div>
 
 												<div class="form-group">
-													<label for="date_of_birth">Date of Birth:</label>
+													<label for="date_of_birth">Date of Birth:<?=asterik()?></label>
 													<input type="text" class="form-control datepicker" value="<?php echo $data->date_of_birth; ?>" name="date_of_birth" id="date_of_birth" required>
 												</div>
 
 												<div class="form-group">
-													<label for="gender">Gender:</label>
+													<label for="gender">Gender:<?=asterik()?></label>
 													<select class="form-control" name="gender" id="gender" required>
 														<?php if (!empty($data->gender)) {
 															echo $data->gender;
@@ -351,7 +367,7 @@
 												</div>
 
 												<div class="form-group">
-													<label for="nationality_id">Nationality:</label>
+													<label for="nationality_id">Nationality:<?=asterik()?></label>
 													<select class="form-control select2" name="nationality_id" id="nationality_id" required>
 														<?php $lists = Modules::run('lists/nationality');
 														foreach ($lists as $list) :
@@ -365,7 +381,7 @@
 												</div>
 
 												<div class="form-group">
-													<label for="initiation_date">Initiation Date:</label>
+													<label for="initiation_date">Initiation Date: <?=asterik()?></label>
 													<input type="text" class="form-control datepicker" value="<?php echo $data->initiation_date; ?>" name="initiation_date" id="initiation_date" required>
 												</div>
 											</div>
@@ -375,7 +391,7 @@
 
 
 												<div class="form-group">
-													<label for="tel_1">Telephone 1:</label>
+													<label for="tel_1">Telephone 1: <?=asterik()?></label>
 													<input type="text" class="form-control" value="<?php echo $data->tel_1; ?>" name="tel_1" id="tel_1" required>
 												</div>
 
@@ -386,11 +402,11 @@
 
 												<div class="form-group">
 													<label for="whatsapp">WhatsApp:</label>
-													<input type="text" class="form-control" name="whatsapp" value="<?php echo $data->whatsapp; ?>" id="whatsapp" required>
+													<input type="text" class="form-control" name="whatsapp" value="<?php echo $data->whatsapp; ?>" id="whatsapp">
 												</div>
 
 												<div class="form-group">
-													<label for="work_email">Work Email:</label>
+													<label for="work_email">Work Email:<?=asterik()?></label>
 													<input type="email" class="form-control" name="work_email" value="<?php echo $data->work_email; ?>" id="work_email" required>
 												</div>
 												<br>
@@ -400,7 +416,7 @@
 												</div>
 
 												<div class="form-group">
-													<label for="physical_location">Physical Location:</label>
+													<label for="physical_location">Physical Location:<?=asterik()?></label>
 													<textarea class="form-control" name="physical_location" id="physical_location" rows="2" required><?php echo $data->physical_location; ?></textarea>
 												</div>
 											</div>
@@ -409,8 +425,7 @@
 										<div class="form-group" style="float:right;">
 											<br>
 											<label for="submit"></label>
-											<input type="submit" class="btn btn-dark" value="Submit">
-											<input type="reset" class="btn btn-danger" value="Reset">
+											<input type="submit" class="btn btn-dark" value="Save">
 										</div>
 
 										<?php echo form_close(); ?>
@@ -467,3 +482,27 @@
 </div>
 </div>
 </div>
+
+<!-- Bootstrap Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">Employee Passport Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" style="width:150px; height:auto; border-radius:10px;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+function openImageModal(imageSrc) {
+    document.getElementById("modalImage").src = imageSrc;
+    var myModal = new bootstrap.Modal(document.getElementById("imageModal"), {});
+    myModal.show();
+}
+</script>
