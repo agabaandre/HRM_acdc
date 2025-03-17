@@ -299,24 +299,23 @@
                           <div class="form-group">
                             <label for="status_id">Contract Status: <?php echo asterik()?></label>
                           <select class="form-control select2" name="status_id" id="status_id" required>
-                              <?php 
+                          <?php 
                               $lists = Modules::run('lists/status');
                               foreach ($lists as $list) :
-                           
+                                  if (in_array($list->status_id, [4, 7])) { // Only allow status_id 4 and 7
                               ?>
                                       <option value="<?php echo $list->status_id; ?>" 
-                                          <?php if ($list->status_id == $contract->status_id) {
+                                          <?php if ($list->status_id == $staffs->status_id) {
                                               echo "selected";
                                           } ?>>
                                           <?php echo $list->status; ?>
                                       </option>
-                            
-
-
-                                <?php  
+                              <?php 
+                                  }
                               endforeach; 
                               ?>
                           </select>
+                        
 
                           </div>
 
