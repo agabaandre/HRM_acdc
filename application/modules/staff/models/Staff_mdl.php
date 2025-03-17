@@ -121,9 +121,19 @@ class Staff_mdl extends CI_Model
 		@$csv = $filters['csv'];
 	    @$pdf = $filters['pdf'];
 		@$lname = $filters['lname'];
-		unset($filters['lname']);
-		unset($filters['csv']);
-		unset($filters['pdf']);
+		if (!empty($filters)) {
+			if (isset($filters['lname'])) {
+				unset($filters['lname']);
+			}
+			if (isset($filters['csv'])) {
+				unset($filters['csv']);
+			}
+			if (isset($filters['pdf'])) {
+				unset($filters['pdf']);
+			}
+		}
+		
+
 	
 		if (!empty($filters)) {
 			foreach ($filters as $key => $value) {
