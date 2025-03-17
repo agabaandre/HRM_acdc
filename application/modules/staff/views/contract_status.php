@@ -224,7 +224,7 @@
 										<div class="col-md-12 d-flex justify-content-center">
 												<?=@$staff_photo?>
 												<br>
-												<h4>Name: <?=$data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h4>
+												<h4>Name:  <?= $data->title.' '; ?><?=$data->lname . ' ' . $data->fname . ' ' . @$data->oname ?></h4>
 										</div>
 										<div class="row justify-content-center">
 											<!-- <div class="col-md-4" style="width:180px;">
@@ -238,7 +238,7 @@
 												<h4>Personal Information</h4>
 												<ul>
 													<li><strong>SAPNO:</strong> <?= $data->SAPNO ?></li>
-													<li><strong>Title:</strong> <?= $data->title ?></li>
+								
 													<li><strong>Gender:</strong> <?= $data->gender ?></li>
 													<li><strong>Date of Birth:</strong> <?= $data->date_of_birth ?></li>
 													<li><strong>Nationality:</strong> <?=$data->nationality ?></li>
