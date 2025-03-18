@@ -296,98 +296,93 @@ class Staff_mdl extends CI_Model
 
 
 
-public function get_status($filters = array(), $limit = FALSE, $start = FALSE)
-{
-	$this->db->select('
-		sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id,s.email_status, s.email_disabled_at,s.email_disabled_by,
-		sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
-		s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
-		s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
-		ci.contracting_institution, ci.contracting_institution_id, 
-		ct.contract_type, n.nationality, d.division_name, 
-		sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, 
-		s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email,s.SAPNO,s.photo,
-		s.private_email, s.physical_location
-	');
+	public function get_status($filters = [], $limit = FALSE, $start = FALSE)
+	{
+		// Sub-query to get the latest contract per staff
+		$latest_contract_subquery = $this->db->select('MAX(staff_contract_id)')
+			->from('staff_contracts')
+			->group_by('staff_id')
+			->get_compiled_select();
 	
-	$this->db->from('staff s');
+		$this->db->select('
+			sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id, 
+			s.email_status, s.email_disabled_at, s.email_disabled_by,
+			sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
+			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
+			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
+			ci.contracting_institution, ci.contracting_institution_id, 
+			ct.contract_type, n.nationality, d.division_name, 
+			sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, 
+			s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.SAPNO, s.photo,
+			s.private_email, s.physical_location
+		');
 	
-	// Joins with explicit aliasing
-	$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
-	$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
-	$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
-	$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
-	$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
-	$this->db->join('contracting_institutions ci', 'ci.contracting_institution_id = sc.contracting_institution_id', 'left');
-	$this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
-	$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
-	$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
-	$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+		$this->db->from('staff s');
+		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'inner');
+		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
+		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+		$this->db->join('contracting_institutions ci', 'ci.contracting_institution_id = sc.contracting_institution_id', 'left');
+		$this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
+		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+		$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
+		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
 	
-	$this->db->where_in('sc.status_id', $filters['status_id']);
-	if(($this->uri->segment(2) == 'expired_accounts')&&($this->uri->segment(1) == 'admanager')){
-		$this->db->where('s.work_email IS NOT NULL', null, false); 
-		$this->db->where('s.email_status',1);
-		$this->db->where_in('st.status_id', ['3,4']);
-		
-		
-
-	}
-	else if (($this->uri->segment(2) == 'report') && ($this->uri->segment(1) == 'admanager')) {
-		$this->db->where('s.work_email IS NOT NULL', null, false);
-		$this->db->where('s.email_status', 0);
-	   if(!empty($filters['dateto'])){
-		$dfrom = $filters['datefrom'];
-		$dto = $filters['dateto'];
-	   
-		$this->db->where("s.email_disabled_at BETWEEN '$dfrom%' AND '$dto%'", null, false);
-	}
-	}
+		// Use sub-query to ensure latest contract
+		$this->db->where("sc.staff_contract_id IN ($latest_contract_subquery)", null, false);
 	
-
-	// Handle filters dynamically
-	@$csv = $filters['csv'];
-	@$pdf = $filters['pdf'];
-	@$lname = $filters['lname'];
-	unset($filters['lname']);
-	unset($filters['csv']);
-	unset($filters['pdf']);
-	unset($filters['status_id']);
-	unset($filters['datefrom']);
-	unset($filters['dateto']);
-
-	if (!empty($filters)) {
+		if (!empty($filters['status_id'])) {
+			$this->db->where_in('sc.status_id', $filters['status_id']);
+		}
+	
+		// Handle specific URI segments for additional filters
+		if ($this->uri->segment(1) == 'admanager') {
+			if ($this->uri->segment(2) == 'expired_accounts') {
+				$this->db->where('s.work_email IS NOT NULL', null, false); 
+				$this->db->where('s.email_status', 1);
+				$this->db->where_in('st.status_id', [3, 4]);
+			} elseif ($this->uri->segment(2) == 'report') {
+				$this->db->where('s.work_email IS NOT NULL', null, false);
+				$this->db->where('s.email_status', 0);
+				if (!empty($filters['datefrom']) && !empty($filters['dateto'])) {
+					$this->db->where("s.email_disabled_at BETWEEN '{$filters['datefrom']} 00:00:00' AND '{$filters['dateto']} 23:59:59'");
+				}
+			}
+		}
+	
+		// Remove handled filters
+		$special_filters = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto'];
+		foreach ($special_filters as $sf) unset($filters[$sf]);
+	
+		// Apply additional dynamic filters
 		foreach ($filters as $key => $value) {
-			if (!empty($value) && $key != 'staff_id' && $key != 'email_disabled_at') {
-				$this->db->where("s.$key", $value);
-			} elseif ($key == 'staff_id') {
+			if (!empty($value)) {
 				$this->db->where("s.$key", $value);
 			}
-			
 		}
+	
+		// Search functionality by name
+		if (!empty($filters['lname'])) {
+			$lname = $filters['lname'];
+			$this->db->group_start()
+					 ->like('s.lname', $lname)
+					 ->or_like('s.fname', $lname)
+					 ->group_end();
+		}
+	
+		$this->db->order_by('s.fname', 'ASC');
+	
+		// Pagination if needed
+		if ($limit && empty($filters['csv']) && empty($filters['pdf'])) {
+			$this->db->limit($limit, $start);
+		}
+	
+		$query = $this->db->get();
+	
+		return (!empty($filters['csv'])) ? $query->result_array() : $query->result();
 	}
-
-	// Search by last name or first name
-	if (!empty($lname)) {
-		$this->db->group_start();
-		$this->db->like('s.lname', $lname, 'both');
-		$this->db->or_like('s.fname', $lname, 'both');
-		$this->db->group_end();
-	}
-
-	$this->db->order_by('fname','ASC');
-	// Apply pagination limit if not exporting CSV
-	if (($limit && $csv != 1 && $pdf != 1)) {
-		$this->db->limit($limit, $start);
-	}
-
-	$query = $this->db->get();
-
-	// Debugging query (Uncomment for debugging)
-	 //echo $this->db->last_query(); exit;
-
-	return ($csv == 1) ? $query->result_array() : $query->result();
-}
+	
 public function getBirthdays($days)
 {
     // Get the current date and the date for 30 days from now
