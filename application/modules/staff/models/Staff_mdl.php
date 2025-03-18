@@ -298,14 +298,16 @@ class Staff_mdl extends CI_Model
 
 	public function get_status($filters = [], $limit = FALSE, $start = FALSE)
 	{
-		// Sub-query to get the latest contract per staff
-		$latest_contract_subquery = $this->db->select('MAX(staff_contract_id)')
+		// Get latest contract per staff using subquery
+		$subquery = $this->db
+			->select('MAX(staff_contract_id)')
 			->from('staff_contracts')
 			->group_by('staff_id')
 			->get_compiled_select();
 	
+		// Main query selecting required fields
 		$this->db->select('
-			sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id, 
+			sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
 			sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
@@ -316,7 +318,7 @@ class Staff_mdl extends CI_Model
 			s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.SAPNO, s.photo,
 			s.private_email, s.physical_location
 		');
-	
+		
 		$this->db->from('staff s');
 		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'inner');
 		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
@@ -329,14 +331,14 @@ class Staff_mdl extends CI_Model
 		$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
 		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
 	
-		// Use sub-query to ensure latest contract
-		$this->db->where("sc.staff_contract_id IN ($latest_contract_subquery)", null, false);
+		// Ensuring only latest contracts are selected
+		$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
 	
+		// Handle filters
 		if (!empty($filters['status_id'])) {
 			$this->db->where_in('sc.status_id', $filters['status_id']);
 		}
 	
-		// Handle specific URI segments for additional filters
 		if ($this->uri->segment(1) == 'admanager') {
 			if ($this->uri->segment(2) == 'expired_accounts') {
 				$this->db->where('s.work_email IS NOT NULL', null, false); 
@@ -346,34 +348,32 @@ class Staff_mdl extends CI_Model
 				$this->db->where('s.work_email IS NOT NULL', null, false);
 				$this->db->where('s.email_status', 0);
 				if (!empty($filters['datefrom']) && !empty($filters['dateto'])) {
-					$this->db->where("s.email_disabled_at BETWEEN '{$filters['datefrom']} 00:00:00' AND '{$filters['dateto']} 23:59:59'");
+					$datefrom = $filters['datefrom'] . ' 00:00:00';
+					$dateto = $filters['dateto'] . ' 23:59:59';
+					$this->db->where("s.email_disabled_at BETWEEN '$datefrom' AND '$dateto'");
 				}
 			}
 		}
 	
-		// Remove handled filters
-		$special_filters = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto'];
-		foreach ($special_filters as $sf) unset($filters[$sf]);
+		if (!empty($filters['lname'])) {
+			$this->db->group_start();
+			$this->db->like('s.lname', $filters['lname']);
+			$this->db->or_like('s.fname', $filters['lname']);
+			$this->db->group_end();
+		}
 	
-		// Apply additional dynamic filters
+		// Special keys to exclude from dynamic loop
+		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto'];
+	
 		foreach ($filters as $key => $value) {
-			if (!empty($value)) {
+			if (!empty($value) && !in_array($key, $exclude_keys)) {
 				$this->db->where("s.$key", $value);
 			}
 		}
 	
-		// Search functionality by name
-		if (!empty($filters['lname'])) {
-			$lname = $filters['lname'];
-			$this->db->group_start()
-					 ->like('s.lname', $lname)
-					 ->or_like('s.fname', $lname)
-					 ->group_end();
-		}
-	
 		$this->db->order_by('s.fname', 'ASC');
 	
-		// Pagination if needed
+		// Apply pagination if not exporting CSV or PDF
 		if ($limit && empty($filters['csv']) && empty($filters['pdf'])) {
 			$this->db->limit($limit, $start);
 		}
