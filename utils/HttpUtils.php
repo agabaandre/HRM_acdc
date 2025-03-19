@@ -1,7 +1,7 @@
 <?php namespace utils;
 
 
-class HttpUtil{
+class HttpUtils{
 
     public  function __construct(){
 
@@ -10,8 +10,7 @@ class HttpUtil{
  public function ci (){
     return get_instance();
  }
- public function curlsendHttpPost($endpoint,$headers,$body){
-    $url=DATA_URL.$endpoint;
+ public function curlsendHttpPost($url,$endpoint,$headers,$body){
     $ch = curl_init($url);
 
      //post values
