@@ -2,7 +2,7 @@
 
 use utils\HttpUtils;
 defined('BASEPATH') or exit('No direct script access allowed');
-use TheNetworg\OAuth2\Client\Provider\Azure;
+use League\OAuth2\Client\Provider\GenericProvider;
 
 class Auth extends MX_Controller
 {
@@ -13,15 +13,15 @@ class Auth extends MX_Controller
     parent::__construct();
     $this->load->model('auth_mdl');
     $this->module = "auth";
-    $this->provider = new Azure([
+    $this->provider = new GenericProvider([
       'clientId'                => $_ENV['CLIENT_ID'],  // Replace with Azure Client ID
-      'clientSecret'            => $_ENV['CLIENT_SEC_VALUE'],
+      'clientSecret'            => $_ENV['OBJECT_ID'], // Replace with Azure Client Secret
       'redirectUri'             => base_url('auth/callback'),
-      'tenant'                  => $_ENV['TENANT_ID'],  // Tenant ID from Azure
-      'scopes'                  => ['openid', 'profile', 'email', 'offline_access', 'User.Read'],
-      'defaultEndPointVersion'  => '2.0'
-     ]);
-
+      'urlAuthorize'            => 'https://login.microsoftonline.com/'.$_ENV['TENANT_ID'].'/oauth2/v2.0/authorize',
+      'urlAccessToken'          => 'https://login.microsoftonline.com/'.$_ENV['TENANT_ID'].'/oauth2/v2.0/token',
+      'urlResourceOwnerDetails' => 'https://graph.microsoft.com/v1.0/me'
+  ]);
+  // $this->http = new HttpUtils();
 
   }
   public function index()
@@ -36,74 +36,98 @@ class Auth extends MX_Controller
     redirect($authUrl);
 }
 
-public function callback() {
-    if (!$this->input->get('code')) {
-        if ($this->input->get('error')) {
-            exit('Error: ' . htmlspecialchars($this->input->get('error')));
-        } else {
-            exit('Invalid request');
-        }
-    }
 
-    try {
-        // Exchange authorization code for an access token
-        $token = $this->provider->getAccessToken('authorization_code', [
-            'code' => $this->input->get('code')
-        ]);
 
-        // Fetch user details
-        $user = $this->provider->getResourceOwner($token);
-        $userData = $user->toArray();
 
-        if (!empty($userData)) {
-            $email = $userData['mail'] ?? $userData['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
-            $name = $userData['displayName'];
+  // public function login()
+  // {
+  //   $postdata = $this->input->post();
+  //   $password = $this->input->post('password');
+  //   // Fetch user data
+  //   $data['users'] = $this->auth_mdl->login($postdata);
+  //   $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
+  //   $users_array = (array)$data['users'];
+  //   $contract_array = (array)$data['contract'];
+  //   $users = array_merge($users_array, $contract_array);
+  //   //$hashedPassword = $data['users']->password;
+  //   //dd($hashedPassword);
+  //   $hashedPassword = $this->argonhash->make($password);
+  //   $auth = ($this->argonhash->check($password, $hashedPassword));
+  //   //dd($users);
+  //   if($auth){
+  //   if ($auth && $users['role']==10) {
+  //     unset($users['password']);
+  //     $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  //     $users['is_admin']    = false;
+  //     $_SESSION['user'] = (object)$users;
+  //     redirect('dashboard/index');
+      
+  //   } else if ($auth && $adata['role']!= 10) {
+  //     unset($users['password']);
+  //     $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  //     $users['is_admin']    = true;
+  //     $_SESSION['user'] = (object)$users;
+  //     redirect('auth/profile');
+  //    }
+  //   }
+  //   else {
+  //     redirect('auth');
+  //   }
+  // }
 
-            // Check if email exists in the database
-            $postdata = ['email' => $email];
-            $data['users'] = $this->auth_mdl->login($postdata);
-
-            if (!empty($data['users'])) {
-                // Proceed with login
-                $this->handle_login($data['users'], $email);
-            } else {
-                // Reject login
-                $this->session->set_flashdata('error', 'Staff profile missing. Contact HR.');
-                redirect('auth');
-            }
-        } else {
-            exit('Failed to fetch user details.');
-        }
-    } catch (Exception $e) {
-        exit('Error retrieving access token: ' . $e->getMessage());
-    }
-}
-
-private function handle_login($user_data, $email) {
-    $data['contract'] = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
-    $users_array = (array) $user_data;
-    $contract_array = (array) $data['contract'];
-    $users = array_merge($users_array, $contract_array);
-    
-    $role = $user_data->role;
-
-    unset($users['password']);
-    $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
-    $users['is_admin'] = false;
-    $_SESSION['user'] = (object) $users;
-
-    if ($role != 17) {
-        redirect('dashboard');
-    } else {
-        redirect('auth/profile');
-    }
-}
-
-// public function logout() {
-//     $this->session->sess_destroy();
-//     redirect('https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/logout?post_logout_redirect_uri=' . base_url());
-// }
+  // public function login()
+  // {
+  //     $postdata = $this->input->post();
+  //     $post_password = trim($this->input->post('password'));
   
+  //     // Fetch user data
+  //     $data['users'] = $this->auth_mdl->login($postdata);
+  //     $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
+  
+  //     $users_array = (array)$data['users'];
+  //     $contract_array = (array)$data['contract'];
+  //     $users = array_merge($users_array, $contract_array);
+      
+  //     // Use the stored hash from the database
+  //     //$storedHash = $this->argonhash->make($password);
+  //     $dbpassword = $data['users']->password;
+  //     $role = $data['users']->role;
+  //     $auth = $this->validate_password($post_password,$dbpassword);
+  //     //dd($data['users']);
+  //     if ($auth && !empty($data['users'])&& $role!=17 ) {
+  //         unset($users['password']);
+  //            $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  //             $users['is_admin'] = false;
+  //             $_SESSION['user'] = (object)$users;
+  //             redirect('dashboard');
+          
+  //     }
+  //     else if ($auth && !empty($data['users'])&& $role==17 ) {
+  //       unset($users['password']);
+  //          $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  //           $users['is_admin'] = false;
+  //           $_SESSION['user'] = (object)$users;
+  //           redirect('auth/profile');
+        
+  //   }
+  //     else {
+  //         redirect('auth');
+  //     }
+  // }
+  
+
+
+  // public function validate_password($post_password,$dbpassword){
+  //   $auth = ($this->argonhash->check($post_password, $dbpassword));
+  //   if ($auth) {
+  //     return TRUE;
+  //   }
+  //   else{
+  //     return TRUE;
+  //   }
+    
+  // }
+
   public function profile()
   {
     $data['module'] = "auth";

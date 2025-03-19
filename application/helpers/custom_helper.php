@@ -775,5 +775,35 @@ if (!function_exists('log_user_action')) {
         // Return inline CSS styles
         return 'style="color: ' . $textColor . '; background: ' . $bgColor . ';"';
     }
+
+    function curlsendHttpPost($url, $endpoint, $headers, $body) {
+        $ch = curl_init($url);
+    
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 0);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 200);
+    
+        if (!empty($body)) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+            curl_setopt($ch, CURLOPT_POST, 1);
+        }
+    
+        $result = curl_exec($ch);
+        $curl_errno = curl_errno($ch);
+        $curl_error = curl_error($ch);
+    
+        if ($curl_errno > 0) {
+            curl_close($ch);
+            return "CURL Error ($curl_errno): $curl_error\n";
+        }
+    
+        curl_close($ch);
+        return json_decode($result, true);
+    }
+    
+
+
   
 }
