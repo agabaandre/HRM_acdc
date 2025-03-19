@@ -54,7 +54,7 @@ public function callback() {
         // Fetch user details
         $user = $this->provider->getResourceOwner($token);
         $userData = $user->toArray();
-        //dd($userData);  
+        dd($userData);  
 
         if (!empty($userData)) {
             $email = $userData['email'] ?? $userData['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
