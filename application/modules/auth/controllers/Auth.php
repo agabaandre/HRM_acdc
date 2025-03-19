@@ -54,10 +54,11 @@ public function callback() {
         // Fetch user details
         $user = $this->provider->getResourceOwner($token);
         $userData = $user->toArray();
+        //dd($userData);  
 
         if (!empty($userData)) {
-            $email = $userData['mail'] ?? $userData['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
-            $name = $userData['displayName'];
+            $email = $userData['email'] ?? $userData['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
+            $name = $userData['name'];
 
             // Check if email exists in the database
             $postdata = ['email' => $email];
