@@ -37,7 +37,7 @@
     
 		<?php 
      $status = $this->uri->segment(3);
-    echo form_open_multipart(base_url('staff/contract_status/'.$status), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
+    echo form_open_multipart(base_url('staff/contract_status/'.$status), array('id' => 'staff_form', 'class' => 'staff')); ?>
 		<div class="row">
 			<div class="col-md-2">
 				<label>Name</label>

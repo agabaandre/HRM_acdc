@@ -34,7 +34,7 @@
 			<?php //print_r($this->session->tempdata());
 			?>
 		</div>
-		<?php echo form_open_multipart(base_url('staff/all_staff'), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
+		<?php echo form_open_multipart(base_url('staff/all_staff'), array('id' => 'staff_form', 'class' => 'staff')); ?>
 		<div class="row">
 			<div class="col-md-3">
 				<label>Name</label>

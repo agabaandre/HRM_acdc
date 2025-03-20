@@ -654,6 +654,22 @@ $(document).ready(function() {
 });
 
 </script>
+<script>
+$(document).ready(function () {
+    // Apply filters when the "Enter" key is pressed in text inputs
+    $("input").keypress(function (event) {
+        if (event.which === 13) { // 13 = Enter key
+            event.preventDefault(); // Prevent default form submission
+            $("#staff_form").submit(); // Submit the form
+        }
+    });
+
+    // Apply filters when select fields change
+    $("select").change(function () {
+        $("#staff_form").submit(); // Submit the form when a select field is changed
+    });
+});
+</script>
 
 
 	
