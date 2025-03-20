@@ -122,7 +122,7 @@ private function handle_login($user_data, $email) {
     //     redirect('auth/profile');
     // }
 
-    if ($auth && !empty($data['users'])&& $role!=17 ) {
+    if (!empty($user_data)&& $role!=17 ) {
       unset($users['password']);
          $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
           $users['is_admin'] = false;
@@ -130,7 +130,7 @@ private function handle_login($user_data, $email) {
           redirect('dashboard');
       
   }
-  else if ($auth && !empty($data['users'])&& $role==17 ) {
+  else if (!empty($user_data)&& $role==17 ) {
     unset($users['password']);
        $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
         $users['is_admin'] = false;
