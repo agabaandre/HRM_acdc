@@ -1,7 +1,6 @@
 <?php
 if (!defined('BASEPATH')) exit('No direct script access allowed');
 
-
 // Use Mpdf based on PHP version
 if (PHP_VERSION_ID >= 80000) { // PHP 8 and above
     require_once APPPATH . '../vendor/autoload.php'; // Load Composer autoload
@@ -26,7 +25,11 @@ class ML_pdf {
         $config = array_merge($defaultConfig, $params);
 
         // Initialize Mpdf
-        $this->pdf = new Mpdf($config);
+        if (PHP_VERSION_ID >= 80000) {
+            $this->pdf = new \Mpdf\Mpdf($config);
+        } else {
+            $this->pdf = new \mPDF($config);
+        }
     }
 
     public function loadHtml($html) {
