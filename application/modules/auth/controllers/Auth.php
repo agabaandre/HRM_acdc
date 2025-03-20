@@ -8,21 +8,20 @@ class Auth extends MX_Controller
 {
   private $provider;
   private $http;
+  private $client_id;
+  private $client_secret;
+  private $tenant_id;
+  private $redirect_uri;
   public function __construct()
   {
     parent::__construct();
     $this->load->model('auth_mdl');
     $this->module = "auth";
-    $this->provider = new Azure([
-      'clientId'                => $_ENV['CLIENT_ID'],  // Replace with Azure Client ID
-      'clientSecret'            => $_ENV['CLIENT_SEC_VALUE'],
-      'redirectUri'             => base_url('auth/callback'),
-      'tenant'                  => $_ENV['TENANT_ID'],  // Tenant ID from Azure
-      'scopes'                  => ['openid', 'profile', 'email', 'offline_access', 'User.Read'],
-      'defaultEndPointVersion'  => '2.0'
-     ]);
-
-
+    $this->client_id = $_ENV['CLIENT_ID'];
+    $this->client_secret = $_ENV['CLIENT_SEC_VALUE'];
+    $this->tenant_id = $_ENV['TENANT_ID'];
+    $this->redirect_uri = base_url('auth/callback');
+   
   }
   public function index()
   {
@@ -31,9 +30,15 @@ class Auth extends MX_Controller
   }
 
   public function login() {
-    $authUrl = $this->provider->getAuthorizationUrl();
-    $this->session->set_userdata('oauth2state', $this->provider->getState());
-    redirect($authUrl);
+    $authorize_url = "https://login.microsoftonline.com/{$this->tenant_id}/oauth2/v2.0/authorize";
+    $params = [
+        'client_id'     => $this->client_id,
+        'response_type' => 'code',
+        'redirect_uri'  => $this->redirect_uri,
+        'response_mode' => 'query',
+        'scope'         => 'openid profile email offline_access User.Read'
+    ];
+    redirect($authorize_url . '?' . http_build_query($params));
 }
 
 public function callback() {
@@ -45,39 +50,57 @@ public function callback() {
         }
     }
 
-    try {
-        // Exchange authorization code for an access token
-        $token = $this->provider->getAccessToken('authorization_code', [
-            'code' => $this->input->get('code')
-        ]);
-
-        // Fetch user details
-        $user = $this->provider->getResourceOwner($token);
-        $userData = $user->toArray();
-        dd($userData);  
-
-        if (!empty($userData)) {
-            $email = $userData['email'] ?? $userData['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
-            $name = $userData['name'];
-
-            // Check if email exists in the database
-            $postdata = ['email' => $email];
-            $data['users'] = $this->auth_mdl->login($postdata);
-
-            if (!empty($data['users'])) {
-                // Proceed with login
-                $this->handle_login($data['users'], $email);
-            } else {
-                // Reject login
-                $this->session->set_flashdata('error', 'Staff profile missing. Contact HR.');
-                redirect('auth');
-            }
-        } else {
-            exit('Failed to fetch user details.');
-        }
-    } catch (Exception $e) {
-        exit('Error retrieving access token: ' . $e->getMessage());
+    $token = $this->get_access_token($this->input->get('code'));
+    if (!$token) {
+        exit('Error retrieving access token.');
     }
+
+    $user = $this->get_user_data($token);
+    //dd($user);
+    if ($user) {
+        $email = $user['mail'] ?? $user['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
+        $name = $user['displayName'];
+
+        // Check if email exists in the database
+        $postdata = ['email' => $email];
+        $data['users'] = $this->auth_mdl->login($postdata);
+
+        if (!empty($data['users'])) {
+            // Proceed with login
+            $this->handle_login($data['users'], $email);
+        } else {
+            // Reject login
+            $this->session->set_flashdata('error', 'Staff profile missing. Contact HR.');
+            redirect('auth');
+        }
+    } else {
+        exit('Failed to fetch user details.');
+    }
+}
+
+private function get_access_token($auth_code) {
+    $token_url = "https://login.microsoftonline.com/{$this->tenant_id}/oauth2/v2.0/token";
+
+    $post_data = [
+        'client_id'     => $this->client_id,
+        'client_secret' => $this->client_secret,
+        'code'          => $auth_code,
+        'redirect_uri'  => $this->redirect_uri,
+        'grant_type'    => 'authorization_code'
+    ];
+
+    $headers = ['Content-Type: application/x-www-form-urlencoded'];
+
+    $response = curl_send_post($token_url, $post_data, $headers);
+    return $response->access_token ?? null;
+}
+
+private function get_user_data($access_token) {
+    $url = "https://graph.microsoft.com/v1.0/me";
+    $headers = ['Authorization: Bearer ' . $access_token, 'Accept: application/json'];
+
+    $response = curl_send_get($url, $headers);
+    return $response ?? null;
 }
 
 private function handle_login($user_data, $email) {
@@ -102,9 +125,9 @@ private function handle_login($user_data, $email) {
 
 // public function logout() {
 //     $this->session->sess_destroy();
-//     redirect('https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/logout?post_logout_redirect_uri=' . base_url());
+//     redirect('https://login.microsoftonline.com/' . $this->tenant_id . '/oauth2/logout?post_logout_redirect_uri=' . base_url());
 // }
-  
+
   public function profile()
   {
     $data['module'] = "auth";
@@ -114,12 +137,12 @@ private function handle_login($user_data, $email) {
     render("users/profile", $data);
 
   }
-  public function logout()
-  {
-    session_unset();
-    session_destroy();
-    redirect("auth");
-  }
+  // public function logout()
+  // {
+  //   session_unset();
+  //   session_destroy();
+  //   redirect("auth");
+  // }
 
   public function getUserByid($id)
   {

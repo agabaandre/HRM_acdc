@@ -776,30 +776,30 @@ if (!function_exists('log_user_action')) {
         return 'style="color: ' . $textColor . '; background: ' . $bgColor . ';"';
     }
 
-    function curlsendHttpPost($url, $endpoint, $headers, $body) {
+ 
+function curl_send_post($url, $body, $headers) {
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($body));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+    $result = curl_exec($ch);
+    curl_close($ch);
+
+    return json_decode($result);
+}
+
+    function curl_send_get($url, $headers) {
         $ch = curl_init($url);
-    
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 0);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 200);
-    
-        if (!empty($body)) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
-            curl_setopt($ch, CURLOPT_POST, 1);
-        }
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     
         $result = curl_exec($ch);
-        $curl_errno = curl_errno($ch);
-        $curl_error = curl_error($ch);
-    
-        if ($curl_errno > 0) {
-            curl_close($ch);
-            return "CURL Error ($curl_errno): $curl_error\n";
-        }
-    
         curl_close($ch);
+    
         return json_decode($result, true);
     }
     
