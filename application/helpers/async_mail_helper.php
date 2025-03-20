@@ -124,6 +124,7 @@ if (!function_exists('push_email')) {
 }
 
 
+
 function logEmailStatus($status, $id, $next_run)
 {
         // Get the CodeIgniter instance
