@@ -63,18 +63,20 @@
 
             <!-- Email and Password Fields -->
             <div id="signinForm" class="form-toggle">
-                <input type="email" id="inputEmail" name="email" class="form-control" placeholder="Email address" required autofocus>
+                <input type="email" id="inputEmail" name="email" class="form-control mb-2" placeholder="Email address" required autofocus>
                 <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required>
                 <button class="btn btn-success btn-block" type="submit"><i class="fas fa-sign-in-alt"></i> Sign in</button>
+            </div>
+
+            <div class="social-login mt-2">
+                <a href="<?= base_url('auth/login') ?>" class="btn btn-success social-btn btn-ms">Staff Mail Sign In</a>
             </div>
 
             <hr>
         </form>
 
         
-        <div class="social-login" style="margin-bottom:6px;">
-                <a href="<?= base_url('auth/login') ?>" class="btn btn-success social-btn btn-ms">Staff Mail Sign In</a>
-        </div>
+       
     </div>
 
     <p style="text-align:center">
