@@ -60,7 +60,7 @@
         <?php 
       
         echo form_open_multipart(base_url('index.php/auth/other_login'), array('id' => 'login', 'class' => 'login')); ?>
-            <h1 class="h3 mb-3 font-weight-normal" style="text-align: center"> Sign in</h1>
+            <h1 class="h3 mb-3 font-weight-normal" style="text-align: center">Staff Tracker Sign in</h1>
         
 
          
