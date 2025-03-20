@@ -414,11 +414,9 @@ public function other_login()
   }
   public function update_profile()
   {
-    $postdata = $this->input->post();
-    $data['user_id'] = $postdata['user_id'];
-    $data['name'] = $postdata['name'];
-    $data['langauge'] = $postdata['langauge'];
-    $data['staff_id'] = $postdata['staff_id'];
+    $data = $this->input->post();
+ 
+    //dd($postdata);
     $is_error = false;
     // Load the Upload library
     $this->load->library('upload');
