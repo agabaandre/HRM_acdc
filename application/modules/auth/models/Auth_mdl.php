@@ -11,7 +11,7 @@ class Auth_mdl extends CI_Model
 	}
 	public function login($postdata)
 	{
-	            $email = trim($postdata['email']);
+	            $email = $this->security->xss_clean(trim($postdata['email']));
 				$this->db->select('*'); // Select columns from the staff table
 				$this->db->from('staff'); // Set the main table
 				$this->db->join('user', 'user.auth_staff_id = staff.staff_id'); // Join with the users table

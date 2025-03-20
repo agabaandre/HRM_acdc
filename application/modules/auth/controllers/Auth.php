@@ -144,24 +144,16 @@ private function handle_login($user_data, $email) {
 
 public function other_login()
 {
-    // Sanitize user input
-    $email = $this->security->xss_clean(trim($this->input->post('email')));
+    $postdata = $this->input->post();
     $post_password = trim($this->input->post('password'));
 
-    if (empty($email) || empty($post_password)) {
-        $this->session->set_flashdata('error', 'Email and password are required.');
-        redirect('auth'); // Redirect back to login page
-        return;
-    }
-
-    // Fetch user data using a secure method (Prepared Statements)
-    
-    $data['users'] = $this->auth_mdl->login($email);
+    // Fetch user data
+    $data['users'] = $this->auth_mdl->login($postdata);
 
     // Check if user exists
     if (empty($data['users'])) {
         $this->session->set_flashdata('error', 'Invalid email or user does not exist.');
-        redirect('auth');
+        redirect('auth'); // Redirect back to login page
         return;
     }
 
@@ -176,23 +168,23 @@ public function other_login()
     $role = $data['users']->role;
     $auth = $this->validate_password($post_password, $dbpassword);
 
-    if ($auth) {
+    if ($auth && !empty($data['users']) && $role != 17) {
         unset($users['password']);
         $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
         $users['is_admin'] = false;
         $_SESSION['user'] = (object)$users;
-
-        if ($role != 17) {
-            redirect('dashboard');
-        } else {
-            redirect('auth/profile');
-        }
+        redirect('dashboard');
+    } elseif ($auth && !empty($data['users']) && $role == 17) {
+        unset($users['password']);
+        $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+        $users['is_admin'] = false;
+        $_SESSION['user'] = (object)$users;
+        redirect('auth/profile');
     } else {
         $this->session->set_flashdata('error', 'Incorrect password. Please try again.');
-        redirect('auth');
+        redirect('auth'); // Redirect back to login page
     }
 }
-
 
 
   public function validate_password($post_password,$dbpassword){
