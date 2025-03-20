@@ -1,8 +1,6 @@
 <?php
 if (!defined('BASEPATH')) exit('No direct script access allowed');
 
-// Load Composer's autoload if using Composer
-require_once APPPATH . '../vendor/autoload.php';
 
 // Use Mpdf based on PHP version
 if (PHP_VERSION_ID >= 80000) { // PHP 8 and above
