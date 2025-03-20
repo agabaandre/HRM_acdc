@@ -128,6 +128,57 @@ private function handle_login($user_data, $email) {
 //     redirect('https://login.microsoftonline.com/' . $this->tenant_id . '/oauth2/logout?post_logout_redirect_uri=' . base_url());
 // }
 
+public function other_login()
+  {
+      $postdata = $this->input->post();
+      $post_password = trim($this->input->post('password'));
+  
+      // Fetch user data
+      $data['users'] = $this->auth_mdl->login($postdata);
+      $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
+  
+      $users_array = (array)$data['users'];
+      $contract_array = (array)$data['contract'];
+      $users = array_merge($users_array, $contract_array);
+      
+      // Use the stored hash from the database
+      //$storedHash = $this->argonhash->make($password);
+      $dbpassword = $data['users']->password;
+      $role = $data['users']->role;
+      $auth = $this->validate_password($post_password,$dbpassword);
+      //dd($data['users']);
+      if ($auth && !empty($data['users'])&& $role!=17 ) {
+          unset($users['password']);
+             $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+              $users['is_admin'] = false;
+              $_SESSION['user'] = (object)$users;
+              redirect('dashboard');
+          
+      }
+      else if ($auth && !empty($data['users'])&& $role==17 ) {
+        unset($users['password']);
+           $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+            $users['is_admin'] = false;
+            $_SESSION['user'] = (object)$users;
+            redirect('auth/profile');
+        
+    }
+      else {
+          redirect('auth');
+      }
+  }
+
+  public function validate_password($post_password,$dbpassword){
+    $auth = ($this->argonhash->check($post_password, $dbpassword));
+     if ($auth) {
+       return TRUE;
+     }
+     else{
+       return FALSE;
+     }
+     
+   }
+
   public function profile()
   {
     $data['module'] = "auth";
@@ -139,9 +190,28 @@ private function handle_login($user_data, $email) {
   }
   public function logout()
   {
-    session_unset();
-    session_destroy();
-    redirect("auth");
+    // Clear session
+   // Unset all session variables
+   $this->session->unset_userdata('user');
+   $this->session->sess_destroy();
+
+   // Clear session variables manually
+   $_SESSION = array();
+   
+   // Remove the session cookie (if set)
+   if (ini_get("session.use_cookies")) {
+       $params = session_get_cookie_params();
+       setcookie(session_name(), '', time() - 42000,
+           $params["path"], $params["domain"],
+           $params["secure"], $params["httponly"]
+       );
+   }
+
+   // Prevent browser caching (important!)
+   header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+   header("Pragma: no-cache");
+   header("Expires: Wed, 11 Jan 1984 05:00:00 GMT");
+  redirect("auth");
   }
 
   public function getUserByid($id)
