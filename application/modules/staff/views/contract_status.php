@@ -77,7 +77,7 @@
 				</select>
 			</div>
 			<div class="col-md-3 mt-4" style="display:inline-flex;">
-			<button type="submit" class="btn btn-sm btn-success" style="margin-right:2px;"><i class="fa fa-exchange-alt"></i>Apply</button>
+			<button type="submit" class="btn btn-sm btn-success" style="margin-right:2px;"><i class="fa fa-exchange-alt"></i>Apply Filters</button>
 			<a href='<?php echo base_url("staff/contract_status/".$status."/1")?>' class="btn btn-sm btn-secondary" style="margin-right:2px;"><i class="fa fa-file-csv"></i>Export</a>
 			<a href="<?php echo base_url("staff/contract_status/".$status."/0/1")?>" class="btn btn-sm btn-secondary"><i class="fa fa-file-pdf"></i>PDF</a>
            
