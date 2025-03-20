@@ -12,6 +12,7 @@ class Templates extends MX_Controller
 
 		//  check_admin_access();
 		if (isset($this->session->userdata('user')->name)) {
+			//dd($this->session->userdata('user'));
 			$this->load->view('main', $data);
 		} else {
 			redirect('auth/login');
@@ -21,6 +22,7 @@ class Templates extends MX_Controller
 	public function plain($data)
 	{
 		if (@user_session()->is_admin)
+		//dd($this->session->userdata('user'));
 			redirect(base_url('dashboard'));
 
 		$this->load->view('plain', $data);

@@ -48,12 +48,13 @@
 </head>
 <body>
     <div id="logreg-forms">
-        <?php echo form_open_multipart(base_url('index.php/auth/login'), array('id' => 'login', 'class' => 'login')); ?>
+    
+        <?php 
+      
+        echo form_open_multipart(base_url('index.php/auth/other_login'), array('id' => 'login', 'class' => 'login')); ?>
             <h1 class="h3 mb-3 font-weight-normal" style="text-align: center"> Sign in</h1>
-            <div class="social-login">
-                <a href="<?= base_url('auth/login') ?>" class="btn btn-success social-btn btn-ms">Staff Mail Sign In</a>
-            </div>
-            <p style="text-align:center"> OR  </p>
+         
+
 
             <!-- Checkbox to toggle the form -->
             <label class="checkbox-label">
@@ -70,29 +71,10 @@
             <hr>
         </form>
 
-        <!-- Reset Password Form -->
-        <form action="/reset/password/" class="form-reset">
-            <input type="email" id="resetEmail" class="form-control" placeholder="Email address" required autofocus>
-            <button class="btn btn-primary btn-block" type="submit">Reset Password</button>
-            <a href="#" id="cancel_reset"><i class="fas fa-angle-left"></i> Back</a>
-        </form>
-
-        <!-- Sign Up Form -->
-        <form action="/signup/" class="form-signup">
-            <div class="social-login">
-                <button class="btn btn-success social-btn btn-ms" type="button"><span><i class="fa fa-envelope"></i> Sign in with Staff Email</span></button>
-            </div>
-            <p style="text-align:center">OR</p>
-
-            <input type="text" id="user-name" class="form-control" placeholder="Full name" required autofocus>
-            <input type="email" id="user-email" class="form-control" placeholder="Email address" required autofocus>
-            <input type="password" id="user-pass" class="form-control" placeholder="Password" required autofocus>
-            <input type="password" id="user-repeatpass" class="form-control" placeholder="Repeat Password" required autofocus>
-
-            <button class="btn btn-primary btn-block" type="submit"><i class="fas fa-user-plus"></i> Sign Up</button>
-            <a href="#" id="cancel_signup"><i class="fas fa-angle-left"></i> Back</a>
-        </form>
-        <br>
+        
+        <div class="social-login" style="margin-bottom:6px;">
+                <a href="<?= base_url('auth/login') ?>" class="btn btn-success social-btn btn-ms">Staff Mail Sign In</a>
+        </div>
     </div>
 
     <p style="text-align:center">
