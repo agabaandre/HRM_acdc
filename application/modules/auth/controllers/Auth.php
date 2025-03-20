@@ -137,12 +137,12 @@ private function handle_login($user_data, $email) {
     render("users/profile", $data);
 
   }
-  // public function logout()
-  // {
-  //   session_unset();
-  //   session_destroy();
-  //   redirect("auth");
-  // }
+  public function logout()
+  {
+    session_unset();
+    session_destroy();
+    redirect("auth");
+  }
 
   public function getUserByid($id)
   {
