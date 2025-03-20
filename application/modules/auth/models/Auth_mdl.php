@@ -207,6 +207,7 @@ return $qry->num_rows();
 	}
 	public function updateProfile($data)
 	{
+	
 		$user_id = $data['user_id'];
 		$insert['auth_staff_id'] = $data['staff_id'];
 		$insert['user_id'] = $data['user_id'];
@@ -215,21 +216,22 @@ return $qry->num_rows();
 		
 	
 		
-		unset($data['staff_id']);
+		// unset($data['staff_id']);
 		$this->db->where('user_id', $user_id);
 		$done = $this->db->update($this->table, $insert);
 
 		if ($done) {
-			$data['staff_id'] = $data['auth_staff_id'];
+			
 	
 			if ($data['staff_id'] != 0):
-				$staff_data['tel_1'] = $this->input->post('tel_1');
-				$staff_data['tel_2'] = $this->input->post('tel_2');
-				$staff_data['private_email'] = $this->input->post('private_email');
-				$staff_data['whatsapp'] = $this->input->post('whatsapp');
+				$staff_data['tel_1'] = $data['tel_1'];
+				$staff_data['tel_2'] = $data['tel_2'];;
+				$staff_data['private_email'] = $data['private_email'];;
+				$staff_data['whatsapp'] = $data['whatsapp'];;
 				$staff_data['staff_id'] = $data['staff_id'];
 				$staff_data['photo'] = $data['photo'];
 				$staff_data['signature'] = $data['signature'];
+				//dd($staff_data);
 			$this->update_staff_table($staff_data);
 			endif;
 			return "Update Successful";

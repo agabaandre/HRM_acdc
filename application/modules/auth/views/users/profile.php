@@ -178,7 +178,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Primary Number</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="tel_1" value="<?php echo @$contract->tel_1; ?>">
+                            <input type="text" class="form-control" name="tel_1" value="<?php echo @$this->session->userdata('user')->tel_1; ?>">
                         </div>
                     </div>
                 </div>
@@ -188,7 +188,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Alternative Number</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="tel_2" value="<?php echo @$contract->tel_2; ?>">
+                            <input type="text" class="form-control" name="tel_2" value="<?php echo @$this->session->userdata('user')->tel_2; ?>">
                         </div>
                     </div>
                 </div>
@@ -198,7 +198,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">WhatsApp Number</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="whatsapp" value="<?php echo @$contract->whatsapp; ?>">
+                            <input type="text" class="form-control" name="whatsapp" value="<?php echo @$this->session->userdata('user')->whatsapp; ?>">
                         </div>
                     </div>
                 </div>
@@ -219,7 +219,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
         $lname = $this->session->userdata('user')->lname;
         $fname = $this->session->userdata('user')->fname;
 
-       // dd($this->session->userdata('user'));
+        //dd($this->session->userdata('user'));
     
         echo  $staff_photo = generate_user_avatar( $fname,$lname, $image_path,$photo);
        
