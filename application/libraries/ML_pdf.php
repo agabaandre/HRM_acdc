@@ -6,6 +6,7 @@ require_once APPPATH . '../vendor/autoload.php';
 
 // Use Mpdf based on PHP version
 if (PHP_VERSION_ID >= 80000) { // PHP 8 and above
+    require_once APPPATH . '../vendor/autoload.php'; // Load Composer autoload
     $mpdf = new \Mpdf\Mpdf();
 } else { // PHP 7 and below
     include_once APPPATH . '/third_party/mpdf/mpdf.php';

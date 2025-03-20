@@ -59,6 +59,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                         echo @$contract->job_name;
                         ?>
                     </h6>
+                    <p class="pro-user-desc tx-13 mb-3 font-weight-normal badge text-bg-secondary" style="color:white !important;"><?php echo $this->session->userdata('user')->contract_type; ?></p>
                     <p class="pro-user-desc tx-13 mb-3 font-weight-normal badge text-bg-success" style="color:white !important;"><?php echo $this->session->userdata('user')->group_name; ?></p>
                 </div>
             </div>
@@ -98,6 +99,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                         <div class="col-md-3">
                             <label class="form-label">Language</label>
                         </div>
+                        <?php //dd($this->session->userdata('user')->name); ?>
                         <input type="hidden" name="staff_id" value="<?php echo $staff_id = $this->session->userdata('user')->staff_id ?>">
                         <input type="hidden" name="user_id" value="<?php echo $this->session->userdata('user')->user_id ?>">
                         <div class="col-md-9">
@@ -144,17 +146,27 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                             <label class="form-label">Name</label>
                         </div>
                         <div class="col-md-9">
-                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo @$name = $this->session->userdata('user')->name; ?>" disabled>
+                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo @$this->session->userdata('user')->name; ?>" readonly>
                         </div>
                     </div>
                 </div>
                 <div class="form-group">
                     <div class="row">
                         <div class="col-md-3">
-                            <label class="form-label">Email</label>
+                            <label class="form-label">Work Email</label>
                         </div>
-                        <div class="col-md-9">
-                            <input type="text" name="work_email" class="form-control" placeholder="Email" value="<?php echo @$this->session->userdata('user')->email; ?>">
+                        <div class="col-md-9 m-2">
+                            <input type="text" name="work_email" class="form-control" placeholder="Email" value="<?php echo @$this->session->userdata('user')->work_email; ?>" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">Private</label>
+                        </div>
+                        <div class="col-md-9 m-2">
+                            <input type="text" name="private_email" class="form-control" placeholder="Email" value="<?php echo @$this->session->userdata('user')->private_email; ?>">
                         </div>
                     </div>
                 </div>
@@ -162,7 +174,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 ?>
                 <div class="form-group">
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-3 m-2">
                             <label class="form-label">Primary Number</label>
                         </div>
                         <div class="col-md-9">
@@ -172,7 +184,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 </div>
                 <div class="form-group">
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-3 m-2">
                             <label class="form-label">Alternative Number</label>
                         </div>
                         <div class="col-md-9">
@@ -182,7 +194,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 </div>
                 <div class="form-group">
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-3 m-2">
                             <label class="form-label">WhatsApp Number</label>
                         </div>
                         <div class="col-md-9">
@@ -192,19 +204,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 </div>
 
 
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <i class="bx bx-info-square"></i>
-                            <label class="form-label">Role</label>
-                        </div>
-                        <div class="col-md-9">
-                            <span class="badge text-bg-info">
-                                <?php echo $this->session->userdata('user')->group_name; ?>
-                            </span>
-                        </div>
-                    </div>
-                </div>
+               
                 <div class="form-group">
     <div class="row">
         <div class="col-md-3">
@@ -216,7 +216,12 @@ $contract = Modules::run('auth/contract_info', $staff_id);
         <?php
         $image_path = base_url() . 'uploads/staff/' . @$this->session->userdata('user')->photo;
         $photo = $this->session->userdata('user')->photo;
-        echo  $staff_photo = generate_user_avatar( $name,$name, $image_path,$photo);
+        $lname = $this->session->userdata('user')->lname;
+        $fname = $this->session->userdata('user')->fname;
+
+       // dd($this->session->userdata('user'));
+    
+        echo  $staff_photo = generate_user_avatar( $fname,$lname, $image_path,$photo);
        
         ?>
     </div>
