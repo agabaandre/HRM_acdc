@@ -1,10 +1,16 @@
 <?php
 if (!defined('BASEPATH')) exit('No direct script access allowed');
 
-// Load Composer's autoload
+// Load Composer's autoload if using Composer
 require_once APPPATH . '../vendor/autoload.php';
 
-use Mpdf\Mpdf;
+// Use Mpdf based on PHP version
+if (PHP_VERSION_ID >= 80000) { // PHP 8 and above
+    $mpdf = new \Mpdf\Mpdf();
+} else { // PHP 7 and below
+    include_once APPPATH . '/third_party/mpdf/mpdf.php';
+    $mpdf = new \mPDF();
+}
 
 class ML_pdf {
     public $pdf;
