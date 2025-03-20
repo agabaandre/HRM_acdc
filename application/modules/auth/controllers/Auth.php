@@ -155,7 +155,8 @@ public function other_login()
     }
 
     // Fetch user data using a secure method (Prepared Statements)
-    $data['users'] = $this->auth_mdl->login_secure($email);
+    
+    $data['users'] = $this->auth_mdl->login($email);
 
     // Check if user exists
     if (empty($data['users'])) {
