@@ -1,5 +1,8 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
+use React\EventLoop\Loop;
+use React\Promise\Promise;
+use PHPMailer\PHPMailer\PHPMailer;
 class Jobs extends MX_Controller
 {
     public function __construct()
@@ -180,7 +183,7 @@ public function cron_register(){
                 $next_run = $this->getNextRunDate($message->end_date);
                 $next_run = $next_run->format('Y-m-d');
                // dd($next_run);
-                    $sending = push_email($to, $subject, $body, $id, $next_run);
+                    $sending = $this->send_ms_mail($to, $subject, $body, $id, $next_run);
                     if ($sending) {
                         echo "Message sent to " . $to . "\n";
                         $today = date("Y-m-d");
@@ -237,6 +240,90 @@ public function cron_register(){
         // Fallback: if no threshold is found, schedule for the contract end date.
         return $contractEnd;
     }
+
+   public function get_ms_token()
+    {
+     $url = "https://login.microsoftonline.com/{$_ENV['TENANT_ID']}/oauth2/v2.0/token";
+ 
+     $body = [
+         'grant_type'    => 'client_credentials',
+         'client_id'     => $_ENV['CLIENT_ID'],
+         'client_secret' => $_ENV['CLIENT_SEC_VALUE'],
+         'scope'         => 'https://outlook.office365.com/.default'
+     ];
+ 
+     $headers = ['Content-Type: application/x-www-form-urlencoded'];
+ 
+     $response = curl_send_post($url, $body, $headers);
+ 
+     if (!isset($response->access_token)) {
+         die("Error fetching OAuth token: " . json_encode($response));
+     }
+ 
+    return $response->access_token;
+ }
+
+    function send_ms_mail($to, $subject, $message, $id, $next_run)
+    {
+        $ci = &get_instance();
+        $settings = $ci->db->query('SELECT * FROM setting')->row();
+
+        // Get OAuth2 Token
+        $oauth_token = $this->get_ms_token();
+        if (!$oauth_token) {
+            log_message('error', "OAuth2 token retrieval failed.");
+            return false;
+        }
+
+        try {
+            // Initialize PHPMailer
+            $mailer = new PHPMailer(true);
+            $mailer->isSMTP();
+            $mailer->SMTPDebug = 0;
+            $mailer->Host       = $settings->mail_host;
+            $mailer->SMTPAuth   = true;
+            $mailer->AuthType   = 'XOAUTH2';
+            $mailer->Port       = $settings->mail_smtp_port;
+            $mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+
+            // Use OAuth Token
+            $mailer->Username   = $settings->email;
+            $mailer->oauthToken = $oauth_token;
+
+            // Set email details
+            $mailer->setFrom($settings->email, $settings->title);
+
+            // Process recipients: first address as main, others as CC
+            $emails = explode(';', $to);
+            if (count($emails) > 0) {
+                $primaryEmail = trim($emails[0]);
+                $mailer->addAddress($primaryEmail);
+                for ($i = 1; $i < count($emails); $i++) {
+                    $email = trim($emails[$i]);
+                    if (!empty($email)) {
+                        $mailer->addCC($email);
+                    }
+                }
+            }
+
+            $mailer->Subject = $subject;
+            $mailer->Body    = $message;
+            $mailer->isHTML(true);
+
+            // Send email
+            if ($mailer->send()) {
+                log_message('info', "Email sent successfully to $to (ID: $id)");
+                return true;
+            } else {
+                log_message('error', "Email sending failed: " . $mailer->ErrorInfo);
+                return false;
+            }
+        } catch (Exception $e) {
+            log_message('error', "Email sending exception: {$e->getMessage()}");
+            return false;
+        }
+    }
+
     
 }
 
