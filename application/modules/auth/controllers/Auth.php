@@ -116,11 +116,31 @@ private function handle_login($user_data, $email) {
     $users['is_admin'] = false;
     $_SESSION['user'] = (object) $users;
 
-    if ($role != 17) {
-        redirect('dashboard');
-    } else {
+    // if ($role != 17) {
+    //     redirect('dashboard');
+    // } else {
+    //     redirect('auth/profile');
+    // }
+
+    if ($auth && !empty($data['users'])&& $role!=17 ) {
+      unset($users['password']);
+         $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+          $users['is_admin'] = false;
+          $_SESSION['user'] = (object)$users;
+          redirect('dashboard');
+      
+  }
+  else if ($auth && !empty($data['users'])&& $role==17 ) {
+    unset($users['password']);
+       $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+        $users['is_admin'] = false;
+        $_SESSION['user'] = (object)$users;
         redirect('auth/profile');
-    }
+    
+}
+  else {
+      redirect('auth');
+  }
 }
 
 // public function logout() {
