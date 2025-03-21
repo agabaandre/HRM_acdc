@@ -450,7 +450,7 @@ class Staff extends MX_Controller
 				}
 				else  if($data['status_id']==1){
 		
-					$data['subject'] = "New Contract Notice";
+					$data['subject'] = "Contract Notice";
 					$supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
 					$first_supervisor_mail =staff_details($supervisor_id)->work_email;
 					$copied_mails = settings()->contracts_status_copied_emails;

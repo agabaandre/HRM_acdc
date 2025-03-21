@@ -81,7 +81,7 @@ if (!function_exists('push_email')) {
             // Server settings
             $mailer = new PHPMailer();
             $mailer->isSMTP();
-            $mailer->SMTPDebug = 0;
+            $mailer->SMTPDebug = 2;
             $mailer->Host       = $settings->mail_host;
             $mailer->SMTPAuth   = true;
             $mailer->Username   = $settings->mail_username;
@@ -117,6 +117,7 @@ if (!function_exists('push_email')) {
             } else {
                 // Optionally, log failure using $id and $next_run if needed.
                 $error ='Email sending failed: ' . $mailer->ErrorInfo;
+                dd($error);
                 return false;
             }
         
