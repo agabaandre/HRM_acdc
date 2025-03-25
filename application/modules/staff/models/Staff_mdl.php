@@ -14,6 +14,12 @@ class Staff_mdl extends CI_Model
 
 	public function get_active_staff_data($filters = array(), $limit = FALSE, $start = FALSE)
 	{
+		$subquery = $this->db
+		->select('MAX(staff_contract_id)')
+		->from('staff_contracts')
+		->group_by('staff_id')
+		->get_compiled_select();
+
 		$this->db->select('
 			s.SAPNO,s.title, s.fname, 
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
@@ -40,7 +46,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
 		$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
 		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
-	
+	    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
 		// Apply active staff filter (status_id IN (1,2))
 		$this->db->where_in('sc.status_id', [1, 2]);
 	
@@ -89,6 +95,12 @@ class Staff_mdl extends CI_Model
 	public function get_all_staff_data($filters = array(), $limit = FALSE, $start = FALSE)
 	{
 		
+		$subquery = $this->db
+		->select('MAX(staff_contract_id)')
+		->from('staff_contracts')
+		->group_by('staff_id')
+		->get_compiled_select();
+		
 	
 		$this->db->select('
 			s.SAPNO,s.title, s.fname, 
@@ -117,7 +129,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
 		$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
 		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
-		$this->db->where_in('sc.staff_contract_id');
+		$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
 	
 		// Apply all staff filter (status_id IN (1,2))
 		$this->db->where_in('sc.status_id', [1,2,3,7]);
@@ -307,6 +319,7 @@ class Staff_mdl extends CI_Model
 			->from('staff_contracts')
 			->group_by('staff_id')
 			->get_compiled_select();
+			
 	
 		// Main query selecting required fields
 		$this->db->select('
