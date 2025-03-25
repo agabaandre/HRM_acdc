@@ -433,38 +433,6 @@
 
 </div>
 
-<!-- edit employee data model -->
-
-
-
-
-<!-- edit model -->
-
-
-<script>
-	// Print button functionality
-	function printPage() {
-		// Hide the print button before printing
-		document.querySelector(".btn-print").style.display = "none";
-
-		// Print only the worker's profile
-		var printContents = document.getElementById("worker_profile").innerHTML;
-		var originalContents = document.body.innerHTML;
-
-		document.body.innerHTML = printContents;
-		window.print();
-
-		// Restore the original contents after printing
-		document.body.innerHTML = originalContents;
-
-		// Dismiss the modal after printing
-		document.getElementById("add_profile").addEventListener("afterprint", function() {
-			var modal = new bootstrap.Modal(document.getElementById("add_profile"));
-			modal.hide();
-		});
-	}
-</script>
-
 
 
 
