@@ -128,11 +128,15 @@ class Staff extends MX_Controller
 	function remove_ids($staffs = []) {
 		$keysToRemove = [
 			'staff_contract_id',
+			'email_disabled_at',
+			'email_disabled_by',
 			'job_id',
 			'job_acting_id',
 			'grade_id',
 			'contracting_institution_id',
 			'funder_id',
+			'nationality_id',
+			'staff_id',
 			'first_supervisor',
 			'second_supervisor',
 			'contract_type_id',
