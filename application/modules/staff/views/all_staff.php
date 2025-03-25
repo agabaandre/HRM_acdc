@@ -34,52 +34,76 @@
 			<?php //print_r($this->session->tempdata());
 			?>
 		</div>
-		<?php echo form_open_multipart(base_url('staff/all_staff'), array('id' => 'staff_form', 'class' => 'staff')); ?>
+		<?php echo form_open_multipart(base_url('staff/all_staff'), array('id' => 'staff_form', 'class' => 'staff', 'method' => 'get')); ?>
+	
+
+
 		<div class="row">
-			<div class="col-md-3">
-				<label>Name</label>
-				<input type="text" name="lname" class="form-control" value="<?php echo $this->input->post('lname')?>">
-			</div>
+    <div class="col-md-2">
+        <label>Name</label>
+        <input type="text" name="lname" class="form-control" value="<?= $this->input->post('lname') ?>">
+    </div>
 
+    <div class="col-md-2">
+        <label>Gender</label>
+        <select class="form-control select2" name="gender">
+            <option value="">Select Gender</option>
+            <option value="Male" <?= ($this->input->post('gender') == 'Male') ? 'selected' : '' ?>>Male</option>
+            <option value="Female" <?= ($this->input->post('gender') == 'Female') ? 'selected' : '' ?>>Female</option>
+        </select>
+    </div>
 
-			<div class="col-md-2">
-				<label>Gender</label>
-				<select class="form-control select2" name="gender">
-				<option value="">Select Gender
-				</option>
-					<option value="Male" <?php if($this->input->post('gender')=='Male'){ echo 'selected';}?>>Male
-					</option>
-					<option value="Female" <?php if($this->input->post('gender')=='Female'){ echo 'selected';}?>>Female
-					</option>
-				</select>
-			</div>
-			<div class="col-md-2">
-				<label>SAP NO</label>
-				<input type="text" name="SAPNO" class="form-control">
-			</div>
-			<div class="col-md-2">
-				<label>Nationaility</label>
-				<select class="form-control select2" name="nationality_id">
-				<option  value =''>Select Nationality</option>
-					<?php $nationalities = $this->db->get('nationalities')->result();
-					
-					foreach ($nationalities as $nationality) : ?>
-					     
-						<option value="<?php echo $n = $nationality->nationality_id; ?>"<?php if($this->input->post('nationality_id')==$n){ echo 'selected';}?>><?php echo $nationality->nationality; ?>
-						</option>
-					<?php endforeach;
+    <div class="col-md-2">
+        <label>SAP NO</label>
+        <input type="text" name="SAPNO" class="form-control" value="<?= $this->input->post('SAPNO') ?>">
+    </div>
 
-					?>
+    <div class="col-md-2">
+        <label>Nationality</label>
+        <select class="form-control select2" name="nationality_id">
+            <option value="">Select Nationality</option>
+            <?php
+            $nationalities = $this->db->get('nationalities')->result();
+            foreach ($nationalities as $n) :
+                $selected = ($this->input->post('nationality_id') == $n->nationality_id) ? 'selected' : '';
+                ?>
+                <option value="<?= $n->nationality_id ?>" <?= $selected ?>><?= $n->nationality ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
 
-				</select>
-			</div>
-			<div class="col-md-3 mt-4" style="display:inline-flex;">
-			<button type="submit" class="btn btn-sm btn-success" style="margin-right:2px;"><i class="fa fa-exchange-alt"></i>Apply Filters</button>
-			<a href="<?php echo base_url()?>staff/all_staff/1" class="btn btn-sm btn-secondary" style="margin-right:1px;"><i class="fa fa-file-csv"></i>Export</a>
-			<a href="<?php echo base_url()?>staff/all_staff/0/1" class="btn btn-sm btn-secondary"><i class="fa fa-file-pdf"></i>PDF</a>
-            </div>
+    <div class="col-md-2">
+        <label>Division(s)</label>
+        <select class="form-control select2" name="division_id[]" multiple>
+            <?php foreach ($divisions as $division): ?>
+                <option value="<?= $division->division_id ?>"
+                    <?= (!empty($this->input->post('division_id')) && in_array($division->division_id, $this->input->post('division_id'))) ? 'selected' : '' ?>>
+                    <?= $division->division_name ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
 
-		</div>
+    <div class="col-md-2">
+        <label>Duty Station(s)</label>
+        <select class="form-control select2" name="duty_station_id[]" multiple>
+            <?php foreach ($duty_stations as $station): ?>
+                <option value="<?= $station->id ?>"
+                    <?= (!empty($this->input->post('duty_station_id')) && in_array($station->duty_station_id, $this->input->post('duty_station_id'))) ? 'selected' : '' ?>>
+                    <?= $station->duty_station_name ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
+    <div class="col-md-12 mt-3 d-flex">
+        <button type="submit" class="btn btn-sm btn-success me-2">
+            <i class="fa fa-filter"></i> Apply Filters
+        </button>
+		<a href="<?php echo base_url()?>staff/all_staff/1" class="btn btn-sm btn-secondary" style="margin-right:1px;"><i class="fa fa-file-csv"></i>Export</a>
+		<a href="<?php echo base_url()?>staff/all_staff/0/1" class="btn btn-sm btn-secondary"><i class="fa fa-file-pdf"></i>PDF</a>
+    </div>
+</div>
 
 		
 	
