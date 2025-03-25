@@ -132,6 +132,7 @@ class Staff extends MX_Controller
 			'email_disabled_by',
 			'job_id',
 			'job_acting_id',
+			'job_acting',
 			'grade_id',
 			'contracting_institution_id',
 			'funder_id',
