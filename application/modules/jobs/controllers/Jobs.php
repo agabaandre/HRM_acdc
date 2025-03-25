@@ -184,7 +184,7 @@ public function cron_register(){
                 $next_run = $this->getNextRunDate($message->end_date);
                 $next_run = $next_run->format('Y-m-d');
                // dd($next_run);
-                    $sending = $this->send_ms_mail($to, $subject, $body, $id, $next_run);
+                    $sending = $this->send_mails($to, $subject, $body, $id, $next_run);
                     if ($sending) {
                         echo "Message sent to " . $to . "\n";
                         $today = date("Y-m-d");
@@ -283,7 +283,7 @@ public function cron_register(){
          $mailer->SMTPDebug = 3; // Enable debugging for troubleshooting
          $mailer->Host       = 'smtp.office365.com';
          $mailer->SMTPAuth   = true;
-         $mailer->AuthType   = 'XOAUTH2';
+         $mailer->AuthType   = 'SMTP';
          $mailer->Port       = 587;
          $mailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
 
@@ -291,7 +291,7 @@ public function cron_register(){
          $oauth_token_encoded = base64_encode("user={$settings->email}\001auth=Bearer {$oauth_token}\001\001");
          
          $mailer->Username   = $settings->email;
-         $mailer->Password   = $oauth_token_encoded;  // PHPMailer will use this as the token
+         $mailer->Password   = $settings->password;  // PHPMailer will use this as the token
 
          // Set email details
          $mailer->setFrom($settings->email, $settings->title);
