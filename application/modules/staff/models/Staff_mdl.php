@@ -375,7 +375,7 @@ class Staff_mdl extends CI_Model
 	
 		// Apply pagination if not exporting CSV or PDF
 		if ($limit && empty($filters['csv']) && empty($filters['pdf'])) {
-			$this->db->limit($limit, $start);
+			$this->db->limit($start,$limit);
 		}
 	
 		$query = $this->db->get();
