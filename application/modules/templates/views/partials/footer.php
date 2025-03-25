@@ -645,13 +645,13 @@ $(document).ready(function() {
 });
 
 
-$(document).ready(function() {
-    $('.modal').on('shown.bs.modal', function () {
-        $(this).find('.select2').select2({
-            dropdownParent: $(this)
-        });
-    });
-});
+// $(document).ready(function() {
+//     $('.modal').on('shown.bs.modal', function () {
+//         $(this).find('.select2').select2({
+//             dropdownParent: $(this)
+//         });
+//     });
+// });
 
 </script>
 <script>

@@ -209,18 +209,4 @@ function openImageModal(imageSrc) {
     myModal.show();
 }
 
-function printPage() {
-    const btn = document.querySelector(".btn-print");
-    if (btn) btn.style.display = "none";
-
-    const printContents = document.getElementById("worker_profile").innerHTML;
-    const originalContents = document.body.innerHTML;
-
-    document.body.innerHTML = printContents;
-    window.print();
-
-    window.onafterprint = function () {
-        location.reload();
-    };
-}
 </script>
