@@ -100,10 +100,14 @@
         <button type="submit" class="btn btn-sm btn-success me-2">
             <i class="fa fa-filter"></i> Apply Filters
         </button>
-        <a href="<?= base_url("staff/contract_status/".$status."/1") ?>" class="btn btn-sm btn-secondary me-2">
+		<?php
+			// Get all current GET parameters
+			$query_string = http_build_query($this->input->get());
+			?>
+        <a href="<?= base_url("staff/contract_status/".$status."/1") ?><?='?' . $query_string ?>" class="btn btn-sm btn-secondary me-2">
             <i class="fa fa-file-csv"></i> Export
         </a>
-        <a href="<?= base_url("staff/contract_status/".$status."/0/1") ?>" class="btn btn-sm btn-secondary">
+        <a href="<?= base_url("staff/contract_status/".$status."/0/1") ?><?='?' . $query_string ?>" class="btn btn-sm btn-secondary">
             <i class="fa fa-file-pdf"></i> PDF
         </a>
     </div>

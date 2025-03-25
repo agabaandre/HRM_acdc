@@ -23,7 +23,10 @@
         } */
 	}
 </style>
-
+<?php
+// Get all current GET parameters
+$query_string = http_build_query($this->input->get());
+?>
 
 <div class="card">
 	<div class="col-md-12" style="float: right;">
@@ -100,8 +103,8 @@
         <button type="submit" class="btn btn-sm btn-success me-2">
             <i class="fa fa-filter"></i> Apply Filters
         </button>
-		<a href="<?php echo base_url()?>staff/all_staff/1" class="btn btn-sm btn-secondary" style="margin-right:1px;"><i class="fa fa-file-csv"></i>Export</a>
-		<a href="<?php echo base_url()?>staff/all_staff/0/1" class="btn btn-sm btn-secondary"><i class="fa fa-file-pdf"></i>PDF</a>
+		<a href="<?php echo base_url()?>staff/all_staff/1<?='?'. $query_string ?>" class="btn btn-sm btn-secondary" style="margin-right:1px;"><i class="fa fa-file-csv"></i>Export</a>
+		<a href="<?php echo base_url()?>staff/all_staff/0/1"<?='?' . $query_string ?> class="btn btn-sm btn-secondary"><i class="fa fa-file-pdf"></i>PDF</a>
     </div>
 </div>
 
