@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contract Status Report - Africa CDC</title>
     <style>
-        @media print {
-            .hidden { display: none; }
-            @page { margin: 20px; }
-            body { font-family: Arial, sans-serif; }
+     
+        .header {
+        text-align: center;
+            margin-bottom: 20px;
         }
-        .container { width: 100%; margin: auto; }
-        .header { text-align: center; padding: 10px; border-bottom: 2px solid #000; }
-        .header img { width: 150px; }
+
+        .header img {
+            width: 150px;
+        }
         .title { font-size: 18px; font-weight: bold; text-align: center; margin-top: 10px; }
         .table-container { margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
@@ -24,7 +25,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <img src="<?php echo base_url(); ?>/assets/images/AU_CDC_Logo-800.png" alt="Africa CDC Logo"  style="width:200px !important;">
+            <img src="<?php echo base_url(); ?>/assets/images/AU_CDC_Logo-800.png" alt="Africa CDC Logo"  style="width:150px !important;">
         </div>
         <div class="title"><?php echo $title?></div>
         <div class="table-container">
