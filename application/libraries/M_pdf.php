@@ -1,14 +1,10 @@
 <?php
 if (!defined('BASEPATH')) exit('No direct script access allowed');
 
-// Use Mpdf based on PHP version
-if (PHP_VERSION_ID >= 80000) { // PHP 8 and above
-    require_once APPPATH . '../vendor/autoload.php'; // Load Composer autoload
-    $mpdf = new \Mpdf\Mpdf();
-} else { // PHP 7 and below
-    require_once APPPATH . '../vendor/autoload.php'; 
-    $mpdf = new \Mpdf\Mpdf();
-}
+// Load Composer's autoload
+require_once APPPATH . '../vendor/autoload.php';
+
+use Mpdf\Mpdf;
 
 class M_pdf {
     public $pdf;
@@ -25,11 +21,7 @@ class M_pdf {
         $config = array_merge($defaultConfig, $params);
 
         // Initialize Mpdf
-        if (PHP_VERSION_ID >= 80000) {
-            $this->pdf = new \Mpdf\Mpdf($config);
-        } else {
-            $this->pdf = new \mPDF($config);
-        }
+        $this->pdf = new Mpdf($config);
     }
 
     public function loadHtml($html) {
@@ -44,4 +36,3 @@ class M_pdf {
         return $this->pdf;
     }
 }
-?>
