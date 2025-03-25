@@ -198,7 +198,7 @@ class Staff extends MX_Controller
 		
 		}
 		//dd($data);
-		$data['links'] = pagination('staff/index', $count, $per_page = 20);
+		$data['links'] = pagination('staff/all_staff', $count, $per_page = 20);
 		render('all_staff', $data);
 	}
 
@@ -313,16 +313,20 @@ class Staff extends MX_Controller
 		else if ($status == 5) {
 			$data['title'] = "Re Assigned Staff";
 		}
-		$page = ($this->uri->segment(4)) ? $this->uri->segment(5) : 0;
+		$page = ($this->uri->segment(4)) ? $this->uri->segment(4) : 0;
 		$filters = $this->input->post();
 		$filters['csv'] =$csv;
 		$filters['pdf'] =$pdf;
 		$filters['status_id'] =$status;	
-		
+		$per_page=20;
+		$data['staffs'] = $this->staff_mdl->get_status($filters,$per_page, $page);
+		//dd($data['staffs']);
+
         $count = count($this->staff_mdl->get_status($filters));
 		$data['records'] = $count;
 		//dd($count);
-		$data['staffs'] = $this->staff_mdl->get_status($filters,$per_page = 20, $page);
+	
+		
 		//dd($data);
 		$staffs= $data['staffs'];
 		$file_name = $data['title'].'_Africa CDC Staff_'.date('d-m-Y-H-i').'.csv';

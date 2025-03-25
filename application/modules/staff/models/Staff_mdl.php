@@ -87,8 +87,8 @@ class Staff_mdl extends CI_Model
 
 	public function get_all_staff_data($filters = array(), $limit = FALSE, $start = FALSE)
 	{
-		 
 		
+	
 		$this->db->select('
 			sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id, 
 			sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
@@ -115,6 +115,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
 		$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
 		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+		$this->db->where_in('sc.staff_contract_id');
 	
 		// Apply all staff filter (status_id IN (1,2))
 		$this->db->where_in('sc.status_id', [1,2,3,7]);
@@ -296,7 +297,7 @@ class Staff_mdl extends CI_Model
 
 
 
-	public function get_status($filters = [], $limit = FALSE, $start = FALSE)
+	public function get_status($filters, $limit = FALSE, $start = FALSE)
 	{
 		// Get latest contract per staff using subquery
 		$subquery = $this->db
@@ -307,15 +308,15 @@ class Staff_mdl extends CI_Model
 	
 		// Main query selecting required fields
 		$this->db->select('
-		        s.title, s.fname, 
+		    s.SAPNO,s.title, s.fname, 
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
 			ct.contract_type, n.nationality, d.division_name, 
 			sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, 
-			s.initiation_date, sc.status_id, st.status,sc.start_date,sc.end_date, sc.duty_station_id, sc.contract_type_id,
+			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
-			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.SAPNO, s.photo,
+			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.photo,
 			s.private_email, s.physical_location
 		');
 		
@@ -331,7 +332,7 @@ class Staff_mdl extends CI_Model
 		$this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
 		$this->db->join('status st', 'st.status_id = sc.status_id', 'left');
 	
-		// Ensuring only latest contracts are selected
+		//Ensuring only latest contracts are selected
 		$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
 	
 		// Handle filters
@@ -374,13 +375,15 @@ class Staff_mdl extends CI_Model
 		$this->db->order_by('s.fname', 'ASC');
 	
 		// Apply pagination if not exporting CSV or PDF
-		if ($limit && empty($filters['csv']) && empty($filters['pdf'])) {
-			$this->db->limit($start,$limit);
+		 if ($limit && $filters['csv']!=1 && $filters['pdf']!=1)  {
+			$this->db->limit($limit, $start);
 		}
 	
 		$query = $this->db->get();
+
 	
-		return (!empty($filters['csv'])) ? $query->result_array() : $query->result();
+	return (($filters['csv'])==1) ? $query->result_array() : $query->result();
+	//dd($this->db->last_query());
 	}
 	
 public function getBirthdays($days)
