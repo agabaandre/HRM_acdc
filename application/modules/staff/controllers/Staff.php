@@ -312,7 +312,7 @@ class Staff extends MX_Controller
 		else if ($status == 5) {
 			$data['title'] = "Re Assigned Staff";
 		}
-		$page = ($this->uri->segment(4)) ? $this->uri->segment(4) : 0;
+		$page = ($this->uri->segment(4)) ? $this->uri->segment(5) : 0;
 		$filters = $this->input->post();
 		$filters['csv'] =$csv;
 		$filters['pdf'] =$pdf;
