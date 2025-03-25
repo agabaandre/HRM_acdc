@@ -428,9 +428,23 @@ if (!function_exists('render_csv_data')) {
         if (!empty($datas)) {
             foreach ($datas as $data) {
                 if ($is_coloumn) {
-                    fputcsv($fh, array_map(function($key) {
-                        return ucwords(str_replace('_', ' ', $key));
-                    }, array_keys($data)));
+                 fputcsv($fh, array_map(function($key) {
+                    // Custom replacements before applying ucwords
+                    $replacements = [
+                        'fname' => 'First Name',
+                        'lname' => 'Last Name',
+                        'oname' => 'Other Name',
+                        'tel_1' => 'Contact1',
+                        'tel_2' => 'Contact2'
+                    ];
+                
+                    // Perform the replacement first, then apply ucwords
+                    $key = isset($replacements[$key]) ? $replacements[$key] : str_replace('_', ' ', $key);
+                    
+                    // Apply ucwords to capitalize each word
+                    return ucwords($key);
+                }, array_keys($data)));
+
                     $is_coloumn = false;
                 }
                 
