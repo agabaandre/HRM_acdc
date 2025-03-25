@@ -24,7 +24,7 @@
 		"shufo/laravel-opensearch": "^0.1.4",
 		"thybag/php-sharepoint-lists-api": "dev-master",
 		"phpmailer/phpmailer": "^6.8",
-		"mpdf/mpdf": "8.0.0",
+		"mpdf/mpdf": "7.1.0",
 		"react/react": "^1.4",
 		"vlucas/phpdotenv": "^5.6",
 		"ngekoding/codeigniter-datatables": "^1.0",
