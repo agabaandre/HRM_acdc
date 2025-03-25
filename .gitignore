@@ -16,3 +16,6 @@ node_modules
 # /uploads/
 .env
 .env
+
+compser.lock
+package-lock.json
