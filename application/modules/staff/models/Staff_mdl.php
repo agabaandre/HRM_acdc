@@ -307,15 +307,15 @@ class Staff_mdl extends CI_Model
 	
 		// Main query selecting required fields
 		$this->db->select('
-			sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id,
-			s.email_status, s.email_disabled_at, s.email_disabled_by,
-			sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
+		        s.title, s.fname, 
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
 			ct.contract_type, n.nationality, d.division_name, 
 			sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, 
-			s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.SAPNO, s.photo,
+			s.initiation_date, sc.status_id, st.status,sc.start_date,sc.end_date, sc.duty_station_id, sc.contract_type_id,
+			s.email_status, s.email_disabled_at, s.email_disabled_by,
+			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.SAPNO, s.photo,
 			s.private_email, s.physical_location
 		');
 		

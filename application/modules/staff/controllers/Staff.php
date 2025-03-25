@@ -128,17 +128,22 @@ class Staff extends MX_Controller
 	function remove_ids($staffs = []) {
 		$keysToRemove = [
 			'staff_contract_id',
+			'email_disabled_at',
+			'email_disabled_by',
 			'job_id',
 			'job_acting_id',
 			'grade_id',
 			'contracting_institution_id',
 			'funder_id',
+			'nationality_id',
+			'staff_id',
 			'first_supervisor',
 			'second_supervisor',
 			'contract_type_id',
 			'duty_station_id',
 			'division_id',
 			'unit_id',
+			'photo',
 			'flag',
 			'created_at',
 			'updated_at',
@@ -308,7 +313,7 @@ class Staff extends MX_Controller
 		else if ($status == 5) {
 			$data['title'] = "Re Assigned Staff";
 		}
-		$page = ($this->uri->segment(4)) ? $this->uri->segment(4) : 0;
+		$page = ($this->uri->segment(4)) ? $this->uri->segment(5) : 0;
 		$filters = $this->input->post();
 		$filters['csv'] =$csv;
 		$filters['pdf'] =$pdf;
