@@ -21,9 +21,11 @@ class Staff extends MX_Controller
 		$data['module'] = $this->module;
 		$data['title'] = "Current Staff";
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
-		$filters = $this->input->post();
+		$filters = $this->input->get();
 		$filters['csv'] =$csv;
 		$filters['pdf'] =$pdf;
+		$data['divisions'] = $this->db->get('divisions')->result(); 
+        $data['duty_stations'] = $this->db->get('duty_stations')->result(); // 
 		
         $count = count($this->staff_mdl->get_active_staff_data($filters));
 		$data['records'] = $count;
@@ -48,6 +50,13 @@ class Staff extends MX_Controller
 		render('staff_table', $data);
 	}
 
+	public function find_staff_by_email($email){
+		
+		$this->db->where('work_email', $email);
+		$data = $this->db->get('staff')->result();
+		json_encode($data);
+	}
+
 	public function profile($profile){
         $filters['staff_id']=$profile;
 	
@@ -57,6 +66,21 @@ class Staff extends MX_Controller
 		$pdf_name = $data['staffs'][0]->lname.'_'.$data['staffs'][0]->fname.'_'.date('d-m-Y-H-i').'.pdf';
 		
 		$this->print_data($data, $pdf_name,'P','pdfs/staff_profile');
+		
+		
+
+	}
+
+	public function profile_view($profile){
+        $filters['staff_id']=$profile;
+		$data['module']= $this->module;
+	
+		$data['staffs'] = $this->staff_mdl->get_all_staff_data($filters,$per_page = 20, $page=0);
+		
+	
+		$pdf_name = $data['staffs'][0]->lname.'_'.$data['staffs'][0]->fname.'_'.date('d-m-Y-H-i').'.pdf';
+		
+	render('pdfs/staff_profile',$data);
 		
 		
 
@@ -176,9 +200,11 @@ class Staff extends MX_Controller
 		$data['module'] = $this->module;
 		$data['title'] = "All Staff (Active, Due, Expired, Under Renewal)";
 		$page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0;
-		$filters = $this->input->post();
+		$filters = $this->input->get();
 		$filters['csv'] =$csv;
 		$filters['pdf'] =$pdf;
+		$data['divisions'] = $this->db->get('divisions')->result(); 
+        $data['duty_stations'] = $this->db->get('duty_stations')->result(); // 
 		
         $count = count($this->staff_mdl->get_all_staff_data($filters));
 		$data['records'] = $count;
@@ -315,14 +341,15 @@ class Staff extends MX_Controller
 			$data['title'] = "Re Assigned Staff";
 		}
 		$page = ($this->uri->segment(4)) ? $this->uri->segment(4) : 0;
-		$filters = $this->input->post();
+		$filters = $this->input->get();
 		$filters['csv'] =$csv;
 		$filters['pdf'] =$pdf;
 		$filters['status_id'] =$status;	
 		$per_page=20;
 		$data['staffs'] = $this->staff_mdl->get_status($filters,$per_page, $page);
 		//dd($data['staffs']);
-
+        $data['divisions'] = $this->db->get('divisions')->result(); 
+        $data['duty_stations'] = $this->db->get('duty_stations')->result(); // 
         $count = count($this->staff_mdl->get_status($filters));
 		$data['records'] = $count;
 		//dd($count);
@@ -506,6 +533,8 @@ public function new()
 {
     $data['module'] = $this->module;
     $data['title']  = "New Staff";
+	$data['divisions'] = $this->db->get('divisions')->result(); 
+    $data['duty_stations'] = $this->db->get('duty_stations')->result(); // 
     // Render the view with your form (e.g., new_staff.php)
     render('new_staff', $data);
 }

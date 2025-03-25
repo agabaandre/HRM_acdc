@@ -49,6 +49,14 @@ class Staff_mdl extends CI_Model
 	    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
 		// Apply active staff filter (status_id IN (1,2))
 		$this->db->where_in('sc.status_id', [1, 2]);
+
+			// Handle filters for divsion_id & dutystation
+			if (!empty($filters['division_id'])) {
+				$this->db->where_in('sc.division_id', $filters['division_id']);
+			}
+			if (!empty($filters['duty_station_id'])) {
+				$this->db->where_in('sc.duty_station_id', $filters['duty_station_id']);
+			}
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
@@ -57,6 +65,12 @@ class Staff_mdl extends CI_Model
 		unset($filters['lname']);
 		unset($filters['csv']);
 		unset($filters['pdf']);
+		if (isset($filters['division_id'])) {
+			unset($filters['division_id']);
+		}
+		if (isset($filters['duty_station_id'])) {
+			unset($filters['duty_station_id']);
+		}
 	
 		if (!empty($filters)) {
 			foreach ($filters as $key => $value) {
@@ -133,6 +147,14 @@ class Staff_mdl extends CI_Model
 	
 		// Apply all staff filter (status_id IN (1,2))
 		$this->db->where_in('sc.status_id', [1,2,3,7]);
+
+		// Handle filters for divsion_id & dutystation
+		if (!empty($filters['division_id'])) {
+			$this->db->where_in('sc.division_id', $filters['division_id']);
+		}
+		if (!empty($filters['duty_station_id'])) {
+			$this->db->where_in('sc.duty_station_id', $filters['duty_station_id']);
+		}
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
@@ -147,6 +169,12 @@ class Staff_mdl extends CI_Model
 			}
 			if (isset($filters['pdf'])) {
 				unset($filters['pdf']);
+			}
+			if (isset($filters['division_id'])) {
+				unset($filters['division_id']);
+			}
+			if (isset($filters['duty_station_id'])) {
+				unset($filters['duty_station_id']);
 			}
 		}
 		
@@ -350,7 +378,13 @@ class Staff_mdl extends CI_Model
 		//Ensuring only latest contracts are selected
 		$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
 	
-		// Handle filters
+		// Handle filters for divsion_id & dutystation
+		if (!empty($filters['division_id'])) {
+			$this->db->where_in('sc.division_id', $filters['division_id']);
+		}
+		if (!empty($filters['duty_station_id'])) {
+			$this->db->where_in('sc.duty_station_id', $filters['duty_station_id']);
+		}
 		if (!empty($filters['status_id'])) {
 			$this->db->where_in('sc.status_id', $filters['status_id']);
 		}
@@ -377,9 +411,12 @@ class Staff_mdl extends CI_Model
 			$this->db->or_like('s.fname', $filters['lname']);
 			$this->db->group_end();
 		}
+		
+		
 	
 		// Special keys to exclude from dynamic loop
-		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto'];
+		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto','division_id','duty_station_id'];
+		
 	
 		foreach ($filters as $key => $value) {
 			if (!empty($value) && !in_array($key, $exclude_keys)) {

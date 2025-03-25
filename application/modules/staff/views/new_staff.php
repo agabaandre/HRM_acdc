@@ -35,7 +35,7 @@
 
                         <div class="col-md-6">
                             <?php echo validation_errors(); ?>
-                            <?php echo form_open('staff/new'); ?>
+                            <?php echo form_open('staff/new_submit'); ?>
 
                             <h4>Personal Information</h4>
 
@@ -53,6 +53,7 @@
                                     <option value="Rev">Rev</option>
                                     <option value="Mr">Mr</option>
                                     <option value="Mrs">Mrs</option>
+                                    <option value="Ms">Ms</option>
 
                                 </select>
                             </div>
@@ -330,7 +331,7 @@
                                 <label for="end_date">End Date: <?php echo asterik();?></label>
                                 <input type="text" class="form-control datepicker validate-required" name="end_date" id="end_date"
                                      autocomplete="off">
-                                     <div class="invalid-feedback">Must be greate than start date</div>
+                                     <div class="invalid-feedback">Must be greater than start date</div>
                             </div>
                             
 
