@@ -41,21 +41,21 @@
 		<div class="row">
     <div class="col-md-2">
         <label>Name</label>
-        <input type="text" name="lname" class="form-control" value="<?= $this->input->post('lname') ?>">
+        <input type="text" name="lname" class="form-control" value="<?= $this->input->get('lname') ?>">
     </div>
 
     <div class="col-md-2">
         <label>Gender</label>
         <select class="form-control select2" name="gender">
             <option value="">Select Gender</option>
-            <option value="Male" <?= ($this->input->post('gender') == 'Male') ? 'selected' : '' ?>>Male</option>
-            <option value="Female" <?= ($this->input->post('gender') == 'Female') ? 'selected' : '' ?>>Female</option>
+            <option value="Male" <?= ($this->input->get('gender') == 'Male') ? 'selected' : '' ?>>Male</option>
+            <option value="Female" <?= ($this->input->get('gender') == 'Female') ? 'selected' : '' ?>>Female</option>
         </select>
     </div>
 
     <div class="col-md-2">
         <label>SAP NO</label>
-        <input type="text" name="SAPNO" class="form-control" value="<?= $this->input->post('SAPNO') ?>">
+        <input type="text" name="SAPNO" class="form-control" value="<?= $this->input->get('SAPNO') ?>">
     </div>
 
     <div class="col-md-2">
@@ -65,7 +65,7 @@
             <?php
             $nationalities = $this->db->get('nationalities')->result();
             foreach ($nationalities as $n) :
-                $selected = ($this->input->post('nationality_id') == $n->nationality_id) ? 'selected' : '';
+                $selected = ($this->input->get('nationality_id') == $n->nationality_id) ? 'selected' : '';
                 ?>
                 <option value="<?= $n->nationality_id ?>" <?= $selected ?>><?= $n->nationality ?></option>
             <?php endforeach; ?>
@@ -77,7 +77,7 @@
         <select class="form-control select2" name="division_id[]" multiple>
             <?php foreach ($divisions as $division): ?>
                 <option value="<?= $division->division_id ?>"
-                    <?= (!empty($this->input->post('division_id')) && in_array($division->division_id, $this->input->post('division_id'))) ? 'selected' : '' ?>>
+                    <?= (!empty($this->input->get('division_id')) && in_array($division->division_id, $this->input->get('division_id'))) ? 'selected' : '' ?>>
                     <?= $division->division_name ?>
                 </option>
             <?php endforeach; ?>
@@ -89,7 +89,7 @@
         <select class="form-control select2" name="duty_station_id[]" multiple>
             <?php foreach ($duty_stations as $station): ?>
                 <option value="<?= $station->id ?>"
-                    <?= (!empty($this->input->post('duty_station_id')) && in_array($station->duty_station_id, $this->input->post('duty_station_id'))) ? 'selected' : '' ?>>
+                    <?= (!empty($this->input->get('duty_station_id')) && in_array($station->duty_station_id, $this->input->get('duty_station_id'))) ? 'selected' : '' ?>>
                     <?= $station->duty_station_name ?>
                 </option>
             <?php endforeach; ?>
@@ -123,10 +123,10 @@
 
 	</form>
 	<?php echo $records ." Total Staff";
-	if(!empty($this->input->post())){
+	if(!empty($this->input->get())){
 	?> 
 
-	<p>Result Limited By <?php foreach($this->input->post() as $key=>$value) :
+	<p>Result Limited By <?php foreach($this->input->get() as $key=>$value) :
 	if($value!= ""){
 		if($key=='nationality_id'){
 			$cname= getcountry($value);
