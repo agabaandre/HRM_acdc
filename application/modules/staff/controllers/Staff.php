@@ -143,6 +143,7 @@ class Staff extends MX_Controller
 			'duty_station_id',
 			'division_id',
 			'unit_id',
+			'photo',
 			'flag',
 			'created_at',
 			'updated_at',
