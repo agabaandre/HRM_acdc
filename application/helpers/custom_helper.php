@@ -418,18 +418,28 @@ function check_admin_access()
 if (!function_exists('render_csv_data')) {
     function render_csv_data($datas, $filename)
     {
-        //datas should be assoc array
-        $csv_file = $filename;
+        if (empty($datas)) {
+            return;
+        }
+
+        // Clean output buffer to prevent stray whitespace or empty line
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
         header("Content-Type: text/csv");
-        header("Content-Disposition: attachment; filename=\"$csv_file\"");
+        header("Content-Disposition: attachment; filename=\"$filename\"");
+        header("Pragma: no-cache");
+        header("Expires: 0");
+
         $fh = fopen('php://output', 'w');
 
-        $is_coloumn = true;
-        if (!empty($datas)) {
-            foreach ($datas as $data) {
-                if ($is_coloumn) {
-                 fputcsv($fh, array_map(function($key) {
-                    // Custom replacements before applying ucwords
+        $is_column = true;
+
+        foreach ($datas as $data) {
+            if ($is_column) {
+                // First row: output custom headers
+                fputcsv($fh, array_map(function ($key) {
                     $replacements = [
                         'fname' => 'First Name',
                         'lname' => 'Last Name',
@@ -437,24 +447,22 @@ if (!function_exists('render_csv_data')) {
                         'tel_1' => 'Contact1',
                         'tel_2' => 'Contact2'
                     ];
-                
-                    // Perform the replacement first, then apply ucwords
-                    $key = isset($replacements[$key]) ? $replacements[$key] : str_replace('_', ' ', $key);
-                    
-                    // Apply ucwords to capitalize each word
+                    $key = $replacements[$key] ?? str_replace('_', ' ', $key);
                     return ucwords($key);
                 }, array_keys($data)));
 
-                    $is_coloumn = false;
-                }
-                
-                fputcsv($fh, array_values($data));
+                $is_column = false;
             }
-            fclose($fh);
+
+            // Write data row
+            fputcsv($fh, array_values($data));
         }
+
+        fclose($fh);
         exit;
     }
 }
+
 
 
 if (!function_exists('share_buttons')) {

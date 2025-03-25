@@ -41,6 +41,8 @@
                         <th>Job</th>
                         <th>Contract Status</th>
                         <th>First Supervisor</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
                         <th>Email</th>
                     </tr>
                 </thead>
@@ -59,6 +61,8 @@
                             <td><?= $data->job_name ?></td>
                             <td><?= $data->status ?></td>
                             <td><?= staff_name($data->first_supervisor) ?></td>
+                            <td><?= $data->start_date ?></td>
+                            <td><?= $data->end_date ?></td>
                             <td><?= $data->work_email ?></td>
                         </tr>
                     <?php endforeach;
