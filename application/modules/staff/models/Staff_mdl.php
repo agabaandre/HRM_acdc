@@ -307,7 +307,7 @@ class Staff_mdl extends CI_Model
 	
 		// Main query selecting required fields
 		$this->db->select('
-			sc.status_id, st.status, sc.duty_station_id, sc.contract_type_id,
+			sc.status_id, st.status,sc.start_date,sc.end_date, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
 			sc.division_id, s.nationality_id, s.staff_id, s.title, s.fname, 
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
