@@ -48,10 +48,10 @@ class Share extends MX_Controller
         $data = array(); // Initialize $data array
 
         foreach ($result as $row):
-            $row['start_date']       = date('m/d/Y', strtotime($row['start_date']));
-            $row['end_date']         = date('m/d/Y', strtotime($row['end_date']));
-            $row['date_of_birth']    = date('m/d/Y', strtotime($row['date_of_birth']));
-            $row['initiation_date']  = date('m/d/Y', strtotime($row['initiation_date']));
+            $row['start_date']       = date('Y-m-d', strtotime($row['start_date']));
+            $row['end_date']         = date('Y-m-d', strtotime($row['end_date']));
+            $row['date_of_birth']    = date('Y-m-d', strtotime($row['date_of_birth']));
+            $row['initiation_date']  = date('Y-m-d', strtotime($row['initiation_date']));
             $f = $row['first_supervisor'];
             $s = $row['second_supervisor'];
 

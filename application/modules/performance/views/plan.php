@@ -1,207 +1,156 @@
-<?php
-$session = $this->session->userdata('user');
-$staff_id = $this->session->userdata('user')->staff_id;
-$contract = Modules::run('auth/contract_info', $staff_id);
-//dd($contract)
-?>
-<style>
-  .overflow-content {
-    overflow: auto;
-    min-height: 800px;
+<!-- Display leave application status for employees -->
+<div class="card">
 
-  }
-</style>
-<?php echo form_open_multipart(base_url('performance/save_ppa'), array('id' => 'leave', 'class' => 'leave')); ?>
+	<div class="card-body">
+
+		<div class="table-responsive">
+			<!-- Leave application status table -->
+			<div class="row">
+				<div class="col-md-12">
+					<a class="btn btn-primary px-5 radius-30" href="<?php echo base_url() ?>performance/"><i class="fa fa-plus"></i>Performance Plan Submission</a>
 
 
+					<form id="leave-filter-form" method="get" action="<?= base_url('myplans'); ?>">
+						<div class="row mb-3">
 
-  <div cllass="row">
-    <!-- SmartWizard html -->
-    <!-- SmartWizard html -->
-    <?php if(setting()->staff_multistep==1){
-        echo '<div id="smartwizard">
-        
-          <ul class="nav">
-        <li>
-          <a class="nav-link" href="#step-1"> <strong>Step 1</strong>
-            <br>Personal Information</a>
-        </li>
-        <li>
-          <a class="nav-link" href="#step-2"> <strong>Step 2</strong>
-            <br>Objectives</a>
-          </li>
-          <li>
-            <a class="nav-link" href="#step-4"> <strong>Step 3</strong>
-              <br>Training</a>
-          </li>
-          <li>
-            <a class="nav-link" href="#step-5"> <strong>Step 4</strong>
-              <br>Sign Off</a>
-          </li>
+							<div class="col-md-3">
+								<label for="end_date">Period:</label>
+								<input type="text" name="period" id="period" class="form-control">
+							</div>
+							<div class="col-md-3">
+								<label for="status">Status:</label>
+								<select class="form-control select2" name="status">
+									<option value="">All</option>
+									<option value="Pending">Pending</option>
+									<option value="Approved">Approved</option>
+									<option value="Rejected">Rejected</option>
+								</select>
+							</div>
 
-        </ul>
-        <div class="tab-content">
-        
-        
-        ';
-         }
-          else{ echo "<div class=''>";
-               
-        }
-            ?> 
-    
-        <div id="step-1" class="tab-pane" role="tabpanel" aria-labelledby="step-1">
-        <?php if(setting()->staff_multistep==1){?><h3>Step 1:</h3><?php } ?>
-          <h4>A. Staff Details</h4>
-          <div class="row">
-            <div class="col-md-6 col-lg-6">
-              <div class="mb-3">
-                <label for="name" class="form-label">Name</label>
-                <input type="text" id="name" class="form-control" name="name" value="<?= $session->name ?>" disabled>
-              </div>
-              <div class="mb-3">
-                <label for="personnel-number" class="form-label">Personnel Number</label>
-                <input type="text" name="personnel_number" id="personnel-number" class="form-control" value="<?= $contract->tel_1 ?>" disabled>
-              </div>
-              <div class="mb-3">
-                <label for="position" class="form-label">Position</label>
-                <input type="text" name="position" id="position" class="form-control" value="<?= $contract->job_name ?>" disabled>
-              </div>
-              <div class="mb-3">
-                <label for="position-since" class="form-label">In this Position since</label>
-                <input type="text" id="position-since" class="form-control" value="<?= $contract->start_date ?>" disabled>
-              </div>
-            </div>
-            <div class="col-md-6 col-lg-6">
-              <div class="mb-3">
-                <label for="unit" class="form-label">Division</label>
-                <input type="text" id="division" name="dvision" class="form-control" value="<?php echo acdc_division($contract->division_id); ?>" disabled>
-              </div>
-              <div class="mb-3">
-                <label for="performance-period" class="form-label">Current performance period</label>
-                <select class="form-control" name="performance-period" readonly>
-                  <?php echo periods(); ?>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label for="supervisor" class="form-label">Name of direct supervisor</label>
+							<div class="col-md-3">
+								<button type="submit" class="btn btn-primary mt-4">Apply Filters</button>
+							</div>
 
-                <input type="text" class="form-control" name="supervisor_name" value="<?php echo staff_name(get_supervisor(current_contract($session->staff_id))->first_supervisor) ?>" readonly>
+						</div>
+					</form>
+					<table id="leave-table" class="table table-striped">
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>SAP NO</th>
+								<th>Name</th>
+								<th>Submission Date</th>
+								<th>Period</th>
+								<th>Objectives</th>
+								<th>Comments</th>
+								<th>Approval Status</th>
+								<th>Overall Approval</th>
 
-                <input type="hidden" class="form-control" name="supervisor_id" id="supervisor_id" data='' value="<?php echo get_supervisor(current_contract($session->staff_id))->first_supervisor ?>">
-              </div>
-              <div class="mb-3">
-                <label for="second-supervisor" class="form-label">Name of second supervisor</label>
-                <input type="text" class="form-control" name="supervisor2_id" data='<?= get_supervisor(current_contract($session->staff_id))->second_supervisor ?>' id="supervisor2_id" name="supervisor2_id" value="<?php echo @staff_name(get_supervisor(current_contract($session->staff_id))->second_supervisor) ?>" readonly>
-              </div>
-            </div>
-          </div>
-        </div>
+							</tr>
+						</thead>
+						<tbody>
+							<?php
+							$i = 1;
+							foreach ($plans as $plan) : ?>
+								<tr data-status="<?= $plan['overall_status']; ?>" <?php if ($plan['overall_status'] == 'Approved') { ?>style="background:#d2f0d7 !important" ;<?php } else if ($plan['overall_status'] == 'Rejected') { ?>style="background:#ffcdcd !important" ; <?php } ?>>
+									<td><?= $i++; ?></td>
+									<td><?= $plan['SAPNO']; ?></td>
+									<td><?= $plan['lname'] . ' ' . $plan['fname'] . ' ' . $plan['oname']; ?></td>
+									<td><?= $plan['created_at']; ?></td>
+									<td><?= $plan['period'] ?></td>
+									<td><?php $obj = $plan['objectives'];
+										$objs = json_decode($obj);
+										$counter = 0;
+										foreach ($objs as $ob) :
+											//print_r($objs);
+											echo '<p>' . $counter + 1 . ' ' . $ob[$counter] . '</p><hr>';
+											$counter++;
+										endforeach;
 
 
-        <div id="step-2" class="tab-pane" style="overflow-y: auto!important;" role="tabpanel" aria-labelledby="step-2">
-        <?php if(setting()->staff_multistep==1){?><h3>Step 2:</h3><?php } ?>
-          <div class="mt-4">
-            <button class="btn btn-dark px-5 radius-30" onclick="addObjective()">Create Objective</button>
-          </div>
-
-          <h4>B. Performance Objectives</h4>
-          <div class="row new-objectives">
-
-          </div>
-        </div>
-
-        <div id="step-4" class="tab-pane" role="tabpanel" aria-labelledby="step-4">
-        <?php if(setting()->staff_multistep==1){?><h3>Step 3:</h3><?php } ?>
-
-          <h1>C. Personal Development Plan</h4>
-            <div class="row">
-              <div class="col-md-12">
-                <div class="mb-3">
-                  <label class="form-label">Is training recommended for this staff member?</label>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="training_recommended" value="Yes">
-                    <label class="form-check-label">Yes</label>
-                  </div>
-                </div>
-                <section class="required_trainings">
-                  <div class="mb-3">
-                    <label for="skill-area" class="form-label">If yes, in what subject/ skill area(s) is the training recommended for this staff member?</label>
-                    <select class="form-control multiple-select" name="required_skills[]">
-                      <?php foreach ($skills as $skill) : ?>
-                        <option value="<?php echo $skill->id ?>"><?php echo $skill->skill ?></option>
-                      <?php endforeach; ?>
+										?></td>
+									<td><?= $plan['ppa_comments'] ?></td>
+									<td>
+										<?php if (($plan['overall_status'] == 'Approved')) : ?>
+											<button class="approved-btn btn btn-success" data-leave-id="<?= $plan['id']; ?>">Approved</button>
+										<?php endif; ?>
+										<?php if (($plan['overall_status'] == 'Sentback')) : ?>
+											<button class="changes-btn btn btn-warning" data-leave-id="<?= $plan['id']; ?>">Make Changes</button>
+										<?php endif; ?>
+									</td>
+									<td>
 
 
+										<a class="btn btn-danger btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#permsModal<?= $plan['id']; ?>">Review PPA</a>
+										<button class="changes-btn btn btn-warning" data-leave-id="<?= $plan['id']; ?>"><?= $plan['overall_status'] ?></button>
 
-                    </select>
-                  </div>
-                  <div class="mb-3">
-                    <label for="training-contribution" class="form-label">How will the recommended training(s) contribute to the staff member’s development and the department’s work?</label>
-                    <textarea id="training-contribution" class="form-control" rows="3" name="training_contributions"></textarea>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Selection of courses in line with training needs. For Multiple Courses Separate using a Semi-colon (;)</label>
-                    <textarea id="training_courses" class="form-control" rows="3" name="recommended_trainings"></textarea>
-                  </div>
-                </section>
-              </div>
-            </div>
-        </div>
+									</td>
 
-        <div id="step-5" class="tab-pane" role="tabpanel" aria-labelledby="step-5">
-        <?php if(setting()->staff_multistep==1){?><h3>Step 4:</h3><?php } ?>
-          <h1>D. Sign Off</h1>
-          <div class="row">
-            <div class="col-md-12 ">
-              <div class="mb-3">
-                <label class="form-label">Staff</label>
-                <label class="form-label">I hereby confirm that this PPA has been developed in consultation with my supervisor and that it is aligned with the departmental objectives.
 
-                  I fully understand my performance objectives and what I am expected to deliver during this performance period.
+									</td>
 
-                  I am also aware of the competencies that I will be assessed on for the same period.
+									<div id="permsModal<?= $plan['id']; ?>" class="modal fade">
+										<div class="modal-dialog modal-lg modal-dialog-centered">
+											<div class="modal-content">
+												<div class="modal-header">
+													<h4 class="modal-title text-center">Supervisor Actions</h4>
+													<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+												</div>
+												<!-- Modal Body -->
+												<form method="post">
+													<div class="modal-body">
+														<p>I hereby confirm that this PPA has been developed in consultation with the staff member and that it is aligned with the departmental objectives. The staff fully understands what is expected of them during the performance period and is also aware of the competencies that they will be assess against.
 
-                </label>
-                <input class="form-check-input form-control" type="checkbox" id="staff_sign_off" name="staff_sign_off" value="1" required>
-                <label class="form-check-label" for="staff_sign_off">Confirm</label>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Staff Signature</label>
-                <?php if (isset($this->session->userdata('user')->signature)) { ?>
-                  <img src="<?php echo base_url() ?>uploads/staff/signature/<?php echo $this->session->userdata('user')->signature; ?>" style="width:100px; height: 80px;">
-                <?php } ?>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Date</label>
-                <input type="text" class="form-control" disabled value="<?php echo date('j F, Y'); ?>" name="staff_sign_off_date">
-              </div>
-            </div>
-            <div class="col-md-6">
+															I commit to providing supervision on the overall work of the staff member throughout the performance period to ensure the achievement of targeted results; and to providing on-going feedback and raising and discussing with him/her areas requiring performance improvement, where applicable
+														</p>
 
-            </div>
-            <div class="col-md-12 col-lg-12">
-              <div class="row">
-                <div class="col-md-4">
-                </div>
-                <div class="col-md-4">
-                  <button type="submit" class="btn btn-success px-5 radius-30">Save & Submit</button>
-                </div>
-                <div class="col-md-4">
-                  
-                </div>
+														<!-- Comment Textbox -->
+														<div class="form-group">
+															<label for="comment">Comment:</label>
+															<textarea class="form-control" id="comment" rows="3" name="ppa_comments"></textarea>
+														</div>
+														<div class="form-group">
+															<label for="comment">Approval Options:</label>
 
-              </div>
-            </div>
+															<select class="form-control" name="overall_status">
+																<option value="" required>SELECT OPTION</option>
+																<option value="Approved">Approved</option>
+																<option value="Sentdback">Send Back</option>
+															</select>
+														</div>
 
-            </form>
+														<div class="form-group">
+															<label class="sign">Supervisor Signature</label><br>
+															<?php if (isset($this->session->userdata('user')->signature)) { ?>
+																<img src="<?php echo base_url() ?>uploads/staff/signature/<?php echo $this->session->userdata('user')->signature; ?>" style="width:100px; height: 80px;">
+															<?php } ?>
+														</div>
+													</div>
 
-          </div>
-        </div>
+													<!-- Modal Footer -->
+													<div class="modal-footer">
+														<button type="submit" class="btn btn-success">Confirm</button>
+														<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+													</div>
+												</form>
+											</div>
+										</div>
+									</div>
+								
 
-        </form>
-      </div>
-    </div>
-    <?php if(setting()->staff_multistep==1){ ?>
-  </div>
-  <?php } ?>
+
+
+
+				</tr>
+
+			<?php endforeach; ?>
+			</tbody>
+			</table>
+			</div>
+		</div>
+
+
+
+	</div>
+</div>
+</div>
