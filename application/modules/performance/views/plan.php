@@ -69,6 +69,8 @@ foreach ($decoded as $item) {
     <td colspan="">
       <input type="text" class="form-control" name="supervisor2_id"
         value="<?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?>" readonly>
+        <input type="hidden" name="supervisor2_id"
+        value="<?= get_supervisor(current_contract($staff_id))->second_supervisor ?>">
     </td>
   </tr>
 </table>
