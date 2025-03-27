@@ -29,11 +29,14 @@ foreach ($decoded as $item) {
 ?>
 
 <style>
-   input[type="text"] {
-    border: none !important;
-    box-shadow: none !important;
-    background-color: transparent;
-  }
+input[type="text"],
+input[type="number"] {
+  /* border: none !important; */
+  padding: 15px;
+  box-shadow: none !important;
+  background-color: transparent;
+}
+
   .form-table { width: 100%; border-collapse: collapse; }
   .form-table td { padding: 8px; vertical-align: top; }
   .form-table label { font-weight: bold; }
