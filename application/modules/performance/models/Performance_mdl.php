@@ -6,29 +6,38 @@ class Performance_mdl extends CI_Model
     public function __construct()
     {
         parent::__construct();
-        $this->load->model("Employee");
-        $this->load->model("Contracts");
     }
 
-	public function myplans($limit, $start, $id, $period, $status)
+	public function get_staff_plan($staff_id, $period = null)
 	{
-		if ($id) {
-			$this->db->where("staff_id", "$id");
-		}
+		$this->db->where('staff_id', $staff_id);
 		if ($period) {
-			$this->db->where("period", "$period");
+			$this->db->where('performance_period', $period);
 		}
-		if ($status) {
-			$this->db->where("status", "$status");
-		}
-		if ($limit) {
-			$this->db->limit($limit, $start);
-		}
-
-		$this->db->join('staff', 'ppa_primary.staff_id=staff.staff_id');
-		$query = $this->db->get('ppa_primary');
-		
-		return $query->result_array();
+		return $this->db->get('ppa_entries')->row();
 	}
+
+	public function get_plan_by_entry_id($entry_id)
+{
+    $query = $this->db->get_where('ppa_entries', ['entry_id' => $entry_id]);
+    $result = $query->row();
+
+    if ($result) {
+        // Decode JSON fields
+        $result->objectives = json_decode($result->objectives);
+        $result->required_skills = json_decode($result->required_skills);
+    }
+
+    return $result;
+}
+public function get_approval_trail($entry_id)
+{
+    if (!$entry_id) return [];
+
+    return $this->db->get('ppa_approval_trail')->result();
+}
+
+
+	
 
 }

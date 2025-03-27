@@ -1,156 +1,228 @@
-<!-- Display leave application status for employees -->
-<div class="card">
+<?php 
+$session = $this->session->userdata('user');
+$staff_id = $session->staff_id;
+$contract = Modules::run('auth/contract_info', $staff_id);
+$readonly = isset($ppa) && $ppa->draft_status == 0 ? 'readonly disabled' : '';
 
-	<div class="card-body">
+$selected_skills = is_string($ppa->required_skills ?? null) ? json_decode($ppa->required_skills, true) : ($ppa->required_skills ?? []);
+$objectives_raw = $ppa->objectives ?? [];
 
-		<div class="table-responsive">
-			<!-- Leave application status table -->
-			<div class="row">
-				<div class="col-md-12">
-					<a class="btn btn-primary px-5 radius-30" href="<?php echo base_url() ?>performance/"><i class="fa fa-plus"></i>Performance Plan Submission</a>
+if (is_string($objectives_raw)) {
+    $decoded = json_decode($objectives_raw, true);
+} elseif (is_object($objectives_raw)) {
+    $decoded = json_decode(json_encode($objectives_raw), true);
+} elseif (is_array($objectives_raw)) {
+    $decoded = $objectives_raw;
+} else {
+    $decoded = [];
+}
 
+$objectives = [];
+foreach ($decoded as $item) {
+    $objectives[] = [
+        'objective' => $item['objective'] ?? '',
+        'timeline' => $item['timeline'] ?? '',
+        'indicator' => $item['indicator'] ?? '',
+        'weight' => $item['weight'] ?? ''
+    ];
+}
+?>
 
-					<form id="leave-filter-form" method="get" action="<?= base_url('myplans'); ?>">
-						<div class="row mb-3">
+<style>
+  .form-table { width: 100%; border-collapse: collapse; }
+  .form-table td { padding: 8px; vertical-align: top; }
+  .form-table label { font-weight: bold; }
+  .objective-table th, .objective-table td { text-align: left; padding: 8px; border: 1px solid #ccc; }
+</style>
 
-							<div class="col-md-3">
-								<label for="end_date">Period:</label>
-								<input type="text" name="period" id="period" class="form-control">
-							</div>
-							<div class="col-md-3">
-								<label for="status">Status:</label>
-								<select class="form-control select2" name="status">
-									<option value="">All</option>
-									<option value="Pending">Pending</option>
-									<option value="Approved">Approved</option>
-									<option value="Rejected">Rejected</option>
-								</select>
-							</div>
+<?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'ppa-form']); ?>
 
-							<div class="col-md-3">
-								<button type="submit" class="btn btn-primary mt-4">Apply Filters</button>
-							</div>
+<h4>A. Staff Details</h4>
+<table class="form-table table-bordered">
+  <tr>
+    <td><label>Name</label></td>
+    <td><input type="text" name="name" class="form-control" value="<?= $session->name ?>" disabled></td>
+    <td><label>SAP NO</label></td>
+    <td><input type="text" class="form-control" value="<?= $contract->SAPNO ?>" disabled></td>
+  </tr>
+  <tr>
+    <td><label>Position</label></td>
+    <td><input type="text" class="form-control" value="<?= $contract->job_name ?>" disabled></td>
+    <td><label>In this Position Since</label></td>
+    <td><input type="text" class="form-control" value="<?= $contract->start_date ?>" disabled></td>
+  </tr>
+  <tr>
+    <td><label>Division/Directorate</label></td>
+    <td><input type="text" class="form-control" value="<?= acdc_division($contract->division_id) ?>" disabled></td>
+    <td><label>Performance Period</label></td>
+    <td><input type="text" class="form-control" name="performance-period" value="<?= current_period(); ?>" readonly></td>
+  </tr>
+  <tr>
+    <td><label>First Supervisor</label></td>
+    <td colspan="1">
+      <input type="text" class="form-control" name="supervisor_name"
+        value="<?= staff_name(get_supervisor(current_contract($staff_id))->first_supervisor) ?>" readonly>
+      <input type="hidden" name="supervisor_id"
+        value="<?= get_supervisor(current_contract($staff_id))->first_supervisor ?>">
+    </td>
+    <td><label>Second Supervisor</label></td>
+    <td colspan="">
+      <input type="text" class="form-control" name="supervisor2_id"
+        value="<?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?>" readonly>
+    </td>
+  </tr>
+</table>
 
-						</div>
-					</form>
-					<table id="leave-table" class="table table-striped">
-						<thead>
-							<tr>
-								<th>#</th>
-								<th>SAP NO</th>
-								<th>Name</th>
-								<th>Submission Date</th>
-								<th>Period</th>
-								<th>Objectives</th>
-								<th>Comments</th>
-								<th>Approval Status</th>
-								<th>Overall Approval</th>
+<hr>
 
-							</tr>
-						</thead>
-						<tbody>
-							<?php
-							$i = 1;
-							foreach ($plans as $plan) : ?>
-								<tr data-status="<?= $plan['overall_status']; ?>" <?php if ($plan['overall_status'] == 'Approved') { ?>style="background:#d2f0d7 !important" ;<?php } else if ($plan['overall_status'] == 'Rejected') { ?>style="background:#ffcdcd !important" ; <?php } ?>>
-									<td><?= $i++; ?></td>
-									<td><?= $plan['SAPNO']; ?></td>
-									<td><?= $plan['lname'] . ' ' . $plan['fname'] . ' ' . $plan['oname']; ?></td>
-									<td><?= $plan['created_at']; ?></td>
-									<td><?= $plan['period'] ?></td>
-									<td><?php $obj = $plan['objectives'];
-										$objs = json_decode($obj);
-										$counter = 0;
-										foreach ($objs as $ob) :
-											//print_r($objs);
-											echo '<p>' . $counter + 1 . ' ' . $ob[$counter] . '</p><hr>';
-											$counter++;
-										endforeach;
+<h4>B. Performance Objectives</h4>
+<small>Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two</small>
+<div class="table-responsive">
+  <table class="table objective-table table-bordered">
+    <thead class="table-light">
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th style="width: 20%; white-space: normal;">Objective<br><small class="fw-light d-block text-wrap">Statement of the result that needs to be achieved</small></th>
+        <th style="width: 15%; white-space: normal;">Timeline<br><small class="fw-light d-block text-wrap">Timeframe within which the result is to be achieved</small></th>
+        <th style="width: 40%; white-space: normal;">Deliverables and KPI’s<br><small class="fw-light d-block text-wrap">Deliverables - the evidence that the result has been achieved; KPI’s give an indication of how well the result was achieved</small></th>
+        <th style="width: 10%; white-space: normal;">Weight<br><small class="fw-light d-block text-wrap">The total weight of all objectives should be 100%</small></th>
+      </tr>
+    </thead>
+    <tbody id="objectives-table-body">
+    <?php for ($i = 1; $i <= 5; $i++): 
+        $val = $objectives[$i - 1] ?? ['objective'=>'', 'timeline'=>'', 'indicator'=>'', 'weight'=>''];
+      ?>
+        <tr>
+          <td><?= $i ?></td>
+          <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control" <?= $readonly ?> required><?= $val['objective'] ?></textarea></td>
+          <td><input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control datepicker" <?= $readonly ?> value="<?= $val['timeline'] ?>" required></td>
+          <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control" <?= $readonly ?> required><?= $val['indicator'] ?></textarea></td>
+          <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control" <?= $readonly ?> value="<?= $val['weight'] ?>" required></td>
+        </tr>
+      <?php endfor; ?>
 
-
-										?></td>
-									<td><?= $plan['ppa_comments'] ?></td>
-									<td>
-										<?php if (($plan['overall_status'] == 'Approved')) : ?>
-											<button class="approved-btn btn btn-success" data-leave-id="<?= $plan['id']; ?>">Approved</button>
-										<?php endif; ?>
-										<?php if (($plan['overall_status'] == 'Sentback')) : ?>
-											<button class="changes-btn btn btn-warning" data-leave-id="<?= $plan['id']; ?>">Make Changes</button>
-										<?php endif; ?>
-									</td>
-									<td>
-
-
-										<a class="btn btn-danger btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#permsModal<?= $plan['id']; ?>">Review PPA</a>
-										<button class="changes-btn btn btn-warning" data-leave-id="<?= $plan['id']; ?>"><?= $plan['overall_status'] ?></button>
-
-									</td>
-
-
-									</td>
-
-									<div id="permsModal<?= $plan['id']; ?>" class="modal fade">
-										<div class="modal-dialog modal-lg modal-dialog-centered">
-											<div class="modal-content">
-												<div class="modal-header">
-													<h4 class="modal-title text-center">Supervisor Actions</h4>
-													<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-												</div>
-												<!-- Modal Body -->
-												<form method="post">
-													<div class="modal-body">
-														<p>I hereby confirm that this PPA has been developed in consultation with the staff member and that it is aligned with the departmental objectives. The staff fully understands what is expected of them during the performance period and is also aware of the competencies that they will be assess against.
-
-															I commit to providing supervision on the overall work of the staff member throughout the performance period to ensure the achievement of targeted results; and to providing on-going feedback and raising and discussing with him/her areas requiring performance improvement, where applicable
-														</p>
-
-														<!-- Comment Textbox -->
-														<div class="form-group">
-															<label for="comment">Comment:</label>
-															<textarea class="form-control" id="comment" rows="3" name="ppa_comments"></textarea>
-														</div>
-														<div class="form-group">
-															<label for="comment">Approval Options:</label>
-
-															<select class="form-control" name="overall_status">
-																<option value="" required>SELECT OPTION</option>
-																<option value="Approved">Approved</option>
-																<option value="Sentdback">Send Back</option>
-															</select>
-														</div>
-
-														<div class="form-group">
-															<label class="sign">Supervisor Signature</label><br>
-															<?php if (isset($this->session->userdata('user')->signature)) { ?>
-																<img src="<?php echo base_url() ?>uploads/staff/signature/<?php echo $this->session->userdata('user')->signature; ?>" style="width:100px; height: 80px;">
-															<?php } ?>
-														</div>
-													</div>
-
-													<!-- Modal Footer -->
-													<div class="modal-footer">
-														<button type="submit" class="btn btn-success">Confirm</button>
-														<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-													</div>
-												</form>
-											</div>
-										</div>
-									</div>
-								
-
-
-
-
-				</tr>
-
-			<?php endforeach; ?>
-			</tbody>
-			</table>
-			</div>
-		</div>
-
-
-
-	</div>
+    </tbody>
+  </table>
 </div>
-</div>
+
+<hr>
+
+<h4>C. Personal Development Plan</h4>
+
+<table class="form-table table-bordered" style="width:100%;">
+  <tr>
+    <td style="width: 30%;"><label class="form-label">Is training recommended for this staff member?</label></td>
+    <td>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="training_recommended" id="training_yes" value="Yes" onchange="toggleTrainingSection(true)" <?= $readonly ?> <?= ($ppa->training_recommended ?? '') == 'Yes' ? 'checked' : '' ?>>
+        <label class="form-check-label" for="training_yes">Yes</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="training_recommended" id="training_no" value="No" onchange="toggleTrainingSection(false)" <?= $readonly ?> <?= ($ppa->training_recommended ?? '') == 'No' ? 'checked' : '' ?>>
+        <label class="form-check-label" for="training_no">No</label>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<section class="required_trainings" id="training-section" style="display: <?= ($ppa->training_recommended ?? '') == 'Yes' ? 'block' : 'none' ?>; margin-top: 15px;">
+  <table class="form-table table-bordered" style="width:100%;">
+    <tr>
+      <td style="width: 30%;"><label for="skill-area" class="form-label">If yes, in what subject/ skill area(s) is the training recommended for this staff member?</label></td>
+      <td>
+        <select class="form-control select2" name="required_skills[]" multiple <?= $readonly ?>>
+          <?php foreach ($skills as $skill): ?>
+            <option value="<?= $skill->id ?>" <?= in_array($skill->id, $selected_skills) ? 'selected' : '' ?>><?= $skill->skill ?></option>
+          <?php endforeach; ?>
+        </select>
+        <small>Select one or more skill areas.</small>
+      </td>
+    </tr>
+    <tr>
+      <td><label for="training-contribution" class="form-label"> Explain how the training will contribute to the staff member’s development and the department’s work.</label></td>
+      <td>
+        <textarea id="training-contribution" class="form-control" rows="3" name="training_contributions" <?= $readonly ?>><?= $ppa->training_contributions ?? '' ?></textarea>
+      </td>
+    </tr>
+    <tr>
+      <td><label class="form-label">Selection of courses in line with training needs</label></td>
+      <td>
+        <textarea id="training_courses" class="form-control" rows="3" name="recommended_trainings" <?= $readonly ?>><?= $ppa->recommended_trainings ?? '' ?></textarea>
+        <small>Separate multiple courses using a semicolon (;) 4.1.	With reference to the current AUC Learning and Development (L&D) Catalogue, please list the recommended course(s) for this staff member:</small>
+        <textarea id="training_courses" class="form-control" rows="3" name="recommended_trainings_details" <?= $readonly ?>><?= $ppa->recommended_trainings_details ?? '' ?></textarea>
+        <small>4.2.	Where applicable, please provide details of highly <b>recommendable course(s)</b> for this staff member that are not listed in the AUC L&D Catalogue</small>
+      </td>
+    </tr>
+  </table>
+</section>
+
+<hr>
+
+<h4>D. Sign Off</h4>
+<table class="form-table">
+  <tr>
+    <td colspan="4">
+      <p>
+        I hereby confirm that this PPA has been developed in consultation with my supervisor
+        and that it is aligned with the departmental objectives.
+        I fully understand my performance objectives and what I am expected to deliver during this performance period.
+        I am also aware of the competencies that I will be assessed on for the same period.
+      </p>
+      <input type="checkbox" id="staff_sign_off" name="staff_sign_off" value="1" <?= $readonly ?> <?= ($ppa->staff_sign_off ?? 0) ? 'checked' : '' ?> required>
+      <label for="staff_sign_off">Confirm</label>
+    </td>
+  </tr>
+  <tr>
+    <td><label>Staff Signature</label></td>
+    <td colspan="3">
+      <?php if (!empty($session->signature)): ?>
+        <img src="<?= base_url('uploads/staff/signature/' . $session->signature) ?>" style="width: 100px; height: 80px;">
+      <?php endif; ?>
+    </td>
+  </tr>
+  <tr>
+    <td><label>Date</label></td>
+    <td><input type="text" class="form-control" value="<?= date('j F, Y') ?>" disabled></td>
+  </tr>
+  <tr>
+    <td colspan="4" class="text-center">
+      <?php if (!$readonly): ?>
+        <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
+        <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Send to Supervisor</button>
+      <?php endif; ?>
+    </td>
+  </tr>
+</table>
+
+<?php echo form_close(); ?>
+
+<hr>
+<h4>Approval Trail</h4>
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Name</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    <?php if (!empty($approval_trail)): ?>
+      <?php foreach ($approval_trail as $log): ?>
+        <tr>
+          <td><?= date('d M Y H:i', strtotime($log->created_at)) ?></td>
+          <td><?= $log->staff_name ?></td>
+          <td><?= $log->action ?></td>
+        </tr>
+      <?php endforeach; ?>
+    <?php else: ?>
+      <tr><td colspan="3" class="text-center">No approval activity yet.</td></tr>
+    <?php endif; ?>
+  </tbody>
+</table>
+
+<script>
+  function toggleTrainingSection(show) {
+    document.getElementById('training-section').style.display = show ? 'block' : 'none';
+  }
+</script>
