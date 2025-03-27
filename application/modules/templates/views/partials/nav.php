@@ -115,15 +115,15 @@
 							<a href="<?php echo base_url() ?>performance" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class='fa fa-line-chart'></i>
 								</div>
-								<div class="menu-title">Performance Appraisal</div>
+								<div class="menu-title">Performance</div>
 							</a>
 							<ul class="dropdown-menu">
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance"><i class="bx bx-right-arrow-alt"></i>Submit Plan</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance"><i class="bx bx-right-arrow-alt"></i>Performance Planning Agreement (PPA)</a>
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/myplans"><i class="bx bx-right-arrow-alt"></i>My Plans</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/myplans"><i class="bx bx-right-arrow-alt"></i>My PPAs</a>
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>

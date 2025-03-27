@@ -670,22 +670,18 @@ if (!function_exists('acdc_division')) {
     }
 }
 
-if (!function_exists('periods')) {
 
-    function periods()
+if (!function_exists('current_period')) {
+
+    function current_period()
     {
         $currentYear = date('Y');
-        $nextYear = $currentYear + 1;
-        $months = array(
-            'January', 'February', 'March', 'April', 'May', 'June', 'July',
-            'August', 'September', 'October', 'November', 'December'
-        );
-        $periods = '<option value="January ' . $currentYear . ' - December ' . $currentYear . '">January ' . $currentYear . ' - December ' . $currentYear . '</option>';
-        $periods .= '<option value="January ' . $nextYear . ' - December ' . $nextYear . '">January ' . $nextYear . ' - December ' . $nextYear . '</option>';
+        $periods = 'January-' . $currentYear . '_December-' . $currentYear;
 
         return $periods;
     }
 }
+
 if (!function_exists('get_staff_name')) {
 
     function staff_name($id)

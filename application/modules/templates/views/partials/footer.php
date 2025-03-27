@@ -340,89 +340,6 @@
                 dateFormat: "yy-mm-dd"  // Set desired format
         });
 	});
-
-	var objectiveCounter = 0;
-
-	function addObjective() {
-		if (objectiveCounter < 5) {
-			var objectiveSection = document.getElementById('step-2');
-			var objectiveDiv = document.createElement('div');
-			objectiveDiv.innerHTML = `<div class="obj${objectiveCounter}">
-      <div class="mb-3">
-         <label for="objective${objectiveCounter}" class="form-label"><h4>Objective ${objectiveCounter+1}</h4></label>
-         <input type="text" id="objective${objectiveCounter}" name="objective[${objectiveCounter}][]" class="form-control" required>
-      </div>
-	 <div class="mb-3">
-              <table class="table table-striped mt-4" id="activityTable${objectiveCounter}">
-                <thead>
-                  <tr>
-                    <th scope="col">
-                      <h6>Activities</h6>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody id='activities${objectiveCounter}'>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off"  objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off"  objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off"  objective="${objectiveCounter}"></td></tr><tr>
-				<td><input type="text" class="form-control" id="activityName${objectiveCounter}" name="activityName[${objectiveCounter}][]" autocomplete="off"  objective="${objectiveCounter}"></td></tr><tr>
-            
-                </tbody>
-              </table>
-      </div>
-      <div class="col-md-12 mb-4 row">
-	  <label for="timeline_start${objectiveCounter}" class="form-label">Time Line</label>
-	    <div class="col-md-4">
-		         
-         <label for="timeline_start${objectiveCounter}" class="form-label">Start Date</label>
-        <input type="date" id="timeline_start${objectiveCounter}" name="timeline_start[${objectiveCounter}][]" class="form-control" max="<?= date('Y') . '-12-31'; ?>" min="<?= date('Y') . '-01-01'; ?>" style="width:200px !important;" required>
-		</div>
-		<div class="col-md-4">
-         <label for="timeline_end${objectiveCounter}" class="form-label">End Date</label>
-        <input type="date" id="timeline_end${objectiveCounter}" name="timeline_end[${objectiveCounter}][]" class="form-control" max="<?= date('Y') . '-12-31'; ?>" min="<?= date('Y') . '-01-01'; ?>" style="width:200px !important;"  required>
-        </div>
-		<div class="col-md-4">
-		</div>
-	 </div>
-      <div class="mb-3">
-              <table class="table table-striped mt-4" id="kpiTable">
-                <thead>
-                  <tr>
-                    <th scope="col">
-                      <h6>Deliverables and KPIs</h6>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody id='kpitable${objectiveCounter}'>
-				    <tr><td><input type="text" class="form-control" id="kpiName${objectiveCounter}" name="kpiName[${objectiveCounter}][]" autocomplete="off" required objective="${objectiveCounter}"></td></tr><tr>
-					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]"  objective="${objectiveCounter}"></td></tr><tr>
-					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]"  objective="${objectiveCounter}"></td></tr><tr>
-					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]"  objective="${objectiveCounter}"></td></tr><tr>
-					<td><input type="text" class="form-control" id="kpiName${objectiveCounter}" autocomplete="off" name="kpiName[${objectiveCounter}][]"  objective="${objectiveCounter}"></td></tr><tr>
-                </tbody>
-              </table>
-		</div>
-      <div class="mb-3">
-         <label for="weight${objectiveCounter}" class="form-label">Weight</label>
-         <input type="number" maxlength="2" id="weight${objectiveCounter}" name="weight[${objectiveCounter}][]" class="form-control" max="100" min="0">
-      </div>
-	      <div class="mt-4">
-            <button class="btn btn-primary" title ="Add Objective" onclick="addObjective()">+</button>
-            <button class="btn btn-danger" title ="Delete Objective" onclick="removeObjective(${objectiveCounter})">-</button>
-     </div>
-<hr style="border:4px dotted #f62718;"></div>`;
-			$('.new-objectives').append(objectiveDiv);
-			objectiveCounter++;
-		} else {
-			show_notification('Maximum Number of Allowed objecives is 5', 'error');
-		}
-	}
-
-
-	$(document).ready(function() {
-		addObjective(); // Add first objective
-	});
 </script>
 
 <script>
@@ -671,6 +588,57 @@ $(document).ready(function () {
 });
 </script>
 
+<script>
+  function toggleTrainingSection(show) {
+    const section = document.getElementById('training-section');
+    section.style.display = show ? 'block' : 'none';
+  }
+
+  // Trigger visibility on page load
+  $(document).ready(function () {
+    if ($('#training_yes').is(':checked')) {
+      toggleTrainingSection(true);
+    } else if ($('#training_no').is(':checked')) {
+      toggleTrainingSection(false);
+    }
+  });
+</script>
+<!-- <script>
+$('#ppa-form').on('submit', function (e) {
+  let validObjectives = 0;
+  let totalWeight = 0;
+  let errorMsg = '';
+
+  $('#objectives-table-body tr').each(function () {
+    const objective = $(this).find('textarea[name*=\"[objective]\"]').val().trim();
+    const timeline = $(this).find('input[name*=\"[timeline]\"]').val().trim();
+    const indicator = $(this).find('textarea[name*=\"[indicator]\"]').val().trim();
+    const weight = parseFloat($(this).find('input[name*=\"[weight]\"]').val().trim()) || 0;
+
+    if (objective !== '' && timeline !== '' && indicator !== '') {
+      validObjectives++;
+      totalWeight += weight;
+    }
+  });
+
+  if (validObjectives < 3) {
+    errorMsg += '❌ Please fill in at least 3 objectives.\\n';
+  }
+
+  if (totalWeight > 100) {
+    errorMsg += '❌ Total weight of objectives should not exceed 100%.\\n';
+  }
+
+  if (!$('#staff_sign_off').is(':checked')) {
+    errorMsg += '❌ You must confirm the sign off before submission.\\n';
+  }
+
+  if (errorMsg !== '') {
+    alert(errorMsg);
+    e.preventDefault(); // Stop form submission
+  }
+});
+</script> -->
 
 	
 
