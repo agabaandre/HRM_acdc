@@ -188,8 +188,10 @@ foreach ($decoded as $item) {
     </td>
   </tr>
   <tr>
-    <td><label>Date</label></td>
-    <td><input type="text" class="form-control" value="<?= date('j F, Y') ?>" readonly></td>
+    <td><label>Date</label>
+    <input type="text" class="form-control" value="<?= date('j F, Y') ?>" >
+  </td>
+   
   </tr>
   <tr>
     <td colspan="4" class="text-center">
