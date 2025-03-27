@@ -31,8 +31,8 @@ foreach ($decoded as $item) {
 <style>
 input[type="text"],
 input[type="number"] {
-  /* border: none !important; */
-  padding: 15px;
+  border: none !important; 
+  padding: 18px;
   box-shadow: none !important;
   background-color: transparent;
 }
