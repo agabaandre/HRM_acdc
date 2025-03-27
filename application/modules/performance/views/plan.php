@@ -180,16 +180,20 @@ foreach ($decoded as $item) {
     </td>
   </tr>
   <tr>
-    <td><label>Staff Signature</label></td>
-    <td colspan="3">
-      <?php if (!empty($session->signature)): ?>
+    <td><label>Staff Signature</label><br>
+    <?php if (!empty($session->signature)): ?>
         <img src="<?= base_url('uploads/staff/signature/' . $session->signature) ?>" style="width: 100px; height: 80px;">
       <?php endif; ?>
-    </td>
+  </td>
+    
   </tr>
   <tr>
     <td><label>Date</label>
-    <input type="text" class="form-control" value="<?= date('j F, Y') ?>" >
+    <br>
+    <?php
+    $created = !empty($ppa->created_at) ? date('j F, Y', strtotime($ppa->created_at)) : date('j F, Y');
+    ?>
+    <input type="text" class="form-control" value="<?= $created ?>" readonly>
   </td>
    
   </tr>
