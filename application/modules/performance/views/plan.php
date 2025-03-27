@@ -46,19 +46,19 @@ foreach ($decoded as $item) {
 <table class="form-table table-bordered">
   <tr>
     <td><label>Name</label></td>
-    <td><input type="text" name="name" class="form-control" value="<?= $session->name ?>" disabled></td>
+    <td><input type="text" name="name" class="form-control" value="<?= $session->name ?>" readonly></td>
     <td><label>SAP NO</label></td>
-    <td><input type="text" class="form-control" value="<?= $contract->SAPNO ?>" disabled></td>
+    <td><input type="text" class="form-control" value="<?= $contract->SAPNO ?>" readonly></td>
   </tr>
   <tr>
     <td><label>Position</label></td>
-    <td><input type="text" class="form-control" value="<?= $contract->job_name ?>" disabled></td>
+    <td><input type="text" class="form-control" value="<?= $contract->job_name ?>" readonly></td>
     <td><label>In this Position Since</label></td>
-    <td><input type="text" class="form-control" value="<?= $contract->start_date ?>" disabled></td>
+    <td><input type="text" class="form-control" value="<?= $contract->start_date ?>" readonly></td>
   </tr>
   <tr>
     <td><label>Division/Directorate</label></td>
-    <td><input type="text" class="form-control" value="<?= acdc_division($contract->division_id) ?>" disabled></td>
+    <td><input type="text" class="form-control" value="<?= acdc_division($contract->division_id) ?>" readonly></td>
     <td><label>Performance Period</label></td>
     <td><input type="text" class="form-control" name="performance-period" value="<?= current_period(); ?>" readonly></td>
   </tr>
