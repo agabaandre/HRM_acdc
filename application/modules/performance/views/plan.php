@@ -36,6 +36,9 @@ input[type="number"] {
   box-shadow: none !important;
   background-color: transparent;
 }
+.is-invalid {
+  border: 1px solid red !important;
+}
 
   .form-table { width: 100%; border-collapse: collapse; }
   .form-table td { padding: 8px; vertical-align: top; }
@@ -43,9 +46,10 @@ input[type="number"] {
   .objective-table th, .objective-table td { text-align: left; padding: 8px; border: 1px solid #ccc; }
 </style>
 
-<?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'ppa-form']); ?>
+<?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'staff_ppa']); ?>
 
-<h4>A. Staff Details</h4>
+
+<h4>A. Staff Detailsssaasa</h4>
 <table class="form-table table-bordered">
   <tr>
     <td><label>Name</label></td>
@@ -87,7 +91,7 @@ input[type="number"] {
 
 <h4>B. Performance Objectives</h4>
 <small>Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two</small>
-<div class="table-responsive">
+<div class="table-responsive"> 
   <table class="table objective-table table-bordered">
     <thead class="table-light">
       <tr>
@@ -104,13 +108,12 @@ input[type="number"] {
       ?>
         <tr>
           <td><?= $i ?></td>
-          <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control" <?= $readonly ?> required><?= $val['objective'] ?></textarea></td>
-          <td><input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control datepicker" <?= $readonly ?> value="<?= $val['timeline'] ?>" required></td>
-          <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control" <?= $readonly ?> required><?= $val['indicator'] ?></textarea></td>
-          <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control" <?= $readonly ?> value="<?= $val['weight'] ?>" required></td>
+          <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control objective-input" <?= $readonly ?> required><?= $val['objective'] ?></textarea></td>
+          <td><input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control datepicker objective-input" <?= $readonly ?> value="<?= $val['timeline'] ?>" required></td>
+          <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input" <?= $readonly ?> required><?= $val['indicator'] ?></textarea></td>
+          <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?= $val['weight'] ?>" required></td>
         </tr>
       <?php endfor; ?>
-
     </tbody>
   </table>
 </div>
@@ -157,10 +160,12 @@ input[type="number"] {
     <tr>
       <td><label class="form-label">Selection of courses in line with training needs</label></td>
       <td>
+      <small>Separate multiple courses using a semicolon (;).	With reference to the current AUC Learning and Development (L&D) Catalogue, please list the recommended course(s) for this staff member:</small>
         <textarea id="training_courses" class="form-control" rows="3" name="recommended_trainings" <?= $readonly ?>><?= $ppa->recommended_trainings ?? '' ?></textarea>
-        <small>Separate multiple courses using a semicolon (;) 4.1.	With reference to the current AUC Learning and Development (L&D) Catalogue, please list the recommended course(s) for this staff member:</small>
+ 
+        <small>Where applicable, please provide details of highly <b>recommendable course(s)</b> for this staff member that are not listed in the AUC L&D Catalogue</small>
         <textarea id="training_courses" class="form-control" rows="3" name="recommended_trainings_details" <?= $readonly ?>><?= $ppa->recommended_trainings_details ?? '' ?></textarea>
-        <small>4.2.	Where applicable, please provide details of highly <b>recommendable course(s)</b> for this staff member that are not listed in the AUC L&D Catalogue</small>
+        
       </td>
     </tr>
   </table>
@@ -237,8 +242,6 @@ input[type="number"] {
   </tbody>
 </table>
 
-<script>
-  function toggleTrainingSection(show) {
-    document.getElementById('training-section').style.display = show ? 'block' : 'none';
-  }
-</script>
+
+
+

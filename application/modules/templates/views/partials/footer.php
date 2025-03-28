@@ -343,6 +343,12 @@
                 yearRange: "1900:2100", // Set the year range
                 dateFormat: "yy-mm-dd"  // Set desired format
         });
+		$(".datepicker_ppa").datepicker({
+                changeMonth: true,
+                changeYear: true,
+                yearRange: "1900:2100", // Set the year range
+                dateFormat: "yy-mm-dd"  // Set desired format
+        });
 	});
 </script>
 
@@ -607,46 +613,118 @@ $(document).ready(function () {
     }
   });
 </script>
-<!-- <script>
-$('#ppa-form').on('submit', function (e) {
-  let validObjectives = 0;
-  let totalWeight = 0;
-  let errorMsg = '';
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('staff_ppa');
+  if (!form) return;
 
-  $('#objectives-table-body tr').each(function () {
-    const objective = $(this).find('textarea[name*=\"[objective]\"]').val().trim();
-    const timeline = $(this).find('input[name*=\"[timeline]\"]').val().trim();
-    const indicator = $(this).find('textarea[name*=\"[indicator]\"]').val().trim();
-    const weight = parseFloat($(this).find('input[name*=\"[weight]\"]').val().trim()) || 0;
+  // Create and insert global error box if not present
+  let globalErrorBox = document.getElementById('form-errors');
+  if (!globalErrorBox) {
+    globalErrorBox = document.createElement('div');
+    globalErrorBox.id = 'form-errors';
+    globalErrorBox.className = 'alert alert-danger';
+    globalErrorBox.style.display = 'none';
+    form.prepend(globalErrorBox);
+  }
 
-    if (objective !== '' && timeline !== '' && indicator !== '') {
-      validObjectives++;
-      totalWeight += weight;
+  form.addEventListener('submit', function (e) {
+    let validObjectives = 0;
+    let totalWeight = 0;
+    let isValid = true;
+    const currentYear = new Date().getFullYear();
+    let errorMessages = [];
+
+    // Clear previous validation states
+    document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    document.querySelectorAll('.error-message').forEach(el => el.remove());
+    globalErrorBox.innerHTML = '';
+    globalErrorBox.style.display = 'none';
+
+    const rows = document.querySelectorAll('#objectives-table-body tr');
+    rows.forEach((row, idx) => {
+      const objective = row.querySelector('textarea[name*="[objective]"]');
+      const timeline = row.querySelector('input[name*="[timeline]"]');
+      const indicator = row.querySelector('textarea[name*="[indicator]"]');
+      const weightInput = row.querySelector('input[name*="[weight]"]');
+
+      let filled = 0;
+      if (objective?.value.trim()) filled++;
+      if (timeline?.value.trim()) filled++;
+      if (indicator?.value.trim()) filled++;
+      if (weightInput?.value.trim()) filled++;
+
+      if (filled > 0) {
+        let rowValid = true;
+
+        if (!objective?.value.trim()) {
+          objective.classList.add('is-invalid');
+          addError(objective, 'Objective is required');
+          rowValid = false;
+        }
+
+        const year = new Date(timeline?.value).getFullYear();
+        if (!timeline?.value.trim() || year !== currentYear) {
+          timeline.classList.add('is-invalid');
+          addError(timeline, 'Timeline must be a valid date within this year');
+          rowValid = false;
+        }
+
+        if (!indicator?.value.trim()) {
+          indicator.classList.add('is-invalid');
+          addError(indicator, 'KPI/Deliverable is required');
+          rowValid = false;
+        }
+
+        const weight = parseFloat(weightInput?.value);
+        if (isNaN(weight) || weight >= 100) {
+          weightInput.classList.add('is-invalid');
+          addError(weightInput, 'Weight must be a number less than 100');
+          rowValid = false;
+        }
+
+        if (rowValid) {
+          totalWeight += weight;
+          validObjectives++;
+        } else {
+          isValid = false;
+        }
+      }
+    });
+
+    if (validObjectives < 3) {
+      errorMessages.push('At least 3 objectives must be completed.');
+      isValid = false;
+    }
+
+    if (totalWeight > 100) {
+      errorMessages.push('Total weight must not exceed 100%.');
+      isValid = false;
+    }
+
+    if (!document.getElementById('staff_sign_off')?.checked) {
+      errorMessages.push('You must confirm and sign off the form.');
+      isValid = false;
+    }
+
+    if (!isValid) {
+      e.preventDefault();
+      if (errorMessages.length) {
+        globalErrorBox.innerHTML = `<ul>${errorMessages.map(m => `<li>${m}</li>`).join('')}</ul>`;
+        globalErrorBox.style.display = 'block';
+        window.scrollTo({ top: form.offsetTop - 50, behavior: 'smooth' });
+      }
     }
   });
 
-  if (validObjectives < 3) {
-    errorMsg += '❌ Please fill in at least 3 objectives.\\n';
-  }
-
-  if (totalWeight > 100) {
-    errorMsg += '❌ Total weight of objectives should not exceed 100%.\\n';
-  }
-
-  if (!$('#staff_sign_off').is(':checked')) {
-    errorMsg += '❌ You must confirm the sign off before submission.\\n';
-  }
-
-  if (errorMsg !== '') {
-    alert(errorMsg);
-    e.preventDefault(); // Stop form submission
+  function addError(element, message) {
+    const error = document.createElement('div');
+    error.className = 'text-danger error-message';
+    error.innerText = message;
+    element.parentNode.appendChild(error);
   }
 });
-</script> -->
-
-	
-
-  
+</script>
 
 
 
