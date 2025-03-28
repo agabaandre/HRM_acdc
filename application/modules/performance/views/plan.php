@@ -224,6 +224,8 @@ input[type="number"] {
     <tr>
       <th>Date</th>
       <th>Name</th>
+      <th>Position</th>
+      <th>Comment</th>
       <th>Action</th>
     </tr>
   </thead>
@@ -232,7 +234,9 @@ input[type="number"] {
       <?php foreach ($approval_trail as $log): ?>
         <tr>
           <td><?= date('d M Y H:i', strtotime($log->created_at)) ?></td>
-          <td><?= $log->staff_name ?></td>
+          <td><?= $log->staff_id ?></td>
+          <td><?= $log->staff_id ?></td>
+          <td><?= $log->comments ?></td>
           <td><?= $log->action ?></td>
         </tr>
       <?php endforeach; ?>
