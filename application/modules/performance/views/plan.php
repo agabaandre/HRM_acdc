@@ -49,7 +49,7 @@ input[type="number"] {
 <?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'staff_ppa']); ?>
 
 
-<h4>A. Staff Detailsssaasa</h4>
+<h4>A. Staff Details</h4>
 <table class="form-table table-bordered">
   <tr>
     <td><label>Name</label></td>
@@ -239,11 +239,14 @@ input[type="number"] {
   </thead>
   <tbody>
     <?php if (!empty($approval_trail)): ?>
-      <?php foreach ($approval_trail as $log): ?>
+      <?php foreach ($approval_trail as $log): 
+        $logged = Modules::run('auth/contract_info', $log->staff_id);
+        ?>
+
         <tr>
           <td><?= date('d M Y H:i', strtotime($log->created_at)) ?></td>
-          <td><?= $log->staff_id ?></td>
-          <td><?= $log->staff_id ?></td>
+          <td><?php echo $logged->title.' '.$logged->fname.' '.$logged->lname.' '.$logged->oname; ?></td>
+          <td><?= $logged->job_name; ?></td>
           <td><?= $log->comments ?></td>
           <td><?= $log->action ?></td>
         </tr>
