@@ -203,6 +203,14 @@ input[type="number"] {
     ?>
     <input type="text" class="form-control" value="<?= $created ?>" readonly>
   </td>
+  </tr>
+
+  <tr>
+    <td><label>Comments for Approval</label>
+    <br>
+    <textarea id="comments" class="form-control" rows="3" name="comments" ></textarea>
+       
+  </td>
    
   </tr>
   <tr>
@@ -241,7 +249,7 @@ input[type="number"] {
         </tr>
       <?php endforeach; ?>
     <?php else: ?>
-      <tr><td colspan="3" class="text-center">No approval activity yet.</td></tr>
+      <tr><td colspan="5" class="text-center">No approval activity yet.</td></tr>
     <?php endif; ?>
   </tbody>
 </table>
