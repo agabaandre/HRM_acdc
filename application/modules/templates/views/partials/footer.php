@@ -701,6 +701,10 @@ document.addEventListener('DOMContentLoaded', function () {
       errorMessages.push('Total weight must not exceed 100%.');
       isValid = false;
     }
+	if (totalWeight < 100) {
+      errorMessages.push('Total weight must not be less than 100%.');
+      isValid = false;
+    }
 
     if (!document.getElementById('staff_sign_off')?.checked) {
       errorMessages.push('You must confirm and sign off the form.');
