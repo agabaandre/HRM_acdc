@@ -26,45 +26,58 @@ class Performance extends MX_Controller
 	}
 
 	public function save_ppa()
-	{
-		$data = $this->input->post();
-		$staff_id = $this->session->userdata('user')->staff_id;
-		$performance_period = current_period();
-		$entry_id = $staff_id . '_' . str_replace(' ', '', $performance_period);
+{
+    $data = $this->input->post();
+    $staff_id = $this->session->userdata('user')->staff_id;
+    $performance_period = current_period();
+    $entry_id = $staff_id . '_' . str_replace(' ', '', $performance_period);
 
-		$save_data = [
-			'staff_id' => $staff_id,
-			'performance_period' => $performance_period,
-			'entry_id' => $entry_id,
-			'supervisor_id' => $data['supervisor_id'],
-			'supervisor2_id' => ($data['supervisor2_id'] == '0') ? null : $data['supervisor2_id'],
-			'objectives' => json_encode($data['objectives']),
-			'training_recommended' => $data['training_recommended'] ?? 'No',
-			'required_skills' => isset($data['required_skills']) ? json_encode($data['required_skills']) : null,
-			'training_contributions' => $data['training_contributions'] ?? null,
-			'recommended_trainings' => $data['recommended_trainings'] ?? null,
-			'recommended_trainings_details' => $data['recommended_trainings_details'] ?? null,
-			'staff_sign_off' => isset($data['staff_sign_off']) ? 1 : 0,
-			'draft_status' => $data['submit_action'] === 'submit' ? 0 : 1,
-			'updated_at' => date('Y-m-d H:i:s')
-		];
+    $save_data = [
+        'staff_id' => $staff_id,
+        'performance_period' => $performance_period,
+        'entry_id' => $entry_id,
+        'supervisor_id' => $data['supervisor_id'],
+        'supervisor2_id' => $data['supervisor2_id'] == 0 ? null : $data['supervisor2_id'],
+        'objectives' => json_encode($data['objectives']),
+        'training_recommended' => $data['training_recommended'] ?? 'No',
+        'required_skills' => isset($data['required_skills']) ? json_encode($data['required_skills']) : null,
+        'training_contributions' => $data['training_contributions'] ?? null,
+        'recommended_trainings' => $data['recommended_trainings'] ?? null,
+        'recommended_trainings_details' => $data['recommended_trainings_details'] ?? null,
+        'staff_sign_off' => isset($data['staff_sign_off']) ? 1 : 0,
+        'draft_status' => $data['submit_action'] === 'submit' ? 0 : 1,
+        'updated_at' => date('Y-m-d H:i:s'),
+    ];
 
-		// Check if it's a new entry or update
-		$exists = $this->per_mdl->get_staff_plan($staff_id, $performance_period);
-		if ($exists) {
-			$this->db->where('entry_id', $entry_id)->update('ppa_entries', $save_data);
-		} else {
-			$save_data['created_at'] = date('Y-m-d H:i:s');
-			$this->db->insert('ppa_entries', $save_data);
-		}
+    $exists = $this->per_mdl->get_staff_plan($staff_id, $performance_period);
 
-		$msg = [
-			'msg' => $data['submit_action'] === 'submit' ? 'Plan submitted to supervisor.' : 'Draft saved successfully.',
-			'type' => 'success'
-		];
-		Modules::run('utility/setFlash', $msg);
-		redirect('performance/view_ppa/' . $entry_id);
-	}
+    if ($exists) {
+        $this->db->where('entry_id', $entry_id)->update('ppa_entries', $save_data);
+    } else {
+        $save_data['created_at'] = date('Y-m-d H:i:s');
+        $this->db->insert('ppa_entries', $save_data);
+    }
+
+    // 📝 Insert to approval trail only if submit
+    if ($data['submit_action'] === 'submit') {
+        $this->db->insert('ppa_approval_trail', [
+            'entry_id' => $entry_id,
+            'staff_id' => $staff_id,
+            'comments' => $this->input->post('comments'),
+            'action' => 'Submitted for Approval',
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+    }
+
+    $msg = [
+        'msg' => $data['submit_action'] === 'submit' ? 'Plan submitted to supervisor.' : 'Draft saved successfully.',
+        'type' => 'success'
+    ];
+
+    Modules::run('utility/setFlash', $msg);
+    redirect('performance/view_ppa/' . $entry_id);
+}
+
 
 
 	
