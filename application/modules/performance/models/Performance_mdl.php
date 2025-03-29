@@ -37,6 +37,60 @@ public function get_approval_trail($entry_id)
     return $this->db->get('ppa_approval_trail')->result();
 }
 
+public function get_pending_ppa($staff_id)
+{
+    $sql = "
+        SELECT p.entry_id, p.performance_period, p.staff_id,
+               CONCAT(s.firstname, ' ', s.lastname) AS staff_name,
+               a.action,
+               CASE
+                   WHEN a.action = 'Submitted for Approval' THEN
+                       CASE
+                           WHEN p.supervisor_id = ? AND p.supervisor2_id IS NULL THEN 'Pending Supervisor'
+                           WHEN p.supervisor_id = ? THEN 'Pending First Supervisor'
+                           WHEN p.supervisor2_id = ? THEN 'Pending Second Supervisor'
+                       END
+                   WHEN a.action = 'Approved' THEN 'Approved'
+                   WHEN a.action = 'Returned' THEN 'Returned'
+                   ELSE 'Unknown'
+               END AS status
+        FROM ppa_entries p
+        JOIN staff s ON s.staff_id = p.staff_id
+        LEFT JOIN ppa_approval_trail a ON a.id = (
+            SELECT MAX(id) FROM ppa_approval_trail
+            WHERE entry_id = p.entry_id
+        )
+        WHERE p.draft_status = 0
+        AND (
+            p.supervisor_id = ? OR p.supervisor2_id = ?
+        )
+    ";
+
+    return $this->db->query($sql, [$staff_id, $staff_id, $staff_id, $staff_id, $staff_id])->result_array();
+}
+
+
+
+public function get_my_ppa($staff_id)
+{
+    $this->db->where('staff_id', $staff_id);
+    $this->db->order_by('updated_at', 'DESC');
+    return $this->db->get('ppa_entries')->result_array();
+}
+
+
+public function get_approved_ppas($staff_id, $role)
+{
+    if ($role === 'admin') {
+        $this->db->where('status', 'Approved');
+    } else {
+        $this->db->where('ppa_entries.staff_id', $staff_id);
+        $this->db->where('status', 'Approved');
+    }
+    $this->db->join('staff', 'staff.staff_id = ppa_entries.staff_id');
+    $this->db->select('ppa_entries.*, CONCAT(staff.firstname, " ", staff.lastname) as staff_name');
+    return $this->db->get('ppa_entries')->result_array();
+}
 
 	
 

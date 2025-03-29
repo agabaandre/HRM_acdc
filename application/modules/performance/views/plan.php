@@ -46,6 +46,8 @@ input[type="number"] {
   .objective-table th, .objective-table td { text-align: left; padding: 8px; border: 1px solid #ccc; }
 </style>
 
+
+
 <?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'staff_ppa']); ?>
 
 
@@ -214,13 +216,57 @@ input[type="number"] {
    
   </tr>
   <tr>
-    <td colspan="4" class="text-center">
-      <?php if (!$readonly): ?>
-        <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
-        <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Send to Supervisor</button>
-      <?php endif; ?>
-    </td>
-  </tr>
+  <td colspan="4" class="text-center">
+
+    <?php if (!$readonly): ?>
+      <!-- Staff Actions -->
+      <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
+      <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Send to Supervisor</button>
+    <?php endif; ?>
+
+    <?php
+      $user = $this->session->userdata('user');
+      $staff_id = $user->staff_id ?? null;
+      $isSupervisor1 = isset($ppa['supervisor_id']) && $ppa['supervisor_id'] == $staff_id;
+      $isSupervisor2 = isset($ppa['supervisor2_id']) && $ppa['supervisor2_id'] == $staff_id;
+
+      // Get the last action
+      $last_action = !empty($approval_trail) ? end($approval_trail)['action'] : null;
+
+      // Check if Supervisor1 has approved
+      $supervisor1Approved = false;
+      foreach ($approval_trail as $log) {
+          if ($log['action'] === 'Approved' && $log['staff_id'] == $ppa['supervisor_id']) {
+              $supervisor1Approved = true;
+              break;
+          }
+      }
+
+      $showApprovalBtns = false;
+      if ($last_action === 'Submitted for Approval') {
+          if ($isSupervisor1) {
+              $showApprovalBtns = true;
+          } elseif ($isSupervisor2 && $supervisor1Approved) {
+              $showApprovalBtns = true;
+          }
+      }
+    ?>
+
+    <?php if ($showApprovalBtns): ?>
+      <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa['entry_id']) ?>" style="display:inline;">
+        <input type="hidden" name="action" value="approve">
+        <button type="submit" class="btn btn-success px-5">Approve</button>
+      </form>
+
+      <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa['entry_id']) ?>" style="display:inline;">
+        <input type="hidden" name="action" value="return">
+        <button type="submit" class="btn btn-danger px-5">Return for Revision</button>
+      </form>
+    <?php endif; ?>
+
+  </td>
+</tr>
+
 </table>
 
 <?php echo form_close(); ?>

@@ -123,13 +123,10 @@
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/myplans"><i class="bx bx-right-arrow-alt"></i>My PPAs</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/list_ppas#myppa"><i class="bx bx-right-arrow-alt"></i>My PPAs</a>
 									</li>
 								<?php endif; ?>
-								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/approvals"><i class="bx bx-right-arrow-alt"></i>Approvals</a>
-									</li>
-								<?php endif; ?>
+							
 
 							</ul>
 						</li>
