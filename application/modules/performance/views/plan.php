@@ -208,7 +208,7 @@ input[type="number"] {
   </tr>
 
   <tr>
-    <td><label>Comments for Approval</label>
+    <td><label>Comments/Remarks</label>
     <br>
     <textarea id="comments" class="form-control" rows="3" name="comments" ></textarea>
        
