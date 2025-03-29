@@ -70,7 +70,7 @@ class Performance extends MX_Controller
     }
 
     $msg = [
-        'msg' => $data['submit_action'] === 'submit' ? 'Plan submitted to supervisor.' : 'Draft saved successfully.',
+        'msg' => $data['submit_action'] === 'submit' ? 'Plan submitted for Review.' : 'Draft saved successfully.',
         'type' => 'success'
     ];
 

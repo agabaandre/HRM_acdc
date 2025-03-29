@@ -221,7 +221,7 @@ input[type="number"] {
     <?php if (!$readonly): ?>
       <!-- Staff Submission Buttons -->
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
-      <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Send to Supervisor</button>
+      <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
     <?php endif; ?>
 
     <?php
