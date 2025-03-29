@@ -248,7 +248,7 @@ input[type="number"] {
       }
 
       $showApprovalBtns = false;
-      if ($last_action === 'Submitted for Approval') {
+      if ($last_action === 'Submitted') {
           if ($isSupervisor1) {
               $showApprovalBtns = true;
           } elseif ($isSupervisor2 && $supervisor1Approved) {
