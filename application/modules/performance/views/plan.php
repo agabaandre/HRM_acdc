@@ -208,7 +208,7 @@ input[type="number"] {
   </tr>
 
   <tr>
-    <td><label>Comments/Remarks</label>
+    <td><label>Comments for Approval</label>
     <br>
     <textarea id="comments" class="form-control" rows="3" name="comments" ></textarea>
        
@@ -227,19 +227,19 @@ input[type="number"] {
     <?php
       $user = $this->session->userdata('user');
       $staff_id = $user->staff_id ?? null;
-      $isSupervisor1 = isset($ppa['supervisor_id']) && $ppa['supervisor_id'] == $staff_id;
-      $isSupervisor2 = isset($ppa['supervisor2_id']) && $ppa['supervisor2_id'] == $staff_id;
+      $isSupervisor1 = isset($ppa->supervisor_id) && $ppa->supervisor_id == $staff_id;
+      $isSupervisor2 = isset($ppa->supervisor2_id) && $ppa->supervisor2_id == $staff_id;
 
-      $approval_trail = $approval_trail ?? []; // Ensure it's always defined
-      $last_action = count($approval_trail) > 0 ? end($approval_trail)['action'] : null;
+      $approval_trail = $approval_trail ?? [];
+      $last_action = count($approval_trail) > 0 ? end($approval_trail)->action ?? null : null;
 
       $supervisor1Approved = false;
       if (!empty($approval_trail)) {
           foreach ($approval_trail as $log) {
               if (
-                  isset($log['action'], $log['staff_id']) &&
-                  $log['action'] === 'Approved' &&
-                  $log['staff_id'] == $ppa['supervisor_id']
+                  isset($log->action, $log->staff_id) &&
+                  $log->action === 'Approved' &&
+                  $log->staff_id == $ppa->supervisor_id
               ) {
                   $supervisor1Approved = true;
                   break;
@@ -258,12 +258,12 @@ input[type="number"] {
     ?>
 
     <?php if ($showApprovalBtns): ?>
-      <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa['entry_id']) ?>" style="display:inline;">
+      <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>" style="display:inline;">
         <input type="hidden" name="action" value="approve">
         <button type="submit" class="btn btn-success px-5">Approve</button>
       </form>
 
-      <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa['entry_id']) ?>" style="display:inline;">
+      <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>" style="display:inline;">
         <input type="hidden" name="action" value="return">
         <button type="submit" class="btn btn-danger px-5">Return for Revision</button>
       </form>
