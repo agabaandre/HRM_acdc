@@ -21,7 +21,7 @@ class Performance extends MX_Controller
 		$data['skills'] = $this->db->get('training_skills')->result();
 
 		// Fetch existing plan if any
-		$data['ppa'] = $this->per_mdl->get_staff_plan($staff_id);
+		//$data['ppa'] = $this->per_mdl->get_staff_plan($staff_id);
 		render('plan', $data);
 	}
 

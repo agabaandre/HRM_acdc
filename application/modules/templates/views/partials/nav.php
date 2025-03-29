@@ -118,10 +118,20 @@
 								<div class="menu-title">Performance</div>
 							</a>
 							<ul class="dropdown-menu">
-								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance"><i class="bx bx-right-arrow-alt"></i>Create/View PPA</a>
-									</li>
+							<?php
+								$staff_id = $this->session->userdata('user')->staff_id;
+								$current_period = current_period();
+								$ppa_exists = $this->per_mdl->get_staff_plan($staff_id, $current_period);
+								?>
+
+								<?php if (in_array('38', $permissions) && !$ppa_exists) : ?>
+								<li>
+									<a class="dropdown-item" href="<?php echo base_url('performance'); ?>">
+									<i class="bx bx-right-arrow-alt"></i>Create PPA
+									</a>
+								</li>
 								<?php endif; ?>
+
 								<?php if (in_array('38', $permissions)) : ?>
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/list_ppas#myppa"><i class="bx bx-right-arrow-alt"></i>My PPAs/Approvals</a>
 									</li>
