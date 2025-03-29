@@ -3,6 +3,7 @@ $session = $this->session->userdata('user');
 $permissions = $session->permissions;
 $staff_id = $this->session->userdata('user')->staff_id;
 $current_period = str_replace(' ','-',current_period());
+$ppa_entryid = md5($staff_id . '_' . str_replace(' ', '', $current_period));
 @$ppa_exists = $this->per_mdl->get_staff_plan($staff_id, $current_period);
 require_once('partials/css_files.php');
 require_once('partials/header.php');
