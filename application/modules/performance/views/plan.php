@@ -297,7 +297,7 @@ input[type="number"] {
 
       // Determine role
       if ($log->staff_id == $ppa->staff_id) {
-          $role = 'Submitter';
+          $role = 'Staff';
       } elseif ($log->staff_id == $ppa->supervisor_id) {
           $role = 'First Supervisor';
       } elseif ($ppa->supervisor2_id && $log->staff_id == $ppa->supervisor2_id) {
