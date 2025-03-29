@@ -125,15 +125,25 @@
 									</a>
 								</li>
 								<?php endif; ?>
-								<?php if (in_array('38', $permissions) && $ppa_exists) : ?>
+								<?php 
+								
+								if (in_array('38', $permissions) && $ppa_exists) : ?>
 								<li>
-									<a class="dropdown-item" href="<?php echo base_url('performance'); ?>">
-									<i class="bx bx-right-arrow-alt"></i>View
+									<a class="dropdown-item" href="<?php echo base_url('performance'); ?>/view_ppa/<?=$ppa_entryid?>">
+									<i class="bx bx-right-arrow-alt"></i>View PPA Status
 									</a>
 								</li>
 								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/list_ppas#myppa"><i class="bx bx-right-arrow-alt"></i>My PPAs/Approvals</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/my_ppas"><i class="bx bx-right-arrow-alt"></i>My PPAs</a>
+									</li>
+								<?php endif; ?>
+								<?php if (in_array('38', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/list_ppas/pending"><i class="bx bx-right-arrow-alt"></i>Pending Action <?=@$count?></a>
+									</li>
+								<?php endif; ?>
+								<?php if (in_array('38', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/list_ppas/approved"><i class="bx bx-right-arrow-alt"></i>Approved PPAs</a>
 									</li>
 								<?php endif; ?>
 							

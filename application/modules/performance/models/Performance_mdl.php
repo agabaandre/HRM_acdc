@@ -45,7 +45,7 @@ public function get_pending_ppa($staff_id)
                CONCAT(s.firstname, ' ', s.lastname) AS staff_name,
                a.action,
                CASE
-                   WHEN a.action = 'Submitted for Approval' THEN
+                   WHEN a.action = 'Submitted' THEN
                        CASE
                            WHEN p.supervisor_id = ? AND p.supervisor2_id IS NULL THEN 'Pending Supervisor'
                            WHEN p.supervisor_id = ? THEN 'Pending First Supervisor'
@@ -93,6 +93,22 @@ public function get_approved_ppas($staff_id, $role)
     return $this->db->get('ppa_entries')->result_array();
 }
 
+public function get_all_ppas_for_user($staff_id)
+{
+    $sql = "
+        SELECT p.*, 
+               (
+                   SELECT action 
+                   FROM ppa_approval_trail 
+                   WHERE entry_id = p.entry_id 
+                   ORDER BY id DESC LIMIT 1
+               ) as overall_status
+        FROM ppa_entries p
+        WHERE p.staff_id = ?
+        ORDER BY p.created_at DESC
+    ";
+    return $this->db->query($sql, [$staff_id])->result_array();
+}
 	
 
 }
