@@ -29,8 +29,8 @@ class Performance extends MX_Controller
 {
     $data = $this->input->post();
     $staff_id = $this->session->userdata('user')->staff_id;
-    $performance_period = current_period();
-    $entry_id = $staff_id . '_' . str_replace(' ', '', $performance_period);
+    $performance_period = str_replace(' ','-',current_period());
+    $entry_id = md5($staff_id . '_' . str_replace(' ', '', $performance_period));
 
     $save_data = [
         'staff_id' => $staff_id,
@@ -99,6 +99,58 @@ class Performance extends MX_Controller
 	
 		render('plan', $data);
 	}
+	public function list_ppas()
+	{
+		$data['module'] = $this->module;
+		$data['title'] = "Performance Plan List";
+		render('ppa_list', $data);
+	}
+	
+	public function fetch_ppas($type)
+	{
+		$staff_id = $this->session->userdata('user')->staff_id;
+		$results = [];
+	
+		if ($type === 'pending') {
+			$results = $this->per_mdl->get_pending_ppa($staff_id);
+		} elseif ($type === 'myppa') {
+			$results = $this->per_mdl->get_my_ppa($staff_id);
+		} elseif ($type === 'approved') {
+			$results = $this->per_mdl->get_approved_ppa($staff_id);
+		}
+	
+		echo json_encode($results);
+	}
+	public function approve_ppa($entry_id)
+{
+    $staff_id = $this->session->userdata('user')->staff_id;
+    $action = $this->input->post('action');
+
+    if (!in_array($action, ['approve', 'return'])) {
+        show_error("Invalid action.");
+    }
+
+    $log_action = $action === 'approve' ? 'Approved' : 'Returned';
+
+    $this->db->insert('ppa_approval_trail', [
+        'entry_id' => $entry_id,
+        'staff_id' => $staff_id,
+        'comments' => $this->input->post('comments') ?? null,
+        'action' => $log_action,
+        'created_at' => date('Y-m-d H:i:s')
+    ]);
+
+    $msg = [
+        'msg' => $log_action === 'Approved' ? 'PPA approved successfully.' : 'PPA returned for revision.',
+        'type' => 'success'
+    ];
+
+    Modules::run('utility/setFlash', $msg);
+    redirect('performance/view_ppa/' . $entry_id);
+}
+
+
+
 	
 	
 }

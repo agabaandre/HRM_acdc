@@ -676,7 +676,7 @@ if (!function_exists('current_period')) {
     function current_period()
     {
         $currentYear = date('Y');
-        $periods = 'January-' . $currentYear . '_December-' . $currentYear;
+        $periods = 'January ' . $currentYear .' to '. 'December ' . $currentYear;
 
         return $periods;
     }
