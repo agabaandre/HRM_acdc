@@ -125,6 +125,13 @@
 									</a>
 								</li>
 								<?php endif; ?>
+								<?php if (in_array('38', $permissions) && $ppa_exists) : ?>
+								<li>
+									<a class="dropdown-item" href="<?php echo base_url('performance'); ?>">
+									<i class="bx bx-right-arrow-alt"></i>View
+									</a>
+								</li>
+								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>
 									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/list_ppas#myppa"><i class="bx bx-right-arrow-alt"></i>My PPAs/Approvals</a>
 									</li>
