@@ -64,7 +64,7 @@ class Performance extends MX_Controller
             'entry_id' => $entry_id,
             'staff_id' => $staff_id,
             'comments' => $this->input->post('comments'),
-            'action' => 'Submitted for Approval',
+            'action' => 'Submitted',
             'created_at' => date('Y-m-d H:i:s')
         ]);
     }
@@ -122,32 +122,42 @@ class Performance extends MX_Controller
 		echo json_encode($results);
 	}
 	public function approve_ppa($entry_id)
-{
-    $staff_id = $this->session->userdata('user')->staff_id;
-    $action = $this->input->post('action');
-
-    if (!in_array($action, ['approve', 'return'])) {
-        show_error("Invalid action.");
-    }
-
-    $log_action = $action === 'approve' ? 'Approved' : 'Returned';
-
-    $this->db->insert('ppa_approval_trail', [
-        'entry_id' => $entry_id,
-        'staff_id' => $staff_id,
-        'comments' => $this->input->post('comments') ?? null,
-        'action' => $log_action,
-        'created_at' => date('Y-m-d H:i:s')
-    ]);
-
-    $msg = [
-        'msg' => $log_action === 'Approved' ? 'PPA approved successfully.' : 'PPA returned for revision.',
-        'type' => 'success'
-    ];
-
-    Modules::run('utility/setFlash', $msg);
-    redirect('performance/view_ppa/' . $entry_id);
-}
+	{
+		$staff_id = $this->session->userdata('user')->staff_id;
+		$action = $this->input->post('action');
+	
+		if (!in_array($action, ['approve', 'return'])) {
+			show_error("Invalid action.");
+		}
+	
+		$log_action = $action === 'approve' ? 'Approved' : 'Returned';
+	
+		// Log approval trail
+		$this->db->insert('ppa_approval_trail', [
+			'entry_id'   => $entry_id,
+			'staff_id'   => $staff_id,
+			'comments'   => $this->input->post('comments') ?? null,
+			'action'     => $log_action,
+			'created_at' => date('Y-m-d H:i:s')
+		]);
+	
+		// If returned, update the draft status
+		if ($action === 'return') {
+			$this->db->where('entry_id', $entry_id)->update('ppa_entries', [
+				'draft_status' => 1,
+				'updated_at'   => date('Y-m-d H:i:s')
+			]);
+		}
+	
+		$msg = [
+			'msg'  => $log_action === 'Approved' ? 'PPA approved successfully.' : 'PPA returned for revision.',
+			'type' => 'success'
+		];
+	
+		Modules::run('utility/setFlash', $msg);
+		redirect('performance/view_ppa/' . $entry_id);
+	}
+	
 
 
 

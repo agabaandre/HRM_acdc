@@ -281,31 +281,46 @@ input[type="number"] {
 <table class="table table-bordered">
   <thead>
     <tr>
-      <th>Date</th>
+     
       <th>Name</th>
-      <th>Position</th>
-      <th>Comment</th>
+      <th>Role</th>
       <th>Action</th>
+      <th>Date</th>
+      <th>Comment</th>
+     
     </tr>
   </thead>
   <tbody>
-    <?php if (!empty($approval_trail)): ?>
-      <?php foreach ($approval_trail as $log): 
-        $logged = Modules::run('auth/contract_info', $log->staff_id);
-        ?>
+  <?php if (!empty($approval_trail)): ?>
+    <?php foreach ($approval_trail as $log): 
+      $logged = Modules::run('auth/contract_info', $log->staff_id);
 
-        <tr>
-          <td><?= date('d M Y H:i', strtotime($log->created_at)) ?></td>
-          <td><?php echo $logged->title.' '.$logged->fname.' '.$logged->lname.' '.$logged->oname; ?></td>
-          <td><?= $logged->job_name; ?></td>
-          <td><?= $log->comments ?></td>
-          <td><?= $log->action ?></td>
-        </tr>
-      <?php endforeach; ?>
-    <?php else: ?>
-      <tr><td colspan="5" class="text-center">No approval activity yet.</td></tr>
-    <?php endif; ?>
-  </tbody>
+      // Determine role
+      if ($log->staff_id == $ppa->staff_id) {
+          $role = 'Submitter';
+      } elseif ($log->staff_id == $ppa->supervisor_id) {
+          $role = 'First Supervisor';
+      } elseif ($ppa->supervisor2_id && $log->staff_id == $ppa->supervisor2_id) {
+          $role = 'Second Supervisor';
+      } else {
+          $role = 'Other';
+      }
+    ?>
+      <tr>
+        <td><?php echo $logged->title.' '.$logged->fname.' '.$logged->lname.' '.$logged->oname; ?></td>
+        <td><?= $role; ?></td>
+        <td><?= $log->action; ?></td>
+        <td><?= date('d M Y H:i', strtotime($log->created_at)); ?></td>
+        <td><?= $log->comments; ?></td>
+      </tr>
+    <?php endforeach; ?>
+  <?php else: ?>
+    <tr>
+      <td colspan="5" class="text-center">No approval activity yet.</td>
+    </tr>
+  <?php endif; ?>
+</tbody>
+
 </table>
 
 
