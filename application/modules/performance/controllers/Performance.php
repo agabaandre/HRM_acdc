@@ -99,18 +99,12 @@ class Performance extends MX_Controller
 	
 		render('plan', $data);
 	}
-	public function list_ppas()
+	public function list_ppas($type)
 	{
 		$data['module'] = $this->module;
-		$data['title'] = "Performance Plan List";
-		render('ppa_list', $data);
-	}
-	
-	public function fetch_ppas($type)
-	{
+		$data['title'] = "Performance Plan ";
 		$staff_id = $this->session->userdata('user')->staff_id;
 		$results = [];
-	
 		if ($type === 'pending') {
 			$results = $this->per_mdl->get_pending_ppa($staff_id);
 		} elseif ($type === 'myppa') {
@@ -118,9 +112,10 @@ class Performance extends MX_Controller
 		} elseif ($type === 'approved') {
 			$results = $this->per_mdl->get_approved_ppa($staff_id);
 		}
-	
-		echo json_encode($results);
+		render('ppa_list', $data);
 	}
+	
+	
 	public function approve_ppa($entry_id)
 	{
 		$staff_id = $this->session->userdata('user')->staff_id;
@@ -157,7 +152,22 @@ class Performance extends MX_Controller
 		Modules::run('utility/setFlash', $msg);
 		redirect('performance/view_ppa/' . $entry_id);
 	}
-	
+	public function my_ppas()
+{
+    $data['module'] = $this->module;
+    $data['title'] = "My Performance Plans";
+    
+    $staff_id = $this->session->userdata('user')->staff_id;
+    
+    // Load paginated results (optional: add pagination logic here)
+    $data['plans'] = $this->per_mdl->get_all_ppas_for_user($staff_id);
+
+    // If using pagination links
+    $data['links'] = ''; // placeholder, update if using pagination
+
+    render('staff_ppa', $data); // your blade/PHP view
+}
+
 
 
 
