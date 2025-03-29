@@ -219,7 +219,7 @@ input[type="number"] {
   <td colspan="4" class="text-center">
 
     <?php if (!$readonly): ?>
-      <!-- Staff Actions -->
+      <!-- Staff Submission Buttons -->
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Send to Supervisor</button>
     <?php endif; ?>
@@ -230,15 +230,20 @@ input[type="number"] {
       $isSupervisor1 = isset($ppa['supervisor_id']) && $ppa['supervisor_id'] == $staff_id;
       $isSupervisor2 = isset($ppa['supervisor2_id']) && $ppa['supervisor2_id'] == $staff_id;
 
-      // Get the last action
-      $last_action = !empty($approval_trail) ? end($approval_trail)['action'] : null;
+      $approval_trail = $approval_trail ?? []; // Ensure it's always defined
+      $last_action = count($approval_trail) > 0 ? end($approval_trail)['action'] : null;
 
-      // Check if Supervisor1 has approved
       $supervisor1Approved = false;
-      foreach ($approval_trail as $log) {
-          if ($log['action'] === 'Approved' && $log['staff_id'] == $ppa['supervisor_id']) {
-              $supervisor1Approved = true;
-              break;
+      if (!empty($approval_trail)) {
+          foreach ($approval_trail as $log) {
+              if (
+                  isset($log['action'], $log['staff_id']) &&
+                  $log['action'] === 'Approved' &&
+                  $log['staff_id'] == $ppa['supervisor_id']
+              ) {
+                  $supervisor1Approved = true;
+                  break;
+              }
           }
       }
 
