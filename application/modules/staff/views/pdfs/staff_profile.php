@@ -52,7 +52,7 @@
 <div class="profile-container">
     <div class="header">
     <?php $data = $staffs['0']; ?>
-        <img src="<?php echo base_url(); ?>assets/images/AU_CDC_Logo-800.png" width="200">
+        <img src="<?php echo base_url(); ?>assets/images/AU_CDC_Logo-800.png" height="120">
         <h2><?=$data->title.' ' .$data->fname.' '.$data->lname.' '.$data->oname?></h2>
     </div>
      
