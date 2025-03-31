@@ -761,7 +761,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <td>${staff.gender ?? ''}</td>
                     <td>${staff.SAPNO ?? ''}</td>
                     <td>${staff.work_email ?? ''}</td>
-                    <td>${staff.whatsapp ?? ''}</td>
+                    <td>${staff.tel_1 ?? ''}</td>
                     <td>
                       <a href="${baseUrl}staff/staff_contracts/${staff.staff_id}" 
                          class="btn btn-sm btn-success" target="_blank">View Contract</a>

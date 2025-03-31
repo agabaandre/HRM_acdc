@@ -1,8 +1,8 @@
 <!-- Staff Search -->
-<div class=" mt-4">
+<div class=" mt-2">
   <div class="card shadow-sm border-0">
     <div class="card-body">
-      <h5 class="mb-3">🔍 Search Staff</h5>
+      <h5 class="mb-2">🔍 Search  Staff</h5>
       <div class="input-group input-group-lg">
         <input type="text" id="staff-search" class="form-control rounded-start" placeholder="Search by name, SAPNO, or email..." autocomplete="off">
         <span class="input-group-text bg-white rounded-end" id="search-icon" style="cursor:pointer;">
@@ -13,7 +13,7 @@
   </div>
 
   <!-- Search Results -->
-  <div id="staff-results" class="mt-4" style="display: none;">
+  <div id="staff-results" class="mt-2" style="display: none;">
     <div class="card shadow-sm border-0">
       <div class="card-header bg-light">
         <strong>Search Results</strong>
@@ -27,7 +27,7 @@
                 <th>Gender</th>
                 <th>SAPNO</th>
                 <th>Email</th>
-                <th>WhatsApp</th>
+                <th>Telephone</th>
                 <th>Contract</th>
               </tr>
             </thead>
