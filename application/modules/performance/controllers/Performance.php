@@ -144,6 +144,8 @@ class Performance extends MX_Controller
 		}
 	
 		$log_action = $action === 'approve' ? 'Approved' : 'Returned';
+
+
 	
 		// Log approval trail
 		$this->db->insert('ppa_approval_trail', [
@@ -170,6 +172,57 @@ class Performance extends MX_Controller
 		Modules::run('utility/setFlash', $msg);
 		redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);
 	}
+
+public function notify_ppa_status($data)
+{
+    $staff_id = $data['staff_id'];
+    $entry_id = $data['entry_id'];
+    $ppa = $this->per_mdl->get_plan_by_entry_id($entry_id);
+    $period = $ppa->performance_period ?? current_period();
+    $approval_trail = $this->per_mdl->get_approval_trail($entry_id);
+
+    $trigger_id = $this->session->userdata('user')->staff_id;
+    $trigger_name = staff_name($trigger_id);
+    $dispatch = date('Y-m-d H:i:s');
+
+    $copied_mails = settings()->contracts_status_copied_emails;
+    $staff_email = staff_details($staff_id)->work_email;
+    $supervisor_email = staff_details($ppa->supervisor_id)->work_email ?? '';
+    $second_supervisor_email = $ppa->supervisor2_id ? staff_details($ppa->supervisor2_id)->work_email : '';
+
+    $data['name'] = staff_name($staff_id);
+    $data['period'] = $period;
+    $data['approval_trail'] = $approval_trail;
+    $data['ppa'] = $ppa;
+
+    if ($data['type'] === 'submission') {
+        $data['subject'] = "PPA Submission Confirmation";
+        $data['body'] = $this->load->view('emails/submission', $data, true);
+        $data['email_to'] = $staff_email . ';' . $copied_mails;
+        $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
+
+    } elseif ($data['type'] === 'status_update') {
+        $data['subject'] = "PPA Status Update";
+        $data['status'] = $data['status'] ?? 'Pending';
+        $data['body'] = $this->load->view('emails/ppa_status', $data, true);
+        $data['email_to'] = $staff_email . ';' . $copied_mails . ';' . $supervisor_email . ($second_supervisor_email ? ';' . $second_supervisor_email : '');
+        $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
+    } else {
+        return false; // Invalid type
+    }
+
+    return golobal_log_email(
+        $trigger_name,
+        $data['email_to'],
+        $data['body'],
+        $data['subject'],
+        $staff_id,
+        date('Y-m-d'),
+        $dispatch,
+        $entry_log_id
+    );
+}
+
 	public function my_ppas()
 {
     $data['module'] = $this->module;
@@ -198,7 +251,7 @@ public function approved_by_me()
 
     render('approved_by_me', $data);
 }
-public function print_ppa($entry_id,$staff_id)
+public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
     {
         $this->load->model('performance_mdl', 'per_mdl');
 
@@ -218,67 +271,6 @@ public function print_ppa($entry_id,$staff_id)
 
         pdf_print_data($data, $file_name, 'P', 'performance/staff_ppa_print');
     }
-	function print_data($staffs, $file_name,$orient,$view)  
-	{
-	   if($orient =='L'){
-	   $this->load->library('ML_pdf');
-	   }
-	   else{
-	    $this->load->library('M_pdf');
-	   }
-	   // Define PDF File Name
-	   $watermark = FCPATH . "assets/images/AU_CDC_Logo-800.png";
-	   $filename = $file_name; 
-	   // Set Execution Time to Unlimited
-	   ini_set('max_execution_time', 0);
-	   // Load the Specified View Dynamically and Convert to HTML
 
-	   
-	  // dd($data);
-	   $html =  $this->load->view($view, $staffs,true);
-	   //exit;
-	   $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
-	   // Set Watermark Image (if applicable)
-		
-
-	   if($orient =='L'){
-		if (!empty($watermark)) {
-		$this->load->ml_pdf->pdf->SetWatermarkImage($watermark);
-		$this->load->ml_pdf->pdf->showWatermarkImage = true;
-		}
-		// Set Footer with Timestamp and Source
-		date_default_timezone_set("Africa/Addis Ababa");
-		$this->load->ml_pdf->pdf->SetHTMLFooter(
-			"Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
-			"Source: Africa CDC - Staff Tracker " . base_url()
-		);
-	
-		// Generate the PDF with the Staff Profile Data
-		$this->load->ml_pdf->pdf->WriteHTML($PDFContent);
-	
-		// Output the PDF (Display in Browser)
-		$this->load->ml_pdf->pdf->Output($filename, 'I');
-		}
-		else{
-		if (!empty($watermark)) {
-		$this->load->m_pdf->pdf->SetWatermarkImage($watermark);
-		$this->load->m_pdf->pdf->showWatermarkImage = true;
-		}
-		
-		// Set Footer with Timestamp and Source
-		date_default_timezone_set("Africa/Addis Ababa");
-		$this->load->m_pdf->pdf->SetHTMLFooter(
-			"Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
-			"Source: Africa CDC - Staff Tracker " . base_url()
-		);
-	
-		// Generate the PDF with the Staff Profile Data
-		$this->load->m_pdf->pdf->WriteHTML($PDFContent);
-	
-		// Output the PDF (Display in Browser)
-		$this->load->m_pdf->pdf->Output($filename, 'I');
-		}
-	   
-   }
 	
 }
