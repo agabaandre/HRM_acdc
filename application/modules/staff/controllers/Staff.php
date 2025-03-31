@@ -591,11 +591,13 @@ public function new_submit()
             );
             if ($contract_id) {
                 $response = array(
+					'staff_id'=>$staff_id,
                     'msg'  => 'Staff information saved successfully.',
                     'type' => 'success'
                 );
             } else {
                 $response = array(
+					'staff_id'=>$staff_id,
                     'msg'  => 'Failed, please Retry',
                     'type' => 'error'
                 );
