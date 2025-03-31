@@ -1,3 +1,7 @@
+
+<div class="row container-fluid mb-4">
+  <?php $this->load->view('search','');?>
+</div>
 <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4">
   <div class="col">
     <div class="card rounded-1" <?=getRandomAUColor()?>>

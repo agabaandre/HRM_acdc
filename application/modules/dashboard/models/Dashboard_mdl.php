@@ -23,41 +23,41 @@ class Dashboard_mdl extends CI_Model
     }
 
 
-    function update_contract_status()
-    {
+    // function update_contract_status()
+    // {
 
-        $sqlst = "SELECT staff_contract_id,end_date,staff_id FROM  staff_contracts WHERE status_id=1 || status_id=2";
+    //     $sqlst = "SELECT staff_contract_id,end_date,staff_id FROM  staff_contracts WHERE status_id=1 || status_id=2";
 
-        $resultst = $this->db->query($sqlst)->result_array();
+    //     $resultst = $this->db->query($sqlst)->result_array();
 
 
-        foreach ($resultst as $rowst):
+    //     foreach ($resultst as $rowst):
 
-            $date1 = date('Y-m-d');
-            $date2 = $rowst['end_date'];
-            $staff_contract_id = $rowst['staff_contract_id'];
-            $staff_id = $rowst['staff_id'];
+    //         $date1 = date('Y-m-d');
+    //         $date2 = $rowst['end_date'];
+    //         $staff_contract_id = $rowst['staff_contract_id'];
+    //         $staff_id = $rowst['staff_id'];
 
-            $dateDiff = $this->dateDiff($date1, $date2);
+    //         $dateDiff = $this->dateDiff($date1, $date2);
 
-            $SQLSTAFF = $this->db->query("UPDATE staff SET flag=1 WHERE staff_id=$staff_id");
+    //         $SQLSTAFF = $this->db->query("UPDATE staff SET flag=1 WHERE staff_id=$staff_id");
 
-            if ($dateDiff > 0 && $dateDiff <= 60) {
-                //$status= 'Due';
-                $SQLSC1 = $this->db->query("UPDATE staff_contracts SET status_id=2 WHERE staff_contract_id=$staff_contract_id");
-            } elseif ($dateDiff < 0) {
-                //$status= 'Expired';
-                $SQLSC1 = $this->db->query("UPDATE staff_contracts SET status_id=3 WHERE staff_contract_id=$staff_contract_id");
-            } elseif ($dateDiff > 60) {
-                //$status= 'Active';
-                $SQLSC1 = $this->db->query("UPDATE staff_contracts SET status_id=1 WHERE staff_contract_id=$staff_contract_id");
-            } else {
-                $status = '';
+    //         if ($dateDiff > 0 && $dateDiff <= 60) {
+    //             //$status= 'Due';
+    //             $SQLSC1 = $this->db->query("UPDATE staff_contracts SET status_id=2 WHERE staff_contract_id=$staff_contract_id");
+    //         } elseif ($dateDiff < 0) {
+    //             //$status= 'Expired';
+    //             $SQLSC1 = $this->db->query("UPDATE staff_contracts SET status_id=3 WHERE staff_contract_id=$staff_contract_id");
+    //         } elseif ($dateDiff > 60) {
+    //             //$status= 'Active';
+    //             $SQLSC1 = $this->db->query("UPDATE staff_contracts SET status_id=1 WHERE staff_contract_id=$staff_contract_id");
+    //         } else {
+    //             $status = '';
 
-            }
-        endforeach;
+    //         }
+    //     endforeach;
 
-    }
+    // }
     function all_staff()
     {
         //self::update_contract_status();
@@ -180,5 +180,16 @@ class Dashboard_mdl extends CI_Model
         }
         return array('division' => $division, 'value' => $value2);
     }
+
+    public function search_staff($query)
+{
+    $this->db->like('fname', $query);
+    $this->db->or_like('lname', $query);
+    $this->db->or_like('SAPNO', $query);
+    $this->db->or_like('work_email', $query);
+    $this->db->limit(3);
+    return $this->db->get('staff')->result_array();
+}
+
 
 }
