@@ -67,7 +67,7 @@ a {
 
   /* AU Red focus for search input */
   .au-search-input:focus {
-    border-color: #911C39;
+    border-color: #a29497;
     box-shadow: 0 0 0 0.2rem rgba(145, 28, 57, 0.2);
     outline: none;
   }
