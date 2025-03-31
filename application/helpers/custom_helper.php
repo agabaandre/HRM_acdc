@@ -890,7 +890,7 @@ if (!function_exists('pdf_print_data')) {
         }
 
         // Set watermark and filename
-        $watermark = FCPATH . "assets/images/AU_CDC_Logo-800.png";
+        $watermark = FCPATH . "assets/images/au_emblem.png";
         $filename = $file_name;
 
         // Remove execution time limit
