@@ -46,4 +46,12 @@ class Dashboard extends MX_Controller
 	{
 
 	}
+	public function search_staff()
+{
+    $this->load->model('staff_mdl');
+    $query = $this->input->post('query');
+    $results = $this->dash_mdl->search_staff($query);
+    echo json_encode($results);
+}
+
 }

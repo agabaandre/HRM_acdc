@@ -730,6 +730,63 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<script>
+  $(document).ready(function () {
+    const baseUrl = "<?= base_url() ?>";
+
+    $('#staff-search').on('keyup', function () {
+      let query = $(this).val().trim();
+
+      if (query.length >= 2) {
+        console.log("Searching for:", query);
+
+        $.ajax({
+          url: baseUrl + 'dashboard/search_staff',
+          type: 'POST',
+          data: { query: query },
+          dataType: 'json',
+          beforeSend: function () {
+            $('#staff-results-body').html('<tr><td colspan="6" class="text-center text-muted">Searching...</td></tr>');
+            $('#staff-results').show();
+          },
+          success: function (res) {
+            console.log("Response:", res);
+
+            if (res.length > 0) {
+              let rows = '';
+              res.forEach(staff => {
+                rows += `
+                  <tr>
+                    <td>${staff.title ?? ''} ${staff.fname ?? ''} ${staff.lname ?? ''} ${staff.oname ?? ''}</td>
+                    <td>${staff.gender ?? ''}</td>
+                    <td>${staff.SAPNO ?? ''}</td>
+                    <td>${staff.work_email ?? ''}</td>
+                    <td>${staff.whatsapp ?? ''}</td>
+                    <td>
+                      <a href="${baseUrl}staff/staff_contracts/${staff.staff_id}" 
+                         class="btn btn-sm btn-success" target="_blank">View Contract</a>
+                    </td>
+                  </tr>
+                `;
+              });
+              $('#staff-results-body').html(rows);
+            } else {
+              $('#staff-results-body').html('<tr><td colspan="6" class="text-center text-warning">No results found.</td></tr>');
+            }
+          },
+          error: function (xhr, status, error) {
+            console.error("AJAX Error:", status, error);
+            $('#staff-results-body').html(`<tr><td colspan="6" class="text-danger">Error: ${xhr.responseText}</td></tr>`);
+          }
+        });
+      } else {
+        $('#staff-results').hide();
+      }
+    });
+  });
+</script>
+
+
 
 
 
