@@ -2,7 +2,7 @@
     <div class="card-body">
 
         <div class="table-responsive">
-            <table id="approved-table" class="table table-bordered table-striped">
+            <table id="approved-table" class="table mydata table-bordered table-striped">
                 <thead>
                     <tr>
                         <th>#</th>
