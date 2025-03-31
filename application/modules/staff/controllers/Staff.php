@@ -277,14 +277,7 @@ class Staff extends MX_Controller
 		
 		render('new_contract', $data);
 	}
-	public function test_email(){
-		$mailto = send_email_async('agabaandre@gmail.com','Africa CDC TEST EMAIL','This is a test emal from Africa CDC for mail notifications');
-		if ($mailto) {
-			Modules::run('utility/setFlash', 'SENT test MAIL');	
-		}
-		redirect('staff');
-
-	}
+	
 
 	function timer_after($time,$function)
 	{
