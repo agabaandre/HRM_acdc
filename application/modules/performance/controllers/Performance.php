@@ -207,14 +207,16 @@ public function print_ppa($entry_id,$staff_id)
         $data['title'] = "Printable PPA";
         $data['skills'] = $this->db->get('training_skills')->result();
         $data['ppa'] = $this->per_mdl->get_plan_by_entry_id($entry_id);
+		//dd($data['ppa']);
         $data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
 		$data['staff_id'] = $staff_id;
 
         // Get contract and supervisor info
         $data['contract'] = Modules::run('auth/contract_info', $staff_id);
         $data['readonly'] = true;
+		$file_name= staff_name($staff_id).'_'.$data['ppa']->performance_period.'_PPA.pdf';
 
-        pdf_print_data($data, 'Performance_PPA.pdf', 'P', 'performance/staff_ppa_print');
+        pdf_print_data($data, $file_name, 'P', 'performance/staff_ppa_print');
     }
 	function print_data($staffs, $file_name,$orient,$view)  
 	{

@@ -85,7 +85,7 @@ input[type="number"] {
     <td><b>Division/Directorate</b></td>
     <td><input type="text" class="form-control" value="<?= acdc_division($contract->division_id) ?>" readonly></td>
     <td><b>Performance Period</b></td>
-    <td><input type="text" class="form-control" name="performance-period" value="<?= current_period(); ?>" readonly></td>
+    <td><input type="text" class="form-control" name="performance-period" value="<?php if(!empty($ppa->performance_period)){ echo $ppa->performance_period; } else { echo current_period();} ?>" readonly></td>
   </tr>
   <tr>
     <td><b>First Supervisor</b></td>

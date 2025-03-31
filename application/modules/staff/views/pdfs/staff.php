@@ -25,7 +25,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <img src="<?php echo base_url(); ?>/assets/images/AU_CDC_Logo-800.png" alt="Africa CDC Logo"  style="width:150px !important;">
+        <img src="<?= FCPATH . 'assets/images/AU_CDC_Logo-800.png' ?>" alt="AU CDC Logo" style="height:120px;">
         </div>
         <div class="title"><?php echo $title?></div>
         <div class="table-container">

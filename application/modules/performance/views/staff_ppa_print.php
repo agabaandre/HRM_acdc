@@ -16,7 +16,7 @@
 </head>
 <body>
   <div class="header" style="text-align: center;">
-    <img src="<?= FCPATH . 'assets/images/AU_CDC_Logo-800.png' ?>" alt="AU CDC Logo" style="height:80px;">
+    <img src="<?= FCPATH . 'assets/images/AU_CDC_Logo-800.png' ?>" alt="AU CDC Logo" style="height:120px;">
     <h3>Performance Planning and Appraisal (PPA) Form</h3>
   </div>
 
@@ -38,7 +38,8 @@
     <td><b>Division/Directorate</b></td>
     <td><?= acdc_division($contract->division_id) ?></td>
     <td><b>Performance Period</b></td>
-    <td><?= current_period(); ?></td>
+    <td><?php if(!empty($ppa->performance_period)){ echo str_replace('-',' ',$ppa->performance_period
+		); } else { echo current_period();} ?></td>
   </tr>
   <tr>
     <td><b>First Supervisor</b></td>
