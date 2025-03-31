@@ -861,9 +861,12 @@ function curl_send_post($url, $body, $headers) {
                 ($supervisor1Approved && $supervisor2Approved)
             ) {
                 return '<a href="' . base_url('performance/print_ppa/' . $ppa->entry_id) .'/'.$ppa->staff_id. '" 
-                            class="btn btn-dark btn-sm" target="_blank">
-                            <i class="fa fa-print"></i> Print PPA
-                        </a>';
+                            class="btn btn-dark btn-sm me-2" target="_blank">
+                            <i class="fa fa-print"></i> Print PPA without Approval Trail
+                        </a>' .'<a href="' . base_url('performance/print_ppa/' . $ppa->entry_id) .'/'.$ppa->staff_id.'/1'. '" 
+                        class="btn btn-dark btn-sm" target="_blank">
+                        <i class="fa fa-print"></i> Print PPA With Approval Trail
+                    </a>';
             } else {
                 return ''; // No action
             }
@@ -904,11 +907,24 @@ if (!function_exists('pdf_print_data')) {
         }
 
         // Set footer with timestamp and source
-        date_default_timezone_set("Africa/Addis Ababa");
-        $pdf->SetHTMLFooter(
-            "Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
-            "Source: Africa CDC - Staff Tracker " . base_url()
-        );
+        date_default_timezone_set("Africa/Nairobi");
+
+        $pdf->SetHTMLFooter('
+		<table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
+			<tr>
+				<td align="left" style="border: none;">
+					Africa CDC, P.O. Box 3243, Addis Ababa, Ethiopia, Ring Road, 16/17<br>
+					Tel: +251 (0) 11 551 77 00, Fax: +251 (0) 11 551 78 44<br>
+					Website: <a href="https://africacdc.org" style="color: #911C39;">africacdc.org</a>
+				</td>
+				<td align="left" style="border: none;">
+					Source: Africa CDC - Staff Tracker<br>
+					Generated on: ' . date('d F, Y h:i A') . '<br>
+					' . base_url() . '
+				</td>
+			</tr>
+		</table>
+	');
 
         // Write content and output PDF in browser
         $pdf->WriteHTML($PDFContent);
@@ -916,7 +932,20 @@ if (!function_exists('pdf_print_data')) {
     }
 }
 
-    
+if (!function_exists('get_last_ppa_approval_action')) {
+    function get_last_ppa_approval_action($entry_id, $staff_id)
+    {
+        $CI =& get_instance();
+        return $CI->db
+            ->where('entry_id', $entry_id)
+            ->where('staff_id', $staff_id)
+            ->order_by('id', 'DESC')
+            ->limit(1)
+            ->get('ppa_approval_trail')
+            ->row(); // returns latest action by that staff for that PPA
+    }
+}
+
 
 
   

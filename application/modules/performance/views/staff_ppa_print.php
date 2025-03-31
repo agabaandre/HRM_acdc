@@ -4,24 +4,59 @@
 <html>
 <head>
   <style>
-    body { font-family: Arial, sans-serif; font-size: 11px; margin: 10px; }
+    body { font-family: serif; font-size: 12px; margin: 10px; }
     .header img { width: 150px; }
     .section-title { font-size: 14px; font-weight: bold; margin-top: 20px; border-bottom: 1px solid #ccc; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    td, th { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    td, th { border: 1px solid #ccc; padding: 3px; text-align: left; }
     .no-border td { border: none; }
-    .objective-table th small { display: block; font-weight: normal; font-style: italic; font-size: 10px; color: #555; }
+    .objective-table th small { display: block; font-weight: normal !important; font-style: italic !important; font-size: 10px; color: #555; }
     .page-break { page-break-before: always; }
+    small{
+      font-weight: normal !important;
+    }
   </style>
 </head>
 <body>
-  <div class="header" style="text-align: center;">
-    <img src="<?= FCPATH . 'assets/images/AU_CDC_Logo-800.png' ?>" alt="AU CDC Logo" style="height:120px;">
-    <h3>Performance Planning and Appraisal (PPA) Form</h3>
+<div style="width: 100%; text-align: center; padding-bottom: 5px;">
+<div style="width: 100%; padding-bottom: 5px;">
+<div style="width: 100%; padding: 10px 0;">
+  <!-- Top Row: Logo and Tagline -->
+  <div style="display:flex; justify-content: space-between; align-items: center;">
+
+    <!-- Left: Logo -->
+    <div style="width: 60%; text-align: left; float:left;">
+      <img src="<?= base_url('assets/images/AU_CDC_Logo-800.png') ?>" alt="Africa CDC Logo" style="height: 80px;">
+    </div>
+
+    <!-- Right: Tagline -->
+    <div style="text-align: right; width: 35%; float:right; margin-top:10px;">
+      <span style="font-size: 14px; color: #911C39;">Safeguarding Africa’s Health</span>
+    </div>
+
   </div>
 
-  <div class="section-title">A. Staff Details</div>
+  <!-- Centered Title -->
+  <div style="text-align: center; margin-top: 5px;">
+    <h3 style="margin: 0; font-weight: bold;">PERFORMANCE PLANNING AGREEMENT</h3>
+  </div>
+</div>
+
+
+</div>
+
+
+
+
+  
   <table class="form-table table-bordered">
+  <thead>
+    <tr style="background-color: #f2f2f2;">
+      <th colspan="4" style="text-align: left; font-weight: bold;">
+	  A. Staff Details
+      </th>
+    </tr>
+  </thead>
   <tr>
     <td><b>Name</b></td>
     <td><?= $contract->fname.' '.$contract->lname ?></td>
@@ -48,17 +83,21 @@
     <td><?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?></td>
   </tr>
 </table>
-
-  <div class="section-title">B. Performance Objectives</div>
-  <p><i>Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two.</i></p>
   <table class="objective-table">
+  <tr style="background-color: #f2f2f2;">
+      <td colspan="5">
+	  <div style="text-align: left; font-weight: bold;"> B. Performance Objectives</div>
+       <p><i>Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two.</i></p>
+
+      </td>
+    </tr>
     <thead>
       <tr>
         <th>#</th>
-        <th>Objective <small>Statement of the result that needs to be achieved</small></th>
-        <th>Timeline <small>Timeframe within which the result is to be achieved</small></th>
-        <th>Deliverables and KPI’s <small>Evidence that the result has been achieved; KPIs measure effectiveness</small></th>
-        <th>Weight <small>The total weight of all objectives should be 100%</small></th>
+        <th>Objective <small><br>Statement of the result that needs to be achieved</small></th>
+        <th>Timeline <small><br>Timeframe within which the result is to be achieved</small></th>
+        <th>Deliverables and KPI’s <small><br>Evidence that the result has been achieved; KPIs measure effectiveness</small></th>
+        <th>Weight <small><br>The total weight of all objectives should be 100%</small></th>
       </tr>
     </thead>
     <tbody>
@@ -77,9 +116,71 @@
     </tbody>
   </table>
 
+  <table width="100%" border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse;">
+  <thead>
+    <tr style="background-color: #f2f2f2;">
+      <th colspan="3" style="text-align: left; font-weight: bold;">
+        C. Competencies
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="3" style="text-align: left;"><i>
+        All staff members shall be assessed against <strong>AU Values</strong> and <strong>Core and Functional Competencies</strong>; 
+        in addition to these, staff with managerial responsibilities will also be rated on the <strong>Leadership Competencies</strong>.</i>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3" style="text-align: left; font-weight: bold;">
+        AU Values
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3" style="text-align: left;">
+        Respect for Diversity and Teamwork – Think Africa Above All – Transparency and Accountability – Integrity and Impartiality – 
+        Efficiency and Professionalism – Information and Knowledge Sharing
+      </td>
+    </tr>
+    <tr style="background-color: #f2f2f2; font-weight: bold; text-align: center;">
+      <td>Core</td>
+      <td>Functional</td>
+      <td>Leadership</td>
+    </tr>
+    <tr>
+      <td>Building Relationships</td>
+      <td>Conceptual Thinking and Problem Solving</td>
+      <td>Strategic Perspective</td>
+    </tr>
+    <tr>
+      <td>Responsibility</td>
+      <td>Job Knowledge</td>
+      <td>Developing Others</td>
+    </tr>
+    <tr>
+      <td>Learning Orientation</td>
+      <td>Drive for Results</td>
+      <td>Driving Change</td>
+    </tr>
+    <tr>
+      <td>Communicating with Impact</td>
+      <td>Innovative and Taking Initiative</td>
+      <td>Managing Risk</td>
+    </tr>
+  </tbody>
+</table>
+<div class="page-break"></div>
+
   <?php if (isset($ppa->training_recommended) && $ppa->training_recommended === 'Yes'): ?>
-  <div class="section-title">C. Personal Development Plan</div>
+  
   <table>
+  <thead>
+    <tr style="background-color: #f2f2f2;">
+      <th colspan="3" style="text-align: left; font-weight: bold;">
+      D. Personal Development Plan
+      </th>
+    </tr>
+  </thead>
     <tr>
       <td><b>Is training recommended for this staff member?</b></td>
       <td><?= $ppa->training_recommended ?></td>
@@ -112,19 +213,99 @@
     </tr>
   </table>
   <?php endif; ?>
+  <div style="margin-top: 20px;">
+  <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse; font-size: 10pt;">
+  <thead>
+    <tr style="background-color: #f2f2f2;">
+      <th colspan="3" style="text-align: left; font-weight: bold;">
+	    E. Staff and Supervisor Sign Off
+      </th>
+    </tr>
+  </thead>
+    <tr style="background-color: #f2f2f2; font-weight: bold;">
+      <td width="50%" style="text-align: center;">Staff</td>
+      <td width="50%" style="text-align: center;">First Supervisor</td>
+    </tr>
+    <tr>
+      <td>
+        I hereby confirm that this PPA has been developed in consultation with my supervisor and that it is aligned with the departmental objectives.<br><br>
+        I fully understand my performance objectives and what I am expected to deliver during this performance period.<br><br>
+        I am also aware of the competencies that I will be assessed on for the same period.
+      </td>
+      <td>
+        I hereby confirm that this PPA has been developed in consultation with the staff member and that it is aligned with the directorate/division objectives. The staff fully understands what is expected of them during the performance period and is also aware of the competencies that they will be assessed against.<br><br>
+        I commit to providing supervision on the overall work of the staff member throughout the performance period to ensure the achievement of targeted results; and to providing ongoing feedback and raising and discussing with him/her areas requiring performance improvement, where applicable.
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <?php if (!empty(staff_details($ppa->staff_id)->signature)): ?>
+          <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->staff_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+        <?php else: ?>
+          <p style="text-decoration:underline;"><?=staff_details($staff_id)->title.' '.staff_details($staff_id)->lname;?></p><br>
+        <?php endif; ?>
+    
+       <b> Staff Signature</b>
+      </td>
+      <td>
+        <?php if (!empty(staff_details($ppa->supervisor_id)->signature)): ?>
+          <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->supervisor_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+        <?php else: ?>
+          <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor_id)->title.' '.staff_details($ppa->supervisor_id)->lname;?></p><br>
+        <?php endif; ?>
+  
+        <b>First Supervisor Signature</b>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <?= date('d/m/Y', strtotime($ppa->created_at)) ?><br>
+       <b> Date</b>
+      </td>
+      <td>
+        <?= date('d/m/Y', strtotime(get_last_ppa_approval_action($ppa->entry_id,$ppa->supervisor_id)->created_at) ?? $ppa->created_at) ?><br>
+       <b> Date</b>
+      </td>
+    </tr>
 
-  <div class="section-title">D. Sign Off</div>
-  <table>
-    <tr>
-      <td><b>Staff Sign-off:</b></td>
-      <td><?= $ppa->staff_sign_off ? 'Yes' : 'No' ?></td>
+    <!-- Optional Second Supervisor -->
+    <?php if (!empty($ppa->supervisor2_id)): ?>
+      <tr style="background-color: #f2f2f2; font-weight: bold;">
+        <td colspan="2" style="text-align: center;">Second Supervisor
+    
+
+        </td>
+
+       
+      </tr>
+      <tr>
+      <td colspan="2">
+      I hereby confirm that this PPA has been developed in consultation with the staff member and that it is aligned with the directorate/division objectives. The staff fully understands what is expected of them during the performance period and is also aware of the competencies that they will be assessed against.<br><br>
+      I commit to providing supervision on the overall work of the staff member throughout the performance period to ensure the achievement of targeted results; and to providing ongoing feedback and raising and discussing with him/her areas requiring performance improvement, where applicable.
+      </td>
     </tr>
-    <tr>
-      <td><b>Date:</b></td>
-      <td><?= date('d M Y', strtotime($ppa->created_at)) ?></td>
-    </tr>
+      <tr>
+        <td colspan="2" style="text-align: left;">
+          <?php if (!empty(staff_details($ppa->supervisor2_id)->signature)): ?>
+            <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->supervisor2_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+          <?php else: ?>
+            <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor2_id)->title.' '.staff_details($ppa->supervisor2_id)->lname;?></p><br>
+          <?php endif; ?>
+       
+          <b>Supervisor Signature</b>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2">
+        <?= date('d/m/Y', strtotime(get_last_ppa_approval_action($ppa->entry_id,$ppa->supervisor2_id)->created_at) ?? $ppa->created_at) ?><br>
+          <b>Date</b>
+        </td>
+      </tr>
+    <?php endif; ?>
   </table>
+</div>
 
+<?php if ($this->uri->segment(5)==1){?>
   <div class="page-break"></div>
   <div class="section-title">E. Approval Trail</div>
   <table>
@@ -155,6 +336,7 @@
       <?php endforeach; ?>
     </tbody>
   </table>
+  <?php }?>
 
 </body>
 </html>

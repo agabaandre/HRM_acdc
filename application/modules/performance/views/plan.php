@@ -207,8 +207,8 @@ input[type="number"] {
   </tr>
   <tr>
     <td><label>Staff Signature</label><br>
-    <?php if (!empty($session->signature)): ?>
-        <img src="<?= base_url('uploads/staff/signature/' . $session->signature) ?>" style="width: 100px; height: 80px;">
+    <?php if (!empty(staff_details($staff_id)->signature)): ?>
+        <img src="<?= base_url('uploads/staff/signature/' . staff_details($staff_id)->signature) ?>" style="width: 100px; height: 80px;">
       <?php endif; ?>
   </td>
     
