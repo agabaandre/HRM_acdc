@@ -70,6 +70,9 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
                 <td>
                   <a data-bs-toggle="modal" data-bs-target="#user<?php echo $user->user_id; ?>" href="#">
+                    <i class="fa fa-edit"></i> Impersonate
+                  </a>
+                  <a data-bs-toggle="modal" data-bs-target="#user<?php echo $user->user_id; ?>" href="#">
                     <i class="fa fa-edit"></i> Edit
                   </a>
                 </td>

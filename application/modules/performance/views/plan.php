@@ -1,8 +1,22 @@
 <?php 
 $session = $this->session->userdata('user');
-$staff_id = $session->staff_id;
+
+if($this->uri->segment(2)=='view_ppa'){
+  $staff_id= $this->uri->segment(4);
 $contract = Modules::run('auth/contract_info', $staff_id);
+}
+else{
+   $staff_id = $session->staff_id;
+$contract = Modules::run('auth/contract_info', $staff_id);
+
+}
+//dd($contract);
+//dd($this->uri->segment(2));
 $readonly = isset($ppa) && $ppa->draft_status == 0 ? 'readonly disabled' : '';
+
+@$showApprovalBtns = show_ppa_approval_action(@$ppa, @$approval_trail, $this->session->userdata('user'));
+//sdd($showApprovalBtns);
+
 
 $selected_skills = is_string($ppa->required_skills ?? null) ? json_decode($ppa->required_skills, true) : ($ppa->required_skills ?? []);
 $objectives_raw = $ppa->objectives ?? [];
@@ -32,7 +46,7 @@ foreach ($decoded as $item) {
 input[type="text"],
 input[type="number"] {
   border: none !important; 
-  padding: 18px;
+
   box-shadow: none !important;
   background-color: transparent;
 }
@@ -41,12 +55,14 @@ input[type="number"] {
 }
 
   .form-table { width: 100%; border-collapse: collapse; }
-  .form-table td { padding: 8px; vertical-align: top; }
-  .form-table label { font-weight: bold; }
-  .objective-table th, .objective-table td { text-align: left; padding: 8px; border: 1px solid #ccc; }
+  .form-table td { padding-left: 2px; }
+
+  .objective-table th, .objective-table td { text-align: left; padding: 0px; border: 1px solid #ccc; }
 </style>
 
-
+<?php if($showApprovalBtns!='show'){
+  echo $showApprovalBtns;
+} ?>
 
 <?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'staff_ppa']); ?>
 
@@ -54,32 +70,32 @@ input[type="number"] {
 <h4>A. Staff Details</h4>
 <table class="form-table table-bordered">
   <tr>
-    <td><label>Name</label></td>
-    <td><input type="text" name="name" class="form-control" value="<?= $session->name ?>" readonly></td>
-    <td><label>SAP NO</label></td>
+    <td><b>Name</b></td>
+    <td><input type="text" name="name" class="form-control" value="<?= $contract->fname.' '.$contract->lname ?>" readonly></td>
+    <td><b>SAP NO</b></td>
     <td><input type="text" class="form-control" value="<?= $contract->SAPNO ?>" readonly></td>
   </tr>
   <tr>
-    <td><label>Position</label></td>
+    <td><b>Position</b></td>
     <td><input type="text" class="form-control" value="<?= $contract->job_name ?>" readonly></td>
-    <td><label>In this Position Since</label></td>
+    <td><b>In this Position Since</b></td>
     <td><input type="text" class="form-control" value="<?= $contract->start_date ?>" readonly></td>
   </tr>
   <tr>
-    <td><label>Division/Directorate</label></td>
+    <td><b>Division/Directorate</b></td>
     <td><input type="text" class="form-control" value="<?= acdc_division($contract->division_id) ?>" readonly></td>
-    <td><label>Performance Period</label></td>
+    <td><b>Performance Period</b></td>
     <td><input type="text" class="form-control" name="performance-period" value="<?= current_period(); ?>" readonly></td>
   </tr>
   <tr>
-    <td><label>First Supervisor</label></td>
+    <td><b>First Supervisor</b></td>
     <td colspan="1">
       <input type="text" class="form-control" name="supervisor_name"
         value="<?= staff_name(get_supervisor(current_contract($staff_id))->first_supervisor) ?>" readonly>
       <input type="hidden" name="supervisor_id"
         value="<?= get_supervisor(current_contract($staff_id))->first_supervisor ?>">
     </td>
-    <td><label>Second Supervisor</label></td>
+    <td><b>Second Supervisor</b></td>
     <td colspan="">
       <input type="text" class="form-control" name="supervisor2_id"
         value="<?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?>" readonly>
@@ -111,9 +127,9 @@ input[type="number"] {
         <tr>
           <td><?= $i ?></td>
           <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control objective-input" <?= $readonly ?> required><?= $val['objective'] ?></textarea></td>
-          <td><input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control datepicker objective-input" <?= $readonly ?> value="<?= $val['timeline'] ?>" required></td>
+          <td><input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control datepicker objective-input" <?= $readonly ?> value="<?php if(empty($val['timeline'])){ echo date ('Y-m-d');}else{ echo $val['timeline']; } ?>" required></td>
           <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input" <?= $readonly ?> required><?= $val['indicator'] ?></textarea></td>
-          <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?= $val['weight'] ?>" required></td>
+          <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?php if(empty($val['weight'])){ echo 0;}else{ echo $val['weight']; } ?>" required></td>
         </tr>
       <?php endfor; ?>
     </tbody>
@@ -224,40 +240,10 @@ input[type="number"] {
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
     <?php endif; ?>
 
-    <?php
-      $user = $this->session->userdata('user');
-      $staff_id = $user->staff_id ?? null;
-      $isSupervisor1 = isset($ppa->supervisor_id) && $ppa->supervisor_id == $staff_id;
-      $isSupervisor2 = isset($ppa->supervisor2_id) && $ppa->supervisor2_id == $staff_id;
+    <?php echo form_close(); ?>
 
-      $approval_trail = $approval_trail ?? [];
-      $last_action = count($approval_trail) > 0 ? end($approval_trail)->action ?? null : null;
 
-      $supervisor1Approved = false;
-      if (!empty($approval_trail)) {
-          foreach ($approval_trail as $log) {
-              if (
-                  isset($log->action, $log->staff_id) &&
-                  $log->action === 'Approved' &&
-                  $log->staff_id == $ppa->supervisor_id
-              ) {
-                  $supervisor1Approved = true;
-                  break;
-              }
-          }
-      }
-
-      $showApprovalBtns = false;
-      if ($last_action === 'Submitted') {
-          if ($isSupervisor1) {
-              $showApprovalBtns = true;
-          } elseif ($isSupervisor2 && $supervisor1Approved) {
-              $showApprovalBtns = true;
-          }
-      }
-    ?>
-
-    <?php if ($showApprovalBtns): ?>
+    <?php if ($showApprovalBtns=='show'): ?>
       <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>" style="display:inline;">
         <input type="hidden" name="action" value="approve">
         <button type="submit" class="btn btn-success px-5">Approve</button>
@@ -274,7 +260,7 @@ input[type="number"] {
 
 </table>
 
-<?php echo form_close(); ?>
+
 
 <hr>
 <h4>Approval Trail</h4>

@@ -112,7 +112,7 @@
 
 					<?php if (($this->session->userdata('user')->staff_id != 0) && (in_array('74', $permissions))) : ?>
 						<li class="nav-item dropdown">
-							<a href="<?php echo base_url() ?>performance" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+							<a href="<?php echo base_url() ?>performance/view_ppa/<?=$ppa_entryid?>/<?=$this->session->userdata('user')->staff_id?>"" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class='fa fa-line-chart'></i>
 								</div>
 								<div class="menu-title">Performance</div>
@@ -129,8 +129,8 @@
 								
 								if (in_array('38', $permissions) && $ppa_exists) : ?>
 								<li>
-									<a class="dropdown-item" href="<?php echo base_url('performance'); ?>/view_ppa/<?=$ppa_entryid?>">
-									<i class="bx bx-right-arrow-alt"></i>View PPA Status
+									<a class="dropdown-item" href="<?php echo base_url('performance'); ?>/recent_ppa/<?=$ppa_entryid?>/<?=$this->session->userdata('user')->staff_id?>">
+									<i class="bx bx-right-arrow-alt"></i>My Current PPA
 									</a>
 								</li>
 								<?php endif; ?>
@@ -139,11 +139,13 @@
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/list_ppas/pending"><i class="bx bx-right-arrow-alt"></i>Pending Action <?=@$count?></a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/pending_approval"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge rounded-pill bg-danger">
+                                   <?php $pendingcount = count($this->per_mdl->get_pending_ppa($this->session->userdata('user')->staff_id));?>
+									<?= isset($pendingcount) && $pendingcount > 0 ? $pendingcount : 0; ?></span></a>
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('38', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/list_ppas/approved"><i class="bx bx-right-arrow-alt"></i>Approved PPAs</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>performance/approved_by_me"><i class="bx bx-right-arrow-alt"></i>All Approved PPAs</a>
 									</li>
 								<?php endif; ?>
 							

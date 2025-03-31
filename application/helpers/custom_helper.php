@@ -821,7 +821,100 @@ function curl_send_post($url, $body, $headers) {
         return json_decode($result, true);
     }
 
- 
+    if (!function_exists('show_ppa_approval_action')) {
+        function show_ppa_approval_action($ppa, $approval_trail=[], $current_user='')
+        {
+            $staff_id = $current_user->staff_id ?? null;
+            $isSupervisor1 = isset($ppa->supervisor_id) && $ppa->supervisor_id == $staff_id;
+            $isSupervisor2 = isset($ppa->supervisor2_id) && $ppa->supervisor2_id == $staff_id;
+    
+            @$last_action = count($approval_trail) > 0 ? end($approval_trail)->action ?? null : null;
+           // dd($last_action);
+    
+            $supervisor1Approved = false;
+            $supervisor2Approved = false;
+    
+            if (!empty($approval_trail)) {
+                foreach ($approval_trail as $log) {
+                    if (
+                        isset($log->action, $log->staff_id)
+                    ) {
+                        if ($log->action === 'Approved' && $log->staff_id == $ppa->supervisor_id) {
+                            $supervisor1Approved = true;
+                        }
+                        if ($log->action === 'Approved' && $log->staff_id == $ppa->supervisor2_id) {
+                            $supervisor2Approved = true;
+                        }
+                    }
+                }
+            }
+    
+            //dd($supervisor2Approved);
+            // Main logic
+            //dd($isSupervisor2);
+            if ($isSupervisor1 && $ppa->draft_status == 0 && $last_action == 'Submitted') {
+                return 'show';
+            } elseif ($isSupervisor2 && $supervisor1Approved && $ppa->draft_status == 0 && $last_action == 'Approved' && !$supervisor2Approved) {
+                return 'show';
+            } elseif (
+                ($supervisor1Approved && is_null($ppa->supervisor2_id)) || 
+                ($supervisor1Approved && $supervisor2Approved)
+            ) {
+                return '<a href="' . base_url('performance/print_ppa/' . $ppa->entry_id) .'/'.$ppa->staff_id. '" 
+                            class="btn btn-dark btn-sm" target="_blank">
+                            <i class="fa fa-print"></i> Print PPA
+                        </a>';
+            } else {
+                return ''; // No action
+            }
+        }
+    }
+    
+
+if (!function_exists('pdf_print_data')) {
+    function pdf_print_data($data, $file_name, $orient, $view)
+    {
+        // Get CodeIgniter instance
+        $CI = &get_instance();
+
+        // Load the appropriate PDF library
+        if ($orient == 'L') {
+            $CI->load->library('ML_pdf');
+            $pdf = $CI->ml_pdf->pdf;
+        } else {
+            $CI->load->library('M_pdf');
+            $pdf = $CI->m_pdf->pdf;
+        }
+
+        // Set watermark and filename
+        $watermark = FCPATH . "assets/images/AU_CDC_Logo-800.png";
+        $filename = $file_name;
+
+        // Remove execution time limit
+        ini_set('max_execution_time', 0);
+
+        // Load view and convert to UTF-8 HTML
+        $html = $CI->load->view($view, $data, true);
+        $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+
+        // Set watermark if image is available
+        if (!empty($watermark)) {
+            $pdf->SetWatermarkImage($watermark);
+            $pdf->showWatermarkImage = true;
+        }
+
+        // Set footer with timestamp and source
+        date_default_timezone_set("Africa/Addis Ababa");
+        $pdf->SetHTMLFooter(
+            "Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
+            "Source: Africa CDC - Staff Tracker " . base_url()
+        );
+
+        // Write content and output PDF in browser
+        $pdf->WriteHTML($PDFContent);
+        $pdf->Output($filename, 'I');
+    }
+}
 
     
 

@@ -1,250 +1,159 @@
-<!DOCTYPE html>
+<?php
+// performance/views/print_ppa_view.php
+?>
 <html>
-
 <head>
-	<style>
-		table {
-			width: 100%;
-			border-collapse: collapse;
-		}
-
-		table,
-		th,
-		td {
-			border: 1px solid black;
-		}
-
-		th,
-		td {
-			padding: 8px;
-			text-align: left;
-		}
-	</style>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11px; margin: 10px; }
+    .header img { width: 150px; }
+    .section-title { font-size: 14px; font-weight: bold; margin-top: 20px; border-bottom: 1px solid #ccc; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    td, th { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    .no-border td { border: none; }
+    .objective-table th small { display: block; font-weight: normal; font-style: italic; font-size: 10px; color: #555; }
+    .page-break { page-break-before: always; }
+  </style>
 </head>
-
 <body>
-	<table>
-		<tr>
-			<th colspan="2">A. Personal Details</th>
-		</tr>
-		<tr>
-			<td>Name:</td>
-			<td>DENNIS KIBIYE</td>
-		</tr>
-		<tr>
-			<td>Personnel Number:</td>
-			<td>870000041</td>
-		</tr>
-		<tr>
-			<td>Position:</td>
-			<td>SENIOR SYSTEMS AND TECHNOLOGY OFFICER</td>
-		</tr>
-		<tr>
-			<td>In this Position since:</td>
-			<td>1 November 2022</td>
-		</tr>
-		<tr>
-			<td>Directorate/Department:</td>
-			<td>Public Health Institute and Research</td>
-		</tr>
-		<tr>
-			<td>Division/Unit:</td>
-			<td>MIS</td>
-		</tr>
-		<tr>
-			<td>Current performance period:</td>
-			<td>Jan 2023 – December 2023</td>
-		</tr>
-		<tr>
-			<td>Name of direct supervisor:</td>
-			<td>Dr. Mosoka Papa Fallah</td>
-		</tr>
-		<tr>
-			<td>Name of second supervisor:</td>
-			<td>Dr. Justin Maeda</td>
-		</tr>
-	</table>
+  <div class="header" style="text-align: center;">
+    <img src="<?= FCPATH . 'assets/images/AU_CDC_Logo-800.png' ?>" alt="AU CDC Logo" style="height:80px;">
+    <h3>Performance Planning and Appraisal (PPA) Form</h3>
+  </div>
 
-	<table>
+  <div class="section-title">A. Staff Details</div>
+  <table class="form-table table-bordered">
+  <tr>
+    <td><b>Name</b></td>
+    <td><?= $contract->fname.' '.$contract->lname ?></td>
+    <td><b>SAP NO</b></td>
+    <td><?= $contract->SAPNO ?></td>
+  </tr>
+  <tr>
+    <td><b>Position</b></td>
+    <td><?= $contract->job_name ?></td>
+    <td><b>In this Position Since</b></td>
+    <td><?= $contract->start_date ?></td>
+  </tr>
+  <tr>
+    <td><b>Division/Directorate</b></td>
+    <td><?= acdc_division($contract->division_id) ?></td>
+    <td><b>Performance Period</b></td>
+    <td><?= current_period(); ?></td>
+  </tr>
+  <tr>
+    <td><b>First Supervisor</b></td>
+    <td><?= staff_name(get_supervisor(current_contract($staff_id))->first_supervisor) ?></td>
+    <td><b>Second Supervisor</b></td>
+    <td><?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?></td>
+  </tr>
+</table>
 
-		<tr>
-			<th>B. Performance Objectives</th>
-			<th>Weight</th>
-		</tr>
-		<tr>
-			<td>Objective</td>
-			<td>Weight</td>
-		</tr>
-		<tr>
-			<td>SLL DHIS2 fully customized according to user requirements and User Trainings conducted</td>
-			<td>30%</td>
-		</tr>
-		<tr>
-			<td>At least 5 dashboards developed in SLL DHIS2</td>
-			<td></td>
-		</tr>
-		<tr>
-			<td>1 Training of Trainers for the SLL DHIS team conducted</td>
-			<td></td>
-		</tr>
-		<tr>
-			<td>1 advanced training in DHIS 2 carried out for the digital team</td>
-			<td></td>
-		</tr>
-		<tr>
-			<td>50% of Africa CDC internal processes digitized</td>
-			<td>20%</td>
-		</tr>
-		<tr>
-			<td>At least 5 information systems developed and deployed</td>
-			<td></td>
-		</tr>
-		<tr>
-			<td>Africa CDC staff capacity ICT skills improved</td>
-			<td>15%</td>
-		</tr>
-		<tr>
-			<td>At least 20 ICT staff capacity building trainings for all Africa CDC conducted</td>
-			<td></td>
-		</tr>
-		<tr>
-			<td>ICT Equipment for Africa CDC regional PHEOCs and Member State PHEOCS Set-up and configured</td>
-			<td>20%</td>
-		</tr>
-		<tr>
-			<td>ICT equipment for 4 Africa CDC PHEOCs and 5 Member States PHEOCS set-up and configured</td>
-			<td></td>
-		</tr>
-		<tr>
-			<td>Data visualization skills improved</td>
-			<td>15%</td>
-		</tr>
-		<tr>
-			<td>1 training on data visualization technologies attended</td>
-			<td></td>
-		</tr>
-	</table>
+  <div class="section-title">B. Performance Objectives</div>
+  <p><i>Individual objectives should be derived from the Departmental Work Plan. There must be a cascading correlation between the two.</i></p>
+  <table class="objective-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Objective <small>Statement of the result that needs to be achieved</small></th>
+        <th>Timeline <small>Timeframe within which the result is to be achieved</small></th>
+        <th>Deliverables and KPI’s <small>Evidence that the result has been achieved; KPIs measure effectiveness</small></th>
+        <th>Weight <small>The total weight of all objectives should be 100%</small></th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php
+      $objectives = is_string($ppa->objectives) ? json_decode($ppa->objectives, true) : (array) json_decode(json_encode($ppa->objectives), true);
+      $i = 1;
+      foreach ($objectives as $obj): ?>
+        <tr>
+          <td><?= $i++ ?></td>
+          <td><?= $obj['objective'] ?? '' ?></td>
+          <td><?= $obj['timeline'] ?? '' ?></td>
+          <td><?= $obj['indicator'] ?? '' ?></td>
+          <td><?= $obj['weight'] ?? '' ?></td>
+        </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
 
-	<table>
+  <?php if (isset($ppa->training_recommended) && $ppa->training_recommended === 'Yes'): ?>
+  <div class="section-title">C. Personal Development Plan</div>
+  <table>
+    <tr>
+      <td><b>Is training recommended for this staff member?</b></td>
+      <td><?= $ppa->training_recommended ?></td>
+    </tr>
+    <tr>
+      <td><b>If yes, in what subject/skill area(s) is the training recommended?</b></td>
+      <td>
+        <?php
+        $skills_map = [];
+        foreach ($skills as $skill) {
+            $skills_map[$skill->id] = $skill->skill;
+        }
+        $selected = is_string($ppa->required_skills) ? json_decode($ppa->required_skills, true) : (array)$ppa->required_skills;
+        $skills_list = array_map(fn($id) => $skills_map[$id] ?? '', $selected);
+        echo implode(', ', $skills_list);
+        ?>
+      </td>
+    </tr>
+    <tr>
+      <td><b>Explain how the training will contribute to the staff member’s development and the department’s work:</b></td>
+      <td><?= $ppa->training_contributions ?></td>
+    </tr>
+    <tr>
+      <td><b>Recommended courses from L&D Catalogue:</b></td>
+      <td><?= $ppa->recommended_trainings ?></td>
+    </tr>
+    <tr>
+      <td><b>Additional course details (if not in the catalogue):</b></td>
+      <td><?= $ppa->recommended_trainings_details ?></td>
+    </tr>
+  </table>
+  <?php endif; ?>
 
-		<tr>
-			<th>C. Competencies</th>
-		</tr>
-		<tr>
-			<th>AU Values</th>
-			<th>Core</th>
-			<th>Functional</th>
-			<th>Leadership</th>
-		</tr>
-		<tr>
-			<td>Respect for diversity and team work</td>
-			<td>Building Relationships</td>
-			<td>Conceptual Thinking and Problem Solving</td>
-			<td>Strategic Perspective</td>
-		</tr>
-		<tr>
-			<td>Think Africa above all</td>
-			<td>Responsibility</td>
-			<td>Job Knowledge</td>
-			<td>Developing Others</td>
-		</tr>
-		<tr>
-			<td>Transparency and Accountability</td>
-			<td>Learning Orientation</td>
-			<td>Drive for Results</td>
-			<td>Driving Change</td>
-		</tr>
-		<tr>
-			<td>Integrity and Impartiality</td>
-			<td>Communicating with impact</td>
-			<td>Innovative and taking initiative</td>
-			<td>Managing Risk</td>
-		</tr>
+  <div class="section-title">D. Sign Off</div>
+  <table>
+    <tr>
+      <td><b>Staff Sign-off:</b></td>
+      <td><?= $ppa->staff_sign_off ? 'Yes' : 'No' ?></td>
+    </tr>
+    <tr>
+      <td><b>Date:</b></td>
+      <td><?= date('d M Y', strtotime($ppa->created_at)) ?></td>
+    </tr>
+  </table>
 
+  <div class="page-break"></div>
+  <div class="section-title">E. Approval Trail</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Action</th>
+        <th>Date</th>
+        <th>Comment</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php foreach ($approval_trail as $log): 
+        $logged = Modules::run('auth/contract_info', $log->staff_id);
+        if ($log->staff_id == $ppa->staff_id) $role = 'Staff';
+        elseif ($log->staff_id == $ppa->supervisor_id) $role = 'First Supervisor';
+        elseif ($ppa->supervisor2_id && $log->staff_id == $ppa->supervisor2_id) $role = 'Second Supervisor';
+        else $role = 'Other';
+      ?>
+      <tr>
+        <td><?= $logged->fname . ' ' . $logged->lname ?></td>
+        <td><?= $role ?></td>
+        <td><?= $log->action ?></td>
+        <td><?= date('d M Y H:i', strtotime($log->created_at)) ?></td>
+        <td><?= $log->comments ?></td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
 
-
-		<tr>
-			<td>Efficiency and Professionalism</td>
-		</tr>
-		<tr>
-			<td>Information and Knowledge sharing</td>
-		</tr>
-
-	</table>
-
-	<table>
-
-		<tr>
-			<th>D. Personal Development Plan</th>
-		</tr>
-		<tr>
-			<td>1. Is training recommended for this staff member? [X] Yes [ ] No</td>
-		</tr>
-		<tr>
-			<td>2. If yes, in what subject/skill area(s) is the training recommended for this staff member?</td>
-		</tr>
-		<tr>
-			<td>a) Advanced Data Visualization</td>
-		</tr>
-		<tr>
-			<td>b) Leadership and management training</td>
-		</tr>
-		<tr>
-			<td>3. How will the recommended training(s) contribute to the staff member’s development and the
-				department’s work?</td>
-		</tr>
-		<tr>
-			<td>a) Performance management dashboard for Africa CDC</td>
-		</tr>
-		<tr>
-			<td>b) MIS to grow into a fully functional unit/division</td>
-		</tr>
-		<tr>
-			<td>4. Selection of courses in line with training needs.</td>
-		</tr>
-		<tr>
-			<td>4.1. With reference to the current AUC Learning and Development (L&D) Catalogue, please list the
-				recommended course(s) for this staff member:</td>
-		</tr>
-		<tr>
-			<td>4.1.1. Data Visualization</td>
-		</tr>
-		<tr>
-			<td>4.1.2. Leadership and management</td>
-		</tr>
-		<tr>
-			<td>4.1.3. French Language</td>
-		</tr>
-		<tr>
-			<td>4.2. Where applicable, please provide details of highly recommendable course(s) for this staff member
-				that are not listed in the AUC L&D Catalogue.</td>
-		</tr>
-	</table>
-
-	<table>
-
-		<tr>
-			<th>E. Staff and Supervisor Sign Off</th>
-		</tr>
-		<tr>
-			<td>Staff</td>
-			<td>Supervisor</td>
-		</tr>
-		<tr>
-			<td>I hereby confirm that this PPA has been developed in consultation with my supervisor and that it is
-				aligned with the departmental objectives.</td>
-			<td>I hereby confirm that this PPA has been developed in consultation with the staff member and that it is
-				aligned with the departmental objectives. The staff fully understands what is expected of them during
-				the performance period and is also aware of the competencies that they will be assessed against.</td>
-		</tr>
-		<tr>
-			<td>I fully understand my performance objectives and what I am expected to deliver during this performance
-				period.</td>
-			<td>I commit to providing supervision on the overall work of the staff member throughout the performance
-				period to ensure the achievement of targeted results; and to providing ongoing feedback and raising and
-				discussing with him/her areas requiring performance improvement, where applicable.</td>
-		</tr>
-	</table>
 </body>
-
 </html>

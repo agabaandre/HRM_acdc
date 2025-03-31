@@ -75,7 +75,7 @@ class Performance extends MX_Controller
     ];
 
     Modules::run('utility/setFlash', $msg);
-    redirect('performance/view_ppa/' . $entry_id);
+    redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);
 }
 
 
@@ -99,23 +99,41 @@ class Performance extends MX_Controller
 	
 		render('plan', $data);
 	}
-	public function list_ppas($type)
-	{
-		$data['module'] = $this->module;
-		$data['title'] = "Performance Plan ";
-		$staff_id = $this->session->userdata('user')->staff_id;
-		$results = [];
-		if ($type === 'pending') {
-			$results = $this->per_mdl->get_pending_ppa($staff_id);
-		} elseif ($type === 'myppa') {
-			$results = $this->per_mdl->get_my_ppa($staff_id);
-		} elseif ($type === 'approved') {
-			$results = $this->per_mdl->get_approved_ppa($staff_id);
+			public function pending_approval()
+		{
+			$data['module'] = $this->module;
+			$data['title'] = "Performance Plans Pending Action";
+			$staff_id = $this->session->userdata('user')->staff_id;
+			
+			$data['plans'] = $this->per_mdl->get_pending_ppa($staff_id);
+			//$data['pendingcount'] = count($data['plans']);
+			//dd($data);
+
+			render('pending_ppa', $data);
 		}
-		render('ppa_list', $data);
+
+	
+	public function recent_ppa(){
+		$data['module'] = $this->module;
+		$data['title'] = "My Current PPA - ". $this->session->userdata('user')->name;;
+		
+		$staff_id = $this->session->userdata('user')->staff_id;
+
+		$performance_period = str_replace(' ','-',current_period());
+		
+		// Load paginated results (optional: add pagination logic here)
+		
+		$data['plans'] = $this->per_mdl->get_recent_ppas_for_user($staff_id, $performance_period);
+
+		//dd($data['plans']);
+	
+		// If using pagination links
+		$data['links'] = ''; // placeholder, update if using pagination
+	
+		render('staff_ppa', $data); // your blade/PHP view
+
+		
 	}
-	
-	
 	public function approve_ppa($entry_id)
 	{
 		$staff_id = $this->session->userdata('user')->staff_id;
@@ -150,7 +168,7 @@ class Performance extends MX_Controller
 		];
 	
 		Modules::run('utility/setFlash', $msg);
-		redirect('performance/view_ppa/' . $entry_id);
+		redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);
 	}
 	public function my_ppas()
 {
@@ -160,7 +178,7 @@ class Performance extends MX_Controller
     $staff_id = $this->session->userdata('user')->staff_id;
     
     // Load paginated results (optional: add pagination logic here)
-    $data['plans'] = $this->per_mdl->get_all_ppas_for_user($staff_id);
+    $data['plans'] = $this->per_mdl->get_all_approved_ppas_for_user($staff_id);
 
     // If using pagination links
     $data['links'] = ''; // placeholder, update if using pagination
@@ -170,7 +188,95 @@ class Performance extends MX_Controller
 
 
 
+public function approved_by_me()
+{
+    $data['module'] = $this->module;
+    $data['title'] = "PPAs I've Approved";
 
+    $supervisor_id = $this->session->userdata('user')->staff_id;
+    $data['plans'] = $this->per_mdl->get_approved_by_supervisor($supervisor_id);
+
+    render('approved_by_me', $data);
+}
+public function print_ppa($entry_id,$staff_id)
+    {
+        $this->load->model('performance_mdl', 'per_mdl');
+
+
+        $data['module'] = "performance";
+        $data['title'] = "Printable PPA";
+        $data['skills'] = $this->db->get('training_skills')->result();
+        $data['ppa'] = $this->per_mdl->get_plan_by_entry_id($entry_id);
+        $data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
+		$data['staff_id'] = $staff_id;
+
+        // Get contract and supervisor info
+        $data['contract'] = Modules::run('auth/contract_info', $staff_id);
+        $data['readonly'] = true;
+
+        pdf_print_data($data, 'Performance_PPA.pdf', 'P', 'performance/staff_ppa_print');
+    }
+	function print_data($staffs, $file_name,$orient,$view)  
+	{
+	   if($orient =='L'){
+	   $this->load->library('ML_pdf');
+	   }
+	   else{
+	    $this->load->library('M_pdf');
+	   }
+	   // Define PDF File Name
+	   $watermark = FCPATH . "assets/images/AU_CDC_Logo-800.png";
+	   $filename = $file_name; 
+	   // Set Execution Time to Unlimited
+	   ini_set('max_execution_time', 0);
+	   // Load the Specified View Dynamically and Convert to HTML
+
+	   
+	  // dd($data);
+	   $html =  $this->load->view($view, $staffs,true);
+	   //exit;
+	   $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+	   // Set Watermark Image (if applicable)
+		
+
+	   if($orient =='L'){
+		if (!empty($watermark)) {
+		$this->load->ml_pdf->pdf->SetWatermarkImage($watermark);
+		$this->load->ml_pdf->pdf->showWatermarkImage = true;
+		}
+		// Set Footer with Timestamp and Source
+		date_default_timezone_set("Africa/Addis Ababa");
+		$this->load->ml_pdf->pdf->SetHTMLFooter(
+			"Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
+			"Source: Africa CDC - Staff Tracker " . base_url()
+		);
 	
+		// Generate the PDF with the Staff Profile Data
+		$this->load->ml_pdf->pdf->WriteHTML($PDFContent);
+	
+		// Output the PDF (Display in Browser)
+		$this->load->ml_pdf->pdf->Output($filename, 'I');
+		}
+		else{
+		if (!empty($watermark)) {
+		$this->load->m_pdf->pdf->SetWatermarkImage($watermark);
+		$this->load->m_pdf->pdf->showWatermarkImage = true;
+		}
+		
+		// Set Footer with Timestamp and Source
+		date_default_timezone_set("Africa/Addis Ababa");
+		$this->load->m_pdf->pdf->SetHTMLFooter(
+			"Printed/Accessed on: <b>" . date('d F,Y h:i A') . "</b><br>" .
+			"Source: Africa CDC - Staff Tracker " . base_url()
+		);
+	
+		// Generate the PDF with the Staff Profile Data
+		$this->load->m_pdf->pdf->WriteHTML($PDFContent);
+	
+		// Output the PDF (Display in Browser)
+		$this->load->m_pdf->pdf->Output($filename, 'I');
+		}
+	   
+   }
 	
 }
