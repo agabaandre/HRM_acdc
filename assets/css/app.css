@@ -23,6 +23,80 @@ a {
     background-color: #E4E5E5;
     z-index: 200;
 }
+/* AU green colors */
+:root {
+    --au-green: #119A48;
+    --au-green-light: rgba(17, 154, 72, 0.3);
+  }
+  
+  /* Search input box style */
+  .au-search-input {
+    border: 2px solid var(--au-green-light);
+    border-right: none;
+    background-color: #fff;
+    color: #333;
+    font-size: 1.1rem;
+    padding-left: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 0.375rem 0 0 0.375rem; /* rounded left only */
+  }
+  
+  .au-search-input:focus {
+    border-color: var(--au-green);
+    box-shadow: 0 0 0 0.2rem rgba(17, 154, 72, 0.2);
+    outline: none;
+  }
+  
+  /* Search icon style */
+  .au-search-icon {
+    border: 2px solid var(--au-green-light);
+    border-left: none;
+    background-color: #fff;
+    color: var(--au-green);
+    font-size: 1.2rem;
+    cursor: pointer;
+    border-radius: 0 0.375rem 0.375rem 0; /* rounded right only */
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  
+  .au-search-icon:hover {
+    background-color: #f6fff9;
+    color: #0e7d3b;
+  }
+  
+
+  /* AU Red focus for search input */
+  .au-search-input:focus {
+    border-color: #911C39;
+    box-shadow: 0 0 0 0.2rem rgba(145, 28, 57, 0.2);
+    outline: none;
+  }
+
+  /* Beautiful staff card */
+  .staff-card {
+    border-left: 4px solid rgba(17, 154, 72, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .staff-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  }
+
+  .staff-card .card-title {
+    font-weight: 600;
+  }
+
+  .staff-card .btn-outline-success {
+    border-color: #119A48;
+    color: #119A48;
+  }
+
+  .staff-card .btn-outline-success:hover {
+    background-color: #119A48;
+    color: white;
+  }
+
 
 #status {
     width: 50px;

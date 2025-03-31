@@ -529,15 +529,16 @@ $(document).ready(function () {
                 type: "POST",
                 data: $(this).serialize(),
                 success: function (response) {
+                    console.log(response);
                     show_notification("Form submitted successfully!", "success");
                     setTimeout(function(){
-                        window.location.href = '<?php echo base_url("staff/index"); ?>';
+                        window.location.href = '<?php echo base_url("staff/staff_contracts/"); ?>'.response.staff_id;
                     }, 3000);
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
                     show_notification("There was an error submitting the form.", "error");
                     setTimeout(function(){
-                        window.location.href = '<?php echo base_url("staff/index"); ?>';
+                        window.location.href = '<?php echo base_url("staff/index/"); ?>';
                     }, 3000);
                 }
             });
