@@ -1,16 +1,20 @@
 <!-- Staff Search -->
 <div class=" mt-2">
-  <div class="card shadow-sm border-0">
-    <div class="card-body">
-      <h5 class="mb-2">🔍 Search  Staff</h5>
-      <div class="input-group input-group-lg">
-        <input type="text" id="staff-search" class="form-control rounded-start" placeholder="Search by name, SAPNO, or email..." autocomplete="off">
-        <span class="input-group-text bg-white rounded-end" id="search-icon" style="cursor:pointer;">
-          <i class="fas fa-search text-muted"></i>
-        </span>
-      </div>
+  <!-- Search Card -->
+<!-- AU Green Themed Search Card -->
+<div class="card border-0 shadow-sm" style="border-left: 4px solid rgba(17, 154, 72, 0.3); background-color: #ffffff;">
+  <div class="card-body">
+    <h5 class="mb-3" style="font-weight: 600; color: #119A48;">🔍 Search Staff</h5>
+    <div class="input-group input-group-lg au-search-wrapper">
+      <input type="text" id="staff-search" class="form-control au-search-input" placeholder="Search by name, SAPNO, or email..." autocomplete="off">
+      <span class="input-group-text au-search-icon" id="search-icon">
+        <i class="fas fa-search"></i>
+      </span>
     </div>
   </div>
+</div>
+
+
 
   <!-- Search Results -->
   <div id="staff-results" class="mt-2" style="display: none;">
