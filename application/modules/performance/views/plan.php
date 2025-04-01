@@ -59,7 +59,7 @@ input[type="number"] {
 
   .objective-table th, .objective-table td { text-align: left; padding: 0px; border: 1px solid #ccc; }
 </style>
-
+<?php $this->load->view('ppa_tabs')?>
 <?php if($showApprovalBtns!='show'){
   echo $showApprovalBtns;
 } ?>
