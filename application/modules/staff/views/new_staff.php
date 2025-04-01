@@ -6,31 +6,9 @@
 <h6 class="mb-0 text-uppercase"></h6>
 <hr />
 <div class="card">
-    <div class="card-body">
+      <div class="card-body">
         <br />
 
-        <!-- SmartWizard html -->
-         <?php if(setting()->staff_multistep==1){
-        echo '<div id="smartwizard">
-             <ul class="nav">
-                <li>
-                    <a class="nav-link" href="#step-1"> <strong>Step 1</strong>
-                        <br>Personal Information</a>
-                </li>
-                <li>
-                    <a class="nav-link" href="#step-2"> <strong>Step 2</strong>
-                        <br>Contact Information</a>
-                </li>
-
-            </ul>     <div class="tab-content">';
-         }
-          else{ echo "<div>";
-        }
-            ?> 
-       
-       
-                <div id="step-1" class="tab-pane" role="tabpanel" aria-labelledby="step-1">
-                <?php if(setting()->staff_multistep==1){?> <h3>Step 1: </h3><?php }?>
                     <div class="row">
 
                         <div class="col-md-6">
@@ -152,10 +130,9 @@
                     </div>
 
 
-                </div>
 
-                <div id="step-2" class="tab-pane" role="tabpanel" aria-labelledby="step-2">
-                <?php if(setting()->staff_multistep==1){?><h3>Step 2: </h3><?php } ?>
+        
+             
 
                     <div class="row">
                         <div class="col-md-6">
@@ -368,18 +345,14 @@
 
 
                 </div>
-            </div>
-        </div>
-        <?php if(setting()->staff_multistep==1){?>
     </div>
-    <?php }?>
+      
+     
 
     <script>
   $(document).ready(function () {
-    // Initialize Select2 dropdowns
     $('#division_id, #unit_id').select2();
 
-    // Fetch Units on Division change
     $('#division_id').on('change', function () {
       var divisionId = $(this).val();
       $.ajax({
@@ -387,77 +360,87 @@
         type: 'GET',
         dataType: 'json',
         success: function (units) {
-          var $unitSelect = $('#unit_id');
-          $unitSelect.empty();
-          if (units && units.length > 0) {
+          var $unitSelect = $('#unit_id').empty();
+          if (units.length > 0) {
             $.each(units, function (index, unit) {
-              $unitSelect.append($('<option>', {
-                value: unit.unit_id,
-                text: unit.unit_name
-              }));
+              $unitSelect.append(new Option(unit.unit_name, unit.unit_id));
             });
           } else {
-            $unitSelect.append($('<option>', { value: '', text: 'No units available' }));
+            $unitSelect.append(new Option('No units available', ''));
           }
           $unitSelect.trigger('change');
-        },
-        error: function (xhr, status, error) {
-          console.error("Error fetching units:", error);
         }
       });
     });
 
-    // Trigger initial unit load if needed
     $('#division_id').trigger('change');
 
-    // Real-time validation on blur
+    // Blur validation
     $(".form-control").on("blur", function () {
-      if ($(this).hasClass("validate-required")) {
-        if ($(this).val().trim() === "") {
-          $(this).addClass("is-invalid");
-        } else {
-          $(this).removeClass("is-invalid");
-        }
+      if ($(this).hasClass("validate-required") && $(this).val().trim() === "") {
+        $(this).addClass("is-invalid");
+      } else {
+        $(this).removeClass("is-invalid");
       }
     });
 
-    // Form submission
+    // Form Submit
     $("form").on("submit", function (e) {
-      //e.preventDefault();
-      let isValid = validateForm();
+      e.preventDefault();
 
-      if (!isValid) {
+      let form = $(this);
+      let emailField = $("#work_email");
+      let work_email = emailField.val().trim();
+
+      if (!validateForm()) {
         show_notification("Please fix the errors in the form.", "error");
         return false;
       }
 
-      // Submit the form via AJAX
+      // Check if email already exists
       $.ajax({
-        url: '<?= base_url("staff/new_submit"); ?>',
-        type: "POST",
-        data: $(this).serialize(),
-        dataType: "json",
+        url: '<?= base_url("staff/check_work_email"); ?>',
+        method: 'POST',
+        data: { work_email: work_email },
+        dataType: 'json',
         success: function (response) {
-          show_notification("Form submitted successfully!", "success");
-          setTimeout(function () {
-            window.location.href = '<?= base_url("staff/staff_contracts/"); ?>' + response.staff_id;
-          }, 3000);
+          if (response.exists) {
+            const nameInfo = response.name ? ` to ${response.name}` : '';
+            show_notification(`The email address is already assigned${nameInfo}.`, "error");
+            emailField.addClass("is-invalid");
+          } else {
+            emailField.removeClass("is-invalid");
+
+            // Submit if email is unique
+            $.ajax({
+              url: '<?= base_url("staff/new_submit"); ?>',
+              type: "POST",
+              data: form.serialize(),
+              dataType: "json",
+              success: function (response) {
+                show_notification("Form submitted successfully!", "success");
+                setTimeout(() => {
+                  window.location.href = '<?= base_url("staff/staff_contracts/"); ?>' + response.staff_id;
+                }, 3000);
+              },
+              error: function () {
+                show_notification("There was an error submitting the form.", "error");
+                setTimeout(() => {
+                  window.location.href = '<?= base_url("staff/index/"); ?>';
+                }, 3000);
+              }
+            });
+          }
         },
-        error: function (jqXHR, textStatus, errorThrown) {
-          console.error("Submission error:", errorThrown);
-          show_notification("There was an error submitting the form.", "error");
-          setTimeout(function () {
-            window.location.href = '<?= base_url("staff/index/"); ?>';
-          }, 3000);
+        error: function () {
+          show_notification("Unable to validate work email. Try again.", "error");
         }
       });
     });
 
-    // 🔍 Full Form Validation
     function validateForm() {
       let isValid = true;
 
-      // Check all required fields
       $('.validate-required').each(function () {
         if ($(this).val().trim() === "") {
           $(this).addClass("is-invalid");
@@ -467,7 +450,6 @@
         }
       });
 
-      // Validate DOB
       const dob = $("#date_of_birth").val();
       if (dob) {
         const birthDate = new Date(dob);
@@ -483,7 +465,6 @@
         }
       }
 
-      // Validate Contract Dates
       const start = $("#start_date").val();
       const end = $("#end_date").val();
       if (start && end) {
@@ -498,7 +479,6 @@
       return isValid;
     }
 
-    // Notification
     function show_notification(message, msgtype) {
       Lobibox.notify(msgtype, {
         pauseDelayOnHover: true,
