@@ -37,8 +37,8 @@ public function get_approval_trail($entry_id)
     // genrate cuurent employees trails.
     $this->db->where("entry_id","$entry_id");
     return $this->db->get('ppa_approval_trail')->result();
-}
 
+}
 public function get_pending_ppa($staff_id)
 {
     $sql = "
