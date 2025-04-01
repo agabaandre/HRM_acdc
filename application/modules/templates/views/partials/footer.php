@@ -96,20 +96,13 @@
 <script src="<?php echo base_url() ?>assets/js/app.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/datatable/js/jquery.dataTables.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/datatable/js/dataTables.bootstrap5.min.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/legacy.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/picker.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/picker.time.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/datetimepicker/js/picker.date.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/moment.min.js"></script>
-<script src="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.min.js"></script>
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
 
 
 <script src="<?php echo base_url() ?>assets/plugins/smart-wizard/js/jquery.smartWizard.min.js"></script>
-
-    <link href="https://unpkg.com/gijgo@1.9.14/css/gijgo.min.css" rel="stylesheet" type="text/css" />
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
   <!-- FullCalendar & Bootstrap JS Bundle -->
 
@@ -225,34 +218,6 @@
 	}); //form submit
 </script>
 
-<!-- date picker on employee form -->
-<!-- <script>
-	$('.datepicker').pickadate({
-			selectMonths: true,
-			selectYears: true
-		}),
-		$('.timepicker').pickatime()
-</script>
-<script>
-	$('.staffdatepicker').pickadate({
-			selectMonths: true,
-			selectYears: true
-		}),
-		$('.stafftimepicker').pickatime()
-</script>
-	$(function() {
-		$('.date-time').bootstrapMaterialDatePicker({
-			format: 'YYYY-MM-DD HH:mm'
-		});
-		$('.date').bootstrapMaterialDatePicker({
-			time: false
-		});
-		$('.time').bootstrapMaterialDatePicker({
-			date: false,
-			format: 'HH:mm'
-		});
-	});
-</script> -->
 <script>
 	$(document).ready(function() {
 		// Toolbar extra buttons
@@ -337,18 +302,18 @@
 			$('#smartwizard').smartWizard("setOptions", options);
 			return true;
 		});
-		$(".datepicker").datepicker({
-                changeMonth: true,
-                changeYear: true,
-                yearRange: "1900:2100", // Set the year range
-                dateFormat: "yy-mm-dd"  // Set desired format
-        });
-		$(".datepicker_ppa").datepicker({
-                changeMonth: true,
-                changeYear: true,
-                yearRange: "1900:2100", // Set the year range
-                dateFormat: "yy-mm-dd"  // Set desired format
-        });
+		// $(".datepicker").datepicker({
+    //             changeMonth: true,
+    //             changeYear: true,
+    //             yearRange: "1900:2100", // Set the year range
+    //             dateFormat: "yy-mm-dd"  // Set desired format
+    //     });
+		// $(".datepicker_ppa").datepicker({
+    //             changeMonth: true,
+    //             changeYear: true,
+    //             yearRange: "1900:2100", // Set the year range
+    //             dateFormat: "yy-mm-dd"  // Set desired format
+    //     });
 	});
 </script>
 
@@ -798,6 +763,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 </script>
+
+<script>
+  $(document).ready(function () {
+    $('.datepicker').flatpickr({
+      theme: "confetti",
+      altInput: true,
+      altFormat: "F j, Y",
+      dateFormat: "Y-m-d",
+      allowInput: true
+    });
+  });
+</script>
+
 
 
 
