@@ -1,6 +1,6 @@
 <div class="card">
     <div class="card-body">
-
+    <?php $this->load->view('ppa_tabs')?>
         <div class="table-responsive">
             <table id="approved-table" class="table mydata table-bordered table-striped">
                 <thead>

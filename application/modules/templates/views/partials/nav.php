@@ -112,7 +112,7 @@
 
 					<?php if (($this->session->userdata('user')->staff_id != 0) && (in_array('74', $permissions))) : ?>
 						<li class="nav-item dropdown">
-							<a href="<?php echo base_url() ?>performance/view_ppa/<?=$ppa_entryid?>/<?=$this->session->userdata('user')->staff_id?>"" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+							<a href="<?php echo base_url('performance'); ?>/recent_ppa/<?=$ppa_entryid?>/<?=$this->session->userdata('user')->staff_id?>" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class='fa fa-line-chart'></i>
 								</div>
 								<div class="menu-title">Performance</div>
