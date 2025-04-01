@@ -37,13 +37,9 @@
     <link href="<?php echo base_url() ?>assets/plugins/select2/css/select2-bootstrap4.css" rel="stylesheet" />
     <link href="<?php echo base_url() ?>assets/css/app.css" rel="stylesheet">
     <link href="<?php echo base_url() ?>assets/css/pace.min.css" rel="stylesheet" />
-    <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.css" rel="stylesheet" />
-    <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.time.css" rel="stylesheet" />
-    <link href="<?php echo base_url() ?>assets/plugins/datetimepicker/css/classic.date.css" rel="stylesheet" />
-    <link rel="stylesheet" href="<?php echo base_url() ?>assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.min.css">
-    
-    <!-- Bootstrap CSS -->
      <!-- Remove other jQuery versions before adding this -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">

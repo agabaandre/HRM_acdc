@@ -338,7 +338,7 @@
                             <div class="form-group">
                                 <label for="status_id">Contract Status:</label>
                                 <select class="form-control validate-required" name="status_id" id="status_id">
-                                    <option value="1">Active</option>
+                                    <option value="1" selected>Active</option>
 
                                 </select>
                             </div>
@@ -375,190 +375,138 @@
     <?php }?>
 
     <script>
-    $(document).ready(function() {
-        // Initialize Select2 on both select fields
-        $('#division_id, #unit_id').select2();
+  $(document).ready(function () {
+    // Initialize Select2 dropdowns
+    $('#division_id, #unit_id').select2();
 
-        // When a Division is selected, fetch the corresponding Units
-        $('#division_id').on('change', function() {
-            var divisionId = $(this).val();
-
-            $.ajax({
-                url: '<?php echo base_url("lists/get_units_by_division"); ?>/' + divisionId,
-                type: 'GET',
-                dataType: 'json',
-                success: function(units) {
-                    var $unitSelect = $('#unit_id');
-                    $unitSelect.empty(); // Clear existing options
-
-                    if (units && units.length > 0) {
-                        $.each(units, function(index, unit) {
-                            $unitSelect.append(
-                                $('<option>', {
-                                    value: unit.unit_id,
-                                    text: unit.unit_name
-                                })
-                            );
-                        });
-                    } else {
-                        $unitSelect.append(
-                            $('<option>', {
-                                value: '',
-                                text: 'No units available'
-                            })
-                        );
-                    }
-                    // Refresh Select2
-                    $unitSelect.trigger('change');
-                },
-                error: function(xhr, status, error) {
-                    console.error("Error fetching units: " + error);
-                }
+    // Fetch Units on Division change
+    $('#division_id').on('change', function () {
+      var divisionId = $(this).val();
+      $.ajax({
+        url: '<?= base_url("lists/get_units_by_division"); ?>/' + divisionId,
+        type: 'GET',
+        dataType: 'json',
+        success: function (units) {
+          var $unitSelect = $('#unit_id');
+          $unitSelect.empty();
+          if (units && units.length > 0) {
+            $.each(units, function (index, unit) {
+              $unitSelect.append($('<option>', {
+                value: unit.unit_id,
+                text: unit.unit_name
+              }));
             });
-        });
+          } else {
+            $unitSelect.append($('<option>', { value: '', text: 'No units available' }));
+          }
+          $unitSelect.trigger('change');
+        },
+        error: function (xhr, status, error) {
+          console.error("Error fetching units:", error);
+        }
+      });
+    });
 
-        // Optionally, trigger change to load units for the initially selected division
-        $('#division_id').trigger('change');
-    });
-    // Notification function using Lobibox
-// Notification function using Lobibox
-function show_notification(message, msgtype) {
-    Lobibox.notify(msgtype, {
-        pauseDelayOnHover: true,
-        continueDelayOnInactiveTab: false,
-        position: 'top right',
-        icon: 'bx bx-check-circle',
-        msg: message
-    });
-}
-// Notification function using Lobibox
-function show_notification(message, msgtype) {
-    Lobibox.notify(msgtype, {
-        pauseDelayOnHover: true,
-        continueDelayOnInactiveTab: false,
-        position: 'top right',
-        icon: 'bx bx-check-circle',
-        msg: message
-    });
-}
+    // Trigger initial unit load if needed
+    $('#division_id').trigger('change');
 
-// Function to validate all required inputs in a given step
-function validateStep(stepSelector) {
-    var isValid = true;
-    
-    // Validate any field that has the class "validate-required"
-    $(stepSelector).find('.validate-required').each(function() {
-        // Trim the value and check if empty
-        if ($(this).val().trim() === "") {
-            $(this).addClass("is-invalid");
-            isValid = false;
-        } else {
-            $(this).removeClass("is-invalid");
-        }
-    });
-    
-    // Custom Validation for Date of Birth (must be at least 18 years old)
-    if ($(stepSelector).find("#date_of_birth").length > 0) {
-        var dobValue = $("#date_of_birth").val();
-        if(dobValue) {
-            var birthDate = new Date(dobValue);
-            var today = new Date();
-            var age = today.getFullYear() - birthDate.getFullYear();
-            var monthDiff = today.getMonth() - birthDate.getMonth();
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-                age--;
-            }
-            if(age < 18) {
-                $("#date_of_birth").addClass("is-invalid");
-                isValid = false;
-            } else {
-                $("#date_of_birth").removeClass("is-invalid");
-            }
-        }
-    }
-    
-    // Custom Validation for Contract Dates (end_date must be greater than start_date)
-    if ($(stepSelector).find("#start_date").length > 0 && $(stepSelector).find("#end_date").length > 0) {
-        var startDateVal = $("#start_date").val();
-        var endDateVal = $("#end_date").val();
-        if(startDateVal && endDateVal) {
-            var startDate = new Date(startDateVal);
-            var endDate = new Date(endDateVal);
-            if (endDate <= startDate) {
-                $("#end_date").addClass("is-invalid");
-                isValid = false;
-            } else {
-                $("#end_date").removeClass("is-invalid");
-            }
-        }
-    }
-    
-    return isValid;
-}
-
-$(document).ready(function () {
-    
-    // Validate the current step before leaving it (using SmartWizard's event)
-    $('#smartwizard').on("leaveStep", function(e, anchorObject, stepNumber, stepDirection) {
-        // Define the current step's selector (steps are assumed to have IDs: step-1, step-2, etc.)
-        var stepSelector = "#step-" + (stepNumber + 1);
-        if(!validateStep(stepSelector)) {
-            e.preventDefault(); // Prevent moving to next step
-            show_notification("Please fix the errors in this step before proceeding.", "error");
-        }
-    });
-    
-    // Validate the entire form on submit
-    $("form").on("submit", function (e) {
-        e.preventDefault();
-        var overallValid = true;
-        
-        // Validate each step of the form
-        // (If you have more steps, add them accordingly)
-        if (!validateStep("#step-1")) { overallValid = false; }
-        if (!validateStep("#step-2")) { overallValid = false; }
-        
-        if (!overallValid) {
-            show_notification("Please fix the errors in the form.", "error");
-            return false;
-        }
-        
-        // If all validations pass, submit the form via AJAX
-        $.ajax({
-                url: '<?php echo base_url("staff/new_submit"); ?>',
-                type: "POST",
-                data: $(this).serialize(),
-                success: function (response) {
-                    console.log(response);
-                    show_notification("Form submitted successfully!", "success");
-                    setTimeout(function(){
-                        window.location.href = '<?php echo base_url("staff/staff_contracts/"); ?>'.response.staff_id;
-                    }, 3000);
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    show_notification("There was an error submitting the form.", "error");
-                    setTimeout(function(){
-                        window.location.href = '<?php echo base_url("staff/index/"); ?>';
-                    }, 3000);
-                }
-            });
-
-    });
-    
-    // Optional: Validate individual fields on blur for immediate feedback
+    // Real-time validation on blur
     $(".form-control").on("blur", function () {
-        // Only validate if this field is one of those we expect to check
-        if ($(this).hasClass("validate-required")) {
-            if ($(this).val().trim() === "") {
-                $(this).addClass("is-invalid");
-            } else {
-                $(this).removeClass("is-invalid");
-            }
+      if ($(this).hasClass("validate-required")) {
+        if ($(this).val().trim() === "") {
+          $(this).addClass("is-invalid");
+        } else {
+          $(this).removeClass("is-invalid");
         }
+      }
     });
-});
 
+    // Form submission
+    $("form").on("submit", function (e) {
+      //e.preventDefault();
+      let isValid = validateForm();
 
+      if (!isValid) {
+        show_notification("Please fix the errors in the form.", "error");
+        return false;
+      }
 
+      // Submit the form via AJAX
+      $.ajax({
+        url: '<?= base_url("staff/new_submit"); ?>',
+        type: "POST",
+        data: $(this).serialize(),
+        dataType: "json",
+        success: function (response) {
+          show_notification("Form submitted successfully!", "success");
+          setTimeout(function () {
+            window.location.href = '<?= base_url("staff/staff_contracts/"); ?>' + response.staff_id;
+          }, 3000);
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+          console.error("Submission error:", errorThrown);
+          show_notification("There was an error submitting the form.", "error");
+          setTimeout(function () {
+            window.location.href = '<?= base_url("staff/index/"); ?>';
+          }, 3000);
+        }
+      });
+    });
 
-    </script>
+    // 🔍 Full Form Validation
+    function validateForm() {
+      let isValid = true;
+
+      // Check all required fields
+      $('.validate-required').each(function () {
+        if ($(this).val().trim() === "") {
+          $(this).addClass("is-invalid");
+          isValid = false;
+        } else {
+          $(this).removeClass("is-invalid");
+        }
+      });
+
+      // Validate DOB
+      const dob = $("#date_of_birth").val();
+      if (dob) {
+        const birthDate = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+        if (age < 18) {
+          $("#date_of_birth").addClass("is-invalid");
+          isValid = false;
+        } else {
+          $("#date_of_birth").removeClass("is-invalid");
+        }
+      }
+
+      // Validate Contract Dates
+      const start = $("#start_date").val();
+      const end = $("#end_date").val();
+      if (start && end) {
+        if (new Date(end) <= new Date(start)) {
+          $("#end_date").addClass("is-invalid");
+          isValid = false;
+        } else {
+          $("#end_date").removeClass("is-invalid");
+        }
+      }
+
+      return isValid;
+    }
+
+    // Notification
+    function show_notification(message, msgtype) {
+      Lobibox.notify(msgtype, {
+        pauseDelayOnHover: true,
+        continueDelayOnInactiveTab: false,
+        position: 'top right',
+        icon: 'bx bx-check-circle',
+        msg: message
+      });
+    }
+  });
+</script>

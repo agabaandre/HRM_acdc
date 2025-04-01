@@ -551,6 +551,8 @@ public function getBirthdays($days)
 
 		);
 
+		//dd($data);
+
 		$this->db->insert('staff_contracts', $data);
 		return $this->db->insert_id();
 	}

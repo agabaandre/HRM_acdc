@@ -538,6 +538,8 @@ public function new_submit()
     // Check if it's a POST request
     if ($this->input->post()) {
 
+	
+
         // Personal Information
         $sapno          = $this->input->post('SAPNO');
         $title          = $this->input->post('title');
@@ -575,6 +577,8 @@ public function new_submit()
         $file_name                 = $this->input->post('file_name');
         $comments                  = $this->input->post('comments');
 
+		//dd($end_date);
+
         // Save to database (first save staff, then contract information)
         $staff_id = $this->staff_mdl->add_staff(
             $sapno, $title, $fname, $lname, $oname, $dob, $gender, 
@@ -583,12 +587,7 @@ public function new_submit()
         );
 
         if ($staff_id) {
-            $contract_id = $this->staff_mdl->add_contract_information(
-                $staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, 
-                $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, 
-                $duty_station_id, $division_id, $unit_id, $start_date, $end_date, 
-                $status_id, $file_name, $comments
-            );
+            $contract_id = $this->staff_mdl->add_contract_information($staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, $duty_station_id, $division_id, $start_date, $end_date, $status_id, $file_name, $comments);
             if ($contract_id) {
                 $response = array(
 					'staff_id'=>$staff_id,
