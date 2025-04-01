@@ -67,8 +67,9 @@ class Performance extends MX_Controller
             'action' => 'Submitted',
             'created_at' => date('Y-m-d H:i:s')
         ]);
+
     $save_data['name']=staff_name($staff_id);
-    $save_data['type']='Submission';
+    $save_data['type']='submission_staff';
     $data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
     $this->notify_ppa_status($save_data);
     }
@@ -194,8 +195,7 @@ public function notify_ppa_status($data)
     $trigger_id = $this->session->userdata('user')->staff_id;
     $trigger_name = staff_name($trigger_id);
     $dispatch = date('Y-m-d H:i:s');
-
-    $copied_mails = settings()->contracts_status_copied_emails;
+    
     $staff_email = staff_details($staff_id)->work_email;
     $supervisor_email = staff_details($ppa->supervisor_id)->work_email ?? '';
     //$second_supervisor_email = $ppa->supervisor2_id ? staff_details($ppa->supervisor2_id)->work_email : '';
@@ -205,17 +205,23 @@ public function notify_ppa_status($data)
     $data['approval_trail'] = $approval_trail;
     $data['ppa'] = $ppa;
 
-    if ($data['type'] === 'submission') {
+    if ($data['type'] === 'submission_staff') {
         $data['subject'] = "PPA Submission Confirmation";
         $data['body'] = $this->load->view('emails/submission', $data, true);
-        $data['email_to'] = $staff_email . ';' . $copied_mails.';'.$supervisor_email;
+        $data['email_to'] = $staff_email.';'.settings()->email;
+        $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
+
+    }elseif ($data['type'] === 'submission_supervisor') {
+        $data['subject'] = "PPA Submission Confirmation";
+        $data['body'] = $this->load->view('emails/supervisor_ppa', $data, true);
+        $data['email_to'] =  $supervisor_email.';'.$staff_email.';'.settings()->email;
         $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
 
     } elseif ($data['type'] === 'status_update') {
         $data['subject'] = "PPA Status Update";
         $data['status'] = $data['status'] ?? 'Pending';
         $data['body'] = $this->load->view('emails/ppa_status', $data, true);
-        $data['email_to'] = $staff_email . ';' . $copied_mails . ';' . $supervisor_email;
+        $data['email_to'] = $staff_email . ';' . $supervisor_email.';'.settings()->email;
         $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
     } else {
         return false; // Invalid type
