@@ -614,6 +614,24 @@ public function new_submit()
         echo json_encode(array('msg' => 'Invalid request', 'type' => 'error'));
     }
 }
+public function check_work_email()
+{
+    $email = $this->input->post('work_email');
+
+    $staff = $this->db->select('fname, lname')
+                      ->where('work_email', $email)
+                      ->get('staff')
+                      ->row();
+
+    if ($staff) {
+        echo json_encode([
+            'exists' => true,
+            'name' => $staff->fname . ' ' . $staff->lname
+        ]);
+    } else {
+        echo json_encode(['exists' => false]);
+    }
+}
 
 
 	
