@@ -122,16 +122,18 @@ input[type="number"] {
     </thead>
     <tbody id="objectives-table-body">
     <?php for ($i = 1; $i <= 5; $i++): 
-        $val = $objectives[$i - 1] ?? ['objective'=>'', 'timeline'=>'', 'indicator'=>'', 'weight'=>''];
-      ?>
-        <tr>
-          <td><?= $i ?></td>
-          <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control objective-input" <?= $readonly ?> required><?= $val['objective'] ?></textarea></td>
-          <td><input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control datepicker objective-input" <?= $readonly ?> value="<?php if(empty($val['timeline'])){ echo date ('Y-m-d');}else{ echo $val['timeline']; } ?>" required></td>
-          <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input" <?= $readonly ?> required><?= $val['indicator'] ?></textarea></td>
-          <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?php if(empty($val['weight'])){ echo 0;}else{ echo $val['weight']; } ?>" required></td>
-        </tr>
-      <?php endfor; ?>
+          $val = $objectives[$i - 1] ?? ['objective'=>'', 'timeline'=>'', 'indicator'=>'', 'weight'=>''];
+          $isRequired = $i <= 3 ? 'required' : ''; // Only required for the first 3
+        ?>
+          <tr>
+            <td><?= $i ?></td>
+            <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control objective-input" <?= $readonly ?> <?= $isRequired ?>><?= $val['objective'] ?></textarea></td>
+            <td><input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control datepicker objective-input" <?= $readonly ?> value="<?php if(empty($val['timeline'])){ echo date ('Y-m-d');}else{ echo $val['timeline']; } ?>" <?= $isRequired ?>></td>
+            <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input" <?= $readonly ?> <?= $isRequired ?>><?= $val['indicator'] ?></textarea></td>
+            <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?php if(empty($val['weight'])){ echo 0;}else{ echo $val['weight']; } ?>" <?= $isRequired ?>></td>
+          </tr>
+    <?php endfor; ?>
+
     </tbody>
   </table>
 </div>
