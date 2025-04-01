@@ -212,7 +212,7 @@ class Performance extends MX_Controller
            
             $staff_data = array_merge($data, [
                 'name' => staff_name($staff_id),
-                'subject' => "PPA Submission Confirmation",
+                'subject' => "PPA Submission Confirmation ".date('Y-m-d H:i:s'),
                 'email_to' => $staff_email . ';' . settings()->email,
                 'body' => $this->load->view('emails/submission', $data, true),
             ]);
@@ -232,7 +232,7 @@ class Performance extends MX_Controller
             $supervisor_data = array_merge($data, [
                 'name' => staff_name($staff_id),
                 'staff_id' => $supervisor_id,
-                'subject' => "PPA Submission Confirmation",
+                'subject' => "PPA Submission Confirmation ".date('Y-m-d H:i:s'),
                 'email_to' => $supervisor_email  . ';' . settings()->email,
                 'body' => $this->load->view('emails/supervisor_ppa', $data, true),
             ]);
@@ -252,7 +252,7 @@ class Performance extends MX_Controller
         // Handle status update notifications
         if ($data['type'] === 'status_update') {
             $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
-            $data['subject'] = "PPA Status Update";
+            $data['subject'] = "PPA Status Update ".date('Y-m-d H:i:s');
             $data['status'] = $data['status'] ?? 'Pending';
             $data['body'] = $this->load->view('emails/ppa_status', $data, true);
             $data['email_to'] = $staff_email . ';' . settings()->email;
