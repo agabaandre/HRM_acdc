@@ -1,15 +1,7 @@
 <!-- Staff Search Panel -->
-<div class="mt-2">
-
-  <!-- Search Header with Magnifying Glass Trigger -->
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <button class="btn btn-sm btn-outline-success" id="reveal-search-form">
-      <i class="fas fa-search"></i> Search
-    </button>
-  </div>
-
+<div class="mt-0">
   <!-- Hidden Collapsible Search Form -->
-  <div class="collapse" id="searchPanel">
+  <div class="" id="searchPanel">
     <div class="card border-0 shadow-sm" style="border-left: 4px solid rgba(17, 154, 72, 0.3); background-color: #ffffff;">
       <div class="card-body">
         <div class="input-group input-group-lg au-search-wrapper">
@@ -23,7 +15,7 @@
   </div>
 
   <!-- Search Results -->
-  <div id="staff-results" class="mt-3" style="display: none;">
+  <div id="staff-results" class="mt-1" style="display: none;">
     <div class="card shadow-sm border-0">
       <div class="card-header bg-light">
         <strong>Search Results</strong>

@@ -753,14 +753,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
   document.getElementById('reveal-search-form').addEventListener('click', function () {
-    const panel = document.getElementById('searchPanel');
-    const collapseInstance = bootstrap.Collapse.getInstance(panel);
+    // const panel = document.getElementById('searchPanel');
+    // const collapseInstance = bootstrap.Collapse.getInstance(panel);
 
-    if (collapseInstance) {
-      collapseInstance.toggle(); // toggles show/hide
-    } else {
-      new bootstrap.Collapse(panel, { toggle: true });
-    }
+    // if (collapseInstance) {
+    //   collapseInstance.toggle(); // toggles show/hide
+    // } else {
+    //   new bootstrap.Collapse(panel, { toggle: true });
+    // }
   });
 </script>
 
