@@ -6,7 +6,7 @@
 <h6 class="mb-0 text-uppercase"></h6>
 <hr />
 <div class="card">
-<div class="row container-fluid mb-4">
+<div class="row container-fluid mb-0">
   <?php $this->load->view('search','');?>
 </div>
       <div class="card-body">
