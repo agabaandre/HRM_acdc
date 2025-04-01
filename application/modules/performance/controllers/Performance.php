@@ -197,7 +197,7 @@ public function notify_ppa_status($data)
     $dispatch = date('Y-m-d H:i:s');
     
     $staff_email = staff_details($staff_id)->work_email;
-    $supervisor_email = staff_details($ppa->supervisor_id)->work_email ?? '';
+    $supervisor_email = staff_details($supervisor_id)->work_email ?? '';
     //$second_supervisor_email = $ppa->supervisor2_id ? staff_details($ppa->supervisor2_id)->work_email : '';
 
     
@@ -224,7 +224,8 @@ public function notify_ppa_status($data)
 
     }
     if ($data['type'] === 'submission') {
-        $data['name'] = staff_name($supervisor_id);
+        $data['name'] = staff_name($staff_id);
+        $data['staff_id']=$supervisor_id;
         $data['subject'] = "PPA Submission Confirmation";
         $data['body'] = $this->load->view('emails/supervisor_ppa', $data, true);
         $data['email_to'] =  $supervisor_email.';'.$staff_email.';'.settings()->email;

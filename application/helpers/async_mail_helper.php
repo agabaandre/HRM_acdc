@@ -117,7 +117,7 @@ if (!function_exists('push_email')) {
             } else {
                 // Optionally, log failure using $id and $next_run if needed.
                 $error ='Email sending failed: ' . $mailer->ErrorInfo;
-                dd($error);
+                //dd($error);
                 return false;
             }
         

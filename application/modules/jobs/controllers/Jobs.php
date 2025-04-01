@@ -184,7 +184,7 @@ public function cron_register(){
                 $next_run = $this->getNextRunDate($message->end_date);
                 $next_run = $next_run->format('Y-m-d');
                // dd($next_run);
-                    $sending = $this->send_mails($to, $subject, $body, $id, $next_run);
+                    $sending = push_email($to, $subject, $body, $id, $next_run);
                     if ($sending) {
                         echo "Message sent to " . $to . "\n";
                         $today = date("Y-m-d");
