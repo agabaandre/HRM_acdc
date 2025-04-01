@@ -92,7 +92,7 @@ class Performance extends MX_Controller
 	
 		// Load dependencies
 		$data['module'] = $this->module;
-		$data['title'] = "Performance Plan - " . $this->session->userdata('user')->name;
+		$data['title'] = "Performance Plan - " . staff_name($this->uri->segment(4));
 		$data['skills'] = $this->db->get('training_skills')->result();
 	
 		// Get saved PPA form
