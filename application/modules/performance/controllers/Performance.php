@@ -68,9 +68,8 @@ class Performance extends MX_Controller
             'created_at' => date('Y-m-d H:i:s')
         ]);
 
-    $save_data['name']=staff_name($staff_id);
-    $save_data['type']='submission_staff';
-    $data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
+    //$data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
+    $save_data['type']='submission';
     $this->notify_ppa_status($save_data);
     }
 
@@ -188,6 +187,7 @@ public function notify_ppa_status($data)
 {
     $staff_id = $data['staff_id'];
     $entry_id = $data['entry_id'];
+    $supervisor_id = $data['supervisor_id'];
     $ppa = $this->per_mdl->get_plan_by_entry_id($entry_id);
     $period = $ppa->performance_period ?? current_period();
     $approval_trail = $this->per_mdl->get_approval_trail($entry_id);
@@ -200,32 +200,35 @@ public function notify_ppa_status($data)
     $supervisor_email = staff_details($ppa->supervisor_id)->work_email ?? '';
     //$second_supervisor_email = $ppa->supervisor2_id ? staff_details($ppa->supervisor2_id)->work_email : '';
 
-    $data['name'] = staff_name($staff_id);
+    
     $data['period'] = $period;
     $data['approval_trail'] = $approval_trail;
     $data['ppa'] = $ppa;
 
-    if ($data['type'] === 'submission_staff') {
+    if ($data['type'] === 'submission') {
+        $data['name'] = staff_name($staff_id);
         $data['subject'] = "PPA Submission Confirmation";
         $data['body'] = $this->load->view('emails/submission', $data, true);
         $data['email_to'] = $staff_email.';'.settings()->email;
         $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
 
-    }elseif ($data['type'] === 'submission_supervisor') {
+    }
+    if ($data['type'] === 'submission') {
+        $data['name'] = staff_name($supervisor_id);
         $data['subject'] = "PPA Submission Confirmation";
         $data['body'] = $this->load->view('emails/supervisor_ppa', $data, true);
         $data['email_to'] =  $supervisor_email.';'.$staff_email.';'.settings()->email;
         $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
 
-    } elseif ($data['type'] === 'status_update') {
+    } 
+    
+    if ($data['type'] === 'status_update') {
         $data['subject'] = "PPA Status Update";
         $data['status'] = $data['status'] ?? 'Pending';
         $data['body'] = $this->load->view('emails/ppa_status', $data, true);
-        $data['email_to'] = $staff_email . ';' . $supervisor_email.';'.settings()->email;
+        $data['email_to'] = $staff_email . ';' .settings()->email;
         $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
-    } else {
-        return false; // Invalid type
-    }
+    } 
 
     return golobal_log_email(
         $trigger_name,
