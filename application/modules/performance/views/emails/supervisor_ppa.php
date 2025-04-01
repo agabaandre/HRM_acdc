@@ -63,7 +63,7 @@
         <h1>Staff PPA Submission</h1>
         <p>Dear Supervisor,</p>
         <p>
-          This is to inform you that <strong><?= $staff_name ?></strong> has submitted their Performance Planning and Appraisal (PPA) form for the period: <strong><?= $period ?></strong>.
+          This is to inform you that <strong><?= $name ?></strong> has submitted their Performance Planning and Appraisal (PPA) form for the period: <strong><?= $period ?></strong>.
         </p>
         <p>
           Please review the submission and take the necessary action at your earliest convenience.

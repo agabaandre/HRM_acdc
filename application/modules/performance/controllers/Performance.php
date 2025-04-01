@@ -211,6 +211,16 @@ public function notify_ppa_status($data)
         $data['body'] = $this->load->view('emails/submission', $data, true);
         $data['email_to'] = $staff_email.';'.settings()->email;
         $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
+        golobal_log_email(
+            $trigger_name,
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $staff_id,
+            date('Y-m-d'),
+            $dispatch,
+            $entry_log_id
+        );
 
     }
     if ($data['type'] === 'submission') {
@@ -219,6 +229,16 @@ public function notify_ppa_status($data)
         $data['body'] = $this->load->view('emails/supervisor_ppa', $data, true);
         $data['email_to'] =  $supervisor_email.';'.$staff_email.';'.settings()->email;
         $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
+        golobal_log_email(
+            $trigger_name,
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $staff_id,
+            date('Y-m-d'),
+            $dispatch,
+            $entry_log_id
+        );
 
     } 
     
@@ -228,18 +248,19 @@ public function notify_ppa_status($data)
         $data['body'] = $this->load->view('emails/ppa_status', $data, true);
         $data['email_to'] = $staff_email . ';' .settings()->email;
         $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
+        golobal_log_email(
+            $trigger_name,
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $staff_id,
+            date('Y-m-d'),
+            $dispatch,
+            $entry_log_id
+        );
     } 
 
-    return golobal_log_email(
-        $trigger_name,
-        $data['email_to'],
-        $data['body'],
-        $data['subject'],
-        $staff_id,
-        date('Y-m-d'),
-        $dispatch,
-        $entry_log_id
-    );
+    
 }
 
 	public function my_ppas()
