@@ -63,7 +63,7 @@
         <h1>Staff PPA Submission</h1>
         <p>Dear Supervisor,</p>
         <p>
-          This is to inform you that <strong><?= $name ?></strong> has submitted their Performance Planning and Appraisal (PPA) form for the period: <strong><?= $period ?></strong>.
+          This is to inform you that <strong><?= $name ?></strong> has submitted their Performance Planning and Appraisal (PPA) form for the period: <strong><?= $str_replace('-',' ',$period); ?></strong>.
         </p>
         <p>
           Please review the submission and take the necessary action at your earliest convenience.
@@ -71,9 +71,6 @@
 
         <a href="<?= base_url('performance/view_ppa/' . $entry_id); ?>" class="btn">Review Submitted PPA</a>
 
-        <p>
-          If you encounter any issues accessing the submission, please contact the HR department for assistance.
-        </p>
 
         <p>
           Best regards,<br>

@@ -63,8 +63,8 @@
         <h1>PPA Submission Confirmed</h1>
         <p>Dear <?= $name ?>,</p>
         <p>
-          This is to confirm that you have successfully submitted your PPA form xfor the performance period:
-          <strong><?= $period ?></strong>.
+          This is to confirm that you have successfully submitted your PPA form for the performance period:
+          <strong><?= str_replace('-',' ',$period); ?></strong>.
         </p>
         <p>
           Your PPA has been forwarded to your supervisor for review. You will be notified once any actions are taken on your submission.
@@ -72,9 +72,6 @@
 
         <a href="<?= base_url('performance/view_ppa/' . $entry_id); ?>" class="btn">View Submitted PPA</a>
 
-        <p>
-          If you have any questions or need to make changes before the supervisor's review, kindly contact the HR department.
-        </p>
 
         <p>
           Best regards,<br>

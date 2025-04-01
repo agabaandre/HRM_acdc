@@ -191,6 +191,7 @@ class Performance extends MX_Controller
         $trigger_id = $this->session->userdata('user')->staff_id;
         $trigger_name = staff_name($trigger_id);
         $dispatch = date('Y-m-d H:i:s');
+        $data['name'] = staff_name($staff_id);
     
         $ppa = $this->per_mdl->get_plan_by_entry_id($entry_id);
         $period = $ppa->performance_period ?? current_period();
@@ -208,6 +209,7 @@ class Performance extends MX_Controller
             $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
     
             // 1. Notify staff
+           
             $staff_data = array_merge($data, [
                 'name' => staff_name($staff_id),
                 'subject' => "PPA Submission Confirmation",
@@ -231,7 +233,7 @@ class Performance extends MX_Controller
                 'name' => staff_name($staff_id),
                 'staff_id' => $supervisor_id,
                 'subject' => "PPA Submission Confirmation",
-                'email_to' => $supervisor_email . ';' . settings()->email,
+                'email_to' => $supervisor_email  . ';' . settings()->email,
                 'body' => $this->load->view('emails/supervisor_ppa', $data, true),
             ]);
     
