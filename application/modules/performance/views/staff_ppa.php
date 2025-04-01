@@ -24,10 +24,10 @@
 			  <?php
 				 $staff_id = $plan['staff_id'];
 
-				if ($plan['overall_status'] == 'Pending First Supervisor') {
+				if (($plan['overall_status'] == 'Pending First Supervisor')&& ($plan['draft_status'] == 0)){
 					$supervisor = get_supervisor(current_contract($staff_id))->first_supervisor ?? null;
 					echo '<span class="badge bg-primary fs-6">Pending First Supervisor: ' . staff_name($supervisor) . '</span>';
-				} elseif ($plan['overall_status'] == 'Pending Second Supervisor') {
+				} elseif (($plan['overall_status'] == 'Pending Second Supervisor')&& ($plan['draft_status'] == 0)) {
 					$supervisor = get_supervisor(current_contract($staff_id))->second_supervisor ?? null;
 					echo '<span class="badge bg-primary fs-6">Pending Second Supervisor: ' . staff_name($supervisor) . '</span>';
 				} else {
