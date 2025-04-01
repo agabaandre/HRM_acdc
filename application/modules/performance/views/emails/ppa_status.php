@@ -77,7 +77,7 @@
         <p>Dear <?php echo $name; ?>,</p>
         <p>
           This is to inform you that your Performance Planning and Appraisal (PPA) form for the period 
-          <strong><?php echo $period; ?></strong> is currently <strong><?php echo $status; ?></strong>.
+          <strong><?php echo $str_replace('-',' ',$period); ?></strong> is currently <strong><?php echo $status; ?></strong>.
         </p>
 
         <p>You can view your PPA form and monitor progress at any time through the HR portal.</p>
