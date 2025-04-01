@@ -183,86 +183,91 @@ class Performance extends MX_Controller
 		redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);
 	}
 
-public function notify_ppa_status($data)
-{
-    $staff_id = $data['staff_id'];
-    $entry_id = $data['entry_id'];
-    $supervisor_id = $data['supervisor_id'];
-    $ppa = $this->per_mdl->get_plan_by_entry_id($entry_id);
-    $period = $ppa->performance_period ?? current_period();
-    $approval_trail = $this->per_mdl->get_approval_trail($entry_id);
-
-    $trigger_id = $this->session->userdata('user')->staff_id;
-    $trigger_name = staff_name($trigger_id);
-    $dispatch = date('Y-m-d H:i:s');
+    public function notify_ppa_status($data)
+    {
+        $staff_id = $data['staff_id'];
+        $entry_id = $data['entry_id'];
+        $supervisor_id = $data['supervisor_id'];
+        $trigger_id = $this->session->userdata('user')->staff_id;
+        $trigger_name = staff_name($trigger_id);
+        $dispatch = date('Y-m-d H:i:s');
     
-    $staff_email = staff_details($staff_id)->work_email;
-    $supervisor_email = staff_details($supervisor_id)->work_email ?? '';
-    //$second_supervisor_email = $ppa->supervisor2_id ? staff_details($ppa->supervisor2_id)->work_email : '';
-
+        $ppa = $this->per_mdl->get_plan_by_entry_id($entry_id);
+        $period = $ppa->performance_period ?? current_period();
+        $approval_trail = $this->per_mdl->get_approval_trail($entry_id);
     
-    $data['period'] = $period;
-    $data['approval_trail'] = $approval_trail;
-    $data['ppa'] = $ppa;
-
-    if ($data['type'] === 'submission') {
-        $data['name'] = staff_name($staff_id);
-        $data['subject'] = "PPA Submission Confirmation";
-        $data['body'] = $this->load->view('emails/submission', $data, true);
-        $data['email_to'] = $staff_email.';'.settings()->email;
-        $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
-        golobal_log_email(
-            $trigger_name,
-            $data['email_to'],
-            $data['body'],
-            $data['subject'],
-            $staff_id,
-            date('Y-m-d'),
-            $dispatch,
-            $entry_log_id
-        );
-
+        $staff_email = staff_details($staff_id)->work_email;
+        $supervisor_email = staff_details($supervisor_id)->work_email ?? '';
+    
+        $data['period'] = $period;
+        $data['approval_trail'] = $approval_trail;
+        $data['ppa'] = $ppa;
+    
+        // Handle submission notifications
+        if ($data['type'] === 'submission') {
+            $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
+    
+            // 1. Notify staff
+            $staff_data = array_merge($data, [
+                'name' => staff_name($staff_id),
+                'subject' => "PPA Submission Confirmation",
+                'email_to' => $staff_email . ';' . settings()->email,
+                'body' => $this->load->view('emails/submission', $data, true),
+            ]);
+    
+            golobal_log_email(
+                $trigger_name,
+                $staff_data['email_to'],
+                $staff_data['body'],
+                $staff_data['subject'],
+                $staff_id,
+                date('Y-m-d'),
+                $dispatch,
+                $entry_log_id
+            );
+    
+            // 2. Notify supervisor
+            $supervisor_data = array_merge($data, [
+                'name' => staff_name($staff_id),
+                'staff_id' => $supervisor_id,
+                'subject' => "PPA Submission Confirmation",
+                'email_to' => $supervisor_email . ';' . $staff_email . ';' . settings()->email,
+                'body' => $this->load->view('emails/supervisor_ppa', $data, true),
+            ]);
+    
+            golobal_log_email(
+                $trigger_name,
+                $supervisor_data['email_to'],
+                $supervisor_data['body'],
+                $supervisor_data['subject'],
+                $supervisor_id,
+                date('Y-m-d'),
+                $dispatch,
+                $entry_log_id // use same log id for submission batch
+            );
+        }
+    
+        // Handle status update notifications
+        if ($data['type'] === 'status_update') {
+            $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
+            $data['subject'] = "PPA Status Update";
+            $data['status'] = $data['status'] ?? 'Pending';
+            $data['body'] = $this->load->view('emails/ppa_status', $data, true);
+            $data['email_to'] = $staff_email . ';' . settings()->email;
+    
+            golobal_log_email(
+                $trigger_name,
+                $data['email_to'],
+                $data['body'],
+                $data['subject'],
+                $staff_id,
+                date('Y-m-d'),
+                $dispatch,
+                $entry_log_id
+            );
+        }
     }
-    if ($data['type'] === 'submission') {
-        $data['name'] = staff_name($staff_id);
-        $data['staff_id']=$supervisor_id;
-        $data['subject'] = "PPA Submission Confirmation";
-        $data['body'] = $this->load->view('emails/supervisor_ppa', $data, true);
-        $data['email_to'] =  $supervisor_email.';'.$staff_email.';'.settings()->email;
-        $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
-        golobal_log_email(
-            $trigger_name,
-            $data['email_to'],
-            $data['body'],
-            $data['subject'],
-            $staff_id,
-            date('Y-m-d'),
-            $dispatch,
-            $entry_log_id
-        );
-
-    } 
     
-    if ($data['type'] === 'status_update') {
-        $data['subject'] = "PPA Status Update";
-        $data['status'] = $data['status'] ?? 'Pending';
-        $data['body'] = $this->load->view('emails/ppa_status', $data, true);
-        $data['email_to'] = $staff_email . ';' .settings()->email;
-        $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
-        golobal_log_email(
-            $trigger_name,
-            $data['email_to'],
-            $data['body'],
-            $data['subject'],
-            $staff_id,
-            date('Y-m-d'),
-            $dispatch,
-            $entry_log_id
-        );
-    } 
-
-    
-}
 
 	public function my_ppas()
 {
