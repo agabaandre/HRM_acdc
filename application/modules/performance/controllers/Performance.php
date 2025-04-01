@@ -67,6 +67,10 @@ class Performance extends MX_Controller
             'action' => 'Submitted',
             'created_at' => date('Y-m-d H:i:s')
         ]);
+    $save_data['name']=staff_name($staff_id);
+    $save_data['type']='Submission';
+    $data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
+    $this->notify_ppa_status($save_data);
     }
 
     $msg = [
@@ -168,7 +172,13 @@ class Performance extends MX_Controller
 			'msg'  => $log_action === 'Approved' ? 'PPA approved successfully.' : 'PPA returned for revision.',
 			'type' => 'success'
 		];
-	
+	    $data['name']=staff_name($staff_id);
+        $data['status']=$log_action;
+        $data['type']="status_update";
+        $data['entry_id']=$entry_id;
+        $data['staff_id']=$staff_id;
+    
+        $this->notify_ppa_status($data);
 		Modules::run('utility/setFlash', $msg);
 		redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);
 	}

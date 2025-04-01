@@ -224,7 +224,7 @@
   </thead>
     <tr style="background-color: #f2f2f2; font-weight: bold;">
       <td width="50%" style="text-align: center;">Staff</td>
-      <td width="50%" style="text-align: center;">First Supervisor</td>
+      <td width="50%" style="text-align: center;">Supervisor</td>
     </tr>
     <tr>
       <td>
@@ -254,7 +254,7 @@
           <p style="text-decoration:underline;"><?=staff_details($ppa->supervisor_id)->title.' '.staff_details($ppa->supervisor_id)->lname;?></p><br>
         <?php endif; ?>
   
-        <b>First Supervisor Signature</b>
+        <b>Supervisor Signature</b>
       </td>
     </tr>
     <tr>
