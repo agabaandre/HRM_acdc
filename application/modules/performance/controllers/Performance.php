@@ -172,7 +172,11 @@ class Performance extends MX_Controller
 			'msg'  => $log_action === 'Approved' ? 'PPA approved successfully.' : 'PPA returned for revision.',
 			'type' => 'success'
 		];
-	    $data['name']=staff_name($staff_id);
+
+        $data['ppa'] = $this->per_mdl->get_plan_by_entry_id($entry_id);
+        $data['supervisor_id'] = $this->session->userdata('user')->staff_id;
+        $data['staff_id'] = $data['ppa']->staff_id;
+	    $data['name']=staff_name($data['staff_id']);
         $data['status']=$log_action;
         $data['type']="status_update";
         $data['entry_id']=$entry_id;
