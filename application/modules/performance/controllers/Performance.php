@@ -231,7 +231,7 @@ class Performance extends MX_Controller
                 'name' => staff_name($staff_id),
                 'staff_id' => $supervisor_id,
                 'subject' => "PPA Submission Confirmation",
-                'email_to' => $supervisor_email . ';' . $staff_email . ';' . settings()->email,
+                'email_to' => $supervisor_email . ';' . settings()->email,
                 'body' => $this->load->view('emails/supervisor_ppa', $data, true),
             ]);
     
