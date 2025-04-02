@@ -214,8 +214,10 @@ public function impersonate($user_id)
     $merged['permissions'] = $this->auth_mdl->user_permissions($merged['role']);
     $merged['is_admin'] = false;
 
-    // Set session using CodeIgniter's session library
     $this->session->set_userdata('user', (object)$merged);
+    $this->session->mark_as_temp('user', 300); // optional: set lifespan for session if needed
+    session_write_close(); // force session save
+    redirect('dashboard');
 
     $this->session->set_flashdata('success', 'You are now impersonating ' . $user->surname);
     redirect('dashboard');
