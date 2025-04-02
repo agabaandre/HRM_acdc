@@ -190,13 +190,13 @@ class Performance extends MX_Controller
 
     public function notify_ppa_status($data)
     {
+        // This is the staff whose PPA it is (PPA owner)
         $staff_id = $data['staff_id'];
         $entry_id = $data['entry_id'];
         $supervisor_id = $data['supervisor_id'];
         $trigger_id = $this->session->userdata('user')->staff_id;
         $trigger_name = staff_name($trigger_id);
         $dispatch = date('Y-m-d H:i:s');
-        $data['name'] = staff_name($staff_id);
     
         $ppa = $this->per_mdl->get_plan_by_entry_id($entry_id);
         $period = $ppa->performance_period ?? current_period();
@@ -205,6 +205,7 @@ class Performance extends MX_Controller
         $staff_email = staff_details($staff_id)->work_email;
         $supervisor_email = staff_details($supervisor_id)->work_email ?? '';
     
+        $data['name'] = staff_name($staff_id); // This name appears in the email
         $data['period'] = $period;
         $data['approval_trail'] = $approval_trail;
         $data['ppa'] = $ppa;
@@ -213,11 +214,9 @@ class Performance extends MX_Controller
         if ($data['type'] === 'submission') {
             $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
     
-            // 1. Notify staff
-           
+            // 1. Notify staff (confirmation)
             $staff_data = array_merge($data, [
-                'name' => staff_name($staff_id),
-                'subject' => "PPA Submission Confirmation ".date('Y-m-d H:i:s'),
+                'subject' => "PPA Submission Confirmation " . date('Y-m-d H:i:s'),
                 'email_to' => $staff_email . ';' . settings()->email,
                 'body' => $this->load->view('emails/submission', $data, true),
             ]);
@@ -235,9 +234,8 @@ class Performance extends MX_Controller
     
             // 2. Notify supervisor
             $supervisor_data = array_merge($data, [
-                'name' => staff_name($staff_id),
-                'subject' => "PPA Submission Confirmation ".date('Y-m-d H:i:s'),
-                'email_to' => $supervisor_email  . ';' . settings()->email,
+                'subject' => "PPA Submission Notification " . date('Y-m-d H:i:s'),
+                'email_to' => $supervisor_email . ';' . settings()->email,
                 'body' => $this->load->view('emails/supervisor_ppa', $data, true),
             ]);
     
@@ -249,14 +247,14 @@ class Performance extends MX_Controller
                 $supervisor_id,
                 date('Y-m-d'),
                 $dispatch,
-                $entry_log_id // use same log id for submission batch
+                $entry_log_id
             );
         }
     
-        // Handle status update notifications
+        // Handle status update notifications to staff
         if ($data['type'] === 'status_update') {
             $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
-            $data['subject'] = "PPA Status Update ".date('Y-m-d H:i:s');
+            $data['subject'] = "PPA Status Update " . date('Y-m-d H:i:s');
             $data['status'] = $data['status'] ?? 'Pending';
             $data['body'] = $this->load->view('emails/ppa_status', $data, true);
             $data['email_to'] = $staff_email . ';' . settings()->email;
@@ -273,6 +271,7 @@ class Performance extends MX_Controller
             );
         }
     }
+    
     
 
 	public function my_ppas()
