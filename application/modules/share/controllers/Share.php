@@ -94,7 +94,7 @@ public function visualise($key)
               AND sc.grade_id = g.grade_id 
               AND ja.job_acting_id = sc.job_acting_id 
               AND st.status_id = sc.status_id 
-              AND sc.status_id IN (1,2,3,4,7) 
+              AND sc.status_id IN (1,2,3,7) 
               AND j.job_id = sc.job_id 
               AND f.funder_id = sc.funder_id 
               AND sc.division_id != '' 
