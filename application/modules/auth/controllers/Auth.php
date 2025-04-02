@@ -189,12 +189,13 @@ public function other_login()
 public function impersonate($user_id)
 {
     // Check if current user is admin
-    if (!isset($_SESSION['user']) || $_SESSION['user']->role != 10) {
+    $current_user = $this->session->userdata('user');
+    if (!$current_user || $current_user->role != 10) {
         show_error('You are not authorized to impersonate users.', 403);
     }
 
     // Store current session as "original user"
-    $this->session->set_userdata('original_user', $_SESSION['user']);
+    $this->session->set_userdata('original_user', $current_user);
 
     // Fetch the user to impersonate
     $user = $this->auth_mdl->find_user($user_id);
@@ -203,6 +204,7 @@ public function impersonate($user_id)
         redirect('dashboard');
     }
 
+    // Merge contract details
     $contract = $this->staff_mdl->get_latest_contracts($user->auth_staff_id);
     $user_array = (array)$user;
     $contract_array = (array)$contract;
@@ -211,11 +213,14 @@ public function impersonate($user_id)
     unset($merged['password']);
     $merged['permissions'] = $this->auth_mdl->user_permissions($merged['role']);
     $merged['is_admin'] = false;
-    $_SESSION['user'] = (object)$merged;
+
+    // Set session using CodeIgniter's session library
+    $this->session->set_userdata('user', (object)$merged);
 
     $this->session->set_flashdata('success', 'You are now impersonating ' . $user->surname);
     redirect('dashboard');
 }
+
 
 public function revert()
 {
