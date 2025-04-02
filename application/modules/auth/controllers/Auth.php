@@ -189,7 +189,7 @@ public function other_login()
 public function impersonate($user_id)
 {
     // Check if current user is admin
-    if (!isset($_SESSION['user']) || $_SESSION['user']->role != 'admin') {
+    if (!isset($_SESSION['user']) || $_SESSION['user']->role != 10) {
         show_error('You are not authorized to impersonate users.', 403);
     }
 
