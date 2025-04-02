@@ -1,5 +1,6 @@
+<?php $this->load->view('tasks_tabs')?>
 <div class="container mt-5">
-    <h2 class="mb-4">My Activities</h2>
+    
     <table class="table table-bordered table-striped">
         <thead class="thead-dark">
             <tr>
