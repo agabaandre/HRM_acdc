@@ -181,6 +181,12 @@ public function auth($key){
 	}
 }
 
+public function get_staff(){
+    dd($this->staff_mdl->get_all_staff_data());
+
+    
+}
+
 
 
 
