@@ -226,17 +226,13 @@ input[type="number"] {
   </tr>
 
   <tr>
-    <td><label>Comments for Approval</label>
-    <br>
-    <textarea name="comments" class="form-control" rows="3" placeholder="Enter approval comments..."></textarea>
-       
-  </td>
-   
-  </tr>
-  <tr>
   <td colspan="4" class="text-center">
 
     <?php if ((!$readonly)&&($ppa->staff_id==$this->session->userdata('user')->staff_id)): ?>
+      <br>
+      <label>Comments for Approval</label>
+      <textarea name="comments" class="form-control" rows="3" placeholder="Enter approval comments..."></textarea>
+      <br>
       <!-- Staff Submission Buttons -->
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
@@ -245,17 +241,26 @@ input[type="number"] {
     <?php echo form_close(); ?>
 
 
-    <?php if ($showApprovalBtns=='show'): ?>
-      <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>" style="display:inline;">
-        <input type="hidden" name="action" value="approve">
-        <button type="submit" class="btn btn-success px-5" onclick="document.getElementById('return_comment').value = document.querySelector('textarea[name=comments]').value;">Approve</button>
-      </form>
+<?php if ($showApprovalBtns == 'show'): ?>
+  <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>">
+    <div class="mb-3">
+      <label for="comments">Comments for Approval/Return</label>
+      <textarea id="comments" name="comments" class="form-control" rows="3" required></textarea>
+    </div>
 
-      <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>" style="display:inline;">
-        <input type="hidden" name="action" value="return">
-        <button type="submit" class="btn btn-danger px-5" onclick="document.getElementById('return_comment').value = document.querySelector('textarea[name=comments]').value;">Return</button>
-      </form>
-    <?php endif; ?>
+    <input type="hidden" name="action" id="approval_action" value="">
+
+    <div class="text-center">
+      <button type="submit" class="btn btn-success px-5 me-2" onclick="document.getElementById('approval_action').value = 'approve';">
+        Approve
+      </button>
+      <button type="submit" class="btn btn-danger px-5" onclick="document.getElementById('approval_action').value = 'return';">
+        Return
+      </button>
+    </div>
+  </form>
+<?php endif; ?>
+
 
   </td>
 </tr>
