@@ -258,7 +258,7 @@ class Performance extends MX_Controller
             $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
             $data['subject'] = "PPA Status Update ".date('Y-m-d H:i:s');
             $data['status'] = $data['status'] ?? 'Pending';
-            $data['body'] = $this->load->view('emails/ppa_status', $data, false);
+            $data['body'] = $this->load->view('emails/ppa_status', $data, true);
             $data['email_to'] = $staff_email . ';' . settings()->email;
     
             golobal_log_email(
