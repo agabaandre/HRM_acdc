@@ -77,12 +77,14 @@
         <p>Dear <?php echo $name; ?>,</p>
         <p>
           This is to inform you that your Performance Planning and Appraisal (PPA) form for the period 
-          <strong><?php echo str_replace('-',' ',$period); ?></strong> is <strong><?php echo $status; ?></strong>.
+          <strong><?php echo str_replace('-',' ',$period); ?></strong> is <strong><?php echo $status; ?></strong>. <?php if ($status=='Returned'){ echo "Make all the neccessary adjustments from the supervisor and resubmit";
+
+          } ?>
         </p>
 
         <p>You can view your PPA form and monitor progress at any time through the HR portal.</p>
 
-        <a href="<?= base_url('performance/view_ppa/' . $entry_id); ?>" class="btn">View My PPA</a>
+        <a href="<?= base_url('performance/view_ppa/' . $entry_id); ?>/<?=$staff_id?>" class="btn">View My PPA</a>
 
         <!-- Audit Trail Section -->
         <?php if (!empty($approval_trail)): ?>
