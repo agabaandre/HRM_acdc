@@ -185,7 +185,7 @@ class Performance extends MX_Controller
     
         $this->notify_ppa_status($data);
 		Modules::run('utility/setFlash', $msg);
-		redirect('performance/view_ppa/' . $entry_id.'/'.$data['staff_id']);
+		redirect('performance/pending_approval');
 	}
 
     public function notify_ppa_status($data)
@@ -194,6 +194,7 @@ class Performance extends MX_Controller
         $staff_id = $data['staff_id'];
         $entry_id = $data['entry_id'];
         $supervisor_id = $data['supervisor_id'];
+        $data['supervisor_name'] = staff_name($supervisor_id);
         $trigger_id = $this->session->userdata('user')->staff_id;
         $trigger_name = staff_name($trigger_id);
         $dispatch = date('Y-m-d H:i:s');

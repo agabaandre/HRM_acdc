@@ -61,7 +61,7 @@
       <!-- Main Content -->
       <div class="content">
         <h1>Staff PPA Submission</h1>
-        <p>Dear Supervisor,</p>
+        <p>Dear <?=$supervisor_name?>,</p>
         <p>
           This is to inform you that <strong><?= $name ?></strong> has submitted their Performance Planning and Appraisal (PPA) form for the period: <strong><?= str_replace('-',' ',$period); ?></strong>.
         </p>
