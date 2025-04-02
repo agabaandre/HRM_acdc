@@ -92,6 +92,7 @@ public function mark_due_contracts() {
         $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
 
         if ($dateDiff > 0 && $dateDiff <= 90) {
+            //due contracts
             $data['subject'] = "Contract Due for Renewal Notice";
             $supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
             $first_supervisor_mail = staff_details($supervisor_id)->work_email;
@@ -103,6 +104,7 @@ public function mark_due_contracts() {
             golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,md5($entry_id));
             $this->db->query("UPDATE staff_contracts SET status_id = 2 WHERE staff_contract_id = $staff_contract_id");
         } elseif ($dateDiff <= 0) {
+            //expired
             $data['subject'] = "Expired Contract Notice";
             $supervisor_id = $this->staff_mdl->get_latest_contracts($staff_id)->first_supervisor;
             $first_supervisor_mail = staff_details($supervisor_id)->work_email;
@@ -113,7 +115,7 @@ public function mark_due_contracts() {
             $entry_id = $staff_id.'-EX-'.date('Y-m-d');
             golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,md5($entry_id));
             $this->db->query("UPDATE staff_contracts SET status_id = 3 WHERE staff_contract_id = $staff_contract_id");
-        } elseif ($dateDiff >180) {
+        } elseif ($dateDiff >90) {
             $this->db->query("UPDATE staff_contracts SET status_id = 1 WHERE staff_contract_id = $staff_contract_id");
         }
     }

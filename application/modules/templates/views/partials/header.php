@@ -127,6 +127,15 @@
 					<li>
 						<div class="dropdown-divider mb-0"></div>
 					</li>
+					<?php if ($this->session->userdata('original_user')): ?>
+						<a href="<?php echo site_url('auth/revert'); ?>" class="btn btn-sm btn-danger">
+							<i class="fa fa-undo"></i> Revert to Admin
+						</a>
+					<?php endif; ?>
+					<li>
+						<div class="dropdown-divider mb-0"></div>
+					</li>
+
 					<li><a class="dropdown-item" href="<?php echo base_url() ?>auth/logout"><i class="bx bx-log-out-circle"></i><span>Logout</span></a>
 					</li>
 				</ul>

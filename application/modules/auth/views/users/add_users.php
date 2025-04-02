@@ -69,9 +69,10 @@ $usergroups = Modules::run("permissions/getUserGroups");
                 <td><span class="badge text-bg-primary"><?php echo $user->group_name; ?></span></td>
 
                 <td>
-                  <a data-bs-toggle="modal" data-bs-target="#user<?php echo $user->user_id; ?>" href="#">
-                    <i class="fa fa-edit"></i> Impersonate
-                  </a>
+                <a href="<?php echo site_url('auth/impersonate/' . $user->id); ?>" class="btn btn-sm btn-warning">
+                  <i class="fa fa-user-secret"></i> Impersonate
+                </a>
+
                   <a data-bs-toggle="modal" data-bs-target="#user<?php echo $user->user_id; ?>" href="#">
                     <i class="fa fa-edit"></i> Edit
                   </a>
