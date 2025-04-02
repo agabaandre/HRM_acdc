@@ -242,7 +242,7 @@ input[type="number"] {
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
     <?php endif; ?>
 
-    <?php echo form_close(); ?>
+    
 
 
     <?php if ($showApprovalBtns=='show'): ?>
@@ -256,6 +256,7 @@ input[type="number"] {
         <button type="submit" class="btn btn-danger px-5">Return for Revision</button>
       </form>
     <?php endif; ?>
+    <?php echo form_close(); ?>
 
   </td>
 </tr>
