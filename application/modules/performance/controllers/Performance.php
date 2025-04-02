@@ -235,7 +235,7 @@ class Performance extends MX_Controller
             // 2. Notify supervisor
             $supervisor_data = array_merge($data, [
                 'name' => staff_name($staff_id),
-                'staff_id' => $supervisor_id,
+                'staff_id' => $staff_id,
                 'subject' => "PPA Submission Confirmation ".date('Y-m-d H:i:s'),
                 'email_to' => $supervisor_email  . ';' . settings()->email,
                 'body' => $this->load->view('emails/supervisor_ppa', $data, true),
