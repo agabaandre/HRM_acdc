@@ -199,6 +199,8 @@ public function impersonate($user_id)
 
     // Fetch the user to impersonate
     $user = $this->auth_mdl->find_user($user_id);
+
+    //dd($user);
     if (empty($user)) {
         $this->session->set_flashdata('error', 'User not found.');
         redirect('dashboard');
@@ -218,19 +220,36 @@ public function impersonate($user_id)
     $this->session->mark_as_temp('user', 300); // optional: set lifespan for session if needed
     session_write_close(); // force session save
     redirect('dashboard');
-
-    $this->session->set_flashdata('success', 'You are now impersonating ' . $user->surname);
+    $msg = [
+      'msg' => 'You are now impersonating ' . $user->surname . '.',
+      'type' => 'success'
+     ];
+    Modules::run('utility/setFlash', $msg);
+  
     redirect('dashboard');
 }
 
 
 public function revert()
 {
-    if ($this->session->userdata('original_user')) {
-        $_SESSION['user'] = $this->session->userdata('original_user');
+    $original = $this->session->userdata('original_user');
+
+    if ($original) {
+        $this->session->set_userdata('user', $original);
         $this->session->unset_userdata('original_user');
-        $this->session->set_flashdata('success', 'You have returned to your admin session.');
+
+        $msg = [
+            'msg' => 'You have returned to your admin session.',
+            'type' => 'success'
+        ];
+    } else {
+        $msg = [
+            'msg' => 'You are not impersonating any user.',
+            'type' => 'warning'
+        ];
     }
+
+    Modules::run('utility/setFlash', $msg);
     redirect('dashboard');
 }
 
@@ -332,6 +351,20 @@ public function revert()
     $data['uptitle'] = "User Management";
     render("users/add_users", $data);
   }
+
+  public function fetch_users_ajax()
+  {
+      $searchkey = $this->input->get('search_key');
+      $users = $this->auth_mdl->getAll(0, 1000, $searchkey); // fetch all for table
+  
+      $usergroups = Modules::run("permissions/getUserGroups");
+  
+      echo json_encode([
+          'users' => $users,
+          'usergroups' => $usergroups
+      ]);
+  }
+  
 
 
   public function logs()

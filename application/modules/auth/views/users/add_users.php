@@ -69,7 +69,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
                 <td><span class="badge text-bg-primary"><?php echo $user->group_name; ?></span></td>
 
                 <td>
-                <a href="<?php echo site_url('auth/impersonate/' . $user->id); ?>" class="btn btn-sm btn-warning">
+                <a href="<?php echo site_url('auth/impersonate/' . $user->user_id); ?>" class="btn btn-sm btn-warning">
                   <i class="fa fa-user-secret"></i> Impersonate
                 </a>
 
@@ -77,6 +77,106 @@ $usergroups = Modules::run("permissions/getUserGroups");
                     <i class="fa fa-edit"></i> Edit
                   </a>
                 </td>
+
+                <div class="modal fade" id="block<?php echo $user->user_id; ?>">
+<form class="block" action="<?php echo base_url(); ?>auth/blockUser" method="post">
+	<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-body">
+
+					<h4>Block user <b><?php echo $user->name; ?></b> ?</h4>
+
+					<span class="status" style="margin:0 auto;"></span>
+
+						<input type="hidden" name="id" value="<?php echo $user->id; ?>">
+						
+
+		
+	</div>
+
+	<div class="modal-footer">
+
+<input type="submit" class="btn btn-danger" value="Yes, Block">
+
+<a href="#" data-dismiss="modal" class="btn">Close</a>
+		
+	</div>
+
+
+
+		
+	</div>
+
+	</div>
+
+</form>
+
+</div>
+
+
+
+<div class="modal fade" id="reset<?php echo $user->user_id; ?>">
+	<form class="reset" action="<?php echo base_url(); ?>auth/resetPass" method="post">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-body">
+
+					<h4>Reset password for <b><?php echo $user->name; ?></b> ?</h4>
+
+					<span class="status" style="margin:0 auto;"></span>
+
+
+					<input type="hidden" name="id" value="<?php echo $user->id; ?>">
+					<input type="hidden" name="password" value="<?php echo setting()->default_password; ?>">
+
+
+
+				</div>
+
+				<div class="modal-footer">
+
+					<input type="submit" class="btn btn-danger" value="Yes, Reset">
+
+					<a href="#" data-dismiss="modal" class="btn">Close</a>
+
+				</div>
+
+
+        <div class="modal fade" id="unblock<?php echo $user->id; ?>">
+<form class="unblock" action="<?php echo base_url(); ?>auth/blockUser" method="post">
+	<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-body">
+
+					<h4>Activate user <b><?php echo $user->firstname." ".$user->lastname; ?></b> ?</h4>
+
+					
+					<span class="status" style="margin:0 auto;"></span>
+
+						<input type="hidden" name="id" value="<?php echo $user->id; ?>">
+						
+
+		
+	</div>
+
+	<div class="modal-footer">
+
+<input type="submit" class="btn btn-success" value="Yes, Activate">
+
+<a href="#" data-dismiss="modal" class="btn">Close</a>
+		
+	</div>
+
+
+
+		
+	</div>
+
+	</div>
+
+</form>
+
+</div>
                   
 
 
