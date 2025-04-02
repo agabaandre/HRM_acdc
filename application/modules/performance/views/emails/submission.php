@@ -70,7 +70,7 @@
           Your PPA has been forwarded to your supervisor for review. You will be notified once any actions are taken on your submission.
         </p>
 
-        <a href="<?= base_url('performance/view_ppa/' . $entry_id); ?>/<?=$staff_id?>" class="btn">View Submitted PPA</a>
+        <a href="<?= base_url('performance/view_ppa/' . $entry_id); ?>/<?=$staff_id?>" class="btn" style="color:#fff !important;">View Submitted PPA</a>
 
 
         <p>
