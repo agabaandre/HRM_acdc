@@ -175,12 +175,13 @@ class Performance extends MX_Controller
 
         $data['ppa'] = $this->per_mdl->get_plan_by_entry_id($entry_id);
         $data['supervisor_id'] = $this->session->userdata('user')->staff_id;
-        $data['staff_id'] = $data['ppa']->staff_id;
-	    $data['name']=staff_name($data['staff_id']);
-        $data['status']=$log_action;
-        $data['type']="status_update";
-        $data['entry_id']=$entry_id;
-        $data['staff_id']=$staff_id;
+        $data['staff_id'] = $data['ppa']->staff_id; // This is the actual PPA owner
+        $data['name'] = staff_name($data['staff_id']);
+        $data['status'] = $log_action;
+        $data['type'] = "status_update";
+        $data['entry_id'] = $entry_id;
+
+       // dd($data);
     
         $this->notify_ppa_status($data);
 		Modules::run('utility/setFlash', $msg);
