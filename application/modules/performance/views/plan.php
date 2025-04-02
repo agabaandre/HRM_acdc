@@ -228,7 +228,7 @@ input[type="number"] {
   <tr>
     <td><label>Comments for Approval</label>
     <br>
-    <textarea id="comments" class="form-control" rows="3" name="comments" ></textarea>
+    <textarea name="comments" class="form-control" rows="3" placeholder="Enter approval comments..."></textarea>
        
   </td>
    
@@ -242,21 +242,20 @@ input[type="number"] {
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
     <?php endif; ?>
 
-    
+    <?php echo form_close(); ?>
 
 
     <?php if ($showApprovalBtns=='show'): ?>
       <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>" style="display:inline;">
         <input type="hidden" name="action" value="approve">
-        <button type="submit" class="btn btn-success px-5">Approve</button>
+        <button type="submit" class="btn btn-success px-5" onclick="document.getElementById('return_comment').value = document.querySelector('textarea[name=comments]').value;">Approve</button>
       </form>
 
       <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>" style="display:inline;">
         <input type="hidden" name="action" value="return">
-        <button type="submit" class="btn btn-danger px-5">Return for Revision</button>
+        <button type="submit" class="btn btn-danger px-5" onclick="document.getElementById('return_comment').value = document.querySelector('textarea[name=comments]').value;">Return</button>
       </form>
     <?php endif; ?>
-    <?php echo form_close(); ?>
 
   </td>
 </tr>
