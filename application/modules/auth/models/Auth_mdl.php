@@ -361,6 +361,6 @@ return $qry->num_rows();
 	public function find_user($id)
 	{
 		$this->db->where('user_id', $id);
-		return $this->db->get($this->table, $id)->row();
+		return $this->db->get($this->table)->row();
 	}
 }
