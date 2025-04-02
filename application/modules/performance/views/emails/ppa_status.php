@@ -84,7 +84,7 @@
 
         <p>You can view your PPA form and monitor progress at any time through the HR portal.</p>
 
-        <a href="<?php echo base_url().'performance/view_ppa/'.$entry_id.'/'.$staff_id?>" class="btn" style="color:#fff !important;">View My PPA</a>
+        <a href="<?php echo site_url().'performance/view_ppa/'.$entry_id.'/'.$staff_id?>" class="btn" style="color:#fff !important;">View My PPA</a>
 
         <!-- Audit Trail Section -->
         <?php if (!empty($approval_trail)): ?>

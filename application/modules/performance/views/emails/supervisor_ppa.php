@@ -69,7 +69,7 @@
           Please review the submission and take the necessary action at your earliest convenience.
         </p>
 
-        <a href="<?= base_url('performance/view_ppa/' . $entry_id); ?>/<?=$staff_id?>" class="btn" style="color:#fff !important;">Review Submitted PPA</a>
+        <a href="<?= site_url('performance/view_ppa/' . $entry_id); ?>/<?=$staff_id?>" class="btn" style="color:#fff !important;">Review Submitted PPA</a>
 
 
         <p>
