@@ -185,7 +185,7 @@ class Performance extends MX_Controller
     
         $this->notify_ppa_status($data);
 		Modules::run('utility/setFlash', $msg);
-		redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);
+		redirect('performance/view_ppa/' . $entry_id.'/'.$$data['staff_id']);
 	}
 
     public function notify_ppa_status($data)

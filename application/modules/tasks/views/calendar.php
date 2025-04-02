@@ -1,3 +1,4 @@
+<?php $this->load->view('tasks_tabs')?>
 <div class="container mt-5">
     <h2>My Tasks Calendar</h2>
     

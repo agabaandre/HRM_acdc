@@ -1,5 +1,6 @@
+<?php $this->load->view('tasks_tabs')?>
 <div class=" mt-5">
-    
+
     <form id="addActivityForm" method="post" class="needs-validation" novalidate>
         <!-- Quarterly Output -->
         <div class="form-group col-md-4 col-lg-4 col-sm-12 mb-4">

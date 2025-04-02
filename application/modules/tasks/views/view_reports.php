@@ -1,3 +1,4 @@
+<?php $this->load->view('tasks_tabs')?>
 <div class="mt-5"> 
     <h2 class="mb-4">My Reports</h2>
     

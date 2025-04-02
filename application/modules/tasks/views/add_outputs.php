@@ -1,5 +1,7 @@
 <!-- Filter Form -->
+<?php $this->load->view('tasks_tabs')?>
 <div class="card mb-4">
+
   <div class="card-header">
     <h5>Filters</h5>
   </div>
