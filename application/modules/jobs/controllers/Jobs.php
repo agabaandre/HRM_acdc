@@ -209,7 +209,49 @@ public function cron_register(){
             echo "No messages to send.\n";
         }
     }
+//   * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
+    public function send_instant_mails()
+    {
+        $today = date('Y-m-d');
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1' and subject like'PPA%' and email_to NOT LIKE 'xx%'")->result();
+        //dd($this->db->last_query());
 
+        // Check if there are any messages to process
+        if (count($messages) > 0) {
+            foreach ($messages as $message) {
+                $body = $message->body;
+                $to = $message->email_to;
+                // $to ='kibiyed@africacd.org';
+                $subject = $message->subject;
+                $id = $message->id;
+                $next_run = $this->getNextRunDate($message->end_date);
+                $next_run = $next_run->format('Y-m-d');
+               // dd($next_run);
+                    $sending = push_email($to, $subject, $body, $id, $next_run);
+                    if ($sending) {
+                        echo "Message sent to " . $to . "\n";
+                        $today = date("Y-m-d");
+
+                        if ($today == $next_run) {
+                            $status = 1;
+                        } else {
+                            $status = 0;
+                        }
+
+                    $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
+                    $this->db->query("DELETE FROM email_notifications WHERE next_dispatch < DATE_SUB(NOW(), INTERVAL 1 WEEK) AND status = '1'");
+
+                    } else {
+                        echo "Failed to send message to " . $to . "\n";
+                    $this->db->query("UPDATE `email_notifications` SET `status` = '0',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
+
+                    }
+                } 
+            }
+     else {
+            echo "No messages to send.\n";
+        }
+    }
     public function getNextRunDate($end) { 
         $current = new DateTime();
         // Convert $end to a DateTime object if it's a string.
