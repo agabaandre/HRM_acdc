@@ -236,7 +236,7 @@ input[type="number"] {
   <tr>
   <td colspan="4" class="text-center">
 
-    <?php if (!$readonly): ?>
+    <?php if ((!$readonly)&&($ppa->staff_id==$this->session->userdata('user')->staff_id)): ?>
       <!-- Staff Submission Buttons -->
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
