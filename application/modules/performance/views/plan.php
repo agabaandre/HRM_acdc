@@ -228,7 +228,7 @@ input[type="number"] {
   <tr>
   <td colspan="4" class="text-center">
 
-    <?php if ((!$readonly)&&($ppa->staff_id==$this->session->userdata('user')->staff_id)): ?>
+    <?php if (!$readonly):?>
       <br>
       <label>Comments for Approval</label>
       <textarea name="comments" class="form-control" rows="3" placeholder="Enter approval comments..."></textarea>
