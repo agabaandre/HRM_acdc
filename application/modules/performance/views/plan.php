@@ -12,7 +12,10 @@ $contract = Modules::run('auth/contract_info', $staff_id);
 }
 //dd($contract);
 //dd($this->uri->segment(2));
-$readonly = isset($ppa) && $ppa->draft_status == 0 ? 'readonly disabled' : '';
+$ppa_settings=ppa_settings();
+//dd($ppa_settings);
+//dd($ppa);
+$readonly = ((isset($ppa) && $ppa->draft_status == 0 && $ppa->staff_id == $this->session->userdata('user')->staff_id)|| ($ppa->draft_status == 2))? 'readonly disabled' : '';
 
 @$showApprovalBtns = show_ppa_approval_action(@$ppa, @$approval_trail, $this->session->userdata('user'));
 //sdd($showApprovalBtns);
@@ -20,6 +23,7 @@ $readonly = isset($ppa) && $ppa->draft_status == 0 ? 'readonly disabled' : '';
 
 $selected_skills = is_string($ppa->required_skills ?? null) ? json_decode($ppa->required_skills, true) : ($ppa->required_skills ?? []);
 $objectives_raw = $ppa->objectives ?? [];
+
 
 if (is_string($objectives_raw)) {
     $decoded = json_decode($objectives_raw, true);
@@ -229,14 +233,19 @@ input[type="number"] {
   <td colspan="4" class="text-center">
 
     <?php if (!$readonly):?>
+      <?php if($ppa_settings->allow_employee_comments==1):?>
       <br>
       <label>Comments for Approval</label>
       <textarea name="comments" class="form-control" rows="3" placeholder="Enter approval comments..."></textarea>
+      <br>
+        <?php endif; ?>
+      <small style ="color:brown;">Editing is only allowed in draft mode</small>
       <br>
       <!-- Staff Submission Buttons -->
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
     <?php endif; ?>
+    
 
     <?php echo form_close(); ?>
 
@@ -254,9 +263,11 @@ input[type="number"] {
       <button type="submit" class="btn btn-success px-5 me-2" onclick="document.getElementById('approval_action').value = 'approve';">
         Approve
       </button>
+      <?php if($ppa_settings->allow_supervisor_return===1){ ?>
       <button type="submit" class="btn btn-danger px-5" onclick="document.getElementById('approval_action').value = 'return';">
         Return
       </button>
+      <?php } ?>
     </div>
   </form>
 <?php endif; ?>

@@ -3,13 +3,13 @@
 		<!-- general form elements disabled -->
 		<div class="card card-default">
 			<div class="card-header">
-				<h4 class="card-title">Variables</h4>
+				
 				<hr>
 			</div>
 			<!-- /.card-header -->
 
 			<div class="card-body">
-				<?php echo form_open_multipart(base_url('settings/ppa_variables')); ?>
+				<?php echo form_open_multipart(base_url('settings/sysvariables')); ?>
 				<?php foreach ($setting as $key => $value) { ?>
 					<div id="">
 						<label><?php echo strtoupper(str_replace("_", " ", $key)); ?></label>
