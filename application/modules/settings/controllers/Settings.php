@@ -272,6 +272,37 @@ class Settings extends MX_Controller
 			echo Modules::run('templates/main', $data);
 		}
 	}
+
+	public function ppa_variables()
+	{
+		$data['title'] = "PPA Configuration";
+		$data['uptitle'] = "PPA Configuration";
+		$data['module'] = 'settings';
+		$data['view'] = "ppa_variables";
+		$postdata = $this->input->post();
+		$data['setting'] = $this->settings_mdl->get_ppa();
+		if ($this->input->post()) {
+			$res = $this->settings_mdl->update_ppa_variables($postdata);
+			if ($res) {
+				$msg = array(
+					'msg' => 'Successfully Saved',
+					'type' => 'success'
+				);
+				Modules::run('utility/setFlash', $msg);
+				redirect('settings/ppa_variables');
+			} else {
+				$msg = array(
+					'msg' => 'Failed',
+					'type' => 'error'
+				);
+				Modules::run('utility/setFlash', $msg);
+				redirect("settings/ppa_variables");
+			}}
+			else {
+				echo Modules::run('templates/main', $data);
+			}
+		
+	}
 	
 		
 	

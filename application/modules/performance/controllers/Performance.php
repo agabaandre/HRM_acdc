@@ -167,6 +167,12 @@ class Performance extends MX_Controller
 				'updated_at'   => date('Y-m-d H:i:s')
 			]);
 		}
+        else if ($action === 'approve') {
+			$this->db->where('entry_id', $entry_id)->update('ppa_entries', [
+				'draft_status' => 2,
+				'updated_at'   => date('Y-m-d H:i:s')
+			]);
+		}
 	
 		$msg = [
 			'msg'  => $log_action === 'Approved' ? 'PPA approved successfully.' : 'PPA returned for revision.',

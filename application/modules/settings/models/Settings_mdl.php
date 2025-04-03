@@ -187,7 +187,21 @@ class Settings_mdl extends CI_Model
 		$query = $this->db->update('setting', $data);
 	return $query;
 	}
-	public function getSettings()
+    public function update_ppa_variables($data)
+
+	{
+        if(!empty($data)){
+		$this->db->where('id', $data['id']);
+        }
+		$query = $this->db->update('ppa_configs', $data);
+	return $query;
+	}
+   
+	public function get_ppa()
+	{
+	return $this->db->get('ppa_configs')->row();
+	}
+    public function getSettings()
 	{
 	return $this->db->get('setting')->row();
 	}

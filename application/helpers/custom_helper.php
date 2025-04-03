@@ -945,8 +945,15 @@ if (!function_exists('get_last_ppa_approval_action')) {
             ->row(); // returns latest action by that staff for that PPA
     }
 }
-
+if (!function_exists('pa_settings')) {
+    function ppa_settings()
+    {
+        $CI =& get_instance();
+        return $CI->db->get('ppa_configs')->row();
+            
+}
 
 
   
+}
 }
