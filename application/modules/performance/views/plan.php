@@ -61,6 +61,8 @@ input[type="number"] {
   .form-table { width: 100%; border-collapse: collapse; }
   .form-table td { padding-left: 2px; }
 
+  td { padding:6px;}
+
   .objective-table th, .objective-table td { text-align: left; padding: 0px; border: 1px solid #ccc; }
 </style>
 <?php $this->load->view('ppa_tabs')?>
@@ -75,36 +77,44 @@ input[type="number"] {
 <table class="form-table table-bordered">
   <tr>
     <td><b>Name</b></td>
-    <td><input type="text" name="name" class="form-control" value="<?= $contract->fname.' '.$contract->lname ?>" readonly></td>
+    <td><?= $contract->fname.' '.$contract->lname ?></td>
     <td><b>SAP NO</b></td>
-    <td><input type="text" class="form-control" value="<?= $contract->SAPNO ?>" readonly></td>
+    <td><?= $contract->SAPNO ?></td>
   </tr>
   <tr>
     <td><b>Position</b></td>
-    <td><input type="text" class="form-control" value="<?= $contract->job_name ?>" readonly></td>
+    <td><?= $contract->job_name ?></td>
     <td><b>In this Position Since</b></td>
-    <td><input type="text" class="form-control" value="<?= $contract->start_date ?>" readonly></td>
+    <td><?= $contract->start_date ?></td>
   </tr>
   <tr>
     <td><b>Division/Directorate</b></td>
-    <td><input type="text" class="form-control" value="<?= acdc_division($contract->division_id) ?>" readonly></td>
+    <td><?= acdc_division($contract->division_id) ?></td>
     <td><b>Performance Period</b></td>
-    <td><input type="text" class="form-control" name="performance-period" value="<?php if(!empty($ppa->performance_period)){ echo $ppa->performance_period; } else { echo current_period();} ?>" readonly></td>
+    <td><?php if(!empty($ppa->performance_period)){ echo $ppa->performance_period; } else { echo current_period();} ?></td>
   </tr>
   <tr>
     <td><b>First Supervisor</b></td>
     <td colspan="1">
-      <input type="text" class="form-control" name="supervisor_name"
-        value="<?= staff_name(get_supervisor(current_contract($staff_id))->first_supervisor) ?>" readonly>
+      <?= staff_name(get_supervisor(current_contract($staff_id))->first_supervisor) ?>
       <input type="hidden" name="supervisor_id"
         value="<?= get_supervisor(current_contract($staff_id))->first_supervisor ?>">
     </td>
     <td><b>Second Supervisor</b></td>
     <td colspan="">
-      <input type="text" class="form-control" name="supervisor2_id"
-        value="<?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?>" readonly>
+      <?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?>
         <input type="hidden" name="supervisor2_id"
         value="<?= get_supervisor(current_contract($staff_id))->second_supervisor ?>">
+    </td>
+  </tr>
+  <tr>
+    <td><b>Funder</b></td>
+    <td colspan="1">
+     <?php echo $this->db->query("SELECT * FROM `funders` where funder_id=$contract->funder_id")->row()->funder;?>
+    </td>
+    <td><b>Contract Type</b></td>
+    <td colspan="1">
+     <?php echo $this->db->query("SELECT * FROM `contract_types` where contract_type_id=$contract->contract_type_id")->row()->contract_type;?>
     </td>
   </tr>
 </table>
