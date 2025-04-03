@@ -252,10 +252,12 @@ input[type="number"] {
 
 <?php if ($showApprovalBtns == 'show'): ?>
   <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>">
+  <?php if($ppa_settings->allow_employee_comments==1):?>
     <div class="mb-3">
       <label for="comments">Comments for Approval/Return</label>
       <textarea id="comments" name="comments" class="form-control" rows="3" required></textarea>
     </div>
+    <?php endif; ?>
 
     <input type="hidden" name="action" id="approval_action" value="">
 
