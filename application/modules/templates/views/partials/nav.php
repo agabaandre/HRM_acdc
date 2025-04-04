@@ -179,7 +179,7 @@
 							<a href="<?php echo base_url() ?>performance" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class='fa fa-bar-chart'></i>
 								</div>
-								<div class="menu-title">Planner</div>
+								<div class="menu-title">Weekly Planner</div>
 							</a>
 							<ul class="dropdown-menu">
 							<!-- <?php if (in_array('79', $permissions)) : ?>
