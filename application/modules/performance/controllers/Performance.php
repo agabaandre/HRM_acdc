@@ -83,6 +83,8 @@ class Performance extends MX_Controller
 
     // 📝 Insert to approval trail only if submit
     if ($data['submit_action'] === 'submit') {
+        if($staff_id == $this->session->userdata('user')->staff_id){
+
         $this->db->insert('ppa_approval_trail', [
             'entry_id' => $entry_id,
             'staff_id' => $staff_id,
@@ -90,6 +92,15 @@ class Performance extends MX_Controller
             'action' => 'Submitted',
             'created_at' => date('Y-m-d H:i:s')
         ]);
+    }else{
+        $this->db->insert('ppa_approval_trail', [
+            'entry_id' => $entry_id,
+            'staff_id' => $data['supervisor_id'],
+            'comments' => $this->input->post('comments'),
+            'action' => 'Updated',
+            'created_at' => date('Y-m-d H:i:s')
+        ]); 
+    }
 
     //$data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
     $save_data['type']='submission';
