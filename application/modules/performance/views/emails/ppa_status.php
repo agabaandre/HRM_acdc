@@ -48,6 +48,11 @@
         border-radius: 5px;
         margin-top: 10px;
       }
+      .btn:hover {
+      background-color: #005844; /* optional darker shade */
+      color: #ffffff !important; /* ensure text remains visible */
+      text-decoration: none;
+      }
       .audit-table {
         width: 100%; 
         border-collapse: collapse; 

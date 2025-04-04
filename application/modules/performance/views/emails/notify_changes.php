@@ -46,6 +46,11 @@
       text-decoration: none;
       margin-top: 20px;
     }
+    .btn:hover {
+    background-color: #005844; /* optional darker shade */
+    color: #ffffff !important; /* ensure text remains visible */
+    text-decoration: none;
+    }
     .footer {
       text-align: center;
       font-size: 12px;
