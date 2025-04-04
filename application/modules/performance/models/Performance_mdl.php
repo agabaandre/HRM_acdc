@@ -8,13 +8,17 @@ class Performance_mdl extends CI_Model
         parent::__construct();
     }
 
-	public function get_staff_plan($staff_id, $period = null)
+	public function get_staff_plan_id($entry_id)
 	{
-		$this->db->where('staff_id', $staff_id);
-		if ($period) {
-			$this->db->where('performance_period', $period);
+		
+		if ($entry_id) {
+			$this->db->where('entry_id', $entry_id);
+            return $this->db->get('ppa_entries')->row();
 		}
-		return $this->db->get('ppa_entries')->row();
+        else{
+            return FALSE;
+        }
+		
 	}
 
     public function get_plan_by_entry_id($entry_id)

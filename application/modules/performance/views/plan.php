@@ -15,7 +15,10 @@ $contract = Modules::run('auth/contract_info', $staff_id);
 $ppa_settings=ppa_settings();
 //dd($ppa_settings);
 //dd($ppa);
-$readonly = ((isset($ppa) && $ppa->draft_status == 0 && $ppa->staff_id == $this->session->userdata('user')->staff_id)|| ($ppa->draft_status == 2))? 'readonly disabled' : '';
+$readonly = (isset($ppa) && 
+            (($ppa->draft_status == 0 && $ppa->staff_id == $this->session->userdata('user')->staff_id) 
+            || $ppa->draft_status == 2)) 
+            ? 'readonly disabled' : '';
 
 @$showApprovalBtns = show_ppa_approval_action(@$ppa, @$approval_trail, $this->session->userdata('user'));
 //sdd($showApprovalBtns);
@@ -72,7 +75,7 @@ input[type="number"] {
 
 <?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'staff_ppa']); ?>
 
-
+<input type="hidden" name="staff_id" value="<?=$staff_id?>">
 <h4>A. Staff Details</h4>
 <table class="form-table table-bordered">
   <tr>
@@ -153,7 +156,7 @@ input[type="number"] {
 </div>
 
 <hr>
-
+<?php if (@$ppa->draft_status == 0){?>
 <h4>C. Personal Development Plan</h4>
 
 <table class="form-table table-bordered" style="width:100%;">
@@ -171,6 +174,7 @@ input[type="number"] {
     </td>
   </tr>
 </table>
+<?php } ?>
 
 <section class="required_trainings" id="training-section" style="display: <?= ($ppa->training_recommended ?? '') == 'Yes' ? 'block' : 'none' ?>; margin-top: 15px;">
   <table class="form-table table-bordered" style="width:100%;">
@@ -207,9 +211,8 @@ input[type="number"] {
 
 <hr>
 
-<h4>D. Sign Off</h4>
 <table class="form-table">
-  <tr>
+  <!-- <tr>
     <td colspan="4">
       <p>
         I hereby confirm that this PPA has been developed in consultation with my supervisor
@@ -220,24 +223,8 @@ input[type="number"] {
       <input type="checkbox" id="staff_sign_off" name="staff_sign_off" value="1" <?= $readonly ?> <?= ($ppa->staff_sign_off ?? 0) ? 'checked' : '' ?> required>
       <label for="staff_sign_off">Confirm</label>
     </td>
-  </tr>
-  <tr>
-    <td><label>Staff Signature</label><br>
-    <?php if (!empty(staff_details($staff_id)->signature)): ?>
-        <img src="<?= base_url('uploads/staff/signature/' . staff_details($staff_id)->signature) ?>" style="width: 100px; height: 80px;">
-      <?php endif; ?>
-  </td>
-    
-  </tr>
-  <tr>
-    <td><label>Date</label>
-    <br>
-    <?php
-    $created = !empty($ppa->created_at) ? date('j F, Y', strtotime($ppa->created_at)) : date('j F, Y');
-    ?>
-    <input type="text" class="form-control" value="<?= $created ?>" readonly>
-  </td>
-  </tr>
+  </tr> -->
+ 
 
   <tr>
   <td colspan="4" class="text-center">
@@ -249,11 +236,19 @@ input[type="number"] {
       <textarea name="comments" class="form-control" rows="3" placeholder="Enter approval comments..."></textarea>
       <br>
         <?php endif; ?>
-      <small style ="color:brown;">Editing is only allowed in draft mode</small>
+  
       <br>
       <!-- Staff Submission Buttons -->
-      <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save as Draft</button>
+      <?php if ((empty(@$ppa->staff_id))||(@$ppa->staff_id == $this->session->userdata('user')->staff_id)){?>
+      <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save Draft</button>
+      <br><br>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
+      <?php } else {?>
+      <br><br>
+      <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Save Changes (If Any)</button>
+      <?php } ?>
+      <br><br>
+
     <?php endif; ?>
     
 

@@ -19,21 +19,34 @@ class Performance extends MX_Controller
 		$data['module'] = $this->module;
 		$data['title'] = "Performance Plan - " . $this->session->userdata('user')->name;
 		$data['skills'] = $this->db->get('training_skills')->result();
-
+        $performance_period = str_replace(' ','-',current_period());
 		// Fetch existing plan if any
-		//$data['ppa'] = $this->per_mdl->get_staff_plan($staff_id);
+        $data['ppa'] = $this->employee_ppa($performance_period,$staff_id);
+		
 		render('plan', $data);
 	}
+    public function employee_ppa($performance_period,$staff_id){
+        $ppa = $this->db->query("SELECT * FROM ppa_entries WHERE performance_period='$performance_period' and staff_id='$staff_id'")->row();
+        //dd($ppa);
+        if(!empty($ppa)){
+            return $data['ppa']=$ppa;
+           
+        }
+        else{
+           return $data['ppa']=FALSE;
+        }
+
+    }
 
 	public function save_ppa()
 {
     $data = $this->input->post();
-    $staff_id = $this->session->userdata('user')->staff_id;
+    $staff_id = $data['staff_id'];
     $performance_period = str_replace(' ','-',current_period());
     $entry_id = md5($staff_id . '_' . str_replace(' ', '', $performance_period));
 
     $save_data = [
-        'staff_id' => $staff_id,
+        'staff_id' => $data['staff_id'],
         'performance_period' => $performance_period,
         'entry_id' => $entry_id,
         'supervisor_id' => $data['supervisor_id'],
@@ -44,18 +57,28 @@ class Performance extends MX_Controller
         'training_contributions' => $data['training_contributions'] ?? null,
         'recommended_trainings' => $data['recommended_trainings'] ?? null,
         'recommended_trainings_details' => $data['recommended_trainings_details'] ?? null,
-        'staff_sign_off' => isset($data['staff_sign_off']) ? 1 : 0,
+        'staff_sign_off' => 1,
         'draft_status' => $data['submit_action'] === 'submit' ? 0 : 1,
         'updated_at' => date('Y-m-d H:i:s'),
     ];
 
-    $exists = $this->per_mdl->get_staff_plan($staff_id, $performance_period);
+    $exists = $this->per_mdl->get_staff_plan_id($entry_id);
+    //$ppa = $this->db->query("SELECT * FROM ppa_entries WHERE performance_period='$performance_period' and staff_id='$staff_id'")->row();
 
     if ($exists) {
+       // dd($exists);
         $this->db->where('entry_id', $entry_id)->update('ppa_entries', $save_data);
+        $msg = [
+            'msg' => $data['submit_action'] === 'submit' ? 'Saved Successfully.' : 'Draft saved successfully.',
+            'type' => 'success'
+        ];
     } else {
         $save_data['created_at'] = date('Y-m-d H:i:s');
         $this->db->insert('ppa_entries', $save_data);
+        $msg = [
+            'msg' => $data['submit_action'] === 'submit' ? 'Plan submitted for Review.' : 'Draft saved successfully.',
+            'type' => 'success'
+        ];
     }
 
     // 📝 Insert to approval trail only if submit
@@ -73,10 +96,7 @@ class Performance extends MX_Controller
     $this->notify_ppa_status($save_data);
     }
 
-    $msg = [
-        'msg' => $data['submit_action'] === 'submit' ? 'Plan submitted for Review.' : 'Draft saved successfully.',
-        'type' => 'success'
-    ];
+   
 
     Modules::run('utility/setFlash', $msg);
     redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);

@@ -4,7 +4,10 @@ $permissions = $session->permissions;
 $staff_id = $this->session->userdata('user')->staff_id;
 $current_period = str_replace(' ','-',current_period());
 $ppa_entryid = md5($staff_id . '_' . str_replace(' ', '', $current_period));
-@$ppa_exists = $this->per_mdl->get_staff_plan($staff_id, $current_period);
+
+//dd();
+@$ppa_exists = $this->per_mdl->get_staff_plan_id($ppa_entryid);
+// dd($staff_id);
 ?>
 <div class="container">
     <ul class="nav nav-tabs mb-3" id="ppaTabMenu" role="tablist">

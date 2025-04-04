@@ -671,10 +671,7 @@ document.addEventListener('DOMContentLoaded', function () {
       isValid = false;
     }
 
-    if (!document.getElementById('staff_sign_off')?.checked) {
-      errorMessages.push('You must confirm and sign off the form.');
-      isValid = false;
-    }
+   
 
     if (!isValid) {
       e.preventDefault();
