@@ -156,7 +156,7 @@ input[type="number"] {
 </div>
 
 <hr>
-<?php if (@$ppa->draft_status == 0){?>
+<?php i//f (@$ppa->draft_status == 0){?>
 <h4>C. Personal Development Plan</h4>
 
 <table class="form-table table-bordered" style="width:100%;">
@@ -174,7 +174,7 @@ input[type="number"] {
     </td>
   </tr>
 </table>
-<?php } ?>
+<?php //} ?>
 
 <section class="required_trainings" id="training-section" style="display: <?= ($ppa->training_recommended ?? '') == 'Yes' ? 'block' : 'none' ?>; margin-top: 15px;">
   <table class="form-table table-bordered" style="width:100%;">
