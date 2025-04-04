@@ -203,15 +203,6 @@ if (in_array('79', $permissions)) : ?>
             <label for="edit_financial_year">Financial Year:</label>
             <input type="text" id="edit_financial_year" name="financial_year" class="form-control" required>
           </div>
-          <div class="form-group mb-2">
-            <label for="edit_period">Period:</label>
-            <select id="edit_period" name="period" class="form-control" required>
-              <option value="Q1">Q1</option>
-              <option value="Q2">Q2</option>
-              <option value="Q3">Q3</option>
-              <option value="Q4">Q4</option>
-            </select>
-          </div>
           <button type="submit" class="btn btn-primary">Save Changes</button>
         </form>
       </div>
