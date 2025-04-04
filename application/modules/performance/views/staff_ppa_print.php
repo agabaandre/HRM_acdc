@@ -82,6 +82,12 @@
     <td><b>Second Supervisor</b></td>
     <td><?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?></td>
   </tr>
+  <tr>
+    <td><b>Funder</b></td>
+    <td> <?php echo $this->db->query("SELECT * FROM `funders` where funder_id=$contract->funder_id")->row()->funder;?></td>
+    <td><b>Contract Type</b></td>
+    <td><?php echo $this->db->query("SELECT * FROM `contract_types` where contract_type_id=$contract->contract_type_id")->row()->contract_type;?></td>
+  </tr>
 </table>
   <table class="objective-table">
   <tr style="background-color: #f2f2f2;">
