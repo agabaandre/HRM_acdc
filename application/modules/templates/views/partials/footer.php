@@ -776,6 +776,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
+<script>
+$(document).ready(function () {
+    function loadMessages() {
+        $.ajax({
+            url: '<?=base_url("dashboard/fetch_messages_ajax");?>',
+            method: 'GET',
+            dataType: 'json',
+            success: function (messages) {
+                $('#ajax-messages').empty();
+                $('#message-count').text(messages.length);
+
+                messages.forEach(function (message) {
+                    let html = `
+                        <a class="dropdown-item" href="javascript:;">
+                            <div class="d-flex align-items-center" style="margin:5px;">
+                                <div class="user-online"></div>
+                                <div class="flex-grow-1">
+                                    <h6 class="msg-name">${message.trigger} <span class="msg-time float-end">${message.time_ago}</span></h6>
+                                    <p class="msg-info">${message.subject}</p>
+                                </div>
+                            </div>
+                        </a>`;
+                    $('#ajax-messages').append(html);
+                });
+            }
+        });
+    }
+
+    loadMessages();
+
+    // Optional: refresh every 30 seconds
+    setInterval(loadMessages, 30000);
+});
+</script>
 
 
 
