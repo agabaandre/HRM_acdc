@@ -36,12 +36,22 @@ class Dashboard extends MX_Controller
 
 		render('home', $data);
 	}
-	public function messages($staffid){
-					$this->db->where('staff_id', "$staffid");
-					$this->db->order_by('created_at', 'ASC');
-					$this->db->limit(10);
-		return $messages = $this->db->get('email_notifications')->result();
+	public function fetch_messages_ajax() {
+		$staff_id = $this->session->userdata('user')->staff_id;
+		$this->db->where('staff_id', $staff_id);
+		$this->db->order_by('created_at', 'DESC');
+		$this->db->limit(5);
+		$messages = $this->db->get('email_notifications')->result();
+	
+		// Format message times
+		foreach ($messages as &$message) {
+			$message->time_ago = time_ago($message->created_at) . ' ago';
+			$message->trigger = ucwords($message->trigger);
+		}
+	
+		echo json_encode($messages);
 	}
+	
 	public function dashboardData()
 	{
 
@@ -53,5 +63,38 @@ class Dashboard extends MX_Controller
     $results = $this->dash_mdl->search_staff($query);
     echo json_encode($results);
 }
+public function all_messages() {
+    $data['module'] = $this->dashmodule;
+    $data['title'] = "Main Dashboard";
+
+    render('all_messages', $data); // Will use views/messages.php
+}
+
+public function search_messages() {
+    $staff_id = $this->session->userdata('user')->staff_id;
+    $query = $this->input->get('query');
+
+    $this->db->where('staff_id', $staff_id);
+
+    if (!empty($query)) {
+        $this->db->group_start()
+            ->like('subject', $query)
+            ->or_like('body', $query)
+            ->or_like('trigger', $query)
+            ->group_end();
+    }
+
+    $this->db->order_by('created_at', 'DESC');
+    $messages = $this->db->get('email_notifications')->result();
+
+    foreach ($messages as &$message) {
+        $message->time_ago = time_ago($message->created_at);
+        $message->trigger = ucwords($message->trigger);
+    }
+	//dd($messages);
+
+    echo json_encode($messages);
+}
+
 
 }

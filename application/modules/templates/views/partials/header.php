@@ -56,13 +56,9 @@
 						</div>
 					</li>
 
-					<?php 
-							$staff_id = $this->session->userdata('user')->staff_id;
-							$messages =Modules::run("dashboard/messages",$staff_id); 
-					?>
-				
 					<li class="nav-item dropdown-large">
-						<a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"> <span class="alert-count"><?=@count($messages);?></span>
+						<a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+							<span class="alert-count" id="message-count">0</span>
 							<i class='bx bx-comment' style="color:#FFF;"></i>
 						</a>
 						<div class="dropdown-menu dropdown-menu-end">
@@ -72,47 +68,31 @@
 									<p class="msg-header-clear ms-auto">Marks all as read</p>
 								</div>
 							</a>
-
-						    <?php
-							foreach($messages as $message) {
-							?>
-							<div class="header-message-list">
-								<a class="dropdown-item" href="javascript:;">
-									<div class="d-flex align-items-center" style="margin:5px;">
-										<div class="user-online">
-											
-										</div>
-										<div class="flex-grow-1">
-											<h6 class="msg-name"><?=ucwords($message->trigger);?> <span class="msg-time float-end"><?=time_ago($message->created_at);?>
-													ago</span></h6>
-											<p class="msg-info"><?=$message->subject;?></p>
-										</div>
-									</div>
-								</a>
-
+							<div class="header-message-list" id="ajax-messages">
+								<!-- Messages will be loaded here via AJAX -->
 							</div>
-							<?php } ?>
-							<a href="javascript:;">
+							<a href="<?= base_url('dashboard/all_messages'); ?>">
 								<div class="text-center msg-footer">View All Messages</div>
 							</a>
 						</div>
 					</li>
+
 				</ul>
 			</div>
 			<div class="user-box dropdown">
 				<a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-				
-					<?php 
-						$full_name = $this->session->userdata('user')->name;
-						$name_parts = explode(" ", trim($full_name), 2); 
-						$surname = isset($name_parts[1]) ? $name_parts[1] : ''; 
-						$other_name = $name_parts[0];
-						$image_path=base_url().'uploads/staff/'.$this->session->userdata('user')->photo;
-						$photo = $this->session->userdata('user')->photo;
-						echo  $staff_photo = generate_user_avatar( $other_name,$surname, $image_path,$photo);
-							
+
+					<?php
+					$full_name = $this->session->userdata('user')->name;
+					$name_parts = explode(" ", trim($full_name), 2);
+					$surname = isset($name_parts[1]) ? $name_parts[1] : '';
+					$other_name = $name_parts[0];
+					$image_path = base_url() . 'uploads/staff/' . $this->session->userdata('user')->photo;
+					$photo = $this->session->userdata('user')->photo;
+					echo  $staff_photo = generate_user_avatar($other_name, $surname, $image_path, $photo);
+
 					?>
-					
+
 					<div class="user-info ps-3">
 						<p class="user-name mb-0"><?php echo $this->session->userdata('user')->name; ?></p>
 						<p class="designattion mb-0"></p>
