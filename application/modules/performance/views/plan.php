@@ -156,7 +156,7 @@ input[type="number"] {
 </div>
 
 <hr>
-<?php i//f (@$ppa->draft_status == 0){?>
+<?php //if (@$ppa->draft_status == 0){?>
 <h4>C. Personal Development Plan</h4>
 
 <table class="form-table table-bordered" style="width:100%;">

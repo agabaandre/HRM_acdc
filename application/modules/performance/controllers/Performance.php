@@ -240,14 +240,13 @@ class Performance extends MX_Controller
         // Handle submission notifications
         if ($data['type'] === 'submission') {
             $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
-    
-            // 1. Notify staff (confirmation)
-            $staff_data = array_merge($data, [
-                'subject' => "PPA Submission Confirmation " . date('Y-m-d H:i:s'),
+            if($staff_id == $this->session->userdata('user')->staff_id){
+               $subject = "PPA Submission Confirmation " . date('Y-m-d H:i:s');
+               $staff_data = array_merge($data, [
+                'subject' => $subject,
                 'email_to' => $staff_email . ';' . settings()->email,
                 'body' => $this->load->view('emails/submission', $data, true),
             ]);
-    
             golobal_log_email(
                 $trigger_name,
                 $staff_data['email_to'],
@@ -258,8 +257,32 @@ class Performance extends MX_Controller
                 $dispatch,
                 $entry_log_id
             );
+            }
+            else{
+             $subject ="PPA Details Update Notification " . date('Y-m-d H:i:s');
+             $staff_data = array_merge($data, [
+                'subject' => $subject,
+                'email_to' => $staff_email . ';' . settings()->email,
+                'body' => $this->load->view('emails/notify_changes', $data, true),
+            ]);
+
+            golobal_log_email(
+                $trigger_name,
+                $staff_data['email_to'],
+                $staff_data['body'],
+                $staff_data['subject'],
+                $staff_id,
+                date('Y-m-d'),
+                $dispatch,
+                $entry_log_id
+            );
+            }
+            // 1. Notify staff (confirmation)
+            
     
-            // 2. Notify supervisor
+            
+            if($staff_id == $this->session->userdata('user')->staff_id){
+            // 1. Notify supervisor
             $supervisor_data = array_merge($data, [
                 'subject' => "PPA Submission Notification " . date('Y-m-d H:i:s'),
                 'email_to' => $supervisor_email . ';' . settings()->email,
@@ -277,13 +300,34 @@ class Performance extends MX_Controller
                 $entry_log_id
             );
         }
+        else{
+             // 2. Notify supervisor on changes
+             $supervisor_data = array_merge($data, [
+                'subject' => "PPA Details Update Notification " . date('Y-m-d H:i:s'),
+                'email_to' => $supervisor_email . ';' . settings()->email,
+                'body' => $this->load->view('emails/supervisor_ppa', $data, true),
+            ]);
+    
+            golobal_log_email(
+                $trigger_name,
+                $supervisor_data['email_to'],
+                $supervisor_data['body'],
+                $supervisor_data['subject'],
+                $supervisor_id,
+                date('Y-m-d'),
+                $dispatch,
+                $entry_log_id
+            );
+
+        }
+       }
     
         // Handle status update notifications to staff
         if ($data['type'] === 'status_update') {
             $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
             $data['subject'] = "PPA Status Update " . date('Y-m-d H:i:s');
             $data['status'] = $data['status'] ?? 'Pending';
-            $data['body'] = $this->load->view('emails/ppa_status', $data, true);
+            $data['body'] = $this->load->view('emails/super_ppa_changes', $data, true);
             $data['email_to'] = $staff_email . ';' . settings()->email;
     
             golobal_log_email(
