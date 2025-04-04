@@ -118,7 +118,9 @@
 								<div class="menu-title">Performance</div>
 							</a>
 							<ul class="dropdown-menu">
-							  <?php if (in_array('38', $permissions) && !$ppa_exists) : ?>
+							  <?php if (in_array('38', $permissions) && !$ppa_exists) : 
+								//dd($ppa_exists);
+								?>
 								<li>
 									<a class="dropdown-item" href="<?php echo base_url('performance'); ?>">
 									<i class="bx bx-right-arrow-alt"></i>Create PPA

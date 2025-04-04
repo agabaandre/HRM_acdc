@@ -828,7 +828,8 @@ function curl_send_post($url, $body, $headers) {
             $isSupervisor1 = isset($ppa->supervisor_id) && $ppa->supervisor_id == $staff_id;
             $isSupervisor2 = isset($ppa->supervisor2_id) && $ppa->supervisor2_id == $staff_id;
     
-            @$last_action = count($approval_trail) > 0 ? end($approval_trail)->action ?? null : null;
+            $last_action = (is_array($approval_trail) && count($approval_trail) > 0) ? (end($approval_trail)->action ?? null) : null;
+
            // dd($last_action);
     
             $supervisor1Approved = false;
