@@ -24,16 +24,6 @@
                 <input type="text" name="employee_name" class="form-control" placeholder="Employee Name" 
                     value="<?php echo isset($_GET['employee_name']) ? $_GET['employee_name'] : ''; ?>">
             </div>
-            <!-- Period -->
-            <div class="col-md-3">
-                <select name="period" class="form-control">
-                    <option value="">All Periods</option>
-                    <option value="Q1" <?php echo (isset($_GET['period']) && $_GET['period'] == 'Q1') ? 'selected' : ''; ?>>Q1</option>
-                    <option value="Q2" <?php echo (isset($_GET['period']) && $_GET['period'] == 'Q2') ? 'selected' : ''; ?>>Q2</option>
-                    <option value="Q3" <?php echo (isset($_GET['period']) && $_GET['period'] == 'Q3') ? 'selected' : ''; ?>>Q3</option>
-                    <option value="Q4" <?php echo (isset($_GET['period']) && $_GET['period'] == 'Q4') ? 'selected' : ''; ?>>Q4</option>
-                </select>
-            </div>
         </div>
         <br>
         <div class="row">

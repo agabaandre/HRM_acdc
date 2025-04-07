@@ -13,8 +13,13 @@ class Tasks extends MX_Controller {
     public function activity() {
  
 		$data['module'] = 'tasks';
-		$data['title'] = "Add Activity";
-        $data['outputs'] = $this->tasks_mdl->get_quarterly_output();
+		$data['title'] = "Tasks";
+        $formdata=$this->input->post();
+        if(empty($formdata['output'])){
+        $output_id ='';
+       }
+        $division_id = $this->session->userdata('user')->division_id;
+        $data['outputs'] = $this->tasks_mdl->get_output($output_id,$division_id);
        render('add_activity', $data);
     }
 
@@ -124,10 +129,10 @@ class Tasks extends MX_Controller {
         $staff_id = $this->session->userdata('user')->staff_id;
 
         // Fetch activities from the model
-        $activities = $this->tasks_mdl->get_activities($staff_id, $output_id, $start_date, $end_date);
+        $activities = $this->tasks_mdl->get_planner_tasks($staff_id, $output_id, $start_date, $end_date);
 
         // Return JSON response
-       // dd($activities);
+        //dd($activities);
         echo json_encode($activities);
     }
     public function fetch_pending_activities() {
@@ -302,7 +307,6 @@ class Tasks extends MX_Controller {
         $activity_name  = $this->input->get('activity_name');
         $report_status  = $this->input->get('status');  // corresponds to Report Status filter
         $employee_name  = $this->input->get('employee_name');
-        $period         = $this->input->get('period');
         $output_id      = $this->input->get('output_id'); // updated input name to match view
         $quarter        = $this->input->get('quarter');
         $start_date     = $this->input->get('start_date');

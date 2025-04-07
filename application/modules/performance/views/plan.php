@@ -16,8 +16,8 @@ $ppa_settings=ppa_settings();
 //dd($ppa_settings);
 //dd($ppa);
 $readonly = (isset($ppa) && 
-            (($ppa->draft_status == 0 && $ppa->staff_id == $this->session->userdata('user')->staff_id) 
-            || $ppa->draft_status == 2)) 
+            ((@$ppa->draft_status == 0 && @$ppa->staff_id == $this->session->userdata('user')->staff_id) 
+            || @$ppa->draft_status == 2)) 
             ? 'readonly disabled' : '';
 
 @$showApprovalBtns = show_ppa_approval_action(@$ppa, @$approval_trail, $this->session->userdata('user'));
