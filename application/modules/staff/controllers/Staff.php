@@ -420,7 +420,7 @@ class Staff extends MX_Controller
 		$staffid = $data['staff_id'];
 		$q= $this->staff_mdl->update_contract($data);
 		//dd($data);
-		$this->notify_contract_status_change($data);
+		//$this->notify_contract_status_change($data);
 		if ($q) {
 			$msg = array(
 				'msg' => 'Staff Updated successfully.',
@@ -436,6 +436,7 @@ class Staff extends MX_Controller
 			);
 
 		}
+		Modules::run('utility/setFlash', $msg);
 		redirect("staff/staff_contracts/".$staffid);
 	}
 
@@ -589,6 +590,9 @@ public function new_submit()
         if ($staff_id) {
             $contract_id = $this->staff_mdl->add_contract_information($staff_id, $job_id, $job_acting_id, $grade_id, $contracting_institution_id, $funder_id, $first_supervisor, $second_supervisor, $contract_type_id, $duty_station_id, $division_id, $start_date, $end_date, $status_id, $file_name, $comments);
             if ($contract_id) {
+				$data['status_id']=1;
+				$data['staff_id']=$staff_id;
+				$this->notify_contract_status_change($data);
                 $response = array(
 					'staff_id'=>$staff_id,
                     'msg'  => 'Staff information saved successfully.',

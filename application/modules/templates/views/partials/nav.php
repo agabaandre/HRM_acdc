@@ -187,11 +187,11 @@
 									</li>
 								<?php endif; ?> -->
 								<?php if (in_array('79', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/outputs"><i class="bx bx-right-arrow-alt"></i>Outputs</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>workplan"><i class="bx bx-right-arrow-alt"></i>Workplan</a>
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('81', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/activity"><i class="bx bx-right-arrow-alt"></i>Activities</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/activity"><i class="bx bx-right-arrow-alt"></i>Sub Activities</a>
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('75', $permissions)) : ?>

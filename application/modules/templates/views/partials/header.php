@@ -1,4 +1,23 @@
 <!--start header -->
+<style>
+.modal.modal-bottom .modal-dialog {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  max-height: 90vh;
+  transition: transform 0.3s ease-out;
+}
+
+.modal.fade .modal-dialog.modal-bottom {
+  transform: translateY(100%);
+}
+
+.modal.fade.show .modal-dialog.modal-bottom {
+  transform: translateY(0);
+}
+</style>
 <header>
 	<div class="topbar d-flex">
 		<nav class="navbar navbar-expand">

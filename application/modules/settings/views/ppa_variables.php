@@ -13,9 +13,9 @@
 				<?php foreach ($setting as $key => $value) { ?>
 					<div id="">
 						<label><?php echo strtoupper(str_replace("_", " ", $key)); ?></label>
-						<textarea class="form-control" name="<?php echo $key; ?>" style="width:100%;" <?php if ($key == 'id') {
-																											echo "style='display:none;'";
-																										} ?>><?php echo $value; ?></textarea>
+						<input type="text" class="form-control" name="<?php echo $key; ?>" style="width:100%; padding:10px;" value="<?php echo $value; ?>" if <?php if ($key == 'id') {
+																											echo "readonly";
+																										} ?>>
 					</div>
 				<?php  } ?>
 
