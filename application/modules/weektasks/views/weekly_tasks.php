@@ -191,28 +191,26 @@ $(function () {
   $(document).on('click', '.edit-btn', function () {
   const data = $(this).data();
 
-  // Basic fields
   $('#edit_id').val(data.id);
   $('#edit_name').val(data.name);
   $('#edit_comments').val(data.comments);
   $('#edit_status').val(data.status);
 
+  // Step 1: Clear checkboxes only inside #editModal
+  $('#editModal .edit-staff-checkbox').prop('checked', false);
 
-  $('.edit-staff-checkbox').prop('checked', false);
-
-
-  const staff_ids_raw = $(this).attr('data-staff_id'); // this is the FIX
+  // Step 2: Get staff IDs from button and check them inside #editModal
+  const staff_ids_raw = $(this).attr('data-staff_id');
 
   if (staff_ids_raw) {
-    const staffIds = staff_ids_raw.split(',');
+    const staffIds = staff_ids_raw.toString().split(',');
     staffIds.forEach(id => {
-      $(`#staff_${id.trim()}`).prop('checked', true);
+      $('#editModal #staff_' + id.trim()).prop('checked', true);
     });
   }
 
   $('#editModal').modal('show');
 });
-
 
 
 
