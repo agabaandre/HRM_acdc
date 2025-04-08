@@ -1,111 +1,87 @@
 <?php $this->load->view('tasks_tabs')?>
-<div class=" mt-5">
+<div class="modal fade" id="addActivitiesModal" tabindex="-1" aria-labelledby="addActivitiesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <form id="addActivityForm" method="post" class="needs-validation" novalidate>
 
-    <form id="addActivityForm" method="post" class="needs-validation" novalidate>
-        <!-- Quarterly Output -->
-        <div class="form-group col-md-4 col-lg-4 col-sm-12 mb-4">
-          <label for="output"><h5>Work Plan Activity:</h5></label>
-          <?php @$divsion_id = $this->session->userdata('user')->division_id; ?>
-                                <select name="quarterly_output_id" class="form-control form-control-md select2"  required>
-                                    <option value="">Select Output</option>
-                                    <?php foreach ($outputs as $deliverable): ?>
-                                        <?php if (in_array($deliverable->divsion_id, [$division_id])): ?>
-                                            <option value="<?php echo $deliverable->id; ?>">
-                                                <?php echo $deliverable->activity_name; ?>
-                                            </option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                                <div class="invalid-feedback">Intermediate Outcome</div>
-        </div>
-        <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
-       
-
-        <!-- Table-like structure for dynamic fields -->
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                  
-                        <th>Activity Name</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Comments</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php for ($i = 0; $i < 1; $i++): ?>
-                        <tr>
-                          
-
-                            <!-- Activity Name -->
-                            <td>
-                                <input type="text" name="activity_name" class="form-control form-control-md" required autocomplete="false">
-                                <div class="invalid-feedback">Please enter the activity name.</div>
-                            </td>
-
-                            <!-- Start Date -->
-                            <td>
-                                <input type="text" name="start_date" class="form-control form-control-md datepicker" required autocomplete="off">
-                                <div class="invalid-feedback">Please select a start date.</div>
-                            </td>
-
-                            <!-- End Date -->
-                            <td>
-                                <input type="text" name="end_date" class="form-control form-control-md datepicker" required autocomplete="off">
-                                <div class="invalid-feedback">Please select an end date.</div>
-                            </td>
-                           
-
-                          
-
-                            <!-- Comments -->
-                            <td>
-                                <textarea name="comments" class="form-control form-control-md" rows="1"></textarea>
-                            </td>
-                        </tr>
-                    <?php endfor; ?>
-                </tbody>
-            </table>
+        <div class="modal-header">
+          <h5 class="modal-title" id="addActivitiesModalLabel">Add New Sub-Activities</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
 
-        <!-- Submit Button -->
-        <div class="form-group mt-3">
-            <button type="submit" class="btn btn-dark">Add Activities</button>
-        </div>
-    </form>
-</div>
+        <div class="modal-body">
 
+          <!-- Output Selection -->
+          <div class="mb-4">
+            <label for="output" class="form-label fw-bold">Work Plan Activity:</label>
+            <?php @$division_id = $this->session->userdata('user')->division_id; ?>
+            <select name="quarterly_output_id" class="form-select select2" required>
+              <option value="">Select Output</option>
+              <?php foreach ($outputs as $deliverable): ?>
 
-<!-- Filters -->
-<div class="mt-4">
-    <h5>Filter Sub-Activities</h5>
-    <div class="row">
-        <div class="col-md-4">
-            <label for="filterOutput">Output:</label>
-            <select id="filterOutput" class="form-control select2">
-                <option value="">All Outputs</option>
-                <?php foreach ($outputs as $deliverable): ?>
-                    <?php if (in_array($deliverable->unit_id, [$unit_id])): ?>
-                    <option value="<?php echo $deliverable->id; ?>"><?php echo $deliverable->activity_name; ?></option>
-                    <?php endif;?>
-                <?php endforeach; ?>
-                   
+                <?php 
+                    
+                   // dd($deliverable);
+                    if (in_array($deliverable->division_id, [$division_id])): ?>
+                  <option value="<?= $deliverable->id ?>"><?= $deliverable->activity_name ?></option>
+                <?php endif; ?>
+              <?php endforeach; ?>
             </select>
+            <div class="invalid-feedback">Please select a work plan activity.</div>
+          </div>
+
+          <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>">
+
+          <!-- Activities Table -->
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead class="table-light text-center">
+                <tr>
+                  <th>Activity Name</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Comments</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php for ($i = 0; $i < 3; $i++): ?>
+                  <tr>
+                    <td>
+                      <input type="text" name="activity_name[]" class="form-control" required>
+                      <div class="invalid-feedback">Required</div>
+                    </td>
+                    <td>
+                      <input type="text" name="start_date[]" class="form-control datepicker" required autocomplete="off">
+                      <div class="invalid-feedback">Required</div>
+                    </td>
+                    <td>
+                      <input type="text" name="end_date[]" class="form-control datepicker" required autocomplete="off">
+                      <div class="invalid-feedback">Required</div>
+                    </td>
+                    <td>
+                      <textarea name="comments[]" class="form-control" rows="1"></textarea>
+                    </td>
+                  </tr>
+                <?php endfor; ?>
+              </tbody>
+            </table>
+          </div>
+
         </div>
-        <div class="col-md-3">
-            <label for="filterStartDate">Start Date:</label>
-            <input type="text" id="filterStartDate" class="form-control datepicker" autocomplete="off">
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Save Activities</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         </div>
-        <div class="col-md-3">
-            <label for="filterEndDate">End Date:</label>
-            <input type="text" id="filterEndDate" class="form-control datepicker" autocomplete="off">
-        </div>
-        <div class="col-md-2">
-            <button id="applyFilters" class="btn btn-primary mt-4">Apply Filters</button>
-        </div>
+
+      </form>
     </div>
+  </div>
 </div>
+
+<button class="btn btn-dark mb-3" data-bs-toggle="modal" data-bs-target="#addActivitiesModal">
+  <i class="fa fa-plus-circle me-1"></i> Add Sub-Activities
+</button>
 
 <!-- Activities Table -->
 <div class="table-responsive mt-3">
@@ -177,7 +153,7 @@
 
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Weekly Activity Report</h5>
+                <h5 class="modal-title">End of Activity Report</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -197,18 +173,7 @@
                         <input type="text" id="report_end_date" class="form-control" disabled autocomplete="false">
                     </div>
                     <div class="form-group">
-                    <label for="output">Report Week:</label>
-                    <?php $unit_id = $this->session->userdata('user')->unit_id; ?>
-                                            <select name="week" class="form-control form-control-md" id="report_week"  required>
-                                                <option value="1">Week 1</option>
-                                                <option value="2">Week 2</option>
-                                                <option value="3">Week 3</option>
-                                                <option value="4">Week 4</option>
-                                               
-                                                    
-                                            </select>
-                                            <div class="invalid-feedback">Please select a Quarterly Output.</div>
-                    </div>
+    
                     <div class="form-group">
                         <label>Report</label>
                         <textarea id="report_description" class="form-control summernote" rows="20"></textarea>

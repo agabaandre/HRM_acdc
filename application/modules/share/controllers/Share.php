@@ -100,6 +100,22 @@ public function visualise($key)
               AND sc.division_id != '' 
               AND sc.division_id != '27'";
 
+
+
+// SELECT `s`.`staff_id`, `s`.`SAPNO`, `s`.`title`, `s`.`fname`, `s`.`lname`, `s`.`oname`, `s`.`gender`, `s`.`date_of_birth`, `s`.`work_email`, `s`.`tel_1`, `s`.`tel_2`, `s`.`whatsapp`, `s`.`photo`, `s`.`private_email`, `s`.`physical_location`, `sc`.`division_id`, `sc`.`job_id`, `j`.`job_name`, `sc`.`start_date`, `sc`.`end_date`, `sc`.`status_id`, `d`.`division_name`, `ds`.`duty_station_name`, `g`.`grade`, `st`.`status` ◀
+// FROM `staff` `s`
+// LEFT JOIN `staff_contracts` `sc` ON `sc`.`staff_id` = `s`.`staff_id`
+// LEFT JOIN `grades` `g` ON `g`.`grade_id` = `sc`.`grade_id`
+// LEFT JOIN `divisions` `d` ON `d`.`division_id` = `sc`.`division_id`
+// LEFT JOIN `duty_stations` `ds` ON `ds`.`duty_station_id` = `sc`.`duty_station_id`
+// LEFT JOIN `jobs` `j` ON `j`.`job_id` = `sc`.`job_id`
+// LEFT JOIN `status` `st` ON `st`.`status_id` = `sc`.`status_id`
+// WHERE sc.staff_contract_id IN (SELECT MAX(staff_contract_id)
+// FROM `staff_contracts`
+// GROUP BY `staff_id`)
+// AND `sc`.`status_id` IN(1, 2, 3, 7)
+// ORDER BY `s`.`fname` ASC
+
         $result = $this->db->query($sql11)->result_array();
 
         $data = array(); // Initialize $data array

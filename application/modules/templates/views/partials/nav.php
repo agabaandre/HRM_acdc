@@ -176,7 +176,7 @@
 
 					<?php if  (in_array('78', $permissions)): ?>
 						<li class="nav-item dropdown">
-							<a href="<?php echo base_url() ?>performance" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+							<a href="<?php echo base_url() ?>weeklytasks/calendar" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class='fa fa-bar-chart'></i>
 								</div>
 								<div class="menu-title">Weekly Task Planner</div>
@@ -195,13 +195,13 @@
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('75', $permissions)) : ?>
-									<!-- <li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/approve_activities"><i class="bx bx-right-arrow-alt"></i>Approve Activities</a>
-									</li> -->
-								<?php endif; ?>
-								<?php if (in_array('75', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/view_reports"><i class="bx bx-right-arrow-alt"></i>Weekly Report</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>weeklytasks/weeklytasks"><i class="bx bx-right-arrow-alt"></i>Weekly Tasks</a>
 									</li>
 								<?php endif; ?>
+								<!-- <?php if (in_array('75', $permissions)) : ?>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>tasks/view_reports"><i class="bx bx-right-arrow-alt"></i>Weekly Report</a>
+									</li>
+								<?php endif; ?> -->
 
 							</ul>
 						</li>
