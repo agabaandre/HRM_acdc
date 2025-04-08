@@ -25,7 +25,7 @@ $segment = $this->uri->segment(2);
 
     <?php if (in_array('75', $permissions)) : ?>
       <li class="nav-item" role="presentation">
-        <a class="nav-link <?php if ($this->uri->segment(2) == 'tasks') echo 'active'; ?>" href="<?= base_url('weeklytasks/tasks'); ?>">
+        <a class="nav-link <?php if ($this->uri->segment(2) == 'tasks') echo 'active'; ?>" href="<?= base_url('weektasks/tasks'); ?>">
           <i class="bx bx-file"></i> Weekly Tasks
         </a>
       </li>
@@ -33,7 +33,7 @@ $segment = $this->uri->segment(2);
 
     <?php if (in_array('79', $permissions)) : ?>
       <li class="nav-item" role="presentation">
-        <a class="nav-link <?php if ($this->uri->segment(2) == 'calendar') echo 'active'; ?>" href="<?= base_url('weeklytasks/calendar'); ?>">
+        <a class="nav-link <?php if ($this->uri->segment(2) == 'calendar') echo 'active'; ?>" href="<?= base_url('weektasks/calendar'); ?>">
           <i class="bx bx-calendar"></i> Weely Task Calendar
         </a>
       </li>

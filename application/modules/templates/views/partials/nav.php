@@ -176,7 +176,7 @@
 
 					<?php if  (in_array('78', $permissions)): ?>
 						<li class="nav-item dropdown">
-							<a href="<?php echo base_url() ?>weeklytasks/calendar" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
+							<a href="<?php echo base_url() ?>weektasks/calendar" class="nav-link  <?php echo activelink('staff_report', $this->uri->segment(1)) ?>">
 								<div class="parent-icon"><i class='fa fa-bar-chart'></i>
 								</div>
 								<div class="menu-title">Weekly Task Planner</div>
@@ -195,7 +195,7 @@
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('75', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>weeklytasks/tasks"><i class="bx bx-right-arrow-alt"></i>Weekly Tasks</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>weektasks/tasks"><i class="bx bx-right-arrow-alt"></i>Weekly Tasks</a>
 									</li>
 								<?php endif; ?>
 								<!-- <?php if (in_array('75', $permissions)) : ?>

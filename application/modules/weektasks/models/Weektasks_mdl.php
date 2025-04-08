@@ -1,7 +1,7 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Weeklytasks_mdl extends CI_Model {
+class Weektasks_mdl extends CI_Model {
 
     public function get_sub_activities() {
         $division_id = $this->session->userdata('user')->division_id;
