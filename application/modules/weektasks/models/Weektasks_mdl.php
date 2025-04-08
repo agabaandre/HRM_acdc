@@ -138,6 +138,20 @@ class Weektasks_mdl extends CI_Model {
             ->get()
             ->result();
     }
+
+    public function get_tasks_by_staff_and_range($staff_id, $start_date, $end_date) {
+        return $this->db
+            ->select('w.*, p.activity_name AS parent_activity')
+            ->from('work_plan_weekly_tasks w')
+            ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
+            ->where("FIND_IN_SET('$staff_id', w.staff_id) >", 0) // match staff in comma list
+            ->where('w.start_date >=', $start_date)
+            ->where('w.end_date <=', $end_date)
+            ->order_by('w.start_date', 'ASC')
+            ->get()
+            ->result();
+    }
+    
     
     
 }
