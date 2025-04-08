@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initialView: 'dayGridWeek',
     height: "auto",
     allDaySlot: true,
-    events: '<?= base_url("weeklytasks/get_staff_events") ?>',
+    events: '<?= base_url("weektasks/get_staff_events") ?>',
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',

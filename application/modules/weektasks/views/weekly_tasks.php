@@ -104,7 +104,7 @@ $(function () {
     serverSide: true,
     searching: false,
     ajax: {
-      url: '<?= base_url("weeklytasks/fetch") ?>',
+      url: '<?= base_url("weektasks/fetch") ?>',
       type: 'POST',
       data: function (d) {
         d.division = $('#filterDivision').val();
@@ -174,7 +174,7 @@ $(function () {
       return;
     }
 
-    $.post('<?= base_url("weeklytasks/save") ?>', $(this).serialize(), function (res) {
+    $.post('<?= base_url("weektasks/save") ?>', $(this).serialize(), function (res) {
       if (res.status === 'success') {
         $('#addModal').modal('hide');
         $('#addActivityForm')[0].reset();
@@ -225,7 +225,7 @@ $(function () {
   console.log("Form Data Being Sent to Server:");
  // console.log(formData); 
 
-  $.post('<?= base_url("weeklytasks/update") ?>', formData, function (res) {
+  $.post('<?= base_url("weektasks/update") ?>', formData, function (res) {
     if (res.status === 'success') {
       $('#editModal').modal('hide');
       $('#editActivityForm')[0].reset();
@@ -256,7 +256,7 @@ $(function () {
     const staff = $('#filterStaff').val();
     const week = $('#filterStartDate').val();
     if (staff && week) {
-      window.open(`<?= base_url('weeklytasks/print_staff_report/') ?>${staff[0]}/${week}`, '_blank');
+      window.open(`<?= base_url('weektasks/print_staff_report/') ?>${staff[0]}/${week}`, '_blank');
     }
   });
 
@@ -264,7 +264,7 @@ $(function () {
     const division = $('#filterDivision').val();
     const week = $('#filterStartDate').val();
     if (division && week) {
-      window.open(`<?= base_url('weeklytasks/print_division_report/') ?>${division}/${week}`, '_blank');
+      window.open(`<?= base_url('weektasks/print_division_report/') ?>${division}/${week}`, '_blank');
     }
   });
 });

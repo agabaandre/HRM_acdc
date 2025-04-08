@@ -1,18 +1,18 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Weeklytasks extends MX_Controller {
+class Weektasks extends MX_Controller {
 
     public function __construct() {
         parent::__construct();
-        $this->load->model('weeklytasks_mdl', 'weeklytasks_mdl');
+        $this->load->model('weektasks_mdl', 'weektasks_mdl');
         
     }
 
     public function tasks() {
         $data['title'] = 'Weekly Tasks';
-        $data['module'] = 'weeklytasks';
-        $data['outputs'] = $this->weeklytasks_mdl->get_sub_activities();
+        $data['module'] = 'weektasks';
+        $data['outputs'] = $this->weektasks_mdl->get_sub_activities();
         $data['divisions'] = $this->db->order_by('division_name','ASC')->get('divisions')->result();
 
         $division_id = $this->session->userdata('user')->division_id;
@@ -23,7 +23,7 @@ class Weeklytasks extends MX_Controller {
     public function calendar()
     {
         $data['title'] = "Weekly Task Calendar";
-        $data['module'] = 'weeklytasks';
+        $data['module'] = 'weektasks';
         render('weekly_calendar', $data);
     }
     
@@ -44,8 +44,8 @@ class Weeklytasks extends MX_Controller {
             'end_date'   => $this->input->post('end_date')
         ];
     
-        $total = $this->weeklytasks_mdl->count_tasks($filters, $search);
-        $tasks = $this->weeklytasks_mdl->fetch_tasks($filters, $start, $length, $search);
+        $total = $this->weektasks_mdl->count_tasks($filters, $search);
+        $tasks = $this->weektasks_mdl->fetch_tasks($filters, $start, $length, $search);
     
         foreach ($tasks as &$task) {
             
@@ -90,7 +90,7 @@ class Weeklytasks extends MX_Controller {
                 $data = $common_data;
                 $data['activity_name'] = $activity_names[$i];
                 $data['comments'] = $comments[$i] ?? '';
-                $this->weeklytasks_mdl->insert_task($data);
+                $this->weektasks_mdl->insert_task($data);
                 $saved++;
             }
         }
@@ -100,7 +100,7 @@ class Weeklytasks extends MX_Controller {
 
     public function update() {
         $id = $this->input->post('activity_id');
-        $task = $this->weeklytasks_mdl->get_by_id($id);
+        $task = $this->weektasks_mdl->get_by_id($id);
 
         if (!$task || $task->status != 1) {
             echo json_encode(['status' => 'error', 'message' => 'Task not found or not editable']);
@@ -116,10 +116,10 @@ class Weeklytasks extends MX_Controller {
             'updated_by' => $updated_by
         ];
 
-        $this->weeklytasks_mdl->update_task($id, $data);
+        $this->weektasks_mdl->update_task($id, $data);
 
         if ($data['status'] == 3) {
-            $original = $this->weeklytasks_mdl->get_by_id($id);
+            $original = $this->weektasks_mdl->get_by_id($id);
 
             $new_start = date('Y-m-d', strtotime($original->start_date . ' +7 days'));
             $new_end = date('Y-m-d', strtotime($original->end_date . ' +7 days'));
@@ -137,7 +137,7 @@ class Weeklytasks extends MX_Controller {
                 'updated_by' => $updated_by
             ];
 
-            $this->weeklytasks_mdl->insert_task($clone);
+            $this->weektasks_mdl->insert_task($clone);
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Task updated successfully!']);
@@ -157,10 +157,10 @@ class Weeklytasks extends MX_Controller {
     }
 
     public function print_staff_report($staff_id, $week_start) {
-        $data['staff'] = $this->weeklytasks_mdl->get_staff($staff_id);
+        $data['staff'] = $this->weektasks_mdl->get_staff($staff_id);
         $data['week_label'] = $this->get_week_label($week_start);
         $data['week_range'] = $this->get_week_range($week_start);
-        $data['tasks'] = $this->weeklytasks_mdl->get_tasks_by_staff_and_week($staff_id, $week_start);
+        $data['tasks'] = $this->weektasks_mdl->get_tasks_by_staff_and_week($staff_id, $week_start);
 
         pdf_print_data($data, 'Staff_Weekly_Report.pdf', 'P', 'pdf/print_staff');
     }
@@ -170,7 +170,7 @@ class Weeklytasks extends MX_Controller {
         $data['division_tasks'] = [];
 
         foreach ($staffs as $staff) {
-            $data['division_tasks'][$staff->fname . ' ' . $staff->lname] = $this->weeklytasks_mdl->get_tasks_by_staff_and_week($staff->staff_id, $week_start);
+            $data['division_tasks'][$staff->fname . ' ' . $staff->lname] = $this->weektasks_mdl->get_tasks_by_staff_and_week($staff->staff_id, $week_start);
         }
 
         $data['week_label'] = $this->get_week_label($week_start);
@@ -183,7 +183,7 @@ class Weeklytasks extends MX_Controller {
     {
         $staff_id = $this->session->userdata('user')->staff_id;
     
-        $tasks = $this->weeklytasks_mdl->get_tasks_for_calendar($staff_id);
+        $tasks = $this->weektasks_mdl->get_tasks_for_calendar($staff_id);
         $events = [];
     
         foreach ($tasks as $task) {
