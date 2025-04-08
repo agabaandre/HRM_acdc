@@ -25,30 +25,21 @@ $segment = $this->uri->segment(2);
 
     <?php if (in_array('75', $permissions)) : ?>
       <li class="nav-item" role="presentation">
-        <a class="nav-link <?php if ($segment == 'view_reports') echo 'active'; ?>" href="<?= base_url('tasks/view_reports'); ?>">
-          <i class="bx bx-file"></i> Weekly Report
+        <a class="nav-link <?php if ($this->uri->segment(2) == 'tasks') echo 'active'; ?>" href="<?= base_url('weektasks/tasks'); ?>">
+          <i class="bx bx-file"></i> Weekly Tasks
         </a>
       </li>
     <?php endif; ?>
 
     <?php if (in_array('79', $permissions)) : ?>
       <li class="nav-item" role="presentation">
-        <a class="nav-link <?php if ($segment == 'calendar') echo 'active'; ?>" href="<?= base_url('taskplanner/calendar'); ?>">
-          <i class="bx bx-calendar"></i> Calendar
+        <a class="nav-link <?php if ($this->uri->segment(2) == 'calendar') echo 'active'; ?>" href="<?= base_url('weektasks/calendar'); ?>">
+          <i class="bx bx-calendar"></i> Weely Task Calendar
         </a>
       </li>
     <?php endif; ?>
 
-    <?php if (in_array('75', $permissions)) : ?>
-      <!-- Uncomment this if "Approve Activities" needs to be shown -->
-      <!--
-      <li class="nav-item" role="presentation">
-        <a class="nav-link <?php if ($segment == 'approve_activities') echo 'active'; ?>" href="<?= base_url('tasks/approve_activities'); ?>">
-          <i class="bx bx-check-circle"></i> Approve Activities
-        </a>
-      </li>
-      -->
-    <?php endif; ?>
+
 
   </ul>
 </div>
