@@ -195,7 +195,7 @@
 									</li>
 								<?php endif; ?>
 								<?php if (in_array('75', $permissions)) : ?>
-									<li> <a class="dropdown-item" href="<?php echo base_url() ?>weeklytasks/weeklytasks"><i class="bx bx-right-arrow-alt"></i>Weekly Tasks</a>
+									<li> <a class="dropdown-item" href="<?php echo base_url() ?>weeklytasks/tasks"><i class="bx bx-right-arrow-alt"></i>Weekly Tasks</a>
 									</li>
 								<?php endif; ?>
 								<!-- <?php if (in_array('75', $permissions)) : ?>
