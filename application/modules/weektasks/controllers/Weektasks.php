@@ -156,28 +156,35 @@ class Weektasks extends MX_Controller {
         ];
     }
 
-    public function print_staff_report($staff_id, $week_start) {
+    public function print_staff_report($staff_id, $start_date, $end_date) {
+        $data['module'] = 'weektasks';
         $data['staff'] = $this->weektasks_mdl->get_staff($staff_id);
-        $data['week_label'] = $this->get_week_label($week_start);
-        $data['week_range'] = $this->get_week_range($week_start);
-        $data['tasks'] = $this->weektasks_mdl->get_tasks_by_staff_and_week($staff_id, $week_start);
-
-        pdf_print_data($data, 'Staff_Weekly_Report.pdf', 'P', 'pdf/print_staff');
+        $data['week_label'] = $this->get_week_label($start_date, $end_date);
+        $data['week_range'] = "$start_date to $end_date";
+        $data['tasks'] = $this->weektasks_mdl->get_tasks_by_staff_and_range($staff_id, $start_date, $end_date);
+    
+        pdf_print_data($data, 'Staff_Weekly_Report.pdf', 'P', 'pdfs/print_staff');
     }
-
-    public function print_division_report($division_id, $week_start) {
+    
+    public function print_division_report($division_id, $start_date, $end_date) {
+        $data['module'] = 'weektasks';
         $staffs = $this->staff_mdl->get_staff_by_division($division_id);
         $data['division_tasks'] = [];
-
+    
         foreach ($staffs as $staff) {
-            $data['division_tasks'][$staff->fname . ' ' . $staff->lname] = $this->weektasks_mdl->get_tasks_by_staff_and_week($staff->staff_id, $week_start);
+            $tasks = $this->weektasks_mdl->get_tasks_by_staff_and_range($staff->staff_id, $start_date, $end_date);
+            if (!empty($tasks)) {
+                $data['division_tasks'][$staff->title . ' ' . $staff->fname . ' ' . $staff->lname] = $tasks;
+            }
         }
-
-        $data['week_label'] = $this->get_week_label($week_start);
-        $data['week_range'] = $this->get_week_range($week_start);
-
-        pdf_print_data($data, 'Division_Weekly_Report.pdf', 'L', 'pdf/division_print');
+    
+        $data['week_label'] = $this->get_week_label($start_date, $end_date);
+        $data['week_range'] = "$start_date to $end_date";
+    
+        pdf_print_data($data, 'Division_Weekly_Report.pdf', 'L', 'pdfs/division_print');
     }
+    
+
 
     public function get_staff_events()
 {

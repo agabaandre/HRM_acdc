@@ -238,32 +238,41 @@ $(function () {
 
 
   // Enable Print Buttons when filters are valid
-  function checkPrintEligibility() {
-    const staff = $('#filterStaff').val();
-    const start = $('#filterStartDate').val();
-    if (staff && start) {
-      $('#printButtons').fadeIn();
-    } else {
-      $('#printButtons').fadeOut();
-    }
+// Enable Print Buttons when filters are valid
+function checkPrintEligibility() {
+  const staff = $('#filterStaff').val();
+  const start = $('#filterStartDate').val();
+  const end = $('#filterEndDate').val();
+
+  if ((staff && start && end) || ($('#filterDivision').val() && start && end)) {
+    $('#printButtons').fadeIn();
+  } else {
+    $('#printButtons').fadeOut();
   }
+}
 
-  $('#filterStaff, #filterStartDate').on('change keyup', checkPrintEligibility);
+$('#filterStaff, #filterStartDate, #filterEndDate, #filterDivision').on('change keyup', checkPrintEligibility);
 
-  $('#printStaffBtn').on('click', function () {
-    const staff = $('#filterStaff').val();
-    const week = $('#filterStartDate').val();
-    if (staff && week) {
-      window.open(`<?= base_url('weektasks/print_staff_report/') ?>${staff[0]}/${week}`, '_blank');
-    }
-  });
+// Print Staff Report
+$('#printStaffBtn').on('click', function () {
+  const staff = $('#filterStaff').val();
+  const start = $('#filterStartDate').val();
+  const end = $('#filterEndDate').val();
+  if (staff && start && end) {
+    window.open(`<?= base_url('weektasks/print_staff_report/') ?>${staff[0]}/${start}/${end}`, '_blank');
+  }
+});
 
-  $('#printDivisionBtn').on('click', function () {
-    const division = $('#filterDivision').val();
-    const week = $('#filterStartDate').val();
-    if (division && week) {
-      window.open(`<?= base_url('weektasks/print_division_report/') ?>${division}/${week}`, '_blank');
-    }
-  });
+// Print Division Report
+$('#printDivisionBtn').on('click', function () {
+  const division = $('#filterDivision').val();
+  const start = $('#filterStartDate').val();
+  const end = $('#filterEndDate').val();
+  if (division && start && end) {
+    window.open(`<?= base_url('weektasks/print_division_report/') ?>${division}/${start}/${end}`, '_blank');
+  }
+});
+
+
 });
 </script>
