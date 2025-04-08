@@ -180,31 +180,42 @@ class Weektasks extends MX_Controller {
     }
 
     public function get_staff_events()
-    {
-        $staff_id = $this->session->userdata('user')->staff_id;
-    
-        $tasks = $this->weektasks_mdl->get_tasks_for_calendar($staff_id);
-        $events = [];
-    
-        foreach ($tasks as $task) {
-            $statusColor = match ((int)$task->status) {
-                1 => '#ffc107', // Pending - Yellow
-                2 => '#28a745', // Completed - Green
-                3 => '#007bff', // Carried Forward - Blue
-                4 => '#dc3545', // Cancelled - Red
-                default => '#6c757d', // Unknown - Gray
-            };
-    
-            $events[] = [
-                'title' => $task->activity_name,
-                'start' => $task->start_date,
-                'end' => date('Y-m-d', strtotime($task->end_date . ' +1 day')), // fullcalendar exclusive end
-                'color' => $statusColor,
-                'allDay' => true,
-            ];
+{
+    $staff_id = $this->session->userdata('user')->staff_id;
+
+    $tasks = $this->weektasks_mdl->get_tasks_for_calendar($staff_id);
+    $events = [];
+
+    foreach ($tasks as $task) {
+        // Use switch instead of match for PHP 7.x compatibility
+        switch ((int)$task->status) {
+            case 1:
+                $statusColor = '#ffc107'; // Pending - Yellow
+                break;
+            case 2:
+                $statusColor = '#28a745'; // Completed - Green
+                break;
+            case 3:
+                $statusColor = '#007bff'; // Carried Forward - Blue
+                break;
+            case 4:
+                $statusColor = '#dc3545'; // Cancelled - Red
+                break;
+            default:
+                $statusColor = '#6c757d'; // Unknown - Gray
         }
-    
-        echo json_encode($events);
+
+        $events[] = [
+            'title' => $task->activity_name,
+            'start' => $task->start_date,
+            'end'   => date('Y-m-d', strtotime($task->end_date . ' +1 day')), // FullCalendar needs exclusive end
+            'color' => $statusColor,
+            'allDay' => true,
+        ];
     }
+
+    echo json_encode($events);
+}
+
     
 }
