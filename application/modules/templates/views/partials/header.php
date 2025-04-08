@@ -21,9 +21,10 @@
 <header>
 	<div class="topbar d-flex">
 		<nav class="navbar navbar-expand">
-			<div class="topbar-logo-header">
-				<div class="">
-					<img src="<?php echo base_url() ?>assets/images/AU_CDC_Logo-800.png" width="200" style="filter: brightness(0) invert(1);">
+			<div class="topbar-logo-header" style="background:#FFF; height:60px;  margin-left:-30px; border-radius:0 8px 12px 0;">
+				<div>
+					<!-- <img src="<?php echo base_url() ?>assets/images/AU_CDC_Logo-800.png" width="200" style="filter: brightness(0) invert(1);"> -->
+					<img src="<?php echo base_url() ?>assets/images/AU_CDC_Logo-800.png" width="200">
 				</div>
 
 			</div>
