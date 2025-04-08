@@ -9,7 +9,7 @@ class WeeklyTasks extends MX_Controller {
         
     }
 
-    public function weeklytasks() {
+    public function tasks() {
         $data['title'] = 'Weekly Tasks';
         $data['module'] = 'weeklytasks';
         $data['outputs'] = $this->mdl->get_sub_activities();

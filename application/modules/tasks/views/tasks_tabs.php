@@ -25,7 +25,7 @@ $segment = $this->uri->segment(2);
 
     <?php if (in_array('75', $permissions)) : ?>
       <li class="nav-item" role="presentation">
-        <a class="nav-link <?php if ($this->uri->segment(2) == 'weeklytasks') echo 'active'; ?>" href="<?= base_url('weeklytasks/weeklytasks'); ?>">
+        <a class="nav-link <?php if ($this->uri->segment(2) == 'tasks') echo 'active'; ?>" href="<?= base_url('weeklytasks/tasks'); ?>">
           <i class="bx bx-file"></i> Weekly Tasks
         </a>
       </li>
