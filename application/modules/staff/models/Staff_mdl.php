@@ -104,6 +104,51 @@ class Staff_mdl extends CI_Model
 	}
 	
 
+	public function get_staff_by_division($division_id = false)
+{
+    // Subquery: Get latest contract per staff
+    $subquery = $this->db
+        ->select('MAX(staff_contract_id)', false)
+        ->from('staff_contracts')
+        ->group_by('staff_id')
+        ->get_compiled_select();
+
+    $this->db->select('
+        s.staff_id, s.SAPNO, s.title, s.fname, s.lname, s.oname, 
+        s.gender, s.date_of_birth, s.work_email, s.tel_1, s.tel_2, 
+        s.whatsapp, s.photo, s.private_email, s.physical_location,
+        sc.division_id, sc.job_id, j.job_name,
+        sc.start_date, sc.end_date, sc.status_id,
+        d.division_name, ds.duty_station_name,
+        g.grade, st.status
+    ');
+
+    $this->db->from('staff s');
+
+    $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+    $this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+    $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+    $this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+    $this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+    $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+
+    // Where latest contract only
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+
+    // Active contracts only
+    $this->db->where_in('sc.status_id', [1, 2, 3, 7]);
+
+    // Optional filter by division
+    if (!empty($division_id)) {
+        $this->db->where('sc.division_id', $division_id);
+    }
+
+    // Order by name
+    $this->db->order_by('s.fname', 'ASC');
+
+    return $this->db->get()->result();
+}
+
 
 
 	public function get_all_staff_data($filters = array(), $limit = FALSE, $start = FALSE)

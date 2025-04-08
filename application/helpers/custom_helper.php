@@ -954,7 +954,100 @@ if (!function_exists('pa_settings')) {
             
 }
 
+// function generate_weeks_of_year($year = null) {
+//     $year = $year ?: date('Y');
+//     $weeks = [];
+//     $weekNum = 1;
 
-  
+//     for ($month = 1; $month <= 12; $month++) {
+//         // Start from the 1st of the current month
+//         $monthStart = new DateTime("$year-$month-01");
+
+//         for ($week = 1; $week <= 4; $week++) {
+//             $weekStart = clone $monthStart;
+//             $weekStart->modify('+'.(($week - 1) * 5).' days');
+
+//             $weekEnd = clone $weekStart;
+//             $weekEnd->modify('+4 days'); // 5-day work week
+
+//             // Prevent overflow to next month
+//             if ($weekStart->format('m') != $month) break;
+//             if ($weekEnd->format('m') != $month) {
+//                 $weekEnd = new DateTime($year . '-' . $month . '-' . $weekStart->format('t'));
+//             }
+
+//             $weeks[] = [
+//                 'label' => "Week-{$week} " . $weekStart->format('M Y'),
+//                 'start' => $weekStart->format('Y-m-d'),
+//                 'end'   => $weekEnd->format('Y-m-d'),
+//                 'week'  => $weekNum++
+//             ];
+//         }
+//     }
+
+//     return $weeks;
+// }
+function generate_weeks_of_year($year = null) {
+    $year = $year ?: date('Y');
+    $weeks = [];
+    $weekNum = 1;
+
+    for ($month = 1; $month <= 12; $month++) {
+        // Get first Monday of the month
+        $firstDay = new DateTime("$year-$month-01");
+        if ($firstDay->format('N') != 1) {
+            $firstDay->modify('next Monday');
+        }
+
+        $weekStart = clone $firstDay;
+
+        for ($i = 1; $i <= 4; $i++) {
+            $weekEnd = clone $weekStart;
+            $weekEnd->modify('+4 days'); // Monday to Friday
+
+            // Prevent overflow to next month
+            if ($weekStart->format('m') != $month || $weekEnd->format('m') != $month) break;
+
+            $weeks[] = [
+                'label' => "Week-{$i} " . $weekStart->format('M Y') . " ({$weekStart->format('Y-m-d')} - {$weekEnd->format('Y-m-d')})",
+                'start' => $weekStart->format('Y-m-d'),
+                'end'   => $weekEnd->format('Y-m-d'),
+                'week'  => $weekNum++
+            ];
+
+            $weekStart->modify('+7 days'); // Move to next Monday
+        }
+    }
+
+    return $weeks;
 }
+
+}
+function status_badge($status) {
+    switch ((int)$status) {
+        case 1: return '<span class="badge bg-warning">Pending</span>';
+        case 2: return '<span class="badge bg-success">Done</span>';
+        case 3: return '<span class="badge bg-info">Next Week</span>';
+        case 4: return '<span class="badge bg-danger">Cancelled</span>';
+        default: return '<span class="badge bg-secondary">Unknown</span>';
+    }
+}
+if (!function_exists('get_week_range')) {
+    function get_week_range($week_start_date) {
+        $start = date('F j', strtotime($week_start_date));
+        $end = date('F j, Y', strtotime($week_start_date . ' +4 days'));
+        return "$start to $end";
+    }
+}
+
+if (!function_exists('get_week_label')) {
+    function get_week_label($week_start_date) {
+        $week_number = ceil(date('j', strtotime($week_start_date)) / 7);
+        $month = date('M', strtotime($week_start_date));
+        $year = date('Y', strtotime($week_start_date));
+        return "Week-$week_number $month $year";
+    }
+}
+
+
 }

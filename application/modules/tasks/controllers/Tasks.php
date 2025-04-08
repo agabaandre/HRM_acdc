@@ -13,72 +13,78 @@ class Tasks extends MX_Controller {
     public function activity() {
  
 		$data['module'] = 'tasks';
-		$data['title'] = "Tasks";
+		$data['title'] = "Sub-Activities";
         $formdata=$this->input->post();
         if(empty($formdata['output'])){
         $output_id ='';
        }
         $division_id = $this->session->userdata('user')->division_id;
         $data['outputs'] = $this->tasks_mdl->get_output($output_id,$division_id);
+        //dd($data);
        render('add_activity', $data);
     }
 
 	public function add_activity() {
-        // Validate form inputs
-        $this->form_validation->set_rules('quarterly_output_id[]', 'Quarterly Output', 'required');
+        // Validate that arrays are submitted and not empty
+        $this->form_validation->set_rules('quarterly_output_id', 'Work Plan Activity', 'required');
         $this->form_validation->set_rules('activity_name[]', 'Activity Name', 'required');
         $this->form_validation->set_rules('start_date[]', 'Start Date', 'required');
         $this->form_validation->set_rules('end_date[]', 'End Date', 'required');
-
+    
         if ($this->form_validation->run() === FALSE) {
-            // If validation fails, return error response
             $response = [
                 'status' => 'error',
-                'message' => validation_errors()
+                'message' => strip_tags(validation_errors())
             ];
         } else {
-            // Get form data
+            $staff_id = $this->session->userdata('user')->staff_id;
             $quarterly_output_id = $this->input->post('quarterly_output_id');
+    
             $activity_names = $this->input->post('activity_name');
             $start_dates = $this->input->post('start_date');
             $end_dates = $this->input->post('end_date');
-			// Get the posted dates from the form
-			$start_date = $this->input->post('start_date'); // Single value
-			$end_date = $this->input->post('end_date'); // Single value
-
-			// Convert the dates to MySQL format (YYYY-MM-DD)
-			$formatted_start_date = date('Y-m-d', strtotime($start_date));
-			$formatted_end_date = date('Y-m-d', strtotime($end_date));
-
-			// Now $formatted_start_date and $formatted_end_date contain valid MySQL dates
             $comments = $this->input->post('comments');
-
-        
-                $activity_data = array(
-					'staff_id' =>$this->session->userdata('user')->staff_id,
-                    'quarterly_output_id' => $quarterly_output_id,
-                    'activity_name' => $activity_names,
-                    'start_date' => $formatted_start_date,
-                    'end_date' => $formatted_end_date,
-                    'comments' => $comments,
-				);
-
-                // Save activity to the database
-                $this->tasks_mdl->add_activity($activity_data);
-            
-
-            // Return success response
-            $response = [
-                'status' => 'success',
-                'message' => 'Activities added successfully!'
-            ];
+    
+            $saved = 0;
+    
+            for ($i = 0; $i < count($activity_names); $i++) {
+                // Skip empty rows
+                if (empty($activity_names[$i]) || empty($start_dates[$i]) || empty($end_dates[$i])) {
+                    continue;
+                }
+    
+                $data = [
+                    'staff_id' => $staff_id,
+                    'workplan_id' => $quarterly_output_id,
+                    'activity_name' => $activity_names[$i],
+                    'start_date' => date('Y-m-d', strtotime($start_dates[$i])),
+                    'end_date' => date('Y-m-d', strtotime($end_dates[$i])),
+                    'comments' => $comments[$i] ?? null,
+                ];
+    
+                $this->tasks_mdl->add_activity($data);
+                $saved++;
+            }
+    
+            if ($saved > 0) {
+                $response = [
+                    'status' => 'success',
+                    'message' => "$saved activity(ies) added successfully!"
+                ];
+            } else {
+                $response = [
+                    'status' => 'error',
+                    'message' => "No valid activity was submitted."
+                ];
+            }
         }
-
+    
         // Send JSON response
         $this->output
             ->set_content_type('application/json')
             ->set_output(json_encode($response));
     }
+    
 
     // View Activities
     public function view_activities() {
@@ -129,7 +135,7 @@ class Tasks extends MX_Controller {
         $staff_id = $this->session->userdata('user')->staff_id;
 
         // Fetch activities from the model
-        $activities = $this->tasks_mdl->get_planner_tasks($staff_id, $output_id, $start_date, $end_date);
+        $activities = $this->tasks_mdl->get_work_planner_tasks($staff_id, $output_id, $start_date, $end_date);
 
         // Return JSON response
         //dd($activities);
@@ -328,7 +334,6 @@ class Tasks extends MX_Controller {
             $activity_name,
             $report_status,
             $employee_name,
-            $period,
             $quarter,
             $limit,
             $offset

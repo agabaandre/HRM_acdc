@@ -105,7 +105,17 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
   <!-- FullCalendar & Bootstrap JS Bundle -->
-
+  <script>
+  $(document).ready(function () {
+    $('.datepicker').flatpickr({
+      theme: "confetti",
+      altInput: true,
+      altFormat: "F j, Y",
+      dateFormat: "Y-m-d",
+      allowInput: true
+    });
+  });
+</script>
 <script>
 	$(document).ready(function() {
 
@@ -763,15 +773,37 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
   $(document).ready(function () {
-    $('.datepicker').flatpickr({
-      theme: "confetti",
+    // Get today's date at midnight (to prevent timezone issues)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Calculate the next Monday
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysUntilNextMonday = (dayOfWeek === 1) ? 7 : ((8 - dayOfWeek) % 7 || 7);
+    const nextMonday = new Date(today);
+    nextMonday.setDate(today.getDate() + daysUntilNextMonday);
+
+    // Calculate the corresponding Friday
+    const nextFriday = new Date(nextMonday);
+    nextFriday.setDate(nextMonday.getDate() + 4); // Monday + 4 = Friday
+
+    // Init flatpickr
+    $('.activity-dates').flatpickr({
       altInput: true,
       altFormat: "F j, Y",
       dateFormat: "Y-m-d",
-      allowInput: true
+      allowInput: true,
+      minDate: nextMonday,
+      maxDate: nextFriday,
+      disable: [
+        function(date) {
+          return date < nextMonday || date > nextFriday;
+        }
+      ]
     });
   });
 </script>
+
 
 
 
