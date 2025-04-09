@@ -149,7 +149,8 @@
             // Get all current GET parameters
             $query_string = http_build_query($this->input->get());
             
-            $segment1 = $this->uri->segment(1);
+            $segment1 = $this->uri->segment(2);
+            //dd($segment1);
             $status = $this->uri->segment(3);
 
             if ($segment1 === 'all_staff') {
