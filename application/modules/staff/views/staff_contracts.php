@@ -28,7 +28,6 @@
 
 
 
-<div class="container">
 <?php $this->load->view('staff_tab_menu'); ?>
   <div class="row">
     <?php $this_staff=$contracts[0];
@@ -50,7 +49,7 @@
     </div>
  
     <hr>
-  </div>
+ 
   <div class="row">
     <div class="col-lg-12">
       <table class="table mydata table-striped table-bordered hidden">
