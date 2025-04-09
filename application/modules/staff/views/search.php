@@ -1,4 +1,5 @@
 <!-- Staff Search Panel -->
+<?php $this->load->view('staff_tab_menu'); ?>
 <div class="mt-3">
 
   <!-- Stylish Search Box -->
