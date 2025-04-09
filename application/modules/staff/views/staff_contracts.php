@@ -29,6 +29,7 @@
 
 
 <div class="container">
+<?php $this->load->view('staff_tab_menu'); ?>
   <div class="row">
     <?php $this_staff=$contracts[0];
     //dd($contracts);

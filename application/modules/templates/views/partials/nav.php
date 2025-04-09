@@ -34,7 +34,7 @@
                             <?php if (in_array('71', $permissions)) : ?>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/new') ?>"><i class="bx bx-right-arrow-alt"></i>Add New Staff</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/all_staff') ?>"><i class="bx bx-right-arrow-alt"></i>All Staff</a></li>
-                                <li><a class="dropdown-item" href="<?= base_url('staff') ?>"><i class="bx bx-right-arrow-alt"></i>Current Staff List</a></li>
+                                <li><a class="dropdown-item" href="<?= base_url('staff/index') ?>"><i class="bx bx-right-arrow-alt"></i>Current Staff List</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/contract_status/2') ?>"><i class="bx bx-right-arrow-alt"></i>Contracts Due</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/contract_status/3') ?>"><i class="bx bx-right-arrow-alt"></i>Contracts Expired</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/contract_status/4') ?>"><i class="bx bx-right-arrow-alt"></i>Former Staff</a></li>

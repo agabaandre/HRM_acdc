@@ -3,8 +3,7 @@
         display: none !important;
    }
 </style>
-<h6 class="mb-0 text-uppercase"></h6>
-<hr />
+<?php $this->load->view('staff_tab_menu'); ?>
 <div class="card">
 <div class="row container-fluid mb-0">
   <?php $this->load->view('search','');?>

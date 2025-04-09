@@ -1,3 +1,4 @@
+<?php $this->load->view('staff_tab_menu'); ?>
 <div class="row">
   <div class="col-12 col-lg-12 d-flex">
     <div class="card rounded-1 w-100">
