@@ -842,6 +842,45 @@ $(document).ready(function () {
     setInterval(loadMessages, 30000);
 });
 </script>
+<?php
+$googleLangMap = [
+    'aa' => 'Afar',
+    'am' => 'Amharic',
+    'ar' => 'Arabic',
+    'en' => 'English',
+    'fr' => 'French',
+    'ha' => 'Hausa',
+    'rw' => 'Kinyarwanda',
+    'ln' => 'Lingala',
+    'pt' => 'Portuguese',
+    'sw' => 'Swahili',
+];
+$defaultLangCode = $this->session->userdata('user')->langauge ?? 'en';
+$defaultLangName = $googleLangMap[$defaultLangCode] ?? 'English';
+?>
+<script>
+    function autoTranslate(languageName) {
+        const interval = setInterval(function () {
+            const translateFrame = document.querySelector('iframe.goog-te-menu-frame');
+
+            if (translateFrame) {
+                const innerDoc = translateFrame.contentDocument || translateFrame.contentWindow.document;
+                const langOptions = innerDoc.querySelectorAll('.goog-te-menu2-item span.text');
+
+                langOptions.forEach(function (el) {
+                    if (el.innerText.trim().toLowerCase() === languageName.trim().toLowerCase()) {
+                        el.click();
+                        clearInterval(interval);
+                    }
+                });
+            }
+        }, 1000);
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        autoTranslate("<?= $defaultLangName ?>");
+    });
+</script>
 
 
 

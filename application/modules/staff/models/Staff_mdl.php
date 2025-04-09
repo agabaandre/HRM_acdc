@@ -120,13 +120,14 @@ class Staff_mdl extends CI_Model
         sc.division_id, sc.job_id, j.job_name,
         sc.start_date, sc.end_date, sc.status_id,
         d.division_name, ds.duty_station_name,
-        g.grade, st.status
+        g.grade, st.status,f.funder
     ');
 
     $this->db->from('staff s');
 
     $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
     $this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+	$this->db->join('funders f','f.funder_id = sc.funder_id');
     $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
     $this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
     $this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
@@ -405,12 +406,13 @@ class Staff_mdl extends CI_Model
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
 			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.photo,
-			s.private_email, s.physical_location
+			s.private_email, s.physical_location,f.funder
 		');
 		
 		$this->db->from('staff s');
 		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'inner');
 		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+		$this->db->join('funders f','f.funder_id = sc.funder_id','left');
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
 		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
 		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
@@ -506,13 +508,14 @@ public function getBirthdays($days)
         ct.contract_type, n.nationality, d.division_name, 
         sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, 
         s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.SAPNO, s.photo,
-        s.private_email, s.physical_location
+        s.private_email, s.physical_location,f.funder
     ');
     
     $this->db->from('staff s');
     
     // Joins with explicit aliasing
     $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+	$this->db->join('funders f','f.funder_id = sc.funder_id','left');
     $this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
     $this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
     $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
