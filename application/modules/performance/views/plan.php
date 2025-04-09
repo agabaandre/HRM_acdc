@@ -52,7 +52,7 @@ foreach ($decoded as $item) {
 <style>
 input[type="text"],
 input[type="number"] {
-  border: none !important; 
+  border: 1px solidrgb(181, 178, 178)!important; 
 
   box-shadow: none !important;
   background-color: transparent;
@@ -145,9 +145,22 @@ input[type="number"] {
           <tr>
             <td><?= $i ?></td>
             <td><textarea name="objectives[<?= $i ?>][objective]" class="form-control objective-input" <?= $readonly ?> <?= $isRequired ?>><?= $val['objective'] ?></textarea></td>
-            <td><input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control datepicker objective-input" <?= $readonly ?> value="<?php if(empty($val['timeline'])){ echo date ('Y-m-d');}else{ echo $val['timeline']; } ?>" <?= $isRequired ?>></td>
+            <td>
+              <input type="text" 
+                    name="objectives[<?= $i ?>][timeline]" 
+                    class="form-control current_datepicker objective-input" 
+                    <?= $readonly ?> 
+                    value="<?php
+                        if (empty($val['timeline'])&&($i<=3)) {
+                          echo date('Y') . '-12-31';
+                        } else {
+                          echo $val['timeline'];
+                        }
+                    ?>" 
+                    <?= $isRequired ?>>
+            </td>
             <td><textarea name="objectives[<?= $i ?>][indicator]" class="form-control objective-input" <?= $readonly ?> <?= $isRequired ?>><?= $val['indicator'] ?></textarea></td>
-            <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?php if(empty($val['weight'])){ echo 0;}else{ echo $val['weight']; } ?>" <?= $isRequired ?>></td>
+            <td><input type="number" name="objectives[<?= $i ?>][weight]" class="form-control objective-input" <?= $readonly ?> value="<?php if(empty($val['weight'])&&($i<=3)){ echo 0;}else{ echo $val['weight']; } ?>" <?= $isRequired ?>></td>
           </tr>
     <?php endfor; ?>
 
