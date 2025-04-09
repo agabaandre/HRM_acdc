@@ -5,9 +5,6 @@
 </style>
 <?php $this->load->view('staff_tab_menu'); ?>
 <div class="card">
-<div class="row container-fluid mb-0">
-  <?php $this->load->view('search','');?>
-</div>
       <div class="card-body">
         <br />
 
