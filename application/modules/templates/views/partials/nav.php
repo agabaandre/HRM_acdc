@@ -32,6 +32,7 @@
                     <ul class="dropdown-menu">
                         <?php if (in_array('72', $permissions)) : ?>
                             <?php if (in_array('71', $permissions)) : ?>
+								<li><a class="dropdown-item" href="<?= base_url('staff/search') ?>"><i class="bx bx-right-arrow-alt"></i>Quick Search</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/new') ?>"><i class="bx bx-right-arrow-alt"></i>Add New Staff</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/all_staff') ?>"><i class="bx bx-right-arrow-alt"></i>All Staff</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/index') ?>"><i class="bx bx-right-arrow-alt"></i>Current Staff List</a></li>

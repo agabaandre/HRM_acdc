@@ -50,6 +50,15 @@ class Staff extends MX_Controller
 		render('staff_table', $data);
 	}
 
+	public function search()
+	{
+
+		$data['module'] = $this->module;
+		$data['title'] = "Quick Search";
+	
+		render('search', $data);
+	}
+
 	public function find_staff_by_email($email){
 		
 		$this->db->where('work_email', $email);
