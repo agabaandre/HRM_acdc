@@ -875,7 +875,6 @@ function curl_send_post($url, $body, $headers) {
     }
     
 
-    <?php
     if (!function_exists('pdf_print_data')) {
         function pdf_print_data($data, $file_name, $orient, $view)
         {
