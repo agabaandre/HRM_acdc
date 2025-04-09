@@ -26,7 +26,7 @@ class Staff_mdl extends CI_Model
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
 			ct.contract_type, n.nationality, d.division_name, 
-			sc.first_supervisor, sc.second_supervisor,f.funder ds.duty_station_name, 
+			sc.first_supervisor, sc.second_supervisor,f.funder, ds.duty_station_name, 
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
 			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.photo,
@@ -58,6 +58,9 @@ class Staff_mdl extends CI_Model
 			if (!empty($filters['duty_station_id'])) {
 				$this->db->where_in('sc.duty_station_id', $filters['duty_station_id']);
 			}
+			if (!empty($filters['funder_id'])) {
+				$this->db->where_in('sc.funder_id', $filters['funder_id']);
+			}
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
@@ -71,6 +74,9 @@ class Staff_mdl extends CI_Model
 		}
 		if (isset($filters['duty_station_id'])) {
 			unset($filters['duty_station_id']);
+		}
+		if (isset($filters['funder_id'])) {
+			unset($filters['funder_id']);
 		}
 	
 		if (!empty($filters)) {
@@ -202,6 +208,9 @@ class Staff_mdl extends CI_Model
 		if (!empty($filters['duty_station_id'])) {
 			$this->db->where_in('sc.duty_station_id', $filters['duty_station_id']);
 		}
+		if (!empty($filters['funder_id'])) {
+			$this->db->where_in('sc.funder_id', $filters['funder_id']);
+		}
 	
 		// Handle filters dynamically
 		@$csv = $filters['csv'];
@@ -222,6 +231,9 @@ class Staff_mdl extends CI_Model
 			}
 			if (isset($filters['duty_station_id'])) {
 				unset($filters['duty_station_id']);
+			}
+			if (isset($filters['funder_id'])) {
+				unset($filters['funder_id']);
 			}
 		}
 		
@@ -436,6 +448,9 @@ class Staff_mdl extends CI_Model
 		if (!empty($filters['status_id'])) {
 			$this->db->where_in('sc.status_id', $filters['status_id']);
 		}
+		if (!empty($filters['funder_id'])) {
+			$this->db->where_in('sc.funder_id', $filters['funder_id']);
+		}
 	
 		if ($this->uri->segment(1) == 'admanager') {
 			if ($this->uri->segment(2) == 'expired_accounts') {
@@ -463,7 +478,7 @@ class Staff_mdl extends CI_Model
 		
 	
 		// Special keys to exclude from dynamic loop
-		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto','division_id','duty_station_id'];
+		$exclude_keys = ['csv', 'pdf', 'lname', 'status_id', 'datefrom', 'dateto','division_id','duty_station_id','funder_id'];
 		
 	
 		foreach ($filters as $key => $value) {
