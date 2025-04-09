@@ -42,7 +42,7 @@ class Staff extends MX_Controller
 		elseif($pdf==1){
 			$pdf_name = 'Africa-CDC-Staff_'.date('d-m-Y-H-i').'.pdf';
 			
-			$this->print_data($data, $pdf_name,'L','pdfs/staff');
+			pdf_print_data($data, $pdf_name,'L','pdfs/staff');
 		
 		}
 		//dd($data);
@@ -65,7 +65,7 @@ class Staff extends MX_Controller
 	
 		$pdf_name = $data['staffs'][0]->lname.'_'.$data['staffs'][0]->fname.'_'.date('d-m-Y-H-i').'.pdf';
 		
-		$this->print_data($data, $pdf_name,'P','pdfs/staff_profile');
+		pdf_print_data($data, $pdf_name,'P','pdfs/staff_profile');
 		
 		
 
@@ -221,7 +221,7 @@ class Staff extends MX_Controller
 		elseif($pdf==1){
 			$pdf_name = 'Africa-CDC-All_Staff_'.date('d-m-Y-H-i').'.pdf';
 			
-			$this->print_data($data, $pdf_name,'L','pdfs/staff');
+			pdf_print_data($data, $pdf_name,'L','pdfs/staff');
 		
 		}
 		//dd($data);
@@ -359,7 +359,7 @@ class Staff extends MX_Controller
 		}
 		elseif($pdf==1){
 			$pdf_name = str_replace(' ','',$data['title']) .'_Africa-CDC-Staff_'.date('d-m-Y-H-i').'.pdf';
-			$this->print_data($data, $pdf_name,'L','pdfs/staff');
+			pdf_print_data($data, $pdf_name,'L','pdfs/staff');
 		}
 		
 		//dd($data);
