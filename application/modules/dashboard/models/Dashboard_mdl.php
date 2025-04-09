@@ -187,7 +187,7 @@ class Dashboard_mdl extends CI_Model
     $this->db->or_like('lname', $query);
     $this->db->or_like('SAPNO', $query);
     $this->db->or_like('work_email', $query);
-    $this->db->limit(3);
+    $this->db->limit(10);
     return $this->db->get('staff')->result_array();
 }
 
