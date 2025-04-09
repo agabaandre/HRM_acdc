@@ -65,7 +65,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
             </div>
 
         </div>
-        <div class="card">
+        <!-- <div class="card">
             <div class="card-header pb-0 border-bottom">
                 <div class="card-title pb-1">Edit Password</div>
             </div>
@@ -84,7 +84,7 @@ $contract = Modules::run('auth/contract_info', $staff_id);
                 </div>
             </div>
             <div class="card-footer text-right"><a href="#" class="btn btn-success">Update</a> <a href="#" class="btn btn-danger">Cancel</a></div>
-        </div>
+        </div> -->
     </div>
 
     <!-- Col -->
