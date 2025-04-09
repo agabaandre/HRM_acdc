@@ -42,6 +42,8 @@
                         <th>Job</th>
                         <th>Contract Status</th>
                         <th>First Supervisor</th>
+                        <th>Second Supervisor</th>
+                        <th>Funder</th>
                         <th>Start Date</th>
                         <th>End Date</th>
                         <th>Email</th>
@@ -62,6 +64,8 @@
                             <td><?= $data->job_name ?></td>
                             <td><?= $data->status ?></td>
                             <td><?= staff_name($data->first_supervisor) ?></td>
+                            <td><?= staff_name(@$data->second_supervisor) ?></td>
+                            <td><?= $data->funder ?></td>
                             <td><?= $data->start_date ?></td>
                             <td><?= $data->end_date ?></td>
                             <td><?= $data->work_email ?></td>
@@ -73,7 +77,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="footer">Generated on: <?php echo date('Y-m-d'); ?></div>
+        
     </div>
 </body>
 </html>
