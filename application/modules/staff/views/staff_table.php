@@ -64,14 +64,13 @@
 			<tbody>
 
 
-				<?php
-				//dd($staffs);
-			//dd($cont);
-
+			  <?php
 				$i = 1;
-				if($this->uri->segment(3)!= ""){
-					$i = $this->uri->segment(3);
+				$offset = $this->uri->segment(3);
+				if ($offset != "") {
+					$i = $offset + 1;
 				}
+
 				foreach ($staffs as $data) :
 
 			   $cont = Modules::run('staff/latest_staff_contract', $data->staff_id);
