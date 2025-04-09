@@ -22,9 +22,9 @@
 	<div class="topbar d-flex">
 		<nav class="navbar navbar-expand">
 			<div class="topbar-logo-header">
-				<div>
+				<div class="">
 					<img src="<?php echo base_url() ?>assets/images/AU_CDC_Logo-800.png" width="200" style="filter: brightness(0) invert(1);">
-					<!-- <img src="<?php echo base_url() ?>assets/images/AU_CDC_Logo-800.png" width="200"> -->
+					
 				</div>
 
 			</div>
