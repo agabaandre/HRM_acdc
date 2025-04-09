@@ -5,7 +5,7 @@ $session = $this->session->userdata('user');
 $permissions = $session->permissions;
 $staff_id = $this->session->userdata('user')->staff_id;
 ?>
-<div class="container">
+<div class="container-fluid">
     <ul class="nav nav-tabs mb-3" id="staffTabMenu" role="tablist">
         <?php if (in_array('72', $permissions)) : ?>
             <?php if (in_array('71', $permissions)) : ?>
@@ -50,7 +50,7 @@ $staff_id = $this->session->userdata('user')->staff_id;
         <?php if (in_array('41', $permissions)) : ?>
             <li class="nav-item" role="presentation">
                 <a class="nav-link <?= ($current_uri == 'staff_birthday') ? 'active' : '' ?>" href="<?= base_url('staff/staff_birthday') ?>">
-                    <i class="fa fa-birthday-cake"></i> Staff Birthdays
+                    <i class="fa fa-birthday-cake"></i> Birthdays
                 </a>
             </li>
         <?php endif; ?>
