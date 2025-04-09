@@ -875,64 +875,62 @@ function curl_send_post($url, $body, $headers) {
     }
     
 
-if (!function_exists('pdf_print_data')) {
-    function pdf_print_data($data, $file_name, $orient, $view)
-    {
-        // Get CodeIgniter instance
-        $CI = &get_instance();
-
-        // Load the appropriate PDF library
-        if ($orient == 'L') {
-            $CI->load->library('ML_pdf');
-            $pdf = $CI->ml_pdf->pdf;
-        } else {
-            $CI->load->library('M_pdf');
-            $pdf = $CI->m_pdf->pdf;
+    <?php
+    if (!function_exists('pdf_print_data')) {
+        function pdf_print_data($data, $file_name, $orient, $view)
+        {
+            // Get CodeIgniter instance
+            $CI = &get_instance();
+    
+            // Load appropriate PDF library based on orientation
+            if ($orient === 'L') {
+                $CI->load->library('ML_pdf');
+                $pdf = $CI->ml_pdf->pdf;
+            } else {
+                $CI->load->library('M_pdf');
+                $pdf = $CI->m_pdf->pdf;
+            }
+    
+            // Set watermark image (if available)
+            $watermark = FCPATH . "assets/images/au_emblem.png";
+            if (file_exists($watermark)) {
+                $pdf->SetWatermarkImage($watermark);
+                $pdf->showWatermarkImage = true;
+            }
+    
+            // Set PDF margins
+            $pdf->SetMargins(10, 10, 10);         // left, top, right margins
+            $pdf->SetAutoPageBreak(true, 30);     // allow auto page break with 30mm bottom margin for footer
+    
+            // Set timezone and load view content
+            date_default_timezone_set("Africa/Nairobi");
+            $html = $CI->load->view($view, $data, true);
+            $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+    
+            // Set footer content
+            $footer = '
+            <table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
+                <tr>
+                    <td align="left" style="border: none;">
+                        Africa CDC, P.O. Box 3243, Addis Ababa, Ethiopia, Ring Road, 16/17<br>
+                        Tel: +251 (0) 11 551 77 00, Fax: +251 (0) 11 551 78 44<br>
+                        Website: <a href="https://africacdc.org" style="color: #911C39;">africacdc.org</a>
+                    </td>
+                    <td align="left" style="border: none;">
+                        Source: Africa CDC - Staff Tracker<br>
+                        Generated on: ' . date('d F, Y h:i A') . '<br>
+                        ' . base_url() . '
+                    </td>
+                </tr>
+            </table>';
+            $pdf->SetHTMLFooter($footer);
+    
+            // Output PDF
+            $pdf->WriteHTML($PDFContent);
+            $pdf->Output($file_name, 'I'); // 'I' for inline view in browser
         }
-
-        // Set watermark and filename
-        $watermark = FCPATH . "assets/images/au_emblem.png";
-        $filename = $file_name;
-
-        // Remove execution time limit
-        ini_set('max_execution_time', 0);
-
-        // Load view and convert to UTF-8 HTML
-        $html = $CI->load->view($view, $data, true);
-        $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
-
-        // Set watermark if image is available
-        if (!empty($watermark)) {
-            $pdf->SetWatermarkImage($watermark);
-            $pdf->showWatermarkImage = true;
-        }
-
-        // Set footer with timestamp and source
-        date_default_timezone_set("Africa/Nairobi");
-
-        $pdf->SetHTMLFooter('
-		<table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
-			<tr>
-				<td align="left" style="border: none;">
-					Africa CDC, P.O. Box 3243, Addis Ababa, Ethiopia, Ring Road, 16/17<br>
-					Tel: +251 (0) 11 551 77 00, Fax: +251 (0) 11 551 78 44<br>
-					Website: <a href="https://africacdc.org" style="color: #911C39;">africacdc.org</a>
-				</td>
-				<td align="left" style="border: none;">
-					Source: Africa CDC - Staff Tracker<br>
-					Generated on: ' . date('d F, Y h:i A') . '<br>
-					' . base_url() . '
-				</td>
-			</tr>
-		</table>
-	');
-
-        // Write content and output PDF in browser
-        $pdf->WriteHTML($PDFContent);
-        $pdf->Output($filename, 'I');
     }
-}
-
+    
 if (!function_exists('get_last_ppa_approval_action')) {
     function get_last_ppa_approval_action($entry_id, $staff_id)
     {
