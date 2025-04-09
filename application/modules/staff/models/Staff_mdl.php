@@ -182,7 +182,6 @@ class Staff_mdl extends CI_Model
 		$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
 		$this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
 		$this->db->join('nationalities n', 'n.nationality_id = s.nationality_id', 'left');
-		$this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id', 'left');
 		$this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
 		$this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
 		$this->db->join('funders f', 'f.funder_id = sc.funder_id', 'left');
