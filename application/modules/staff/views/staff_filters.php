@@ -149,11 +149,13 @@
             // Get all current GET parameters
             $query_string = http_build_query($this->input->get());
             
-            $segment1 = $this->uri->segment(2);
-            //dd($segment1);
+          
+            $segment2 = $this->uri->segment(2);
+          
             $status = $this->uri->segment(3);
+            //dd($status);
 
-            if ($segment1 === 'all_staff') {
+            if ($segment2 === 'all_staff') {
                 // Main staff list
                 ?>
                 <a href="<?= base_url('staff/all_staff/1?' . $query_string) ?>" class="btn btn-sm btn-outline-primary">
@@ -163,7 +165,7 @@
                     <i class="fa fa-file-pdf me-1"></i> Export PDF
                 </a>
             <?php
-            } elseif ($segment1 === 'staff' && $this->uri->segment(2) === 'contract_status') {
+            } elseif ($segment2 === 'contract_status') {
                 // Contract status page
                 ?>
                 <a href="<?= base_url("staff/contract_status/{$status}/1?" . $query_string) ?>" class="btn btn-sm btn-outline-primary">
@@ -173,7 +175,7 @@
                     <i class="fa fa-file-pdf me-1"></i> Export PDF
                 </a>
             <?php
-            } elseif ($segment1 === 'index') {
+            } elseif ($segment2 === 'index') {
                 // Index route fallback
                 ?>
                 <a href="<?= base_url("staff/index/1?" . $query_string) ?>" class="btn btn-sm btn-outline-primary">
