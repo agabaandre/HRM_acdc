@@ -23,13 +23,18 @@
         } */
 	}
 </style>
-
 <?php $this->load->view('staff_tab_menu'); ?>
+
 <div class="card">
-	<div class="col-md-12" style="float: right;">
-		<?php $this->load->view('staff_filters'); ?>
+	
+		<?php 
+     $status = $this->uri->segment(3);
+    echo form_open_multipart(base_url('staff/contract_status/'.$status), array('id' => 'staff_form', 'class' => 'staff', 'method' => 'get')); ?>
+	
+    <?php $this->load->view('staff_filters'); ?>
 
 	<?= form_close() ?>
+	
 	<div class=" table-responsive">
 		<table class="table table-striped table-bordered">
 			<thead>
