@@ -53,8 +53,9 @@ foreach ($decoded as $item) {
 input[type="text"],
 input[type="number"] {
   border: 1px solidrgb(181, 178, 178)!important; 
-
+  padding: 17px;
   box-shadow: none !important;
+  border-radius:8px;
   background-color: transparent;
 }
 .is-invalid {
