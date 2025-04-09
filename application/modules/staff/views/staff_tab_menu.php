@@ -11,12 +11,12 @@ $staff_id = $this->session->userdata('user')->staff_id;
             <?php if (in_array('71', $permissions)) : ?>
                 <li class="nav-item" role="presentation">
                     <a class="nav-link <?= ($current_uri == 'search') ? 'active' : '' ?>" href="<?= base_url('staff/search') ?>">
-                        <i class="fas fa-search "></i> Quick Search
+                        <i class="fas fa-search "></i> Search
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
                     <a class="nav-link <?= ($current_uri == 'new') ? 'active' : '' ?>" href="<?= base_url('staff/new') ?>">
-                        <i class="fa fa-user-plus"></i> Add New Staff
+                        <i class="fa fa-user-plus"></i> New Staff
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
