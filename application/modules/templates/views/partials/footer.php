@@ -117,6 +117,20 @@
   });
 </script>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+  const currentYear = new Date().getFullYear();
+  const minDate = `${currentYear}-01-01`;
+  const maxDate = `${currentYear}-12-31`;
+
+  flatpickr('.current_datepicker', {
+    dateFormat: "Y-m-d",
+    minDate: minDate,
+    maxDate: maxDate,
+    disableMobile: true
+  });
+});
+</script>
+<script>
 	$(document).ready(function() {
 
 		var message = "<?php echo $this->session->tempdata('msg'); ?>";
@@ -632,11 +646,11 @@ document.addEventListener('DOMContentLoaded', function () {
       if (filled > 0) {
         let rowValid = true;
 
-        if (!objective?.value.trim()) {
-          objective.classList.add('is-invalid');
-          addError(objective, 'Objective is required');
-          rowValid = false;
-        }
+        // if (!objective?.value.trim()) {
+        //   objective.classList.add('is-invalid');
+        //   addError(objective, 'Objective is required');
+        //   rowValid = false;
+        // }
 
         const year = new Date(timeline?.value).getFullYear();
         if (!timeline?.value.trim() || year !== currentYear) {
@@ -645,11 +659,11 @@ document.addEventListener('DOMContentLoaded', function () {
           rowValid = false;
         }
 
-        if (!indicator?.value.trim()) {
-          indicator.classList.add('is-invalid');
-          addError(indicator, 'KPI/Deliverable is required');
-          rowValid = false;
-        }
+        // if (!indicator?.value.trim()) {
+        //   indicator.classList.add('is-invalid');
+        //   addError(indicator, 'KPI/Deliverable is required');
+        //   rowValid = false;
+        // }
 
         const weight = parseFloat(weightInput?.value);
         if (isNaN(weight) || weight >= 100) {
