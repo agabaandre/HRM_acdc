@@ -853,7 +853,7 @@ function curl_send_post($url, $body, $headers) {
             //dd($supervisor2Approved);
             // Main logic
             //dd($isSupervisor2);
-            if ($isSupervisor1 && $ppa->draft_status == 0 && $last_action == 'Submitted') {
+            if ($isSupervisor1 && $ppa->draft_status == 0 && ($last_action == 'Submitted'||$last_action == 'Updated')) {
                 return 'show';
             } elseif ($isSupervisor2 && $supervisor1Approved && $ppa->draft_status == 0 && $last_action == 'Approved' && !$supervisor2Approved) {
                 return 'show';
