@@ -346,7 +346,7 @@ class Staff extends MX_Controller
         $count = count($this->staff_mdl->get_status($filters));
 		$data['records'] = $count;
 		//dd($count);
-	
+
 		
 		//dd($data);
 		$staffs= $data['staffs'];

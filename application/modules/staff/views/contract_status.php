@@ -165,6 +165,7 @@
 					<th>Acting Job</th>
 					<th>First Supervisor</th>
 					<th>Second Supervisor</th>
+					<th>Funder</th>
 					<th>Email</th>
 					<th>Telephone</th>
 					<th>WhatsApp</th>
@@ -216,7 +217,7 @@
 						<td><?= @character_limiter($cont->job_acting, 30); ?></td>
 						<td><?= @staff_name($cont->first_supervisor); ?></td>
 						<td><?= @staff_name($cont->second_supervisor); ?></td>
-
+						<td><?= $cont->funder; ?></td>
 					
 						<td><?= $data->work_email; ?></td>
 						<td><?= @$data->tel_1 ?> <?php if (!empty($data->tel_2)) {
