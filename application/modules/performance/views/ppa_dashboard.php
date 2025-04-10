@@ -67,10 +67,15 @@
 
       $('#summaryCards').html(cards.map(card => `
         <div class="col mb-3">
-          <div class="card rounded-1" style="background: ${card.color}; color: #fff;">
-            <div class="card-body d-flex align-items-center justify-content-between">
-              <div><p class="mb-0" style="color: #fff;">${card.label}</p><h5>${card.value}</h5></div>
-              <div class="fs-1"><i class="fa ${card.icon}"></i></div>
+          <div class="card rounded-1 text-white" style="background: ${card.color};">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <p class="mb-0 fw-bold">${card.label}</p>
+                  <h4 class="text-white fw-bold">${card.value}</h4>
+                </div>
+                <div class="fs-1"><i class="fa ${card.icon}"></i></div>
+              </div>
             </div>
           </div>
         </div>
