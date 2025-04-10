@@ -1,4 +1,3 @@
-
 <script>
   const base_url = "<?= base_url(); ?>";
   Highcharts.setOptions({ credits: { enabled: false } });
@@ -7,9 +6,9 @@
 <div class="container-fluid py-0 px-4">
 
   <!-- Filters -->
-  <div class="row mb-2">
+  <div class="row mb-3">
     <div class="col-md-4">
-      <label for="divisionFilter" class="form-label fw-bold">Filter by Division:</label>
+      <label class="form-label fw-bold">Filter by Division:</label>
       <select id="divisionFilter" class="form-control select2 border-primary">
         <option value="">All Divisions</option>
         <?php foreach ($divisions as $div): ?>
@@ -18,7 +17,7 @@
       </select>
     </div>
     <div class="col-md-4">
-      <label for="periodFilter" class="form-label fw-bold">Filter by Period:</label>
+      <label class="form-label fw-bold">Filter by Period:</label>
       <select id="periodFilter" class="form-control select2 border-primary">
         <option value="">All Periods</option>
       </select>
@@ -30,18 +29,21 @@
 
   <!-- Charts -->
   <div class="row g-4">
-    <div class="col-lg-6"><div id="totalSubmissionsChart" class="shadow rounded p-3 bg-white"></div></div>
     <div class="col-lg-6"><div id="approvalBreakdownChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-12"><div id="submissionTrendChart" class="shadow rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="contractTypeChart" class="shadow rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="totalSubmissionsChart" class="shadow rounded p-3 bg-white"></div></div>
     <div class="col-lg-6"><div id="avgApprovalChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="divisionWiseChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-12"><div id="contractTypeChart" class="shadow rounded p-3 bg-white"></div></div>
+    <div class="col-lg-12"><div id="divisionWiseChart" class="shadow rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="trainingCategoriesChart" class="shadow rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="trainingSkillsChart" class="shadow rounded p-3 bg-white"></div></div>
+    <div class="col-lg-12"><div id="submissionTrendChart" class="shadow rounded p-3 bg-white"></div></div>
   </div>
 </div>
 
 <script>
-  $(document).ready(function () {
+  $(function () {
     loadPPADashboard();
+
     $('#divisionFilter, #periodFilter').on('change', function () {
       loadPPADashboard();
     });
@@ -52,47 +54,41 @@
     const period = $('#periodFilter').val();
 
     $.getJSON(base_url + 'performance/fetch_ppa_dashboard_data', {
-      division_id: divisionId, period: period
+      division_id: divisionId,
+      period: period
     }, function (data) {
-      // Periods
+
       if ($('#periodFilter option').length <= 1 && data.periods) {
         data.periods.forEach(period => {
           $('#periodFilter').append(`<option value="${period}" ${period === data.current_period ? 'selected' : ''}>${period}</option>`);
         });
       }
 
-      // Summary Cards
+      // Cards
       const cards = [
-        { label: 'Total PPAs', icon: 'fa-file-alt', color: '#9F2241', value: data.total },
-        { label: 'Approved PPAs', icon: 'fa-check-circle', color: '#1A5632', value: data.approved },
-        { label: 'Staff With PDPs', icon: 'fa-user-check', color: '#385CAD', value: data.staff_with_pdps },
-        { label: 'Staff Without PPAs', icon: 'fa-user-times', color: '#194F90', value: data.staff_without_ppas }
+        { label: 'Total PPAs', icon: 'fa-file-alt', color: '#9F2241', value: data.total, type: 'total' },
+        { label: 'Approved PPAs', icon: 'fa-check-circle', color: '#1A5632', value: data.approved, type: 'approved' },
+        { label: 'Staff With PDPs', icon: 'fa-user-check', color: '#385CAD', value: data.staff_with_pdps, type: 'with_pdp' },
+        { label: 'Staff Without PPAs', icon: 'fa-user-times', color: '#194F90', value: data.staff_without_ppas, type: 'without_ppa' }
       ];
 
       $('#summaryCards').html(cards.map(card => `
         <div class="col mb-3">
-          <div class="card rounded-1" style="background: ${card.color}; color: #fff;">
-            <div class="card-body d-flex align-items-center justify-content-between">
-              <div>
-                <p class="mb-0 text-white">${card.label}</p>
-                <h5 class="fw-bold fs-4 text-white">${card.value}</h5>
+          <a href="javascript:void(0)" class="view-staff-link text-decoration-none" data-type="${card.type}">
+            <div class="card rounded-1" style="background: ${card.color}; color: #fff;">
+              <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                  <p class="mb-0 text-white">${card.label}</p>
+                  <h5 class="fw-bold fs-4 text-white">${card.value}</h5>
+                </div>
+                <div class="fs-1 text-white"><i class="fa ${card.icon}"></i></div>
               </div>
-              <div class="fs-1 text-white"><i class="fa ${card.icon}"></i></div>
             </div>
-          </div>
+          </a>
         </div>
       `).join(''));
 
       // Charts
-      Highcharts.chart('totalSubmissionsChart', {
-        chart: { type: 'column' },
-        title: { text: 'Total Submissions', style: { color: '#911C39' } },
-        xAxis: { categories: ['Submissions'] },
-        yAxis: { title: { text: 'Count' } },
-        colors: ['#911C39'],
-        series: [{ name: 'Total', data: [data.total] }]
-      });
-
       Highcharts.chart('approvalBreakdownChart', {
         chart: { type: 'pie' },
         title: { text: 'Approval Status Breakdown', style: { color: '#119A48' } },
@@ -104,6 +100,73 @@
             { name: 'Pending', y: data.submitted }
           ]
         }]
+      });
+
+      Highcharts.chart('contractTypeChart', {
+        chart: { type: 'column' },
+        title: { text: 'PPA Completion by Contract Type', style: { color: '#7A7A7A' } },
+        xAxis: { categories: data.by_contract.map(c => c.name) },
+        yAxis: { title: { text: 'PPAs Submitted' } },
+        colors: ['#911C39', '#119A48', '#C3A366', '#001011', '#fbb924'],
+        series: [{ name: 'PPAs', data: data.by_contract.map(c => c.y) }]
+      });
+
+      Highcharts.chart('totalSubmissionsChart', {
+        chart: { type: 'column' },
+        title: { text: 'Total Submissions by Age Group', style: { color: '#911C39' } },
+        xAxis: { categories: data.by_age.map(a => a.group) },
+        yAxis: { title: { text: 'Submissions' } },
+        colors: ['#911C39'],
+        series: [{ name: 'Submissions', data: data.by_age.map(a => a.count) }]
+      });
+
+      Highcharts.chart('avgApprovalChart', {
+        chart: { type: 'solidgauge' },
+        title: { text: 'Avg Approval Time (Days)', style: { color: '#5F5F5F' } },
+        pane: {
+          center: ['50%', '85%'], size: '140%', startAngle: -90, endAngle: 90,
+          background: { backgroundColor: '#EEE', innerRadius: '60%', outerRadius: '100%', shape: 'arc' }
+        },
+        tooltip: { enabled: false },
+        yAxis: {
+          min: 0, max: 30,
+          stops: [[0.1, '#119A48'], [0.5, '#fbb924'], [0.9, '#911C39']],
+          lineWidth: 0, tickWidth: 0, labels: { enabled: false }
+        },
+        series: [{
+          name: 'Days',
+          data: [data.avg_approval_days],
+          dataLabels: {
+            format: '<div style="text-align:center"><span style="font-size:1.5em;color:#5F5F5F">{y}</span><br/><span style="font-size:12px;color:silver">days</span></div>'
+          }
+        }]
+      });
+
+      Highcharts.chart('divisionWiseChart', {
+        chart: { type: 'column' },
+        title: { text: 'Submissions by Division', style: { color: '#119A48' } },
+        xAxis: { categories: data.by_division.map(d => d.name) },
+        yAxis: { title: { text: 'Submissions' } },
+        colors: ['#119A48'],
+        series: [{ name: 'Submissions', data: data.by_division.map(d => d.y) }]
+      });
+
+      Highcharts.chart('trainingCategoriesChart', {
+        chart: { type: 'bar' },
+        title: { text: 'Training Categories from PPA', style: { color: '#001011' } },
+        xAxis: { categories: data.training_categories.map(c => c.name) },
+        yAxis: { title: { text: 'No. of Requests' } },
+        colors: ['#119A48'],
+        series: [{ name: 'Requests', data: data.training_categories.map(c => c.y) }]
+      });
+
+      Highcharts.chart('trainingSkillsChart', {
+        chart: { type: 'column' },
+        title: { text: 'Top 10 Training Skills Requested', style: { color: '#911C39' } },
+        xAxis: { categories: data.training_skills.map(s => s.name), labels: { rotation: -45 } },
+        yAxis: { title: { text: 'No. of Mentions' } },
+        colors: ['#fbb924'],
+        series: [{ name: 'Skills', data: data.training_skills.map(s => s.y) }]
       });
 
       Highcharts.chart('submissionTrendChart', {
@@ -119,58 +182,17 @@
         series: [{ name: 'Submissions', data: data.trend.map(item => item.count) }]
       });
 
-      Highcharts.chart('avgApprovalChart', {
-        chart: { type: 'solidgauge' },
-        title: { text: 'Avg Approval Time (Days)', style: { color: '#5F5F5F' } },
-        pane: {
-          center: ['50%', '85%'],
-          size: '140%',
-          startAngle: -90,
-          endAngle: 90,
-          background: {
-            backgroundColor: '#EEE',
-            innerRadius: '60%',
-            outerRadius: '100%',
-            shape: 'arc'
-          }
-        },
-        tooltip: { enabled: false },
-        yAxis: {
-          min: 0,
-          max: 30,
-          stops: [[0.1, '#119A48'], [0.5, '#fbb924'], [0.9, '#911C39']],
-          lineWidth: 0,
-          tickWidth: 0,
-          labels: { enabled: false }
-        },
-        series: [{
-          name: 'Days',
-          data: [data.avg_approval_days],
-          dataLabels: {
-            format: '<div style="text-align:center"><span style="font-size:1.5em;color:#5F5F5F">{y}</span><br/><span style="font-size:12px;color:silver">days</span></div>'
-          }
-        }]
-      });
-
-      Highcharts.chart('divisionWiseChart', {
-        chart: { type: 'bar' },
-        title: { text: 'Submissions by Division', style: { color: '#119A48' } },
-        xAxis: { categories: data.by_division.map(d => d.name) },
-        yAxis: { title: { text: 'Submissions' } },
-        colors: ['#119A48'],
-        series: [{ name: 'Submissions', data: data.by_division.map(d => d.y) }]
-      });
-
-      Highcharts.chart('contractTypeChart', {
-        chart: { type: 'column' },
-        title: { text: 'PPA Completion by Contract Type', style: { color: '#7A7A7A' } },
-        xAxis: { categories: data.by_contract.map(c => c.name) },
-        yAxis: { title: { text: 'PPAs Submitted' } },
-        colors: ['#911C39', '#119A48', '#C3A366', '#001011', '#fbb924', '#385CAD', '#194F90'],
-        series: [{ name: 'PPAs', data: data.by_contract.map(c => c.y) }]
-      });
     }).fail(function () {
       alert("Failed to load dashboard data. Please try again.");
     });
   }
+
+  // Navigate to staff list
+  $(document).on('click', '.view-staff-link', function () {
+    const type = $(this).data('type');
+    const divisionId = $('#divisionFilter').val();
+    const period = $('#periodFilter').val();
+    const targetUrl = `${base_url}performance/staff_list?type=${type}&division_id=${divisionId}&period=${period}`;
+    window.open(targetUrl, '_blank');
+  });
 </script>

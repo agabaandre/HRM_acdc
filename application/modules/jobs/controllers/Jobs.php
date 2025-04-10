@@ -352,11 +352,61 @@ public function cron_register(){
              return false;
          }
      } catch (Exception $e) {
-        dd($e->getMessage());
+       // dd($e->getMessage());
          log_message('error', "Email sending exception: {$e->getMessage()}");
          return false;
      }
  }
+
+
+ public function notify_unsubmitted_ppas()
+{
+    $current_period = str_replace(' ', '-', current_period());
+
+    $deadline = $this->db->select('ppa_deadline')->get('ppa_configs')->row()->ppa_deadline;
+    $staff_list = $this->ppa_mdl->get_staff_without_ppa($current_period);
+
+    foreach ($staff_list as $staff) {
+        $data = [
+            'name' => $staff->title . ' ' . $staff->fname . ' ' . $staff->lname,
+            'period' => $current_period,
+            'deadline' => $deadline,
+            'type' => 'ppa_reminder'
+        ];
+
+        $data['subject'] = "Reminder: Submit your PPA ($current_period)";
+        $data['body'] = $this->load->view('emails/staff_ppa_reminder', $data, true);
+        $data['email_to'] = $staff->work_email;
+
+        $entry_log_id = md5($staff->staff_id . '-PPAREM-' . date('Y-m-d'));
+        golobal_log_email('ppa_reminder', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'), 1, $entry_log_id);
+    }
+}
+public function notify_supervisors_pending_ppas()
+{
+    $current_period = str_replace(' ', '-', current_period());
+
+    $deadline = $this->db->select('ppa_deadline')->get('ppa_configs')->row()->ppa_deadline;
+    $supervisors = $this->ppa_mdl->get_supervisors_with_pending_ppas($current_period);
+
+    foreach ($supervisors as $sup) {
+        $data = [
+            'supervisor_name' => $sup->title . ' ' . $sup->fname . ' ' . $sup->lname,
+            'period' => $current_period,
+            'deadline' => $deadline,
+            'type' => 'supervisor_reminder'
+        ];
+
+        $data['subject'] = "Reminder: Pending PPA Approvals ($current_period)";
+        $data['body'] = $this->load->view('emails/supervisor_ppa_reminder', $data, true);
+        $data['email_to'] = $sup->work_email;
+
+        $entry_log_id = md5($sup->staff_id . '-SUPPPAREM-' . date('Y-m-d'));
+        golobal_log_email('supervisor_ppa_reminder', $data['email_to'], $data['body'], $data['subject'], $sup->staff_id, date('Y-m-d'), 1, $entry_log_id);
+    }
+}
+
+
 
     
 }
