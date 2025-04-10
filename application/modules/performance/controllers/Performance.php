@@ -416,205 +416,25 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
             }, 120);
             render('ppa_dashboard', $data);
         }
-    
         public function fetch_ppa_dashboard_data()
         {
             $division_id = $this->input->get('division_id');
             $period = $this->input->get('period');
-            $current_period = str_replace(' ', '-', current_period());
-            $period = !empty($period) ? $period : $current_period;
-        
             $user = $this->session->userdata('user');
+        
             $is_restricted = ($user && isset($user->role) && $user->role == 17);
             $staff_id = $is_restricted ? $user->staff_id : null;
         
-            // 1. Get active staff IDs
-            $subquery = $this->db->select('MAX(staff_contract_id)', false)
-                ->from('staff_contracts')
-                ->group_by('staff_id')
-                ->get_compiled_select();
+            $cache_key = 'ppa_dashboard_' . ($division_id ?: 'all') . '_' . ($period ?: 'current') . ($staff_id ? "_staff_$staff_id" : '');
         
-            $this->db->select('s.staff_id');
-            $this->db->from('staff s');
-            $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
-            $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-            $this->db->where_in('sc.status_id', [1, 2]);
-            $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
-            if ($division_id) $this->db->where('sc.division_id', $division_id);
-            if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
-            $staff_ids = array_column($this->db->get()->result(), 'staff_id');
+            $data = cache_list($cache_key, function () use ($division_id, $period, $staff_id) {
+                return $this->per_mdl->get_dashboard_data($division_id, $period, $staff_id);
+            }, 300); // Cache for 5 minutes
         
-            // 2. Summary
-            $this->db->select("COUNT(pe.entry_id) AS total,
-                SUM(CASE WHEN latest.action = 'Approved' THEN 1 ELSE 0 END) AS approved,
-                SUM(CASE WHEN latest.action = 'Submitted' THEN 1 ELSE 0 END) AS submitted", false);
-            $this->db->from("ppa_entries pe");
-            $this->db->join("(SELECT pat1.* FROM ppa_approval_trail pat1
-                INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail GROUP BY entry_id) latest
-                ON pat1.id = latest.max_id) latest", "latest.entry_id = pe.entry_id", "left");
-            if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-            if ($period) $this->db->where("pe.performance_period", $period);
-            $summary = $this->db->get()->row();
-        
-            // 3. Trend
-            $this->db->select("DATE(pe.created_at) AS date, COUNT(pe.entry_id) AS count");
-            $this->db->from("ppa_entries pe");
-            if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-            if ($period) $this->db->where("pe.performance_period", $period);
-            $this->db->group_by("DATE(pe.created_at)");
-            $this->db->order_by("DATE(pe.created_at)", "ASC");
-            $trend_data = $this->db->get()->result();
-            $trend = array_map(fn($r) => ['date' => $r->date, 'count' => (int)$r->count], $trend_data);
-        
-            // 4. Avg approval time
-            $this->db->select("pe.created_at AS submitted_date, latest_approved.created_at AS approved_date");
-            $this->db->from("ppa_entries pe");
-            $this->db->join("(SELECT pat1.* FROM ppa_approval_trail pat1
-                INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail WHERE action = 'Approved' GROUP BY entry_id) latest
-                ON pat1.id = latest.max_id) latest_approved", "latest_approved.entry_id = pe.entry_id", "left");
-            if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-            if ($period) $this->db->where("pe.performance_period", $period);
-            $approvals = $this->db->get()->result();
-        
-            $total_days = 0; $count = 0;
-            foreach ($approvals as $a) {
-                if ($a->submitted_date && $a->approved_date) {
-                    $days = (strtotime($a->approved_date) - strtotime($a->submitted_date)) / (60 * 60 * 24);
-                    $total_days += $days; $count++;
-                }
-            }
-            $avg_days = $count > 0 ? round($total_days / $count, 2) : 0;
-        
-       // 5. Division-wise - FIXED: Count DISTINCT pe.entry_id and only latest contract per staff
-        $subquery = $this->db->select('MAX(staff_contract_id)')
-        ->from('staff_contracts')
-        ->group_by('staff_id')
-        ->get_compiled_select();
-
-        $this->db->select("d.division_name, COUNT(DISTINCT pe.entry_id) AS count");
-        $this->db->from("ppa_entries pe");
-        $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
-        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-        $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
-
-        if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-        if ($period) $this->db->where("pe.performance_period", $period);
-
-        $this->db->group_by("sc.division_id");
-        $divisions = array_map(fn($r) => [
-        'name' => $r->division_name,
-        'y' => (int)$r->count
-        ], $this->db->get()->result());
-
-        
-            // 6. Contract Type
-            $this->db->select("ct.contract_type, COUNT(pe.entry_id) AS total");
-            $this->db->from("ppa_entries pe");
-            $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
-            $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
-            if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-            if ($period) $this->db->where("pe.performance_period", $period);
-            $this->db->group_by("ct.contract_type_id");
-            $contract_chart = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
-        
-            // 7. Staff with PPA
-            $this->db->select('staff_id');
-            $this->db->from('ppa_entries');
-            if (!empty($staff_ids)) $this->db->where_in("staff_id", $staff_ids);
-            if ($period) $this->db->where("performance_period", $period);
-            $ppa_staff = array_column($this->db->get()->result(), 'staff_id');
-        
-            // 8. Staff with PDP
-            $this->db->select('staff_id');
-            $this->db->from('ppa_entries');
-            $this->db->where('training_recommended', 'Yes');
-            if (!empty($staff_ids)) $this->db->where_in("staff_id", $staff_ids);
-            if ($period) $this->db->where("performance_period", $period);
-            $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
-        
-                    // 9. Periods
-            $this->db->distinct();
-            $this->db->select('performance_period');
-            $this->db->from('ppa_entries');
-            if ($is_restricted) {
-                $this->db->where('staff_id', $staff_id);
-            }
-            $this->db->order_by('created_at', 'DESC');
-            $periods = array_column($this->db->get()->result(), 'performance_period');
-            $current_period = $periods[0] ?? $period;
-        
-            // 10. Age groups
-            $age_groups = [
-                'Under 30' => [null, 29],
-                '30 - 39' => [30, 39],
-                '40 - 49' => [40, 49],
-                '50 - 59' => [50, 59],
-                '60+' => [60, null],
-            ];
-            $age_data = [];
-            foreach ($age_groups as $label => [$min, $max]) {
-                $this->db->select("pe.entry_id");
-                $this->db->from("ppa_entries pe");
-                $this->db->join("staff s", "s.staff_id = pe.staff_id", "left");
-                if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-                if ($period) $this->db->where("pe.performance_period", $period);
-                if ($min !== null) $this->db->where("TIMESTAMPDIFF(YEAR, s.date_of_birth, CURDATE()) >=", $min);
-                if ($max !== null) $this->db->where("TIMESTAMPDIFF(YEAR, s.date_of_birth, CURDATE()) <=", $max);
-                $count = $this->db->count_all_results();
-                $age_data[] = ['group' => $label, 'count' => $count];
-            }
-        
-           // 11. Training category chart
-            $this->db->select('tc.category_name as name, COUNT(*) as y', false);
-            $this->db->from('ppa_entries pe');
-            $this->db->join('training_skills ts', 'JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), "$")', 'inner', false);
-            $this->db->join('training_categories tc', 'tc.id = ts.category_id', 'left');
-            if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-            if ($period) $this->db->where("pe.performance_period", $period);
-            $this->db->group_by('ts.category_id');
-            $training_categories = $this->db->get()->result();
-
-        
-         
-            // 12. Training skills chart (aligned with category chart format)
-            $this->db->select('ts.skill as name, COUNT(*) as y', false);
-            $this->db->from('ppa_entries pe');
-            $this->db->join('training_skills ts', 'JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), "$")', 'inner', false);
-
-            if (!empty($staff_ids)) {
-                $this->db->where_in("pe.staff_id", $staff_ids);
-            }
-            if ($period) {
-                $this->db->where("pe.performance_period", $period);
-            }
-
-            $this->db->group_by('ts.id');
-            $this->db->order_by('y', 'DESC');
-            $this->db->limit(10);
-
-            $training_skills = $this->db->get()->result();
-
-        
-            // Final response
-            echo json_encode([
-                'total' => (int)$summary->total,
-                'approved' => (int)$summary->approved,
-                'submitted' => (int)$summary->submitted,
-                'trend' => $trend,
-                'avg_approval_days' => $avg_days,
-                'by_division' => $divisions,
-                'by_contract' => $contract_chart,
-                'by_age' => $age_data,
-                'training_categories' => $training_categories,
-                'training_skills' => $training_skills,
-                'staff_count' => count($staff_ids),
-                'staff_without_ppas' => count($staff_ids) - count($ppa_staff),
-                'staff_with_pdps' => count($pdp_staff),
-                'periods' => $periods,
-                'current_period' => $current_period,
-            ]);
+            echo json_encode($data);
         }
         
+    
         
         public function staff_list()
     {
