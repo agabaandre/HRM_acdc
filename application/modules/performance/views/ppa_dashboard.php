@@ -1,4 +1,3 @@
-<?php $this->load->view('ppa_tabs'); ?>
 
 <script>
   const base_url = "<?= base_url(); ?>";
