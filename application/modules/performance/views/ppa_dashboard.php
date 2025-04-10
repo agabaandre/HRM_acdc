@@ -97,10 +97,11 @@
   <div class="row g-4">
     <div class="col-lg-6"><div id="approvalBreakdownChart" class="shadow-sm rounded p-3 bg-white"></div></div>
     <div class="col-lg-6"><div id="contractTypeChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="totalSubmissionsChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="trainingCategoriesChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <!-- <div class="col-lg-6"><div id="totalSubmissionsChart" class="shadow-sm rounded p-3 bg-white"></div></div> -->
     <div class="col-lg-6"><div id="avgApprovalChart" class="shadow-sm rounded p-3 bg-white"></div></div>
     <div class="col-lg-12"><div id="divisionWiseChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-12"><div id="trainingCategoriesChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+ 
     <div class="col-lg-12"><div id="trainingSkillsChart" class="shadow-sm rounded p-3 bg-white"></div></div>
     <div class="col-lg-12"><div id="submissionTrendChart" class="shadow-sm rounded p-3 bg-white"></div></div>
   </div>
@@ -172,14 +173,14 @@
         series: [{ name: 'PPAs', data: data.by_contract.map(c => parseInt(c.y)) }]
       });
 
-      Highcharts.chart('totalSubmissionsChart', {
-        chart: { type: 'bar' },
-        title: { text: 'Total Submissions by Age Group', style: { color: '#C3A366' } },
-        xAxis: { categories: data.by_age.map(a => a.group) },
-        yAxis: { title: { text: 'Submissions' } },
-        colors: ['#119A48'],
-        series: [{ name: 'Submissions', data: data.by_age.map(a => parseInt(a.count)) }]
-      });
+    //   Highcharts.chart('totalSubmissionsChart', {
+    //     chart: { type: 'bar' },
+    //     title: { text: 'Total Submissions by Age Group', style: { color: '#C3A366' } },
+    //     xAxis: { categories: data.by_age.map(a => a.group) },
+    //     yAxis: { title: { text: 'Submissions' } },
+    //     colors: ['#119A48'],
+    //     series: [{ name: 'Submissions', data: data.by_age.map(a => parseInt(a.count)) }]
+    //   });
 
       Highcharts.chart('avgApprovalChart', {
         chart: { type: 'solidgauge' },
