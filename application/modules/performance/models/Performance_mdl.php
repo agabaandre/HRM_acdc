@@ -400,8 +400,8 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
     $this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
     $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-    $this->db->where_in('sc.status_id', [1, 2]);
-    $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]);
+    $this->db->where_in('sc.status_id', [1, 2]); // Active & Due
+    $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD
     if ($division_id) {
         $this->db->where('sc.division_id', $division_id);
     }
@@ -411,7 +411,6 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
 
     if (empty($staff_ids)) return [];
 
-    // Map staff entry_id if needed
     switch ($type) {
         case 'total':
             $this->db->select('staff_id, entry_id');
@@ -419,10 +418,12 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             if ($period) $this->db->where('performance_period', $period);
             $this->db->where_in('staff_id', $staff_ids);
             $ppa_entries = $this->db->get()->result();
+
             $ppa_map = [];
             foreach ($ppa_entries as $row) {
                 $ppa_map[$row->staff_id] = $row->entry_id;
             }
+
             return array_filter(array_map(function ($staff) use ($ppa_map) {
                 if (isset($ppa_map[$staff->staff_id])) {
                     $staff->entry_id = $ppa_map[$staff->staff_id];
@@ -444,10 +445,12 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             if ($period) $this->db->where('pe.performance_period', $period);
             $this->db->where_in('pe.staff_id', $staff_ids);
             $approved_entries = $this->db->get()->result();
+
             $approved_map = [];
             foreach ($approved_entries as $row) {
                 $approved_map[$row->staff_id] = $row->entry_id;
             }
+
             return array_filter(array_map(function ($staff) use ($approved_map) {
                 if (isset($approved_map[$staff->staff_id])) {
                     $staff->entry_id = $approved_map[$staff->staff_id];
@@ -457,13 +460,38 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             }, $active_staff));
 
         case 'with_pdp':
-            $this->db->select('staff_id');
+            $this->db->select('staff_id, entry_id, required_skills');
             $this->db->from('ppa_entries');
             $this->db->where('training_recommended', 'Yes');
             if ($period) $this->db->where('performance_period', $period);
             $this->db->where_in('staff_id', $staff_ids);
-            $pdp_ids = array_column($this->db->get()->result(), 'staff_id');
-            return array_filter($active_staff, fn($s) => in_array($s->staff_id, $pdp_ids));
+            $pdp_entries = $this->db->get()->result();
+
+            // Map skills
+            $this->db->select('id, skill');
+            $skills_map = [];
+            foreach ($this->db->get('training_skills')->result() as $s) {
+                $skills_map[$s->id] = $s->skill;
+            }
+
+            $pdp_map = [];
+            foreach ($pdp_entries as $entry) {
+                $skill_ids = json_decode($entry->required_skills ?? '[]', true);
+                $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
+                $pdp_map[$entry->staff_id] = [
+                    'entry_id' => $entry->entry_id,
+                    'skills' => array_filter($skill_names)
+                ];
+            }
+
+            return array_filter(array_map(function ($staff) use ($pdp_map) {
+                if (isset($pdp_map[$staff->staff_id])) {
+                    $staff->entry_id = $pdp_map[$staff->staff_id]['entry_id'];
+                    $staff->training_skills = $pdp_map[$staff->staff_id]['skills'];
+                    return $staff;
+                }
+                return null;
+            }, $active_staff));
 
         case 'without_ppa':
             $this->db->select('staff_id');
@@ -471,12 +499,14 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             if ($period) $this->db->where('performance_period', $period);
             $this->db->where_in('staff_id', $staff_ids);
             $ppa_ids = array_column($this->db->get()->result(), 'staff_id');
+
             return array_filter($active_staff, fn($s) => !in_array($s->staff_id, $ppa_ids));
 
         default:
             return [];
     }
 }
+
 
     public function get_dashboard_data()
     {
