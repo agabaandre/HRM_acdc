@@ -8,7 +8,6 @@
 </script>
 
 <div class="container-fluid py-4 px-4">
- 
 
   <!-- Summary Cards -->
   <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 mb-4" id="summaryCards"></div>
@@ -28,7 +27,6 @@
       <label for="periodFilter" class="form-label fw-bold">Filter by Period:</label>
       <select id="periodFilter" class="form-control select2 border-primary">
         <option value="">All Periods</option>
-        <!-- Populate dynamically via JS or PHP if needed -->
       </select>
     </div>
   </div>
@@ -61,18 +59,31 @@
     loadPPADashboard();
 
     $('#divisionFilter, #periodFilter').on('change', function () {
-      loadPPADashboard($('#divisionFilter').val());
+      loadPPADashboard();
     });
   });
 
-  function loadPPADashboard(divId = '') {
-    $.getJSON(base_url + 'performance/fetch_ppa_dashboard_data', { division_id: divId }, function (data) {
+  function loadPPADashboard() {
+    const divisionId = $('#divisionFilter').val();
+    const period = $('#periodFilter').val();
+
+    $.getJSON(base_url + 'performance/fetch_ppa_dashboard_data', {
+      division_id: divisionId,
+      period: period
+    }, function (data) {
+
+      // Populate period filter once
+      if ($('#periodFilter option').length <= 1 && data.periods) {
+        data.periods.forEach(function (period) {
+          $('#periodFilter').append(`<option value="${period}" ${period === data.current_period ? 'selected' : ''}>${period}</option>`);
+        });
+      }
 
       // Summary Cards
       const cards = [
         { label: 'Total PPAs', icon: 'fa-file-alt', color: '#9F2241', value: data.total },
         { label: 'Approved PPAs', icon: 'fa-check-circle', color: '#1A5632', value: data.approved },
-        { label: 'Staff With PPAs', icon: 'fa-users', color: '#385CAD', value: data.staff_count - data.staff_without_ppas },
+        { label: 'Staff With PDPs', icon: 'fa-user-check', color: '#385CAD', value: data.staff_with_pdps },
         { label: 'Staff Without PPAs', icon: 'fa-user-times', color: '#194F90', value: data.staff_without_ppas }
       ];
 
@@ -92,6 +103,7 @@
         </div>
       `).join(''));
 
+      // Highcharts Rendering
       Highcharts.chart('totalSubmissionsChart', {
         chart: { type: 'column' },
         title: { text: 'Total Submissions', style: { color: '#911C39' } },
@@ -180,6 +192,8 @@
         colors: ['#001011'],
         series: [{ name: 'PPAs', data: data.by_contract.map(c => c.y) }]
       });
+    }).fail(function () {
+      alert("Failed to load dashboard data. Please try again.");
     });
   }
 </script>
