@@ -1,40 +1,63 @@
 <style>
   @media print {
+    body {
+      background: #fff !important;
+      color: #000 !important;
+      font-size: 12pt;
+    }
+
     #dashboardFilters,
-    .view-staff-link,
-    .select2-container,
-    .btn,
     .navbar,
-    footer {
+    .btn,
+    footer,
+    .select2-container {
       display: none !important;
+    }
+
+    .container-fluid {
+      width: 100%;
+      padding: 0;
+      margin: 0 auto;
+    }
+
+    .row {
+      justify-content: center;
+      align-items: center;
     }
 
     .card,
     .shadow,
-    .bg-white,
     .rounded,
-    .container-fluid {
+    .bg-white {
       box-shadow: none !important;
-      background: none !important;
-      border: none !important;
+      background: #911C39 !important;
+      color: #fff !important;
+      border: 1px solid #ccc !important;
     }
 
-    body {
-      color: #000 !important;
-      background: #fff !important;
-      font-size: 11pt;
+    .card .card-body {
+      color: #fff !important;
     }
 
-    .highcharts-legend {
+    .highcharts-title {
+      fill: #000 !important;
+    }
+
+    .highcharts-legend,
+    .highcharts-credits {
       display: none !important;
     }
 
-    h4, .highcharts-title {
-      font-size: 14pt !important;
-      color: #000 !important;
+    .text-white {
+      color: #fff !important;
+    }
+
+    .text-center-print {
+      text-align: center !important;
     }
   }
 </style>
+
 
 <script>
   const base_url = "<?= base_url(); ?>";
