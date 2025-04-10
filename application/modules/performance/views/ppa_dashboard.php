@@ -77,8 +77,8 @@
     <div class="col-lg-6"><div id="totalSubmissionsChart" class="shadow-sm rounded p-3 bg-white"></div></div>
     <div class="col-lg-6"><div id="avgApprovalChart" class="shadow-sm rounded p-3 bg-white"></div></div>
     <div class="col-lg-12"><div id="divisionWiseChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="trainingCategoriesChart" class="shadow-sm rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="trainingSkillsChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-12"><div id="trainingCategoriesChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-12"><div id="trainingSkillsChart" class="shadow-sm rounded p-3 bg-white"></div></div>
     <div class="col-lg-12"><div id="submissionTrendChart" class="shadow-sm rounded p-3 bg-white"></div></div>
   </div>
 </div>
@@ -141,7 +141,7 @@
       });
 
       Highcharts.chart('contractTypeChart', {
-        chart: { type: 'column' },
+        chart: { type: 'bar' },
         title: { text: 'PPA Completion by Contract Type', style: { color: '#7A7A7A' } },
         xAxis: { categories: data.by_contract.map(c => c.name) },
         yAxis: { title: { text: 'PPAs Submitted' } },
@@ -150,7 +150,7 @@
       });
 
       Highcharts.chart('totalSubmissionsChart', {
-        chart: { type: 'column' },
+        chart: { type: 'bar' },
         title: { text: 'Total Submissions by Age Group', style: { color: '#C3A366' } },
         xAxis: { categories: data.by_age.map(a => a.group) },
         yAxis: { title: { text: 'Submissions' } },
@@ -210,7 +210,7 @@
       });
 
       Highcharts.chart('trainingSkillsChart', {
-        chart: { type: 'column' },
+        chart: { type: 'bar' },
         title: { text: 'Top 10 Training Skills Requested', style: { color: '#911C39' } },
         xAxis: {
           categories: data.training_skills.map(s => s.name),
