@@ -1,15 +1,53 @@
+<style>
+  @media print {
+    #dashboardFilters,
+    .view-staff-link,
+    .select2-container,
+    .btn,
+    .navbar,
+    footer {
+      display: none !important;
+    }
+
+    .card,
+    .shadow,
+    .bg-white,
+    .rounded,
+    .container-fluid {
+      box-shadow: none !important;
+      background: none !important;
+      border: none !important;
+    }
+
+    body {
+      color: #000 !important;
+      background: #fff !important;
+      font-size: 11pt;
+    }
+
+    .highcharts-legend {
+      display: none !important;
+    }
+
+    h4, .highcharts-title {
+      font-size: 14pt !important;
+      color: #000 !important;
+    }
+  }
+</style>
+
 <script>
   const base_url = "<?= base_url(); ?>";
   Highcharts.setOptions({ credits: { enabled: false } });
 </script>
 
-<div class="container-fluid py-0 px-4">
+<div class="container-fluid py-0 px-4" id="dashboardContent">
 
   <!-- Filters -->
-  <div class="row mb-3">
+  <div class="row mb-4" id="dashboardFilters">
     <div class="col-md-4">
-      <label class="form-label fw-bold">Filter by Division:</label>
-      <select id="divisionFilter" class="form-control select2 border-primary">
+      <label class="form-label fw-bold text-secondary">Filter by Division</label>
+      <select id="divisionFilter" class="form-select border-success select2">
         <option value="">All Divisions</option>
         <?php foreach ($divisions as $div): ?>
           <option value="<?= $div->division_id ?>"><?= $div->division_name ?></option>
@@ -17,36 +55,38 @@
       </select>
     </div>
     <div class="col-md-4">
-      <label class="form-label fw-bold">Filter by Period:</label>
-      <select id="periodFilter" class="form-control select2 border-primary">
+      <label class="form-label fw-bold text-secondary">Filter by Period</label>
+      <select id="periodFilter" class="form-select border-success select2">
         <option value="">All Periods</option>
       </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button class="btn btn-outline-success w-100" onclick="window.print()">
+        <i class="fa fa-print"></i> Print Report
+      </button>
     </div>
   </div>
 
   <!-- Summary Cards -->
   <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 mb-4" id="summaryCards"></div>
 
-  <!-- Charts -->
+  <!-- Charts Section -->
   <div class="row g-4">
-    <div class="col-lg-6"><div id="approvalBreakdownChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="contractTypeChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="totalSubmissionsChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="avgApprovalChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-12"><div id="divisionWiseChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="trainingCategoriesChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-6"><div id="trainingSkillsChart" class="shadow rounded p-3 bg-white"></div></div>
-    <div class="col-lg-12"><div id="submissionTrendChart" class="shadow rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="approvalBreakdownChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="contractTypeChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="totalSubmissionsChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="avgApprovalChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-12"><div id="divisionWiseChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="trainingCategoriesChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-6"><div id="trainingSkillsChart" class="shadow-sm rounded p-3 bg-white"></div></div>
+    <div class="col-lg-12"><div id="submissionTrendChart" class="shadow-sm rounded p-3 bg-white"></div></div>
   </div>
 </div>
 
 <script>
   $(function () {
     loadPPADashboard();
-
-    $('#divisionFilter, #periodFilter').on('change', function () {
-      loadPPADashboard();
-    });
+    $('#divisionFilter, #periodFilter').on('change', loadPPADashboard);
   });
 
   function loadPPADashboard() {
@@ -64,31 +104,29 @@
         });
       }
 
-      // Cards
       const cards = [
-        { label: 'Total PPAs', icon: 'fa-file-alt', color: '#9F2241', value: data.total, type: 'total' },
-        { label: 'Approved PPAs', icon: 'fa-check-circle', color: '#1A5632', value: data.approved, type: 'approved' },
+        { label: 'Total PPAs', icon: 'fa-file-alt', color: '#911C39', value: data.total, type: 'total' },
+        { label: 'Approved PPAs', icon: 'fa-check-circle', color: '#119A48', value: data.approved, type: 'approved' },
         { label: 'Staff With PDPs', icon: 'fa-user-check', color: '#385CAD', value: data.staff_with_pdps, type: 'with_pdp' },
-        { label: 'Staff Without PPAs', icon: 'fa-user-times', color: '#194F90', value: data.staff_without_ppas, type: 'without_ppa' }
+        { label: 'Staff Without PPAs', icon: 'fa-user-times', color: '#C3A366', value: data.staff_without_ppas, type: 'without_ppa' }
       ];
 
       $('#summaryCards').html(cards.map(card => `
         <div class="col mb-3">
           <a href="javascript:void(0)" class="view-staff-link text-decoration-none" data-type="${card.type}">
-            <div class="card rounded-1" style="background: ${card.color}; color: #fff;">
+            <div class="card shadow-sm rounded-2 border-0 text-white" style="background-color:${card.color}">
               <div class="card-body d-flex align-items-center justify-content-between">
                 <div>
-                  <p class="mb-0 text-white">${card.label}</p>
-                  <h5 class="fw-bold fs-4 text-white">${card.value}</h5>
+                  <p class="mb-0 text-white fw-bold">${card.label}</p>
+                  <h4 class="fw-bold text-white">${card.value}</h4>
                 </div>
-                <div class="fs-1 text-white"><i class="fa ${card.icon}"></i></div>
+                <div class="fs-1"><i class="fa ${card.icon}"></i></div>
               </div>
             </div>
           </a>
         </div>
       `).join(''));
 
-      // Charts
       Highcharts.chart('approvalBreakdownChart', {
         chart: { type: 'pie' },
         title: { text: 'Approval Status Breakdown', style: { color: '#119A48' } },
@@ -96,8 +134,8 @@
         series: [{
           name: 'Status',
           data: [
-            { name: 'Approved', y: data.approved },
-            { name: 'Pending', y: data.submitted }
+            { name: 'Approved', y: parseInt(data.approved) },
+            { name: 'Pending', y: parseInt(data.submitted) }
           ]
         }]
       });
@@ -107,35 +145,46 @@
         title: { text: 'PPA Completion by Contract Type', style: { color: '#7A7A7A' } },
         xAxis: { categories: data.by_contract.map(c => c.name) },
         yAxis: { title: { text: 'PPAs Submitted' } },
-        colors: ['#911C39', '#119A48', '#C3A366', '#001011', '#fbb924'],
-        series: [{ name: 'PPAs', data: data.by_contract.map(c => c.y) }]
+        colors: ['#911C39'],
+        series: [{ name: 'PPAs', data: data.by_contract.map(c => parseInt(c.y)) }]
       });
 
       Highcharts.chart('totalSubmissionsChart', {
         chart: { type: 'column' },
-        title: { text: 'Total Submissions by Age Group', style: { color: '#911C39' } },
+        title: { text: 'Total Submissions by Age Group', style: { color: '#C3A366' } },
         xAxis: { categories: data.by_age.map(a => a.group) },
         yAxis: { title: { text: 'Submissions' } },
-        colors: ['#911C39'],
-        series: [{ name: 'Submissions', data: data.by_age.map(a => a.count) }]
+        colors: ['#119A48'],
+        series: [{ name: 'Submissions', data: data.by_age.map(a => parseInt(a.count)) }]
       });
 
       Highcharts.chart('avgApprovalChart', {
         chart: { type: 'solidgauge' },
-        title: { text: 'Avg Approval Time (Days)', style: { color: '#5F5F5F' } },
+        title: { text: 'Avg Approval Time (Days)', style: { color: '#001011' } },
         pane: {
-          center: ['50%', '85%'], size: '140%', startAngle: -90, endAngle: 90,
-          background: { backgroundColor: '#EEE', innerRadius: '60%', outerRadius: '100%', shape: 'arc' }
+          center: ['50%', '85%'],
+          size: '140%',
+          startAngle: -90,
+          endAngle: 90,
+          background: {
+            backgroundColor: '#f4f4f4',
+            innerRadius: '60%',
+            outerRadius: '100%',
+            shape: 'arc'
+          }
         },
         tooltip: { enabled: false },
         yAxis: {
-          min: 0, max: 30,
+          min: 0,
+          max: 30,
           stops: [[0.1, '#119A48'], [0.5, '#fbb924'], [0.9, '#911C39']],
-          lineWidth: 0, tickWidth: 0, labels: { enabled: false }
+          lineWidth: 0,
+          tickWidth: 0,
+          labels: { enabled: false }
         },
         series: [{
           name: 'Days',
-          data: [data.avg_approval_days],
+          data: [parseFloat(data.avg_approval_days)],
           dataLabels: {
             format: '<div style="text-align:center"><span style="font-size:1.5em;color:#5F5F5F">{y}</span><br/><span style="font-size:12px;color:silver">days</span></div>'
           }
@@ -144,55 +193,54 @@
 
       Highcharts.chart('divisionWiseChart', {
         chart: { type: 'column' },
-        title: { text: 'Submissions by Division', style: { color: '#119A48' } },
+        title: { text: 'Submissions by Division', style: { color: '#911C39' } },
         xAxis: { categories: data.by_division.map(d => d.name) },
         yAxis: { title: { text: 'Submissions' } },
         colors: ['#119A48'],
-        series: [{ name: 'Submissions', data: data.by_division.map(d => d.y) }]
+        series: [{ name: 'Submissions', data: data.by_division.map(d => parseInt(d.y)) }]
       });
 
       Highcharts.chart('trainingCategoriesChart', {
         chart: { type: 'bar' },
         title: { text: 'Training Categories from PPA', style: { color: '#001011' } },
         xAxis: { categories: data.training_categories.map(c => c.name) },
-        yAxis: { title: { text: 'No. of Requests' } },
-        colors: ['#119A48'],
-        series: [{ name: 'Requests', data: data.training_categories.map(c => c.y) }]
+        yAxis: { title: { text: 'Requests' } },
+        colors: ['#C3A366'],
+        series: [{ name: 'Requests', data: data.training_categories.map(c => parseInt(c.y)) }]
       });
 
       Highcharts.chart('trainingSkillsChart', {
         chart: { type: 'column' },
         title: { text: 'Top 10 Training Skills Requested', style: { color: '#911C39' } },
-        xAxis: { categories: data.training_skills.map(s => s.name), labels: { rotation: -45 } },
-        yAxis: { title: { text: 'No. of Mentions' } },
+        xAxis: {
+          categories: data.training_skills.map(s => s.name),
+          labels: { rotation: -45 }
+        },
+        yAxis: { title: { text: 'Mentions' } },
         colors: ['#fbb924'],
-        series: [{ name: 'Skills', data: data.training_skills.map(s => s.y) }]
+        series: [{ name: 'Skills', data: data.training_skills.map(s => parseInt(s.y)) }]
       });
 
       Highcharts.chart('submissionTrendChart', {
         chart: { type: 'area' },
-        title: { text: 'Submission Trend Over Time', style: { color: '#C3A366' } },
+        title: { text: 'Submission Trend Over Time', style: { color: '#385CAD' } },
         xAxis: {
           categories: data.trend.map(item => item.date),
           tickmarkPlacement: 'on',
           title: { text: 'Date' }
         },
         yAxis: { title: { text: 'Submissions' } },
-        colors: ['#C3A366'],
-        series: [{ name: 'Submissions', data: data.trend.map(item => item.count) }]
+        colors: ['#119A48'],
+        series: [{ name: 'Submissions', data: data.trend.map(item => parseInt(item.count)) }]
       });
 
-    }).fail(function () {
-      alert("Failed to load dashboard data. Please try again.");
-    });
+    }).fail(() => alert("Failed to load dashboard data. Please try again."));
   }
 
-  // Navigate to staff list
   $(document).on('click', '.view-staff-link', function () {
     const type = $(this).data('type');
     const divisionId = $('#divisionFilter').val();
     const period = $('#periodFilter').val();
-    const targetUrl = `${base_url}performance/staff_list?type=${type}&division_id=${divisionId}&period=${period}`;
-    window.open(targetUrl, '_blank');
+    window.open(`${base_url}performance/staff_list?type=${type}&division_id=${divisionId}&period=${period}`, '_blank');
   });
 </script>
