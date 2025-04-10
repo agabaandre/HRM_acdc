@@ -1,3 +1,4 @@
+<?php $this->load->view('ppa_tabs'); ?>
 
 <script>
   const base_url = "<?= base_url(); ?>";
@@ -5,6 +6,7 @@
 </script>
 
 <div class="container-fluid py-0 px-4">
+
   <!-- Filters -->
   <div class="row mb-2">
     <div class="col-md-4">
@@ -50,13 +52,17 @@
     const divisionId = $('#divisionFilter').val();
     const period = $('#periodFilter').val();
 
-    $.getJSON(base_url + 'performance/fetch_ppa_dashboard_data', { division_id: divisionId, period: period }, function (data) {
+    $.getJSON(base_url + 'performance/fetch_ppa_dashboard_data', {
+      division_id: divisionId, period: period
+    }, function (data) {
+      // Periods
       if ($('#periodFilter option').length <= 1 && data.periods) {
         data.periods.forEach(period => {
           $('#periodFilter').append(`<option value="${period}" ${period === data.current_period ? 'selected' : ''}>${period}</option>`);
         });
       }
 
+      // Summary Cards
       const cards = [
         { label: 'Total PPAs', icon: 'fa-file-alt', color: '#9F2241', value: data.total },
         { label: 'Approved PPAs', icon: 'fa-check-circle', color: '#1A5632', value: data.approved },
@@ -66,20 +72,19 @@
 
       $('#summaryCards').html(cards.map(card => `
         <div class="col mb-3">
-          <div class="card rounded-1 text-white" style="background: ${card.color};">
-            <div class="card-body">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <p class="mb-0 fw-bold">${card.label}</p>
-                  <h4 class="text-white fw-bold">${card.value}</h4>
-                </div>
-                <div class="fs-1"><i class="fa ${card.icon}"></i></div>
+          <div class="card rounded-1" style="background: ${card.color}; color: #fff;">
+            <div class="card-body d-flex align-items-center justify-content-between">
+              <div>
+                <p class="mb-0 text-white">${card.label}</p>
+                <h5 class="fw-bold fs-4 text-white">${card.value}</h5>
               </div>
+              <div class="fs-1 text-white"><i class="fa ${card.icon}"></i></div>
             </div>
           </div>
         </div>
       `).join(''));
 
+      // Charts
       Highcharts.chart('totalSubmissionsChart', {
         chart: { type: 'column' },
         title: { text: 'Total Submissions', style: { color: '#911C39' } },
@@ -119,14 +124,25 @@
         chart: { type: 'solidgauge' },
         title: { text: 'Avg Approval Time (Days)', style: { color: '#5F5F5F' } },
         pane: {
-          center: ['50%', '85%'], size: '140%', startAngle: -90, endAngle: 90,
-          background: { backgroundColor: '#EEE', innerRadius: '60%', outerRadius: '100%', shape: 'arc' }
+          center: ['50%', '85%'],
+          size: '140%',
+          startAngle: -90,
+          endAngle: 90,
+          background: {
+            backgroundColor: '#EEE',
+            innerRadius: '60%',
+            outerRadius: '100%',
+            shape: 'arc'
+          }
         },
         tooltip: { enabled: false },
         yAxis: {
-          min: 0, max: 30,
+          min: 0,
+          max: 30,
           stops: [[0.1, '#119A48'], [0.5, '#fbb924'], [0.9, '#911C39']],
-          lineWidth: 0, tickWidth: 0, labels: { enabled: false }
+          lineWidth: 0,
+          tickWidth: 0,
+          labels: { enabled: false }
         },
         series: [{
           name: 'Days',
@@ -151,7 +167,7 @@
         title: { text: 'PPA Completion by Contract Type', style: { color: '#7A7A7A' } },
         xAxis: { categories: data.by_contract.map(c => c.name) },
         yAxis: { title: { text: 'PPAs Submitted' } },
-        colors: ['#119A48', '#911C39', '#C3A366', '#001011', '#fbb924', '#385CAD', '#194F90'],
+        colors: ['#911C39', '#119A48', '#C3A366', '#001011', '#fbb924', '#385CAD', '#194F90'],
         series: [{ name: 'PPAs', data: data.by_contract.map(c => c.y) }]
       });
     }).fail(function () {
