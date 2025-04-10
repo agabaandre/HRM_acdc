@@ -95,9 +95,9 @@
                             <li><a class="dropdown-item" href="<?= base_url('performance') ?>"><i class="bx bx-right-arrow-alt"></i>Create PPA</a></li>
                         <?php endif; ?>
 
-                        <?php if (in_array('38', $permissions) && !$ppa_exists) : ?>
+   
                             <li><a class="dropdown-item" href="<?= base_url('performance/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>PPA Dashboard</a></li>
-                        <?php endif; ?>
+                  
 
                         <?php if (in_array('38', $permissions) && $ppa_exists) : ?>
                             <li><a class="dropdown-item" href="<?= base_url("performance/recent_ppa/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current PPA</a></li>
