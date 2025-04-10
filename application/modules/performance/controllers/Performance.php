@@ -420,127 +420,128 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
         public function fetch_ppa_dashboard_data()
         {
             $division_id = $this->input->get('division_id');
-    
-            // Subquery to get latest action per entry
-            $latestActions = $this->db->query(
-                "SELECT pat1.* FROM ppa_approval_trail pat1
-                 INNER JOIN (
-                     SELECT entry_id, MAX(id) AS max_id
-                     FROM ppa_approval_trail
-                     GROUP BY entry_id
-                 ) latest ON pat1.id = latest.max_id"
-            ) ->result();
-    
-            $actionMap = [];
-            foreach ($latestActions as $act) {
-                $actionMap[$act->entry_id] = $act->action;
+        
+            // 1. Total, Approved, Submitted (Latest Status Only)
+            $this->db->select("COUNT(DISTINCT pe.entry_id) AS total,
+                SUM(CASE WHEN latest.action = 'Approved' THEN 1 ELSE 0 END) AS approved,
+                SUM(CASE WHEN latest.action = 'Submitted' THEN 1 ELSE 0 END) AS submitted");
+            $this->db->from("ppa_entries pe");
+            $this->db->join("(
+                SELECT pat1.* FROM ppa_approval_trail pat1
+                INNER JOIN (
+                    SELECT entry_id, MAX(id) AS max_id
+                    FROM ppa_approval_trail
+                    GROUP BY entry_id
+                ) latest ON pat1.id = latest.max_id
+            ) latest", "latest.entry_id = pe.entry_id", "left");
+            $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
+            if ($division_id) {
+                $this->db->where("sc.division_id", $division_id);
             }
-    
-            $this->db->select("pe.entry_id, pe.staff_id");
+            $summary = $this->db->get()->row();
+        
+            // 2. Submission Trend by Date
+            $this->db->select("DATE(pe.created_at) AS date, COUNT(DISTINCT pe.entry_id) AS count");
             $this->db->from("ppa_entries pe");
             $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
             if ($division_id) {
                 $this->db->where("sc.division_id", $division_id);
             }
-            $entries = $this->db->get()->result();
-    
-            $summary = ['total' => 0, 'approved' => 0, 'submitted' => 0];
-            foreach ($entries as $e) {
-                $summary['total']++;
-                $status = isset($actionMap[$e->entry_id]) ? $actionMap[$e->entry_id] : '';
-                if ($status === 'Approved') $summary['approved']++;
-                if ($status === 'Submitted') $summary['submitted']++;
+            $this->db->group_by("DATE(pe.created_at)");
+            $this->db->order_by("DATE(pe.created_at)", "ASC");
+            $trend_result = $this->db->get()->result();
+        
+            $trend_data = [];
+            foreach ($trend_result as $row) {
+                $trend_data[] = ['date' => $row->date, 'count' => (int) $row->count];
             }
-    
-            // 2. Submission Trend
-            $this->db->select("DATE(created_at) as date, COUNT(*) as count");
-            $this->db->from("ppa_entries");
-            if ($division_id) {
-                $this->db->join("staff_contracts", "staff_contracts.staff_id = ppa_entries.staff_id", "left");
-                $this->db->where("staff_contracts.division_id", $division_id);
-            }
-            $this->db->group_by("DATE(created_at)");
-            $this->db->order_by("DATE(created_at)", "asc");
-            $trend = $this->db->get()->result();
-    
-            $trend_data = array_map(fn($row) => [
-                'date' => $row->date,
-                'count' => (int)$row->count
-            ], $trend);
-    
-            // 3. Avg approval time
-            $this->db->select("pe.entry_id, pe.created_at as submitted_date, pat.created_at as approved_date");
+        
+            // 3. Average approval time (in days)
+            $this->db->select("pe.entry_id, pe.created_at AS submitted_date, latest_approved.created_at AS approved_date");
             $this->db->from("ppa_entries pe");
-            $this->db->join("ppa_approval_trail pat", "pe.entry_id = pat.entry_id AND pat.action = 'Approved'", "left");
+            $this->db->join("(
+                SELECT pat1.* FROM ppa_approval_trail pat1
+                INNER JOIN (
+                    SELECT entry_id, MAX(id) AS max_id
+                    FROM ppa_approval_trail
+                    WHERE action = 'Approved'
+                    GROUP BY entry_id
+                ) latest ON pat1.id = latest.max_id
+            ) latest_approved", "latest_approved.entry_id = pe.entry_id", "left");
             $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
             if ($division_id) {
                 $this->db->where("sc.division_id", $division_id);
             }
-            $this->db->group_by("pe.entry_id");
-    
             $approvals = $this->db->get()->result();
-            $total_days = 0; $count = 0;
+        
+            $total_days = 0;
+            $count = 0;
             foreach ($approvals as $a) {
                 if ($a->submitted_date && $a->approved_date) {
-                    $days = (strtotime($a->approved_date) - strtotime($a->submitted_date)) / 86400;
-                    $total_days += $days; $count++;
+                    $days = (strtotime($a->approved_date) - strtotime($a->submitted_date)) / (60 * 60 * 24);
+                    $total_days += $days;
+                    $count++;
                 }
             }
-            $avg_approval_days = $count > 0 ? round($total_days / $count, 2) : 0;
-    
+            $average_approval_time = $count > 0 ? round($total_days / $count, 2) : 0;
+        
             // 4. Submissions by Division
-            $this->db->select("d.division_name, COUNT(pe.id) AS count");
+            $this->db->select("d.division_name, COUNT(DISTINCT pe.entry_id) AS count");
             $this->db->from("ppa_entries pe");
             $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
             $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
             $this->db->group_by("sc.division_id");
             $by_division = $this->db->get()->result();
-    
-            $division_chart = array_map(fn($row) => [
-                'name' => $row->division_name,
-                'y' => (int)$row->count
-            ], $by_division);
-    
+        
+            $division_chart = [];
+            foreach ($by_division as $div) {
+                $division_chart[] = [
+                    'name' => $div->division_name,
+                    'y' => (int) $div->count
+                ];
+            }
+        
             // 5. Completion by Contract Type
-            $this->db->select("ct.contract_type, COUNT(pe.id) as total");
+            $this->db->select("ct.contract_type, COUNT(DISTINCT pe.entry_id) as total");
             $this->db->from("ppa_entries pe");
             $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
             $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
             if ($division_id) $this->db->where("sc.division_id", $division_id);
             $this->db->group_by("ct.contract_type_id");
             $by_contract = $this->db->get()->result();
-    
+        
             $contract_chart = array_map(fn($r) => [
                 'name' => $r->contract_type,
                 'y' => (int)$r->total
             ], $by_contract);
-    
+        
             // 6. All Staff & Without PPA
             $this->db->select("staff_id");
             $this->db->from("staff_contracts");
             if ($division_id) $this->db->where("division_id", $division_id);
             $staff_ids = array_column($this->db->get()->result(), 'staff_id');
-    
+        
             $this->db->select("DISTINCT(staff_id)");
             $this->db->from("ppa_entries");
             if (!empty($staff_ids)) $this->db->where_in("staff_id", $staff_ids);
             $ppa_staff_ids = array_column($this->db->get()->result(), 'staff_id');
-    
+        
             $staff_with_ppas = count($ppa_staff_ids);
             $staff_without_ppas = count($staff_ids) - $staff_with_ppas;
-    
+        
             echo json_encode([
-                'total' => $summary['total'],
-                'approved' => $summary['approved'],
-                'submitted' => $summary['submitted'],
+                'total' => (int) $summary->total,
+                'approved' => (int) $summary->approved,
+                'submitted' => (int) $summary->submitted,
                 'trend' => $trend_data,
-                'avg_approval_days' => $avg_approval_days,
+                'avg_approval_days' => $average_approval_time,
                 'by_division' => $division_chart,
                 'by_contract' => $contract_chart,
                 'staff_count' => count($staff_ids),
                 'staff_without_ppas' => $staff_without_ppas
             ]);
         }
+        
     
 	
 }
