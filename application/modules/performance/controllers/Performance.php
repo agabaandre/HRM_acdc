@@ -436,7 +436,7 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
             $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
             $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
             $this->db->where_in('sc.status_id', [1, 2]); // Active or due
-            $this->db->where_not_in('sc.contract_type_id', [1, 5]); // Not Regular or Fixed Term
+            $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Not Regular or Fixed Term
             if ($division_id) $this->db->where('sc.division_id', $division_id);
             if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
         
