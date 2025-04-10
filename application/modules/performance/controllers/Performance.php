@@ -485,15 +485,27 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
             }
             $avg_days = $count > 0 ? round($total_days / $count, 2) : 0;
         
-            // 5. Division-wise
-            $this->db->select("d.division_name, COUNT(pe.entry_id) AS count");
-            $this->db->from("ppa_entries pe");
-            $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
-            $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
-            if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-            if ($period) $this->db->where("pe.performance_period", $period);
-            $this->db->group_by("sc.division_id");
-            $divisions = array_map(fn($r) => ['name' => $r->division_name, 'y' => (int)$r->count], $this->db->get()->result());
+       // 5. Division-wise - FIXED: Count DISTINCT pe.entry_id and only latest contract per staff
+        $subquery = $this->db->select('MAX(staff_contract_id)')
+        ->from('staff_contracts')
+        ->group_by('staff_id')
+        ->get_compiled_select();
+
+        $this->db->select("d.division_name, COUNT(DISTINCT pe.entry_id) AS count");
+        $this->db->from("ppa_entries pe");
+        $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+        $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
+
+        if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
+        if ($period) $this->db->where("pe.performance_period", $period);
+
+        $this->db->group_by("sc.division_id");
+        $divisions = array_map(fn($r) => [
+        'name' => $r->division_name,
+        'y' => (int)$r->count
+        ], $this->db->get()->result());
+
         
             // 6. Contract Type
             $this->db->select("ct.contract_type, COUNT(pe.entry_id) AS total");
@@ -563,16 +575,25 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
             $training_categories = $this->db->get()->result();
 
         
-            // 12. Training skills chart
-            $this->db->select('ts.skill as name, COUNT(*) as skill_count', false);
+         
+            // 12. Training skills chart (aligned with category chart format)
+            $this->db->select('ts.skill as name, COUNT(*) as y', false);
             $this->db->from('ppa_entries pe');
             $this->db->join('training_skills ts', 'JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), "$")', 'inner', false);
-            if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-            if ($period) $this->db->where("pe.performance_period", $period);
+
+            if (!empty($staff_ids)) {
+                $this->db->where_in("pe.staff_id", $staff_ids);
+            }
+            if ($period) {
+                $this->db->where("pe.performance_period", $period);
+            }
+
             $this->db->group_by('ts.id');
-            $this->db->order_by('skill_count', 'DESC');
+            $this->db->order_by('y', 'DESC');
             $this->db->limit(10);
+
             $training_skills = $this->db->get()->result();
+
         
             // Final response
             echo json_encode([
