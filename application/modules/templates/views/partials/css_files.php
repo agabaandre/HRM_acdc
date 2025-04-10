@@ -45,10 +45,21 @@
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
+        <!-- Core Highcharts -->
     <script src="https://code.highcharts.com/highcharts.js"></script>
+
+    <!-- Dependencies for Solid Gauge -->
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+    <script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
+
+    <!-- Optional Modules -->
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script src="https://code.highcharts.com/modules/export-data.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+
+
+<!-- Global: Disable Highcharts Credits -->
     <script type="text/javascript">
         $(window).on('load', function() {
 
