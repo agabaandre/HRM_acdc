@@ -552,24 +552,25 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
                 $age_data[] = ['group' => $label, 'count' => $count];
             }
         
-            // 11. Training category chart
-            $this->db->select('tc.category_name as name, COUNT(*) as y');
+           // 11. Training category chart
+            $this->db->select('tc.category_name as name, COUNT(*) as y', false);
             $this->db->from('ppa_entries pe');
-            $this->db->join('training_skills ts', 'JSON_CONTAINS(pe.required_skills, CAST(ts.id AS JSON), "$")', 'inner', false);
+            $this->db->join('training_skills ts', 'JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), "$")', 'inner', false);
             $this->db->join('training_categories tc', 'tc.id = ts.category_id', 'left');
             if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
             if ($period) $this->db->where("pe.performance_period", $period);
             $this->db->group_by('ts.category_id');
             $training_categories = $this->db->get()->result();
+
         
             // 12. Training skills chart
-            $this->db->select('ts.skill as name, COUNT(*) as y');
+            $this->db->select('ts.skill as name, COUNT(*) as skill_count', false);
             $this->db->from('ppa_entries pe');
-            $this->db->join('training_skills ts', 'JSON_CONTAINS(pe.required_skills, CAST(ts.id AS JSON), "$")', 'inner', false);
+            $this->db->join('training_skills ts', 'JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), "$")', 'inner', false);
             if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
             if ($period) $this->db->where("pe.performance_period", $period);
             $this->db->group_by('ts.id');
-            $this->db->order_by('y', 'DESC');
+            $this->db->order_by('skill_count', 'DESC');
             $this->db->limit(10);
             $training_skills = $this->db->get()->result();
         
