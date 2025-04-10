@@ -18,6 +18,12 @@
   transform: translateY(0);
 }
 </style>
+<style>
+.breadcrumb-sm {
+    font-size: 0.8rem;
+}
+</style>
+
 <header>
 	<div class="topbar d-flex">
 		<nav class="navbar navbar-expand">
