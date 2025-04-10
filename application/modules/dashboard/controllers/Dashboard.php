@@ -96,5 +96,4 @@ public function search_messages() {
     echo json_encode($messages);
 }
 
-
 }

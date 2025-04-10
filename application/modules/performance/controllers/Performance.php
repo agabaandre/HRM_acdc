@@ -405,5 +405,100 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
         pdf_print_data($data, $file_name, 'P', 'performance/staff_ppa_print');
     }
 
+    public function fetch_ppa_dashboard_data()
+{
+    $division_id = $this->input->get('division_id');
+
+    // 1. Total, Approved, Pending
+    $this->db->select("
+        COUNT(pe.id) AS total,
+        SUM(CASE WHEN pat.action = 'Approved' THEN 1 ELSE 0 END) AS approved,
+        SUM(CASE WHEN pat.action = 'Submitted' THEN 1 ELSE 0 END) AS submitted
+    ");
+    $this->db->from("ppa_entries pe");
+    $this->db->join("ppa_approval_trail pat", "pe.entry_id = pat.entry_id", "left");
+    $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
+    if ($division_id) {
+        $this->db->where("sc.division_id", $division_id);
+    }
+    $summary = $this->db->get()->row();
+
+    // 2. Submission Trend by Date
+    $this->db->select("DATE(pe.created_at) AS date, COUNT(*) AS count");
+    $this->db->from("ppa_entries pe");
+    $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
+    if ($division_id) {
+        $this->db->where("sc.division_id", $division_id);
+    }
+    $this->db->group_by("DATE(pe.created_at)");
+    $this->db->order_by("DATE(pe.created_at)", "ASC");
+    $trend_result = $this->db->get()->result();
+
+    $trend_data = [];
+    foreach ($trend_result as $row) {
+        $trend_data[] = ['date' => $row->date, 'count' => (int) $row->count];
+    }
+
+    // 3. Average approval time (in days)
+    $this->db->select("MIN(pe.created_at) AS submitted_date, MAX(pat.created_at) AS approved_date");
+    $this->db->from("ppa_entries pe");
+    $this->db->join("ppa_approval_trail pat", "pe.entry_id = pat.entry_id AND pat.action = 'Approved'", "left");
+    $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
+    if ($division_id) {
+        $this->db->where("sc.division_id", $division_id);
+    }
+    $this->db->group_by("pe.entry_id");
+
+    $approvals = $this->db->get()->result();
+    $total_days = 0;
+    $count = 0;
+    foreach ($approvals as $a) {
+        if ($a->submitted_date && $a->approved_date) {
+            $days = (strtotime($a->approved_date) - strtotime($a->submitted_date)) / (60 * 60 * 24);
+            $total_days += $days;
+            $count++;
+        }
+    }
+    $average_approval_time = $count > 0 ? round($total_days / $count, 2) : 0;
+
+    // 4. Submissions by Division
+    $this->db->select("d.division_name, COUNT(pe.id) AS count");
+    $this->db->from("ppa_entries pe");
+    $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
+    $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
+    $this->db->group_by("sc.division_id");
+    $by_division = $this->db->get()->result();
+
+    $division_chart = [];
+    foreach ($by_division as $div) {
+        $division_chart[] = [
+            'name' => $div->division_name,
+            'y' => (int) $div->count
+        ];
+    }
+
+    // Final result
+    $response = [
+        'total' => (int) $summary->total,
+        'approved' => (int) $summary->approved,
+        'submitted' => (int) $summary->submitted,
+        'trend' => $trend_data,
+        'avg_approval_days' => $average_approval_time,
+        'by_division' => $division_chart
+    ];
+
+    echo json_encode($response);
+}
+public function ppa_dashboard()
+{    
+    $data['module'] = "performance";
+    $data['title'] = "Performance Management Dashboard";
+    $data['title'] = "PPA Dashboard";
+    $data['divisions'] = cache_list('divisions', function () {
+        return $this->db->order_by('division_name')->get('divisions')->result();
+    }, 120); // c
+    render('ppa_dashboard', $data);
+}
+
 	
 }
