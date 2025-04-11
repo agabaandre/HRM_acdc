@@ -598,15 +598,28 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
     ], $this->db->get()->result());
 
     
-        // 6. Contract Type
-        $this->db->select("ct.contract_type, COUNT(pe.entry_id) AS total");
-        $this->db->from("ppa_entries pe");
-        $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
-        $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
-        if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
-        if ($period) $this->db->where("pe.performance_period", $period);
-        $this->db->group_by("ct.contract_type_id");
-        $contract_chart = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
+        // Subquery to get only latest contracts
+        //completion by type
+            $subquery = $this->db->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+            $this->db->select("ct.contract_type, COUNT(DISTINCT pe.entry_id) AS total", false);
+            $this->db->from("ppa_entries pe");
+            $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
+            $this->db->where("sc.staff_contract_id IN ($subquery)", null, false); // only latest contract
+            $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
+
+            if (!empty($staff_ids)) $this->db->where_in("pe.staff_id", $staff_ids);
+            if ($period) $this->db->where("pe.performance_period", $period);
+
+            $this->db->group_by("ct.contract_type_id");
+            $contract_chart = array_map(
+            fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total],
+            $this->db->get()->result()
+            );
+
     
         // 7. Staff with PPA
         $this->db->select('staff_id');
