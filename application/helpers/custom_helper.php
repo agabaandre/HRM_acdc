@@ -878,6 +878,8 @@ function curl_send_post($url, $body, $headers) {
     if (!function_exists('pdf_print_data')) {
         function pdf_print_data($data, $file_name, $orient, $view)
         {
+            ini_set('pcre.backtrack_limit', '10000000');
+
             // Get CodeIgniter instance
             $CI = &get_instance();
     
@@ -916,7 +918,7 @@ function curl_send_post($url, $body, $headers) {
                         Website: <a href="https://africacdc.org" style="color: #911C39;">africacdc.org</a>
                     </td>
                     <td align="left" style="border: none;">
-                        Source: Africa CDC - Staff Tracker<br>
+                        Source: Africa CDC - Staff Portal<br>
                         Generated on: ' . date('d F, Y h:i A') . '<br>
                         ' . base_url() . '
                     </td>
