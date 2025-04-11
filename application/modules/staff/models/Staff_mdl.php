@@ -303,10 +303,11 @@ class Staff_mdl extends CI_Model
 	{
 
 		$latest_contract = $this->max_contract($id);
+		//dd($latest_contract);
 		$this->db->where('staff_contract_id', "$latest_contract");
 		$this->db->where('staff_contracts.staff_id', $id);
 		$this->db->join('jobs', 'jobs.job_id = staff_contracts.job_id');
-		$this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id');
+		$this->db->join('jobs_acting', 'jobs_acting.job_acting_id = staff_contracts.job_acting_id','left');
 		$this->db->join('grades', 'grades.grade_id = staff_contracts.grade_id');
 		$this->db->join('contracting_institutions', 'contracting_institutions.contracting_institution_id = staff_contracts.contracting_institution_id');
 		$this->db->join('funders', 'funders.funder_id = staff_contracts.funder_id');
@@ -317,6 +318,8 @@ class Staff_mdl extends CI_Model
 		$this->db->join('staff', 'staff.staff_id = staff_contracts.staff_id');
 		$this->db->join('nationalities', 'nationalities.nationality_id = staff.nationality_id');
 		$query = $this->db->get('staff_contracts');
+
+		//dd($this->db->last_query());
 		return $query->row();
 	}
 

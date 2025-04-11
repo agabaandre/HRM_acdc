@@ -157,7 +157,8 @@ public function other_login()
         return;
     }
 
-    $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->auth_staff_id);
+    $data['contract'] = $this->staff_mdl->get_latest_contracts(594);
+    //dd( $data['contract']);
 
     $users_array = (array)$data['users'];
     $contract_array = (array)$data['contract'];

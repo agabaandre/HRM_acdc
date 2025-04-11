@@ -330,8 +330,8 @@
 												</div>
 
 												<div class="form-group">
-													<label for="physical_location">Physical Location:<?=asterik()?></label>
-													<textarea class="form-control" name="physical_location" id="physical_location" rows="2" required><?php echo $data->physical_location; ?></textarea>
+													<label for="physical_location">Physical Location:</label>
+													<textarea class="form-control" name="physical_location" id="physical_location" rows="2"><?php echo $data->physical_location; ?></textarea>
 												</div>
 											</div>
 										</div>

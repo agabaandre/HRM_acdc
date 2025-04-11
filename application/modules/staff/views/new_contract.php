@@ -33,7 +33,7 @@
                             <div class="form-group">
                                 <label for="job_acting_id">Job Acting:</label>
                                 <select class="form-control select2" name="job_acting_id" id="job_acting_id">
-                                    <option value="">Select Job Acting</option>
+                                    <option value="20">Select Job Acting</option>
                                     <?php $jobsacting = Modules::run('lists/jobsacting');
                                     foreach ($jobsacting as $joba) :
                                     ?>
