@@ -205,46 +205,64 @@ return $qry->num_rows();
 			return "The old password you provided is wrong";
 		}
 	}
-	public function updateProfile($data)
+		public function updateProfile($data)
 	{
-	
 		$user_id = $data['user_id'];
-		$insert['auth_staff_id'] = $data['staff_id'];
-		$insert['user_id'] = $data['user_id'];
-		$insert['name'] = $data['name'];
-		$insert['langauge'] = $data['langauge'];
-		
-	
-		
-		// unset($data['staff_id']);
+
+		$insert = [
+			'auth_staff_id' => $data['staff_id'],
+			'user_id'       => $user_id,
+			'name'          => $data['name'],
+			'langauge'      => $data['langauge']
+		];
+
 		$this->db->where('user_id', $user_id);
 		$done = $this->db->update($this->table, $insert);
 
-		if ($done) {
-			
-	
-			if ($data['staff_id'] != 0):
-				$staff_data['tel_1'] = $data['tel_1'];
-				$staff_data['tel_2'] = $data['tel_2'];;
-				$staff_data['private_email'] = $data['private_email'];;
-				$staff_data['whatsapp'] = $data['whatsapp'];;
-				$staff_data['staff_id'] = $data['staff_id'];
+		if ($done && !empty($data['staff_id'])) {
+			$staff_data = [
+				'staff_id'       => $data['staff_id'],
+				'tel_1'          => $data['tel_1'],
+				'tel_2'          => $data['tel_2'],
+				'private_email'  => $data['private_email'],
+				'whatsapp'       => $data['whatsapp']
+			];
+
+			if (!empty($data['photo'])) {
 				$staff_data['photo'] = $data['photo'];
+			}
+
+			if (!empty($data['signature'])) {
 				$staff_data['signature'] = $data['signature'];
-				//dd($staff_data);
-			$this->update_staff_table($staff_data);
-			endif;
-			return "Update Successful";
-		} else {
-			return "Update Failed";
+			}
+
+			$staff_updated = $this->update_staff_table($staff_data);
+
+			//dd($this->db->last_query());
+			return $staff_updated ? "Update Successful" : "Staff Update Failed";
 		}
+
+		if (!$done) {
+			log_message('error', 'User update failed: ' . $this->db->last_query());
+			log_message('error', 'Error: ' . $this->db->_error_message());
+		}
+
+		return $done ? "Update Successful" : "Update Failed";
 	}
-	public function update_staff_table($staff_data){
-		
+	public function update_staff_table($staff_data)
+	{
 		$this->db->where('staff_id', $staff_data['staff_id']);
 		$done = $this->db->update('staff', $staff_data);
 
+		if (!$done) {
+			log_message('error', 'STAFF update failed: ' . $this->db->last_query());
+			log_message('error', 'Error: ' . $this->db->_error_message());
+		}
+
+		return $done;
 	}
+
+
 	public function saveProfile($language, $username, $name, $email, $photo)
 	{
 		// Perform the necessary operations to save the profile data
