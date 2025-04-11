@@ -444,7 +444,19 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
         $data['period']= $period;
         $data['type'] = $type;
         $data['module'] = "performance";
-        $data['title'] = $type;
+        if($type== 'total'){
+        $data['title'] = 'Total PPAs Submitted';
+        }
+        else  if($type== 'approved'){
+        $data['title'] = 'Staff PPAs Approved';
+
+        }
+        else  if($type== 'with_pdp'){
+            $data['title'] = 'Staff with PDPs';
+    
+        } else if($type=='without_ppa'){
+            $data['title'] = 'Staff without PPAs';
+        }
         // You can reuse your model to fetch based on type
         $data['staff_list'] = $this->per_mdl->get_staff_by_type($type, $division_id, $period);
 
