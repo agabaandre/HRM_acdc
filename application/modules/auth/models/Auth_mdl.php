@@ -235,7 +235,7 @@ return $qry->num_rows();
 			if (!empty($data['signature'])) {
 				$staff_data['signature'] = $data['signature'];
 			}
-	         $staff_data['langauge'] = $data['langauge'];
+	        
 			$staff_updated = $this->update_staff_table($staff_data);
 			return $staff_updated ? "Update Successful" : "Staff Update Failed";
 		}
