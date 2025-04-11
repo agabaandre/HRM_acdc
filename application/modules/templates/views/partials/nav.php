@@ -13,7 +13,7 @@
 				<ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
 
                 <!-- Dashboard -->
-                <?php if (in_array('76', $permissions)) : ?>
+                <?php if (in_array('82', $permissions)) : ?>
                     <li class="nav-item">
                         <a href="<?= base_url('dashboard') ?>" class="nav-link <?= activelink('dashboard', $this->uri->segment(1)) ?>">
                             <div class="parent-icon"><i class="bx bx-category"></i></div>

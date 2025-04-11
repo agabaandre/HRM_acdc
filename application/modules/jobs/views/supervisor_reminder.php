@@ -52,6 +52,8 @@
         <a href="<?= site_url('performance/assigned') ?>" class="btn">View Assigned PPAs</a>
         <p>Regards,<br>HR Team, Africa CDC</p>
 
+          
+
       <!-- Footer -->
       <div class="footer">
         <p>&copy; <?php echo date('Y'); ?> Africa CDC. All Rights Reserved.</p>
