@@ -2,7 +2,7 @@
   <div class="card-body">
   <?php $this->load->view('ppa_tabs')?>
     <div class="table-responsive">
-      <h4><?=$title?></h4>
+      
       <table id="ppa-table" class="table mydata table-striped table-bordered">
         <thead>
           <tr>

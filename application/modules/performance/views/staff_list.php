@@ -2,6 +2,7 @@
   
 <div class="card shadow-sm border-0">
     <div class="card-body">
+    <h5><?=$title?></h5>
       <div class="table-responsive">
         <table class="table table-hover align-middle table-bordered table-striped mydata" id="staffStatsTable">
           <thead class="table-light text-center">
