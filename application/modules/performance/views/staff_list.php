@@ -18,8 +18,7 @@
               <th>#</th>
               <th>Name</th>
               <th>SAPNO</th>
-              <th>Division</th>
-              <th>Contract Type</th>
+            
               <th>Status</th>
               <?php if ($type === 'with_pdp'): ?>
                 <th>Recommended Trainings</th>
@@ -34,8 +33,6 @@
                 <td class="text-center"><?= $counter++ ?></td>
                 <td><?= $staff->fname . ' ' . $staff->lname ?></td>
                 <td><?= $staff->SAPNO ?></td>
-                <td><?= $staff->division_name ?></td>
-                <td><?= $staff->contract_type ?></td>
                 <td><?= $staff->status ?></td>
                 <?php if ($type === 'with_pdp'): ?>
                   <td>
