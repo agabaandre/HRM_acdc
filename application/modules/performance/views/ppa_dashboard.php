@@ -129,9 +129,9 @@
       }
 
       const cards = [
-        { label: 'Total PPAs', icon: 'fa-file-alt', color: '#911C39', value: data.total, type: 'total' },
-        { label: 'Approved PPAs', icon: 'fa-check-circle', color: '#119A48', value: data.approved, type: 'approved' },
-        { label: 'Staff With PDPs', icon: 'fa-user-check', color: '#385CAD', value: data.staff_with_pdps, type: 'with_pdp' },
+        { label: 'Staff PPAs', icon: 'fa-file-alt', color: '#911C39', value: data.total, type: 'total' },
+        { label: 'Staff Approved PPAs', icon: 'fa-check-circle', color: '#119A48', value: data.approved, type: 'approved' },
+        { label: 'Staff PDPs', icon: 'fa-user-check', color: '#385CAD', value: data.staff_with_pdps, type: 'with_pdp' },
         { label: 'Staff Without PPAs', icon: 'fa-user-times', color: '#C3A366', value: data.staff_without_ppas, type: 'without_ppa' }
       ];
 
