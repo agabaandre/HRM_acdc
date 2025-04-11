@@ -205,62 +205,73 @@ return $qry->num_rows();
 			return "The old password you provided is wrong";
 		}
 	}
-		public function updateProfile($data)
+	public function updateProfile($data)
 	{
 		$user_id = $data['user_id'];
-
+	
 		$insert = [
 			'auth_staff_id' => $data['staff_id'],
 			'user_id'       => $user_id,
 			'name'          => $data['name'],
 			'langauge'      => $data['langauge']
 		];
-
+	
 		$this->db->where('user_id', $user_id);
 		$done = $this->db->update($this->table, $insert);
-
+	
 		if ($done && !empty($data['staff_id'])) {
 			$staff_data = [
 				'staff_id'       => $data['staff_id'],
 				'tel_1'          => $data['tel_1'],
 				'tel_2'          => $data['tel_2'],
 				'private_email'  => $data['private_email'],
-				'whatsapp'       => $data['whatsapp']
+				'whatsapp'       => $data['whatsapp'],
 			];
-
+	
 			if (!empty($data['photo'])) {
 				$staff_data['photo'] = $data['photo'];
 			}
-
+	
 			if (!empty($data['signature'])) {
 				$staff_data['signature'] = $data['signature'];
 			}
-
+	         $staff_data['langauge'] = $data['langauge'];
 			$staff_updated = $this->update_staff_table($staff_data);
-
-			//dd($this->db->last_query());
 			return $staff_updated ? "Update Successful" : "Staff Update Failed";
 		}
-
+	
 		if (!$done) {
 			log_message('error', 'User update failed: ' . $this->db->last_query());
 			log_message('error', 'Error: ' . $this->db->_error_message());
 		}
-
+	
 		return $done ? "Update Successful" : "Update Failed";
 	}
+	
 	public function update_staff_table($staff_data)
 	{
 		$this->db->where('staff_id', $staff_data['staff_id']);
 		$done = $this->db->update('staff', $staff_data);
-
+	
 		if (!$done) {
 			log_message('error', 'STAFF update failed: ' . $this->db->last_query());
 			log_message('error', 'Error: ' . $this->db->_error_message());
+		} else {
+			// ✅ Refresh only relevant fields in session
+			$session_user = $this->session->userdata('user');
+	
+			foreach (['tel_1', 'tel_2', 'private_email', 'whatsapp', 'langauge'] as $key) {
+				if (!empty($staff_data[$key])) {
+					$session_user->$key = $staff_data[$key];
+				}
+			}
+	
+			$this->session->set_userdata('user', $session_user);
 		}
-
+	
 		return $done;
 	}
+	
 
 
 	public function saveProfile($language, $username, $name, $email, $photo)

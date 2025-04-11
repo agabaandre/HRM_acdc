@@ -5,6 +5,8 @@ $photo_url = base_url('uploads/staff/' . @$staff->photo);
 $signature_url = base_url('uploads/staff/signature/' . @$staff->signature);
 $photo_display = !empty($staff->photo) ? $photo_url : base_url('assets/images/pp.png');
 $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads/staff/signature/' . $staff->signature)) ? $signature_url : base_url('uploads/staff/signature.png');
+
+// dd($staff);
 ?>
 
 <div class="main-container container">
@@ -57,8 +59,8 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
         </div>
         <div class="card-body">
           <?= form_open_multipart(base_url('auth/update_profile'), ['id' => 'profile']) ?>
-          <input type="hidden" name="staff_id" value="<?= $staff->staff_id ?>">
-          <input type="hidden" name="user_id" value="<?= $staff->user_id ?>">
+          <input type="hidden" name="staff_id" value="<?=$staff->staff_id?>">
+          <input type="hidden" name="user_id" value="<?= $staff->user_id?>">
 
           <div class="row mb-3">
             <div class="col-md-6">
