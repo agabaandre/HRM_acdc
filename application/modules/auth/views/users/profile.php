@@ -3,13 +3,12 @@ $staff = $this->session->userdata('user');
 $contract = Modules::run('auth/contract_info', $staff->staff_id);
 $photo_url = base_url('uploads/staff/' . @$staff->photo);
 $signature_url = base_url('uploads/staff/signature/' . @$staff->signature);
-$photo_display = !empty($staff->photo) ? $photo_url : base_url('assets/images/avatar-placeholder.png');
+$photo_display = !empty($staff->photo) ? $photo_url : base_url('assets/images/pp.png');
 $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads/staff/signature/' . $staff->signature)) ? $signature_url : base_url('uploads/staff/signature.png');
 ?>
 
 <div class="main-container container">
   <div class="page-header">
-    <h1 class="page-title">My Profile</h1>
     <div>
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="<?= base_url() ?>">Home</a></li>
@@ -68,6 +67,7 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
             </div>
             <div class="col-md-6">
               <label class="form-label">WhatsApp</label>
+              <input type="hidden" name="name" value="<?= $staff->title .' '.$staff->fname.' '.$staff->lname ?>" class="form-control">
               <input type="text" name="whatsapp" value="<?= $staff->whatsapp ?>" class="form-control">
             </div>
           </div>
