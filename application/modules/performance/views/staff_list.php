@@ -1,12 +1,6 @@
 <div class="container-fluid py-3 px-4">
   <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-    <h4 class="fw-bold text-uppercase text-primary">
-      <i class="fa fa-users me-2 text-secondary"></i>
-      Staff <?= ucwords(str_replace('_', ' ', $type)) ?>
-    </h4>
-    <a href="javascript:history.back()" class="btn btn-outline-dark">
-      <i class="fa fa-arrow-left me-1"></i> Back
-    </a>
+ 
   </div>
 
   <div class="card shadow-sm border-0">
