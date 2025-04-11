@@ -1,257 +1,115 @@
-<!-- Col -->
 <?php
-$staff_id = $this->session->userdata('user')->staff_id;
-$contract = Modules::run('auth/contract_info', $staff_id);
-
+$staff = $this->session->userdata('user');
+$contract = Modules::run('auth/contract_info', $staff->staff_id);
+$photo_url = base_url('uploads/staff/' . @$staff->photo);
+$signature_url = base_url('uploads/staff/signature/' . @$staff->signature);
+$photo_display = !empty($staff->photo) ? $photo_url : base_url('assets/images/avatar-placeholder.png');
+$signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads/staff/signature/' . $staff->signature)) ? $signature_url : base_url('uploads/staff/signature.png');
 ?>
-<div class="row">
 
-    <div class="col-md-5 col-lg-4 col-xl-3 col-xs-12 col-md-pull-2">
+<div class="main-container container">
+  <div class="page-header">
+    <h1 class="page-title">My Profile</h1>
+    <div>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?= base_url() ?>">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Account</li>
+      </ol>
+    </div>
+  </div>
 
-        <div class="email-header d-xl-flex align-items-center">
-            <div class="d-flex align-items-center text-muted">
-                
-                    <!-- <div class="">
-                    
-                        <a href="<?php echo base_url() ?>leave/request" type="button" class="btn btn-grey ms-2">Leave Request<i class=""></i>
-                        </a>
-                    </div>
-                    <div class="">
+  <div class="row">
+    <!-- Left Column: Summary Card -->
+    <div class="col-xl-4 col-lg-5 col-md-5 mb-4">
+      <div class="card">
+        <div class="card-body text-center">
+          <img class="img-fluid rounded mb-3" style="width: 150px; height: 150px; object-fit: cover;" src="<?= $photo_display ?>" alt="Profile Image">
+          <h4 class="fw-bold"><?= $staff->fname . ' ' . $staff->lname ?></h4>
+          <p class="text-muted"><?= @$contract->job_name ?></p>
+          <p class="badge bg-success"><?= $staff->group_name ?></p>
+          <p class="badge bg-dark"><?= $staff->contract_type ?></p>
 
-                        <a href="<?php echo base_url() ?>leave/approve_leave" type="button" class="btn btn-grey ms-2">Approve Leave<i class="fa fa-ok"></i>
-                        </a>
-                    </div>
-                    <div class="">
-                        <a href="<?php echo base_url() ?>leave/status" type="button" class="btn btn-outline accordionbtn-grey ms-2">Leave Status<i class=""></i>
-                        </a>
-                    </div>
-                    <div class="">
-                        <a href="<?php echo base_url() ?>performance" type="button" class="btn btn-outline btn-grey ms-2">Submit Plan<i class=""></i>
-                        </a>
-                    </div>
-                    <div class="">
-                        <a href="<?php echo base_url() ?>performance" type="button" class="btn btn-outline btn-grey ms-2">My Plans<i class=""></i>
-                        </a>
-                    </div>
-                    <div class="">
-                        <a href="<?php echo base_url() ?>performance/approve" type="button" class="btn btn-outline btn-grey ms-2">Approvals<i class="fa fa-ok"></i>
-                        </a>
-                    </div> -->
-                </div>
-           
-            <!-- <div class="flex-grow-1 mx-xl-2 my-2 my-xl-0">
+          <hr>
+          <h6 class="text-uppercase fw-semibold mb-3">Profile Details</h6>
+          <ul class="list-unstyled text-start">
+            <li><i class="fa fa-envelope text-primary me-2"></i> <?= $staff->work_email ?></li>
+            <li><i class="fa fa-phone text-primary me-2"></i> <?= $staff->tel_1 ?></li>
+            <li><i class="fa fa-calendar text-primary me-2"></i> DOB: <?= date('M d, Y', strtotime($staff->date_of_birth)) ?></li>
+            <li><i class="fa fa-globe text-primary me-2"></i> Nationality: <?= $staff->nationality ?></li>
+            <li><i class="fa fa-building text-primary me-2"></i> Division: <?= $staff->division_name ?></li>
+            <li><i class="fa fa-map-marker-alt text-primary me-2"></i> Station: <?= $staff->duty_station_name ?>, <?= $staff->country ?></li>
+            <li><i class="fa fa-language text-primary me-2"></i> Language: <?= ucfirst($staff->langauge) ?></li>
+          </ul>
 
-            </div>
-            <div class="ms-auto d-flex align-items-center">
-
-            </div> -->
+          <hr>
+          <div class="text-center">
+            <img src="<?= $signature_display ?>" alt="Signature" style="height: 80px;">
+            <p class="small mt-2 text-muted">Staff Signature</p>
+          </div>
         </div>
-        <div class="card box-widget widget-user">
-            <div class="widget-user-header testbgpattern1"></div>
-    
-            <div class="card-body text-center">
-                <br>
-                <div class="item-user pro-user">
-                    <h4 class="pro-user-username tx-15 pt-2 mt-4 mb-1" style="color:black;"><?php echo $this->session->userdata('user')->name; ?></h4>
-                    <h6><?php
-
-                       
-                        echo @$contract->job_name;
-                        ?>
-                    </h6>
-                    <p class="pro-user-desc tx-13 mb-3 font-weight-normal badge text-bg-secondary" style="color:white !important;"><?php echo $this->session->userdata('user')->contract_type; ?></p>
-                    <p class="pro-user-desc tx-13 mb-3 font-weight-normal badge text-bg-success" style="color:white !important;"><?php echo $this->session->userdata('user')->group_name; ?></p>
-                </div>
-            </div>
-
-        </div>
-        <!-- <div class="card">
-            <div class="card-header pb-0 border-bottom">
-                <div class="card-title pb-1">Edit Password</div>
-            </div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label class="form-label">Old Password</label>
-                    <input type="password" class="form-control" value="">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">New Password</label>
-                    <input type="new_password" class="form-control" value="">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Confirm Password</label>
-                    <input type="new_password" class="form-control" value="">
-                </div>
-            </div>
-            <div class="card-footer text-right"><a href="#" class="btn btn-success">Update</a> <a href="#" class="btn btn-danger">Cancel</a></div>
-        </div> -->
+      </div>
     </div>
 
-    <!-- Col -->
-
-    <div class="col-md-7 col-lg-8 col-xl-9">
-        <div class="card">
-            <div class="card-body">
-                <div class="mb-4 main-content-label">Personal Information</div>
-                <?php echo form_open_multipart(base_url('auth/update_profile'), array('id' => 'profile', 'class' => 'profile')); ?>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Language</label>
-                        </div>
-                        <?php //dd($this->session->userdata('user')->name); ?>
-                        <input type="hidden" name="staff_id" value="<?php echo $staff_id = $this->session->userdata('user')->staff_id ?>">
-                        <input type="hidden" name="user_id" value="<?php echo $this->session->userdata('user')->user_id ?>">
-                        <div class="col-md-9">
-
-                            <?php $langs = array('aa' => 'Afar', 'am' => 'Amharic', 'ar' => 'Arabic', 'en' => 'English', 'fr' => 'French', 'ha' => 'Hausa', 'rw' => 'Kinyarwanda', 'ln' => 'Lingala', 'pr' => 'Portuguese', 'sw' => 'Swahili'); ?>
-                            <select class="form-control" name="langauge">
-                                <?php foreach ($langs as $key => $value) : ?>
-                                    <option value='<?php echo $key ?>' <?php if ($key == $this->session->userdata('user')->langauge) {
-                                                                            echo 'selected';
-                                                                        } ?>><?php echo $value ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Contract Start Date</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="contract_start_date" value="<?php echo @$contract->start_date; ?>" readonly>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Contract End Date</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="contract_end_date" value="<?php echo @$contract->end_date; ?>" readonly>
-                        </div>
-                    </div>
-                </div>
-                <!-- Add more contact fields as needed -->
-
-             
-
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Name</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" name="name" class="form-control" placeholder="Name" value="<?php echo @$this->session->userdata('user')->name; ?>" readonly>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Work Email</label>
-                        </div>
-                        <div class="col-md-9 m-2">
-                            <input type="text" name="work_email" class="form-control" placeholder="Email" value="<?php echo @$this->session->userdata('user')->work_email; ?>" readonly>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label class="form-label">Private</label>
-                        </div>
-                        <div class="col-md-9 m-2">
-                            <input type="text" name="private_email" class="form-control" placeholder="Email" value="<?php echo @$this->session->userdata('user')->private_email; ?>">
-                        </div>
-                    </div>
-                </div>
-                <?php //echo dd($contract); 
-                ?>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3 m-2">
-                            <label class="form-label">Primary Number</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="tel_1" value="<?php echo @$this->session->userdata('user')->tel_1; ?>">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3 m-2">
-                            <label class="form-label">Alternative Number</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="tel_2" value="<?php echo @$this->session->userdata('user')->tel_2; ?>">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="row">
-                        <div class="col-md-3 m-2">
-                            <label class="form-label">WhatsApp Number</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="whatsapp" value="<?php echo @$this->session->userdata('user')->whatsapp; ?>">
-                        </div>
-                    </div>
-                </div>
-
-
-               
-                <div class="form-group">
-    <div class="row">
-        <div class="col-md-3">
-            <label class="form-label">Profile Image (Image should be less than 1MB)</label>
+    <!-- Right Column: Form -->
+    <div class="col-xl-8 col-lg-7 col-md-7">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Edit My Details</h5>
         </div>
-        <div class="col-md-9">
-            <input type="file" class="form-control" name="photo" value="<?php echo @$this->session->userdata('user')->photo; ?>">
-        </div>
-        <?php
-        $image_path = base_url() . 'uploads/staff/' . @$this->session->userdata('user')->photo;
-        $photo = $this->session->userdata('user')->photo;
-        $lname = $this->session->userdata('user')->lname;
-        $fname = $this->session->userdata('user')->fname;
+        <div class="card-body">
+          <?= form_open_multipart(base_url('auth/update_profile'), ['id' => 'profile']) ?>
+          <input type="hidden" name="staff_id" value="<?= $staff->staff_id ?>">
+          <input type="hidden" name="user_id" value="<?= $staff->user_id ?>">
 
-        //dd($this->session->userdata('user'));
-    
-        echo  $staff_photo = generate_user_avatar( $fname,$lname, $image_path,$photo);
-       
-        ?>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Private Email</label>
+              <input type="email" name="private_email" value="<?= $staff->private_email ?>" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">WhatsApp</label>
+              <input type="text" name="whatsapp" value="<?= $staff->whatsapp ?>" class="form-control">
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Alternative Number</label>
+              <input type="text" name="tel_2" value="<?= $staff->tel_2 ?>" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Primary Phone</label>
+              <input type="text" name="tel_1" value="<?= $staff->tel_1 ?>" class="form-control">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Preferred Language</label>
+            <?php $langs = ['en' => 'English', 'fr' => 'French', 'sw' => 'Swahili', 'ar' => 'Arabic']; ?>
+            <select name="langauge" class="form-select">
+              <?php foreach ($langs as $k => $v): ?>
+                <option value="<?= $k ?>" <?= $staff->langauge == $k ? 'selected' : '' ?>><?= $v ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Upload New Photo (Max 1MB)</label>
+              <input type="file" name="photo" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Upload Signature (Max 1MB)</label>
+              <input type="file" name="signature" class="form-control">
+            </div>
+          </div>
+
+          <div class="text-end">
+            <button type="submit" class="btn btn-success"><i class="fa fa-save me-1"></i> Save Changes</button>
+          </div>
+          <?= form_close(); ?>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
-<div class="form-group">
-    <div class="row">
-        <div class="col-md-3">
-            <label class="form-label">Employee Signature (Image should be less than 1MB)</label>
-        </div>
-        <div class="col-md-9">
-            <input type="file" class="form-control" name="signature" value="<?php echo @$this->session->userdata('user')->signature; ?>">
-        </div>
-        <?php
-        $signatureImagePath = base_url() . 'uploads/staff/signature/' . @$this->session->userdata('user')->signature;
-        $placeholderSignatureImage = base_url() . 'uploads/staff/signature.png';
-        if (!empty($this->session->userdata('user')->signature) && file_exists(FCPATH . 'uploads/staff/signature/' . $this->session->userdata('user')->signature)) {
-            echo '<img src="' . $signatureImagePath . '" style="width:100px; height: 80px;">';
-        } else {
-            echo '<img src="' . $placeholderSignatureImage . '" style="width:100px; height: 80px;">';
-        }
-        ?>
-    </div>
-</div>
-            </div>
-            <div class="card-footer">
-                <button type="submit" class="btn btn-success waves-effect waves-light">Update Profile</button>
-            </div>
-            </form>
-        </div>
-    </div>
-    <!-- /Col -->
-</div>
-<!-- /row -->
