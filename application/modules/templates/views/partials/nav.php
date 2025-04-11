@@ -13,7 +13,7 @@
 				<ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
 
                 <!-- Dashboard -->
-                <?php if (in_array('82', $permissions)) : ?>
+                <?php if (in_array('76', $permissions)) : ?>
                     <li class="nav-item">
                         <a href="<?= base_url('dashboard') ?>" class="nav-link <?= activelink('dashboard', $this->uri->segment(1)) ?>">
                             <div class="parent-icon"><i class="bx bx-category"></i></div>
@@ -95,9 +95,9 @@
                             <li><a class="dropdown-item" href="<?= base_url('performance') ?>"><i class="bx bx-right-arrow-alt"></i>Create PPA</a></li>
                         <?php endif; ?>
 
-   
+						<?php if (in_array('82', $permissions)) : ?>
                             <li><a class="dropdown-item" href="<?= base_url('performance/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>PPA Dashboard</a></li>
-                  
+					    <?php endif; ?>
 
                         <?php if (in_array('38', $permissions) && $ppa_exists) : ?>
                             <li><a class="dropdown-item" href="<?= base_url("performance/recent_ppa/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current PPA</a></li>
