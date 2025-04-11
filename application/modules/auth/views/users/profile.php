@@ -39,7 +39,7 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
             <li><i class="fa fa-globe text-primary me-2"></i> Nationality: <?= $staff->nationality ?></li>
             <li><i class="fa fa-building text-primary me-2"></i> Division: <?= $staff->division_name ?></li>
             <li><i class="fa fa-map-marker-alt text-primary me-2"></i> Station: <?= $staff->duty_station_name ?>, <?= $staff->country ?></li>
-            <li><i class="fa fa-language text-primary me-2"></i> Language: <?= ucfirst($staff->langauge) ?></li>
+  
           </ul>
 
           <hr>
