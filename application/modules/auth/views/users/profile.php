@@ -34,24 +34,24 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
           <h6 class="text-uppercase fw-semibold mb-3">Profile Details</h6>
             <ul class="list-unstyled text-start fs-6">
             <li class="mb-2">
-                <i class="fa fa-envelope fa-md text-primary me-3"></i> <?= $staff->work_email ?>
+                <i class="fa fa-envelope fa-md text-primary me-2"></i> <?= $staff->work_email ?>
             </li>
             <li class="mb-2">
-                <i class="fa fa-phone fa-md text-primary me-3"></i> <?= $staff->tel_1 ?>
+                <i class="fa fa-phone fa-md text-primary me-2"></i> <?= $staff->tel_1 ?>
             </li>
             <li class="mb-2">
-                <i class="fa fa-calendar fa-md text-primary me-3"></i> DOB: <?= date('M d, Y', strtotime($staff->date_of_birth)) ?>
+                <i class="fa fa-calendar fa-md text-primary me-2"></i> DOB: <?= date('M d, Y', strtotime($staff->date_of_birth)) ?>
             </li>
             <li class="mb-2">
-                <i class="fa fa-globe fa-md text-primary me-3"></i> Nationality: <?= $staff->nationality ?>
-            </li>
-          
-            <li class="mb-2">
-                <i class="fa fa-id-card fa-md text-primary me-3"></i> SAP NO: <?= $staff->SAPNO ?>
+                <i class="fa fa-globe fa-md text-primary me-2"></i> Nationality: <?= $staff->nationality ?>
             </li>
           
             <li class="mb-2">
-                <i class="fa fa-map-marker-alt fa-md text-primary me-3"></i> Station: <?= $staff->duty_station_name ?>
+                <i class="fa fa-id-card fa-md text-primary me-2"></i> SAP NO: <?= $staff->SAPNO ?>
+            </li>
+          
+            <li class="mb-2">
+                <i class="fa fa-map-marker-alt fa-md text-primary me-2"></i> Station: <?= $staff->duty_station_name ?>
             </li>
             <li class="mb-2">
                 <i class="fa fa-building fa-md text-primary me-2"></i> Division: <?= $staff->division_name ?>
