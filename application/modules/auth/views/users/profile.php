@@ -6,7 +6,7 @@ $signature_url = base_url('uploads/staff/signature/' . @$staff->signature);
 $photo_display = !empty($staff->photo) ? $photo_url : base_url('assets/images/pp.png');
 $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads/staff/signature/' . $staff->signature)) ? $signature_url : base_url('uploads/staff/signature.png');
 
-// dd($staff);
+//dd($staff);
 ?>
 
 <!-- <div class="main-container container">
@@ -21,7 +21,7 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
 
   <div class="row">
     <!-- Left Column: Summary Card -->
-    <div class="col-xl-4 col-lg-5 col-md-5 mb-4">
+    <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
       <div class="card">
         <div class="card-body text-center">
           <img class="img-fluid rounded mb-3" style="width: 150px; height: 150px; object-fit: cover;" src="<?= $photo_display ?>" alt="Profile Image">
@@ -32,15 +32,32 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
 
           <hr>
           <h6 class="text-uppercase fw-semibold mb-3">Profile Details</h6>
-          <ul class="list-unstyled text-start">
-            <li><i class="fa fa-envelope text-primary me-2"></i> <?= $staff->work_email ?></li>
-            <li><i class="fa fa-phone text-primary me-2"></i> <?= $staff->tel_1 ?></li>
-            <li><i class="fa fa-calendar text-primary me-2"></i> DOB: <?= date('M d, Y', strtotime($staff->date_of_birth)) ?></li>
-            <li><i class="fa fa-globe text-primary me-2"></i> Nationality: <?= $staff->nationality ?></li>
-            <li><i class="fa fa-building text-primary me-2"></i> Division: <?= $staff->division_name ?></li>
-            <li><i class="fa fa-map-marker-alt text-primary me-2"></i> Station: <?= $staff->duty_station_name ?>, <?= $staff->country ?></li>
-  
-          </ul>
+            <ul class="list-unstyled text-start fs-6">
+            <li class="mb-2">
+                <i class="fa fa-envelope fa-md text-primary me-3"></i> <?= $staff->work_email ?>
+            </li>
+            <li class="mb-2">
+                <i class="fa fa-phone fa-md text-primary me-3"></i> <?= $staff->tel_1 ?>
+            </li>
+            <li class="mb-2">
+                <i class="fa fa-calendar fa-md text-primary me-3"></i> DOB: <?= date('M d, Y', strtotime($staff->date_of_birth)) ?>
+            </li>
+            <li class="mb-2">
+                <i class="fa fa-globe fa-md text-primary me-3"></i> Nationality: <?= $staff->nationality ?>
+            </li>
+          
+            <li class="mb-2">
+                <i class="fa fa-id-card fa-md text-primary me-3"></i> SAP NO: <?= $staff->SAPNO ?>
+            </li>
+          
+            <li class="mb-2">
+                <i class="fa fa-map-marker-alt fa-md text-primary me-3"></i> Station: <?= $staff->duty_station_name ?>
+            </li>
+            <li class="mb-2">
+                <i class="fa fa-building fa-md text-primary me-2"></i> Division: <?= $staff->division_name ?>
+            </li>
+            </ul>
+
 
           <hr>
           <div class="text-center">
@@ -52,7 +69,7 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
     </div>
 
     <!-- Right Column: Form -->
-    <div class="col-xl-8 col-lg-7 col-md-7">
+    <div class="col-xl-8 col-lg-6 col-md-6">
       <div class="card">
         <div class="card-header">
           <h5 class="mb-0">Edit My Details</h5>
