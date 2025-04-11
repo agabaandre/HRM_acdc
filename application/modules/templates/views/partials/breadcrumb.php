@@ -3,7 +3,7 @@
     <div class="page-content">
         <!--breadcrumb-->
         <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
-            <div class="breadcrumb-title pe-3"><a href='<?php echo base_url()?><?=$this->uri->segment(1); ?>' style="color:#947645;"><?= ucwords(str_replace('_', ' ',$this->uri->segment(1))); ?></a></div>
+            <div class="breadcrumb-title pe-3"><a href='<?php echo base_url()?><?=$this->uri->segment(1); ?>' style="color:#947645;"><?= ucwords(str_replace('_', ' ', $type)) ?>$this->uri->segment(1)); ?></a></div>
             <div class="ps-3">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0 p-0">

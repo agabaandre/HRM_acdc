@@ -1,9 +1,6 @@
 <div class="container-fluid py-3 px-4">
-  <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
- 
-  </div>
-
-  <div class="card shadow-sm border-0">
+  
+<div class="card shadow-sm border-0">
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-hover align-middle table-bordered table-striped mydata" id="staffStatsTable">
