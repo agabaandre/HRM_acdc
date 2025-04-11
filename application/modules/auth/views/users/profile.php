@@ -24,7 +24,7 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
       <div class="card">
         <div class="card-body text-center">
           <img class="img-fluid rounded mb-3" style="width: 150px; height: 150px; object-fit: cover;" src="<?= $photo_display ?>" alt="Profile Image">
-          <h4 class="fw-bold"><?= $staff->fname . ' ' . $staff->lname ?></h4>
+          <h4 class="fw-bold"><?= $staff->title .' '.$staff->fname . ' ' . $staff->lname ?></h4>
           <p class="text-muted"><?= @$contract->job_name ?></p>
           <p class="badge bg-success"><?= $staff->group_name ?></p>
           <p class="badge bg-dark"><?= $staff->contract_type ?></p>
