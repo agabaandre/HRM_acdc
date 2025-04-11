@@ -9,7 +9,7 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
 // dd($staff);
 ?>
 
-<div class="main-container container">
+<!-- <div class="main-container container">
   <div class="page-header">
     <div>
       <ol class="breadcrumb">
@@ -17,7 +17,7 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
         <li class="breadcrumb-item active" aria-current="page">Account</li>
       </ol>
     </div>
-  </div>
+  </div> -->
 
   <div class="row">
     <!-- Left Column: Summary Card -->
