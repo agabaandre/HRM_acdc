@@ -364,7 +364,7 @@ public function cron_register(){
     $current_period = str_replace(' ', '-', current_period());
 
     $deadline = $this->db->select('ppa_deadline')->get('ppa_configs')->row()->ppa_deadline;
-    $staff_list = $this->ppa_mdl->get_staff_without_ppa($current_period);
+    $staff_list = $this->per_mdl->get_staff_without_ppa($current_period);
 
     foreach ($staff_list as $staff) {
         $data = [
@@ -385,26 +385,44 @@ public function cron_register(){
 public function notify_supervisors_pending_ppas()
 {
     $current_period = str_replace(' ', '-', current_period());
+    $deadline = $this->db->get('ppa_configs')->row()->ppa_deadline;
 
-    $deadline = $this->db->select('ppa_deadline')->get('ppa_configs')->row()->ppa_deadline;
-    $supervisors = $this->ppa_mdl->get_supervisors_with_pending_ppas($current_period);
+    // Get supervisors with any pending PPA
+    $supervisors = $this->per_mdl->get_supervisors_with_pending_ppas($current_period);
 
-    foreach ($supervisors as $sup) {
+    foreach ($supervisors as $supervisor) {
+        $pending_list = $this->per_mdl->get_pending_by_supervisor_with_staff($supervisor->supervisor_id);
+
+        if (empty($pending_list)) continue;
+
         $data = [
-            'supervisor_name' => $sup->title . ' ' . $sup->fname . ' ' . $sup->lname,
-            'period' => $current_period,
-            'deadline' => $deadline,
-            'type' => 'supervisor_reminder'
+            'supervisor_name' => $supervisor->title . ' ' . $supervisor->fname . ' ' . $supervisor->lname,
+            'period'          => $current_period,
+            'deadline'        => $deadline,
+            'pending_list'    => $pending_list,
+            'subject'         => "Reminder: Pending PPA Approvals for {$current_period}",
+            'email_to'        => $supervisor->work_email
         ];
 
-        $data['subject'] = "Reminder: Pending PPA Approvals ($current_period)";
-        $data['body'] = $this->load->view('emails/supervisor_ppa_reminder', $data, true);
-        $data['email_to'] = $sup->work_email;
+        // Render email view
+        $data['body'] = $this->load->view('supervisor_reminder', $data);
 
-        $entry_log_id = md5($sup->staff_id . '-SUPPPAREM-' . date('Y-m-d'));
-        golobal_log_email('supervisor_ppa_reminder', $data['email_to'], $data['body'], $data['subject'], $sup->staff_id, date('Y-m-d'), 1, $entry_log_id);
+        // Log and send email
+        $entry_log_id = md5($supervisor->supervisor_id . '-SUPPPAREM-' . date('Y-m-d'));
+        golobal_log_email(
+            'Staff Portal System',
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $supervisor->supervisor_id,
+            date('Y-m-d'),
+            date('Y-m-d'),
+            $entry_log_id
+        );
     }
 }
+
+
 
 
 

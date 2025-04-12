@@ -687,4 +687,59 @@ public function get_dashboard_data()
 
 
 
+public function get_supervisors_with_pending_ppas($period)
+{
+    $sql = "
+        SELECT 
+            DISTINCT s.staff_id AS supervisor_id,
+            s.title,
+            s.fname,
+            s.lname,
+            s.work_email
+        FROM staff s
+        JOIN ppa_entries p 
+            ON s.staff_id = p.supervisor_id OR s.staff_id = p.supervisor2_id
+        WHERE p.performance_period = ?
+        AND p.draft_status = 0
+        AND p.entry_id NOT IN (
+            SELECT entry_id FROM ppa_approval_trail WHERE action = 'Approved'
+        )
+        ORDER BY s.fname ASC
+    ";
+
+    return $this->db->query($sql, [$period])->result();
+}
+
+public function get_pending_by_supervisor_with_staff($supervisor_id)
+{
+    $subquery = $this->db->select('entry_id')
+        ->from('ppa_approval_trail')
+        ->where('action', 'Approved')
+        ->get_compiled_select();
+
+    $this->db->select("
+        p.entry_id,
+        p.staff_id,
+        CONCAT(s.title, ' ', s.fname, ' ', s.lname) AS staff_name,
+        p.performance_period,
+        p.created_at
+    ");
+    $this->db->from('ppa_entries p');
+    $this->db->join('staff s', 's.staff_id = p.staff_id', 'left');
+    $this->db->group_start()
+             ->where('p.supervisor_id', $supervisor_id)
+             ->or_where('p.supervisor2_id', $supervisor_id)
+             ->group_end();
+    $this->db->where('p.draft_status', 0);
+    $this->db->where("p.entry_id NOT IN ($subquery)", null, false);
+    $this->db->order_by("p.created_at", "DESC");
+
+    return $this->db->get()->result();
+}
+
+
+
+
+
+
 }
