@@ -80,12 +80,12 @@
         <h1>PPA Approval Reminder</h1>
         <p>Dear <strong><?= $supervisor_name ?></strong>,</p>
         <p>
-          You have pending Performance Planning and Appraisal (PPA) submissions from your staff for the period <strong><?= str_replace('-', ' ', $period) ?></strong>.
+          You have pending (PPA) submissions from your staff for the period <strong><?= str_replace('-', ' ', $period) ?></strong>.
         </p>
         <p>
           Please review and approve them before the deadline: <strong><?= date('d M, Y', strtotime($deadline)) ?></strong>.
         </p>
-        <a href="<?= site_url('performance/assigned') ?>" class="btn">View All Assigned PPAs</a>
+        <a href="<?= site_url('performance/pending_approval') ?>" class="btn">View All Assigned PPAs</a>
 
         <?php if (!empty($pending_list)) : ?>
           <div class="table-container">
