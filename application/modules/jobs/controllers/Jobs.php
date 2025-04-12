@@ -222,7 +222,7 @@ public function cron_register(){
         if (count($messages) > 0) {
             foreach ($messages as $message) {
                 $body = $message->body;
-                $to = $message->email_to;
+                $to = $message->email_to.';'.settings()->email;
                 // $to ='kibiyed@africacd.org';
                 $subject = $message->subject;
                 $id = $message->id;
