@@ -405,7 +405,7 @@ public function notify_supervisors_pending_ppas()
         ];
 
         // Render email view
-        $data['body'] = $this->load->view('supervisor_reminder', $data);
+        $data['body'] = $this->load->view('supervisor_reminder', $data,true);
 
         // Log and send email
         $entry_log_id = md5($supervisor->supervisor_id . '-SUPPPAREM-' . date('Y-m-d'));
