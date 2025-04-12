@@ -389,6 +389,7 @@ public function notify_supervisors_pending_ppas()
 
     // Get supervisors with any pending PPA
     $supervisors = $this->per_mdl->get_supervisors_with_pending_ppas($current_period);
+    
 
     foreach ($supervisors as $supervisor) {
         $pending_list = $this->per_mdl->get_pending_by_supervisor_with_staff($supervisor->supervisor_id);
