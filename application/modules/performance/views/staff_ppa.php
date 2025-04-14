@@ -26,15 +26,15 @@
 			  <?php
 				 $staff_id = $plan['staff_id'];
 
-				if (($plan['overall_status'] == 'Pending First Supervisor')&& ($plan['draft_status'] == 0)){
-					$supervisor = get_supervisor(current_contract($staff_id))->first_supervisor ?? null;
-					echo '<span class="badge bg-primary fs-6">Pending First Supervisor: ' . staff_name($supervisor) . '</span>';
-				} elseif (($plan['overall_status'] == 'Pending Second Supervisor')&& ($plan['draft_status'] == 0)) {
-					$supervisor = get_supervisor(current_contract($staff_id))->second_supervisor ?? null;
-					echo '<span class="badge bg-primary fs-6">Pending Second Supervisor: ' . staff_name($supervisor) . '</span>';
-				} else {
-					echo '<span class="badge bg-success fs-6">' . $plan['overall_status'] . '</span>';
-				}
+         if ($plan['overall_status'] == 'Pending First Supervisor') {
+          $supervisor_id = $plan['supervisor_id'];
+          echo '<span class="badge bg-primary fs-6">Pending First Supervisor: ' . staff_name($supervisor_id) . '</span>';
+        } elseif ($plan['overall_status'] == 'Pending Second Supervisor') {
+          $supervisor_id2 = $plan['supervisor2_id'];
+          echo '<span class="badge bg-primary fs-6">Pending Second Supervisor: ' . staff_name($supervisor2_id) . '</span>';
+        } else {
+          echo '<span class="badge bg-success fs-6">' . $plan['overall_status'] . '</span>';
+        }
 				?>
 				
 			</td>
