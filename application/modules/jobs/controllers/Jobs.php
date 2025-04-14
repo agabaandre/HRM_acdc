@@ -222,7 +222,7 @@ public function cron_register(){
         if (count($messages) > 0) {
             foreach ($messages as $message) {
                 $body = $message->body;
-                $to = $message->email_to.';'.settings()->email;
+                $to = $message->email_to;
                 // $to ='kibiyed@africacd.org';
                 $subject = $message->subject;
                 $id = $message->id;
@@ -402,11 +402,11 @@ public function notify_supervisors_pending_ppas()
             'deadline'        => $deadline,
             'pending_list'    => $pending_list,
             'subject'         => "Reminder: Pending PPA Approvals for {$current_period}",
-            'email_to'        => $supervisor->work_email
+            'email_to'        => $supervisor->work_email.';'.settings()->email
         ];
 
         // Render email view
-        $data['body'] = $this->load->view('supervisor_reminder', $data,true);
+        $data['body'] = $this->load->view('supervisor_reminder', $data);
 
         // Log and send email
         $entry_log_id = md5($supervisor->supervisor_id . '-SUPPPAREM-' . date('Y-m-d'));
