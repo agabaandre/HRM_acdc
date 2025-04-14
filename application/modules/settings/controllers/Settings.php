@@ -247,7 +247,7 @@ class Settings extends MX_Controller
 		$data['title'] = "Settings - Constants & Variables";
 		$data['uptitle'] = "Constants & Variables";
 		$data['module'] = 'settings';
-		$data['view'] = "variables";
+		$data['view'] = "sys_variables";
 		$postdata = $this->input->post();
 		$data['setting'] = $this->settings_mdl->getSettings();
 		if ($this->input->post('language')) {

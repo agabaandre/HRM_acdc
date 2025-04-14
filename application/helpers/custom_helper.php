@@ -917,7 +917,7 @@ function curl_send_post($url, $body, $headers) {
                         <i class="fa fa-print"></i> Print PPA With Approval Trail
                     </a>';
             } else {
-                return ''; // No action
+                return false; // No action
             }
         }
     }

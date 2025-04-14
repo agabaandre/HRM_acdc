@@ -9,7 +9,7 @@
 			<!-- /.card-header -->
 
 			<div class="card-body">
-				<?php echo form_open_multipart(base_url('settings/ppa_variables')); ?>
+				<?php echo form_open_multipart(base_url('settings/sysvariables')); ?>
 				<?php foreach ($setting as $key => $value) { ?>
 					<div id="">
 						<label><?php echo strtoupper(str_replace("_", " ", $key)); ?></label>
