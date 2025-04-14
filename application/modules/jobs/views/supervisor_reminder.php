@@ -85,7 +85,7 @@
         <p>
           Please review and approve them before the deadline: <strong><?= date('d M, Y', strtotime($deadline)) ?></strong>.
         </p>
-        <a href="<?= site_url('performance/pending_approval') ?>" class="btn">View All Assigned PPAs</a>
+        <a href="<?php echo ('performance/pending_approval') ?>" class="btn">View All Assigned PPAs</a>
 
         <?php if (!empty($pending_list)) : ?>
           <div class="table-container">
@@ -103,7 +103,7 @@
                     <td><?= $i++ ?></td>
                     <td><?= $row->staff_name ?></td>
                     <td>
-                      <a href="<?= site_url('performance/view_ppa/' . $row->entry_id . '/' . $row->staff_id) ?>" class="btn" style="padding: 6px 12px;">Review</a>
+                      <a href="<?php echo base_url('performance/view_ppa/' . $row->entry_id . '/' . $row->staff_id) ?>" class="btn" style="padding: 6px 12px;">Review</a>
                     </td>
                   </tr>
                 <?php endforeach; ?>
