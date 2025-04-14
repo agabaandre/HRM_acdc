@@ -1,5 +1,4 @@
 <?php 
-$permissions = $session->permissions;
 $session = $this->session->userdata('user');
 
 if($this->uri->segment(2)=='view_ppa'){
@@ -11,6 +10,7 @@ else{
 $contract = Modules::run('auth/contract_info', $staff_id);
 
 }
+$permissions = $session->permissions;
 //dd($contract);
 //dd($this->uri->segment(2));
 $ppa_settings=ppa_settings();
@@ -258,11 +258,11 @@ input[type="number"] {
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save Draft</button>
       <br><br>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
-      <?php } else if ((empty(@$ppa->staff_id))||(@$ppa->supervisor_id == $this->session->userdata('user')->staff_id)||(@$ppa->supervisor2_id == $this->session->userdata('user')->staff_id)){?>
+      <?php } else if((@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)) {?>?>
       <br><br>
-
+      
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Save Changes (If Any)</button>
-      <?php }  ?>
+      <?php } ?>
       <br><br>
 
     <?php endif; ?>
@@ -271,29 +271,37 @@ input[type="number"] {
     <?php echo form_close(); ?>
 
 
-<?php if ($showApprovalBtns == 'show'): ?>
+<?php 
+  //dd($showApprovalBtns); 
+  if (($showApprovalBtns ==='show')||(in_array('83', $permissions))){ ?>
   <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>">
-  <?php if($ppa_settings->allow_employee_comments==1):?>
+  <?php if($ppa_settings->allow_employee_comments==1){?>
     <div class="mb-3">
       <label for="comments">Comments for Approval/Return</label>
       <textarea id="comments" name="comments" class="form-control" rows="3" required></textarea>
     </div>
-    <?php endif; ?>
+    <?php } ?>
 
     <input type="hidden" name="action" id="approval_action" value="">
 
     <div class="text-center">
+      <?php 
+      //make sure its in draft and the supervisor is allowed
+      if((@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)){?>
       <button type="submit" class="btn btn-success px-5 me-2" onclick="document.getElementById('approval_action').value = 'approve';">
         Approve
       </button>
-      <?php if(($ppa_settings->allow_supervisor_return===1)&&(in_array('83', $permissions))){ ?>
+      <?php } ?>
+      <?php
+      //allow return for those wiht return perms and settings allows it
+      if((@$ppa_settings->allow_supervisor_return===1)&&(in_array('83', $permissions))){ ?>
       <button type="submit" class="btn btn-danger px-5" onclick="document.getElementById('approval_action').value = 'return';">
         Return
       </button>
       <?php } ?>
     </div>
   </form>
-<?php endif; ?>
+<?php } ?>
 
 
   </td>
