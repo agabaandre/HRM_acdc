@@ -397,7 +397,7 @@ class Staff_mdl extends CI_Model
 		$query = $this->db->update('staff_contracts', $data);
 		if($query){
 			$ppa['supervisor_id']=$data['first_supervisor'];
-			$ppa['supervisor2_id'] = $data['second_supervisor'];
+			$ppa['supervisor2_id'] = NULL;
 			$ppa['staff_id'] = $data['staff_id'];
 		$this->update_ppa_details($ppa);
 		}
