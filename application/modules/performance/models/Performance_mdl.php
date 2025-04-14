@@ -737,6 +737,132 @@ public function get_pending_by_supervisor_with_staff($supervisor_id)
     return $this->db->get()->result();
 }
 
+public function get_all_ppas_filtered($filters, $limit = 40, $offset = 0)
+{
+    // Default to current performance period
+    if (empty($filters['period'])) {
+        $filters['period'] = str_replace(' ', '-', current_period());
+    }
+
+    $sql = "
+        SELECT 
+            p.*, 
+            d.division_name,
+            CONCAT(s.fname, ' ', s.lname) AS staff_name,
+
+            CASE 
+                WHEN p.draft_status = 1 THEN 'Draft'
+                ELSE (
+                    CASE
+                        WHEN p.supervisor2_id IS NULL AND (
+                            SELECT action FROM ppa_approval_trail 
+                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
+                            ORDER BY id DESC LIMIT 1
+                        ) = 'Approved'
+                        THEN 'Approved'
+
+                        WHEN p.supervisor2_id IS NOT NULL AND (
+                            SELECT action FROM ppa_approval_trail 
+                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
+                            ORDER BY id DESC LIMIT 1
+                        ) = 'Approved' AND (
+                            SELECT action FROM ppa_approval_trail 
+                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor2_id 
+                            ORDER BY id DESC LIMIT 1
+                        ) = 'Approved'
+                        THEN 'Approved'
+
+                        WHEN (
+                            SELECT action FROM ppa_approval_trail 
+                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor2_id 
+                            ORDER BY id DESC LIMIT 1
+                        ) = 'Returned'
+                        THEN 'Returned'
+
+                        WHEN (
+                            SELECT action FROM ppa_approval_trail 
+                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
+                            ORDER BY id DESC LIMIT 1
+                        ) = 'Returned'
+                        THEN 'Returned'
+
+                        WHEN p.supervisor2_id IS NOT NULL AND (
+                            SELECT action FROM ppa_approval_trail 
+                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
+                            ORDER BY id DESC LIMIT 1
+                        ) = 'Approved'
+                        THEN 'Pending Second Supervisor'
+
+                        ELSE 'Pending First Supervisor'
+                    END
+                )
+            END AS overall_status
+
+        FROM ppa_entries p
+        JOIN staff s ON s.staff_id = p.staff_id
+
+        LEFT JOIN (
+            SELECT sc.*
+            FROM staff_contracts sc
+            INNER JOIN (
+                SELECT staff_id, MAX(staff_contract_id) AS max_id
+                FROM staff_contracts
+                GROUP BY staff_id
+            ) latest ON latest.staff_id = sc.staff_id AND latest.max_id = sc.staff_contract_id
+        ) sc ON sc.staff_id = p.staff_id
+
+        LEFT JOIN divisions d ON d.division_id = sc.division_id
+
+        WHERE p.performance_period = ? 
+
+    ";
+
+    $params = [$filters['period']];
+
+    // Filters
+    if (!empty($filters['staff_name'])) {
+        $sql .= " AND (s.fname LIKE ? OR s.lname LIKE ?)";
+        $params[] = '%' . $filters['staff_name'] . '%';
+        $params[] = '%' . $filters['staff_name'] . '%';
+    }
+
+    if ($filters['draft_status'] !== '' && $filters['draft_status'] !== null) {
+        $sql .= " AND p.draft_status = ?";
+        $params[] = $filters['draft_status'];
+    }
+
+    if (!empty($filters['created_at'])) {
+        $sql .= " AND DATE(p.created_at) = ?";
+        $params[] = $filters['created_at'];
+    }
+
+    if (!empty($filters['division_id'])) {
+        $sql .= " AND sc.division_id = ?";
+        $params[] = $filters['division_id'];
+    }
+
+    $sql .= " ORDER BY p.created_at DESC";
+
+    if ($limit > 0) {
+        $sql .= " LIMIT ? OFFSET ?";
+        $params[] = (int) $limit;
+        $params[] = (int) $offset;
+    }
+
+    $query = $this->db->query($sql, $params);
+    // Debug output
+// log_message('debug', "SQL: " . $this->db->last_query());
+// log_message('debug', "Results: " . json_encode($query->result_array()));
+
+return $query->result_array();
+}
+
+
+
+public function count_ppas_filtered($filters)
+{
+    return count($this->get_all_ppas_filtered($filters, 0, 0));
+}
 
 
 

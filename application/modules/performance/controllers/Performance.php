@@ -463,6 +463,53 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
 
         render('staff_list',$data);
     }
+    public function all_ppas()
+{
+
+    $data['module'] = "performance";
+
+    $filters = [
+        'staff_name' => $this->input->get('staff_name'),
+        'draft_status' => $this->input->get('draft_status'),
+        'created_at' => $this->input->get('created_at'),
+        'division_id' => $this->input->get('division_id'),
+        'period' => str_replace(' ','-',current_period())
+    ];
+
+    $per_page = 40;
+    $offset = (int) $this->input->get('offset');
+
+    // Export to Excel
+    if ($this->input->get('export') === 'excel') {
+        $data = $this->per_mdl->get_all_ppas_filtered($filters, 0, 0); // all records
+        render_csv_data($data, 'all_ppa_entries.csv');
+    }
+
+    // Export to PDF
+    if ($this->input->get('export') === 'pdf') {
+        $data['plans'] = $this->per_mdl->get_all_ppas_filtered($filters, 0, 0);
+        pdf_print_data($data, 'ppa_report.pdf', 'L', 'pdfs/all_pdf_ppa');
+        return;
+    }
+     // Export to PDF
+     if ($this->input->get('export') === 'pdf2') {
+        $data['plans'] = $this->per_mdl->get_all_ppas_filtered($filters, 0, 0);
+        pdf_print_data($data, 'ppa_report.pdf', 'L', 'pdfs/simple');
+        return;
+    }
+
+    $data['plans'] = $this->per_mdl->get_all_ppas_filtered($filters, $per_page, $offset);
+    $data['filters'] = $filters;
+    $data['divisions'] = $this->db->get('divisions')->result();
+    $data['periods'] = $this->db->query('SELECT distinct performance_period FROM ppa_entries')->result();
+    $data['total'] = $this->per_mdl->count_ppas_filtered($filters);
+
+    $data['links'] = pagination('performance/all_ppas', $data['total'], $per_page,3);
+    $data['title'] = 'All Staff PPAs';
+
+    render('all_ppas', $data);
+}
+
 
         
         
