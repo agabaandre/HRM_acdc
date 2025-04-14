@@ -403,18 +403,26 @@ class Staff_mdl extends CI_Model
 		}
 		return $query;
 	}
-	public function update_ppa_details($data){
-		//still in draft mode.
-		$this->db->where('draft_status',1);
-		//0 is for submitted
-		$this->db->or_where('draft_status',0);
-		$this->db->where('staff_id', $data['staff_id']);
+	public function update_ppa_details($data)
+{
+    // Ensure only expected fields are updated
+    $update = [
+        'supervisor_id'   => $data['supervisor_id'] ?? null,
+        'supervisor2_id'  => $data['supervisor2_id'] ?? null,
+        'updated_at'      => date('Y-m-d H:i:s'),
+    ];
 
-		return $query = $this->db->update('ppa_entries', $data);
+    $this->db->where('staff_id', $data['staff_id']);
+    $this->db->where_in('draft_status', [0, 1]); // restrict to draft or submitted only
 
-		//
-		
-	}
+    $result = $this->db->update('ppa_entries', $update);
+
+    // Optional: Log or return last query for debugging
+    log_message('debug', $this->db->last_query());
+
+    return $result;
+}
+
 
 
 
