@@ -395,9 +395,23 @@ class Staff_mdl extends CI_Model
 	{
 		$this->db->where('staff_contract_id', $data['staff_contract_id']);
 		$query = $this->db->update('staff_contracts', $data);
+		if($query){
+			$ppa['supervisor_id']=$data['supervisor_id'];
+			$ppa['supervisor2_id'] = $data['supervisor_id'];
+			$ppa['staff_id'] = $data['staff_id'];
+		$this->update_ppa_details($ppa);
+		}
 		return $query;
 	}
-
+	public function update_ppa_details($data){
+		//still in draft mode.
+		$this->db->where('draft_status',1);
+		//0 is for submitted
+		$this->db->or_where('draft_status',0);
+		$this->db->where('staff_id', $data['staff_id']);
+		return $query = $this->db->update('ppa_entries', $data);
+		
+	}
 
 
 

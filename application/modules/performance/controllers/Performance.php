@@ -171,6 +171,7 @@ class Performance extends MX_Controller
 	}
 	public function approve_ppa($entry_id)
 	{
+        //draft status 0 is for summitted entries, 1 is in in draft mode, 2 is for approved.
 		$staff_id = $this->session->userdata('user')->staff_id;
 		$action = $this->input->post('action');
 	
