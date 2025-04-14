@@ -74,7 +74,7 @@
       <div class="header">
         <img src="https://khub.africacdc.org/storage/uploads/config/fcb24779b37db15ee15fd4a32eaab0ac.png" alt="Africa CDC">
       </div>
-
+    
       <!-- Content -->
       <div class="content">
         <h1>PPA Approval Reminder</h1>
@@ -87,7 +87,9 @@
         </p>
         <a href="<?php echo ('performance/pending_approval') ?>" class="btn">View All Assigned PPAs</a>
 
-        <?php if (!empty($pending_list)) : ?>
+        <?php if (!empty($pending_list)) : 
+          //list all pending staff with action here
+          ?>
           <div class="table-container">
             <table>
               <thead>
