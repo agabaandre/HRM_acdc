@@ -22,13 +22,15 @@ $ppa_settings=ppa_settings();
 //             ? 'readonly disabled' : '';
 
 
-$isSubmittedOrApproved = isset($ppa) && in_array(@$ppa->draft_status, [0, 2]);
-$isUserSupervisor = isset($ppa) && (
+$isSubmittedOrApproved = !empty($ppa->staff_id) && in_array(@$ppa->draft_status, [0, 2], true);
+
+
+$isUserSupervisor = !empty($ppa->staff_id) && (
     $session->staff_id == @$ppa->supervisor_id || 
     $session->staff_id == @$ppa->supervisor2_id
 );
-$isOwnerEditingDraft = isset($ppa) && @$ppa->draft_status == 1 && $session->staff_id == @$ppa->staff_id;
-
+$isOwnerEditingDraft = !empty($ppa->staff_id) && @$ppa->draft_status == 1 && $session->staff_id == @$ppa->staff_id;
+// dd(in_array(@$ppa->draft_status, [0, 2], true));
 $readonly = (!$isOwnerEditingDraft && ($isSubmittedOrApproved && !$isUserSupervisor)) ? 'readonly disabled' : '';
 
 
