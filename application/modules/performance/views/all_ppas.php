@@ -68,7 +68,6 @@
                         <th>#</th>
                         <th>Name</th>
                         <th>Division</th>
-                        <th>Submission Date</th>
                         <th>Period</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -81,7 +80,6 @@
                             <td><?= $i++ ?></td>
                             <td><?= $plan['staff_name'] ?></td>
                             <td><?= $plan['division_name'] ?? '<i class="text-muted">N/A</i>' ?></td>
-                            <td><?= date('d M Y', strtotime($plan['created_at'])) ?></td>
                             <td><?= str_replace('-', ' ', $plan['performance_period']) ?></td>
                             <td>
                                 <?php
