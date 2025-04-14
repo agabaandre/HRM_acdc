@@ -418,7 +418,8 @@ function check_admin_access()
 if (!function_exists('render_csv_data')) {
     function render_csv_data($datas, $filename)
     {
-        if (empty($datas)) {
+        $fdatas = remove_ids($datas);
+        if (empty($fdatas)) {
             return;
         }
 
@@ -464,7 +465,54 @@ if (!function_exists('render_csv_data')) {
 }
 
 
+function remove_ids($staffs = []) {
+    $keysToRemove = [
+        'staff_contract_id',
+        'email_disabled_at',
+        'email_disabled_by',
+        'job_id',
+        'job_acting_id',
+        'job_acting',
+        'grade_id',
+        'contracting_institution_id',
+        'funder_id',
+        'nationality_id',
+        'staff_id',
+        'first_supervisor',
+        'second_supervisor',
+        'contract_type_id',
+        'duty_station_id',
+        'division_id',
+        'unit_id',
+        'photo',
+        'flag',
+        'created_at',
+        'updated_at',
+        'status_id',
+        'division_head',
+        'focal_person',
+        'admin_assistant',
+        'finance_officer',
+        'region_id',
+        'email_status',
+       'entry_id',
+       'id',
+       'supervisor_id',
+       'supervisor2_id',
+       'staff_id'
 
+
+    ];
+    
+    // If it's an array of arrays:
+    foreach ($staffs as $index => $staff) {
+        foreach ($keysToRemove as $key) {
+            unset($staffs[$index][$key]);
+        }
+    }
+    
+    return $staffs;
+}
 if (!function_exists('share_buttons')) {
     function share_buttons($link, $subject = "Check this  Africa CDC  resource")
     {
@@ -909,6 +957,9 @@ function curl_send_post($url, $body, $headers) {
             $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
     
             // Set footer content
+            $PDFContent = mb_convert_encoding($html, 'UTF-8', 'UTF-8');
+         
+            $PDFContent = preg_replace('/\s+/', ' ', $PDFContent); // Clean spaces
             $footer = '
             <table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
                 <tr>

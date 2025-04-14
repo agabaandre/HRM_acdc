@@ -97,6 +97,7 @@
 
 						<?php if (in_array('82', $permissions)) : ?>
                             <li><a class="dropdown-item" href="<?= base_url('performance/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>PPA Dashboard</a></li>
+                            <li><a class="dropdown-item" href="<?= base_url('performance/all_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>All PPAs Status</a></li>
 					    <?php endif; ?>
 
                         <?php if (in_array('38', $permissions) && $ppa_exists) : ?>
@@ -105,6 +106,8 @@
                         <li><a class="dropdown-item" href="<?= base_url('performance/my_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>My PPAs</a></li>
                         <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= count($this->per_mdl->get_pending_ppa($this->session->userdata('user')->staff_id)) ?></span></a></li>
                         <li><a class="dropdown-item" href="<?= base_url('performance/approved_by_me') ?>"><i class="bx bx-right-arrow-alt"></i>All Approved PPAs</a></li>
+
+                        
                     </ul>
                 </li>
                 <?php endif; ?>
