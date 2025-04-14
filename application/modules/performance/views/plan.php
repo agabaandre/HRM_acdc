@@ -1,4 +1,5 @@
 <?php 
+$permissions = $session->permissions;
 $session = $this->session->userdata('user');
 
 if($this->uri->segment(2)=='view_ppa'){
@@ -257,10 +258,11 @@ input[type="number"] {
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save Draft</button>
       <br><br>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
-      <?php } else {?>
+      <?php } else if ((empty(@$ppa->staff_id))||(@$ppa->supervisor_id == $this->session->userdata('user')->staff_id)||(@$ppa->supervisor2_id == $this->session->userdata('user')->staff_id)){?>
       <br><br>
+
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Save Changes (If Any)</button>
-      <?php } ?>
+      <?php }  ?>
       <br><br>
 
     <?php endif; ?>
@@ -284,7 +286,7 @@ input[type="number"] {
       <button type="submit" class="btn btn-success px-5 me-2" onclick="document.getElementById('approval_action').value = 'approve';">
         Approve
       </button>
-      <?php if($ppa_settings->allow_supervisor_return===1){ ?>
+      <?php if(($ppa_settings->allow_supervisor_return===1)&&(in_array('83', $permissions))){ ?>
       <button type="submit" class="btn btn-danger px-5" onclick="document.getElementById('approval_action').value = 'return';">
         Return
       </button>

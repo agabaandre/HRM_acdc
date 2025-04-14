@@ -416,6 +416,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->select('staff_id, entry_id');
             $this->db->from('ppa_entries');
             if ($period) $this->db->where('performance_period', $period);
+            $this->db->where('draft_status !=', 1); 
             $this->db->where_in('staff_id', $staff_ids);
             $ppa_entries = $this->db->get()->result();
 
@@ -442,6 +443,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             ) latest", "latest.entry_id = pe.entry_id");
             $this->db->join("ppa_approval_trail pat", "pat.id = latest.max_id");
             $this->db->where('pat.action', 'Approved');
+            $this->db->where('pe.draft_status !=', 1);
             if ($period) $this->db->where('pe.performance_period', $period);
             $this->db->where_in('pe.staff_id', $staff_ids);
             $approved_entries = $this->db->get()->result();
@@ -463,6 +465,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->select('staff_id, entry_id, required_skills');
             $this->db->from('ppa_entries');
             $this->db->where('training_recommended', 'Yes');
+            $this->db->where('draft_status !=', 1);
             if ($period) $this->db->where('performance_period', $period);
             $this->db->where_in('staff_id', $staff_ids);
             $pdp_entries = $this->db->get()->result();
@@ -497,6 +500,8 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->select('staff_id');
             $this->db->from('ppa_entries');
             if ($period) $this->db->where('performance_period', $period);
+            $this->db->where('draft_status !=', 1);
+            
             $this->db->where_in('staff_id', $staff_ids);
             $ppa_ids = array_column($this->db->get()->result(), 'staff_id');
 
