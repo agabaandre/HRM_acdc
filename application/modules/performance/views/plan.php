@@ -16,10 +16,21 @@ $permissions = $session->permissions;
 $ppa_settings=ppa_settings();
 //dd($ppa_settings);
 //dd($ppa);
-$readonly = (isset($ppa) && 
-            ((@$ppa->draft_status == 0 && @$ppa->staff_id == $this->session->userdata('user')->staff_id) 
-            || @$ppa->draft_status == 2)) 
-            ? 'readonly disabled' : '';
+// $readonly = (isset($ppa) && 
+//             ((@$ppa->draft_status == 0 && @$ppa->staff_id == $this->session->userdata('user')->staff_id) 
+//             || @$ppa->draft_status == 2 || $session->staff_id!=$ppa->supervisor_id && @$ppa->draft_status == 0 || $session->staff_id!=$ppa->supervisor2_id && @$ppa->draft_status == 0)) 
+//             ? 'readonly disabled' : '';
+
+
+$isSubmittedOrApproved = isset($ppa) && in_array(@$ppa->draft_status, [0, 2]);
+$isUserSupervisor = isset($ppa) && (
+    $session->staff_id == @$ppa->supervisor_id || 
+    $session->staff_id == @$ppa->supervisor2_id
+);
+$isOwnerEditingDraft = isset($ppa) && @$ppa->draft_status == 1 && $session->staff_id == @$ppa->staff_id;
+
+$readonly = (!$isOwnerEditingDraft && ($isSubmittedOrApproved && !$isUserSupervisor)) ? 'readonly disabled' : '';
+
 
 @$showApprovalBtns = show_ppa_approval_action(@$ppa, @$approval_trail, $this->session->userdata('user'));
 //sdd($showApprovalBtns);
