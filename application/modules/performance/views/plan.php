@@ -256,7 +256,7 @@ input[type="number"] {
   <td colspan="4" class="text-center">
 
     <?php if (!$readonly):?>
-      <?php if($ppa_settings->allow_employee_comments==1):?>
+      <?php if(intval($ppa_settings->allow_employee_comments)==1):?>
       <br>
       <label>Comments for Approval</label>
       <textarea name="comments" class="form-control" rows="3" placeholder="Enter approval comments..."></textarea>
@@ -284,9 +284,10 @@ input[type="number"] {
 
 <?php 
   //dd($showApprovalBtns); 
+  $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && (in_array('83', $permissions)));
   if (($showApprovalBtns ==='show')||(in_array('83', $permissions))){ ?>
   <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>">
-  <?php if($ppa_settings->allow_employee_comments==1){?>
+  <?php if((intval($ppa_settings->allow_employee_comments)==1)||(@$status)){?>
     <div class="mb-3">
       <label for="comments">Comments for Approval/Return</label>
       <textarea id="comments" name="comments" class="form-control" rows="3" required></textarea>
@@ -304,8 +305,10 @@ input[type="number"] {
       </button>
       <?php } ?>
       <?php
-      //allow return for those wiht return perms and settings allows it
-      if((@$ppa_settings->allow_supervisor_return===1)&&(in_array('83', $permissions))){ ?>
+
+    
+
+    if ((@$status)) { ?>
       <button type="submit" class="btn btn-danger px-5" onclick="document.getElementById('approval_action').value = 'return';">
         Return
       </button>
