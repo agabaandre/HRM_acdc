@@ -428,6 +428,8 @@ class Staff extends MX_Controller
 		$data = $this->input->post();
 		$staffid = $data['staff_id'];
 		$q= $this->staff_mdl->update_contract($data);
+
+		 
 		//dd($data);
 		//$this->notify_contract_status_change($data);
 		if ($q) {
