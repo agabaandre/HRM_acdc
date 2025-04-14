@@ -258,7 +258,7 @@ input[type="number"] {
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save Draft</button>
       <br><br>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
-      <?php } else if((@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)) {?>?>
+      <?php } else if((@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)) {?>
       <br><br>
       
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Save Changes (If Any)</button>
