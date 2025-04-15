@@ -6,7 +6,7 @@
   </div>
   <div class="card-body">
     <!-- Filter Form -->
-    <form class="row g-3 mb-4" method="GET" action="<?php echo base_url('auth/userLogs'); ?>">
+    <form class="row g-3 mb-4" method="GET" action="<?php echo base_url('auth/logs'); ?>">
       <div class="col-md-3">
         <label for="filterName" class="form-label">User Name</label>
         <input type="text" class="form-control" id="filterName" name="name" placeholder="Search by name" value="<?php echo isset($_GET['name']) ? htmlspecialchars($_GET['name']) : ''; ?>">

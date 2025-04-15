@@ -101,7 +101,7 @@ class Auth_mdl extends CI_Model
             $this->db->group_start();
             if (!empty($email)) {
                 // Using "after" to search for emails that start with the given value
-                $this->db->like('email', $email, 'after');
+                $this->db->like('staff.work_email', $email, 'after');
             }
             if (!empty($name)) {
                 // Using "after" to search for names that start with the given value
