@@ -386,7 +386,7 @@ $days_remaining = days_to_ppa_deadline();
              $data['body'] = $this->load->view('staff_reminder', $data, true);
  
              $entry_log_id = md5($staff->staff_id . '-PPAREM-' . date('Y-m-d'));
-             golobal_log_email('ppa_reminder', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),  date('Y-m-d'),
+             golobal_log_email('Staff Portal System', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),  date('Y-m-d'),
              date('Y-m-d'), $entry_log_id);
          }
      }
