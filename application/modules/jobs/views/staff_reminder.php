@@ -78,7 +78,7 @@
       <p>You can access the PPA form by logging into the staff portal:</p>
 
       <p>
-        <a href="<?= base_url('performance') ?>" class="btn">Submit My PPA</a>
+        <a href="<?php echo $_ENV['PRODUCTION_URL'].'performance'?>" class="btn">Submit My PPA</a>
       </p>
 
       <p>If you have already submitted your PPA, kindly ignore this reminder.</p>
