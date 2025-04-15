@@ -380,13 +380,14 @@ $days_remaining = days_to_ppa_deadline();
                  'deadline' => $deadline,
                  'type' => 'ppa_reminder',
                  'subject' => "Staff PPA Reminder: Submit your PPA ($current_period)",
-                 'email_to' => $staff->work_email
+                 'email_to' => $staff->work_email.';'.settings()->email
              ];
  
              $data['body'] = $this->load->view('staff_reminder', $data, true);
  
              $entry_log_id = md5($staff->staff_id . '-PPAREM-' . date('Y-m-d'));
-             golobal_log_email('ppa_reminder', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'), 1, $entry_log_id);
+             golobal_log_email('ppa_reminder', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),  date('Y-m-d'),
+             date('Y-m-d'), $entry_log_id);
          }
      }
  }
