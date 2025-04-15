@@ -5,137 +5,109 @@
   <title>PPA Submission Reminder</title>
   <style type="text/css">
     body {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      color: #333333;
+      background-color: #f4f4f4;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
     }
 
-    .email-wrapper {
+    .container {
       width: 100%;
-      background-color: #f4f4f4;
-      padding: 40px 0;
-    }
-
-    .email-container {
       max-width: 650px;
       margin: 0 auto;
       background-color: #ffffff;
       border: 1px solid #dddddd;
+      padding: 30px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
       border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
 
     .header {
       text-align: center;
-      background-color: #ffffff;
-      padding: 30px 20px 10px 20px;
+      margin-bottom: 10px;
     }
 
     .header img {
       max-height: 70px;
-      margin-bottom: 10px;
     }
 
     .header h1 {
-      margin: 0;
+      margin: 10px 0 0 0;
       font-size: 22px;
       color: #119A48;
     }
 
     .content {
-      padding: 30px 30px 10px 30px;
-      color: #333333;
-      font-size: 15px;
-      line-height: 1.6;
-    }
-
-    .content strong {
-      color: #000000;
-    }
-
-    .btn-container {
-      text-align: center;
       padding: 20px 0;
+      line-height: 1.6;
     }
 
     .btn {
       display: inline-block;
+      padding: 10px 20px;
       background-color: #119A48;
       color: #ffffff;
-      padding: 12px 24px;
       text-decoration: none;
       border-radius: 5px;
       font-weight: bold;
-      font-size: 15px;
+      margin-top: 15px;
     }
 
     .footer {
-      background-color: #fafafa;
-      padding: 20px 30px;
       font-size: 12px;
       color: #888888;
       text-align: center;
+      padding-top: 30px;
       border-top: 1px solid #eeeeee;
     }
 
-    @media (max-width: 600px) {
-      .email-container {
-        width: 100%;
-        margin: 0 10px;
-      }
-
-      .content, .footer {
+    @media only screen and (max-width: 600px) {
+      .container {
         padding: 20px;
       }
 
       .btn {
         width: 100%;
-        box-sizing: border-box;
+        text-align: center;
       }
     }
   </style>
 </head>
 <body>
-  <div class="email-wrapper">
-    <div class="email-container">
-      
-      <!-- Header -->
-      <div class="header">
-        <img src="https://khub.africacdc.org/storage/uploads/config/fcb24779b37db15ee15fd4a32eaab0ac.png" alt="Africa CDC Logo">
-        <h1>PPA Submission Reminder</h1>
-      </div>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <img src="https://khub.africacdc.org/storage/uploads/config/fcb24779b37db15ee15fd4a32eaab0ac.png" alt="Africa CDC Logo">
+      <h1>PPA Submission Reminder</h1>
+    </div>
 
-      <!-- Body Content -->
-      <div class="content">
-        <p>Dear Mr. Eyob Tensaw,</p>
+    <!-- Body Content -->
+    <div class="content">
+      <p>Dear <?= htmlspecialchars($name) ?>,</p>
 
-        <p>This is a kind reminder to submit your <strong>Performance Planning and Appraisal (PPA)</strong> form for the period <strong>January 2025 to December 2025</strong>.</p>
+      <p>This is a kind reminder to submit your <strong>Performance Planning and Appraisal (PPA)</strong> form for the period <strong><?= htmlspecialchars($period) ?></strong>.</p>
 
-        <p>The extended deadline for submission is <strong>April 30, 2025</strong>. Kindly ensure that your PPA is completed and submitted before this date.</p>
+      <p>The extended deadline for submission is <strong><?= date('F d, Y', strtotime($deadline)) ?></strong>. Kindly ensure that your PPA is completed and submitted before this date.</p>
 
-        <p>You can access the PPA form by logging into the staff portal using the link below:</p>
-      </div>
+      <p>You can access the PPA form by logging into the staff portal:</p>
 
-      <!-- Button -->
-      <div class="btn-container">
-        <a href="<?php echo $_ENV['PRODUCTION_URL'].'performance'; ?>" class="btn">Submit My PPA</a>
-      </div>
+      <p>
+        <a href="<?= htmlspecialchars($_ENV['PRODUCTION_URL']) . 'performance/' ?>" class="btn">Submit My PPA</a>
+      </p>
 
-      <!-- Footer -->
-      <div class="content">
-        <p>If you have already submitted your PPA, kindly ignore this reminder.</p>
-        <p>Thank you for your attention and commitment.</p>
+      <p>If you have already submitted your PPA, kindly ignore this reminder.</p>
 
-        <p>Best regards,<br>
-        <strong>Human Resources</strong></p>
-      </div>
+      <p>Thank you for your attention and commitment.</p>
 
-      <div class="footer">
-        &copy; 2025 Africa CDC. All rights reserved.
-      </div>
+      <p>Best regards,<br>
+      <strong>Human Resources</strong></p>
+    </div>
 
+    <!-- Footer -->
+    <div class="footer">
+      &copy; <?= date('Y') ?> Africa CDC. All rights reserved.
     </div>
   </div>
 </body>
