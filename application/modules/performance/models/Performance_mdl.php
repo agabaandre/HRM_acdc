@@ -891,6 +891,7 @@ public function get_staff_without_ppa($period = null, $division_id = null)
     $this->db->where_in('sc.status_id', [1, 2]); // Active or Due
     $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
     $this->db->where("TRIM(s.work_email) !=", '');
+    $this->db->where("TRIM(s.work_email) !=", 'xx%');
     // Excluded contract types
 
     if ($division_id) {
