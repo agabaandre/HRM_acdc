@@ -787,26 +787,25 @@ function generate_random_color($name)
 
 if (!function_exists('log_user_action')) {
     function log_user_action($action)
-    {
-        $CI =& get_instance(); // Get CodeIgniter instance
+{
+    $CI =& get_instance(); // Get CodeIgniter instance
 
-        // Get the logged-in user's ID (change session key if needed)
-        $user_id = $CI->session->userdata('user')->user_id ?? null;
+    $user_id = $CI->session->userdata('user')->user_id ?? null;
 
+    // Suppress deprecated filter_var warning for null IPs
+    $ip_address = @($CI->input->ip_address()) ?: '0.0.0.0';
+    $user_agent = $CI->input->user_agent() ?? 'Unknown';
 
-        // Capture user IP and user agent
-        $ip_address = $CI->input->ip_address();
-        $user_agent = $CI->input->user_agent();
+    $data = [
+        'user_id'    => $user_id,
+        'action'     => $action,
+        'ip_address' => $ip_address,
+        'user_agent' => $user_agent,
+    ];
 
-        // Insert log into database
-        $data = [
-            'user_id' => $user_id,
-            'action' => $action,
-            'ip_address' => $ip_address,
-            'user_agent' => $user_agent
-        ];
-        $CI->db->insert('user_logs', $data);
-    }
+    $CI->db->insert('user_logs', $data);
+}
+
     function getRandomAUColor() {
         // Define AU color palette with background colors
         $colors = [
