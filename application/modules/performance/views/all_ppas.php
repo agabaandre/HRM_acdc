@@ -59,7 +59,8 @@
 </div>
 
         </div>
-        <?= $links ?? '' ?>
+        <?= $links ?? '' ?><br>
+        <?= $total?>
 
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle">
