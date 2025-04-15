@@ -22,17 +22,31 @@ $ppa_settings=ppa_settings();
 //             ? 'readonly disabled' : '';
 
 
-$isSubmittedOrApproved = !empty($ppa->staff_id) && in_array((int) @$ppa->draft_status, [0, 2], true);
+$readonly = '';
 
+// Default: allow if it's a new PPA
+if (!isset($ppa) || empty($ppa)) {
+    $readonly = ''; // Editable for creating new PPA
+} else {
+    // Extract status
+    $status = (int) @$ppa->draft_status;
 
+    $isDraft = $status === 1;
+    $isSubmitted = $status === 0;
+    $isApproved = $status === 2;
 
-$isUserSupervisor = !empty($ppa->staff_id) && (
-    $session->staff_id == @$ppa->supervisor_id || 
-    $session->staff_id == @$ppa->supervisor2_id
-);
-$isOwnerEditingDraft = !empty($ppa->staff_id) && @$ppa->draft_status == 1 && $session->staff_id == @$ppa->staff_id;
-//dd(in_array((int)@$ppa->draft_status, [0, 2], true));
-$readonly = (!$isOwnerEditingDraft && ($isSubmittedOrApproved && !$isUserSupervisor)) ? 'readonly disabled' : '';
+    $isOwner = isset($ppa->staff_id) && $session->staff_id == $ppa->staff_id;
+    $isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) @$ppa->supervisor2_id]);
+
+    // Determine readonly
+    if (
+        ($isApproved) || // Approved: no one can edit
+        ($isSubmitted && !$isSupervisor) || // Submitted: only supervisor can edit
+        ($isDraft && !$isOwner) // Draft: only owner can edit
+    ) {
+        $readonly = 'readonly disabled';
+    }
+}
 
 
 @$showApprovalBtns = show_ppa_approval_action(@$ppa, @$approval_trail, $this->session->userdata('user'));
@@ -272,7 +286,7 @@ input[type="number"] {
       <button type="submit" name="submit_action" value="draft" class="btn btn-warning px-5">Save Draft</button>
       <br><br>
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Submit</button>
-      <?php } else if((@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)) {?>
+      <?php } else if((@(int)$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)) {?>
       <br><br>
       
       <button type="submit" name="submit_action" value="submit" class="btn btn-success px-5">Save Changes (If Any)</button>
@@ -302,7 +316,7 @@ input[type="number"] {
     <div class="text-center">
       <?php 
       //make sure its in draft and the supervisor is allowed
-      if((@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)){?>
+      if(((int)@$ppa->draft_status!=2) && (@$ppa->supervisor_id==$session->staff_id)|| (@$ppa->supervisor2_id==$session->staff_id)){?>
       <button type="submit" class="btn btn-success px-5 me-2" onclick="document.getElementById('approval_action').value = 'approve';">
         Approve
       </button>
