@@ -889,10 +889,9 @@ public function get_staff_without_ppa($period = null, $division_id = null)
     $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
     $this->db->where_in('sc.status_id', [1, 2]); // Active or Due
-    $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]); // Excluded contract types
-    $this->db->where("s.work_email IS NOT NULL");
+    $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
     $this->db->where("TRIM(s.work_email) !=", '');
-    $this->db->or_where("TRIM(s.work_email) !=", '%xx');
+    // Excluded contract types
 
     if ($division_id) {
         $this->db->where('sc.division_id', $division_id);
@@ -917,15 +916,14 @@ public function get_staff_without_ppa($period = null, $division_id = null)
     $submitted_ids_raw = $this->db->get()->result_array();
     $submitted_ids = array_map(fn($r) => (int)$r['staff_id'], $submitted_ids_raw);
 
-    // STEP 4: Filter only staff without submissions and with valid emails
+    // DEBUGGING CHECKS
+    // dd($staff_ids, $submitted_ids);
+
+    // STEP 4: Filter only staff without submissions
     return array_values(array_filter($active_staff, function ($staff) use ($submitted_ids) {
-        return (
-            !in_array((int)$staff->staff_id, $submitted_ids, true) &&
-            !empty(trim($staff->work_email))
-        );
+        return !in_array((int)$staff->staff_id, $submitted_ids, true);
     }));
 }
-
 
 
 
