@@ -436,6 +436,7 @@ public function notify_supervisors_pending_ppas()
 
         $this->notify_unsubmitted_ppas();
     }
+    $this-db->query("DELETE FROM `email_notifications` WHERE `subject` email_to '%xx")
     
 }
 
