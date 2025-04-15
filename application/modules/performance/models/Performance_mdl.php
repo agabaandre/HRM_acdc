@@ -552,12 +552,14 @@ public function get_dashboard_data()
         INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail GROUP BY entry_id) latest
         ON pat1.id = latest.max_id) latest", 'latest.entry_id = pe.entry_id', 'left');
     $this->db->where_in('pe.staff_id', $staff_ids);
+    $this->db->where('pe.draft_status !=', 1);
     $this->db->where('pe.performance_period', $period);
     $summary = $this->db->get()->row();
 
     // Submission trend
     $this->db->select("DATE(created_at) AS date, COUNT(entry_id) AS count");
     $this->db->from("ppa_entries");
+    $this->db->where('draft_status !=', 1);
     $this->db->where_in("staff_id", $staff_ids);
     $this->db->where("performance_period", $period);
     $this->db->group_by("DATE(created_at)");
@@ -573,6 +575,7 @@ public function get_dashboard_data()
         INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail WHERE action = 'Approved' GROUP BY entry_id) latest
         ON pat1.id = latest.max_id) latest", "latest.entry_id = pe.entry_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $approvals = $this->db->get()->result();
 
@@ -594,6 +597,7 @@ public function get_dashboard_data()
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
     $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("sc.division_id");
     $divisions = array_map(fn($r) => ['name' => $r->division_name, 'y' => (int)$r->count], $this->db->get()->result());
@@ -605,6 +609,8 @@ public function get_dashboard_data()
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
     $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.draft_status !=", 1);
+
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("ct.contract_type_id");
     $by_contract = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
@@ -613,12 +619,14 @@ public function get_dashboard_data()
     $this->db->select("staff_id")->from("ppa_entries");
     $this->db->where_in("staff_id", $staff_ids);
     $this->db->where("performance_period", $period);
+    $this->db->where("draft_status !=", 1);
     $ppa_staff = array_column($this->db->get()->result(), 'staff_id');
 
     // Staff with PDP
     $this->db->select("staff_id")->from("ppa_entries");
     $this->db->where_in("staff_id", $staff_ids);
     $this->db->where("training_recommended", "Yes");
+    $this->db->where("draft_status !=", 1);
     $this->db->where("performance_period", $period);
     $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
 
@@ -655,6 +663,7 @@ public function get_dashboard_data()
     $this->db->join("training_skills ts", "JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), '$')", "inner", false);
     $this->db->join("training_categories tc", "tc.id = ts.category_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("ts.category_id");
     $training_categories = $this->db->get()->result();
@@ -664,6 +673,7 @@ public function get_dashboard_data()
     $this->db->from("ppa_entries pe");
     $this->db->join("training_skills ts", "JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), '$')", "inner", false);
     $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("ts.id");
     $this->db->order_by("y DESC");
