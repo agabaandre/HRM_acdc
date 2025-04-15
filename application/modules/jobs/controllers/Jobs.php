@@ -171,7 +171,7 @@ public function cron_register(){
 //   * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
     public function send_mails()
     {
-        $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx'");
+        $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
         $today = date('Y-m-d');
         $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1' and email_to NOT LIKE 'xx%'")->result();
         //dd($this->db->last_query());
@@ -230,7 +230,7 @@ public function cron_register(){
 //   * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
     public function send_instant_mails()
     {
-        $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx'");
+        $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
         $today = date('Y-m-d');
         $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1' and subject like'PPA%' and email_to NOT LIKE 'xx%'")->result();
         //dd($this->db->last_query());
@@ -468,7 +468,7 @@ public function notify_supervisors_pending_ppas()
 
         $this->notify_unsubmitted_ppas();
     }
-    $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx'");
+    $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
     
 }
 
