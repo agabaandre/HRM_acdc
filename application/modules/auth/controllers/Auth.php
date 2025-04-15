@@ -295,6 +295,8 @@ public function revert()
   {
     // Clear session
    // Unset all session variables
+   $log_message = "Logged Out";
+   log_user_action($log_message);
    $this->session->unset_userdata('user');
    $this->session->sess_destroy();
 
@@ -309,8 +311,7 @@ public function revert()
            $params["secure"], $params["httponly"]
        );
    }
-   $log_message = "Logged Out";
-   log_user_action($log_message);
+   
    // Prevent browser caching (important!)
    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
    header("Pragma: no-cache");
@@ -393,7 +394,7 @@ public function revert()
     }
     $this->load->library('pagination');
     $config = array();
-    $config['base_url'] = base_url() . "auth/users";
+    $config['base_url'] = base_url() . "auth/logs";
     $config['total_rows'] = $this->auth_mdl->count_logs($searchkey);
     $config['per_page'] = 50; //records per page
     $config['uri_segment'] = 3; //segment in url  
