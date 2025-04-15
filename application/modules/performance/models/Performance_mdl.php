@@ -539,6 +539,7 @@ public function get_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
     $staff_ids = array_column($this->db->get()->result(), 'staff_id');
+    //dd($staff_ids);
     if (empty($staff_ids)) return [];
 
     // Summary counts
@@ -868,6 +869,61 @@ public function count_ppas_filtered($filters)
 {
     return count($this->get_all_ppas_filtered($filters, 0, 0));
 }
+
+public function get_staff_without_ppa($period = null, $division_id = null)
+{
+    // STEP 1: Get latest contract for each staff
+    $subquery = $this->db->select('MAX(staff_contract_id)', false)
+        ->from('staff_contracts')
+        ->group_by('staff_id')
+        ->get_compiled_select();
+
+    $this->db->select('
+        s.staff_id, s.title, s.fname, s.lname, s.oname, s.work_email, s.SAPNO,
+        d.division_name, ct.contract_type, st.status
+    ');
+    $this->db->from('staff s');
+    $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+    $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+    $this->db->join('contract_types ct', 'ct.contract_type_id = sc.contract_type_id', 'left');
+    $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    $this->db->where_in('sc.status_id', [1, 2]); // Active or Due
+    $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]); // Excluded contract types
+
+    if ($division_id) {
+        $this->db->where('sc.division_id', $division_id);
+    }
+
+    $active_staff = $this->db->get()->result();
+
+    if (empty($active_staff)) return [];
+
+    // STEP 2: Extract staff_ids from active staff
+    $staff_ids = array_map('intval', array_column($active_staff, 'staff_id'));
+
+    // STEP 3: Get staff with submitted PPAs (excluding draft_status = 1)
+    $this->db->select('staff_id');
+    $this->db->from('ppa_entries');
+    $this->db->where_in('staff_id', $staff_ids);
+    $this->db->where('draft_status !=', 1); // exclude drafts
+    if ($period) {
+        $this->db->where('performance_period', $period);
+    }
+
+    $submitted_ids_raw = $this->db->get()->result_array();
+    $submitted_ids = array_map(fn($r) => (int)$r['staff_id'], $submitted_ids_raw);
+
+    // DEBUGGING CHECKS
+    // dd($staff_ids, $submitted_ids);
+
+    // STEP 4: Filter only staff without submissions
+    return array_values(array_filter($active_staff, function ($staff) use ($submitted_ids) {
+        return !in_array((int)$staff->staff_id, $submitted_ids, true);
+    }));
+}
+
+
 
 
 

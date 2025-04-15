@@ -448,9 +448,10 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
         
             $cache_key = 'ppa_dashboard_' . ($division_id ?: 'all') . '_' . ($period ?: 'current') . ($staff_id ? "_staff_$staff_id" : '');
         
-            $data = cache_list($cache_key, function () use ($division_id, $period, $staff_id) {
-                return $this->per_mdl->get_dashboard_data($division_id, $period, $staff_id);
-            }, 300); // Cache for 5 minutes
+            // $data = cache_list($cache_key, function () use ($division_id, $period, $staff_id) {
+            //     return 
+            // }, 300); // Cache for 5 minutes
+            $data =  $this->per_mdl->get_dashboard_data($division_id, $period, $staff_id);
         
             echo json_encode($data);
         }

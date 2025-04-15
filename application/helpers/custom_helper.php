@@ -1098,5 +1098,24 @@ if (!function_exists('get_week_label')) {
     }
 }
 
+if (!function_exists('days_to_ppa_deadline')) {
+    function days_to_ppa_deadline()
+    {
+        $CI = &get_instance();
+        $deadline_row = $CI->db->select('ppa_deadline')->get('ppa_configs')->row();
+
+        if (!$deadline_row || empty($deadline_row->ppa_deadline)) {
+            return null; // or return a default value if preferred
+        }
+
+        $deadline = new DateTime($deadline_row->ppa_deadline);
+        $today = new DateTime();
+
+        // Returns signed difference in days: positive if future, negative if past
+        return (int) $today->diff($deadline)->format('%r%a');
+    }
+}
+
+
 
 }

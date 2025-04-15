@@ -358,32 +358,44 @@ public function cron_register(){
      }
  }
 
-
  public function notify_unsubmitted_ppas()
-{
-    $current_period = str_replace(' ', '-', current_period());
+ {
+     $current_period = str_replace(' ', '-', current_period());
+ 
+     $deadline = $this->db->select('ppa_deadline')->get('ppa_configs')->row()->ppa_deadline;
+   
+ 
+     //Only notify if deadline is in 15 days or less
+$days_remaining = days_to_ppa_deadline();
 
-    $deadline = $this->db->select('ppa_deadline')->get('ppa_configs')->row()->ppa_deadline;
-    $staff_list = $this->per_mdl->get_staff_without_ppa($current_period);
+     if ($days_remaining !== null && $days_remaining <= 15) {
+         $staff_list = $this->per_mdl->get_staff_without_ppa($current_period);
 
-    foreach ($staff_list as $staff) {
-        $data = [
-            'name' => $staff->title . ' ' . $staff->fname . ' ' . $staff->lname,
-            'period' => $current_period,
-            'deadline' => $deadline,
-            'type' => 'ppa_reminder'
-        ];
+        // dd($staff_list);
+ 
+         foreach ($staff_list as $staff) {
+             $data = [
+                 'name' => $staff->title . ' ' . $staff->fname . ' ' . $staff->lname,
+                 'period' => $current_period,
+                 'deadline' => $deadline,
+                 'type' => 'ppa_reminder',
+                 'subject' => "Staff PPA Reminder: Submit your PPA ($current_period)",
+                 'email_to' => $staff->work_email
+             ];
+ 
+             $data['body'] = $this->load->view('staff_reminder', $data);
+ 
+             $entry_log_id = md5($staff->staff_id . '-PPAREM-' . date('Y-m-d'));
+             golobal_log_email('ppa_reminder', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'), 1, $entry_log_id);
+         }
+     }
+ }
+ 
 
-        $data['subject'] = "Reminder: Submit your PPA ($current_period)";
-        $data['body'] = $this->load->view('emails/staff_ppa_reminder', $data, true);
-        $data['email_to'] = $staff->work_email;
-
-        $entry_log_id = md5($staff->staff_id . '-PPAREM-' . date('Y-m-d'));
-        golobal_log_email('ppa_reminder', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'), 1, $entry_log_id);
-    }
-}
 public function notify_supervisors_pending_ppas()
 {
+
+
     $current_period = str_replace(' ', '-', current_period());
     $deadline = $this->db->get('ppa_configs')->row()->ppa_deadline;
 
@@ -420,7 +432,10 @@ public function notify_supervisors_pending_ppas()
             date('Y-m-d'),
             $entry_log_id
         );
+
+        $this->notify_unsubmitted_ppas();
     }
+    
 }
 
 
