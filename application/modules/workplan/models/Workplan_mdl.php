@@ -21,10 +21,14 @@ class Workplan_mdl extends CI_Model {
     }
 
     public function update($id, $data) {
+        $log_message = "Workplan task with id ".$id. ' Updated';
+		log_user_action($log_message);
         return $this->db->where('id', $id)->update('workplan_tasks', $data);
     }
 
     public function delete($id) {
+        $log_message = "Workplan task with id ".$id. ' Deleted';
+		log_user_action($log_message);
         return $this->db->where('id', $id)->delete('workplan_tasks');
     }
 

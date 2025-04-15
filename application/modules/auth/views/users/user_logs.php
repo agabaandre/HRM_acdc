@@ -1,12 +1,4 @@
-<style>
-  .modal {
-    clear: both;
-    position: fixed;
-    z-index: 1050; /* BS5 default modal z-index */
-    overflow-x: auto;
-    overflow-y: auto;
-  }
-</style>
+
 
 <div class="card">
   <div class="card-header">
@@ -46,24 +38,26 @@
           <tr>
             <th>#</th>
             <th>Action</th>
+            <th>Name</th>
             <th>Date &amp; Time</th>
-            <th>User</th>
+            
             <th>Details</th>
           </tr>
         </thead>
         <tbody>
           <?php $no = 0; ?>
           <?php foreach ($logs as $logEntry): $no++; ?>
-            <tr id="user<?php echo $logEntry->user_log_id; ?>">
+            <tr id="user<?php echo $logEntry->id; ?>">
               <td><?php echo $no; ?>.</td>
+              <td><?php echo $logEntry->name; ?>.</td>
               <td><?php echo substr(ucwords($logEntry->action), 0, 35) . "..."; ?></td>
               <td>
                 <?php
                   // Combine date and time for display
-                  echo date("Y-m-d H:i", strtotime($logEntry->date_loged_in . ' ' . $logEntry->time_loged_in));
+                  echo date("Y-m-d H:i", strtotime($logEntry->created_at));
                 ?>
               </td>
-              <td><?php echo ucwords($logEntry->name); ?></td>
+             
               <td>
                 <a href="#" data-bs-toggle="modal" data-bs-target="#check<?php echo $no; ?>">
                   <i class="bi bi-pencil-square"></i> More...
@@ -72,8 +66,9 @@
             </tr>
 
             <!-- Modal for Detailed Log -->
-            <div class="modal fade" id="check<?php echo $no; ?>" tabindex="-1" aria-labelledby="modalLabel<?php echo $no; ?>" aria-hidden="true">
-              <div class="modal-dialog">
+            <div class="modal fade" id="check<?php echo $no; ?>"  aria-labelledby="modalLabel<?php echo $no; ?>" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+
                 <div class="modal-content">
                   <div class="modal-header">
                     <h5 class="modal-title" id="modalLabel<?php echo $no; ?>">Activity Log</h5>
@@ -84,9 +79,9 @@
                     <hr>
                     <p><?php echo $logEntry->action; ?></p>
                     <br>
-                    <small>Date &amp; Time: <?php echo date("Y-m-d H:i", strtotime($logEntry->date_loged_in . ' ' . $logEntry->time_loged_in)); ?></small>
+                    <small>Date &amp; Time: <?php echo date("Y-m-d H:i", strtotime($logEntry->created_at)); ?></small>
                     <br>
-                    <small>Email: <?php echo $logEntry->email; ?></small>
+                    <small>Email: <?php echo $logEntry->work_email; ?></small>
                   </div>
                   <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -101,7 +96,7 @@
 
     <!-- Clear Logs Confirmation Modal -->
     <div class="modal fade" id="clearlogs" tabindex="-1" aria-labelledby="clearLogsLabel" aria-hidden="true">
-      <div class="modal-dialog modal-sm">
+      <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="clearLogsLabel">Clear Activity Log</h5>

@@ -389,6 +389,8 @@ class Staff_mdl extends CI_Model
 	{
 		$this->db->where('staff_id', $data['staff_id']);
 		$query = $this->db->update("staff", $data);
+		$log_message = "Updated staff Bio Data details. Staff Name:". staff_name($data['staff_id']);
+		log_user_action($log_message);
 		return $query;
 	}
 	public function update_contract($data)
@@ -396,11 +398,16 @@ class Staff_mdl extends CI_Model
 		$this->db->where('staff_contract_id', $data['staff_contract_id']);
 		$query = $this->db->update('staff_contracts', $data);
 		if($query){
+			$log_message = "Updated staff Contract details of". staff_name($data['staff_id']);
+		log_user_action($log_message);
 			$ppa['supervisor_id']=$data['first_supervisor'];
 			// $ppa['supervisor2_id'] = NULL;
 			$ppa['staff_id'] = $data['staff_id'];
 		$this->update_ppa_details($ppa);
+
+		
 		}
+
 		return $query;
 	}
 	public function update_ppa_details($data)
@@ -418,7 +425,9 @@ class Staff_mdl extends CI_Model
     $result = $this->db->update('ppa_entries', $update);
 
     // Optional: Log or return last query for debugging
-    log_message('debug', $this->db->last_query());
+   // log_message('debug', $this->db->last_query());
+   $log_message = "Updated staff PPA supervisor details of". staff_name($data['staff_id']);
+   log_user_action($log_message);
 
     return $result;
 }

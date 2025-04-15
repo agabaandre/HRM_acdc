@@ -93,6 +93,8 @@ class Auth_mdl extends CI_Model
         // Start building the query
         $this->db->select('*');
         $this->db->from('user_logs');
+		$this->db->join('user','user.user_id=user_logs.user_id');
+		$this->db->join('staff','user.auth_staff_id=staff.staff_id');
 
         // Add search conditions for email and name
         if (!empty($email) || !empty($name)) {
@@ -119,6 +121,7 @@ class Auth_mdl extends CI_Model
 
         // Execute the query and return the results
         $query = $this->db->get();
+		//dd($this->db->last_query());
         return $query->result();
     }
 

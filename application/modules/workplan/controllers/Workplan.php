@@ -62,7 +62,10 @@ class Workplan extends MX_Controller {
     
             $msg = ['msg'=>'success',
                    'type'=>'Workplan uploaded successfully.'];
+            
             Modules::run('utility/setFlash', $msg);
+            $log_message = "Uploaded a work plan for a division identified by ".$division_id;
+		log_user_action($log_message);
         }
         redirect('workplan/index');
     }
@@ -71,6 +74,7 @@ class Workplan extends MX_Controller {
     public function delete($id) {
         if ($this->session->userdata('user')->role == 10) {
             $this->workplan_mdl->delete($id);
+          
         }
     }
     public function get_task_by_id($id) {

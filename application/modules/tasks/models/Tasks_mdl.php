@@ -5,6 +5,8 @@ class Tasks_mdl extends CI_Model {
 
     // Add Activity
     public function add_activity($data) {
+        $log_message = "Added and linked tasks to the work plan";
+		log_user_action($log_message);
         return $this->db->insert('work_planner_tasks', $data);
     }
 
@@ -17,6 +19,8 @@ class Tasks_mdl extends CI_Model {
 
     // Submit Report
     public function submit_report($data) {
+        $log_message = "Added work a Report on ". $data['activity_id'];
+		log_user_action($log_message);
         return $this->db->insert('reports', $data);
     }
 

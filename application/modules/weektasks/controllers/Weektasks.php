@@ -162,7 +162,8 @@ class Weektasks extends MX_Controller {
         $data['week_label'] = $this->get_week_label($start_date, $end_date);
         $data['week_range'] = "$start_date to $end_date";
         $data['tasks'] = $this->weektasks_mdl->get_tasks_by_staff_and_range($staff_id, $start_date, $end_date);
-    
+        $log_message = "Printed a weekly task staff report";
+		log_user_action($log_message);
         pdf_print_data($data, 'Staff_Weekly_Report.pdf', 'P', 'pdfs/print_staff');
     }
     
@@ -180,6 +181,8 @@ class Weektasks extends MX_Controller {
     
         $data['week_label'] = $this->get_week_label($start_date, $end_date);
         $data['week_range'] = "$start_date to $end_date";
+        $log_message = "Printed a weekly task division report";
+		log_user_action($log_message);
     
         pdf_print_data($data, 'Division_Weekly_Report.pdf', 'L', 'pdfs/division_print');
     }

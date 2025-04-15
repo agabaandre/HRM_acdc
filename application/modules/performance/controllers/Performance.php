@@ -72,6 +72,9 @@ class Performance extends MX_Controller
             'msg' => $data['submit_action'] === 'submit' ? 'Saved Successfully.' : 'Draft saved successfully.',
             'type' => 'success'
         ];
+        $name = staff_name($staff_id);
+        $log_message = "Updated PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
+        log_user_action($log_message);
     } else {
         $save_data['created_at'] = date('Y-m-d H:i:s');
         $this->db->insert('ppa_entries', $save_data);
@@ -79,6 +82,10 @@ class Performance extends MX_Controller
             'msg' => $data['submit_action'] === 'submit' ? 'Plan submitted for Review.' : 'Draft saved successfully.',
             'type' => 'success'
         ];
+
+        $name = staff_name($staff_id);
+        $log_message = "Created PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
+        log_user_action($log_message);
     }
 
     // 📝 Insert to approval trail only if submit
@@ -174,6 +181,9 @@ class Performance extends MX_Controller
         //draft status 0 is for summitted entries, 1 is in in draft mode, 2 is for approved.
 		$staff_id = $this->session->userdata('user')->staff_id;
 		$action = $this->input->post('action');
+        $staff_id = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row();
+        $name = staff_name($staff_id);
+
 	
 		if (!in_array($action, ['approve', 'return'])) {
 			show_error("Invalid action.");
@@ -198,12 +208,20 @@ class Performance extends MX_Controller
 				'draft_status' => 1,
 				'updated_at'   => date('Y-m-d H:i:s')
 			]);
+        $staff_id = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row();
+        $name = staff_name($staff_id);
+
+        $log_message = "Returned PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
+        log_user_action($log_message);
 		}
         else if ($action === 'approve') {
 			$this->db->where('entry_id', $entry_id)->update('ppa_entries', [
 				'draft_status' => 2,
 				'updated_at'   => date('Y-m-d H:i:s')
 			]);
+
+            $log_message = "Approved PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
+            log_user_action($log_message);
 		}
 	
 		$msg = [
@@ -288,6 +306,8 @@ class Performance extends MX_Controller
                 $dispatch,
                 $entry_log_id
             );
+
+            
             }
             // 1. Notify staff (confirmation)
             
