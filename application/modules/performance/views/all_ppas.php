@@ -60,7 +60,7 @@
 
         </div>
         <?= $links ?? '' ?><br>
-        <?= $total?>
+        <?= $total?> Records
 
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle">
