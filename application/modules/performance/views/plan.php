@@ -303,7 +303,7 @@ input[type="number"] {
   //dd($showApprovalBtns); 
   $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && (in_array('83', $permissions)));
   if (($showApprovalBtns ==='show')||(in_array('83', $permissions))){ ?>
-  <form method="post" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>">
+  <form method="post" id="approvalForm_<?= $ppa->entry_id ?>" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>">
   <?php if((intval($ppa_settings->allow_employee_comments)==1)||(@$status)){?>
     <div class="mb-3">
       <label for="comments">Comments for Approval/Return</label>
@@ -326,12 +326,49 @@ input[type="number"] {
     
 
     if ((@$status)) { ?>
-      <button type="submit" class="btn btn-danger px-5" onclick="document.getElementById('approval_action').value = 'return';">
-        Return
-      </button>
+  <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal" data-bs-target="#confirmReturnModal_<?= $ppa->entry_id ?>">
+  Return
+</button>
+
       <?php } ?>
     </div>
   </form>
+
+<!-- Return Confirmation Modal -->
+<div class="modal fade" id="confirmReturnModal_<?= $ppa->entry_id ?>" tabindex="-1" aria-labelledby="confirmReturnModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-3">
+      <div class="modal-header bg-warning text-dark border-0">
+        <h5 class="modal-title d-flex align-items-center" id="confirmReturnModalLabel">
+          <i class="fas fa-exclamation-triangle me-2 fs-4 text-danger"></i> Confirm Return
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body text-center">
+    
+        <p class="fs-5 fw-semibold mb-3">
+          Are you sure you want to return this PPA to the staff for revision?
+        </p>
+        <p class="text-muted">
+          Please ensure your comments clearly explain the reason for return.
+        
+        </p>
+      </div>
+      
+      <div class="modal-footer border-0 d-flex justify-content-center">
+        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+          <i class="fas fa-times me-1"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-danger px-4" onclick="submitReturnAction('<?= $ppa->entry_id ?>')">
+          <i class="fas fa-reply me-1"></i> Yes, Return
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <?php } ?>
 
 
@@ -389,6 +426,12 @@ input[type="number"] {
 
 </table>
 
-
-
-
+<script>
+  function submitReturnAction(entryId) {
+    const form = document.getElementById('approvalForm_' + entryId);
+    if (form) {
+      form.querySelector('#approval_action').value = 'return';
+      form.submit();
+    }
+  }
+</script>
