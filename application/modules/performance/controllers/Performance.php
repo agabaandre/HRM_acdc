@@ -181,7 +181,7 @@ class Performance extends MX_Controller
         //draft status 0 is for summitted entries, 1 is in in draft mode, 2 is for approved.
 		$staff_id = $this->session->userdata('user')->staff_id;
 		$action = $this->input->post('action');
-        $staff_id = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row();
+        $staff_id = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row()->staff_id;
         $name = staff_name($staff_id);
 
 	
@@ -208,7 +208,7 @@ class Performance extends MX_Controller
 				'draft_status' => 1,
 				'updated_at'   => date('Y-m-d H:i:s')
 			]);
-        $staff_id = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row();
+        $staff_id = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row()->staff_id;
         $name = staff_name($staff_id);
 
         $log_message = "Returned PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
