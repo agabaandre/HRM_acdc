@@ -69,16 +69,16 @@
       </div>
     <div class="content">
     <h1>PPA Submission Reminder</h1>
-      <p>Dear <?= $name ?>,</p>
+      <p>Dear Mr Eyob Tensaw,</p>
 
-      <p>This is a kind reminder to submit your <strong>Performance Planning and Appraisal (PPA)</strong> form for the period <strong><?= $period ?></strong>.</p>
+      <p>This is a kind reminder to submit your <strong>Performance Planning and Appraisal (PPA)</strong> form for the period <strong>January-2025-to-December-2025</strong>.</p>
 
-      <p>The extended deadline for submission is <strong><?= date('F d, Y', strtotime($deadline)) ?></strong>. Kindly ensure that your PPA is completed and submitted before this date.</p>
+      <p>The extended deadline for submission is <strong>April 30, 2025</strong>. Kindly ensure that your PPA is completed and submitted before this date.</p>
 
       <p>You can access the PPA form by logging into the staff portal:</p>
 
       <p>
-        <a href="<?php echo $_ENV['PRODUCTION_URL'].'performance'?>" class="btn">Submit My PPA</a>
+        <a href="https://tools.africacdc.org/staff/performance" class="btn">Submit My PPA</a>
       </p>
 
       <p>If you have already submitted your PPA, kindly ignore this reminder.</p>
@@ -90,7 +90,7 @@
     </div>
 
     <div class="footer">
-      &copy; <?= date('Y') ?> Africa CDC. All rights reserved.
+      &copy; 2025 Africa CDC. All rights reserved.
     </div>
   </div>
 </body>
