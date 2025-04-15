@@ -121,7 +121,12 @@ private function handle_login($user_data, $email) {
          $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
           $users['is_admin'] = false;
           $_SESSION['user'] = (object)$users;
+            
+          $log_message = "User Logged in Successfully using MS SSO";
+          log_user_action($log_message);
           redirect('dashboard');
+
+       
       
   }
   else if (!empty($user_data)&& $role==17 ) {
@@ -129,10 +134,13 @@ private function handle_login($user_data, $email) {
        $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
         $users['is_admin'] = false;
         $_SESSION['user'] = (object)$users;
+        $log_message = "User Logged in Successfully using MS SSO";
+        log_user_action($log_message);
         redirect('auth/profile');
     
 }
   else {
+  
       redirect('auth');
   }
 }
@@ -174,12 +182,16 @@ public function other_login()
         $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
         $users['is_admin'] = false;
         $_SESSION['user'] = (object)$users;
+        $log_message = "User Logged in Successfully using Email and Password";
+        log_user_action($log_message);
         redirect('dashboard');
     } elseif ($auth && !empty($data['users']) && $role == 17) {
         unset($users['password']);
         $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
         $users['is_admin'] = false;
         $_SESSION['user'] = (object)$users;
+        $log_message = "User Logged in Successfully using Email and Password";
+        log_user_action($log_message);
         redirect('auth/profile');
     } else {
         $this->session->set_flashdata('error', 'Incorrect password. Please try again.');
@@ -226,6 +238,8 @@ public function impersonate($user_id)
       'type' => 'success'
      ];
     Modules::run('utility/setFlash', $msg);
+    $log_message = "User Impersonated ".$user. "," .$user->auth_staff_id. "Successfully using the Impersonate Feature";
+        log_user_action($log_message);
   
     redirect('dashboard');
 }
@@ -251,6 +265,8 @@ public function revert()
     }
 
     Modules::run('utility/setFlash', $msg);
+    $log_message = "Reverted back to personal account";
+    log_user_action($log_message);
     redirect('dashboard');
 }
 
@@ -293,7 +309,8 @@ public function revert()
            $params["secure"], $params["httponly"]
        );
    }
-
+   $log_message = "Logged Out";
+   log_user_action($log_message);
    // Prevent browser caching (important!)
    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
    header("Pragma: no-cache");
@@ -404,7 +421,8 @@ public function revert()
     $this->pagination->initialize($config);
     $page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0; //default starting point for limits 
     $data['links'] = $this->pagination->create_links();
-    $data['logs'] = $this->auth_mdl->get_logs($config['per_page'], $page, $searchkey);
+    $data['logs'] = $this->auth_mdl->get_logs($searchkey, $config['per_page'], $page);
+
    // dd($this->db->last_query());
     $data['module'] = "auth";
     $data['title'] = "User Access Logs";

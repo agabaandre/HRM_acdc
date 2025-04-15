@@ -15,10 +15,14 @@ class Weektasks_mdl extends CI_Model {
     }
 
     public function insert_task($data) {
+        $log_message = "Added weekly activities";
+		log_user_action($log_message);
         return $this->db->insert('work_plan_weekly_tasks', $data);
     }
 
     public function update_task($id, $data) {
+        $log_message = "Updated weekly task ". $id;
+		log_user_action($log_message);
         return $this->db
             ->where('activity_id', $id)
             ->update('work_plan_weekly_tasks', $data);
