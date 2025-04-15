@@ -176,6 +176,7 @@ public function cron_register(){
         //dd($this->db->last_query());
 
         // Check if there are any messages to process
+        $counter=0;
         if (count($messages) > 0) {
             foreach ($messages as $message) {
                 $body = $message->body;
@@ -205,6 +206,20 @@ public function cron_register(){
                     $this->db->query("UPDATE `email_notifications` SET `status` = '0',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
 
                     }
+                    if ($sending) {
+                        $counter++;
+                
+                        // Delay 1 minute after each email
+                        sleep(10);
+                
+                        // Delay 5 minutes after every 20 emails
+                        if ($counter % 20 == 0) {
+                            log_message('info', "Reached $counter emails. Pausing for 5 minutes.");
+                            sleep(300); // 5 minutes = 300 seconds
+                        }
+                    }
+
+
                 } 
             }
      else {
@@ -219,6 +234,7 @@ public function cron_register(){
         //dd($this->db->last_query());
 
         // Check if there are any messages to process
+        $counter = 0;
         if (count($messages) > 0) {
             foreach ($messages as $message) {
                 $body = $message->body;
@@ -248,6 +264,20 @@ public function cron_register(){
                     $this->db->query("UPDATE `email_notifications` SET `status` = '0',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
 
                     }
+
+                    if ($sending) {
+                        $counter++;
+                
+                        // Delay 1 minute after each email
+                        sleep(10);
+                
+                        // Delay 5 minutes after every 20 emails
+                        if ($counter % 20 == 0) {
+                            log_message('info', "Reached $counter emails. Pausing for 5 minutes.");
+                            sleep(300); // 5 minutes = 300 seconds
+                        }
+                    }
+                
                 } 
             }
      else {
@@ -436,7 +466,7 @@ public function notify_supervisors_pending_ppas()
 
         $this->notify_unsubmitted_ppas();
     }
-    $this-db->query("DELETE FROM `email_notifications` WHERE `subject` email_to '%xx")
+    $this->db->query("DELETE FROM `email_notifications` WHERE `subject` email_to '%xx");
     
 }
 
