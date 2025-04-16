@@ -216,7 +216,7 @@ public function cron_register(){
                         // Delay 5 minutes after every 20 emails
                         if ($counter % 20 == 0) {
                             log_message('info', "Reached $counter emails. Pausing for 5 minutes.");
-                            sleep(300); // 5 minutes = 300 seconds
+                            sleep(30); // 5 minutes = 300 seconds
                         }
                     }
 
@@ -276,7 +276,7 @@ public function cron_register(){
                         // Delay 5 minutes after every 20 emails
                         if ($counter % 20 == 0) {
                             log_message('info', "Reached $counter emails. Pausing for 5 minutes.");
-                            sleep(300); // 5 minutes = 300 seconds
+                            sleep(30); // 5 minutes = 300 seconds
                         }
                     }
                 
