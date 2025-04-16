@@ -7,6 +7,8 @@
                 <?php echo validation_errors(); ?>
                         <?php echo form_open('staff/add_new_contract');
                        // dd($staffs);
+                    
+                      
                          $staffs = $staffs[0];
                         ?>
                     <div class="row">
@@ -95,7 +97,8 @@
                                 <label for="first_supervisor">First Supervisor:</label>
                                 <select class="form-control select2" name="first_supervisor" id="first_supervisor" required>
                                     <option value="">Select First Supervisor</option>
-                                    <?php $lists = Modules::run('lists/supervisor');
+                                    <?php $filters =array();
+                                     $lists = $this->staff_mdl->get_all_staff_data($filters);
                                     foreach ($lists as $list) :
                                     ?>
                                         <?php if($list->staff_id != $staff_id){ ?>
@@ -112,7 +115,9 @@
                                 <label for="second_supervisor">Second Supervisor:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="second_supervisor" id="second_supervisor" required>
                                     <option value="">Select Second Supervisor</option>
-                                    <?php $lists = Modules::run('lists/supervisor');
+                                    <?php 
+                                     $filters =array();
+                                     $lists = $this->staff_mdl->get_all_staff_data($filters);
                                     foreach ($lists as $list) :
                                     ?>
                                         <?php if($list->staff_id != $staff_id){ ?>
