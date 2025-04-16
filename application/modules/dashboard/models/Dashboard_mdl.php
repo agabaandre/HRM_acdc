@@ -61,32 +61,32 @@ class Dashboard_mdl extends CI_Model
     function all_staff()
     {
         //self::update_contract_status();
-        $sql1 = "SELECT s.staff_id FROM  staff s,staff_contracts sc WHERE s.staff_id=sc.staff_id AND sc.status_id IN(1,2)";
-
-        return $result1 = $this->db->query($sql1)->num_rows();
+        $filters = array();
+       return  count($this->staff_mdl->get_active_staff_data($filters));
 
     }
     function staff_renewal()
     {
-        //self::update_contract_status();
-        $sql1 = "SELECT s.staff_id FROM  staff s,staff_contracts sc WHERE s.staff_id=sc.staff_id AND sc.status_id IN(7)";
-
-        return $result1 = $this->db->query($sql1)->num_rows();
+        $filters['status_id'] =7;	
+		
+		return count($data['staffs'] = $this->staff_mdl->get_status($filters));
 
     }
     public function due_contracts()
     {
-        $sql3 = "SELECT staff_id AS due FROM  staff_contracts WHERE status_id=2 ";
-        $result3 = $this->db->query($sql3);
-        return $row3 = $result3->num_rows();
+       
+  
+        $filters['status_id'] =2;	
+		
+		return count($data['staffs'] = $this->staff_mdl->get_status($filters));
 
     }
 
     function expired_contracts()
     {
-        $sql5 = "SELECT staff_id AS exp FROM  staff_contracts WHERE status_id=3 ";
-
-        return $result5 = $this->db->query($sql5)->num_rows();
+        $filters['status_id'] =3;	
+		
+		return count($data['staffs'] = $this->staff_mdl->get_status($filters));
 
     }
     function nationalities()
