@@ -346,7 +346,10 @@ class Staff_mdl extends CI_Model
 		);
 		$this->db->insert('staff_contracts', $data);
 		if ($this->db->affected_rows() > 0) {
+           
+            $this->mark_enabled($this->input->post('staff_id'),$this->input->post('status_id')) ;
 			return $this->db->insert_id();
+
 		} else {
 			// Log or handle the error:
 			$error = $this->db->error();
@@ -355,7 +358,27 @@ class Staff_mdl extends CI_Model
 		}
 	}
 
+	public function mark_enabled($staff_id,$status_id){
+        $user = $this->session->userdata('user')->staff_id; 
+        //dd($user);
+        $data['email_disabled_by']= 0;
+        $data['email_status'] = 1;
+        $data['email_disabled_at'] = date('Y-m-d H:i:s');
+		if($status_id==1){
 
+        $this->db->where('staff_id',$staff_id);
+        $this->db->update('staff',$data);
+		
+	   echo  "OK";
+		}
+
+	else{
+		echo "Failed";
+	}
+
+    }
+
+   
 	public function max_contract($staff_id)
 	{
 		$this->db->select_max('staff_contract_id');
