@@ -175,7 +175,7 @@
                     <i class="fa fa-file-pdf me-1"></i> Export PDF
                 </a>
             <?php
-            } elseif ($segment2 === 'index') {
+            } elseif ($segment2 == '') {
                 // Index route fallback
                 ?>
                 <a href="<?= base_url("staff/index/1?" . $query_string) ?>" class="btn btn-sm btn-outline-primary">
