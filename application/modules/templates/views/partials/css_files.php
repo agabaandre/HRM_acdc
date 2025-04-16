@@ -87,3 +87,4 @@
 <body>
     <!--wrapper-->
     <div class="wrapper">
+    <div id="google_translate_element" style="display: none;"></div>

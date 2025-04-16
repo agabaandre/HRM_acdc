@@ -558,7 +558,7 @@ class Staff_mdl extends CI_Model
 		$query = $this->db->get();
 
 	
-	return (($filters['csv'])==1) ? $query->result_array() : $query->result();
+	return ((@$filters['csv'])==1) ? $query->result_array() : $query->result();
 	//dd($this->db->last_query());
 	}
 	

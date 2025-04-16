@@ -20,6 +20,7 @@ $signature_display = (!empty($staff->signature) && file_exists(FCPATH . 'uploads
   </div> -->
 
   <div class="row">
+    
     <!-- Left Column: Summary Card -->
     <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
       <div class="card">
