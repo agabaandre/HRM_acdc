@@ -73,7 +73,7 @@ class Admanager extends CI_Controller {
 
 		}
 		//dd($data);
-		$data['links'] = pagination("staff/expired_accounts/", $count, $per_page = 20);
+		$data['links'] = pagination("admanager/expired_accounts/", $count, $per_page = 20);
 		render('manage_domains', $data);
 	}
 	public function mark_separated_auto()
@@ -152,7 +152,7 @@ class Admanager extends CI_Controller {
 
 		}
 		//dd($data);
-		$data['links'] = pagination("staff/expired_accounts/", $count, $per_page = 20);
+		$data['links'] = pagination("admanager/expired_accounts/", $count, $per_page = 20);
 		render('manage_domains', $data);
 	}
     function remove_ids($staffs = []) {
