@@ -22,6 +22,14 @@
 .breadcrumb-sm {
     font-size: 0.8rem;
 }
+.goog-te-banner-frame.skiptranslate,
+    .goog-logo-link,
+    .VIpgJd-ZVi9od-ORHb-OEVmcd,
+    .goog-te-gadget-icon,
+    div.feedback-form-container,
+    div.feedback-prompt {
+     display: none !important;
+}
 </style>
 
 <header>

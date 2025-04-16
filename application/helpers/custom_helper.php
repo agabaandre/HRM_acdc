@@ -838,7 +838,8 @@ if (!function_exists('log_user_action')) {
         $textColor = ($brightness < 128) ? "#FFFFFF" : "#000000"; // Dark background -> white text, Light background -> black text
     
         // Return inline CSS styles
-        return 'style="color: ' . $textColor . '; background: ' . $bgColor . ';"';
+        return 'style="color: ' . $textColor . '; background: ' . $bgColor . '; min-height:120px;"';
+
     }
 
  

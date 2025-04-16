@@ -87,6 +87,7 @@
 
 
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
 <script src="<?php echo base_url() ?>assets/plugins/notifications/js/notifications.min.js"></script>
@@ -326,18 +327,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			$('#smartwizard').smartWizard("setOptions", options);
 			return true;
 		});
-		// $(".datepicker").datepicker({
-    //             changeMonth: true,
-    //             changeYear: true,
-    //             yearRange: "1900:2100", // Set the year range
-    //             dateFormat: "yy-mm-dd"  // Set desired format
-    //     });
-		// $(".datepicker_ppa").datepicker({
-    //             changeMonth: true,
-    //             changeYear: true,
-    //             yearRange: "1900:2100", // Set the year range
-    //             dateFormat: "yy-mm-dd"  // Set desired format
-    //     });
+	
 	});
 </script>
 
@@ -819,9 +809,6 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
-
-
-
 <script>
 $(document).ready(function () {
     function loadMessages() {
@@ -856,46 +843,52 @@ $(document).ready(function () {
     setInterval(loadMessages, 30000);
 });
 </script>
-<?php
-$googleLangMap = [
-    'aa' => 'Afar',
-    'am' => 'Amharic',
-    'ar' => 'Arabic',
-    'en' => 'English',
-    'fr' => 'French',
-    'ha' => 'Hausa',
-    'rw' => 'Kinyarwanda',
-    'ln' => 'Lingala',
-    'pt' => 'Portuguese',
-    'sw' => 'Swahili',
-];
-$defaultLangCode = $this->session->userdata('user')->langauge ?? 'en';
-$defaultLangName = $googleLangMap[$defaultLangCode] ?? 'English';
-?>
-<script>
-    function autoTranslate(languageName) {
-        const interval = setInterval(function () {
-            const translateFrame = document.querySelector('iframe.goog-te-menu-frame');
+<script type="text/javascript">
+  function googleTranslateElementInit() {
+    new google.translate.TranslateElement({
+      pageLanguage: 'en',
+      autoDisplay: false,
+      disableAutoHover: true,
+      showBanner: false
+    }, 'google_translate_element');
+  }
 
-            if (translateFrame) {
-                const innerDoc = translateFrame.contentDocument || translateFrame.contentWindow.document;
-                const langOptions = innerDoc.querySelectorAll('.goog-te-menu2-item span.text');
+  function GTranslateFireEvent(element, event) {
+    try {
+      if (document.createEventObject) {
+        var evt = document.createEventObject();
+        element.fireEvent('on' + event, evt);
+      } else {
+        var evt = document.createEvent('HTMLEvents');
+        evt.initEvent(event, true, true);
+        element.dispatchEvent(evt);
+      }
+    } catch (e) {}
+  }
 
-                langOptions.forEach(function (el) {
-                    if (el.innerText.trim().toLowerCase() === languageName.trim().toLowerCase()) {
-                        el.click();
-                        clearInterval(interval);
-                    }
-                });
-            }
-        }, 1000);
-    }
+  function doGTranslate(lang_code) {
+    var lang = lang_code || 'en';
+    var interval = setInterval(function () {
+      var teCombo = document.querySelector('select.goog-te-combo');
+      if (teCombo && teCombo.options.length > 0) {
+        var langIndex = Array.from(teCombo.options).findIndex(option => option.value === lang);
+        if (langIndex !== -1) {
+          teCombo.selectedIndex = langIndex;
+          GTranslateFireEvent(teCombo, 'change');
+          GTranslateFireEvent(teCombo, 'change');
+          clearInterval(interval); // stop once applied
+        }
+      }
+    }, 500); // retry every 500ms until successful
+  }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        autoTranslate("<?= $defaultLangName ?>");
-    });
+  document.addEventListener("DOMContentLoaded", function () {
+    const preferredLang = "<?= $defaultLangCode ?>";
+    setTimeout(() => {
+      doGTranslate(preferredLang);
+    }, 1500); // delay to let Google Translate load
+  });
 </script>
-
 
 
 </body>
