@@ -250,15 +250,16 @@
             <td><?= $data->email_disabled_at; ?></td>
 
             <td>
-			<?php if (!empty($staff['email_disabled_by'])) {
-					if ($staff['email_disabled_by'] == 0) {
-						$staff['email_disabled_by'] = 'System';
-					} else {
-						$staff['email_disabled_by'] = staff_name($staff['email_disabled_by']);
-					}
+			<?php
+				// Map email_disabled_by to name or system label
+				if (!empty($staff->email_disabled_by)) {
+					$staff['email_disabled_by'] = ($staff['email_disabled_by'] == $staff->staff_id)
+						? 'System'
+						: staff_name($staff->email_disabled_by);
+						echo $staff['email_disabled_by'];
 				} else {
-					$staff['email_disabled_by'] = '';
-				} 
+					echo 'System';
+				}
 				
 			?>
 			</td>
