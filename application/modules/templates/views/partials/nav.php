@@ -141,8 +141,8 @@
                         <div class="menu-title">Domain Controller</div>
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="<?= base_url('admanager/expired_accounts/3') ?>"><i class="bx bx-right-arrow-alt"></i>Accounts to Disable</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('admanager/report/3') ?>"><i class="bx bx-right-arrow-alt"></i>Disabled Accounts</a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('admanager/expired_accounts') ?>"><i class="bx bx-right-arrow-alt"></i>Accounts to Disable</a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('admanager/report') ?>"><i class="bx bx-right-arrow-alt"></i>Disabled Accounts</a></li>
                     </ul>
                 </li>
                 <?php endif; ?>
