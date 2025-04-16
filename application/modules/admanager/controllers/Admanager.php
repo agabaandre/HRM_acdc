@@ -101,8 +101,10 @@ class Admanager extends CI_Controller {
 
 	
 
-	return $result ? 'OK' : 'FAILED';
+	
 	}
+
+	return $result ? 'OK' : 'FAILED';
 
 
 
