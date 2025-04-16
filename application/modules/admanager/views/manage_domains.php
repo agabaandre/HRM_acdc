@@ -38,7 +38,7 @@
 		<?php 
      $status = $this->uri->segment(3);
      $route = $this->uri->segment(2);
-    echo form_open_multipart(base_url('admanager/'.$route.'/'.$status), array('id' => 'staff_ppa', 'class' => 'staff')); ?>
+    echo form_open_multipart(base_url('admanager/'.$route.'/'.$status), array('id' => 'ad_manager', 'class' => 'staff')); ?>
 		<div class="row">
 			<div class="col-md-2">
 				<label>Name</label>
@@ -88,7 +88,14 @@
 			</div>
 			<div class="col-md-2 mt-4" style="display:inline-flex;">
 			<button type="submit" class="btn btn-sm btn-secondary" style="margin-right:2px;"><i class="fa fa-exchange-alt"></i>Apply</button>
-			<a href='<?php echo base_url("staff/contract_status/".$status."/1")?>' class="btn btn-sm btn-secondary"><i class="fa fa-file-csv"></i>Export</a>
+			<?php if ($this->uri->segment(2) == 'report'){ ?>
+			<a href='<?php echo base_url("admanager/report/1")?>' class="btn btn-sm btn-secondary"><i class="fa fa-file-csv"></i>Export</a>
+			<?php }	?>
+			
+			<?php if ($this->uri->segment(2) == 'expired_accounts'){ ?>
+			<a href='<?php echo base_url("admanager/expired_accounts/1")?>' class="btn btn-sm btn-secondary"><i class="fa fa-file-csv"></i>Export</a>
+
+			<?php } ?>
             </div>
 
 		</div>
@@ -242,7 +249,20 @@
 
             <td><?= $data->email_disabled_at; ?></td>
 
-            <td><?= @staff_name($data->email_disabled_by); ?></td>
+            <td>
+			<?php if (!empty($staff['email_disabled_by'])) {
+					if ($staff['email_disabled_by'] == 0) {
+						$staff['email_disabled_by'] = 'System';
+					} else {
+						$staff['email_disabled_by'] = staff_name($staff['email_disabled_by']);
+					}
+				} else {
+					$staff['email_disabled_by'] = '';
+				} 
+				
+			?>
+			</td>
+
 					
 					
 					

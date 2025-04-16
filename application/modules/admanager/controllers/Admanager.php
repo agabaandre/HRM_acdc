@@ -51,7 +51,7 @@ class Admanager extends CI_Controller {
             echo "Account not found";
         }
     }
-    public function expired_accounts($status, $csv=FALSE)
+    public function expired_accounts($csv=FALSE)
 	{
 
 		$data['module'] = $this->module;
@@ -59,8 +59,6 @@ class Admanager extends CI_Controller {
 		$page = ($this->uri->segment(4)) ? $this->uri->segment(4) : 0;
 		$filters = $this->input->post();
 		$filters['csv'] =$csv;
-		$filters['status_id'] =$status;	
-		
         $count = count($this->staff_mdl->get_status($filters));
 		$data['records'] = $count;
 		//dd($count);
@@ -75,12 +73,42 @@ class Admanager extends CI_Controller {
 
 		}
 		//dd($data);
-		$data['links'] = pagination("staff/expired_accounts/".$status, $count, $per_page = 20);
+		$data['links'] = pagination("staff/expired_accounts/", $count, $per_page = 20);
 		render('manage_domains', $data);
 	}
+	public function mark_separated_auto()
+{
+    $filters['status_id'] = 4;
+    $staffs = $this->staff_mdl->get_status($filters);
 
-    
-    public function report($status, $csv=FALSE)
+    $success = false;
+	$now = date('Y-m-d H:i:s');
+    $separated_by = 0;
+
+    foreach ($staffs as $staff) {
+		//dd($staff);
+		$sql = "
+        UPDATE staff 
+        SET 
+            email_status = 0,
+            email_disabled_at = ?,
+            email_disabled_by = ?
+        WHERE staff_id ='$staff->staff_id'";
+
+	$result = $this->db->query($sql, [$now, $separated_by]);
+
+	//dd($this->db->last_query());
+
+	
+
+	return $result ? 'OK' : 'FAILED';
+	}
+
+
+
+}
+
+    public function report($csv=FALSE)
 	{
 
 		$data['module'] = $this->module;
@@ -88,7 +116,7 @@ class Admanager extends CI_Controller {
 		$page = ($this->uri->segment(4)) ? $this->uri->segment(4) : 0;
 		$filters = $this->input->post();
 		$filters['csv'] =$csv;
-		$filters['status_id'] =$status;	
+	
 		
         $count = count($this->staff_mdl->get_status($filters));
 		$data['records'] = $count;
@@ -98,13 +126,25 @@ class Admanager extends CI_Controller {
 		$staffs= $data['staffs'];
 		$file_name = $data['title'].'_Africa CDC Staff_'.date('d-m-Y-H-i').'.csv';
 		if($csv==1){
+
+			foreach ($staffs as &$staff) {
+				if (!empty($staff['email_disabled_by'])) {
+					if ($staff['email_disabled_by'] == 0) {
+						$staff['email_disabled_by'] = 'System';
+					} else {
+						$staff['email_disabled_by'] = staff_name($staff['email_disabled_by']);
+					}
+				} else {
+					$staff['email_disabled_by'] = '';
+				}
+			}
             $staff = $this->remove_ids($staffs);
 			
 			render_csv_data($staff, $file_name,true);
 
 		}
 		//dd($data);
-		$data['links'] = pagination("staff/expired_accounts/".$status, $count, $per_page = 20);
+		$data['links'] = pagination("staff/expired_accounts/", $count, $per_page = 20);
 		render('manage_domains', $data);
 	}
     function remove_ids($staffs = []) {
@@ -130,7 +170,14 @@ class Admanager extends CI_Controller {
 			'admin_assistant',
 			'finance_officer',
 			'region_id',
-			'email_status'
+			'email_status',
+			'nationality_id',
+			'staff_id',
+			'contact1',
+			'contact2',
+			'whatsapp',
+			'photo'
+		
 
 		];
 		
@@ -155,7 +202,7 @@ class Admanager extends CI_Controller {
         $this->db->where('staff_id',$staff_id);
         $this->db->update('staff',$data);
 
-        redirect('admanager/expired_accounts/3');
+        redirect('admanager/expired_accounts');
 
     }
     public function mark_enabled($staff_id){
@@ -168,7 +215,7 @@ class Admanager extends CI_Controller {
         $this->db->where('staff_id',$staff_id);
         $this->db->update('staff',$data);
 
-        redirect('admanager/expired_accounts/3');
+        redirect('admanager/expired_accounts');
 
     }
 

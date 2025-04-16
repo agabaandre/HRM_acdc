@@ -491,11 +491,12 @@ class Staff_mdl extends CI_Model
 	
 		if ($this->uri->segment(1) == 'admanager') {
 			if ($this->uri->segment(2) == 'expired_accounts') {
-				$this->db->where('s.work_email IS NOT NULL', null, false); 
+				// $this->db->where('s.work_email IS NOT NULL', null, false); 
 				$this->db->where('s.email_status', 1);
 				$this->db->where_in('st.status_id', [3, 4]);
 			} elseif ($this->uri->segment(2) == 'report') {
-				$this->db->where('s.work_email IS NOT NULL', null, false);
+				$this->db->where_in('st.status_id', [3, 4]);
+				// $this->db->where('s.work_email IS NOT NULL', null, false);
 				$this->db->where('s.email_status', 0);
 				if (!empty($filters['datefrom']) && !empty($filters['dateto'])) {
 					$datefrom = $filters['datefrom'] . ' 00:00:00';
