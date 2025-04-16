@@ -130,14 +130,20 @@ class Admanager extends CI_Controller {
 		if($csv==1){
 
 			foreach ($staffs as &$staff) {
-				if (!empty($staff['email_disabled_by'])) {
-					if ($staff['email_disabled_by'] == 0) {
-						$staff['email_disabled_by'] = 'System';
-					} else {
-						$staff['email_disabled_by'] = staff_name($staff['email_disabled_by']);
+				foreach ($staff as $key => $value) {
+					if (is_array($value)) {
+						// Join array values with comma
+						$staff[$key] = implode(', ', $value);
 					}
+				}
+			
+				// Map email_disabled_by to name or system label
+				if (!empty($staff['email_disabled_by'])) {
+					$staff['email_disabled_by'] = ($staff['email_disabled_by'] == $staff['staff_id'])
+						? 'System'
+						: staff_name($staff['email_disabled_by']);
 				} else {
-					$staff['email_disabled_by'] = '';
+					$staff['email_disabled_by'] = 'System';
 				}
 			}
             $staff = $this->remove_ids($staffs);
