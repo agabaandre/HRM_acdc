@@ -41,7 +41,7 @@ public function manage_accounts(){
         $final=array();
         $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id NOT IN (1,2,7)")->result();
           foreach ($staffs as $staff):
-            $data['status'] =1;
+            $data['status']=0;
             $id = $staff->staff_id;
             $this->db->where('auth_staff_id',"$id");
             $this->db->update('user', $data);
