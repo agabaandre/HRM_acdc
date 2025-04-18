@@ -1,26 +1,25 @@
 <?php 
 $session = $this->session->userdata('user');
 
-if($this->uri->segment(2)=='view_ppa'){
-  $staff_id= $this->uri->segment(4);
-$contract = Modules::run('auth/contract_info', $staff_id);
+if (!empty($ppa)) {
+  $readonly = ''; // Editable for creating new PPA
+  $staff_id = $ppa->staff_id;
+  $staff_contract_id = $ppa->staff_contract_id;
+  //dd($staff_contract_id);
+  $contract = Modules::run('performance/ppa_contract', $staff_contract_id);
 }
 else{
-   $staff_id = $session->staff_id;
-$contract = Modules::run('auth/contract_info', $staff_id);
+  $staff_id = $session->staff_id;
+  $contract = Modules::run('auth/contract_info', $staff_id);
+  $staff_contract_id = $contract->staff_contract_id;
 
 }
 $permissions = $session->permissions;
 //dd($contract);
 //dd($this->uri->segment(2));
 $ppa_settings=ppa_settings();
-//dd($ppa_settings);
-//dd($ppa);
-// $readonly = (isset($ppa) && 
-//             ((@$ppa->draft_status == 0 && @$ppa->staff_id == $this->session->userdata('user')->staff_id) 
-//             || @$ppa->draft_status == 2 || $session->staff_id!=$ppa->supervisor_id && @$ppa->draft_status == 0 || $session->staff_id!=$ppa->supervisor2_id && @$ppa->draft_status == 0)) 
-//             ? 'readonly disabled' : '';
 
+//dd($ppa);
 
 $readonly = '';
 
@@ -106,6 +105,7 @@ input[type="number"] {
 <?php echo form_open_multipart(base_url('performance/save_ppa'), ['id' => 'staff_ppa']); ?>
 
 <input type="hidden" name="staff_id" value="<?=$staff_id?>">
+<input type="hidden" name="staff_contract_id" value="<?=$staff_contract_id?>">
 <h4>A. Staff Details</h4>
 <table class="form-table table-bordered">
   <tr>
@@ -129,15 +129,15 @@ input[type="number"] {
   <tr>
     <td><b>First Supervisor</b></td>
     <td colspan="1">
-      <?= staff_name(get_supervisor(current_contract($staff_id))->first_supervisor) ?>
+      <?= staff_name($contract->first_supervisor ) ?>
       <input type="hidden" name="supervisor_id"
-        value="<?= get_supervisor(current_contract($staff_id))->first_supervisor ?>">
+        value="<?= $contract->first_supervisor ?>">
     </td>
     <td><b>Second Supervisor</b></td>
     <td colspan="">
-      <?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?>
+      <?= @staff_name($contract->second_supervisor) ?>
         <input type="hidden" name="supervisor2_id"
-        value="<?= get_supervisor(current_contract($staff_id))->second_supervisor ?>">
+        value="<?=$contract->second_supervisor ?>">
     </td>
   </tr>
   <tr>

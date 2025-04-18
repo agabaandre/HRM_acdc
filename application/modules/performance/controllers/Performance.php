@@ -47,6 +47,7 @@ class Performance extends MX_Controller
 
     $save_data = [
         'staff_id' => $data['staff_id'],
+        'staff_id' => $data['staff_contract_id'],
         'performance_period' => $performance_period,
         'entry_id' => $entry_id,
         'supervisor_id' => $data['supervisor_id'],
@@ -530,7 +531,15 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
 
     render('all_ppas', $data);
 }
+public function ppa_contract($contract_id){
 
+    $this->db->where('staff_contract_id',$contract_id);
+    $this->db->join('jobs', 'staff_contracts.job_id=jobs.job_id');
+    $this->db->join('staff', 'staff.staff_id=staff_contracts.staff_id');
+    $this->db->join('jobs_acting', 'staff_contracts.job_acting_id=jobs_acting.job_acting_id');
+    $data=  $this->db->get('staff_contracts')->row();
+    return $data;
+  }
 
         
         
