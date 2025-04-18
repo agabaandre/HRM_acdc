@@ -54,6 +54,8 @@ class Jobs extends MX_Controller
    
        // Step 4: Optionally disable old accounts
        $this->disable_accounts();
+       //renewed accounts
+       $this->enable_accounts();
    
        // Step 5: Return result
        echo json_encode([
@@ -99,6 +101,42 @@ class Jobs extends MX_Controller
        ]);
    }
    
+   public function enable_accounts()
+   {
+       $disabled_count = 0;
+   
+       // Subquery to get latest contract per staff
+       $subquery = "
+           SELECT MAX(staff_contract_id) AS latest_contract_id
+           FROM staff_contracts
+           GROUP BY staff_id
+       ";
+   
+       // Get staff whose latest contracts are not active (not in 1,2,7)
+       $sql = "
+           SELECT s.*, sc.division_id, sc.staff_contract_id
+           FROM staff s
+           JOIN staff_contracts sc ON s.staff_id = sc.staff_id
+           WHERE sc.staff_contract_id IN ($subquery)
+             AND s.work_email != ''
+             AND sc.status_id IN (1, 2, 7)
+       ";
+   
+       $staffs = $this->db->query($sql)->result();
+   
+       // Disable matching user accounts
+       foreach ($staffs as $staff) {
+           $this->db->where('auth_staff_id', $staff->staff_id);
+           $this->db->update('user', ['status' => 0]); // 0 = disabled
+           $disabled_count += $this->db->affected_rows();
+       }
+   
+       // Output JSON message
+       echo json_encode([
+           'msg' => "{$disabled_count} Staff Accounts Disabled.",
+           'type' => 'info'
+       ]);
+   }
 //get the date difference for contract status
 // Improved dateDiff function using DateTime and DateInterval
 function dateDiff($date1, $date2) {
