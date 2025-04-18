@@ -127,7 +127,7 @@ class Jobs extends MX_Controller
        // Disable matching user accounts
        foreach ($staffs as $staff) {
            $this->db->where('auth_staff_id', $staff->staff_id);
-           $this->db->update('user', ['status' => 0]); // 0 = disabled
+           $this->db->update('user', ['status' => 1]); // 0 = enabled accounts
            $disabled_count += $this->db->affected_rows();
        }
    
