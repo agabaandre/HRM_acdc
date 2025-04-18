@@ -909,10 +909,10 @@ function curl_send_post($url, $body, $headers) {
                 ($supervisor1Approved && is_null($ppa->supervisor2_id)) || 
                 ($supervisor1Approved && $supervisor2Approved)
             ) {
-                return '<a href="' . base_url('performance/print_ppa/' . $ppa->entry_id) .'/'.$ppa->staff_id. '" 
+                return '<a href="' . base_url('performance/print_ppa/' . $ppa->entry_id) .'/'.$ppa->staff_id.'/'.$ppa->staff_contract_id.'" 
                             class="btn btn-dark btn-sm me-2" target="_blank">
                             <i class="fa fa-print"></i> Print PPA without Approval Trail
-                        </a>' .'<a href="' . base_url('performance/print_ppa/' . $ppa->entry_id) .'/'.$ppa->staff_id.'/1'. '" 
+                        </a>' .'<a href="' . base_url('performance/print_ppa/' . $ppa->entry_id) .'/'.$ppa->staff_id.'/'.$ppa->staff_contract_id.'/1'. '" 
                         class="btn btn-dark btn-sm" target="_blank">
                         <i class="fa fa-print"></i> Print PPA With Approval Trail
                     </a>';

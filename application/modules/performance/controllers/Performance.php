@@ -406,7 +406,7 @@ public function approved_by_me()
 
     render('approved_by_me', $data);
 }
-public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
+public function print_ppa($entry_id,$staff_id,$staff_contract_id,$approval_trail=FALSE)
     {
         $this->load->model('performance_mdl', 'per_mdl');
 
@@ -420,7 +420,7 @@ public function print_ppa($entry_id,$staff_id,$approval_trail=FALSE)
 		$data['staff_id'] = $staff_id;
 
         // Get contract and supervisor info
-        $data['contract'] = Modules::run('auth/contract_info', $staff_id);
+        $data['contract'] = $this->ppa_contract($staff_contract_id);
         $data['readonly'] = true;
 		$file_name= staff_name($staff_id).'_'.$data['ppa']->performance_period.'_PPA.pdf';
 
