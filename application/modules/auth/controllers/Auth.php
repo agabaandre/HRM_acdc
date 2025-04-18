@@ -56,7 +56,7 @@ public function callback() {
     }
 
     $user = $this->get_user_data($token);
-    //dd($user);
+    dd($user);
     if ($user) {
         $email = $user['mail'] ?? $user['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
         $name = $user['displayName'];
