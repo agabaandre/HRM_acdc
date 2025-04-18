@@ -12,50 +12,93 @@ class Jobs extends MX_Controller
     }
  
    //render user accounts automatically
-public function manage_accounts(){
-    $final=array();
-    $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2,7) and staff.staff_id not in (SELECT DISTINCT auth_staff_id from user)")->result();
-      foreach ($staffs as $staff):
-        $users['name'] = $staff->lname . ' ' . $staff->fname;
-        $users['status'] = 1;
-        $users['auth_staff_id'] = $staff->staff_id;
-        $users['password'] =$this->argonhash->make(setting()->default_password);
-        $users['role'] = 17;
-        $this->db->replace('user', $users);
-      endforeach;
-       $accts = $this->db->affected_rows();
-     
-  
-      $msg = array(
-        'msg' => $accts .'Staff Accounts Created .',
-        'type' => 'info'
-      );
-
-     echo json_encode($msg);
-
-     $this->disbale_accounts();
-
-     }
-
-     public function disbale_accounts(){
-        $final=array();
-        $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id NOT IN (1,2,7)")->result();
-          foreach ($staffs as $staff):
-            $data['status']=0;
-            $id = $staff->staff_id;
-            $this->db->where('auth_staff_id',"$id");
-            $this->db->update('user', $data);
-          endforeach;
-           $accts = $this->db->affected_rows();
-         
-      
-          $msg = array(
-            'msg' => $accts .'Staff Accounts Disbaled .',
-            'type' => 'info'
-          );
-          
-             echo json_encode($msg);
-         }
+   public function manage_accounts()
+   {
+       $accts = 0;
+   
+       // Step 1: Subquery to get latest contract per staff
+       $subquery = "
+           SELECT MAX(staff_contract_id) AS latest_contract_id
+           FROM staff_contracts
+           GROUP BY staff_id
+       ";
+   
+       // Step 2: Main query to get staff who don't yet have accounts
+       $sql = "
+           SELECT s.*, sc.division_id, sc.staff_contract_id
+           FROM staff s
+           JOIN staff_contracts sc ON s.staff_id = sc.staff_id
+           WHERE sc.staff_contract_id IN ($subquery)
+             AND s.work_email != ''
+             AND sc.status_id IN (1, 2, 7)
+             AND s.staff_id NOT IN (
+                 SELECT DISTINCT auth_staff_id FROM user
+             )
+       ";
+   
+       $staffs = $this->db->query($sql)->result();
+   
+       // Step 3: Create accounts
+       foreach ($staffs as $staff) {
+           $users = [
+               'name' => $staff->lname . ' ' . $staff->fname,
+               'status' => 1,
+               'auth_staff_id' => $staff->staff_id,
+               'password' => $this->argonhash->make(setting()->default_password),
+               'role' => 17
+           ];
+   
+           $this->db->replace('user', $users);
+           $accts += $this->db->affected_rows();
+       }
+   
+       // Step 4: Optionally disable old accounts
+       $this->disable_accounts();
+   
+       // Step 5: Return result
+       echo json_encode([
+           'msg' => "{$accts} Staff Accounts Created.",
+           'type' => 'info'
+       ]);
+   }
+   
+   public function disable_accounts()
+   {
+       $disabled_count = 0;
+   
+       // Subquery to get latest contract per staff
+       $subquery = "
+           SELECT MAX(staff_contract_id) AS latest_contract_id
+           FROM staff_contracts
+           GROUP BY staff_id
+       ";
+   
+       // Get staff whose latest contracts are not active (not in 1,2,7)
+       $sql = "
+           SELECT s.*, sc.division_id, sc.staff_contract_id
+           FROM staff s
+           JOIN staff_contracts sc ON s.staff_id = sc.staff_id
+           WHERE sc.staff_contract_id IN ($subquery)
+             AND s.work_email != ''
+             AND sc.status_id NOT IN (1, 2, 7)
+       ";
+   
+       $staffs = $this->db->query($sql)->result();
+   
+       // Disable matching user accounts
+       foreach ($staffs as $staff) {
+           $this->db->where('auth_staff_id', $staff->staff_id);
+           $this->db->update('user', ['status' => 0]); // 0 = disabled
+           $disabled_count += $this->db->affected_rows();
+       }
+   
+       // Output JSON message
+       echo json_encode([
+           'msg' => "{$disabled_count} Staff Accounts Disabled.",
+           'type' => 'info'
+       ]);
+   }
+   
 //get the date difference for contract status
 // Improved dateDiff function using DateTime and DateInterval
 function dateDiff($date1, $date2) {
