@@ -56,7 +56,7 @@ public function callback() {
     }
 
     $user = $this->get_user_data($token);
-    dd($user);
+    //dd($user);
     if ($user) {
         $email = $user['mail'] ?? $user['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
         $name = $user['displayName'];
@@ -64,6 +64,8 @@ public function callback() {
         // Check if email exists in the database
         $postdata = ['email' => $email];
         $data['users'] = $this->auth_mdl->login($postdata);
+
+        dd($data['users']);
 
         if (!empty($data['users'])) {
             // Proceed with login
