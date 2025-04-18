@@ -736,7 +736,7 @@ if (!function_exists('get_staff_name')) {
     {
         $ci = &get_instance();
         $query = $ci->db->query("SELECT title, lname, fname from staff where staff_id='$id'")->row();
-        return $query->title.' '.$query->fname. ' '. $query->lname;
+        return @$query->title.' '.@$query->fname. ' '. @$query->lname;
     }
 }
 if (!function_exists('staff_details')) {

@@ -25,7 +25,7 @@
       </div>
       <div class="col-12">
         <button type="submit" class="btn btn-primary">Apply Filters</button>
-        <a href="<?php echo base_url('admin/userLogs'); ?>" class="btn btn-secondary">Reset</a>
+        <a href="<?php echo base_url('auth/logs'); ?>" class="btn btn-secondary">Reset</a>
       </div>
     </form>
 

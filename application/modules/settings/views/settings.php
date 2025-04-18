@@ -1,290 +1,75 @@
-<div class="row">
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url() ?>auth/users">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Users</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-user'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
 
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/duty_stations">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Duty Stations</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-user'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
+<style>
+  .settings-search {
+    margin-bottom: 1rem;
+  }
+  .settings-card {
+    min-height: 110px;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease-in-out;
+    font-size: 0.9rem;
+  }
+  .settings-card:hover {
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    transform: scale(1.02);
+  }
+  .widgets-icons i {
+    font-size: 1.2rem;
+  }
+</style>
 
+<div class="container">
+  <div class="row justify-content-between align-items-center mb-3">
+    <div class="col-md-6">
+      <h5 class="mb-0">Settings</h5>
+    </div>
+    <div class="col-md-6 text-end">
+      <input type="text" id="settingsSearch" class="form-control form-control-sm settings-search" placeholder="Search settings...">
+    </div>
+  </div>
 
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/contracting_institutions">
-			<div class="card border-gradient border-dark rounded-2">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Contracting Institutions</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-user'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
+  <div class="row" id="settingsContainer">
+    <?php
+    $settings = [
+      ['settings/nationalities', 'Nationalities', 'bx-globe'],
+      ['settings/duty_stations', 'Duty Stations', 'bx-map'],
+      ['settings/contracting_institutions', 'Contracting Institutions', 'bx-network-chart'],
+      ['settings/contract_types', 'Contract Types', 'bx-group'],
+      ['settings/divisions', 'Divisions', 'bx-sitemap'],
+      ['settings/grades', 'Grades', 'bx-bar-chart-alt-2'],
+      ['settings/jobs', 'Jobs', 'bx-briefcase'],
+      ['settings/jobs_acting', 'Jobs Acting', 'bx-id-card'],
+      ['settings/au_values', 'AU Values', 'bx-star'],
+      ['settings/funders', 'Funders', 'bx-dollar'],
+      ['settings/leave_types', 'Leave Types', 'bx-time-five'],
+      ['settings/sysvariables', 'System Variables', 'bx-cog'],
+      ['settings/training_skills', 'Training Skills', 'bx-book'],
+      ['settings/regions', 'Regions', 'bx-compass'],
+      ['settings/units', 'Units', 'bx-building'],
+      ['settings/ppa_variables', 'PPA Configuration', 'bx-slider-alt']
+    ];
 
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/contract_types">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Contract Types</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-group'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/divisions">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Divisions</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-group'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/grades">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Grades</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/jobs">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Jobs</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/jobs_acting">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Jobs Acting</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-
-
-	</div>
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/au_values">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">AU Values</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/funders">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Funders</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
-
-
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/leave_types">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Leave Types</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-
-
-	</div>
-
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/sysvariables">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">System Variables</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-	</div>
-
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/training_skills">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Training Skills</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-
-
-	</div>
-
-
-
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/regions">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Regions</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-
-	</div>
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/units">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">Units</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-
-	</div>
-	<div class="col-12 col-lg-3">
-		<a href="<?php echo base_url(); ?>settings/ppa_variables">
-			<div class="card border-gradient border-dark rounded-2 overflow-hidden">
-				<div class="card-body">
-					<div class="d-flex align-items-center justify-content-between">
-						<div class="">
-							<h6 class="mb-0 text-muted">PPA Configuration</h6>
-						</div>
-						<div class="widgets-icons rounded-circle  text-muted">
-							<i class='bx bx-building'></i>
-						</div>
-					</div>
-				</div>
-			</div>
-		</a>
-
-	</div>
-
-
-
+    foreach ($settings as [$path, $label, $icon]) :
+    ?>
+      <div class="col-6 col-md-4 col-lg-3 mb-3 setting-card-item" data-title="<?= strtolower($label) ?>">
+        <a href="<?= base_url($path) ?>" class="text-decoration-none text-dark">
+          <div class="card border border-secondary rounded-2 overflow-hidden settings-card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+              <h6 class="mb-0"><?= $label ?></h6>
+              <div class="widgets-icons text-muted"><i class='bx <?= $icon ?>'></i></div>
+            </div>
+          </div>
+        </a>
+      </div>
+    <?php endforeach; ?>
+  </div>
 </div>
-</div>
+
+<script>
+  document.getElementById("settingsSearch").addEventListener("keyup", function () {
+    let filter = this.value.toLowerCase();
+    document.querySelectorAll(".setting-card-item").forEach(function (card) {
+      card.style.display = card.getAttribute("data-title").includes(filter) ? "block" : "none";
+    });
+  });
+</script>

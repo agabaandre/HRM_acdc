@@ -99,12 +99,21 @@ class Settings extends MX_Controller
 	public function duty_stations()
 	{
 		$this->load->model('settings_mdl');
-		$data['countries'] = $this->settings_mdl->get_content('country');
+		$data['countries'] = $this->settings_mdl->get_content('nationalities');
 		$data['duties'] = $this->settings_mdl->get_content('duty_stations');
 
 		$data['module'] = $this->module;
 		$data['title'] = "Duty Stations";
 		render('duty_stations', $data);
+	}
+	public function nationalities()
+	{
+		
+		$data['nationalities'] = $this->settings_mdl->get_content('nationalities');
+
+		$data['module'] = $this->module;
+		$data['title'] = "Nationalities";
+		render('nationalities', $data);
 	}
 
 	public function contracting_institutions()
