@@ -65,7 +65,7 @@ public function callback() {
         $postdata = ['email' => $email];
         $data['users'] = $this->auth_mdl->login($postdata);
 
-        dd($data['users']);
+        //dd($data['users']);
 
         if (!empty($data['users'])) {
             // Proceed with login
