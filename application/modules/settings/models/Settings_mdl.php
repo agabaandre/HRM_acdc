@@ -36,10 +36,26 @@ class Settings_mdl extends CI_Model
             );
         }elseif($table === 'divisions'){
             $data = array(
-                'division_name' => $this->input->post('division_name'),
-                'division_head' => $this->input->post('division_head'),
+                'division_name'     => $this->input->post('division_name', true),
+                'division_head'     => $this->input->post('division_head', true),
+                'focal_person'      => $this->input->post('focal_person', true),
+                'finance_officer'   => $this->input->post('finance_officer', true),
+                'admin_assistant'   => $this->input->post('admin_assistant', true),
             );
-        }elseif($table === 'grades'){
+        }
+        
+        elseif($table === 'nationalities'){
+            $data = array(
+                'nationality'       => $this->input->post('nationality', true),
+                'nationality_name'  => $this->input->post('nationality_name', true),
+                'continent'         => $this->input->post('continent', true),
+                'iso2'              => strtoupper($this->input->post('iso2', true)),
+                'iso3'              => strtoupper($this->input->post('iso3', true)),
+                'region_id'         => (int) $this->input->post('region_id', true),
+            );
+        }
+        
+        elseif($table === 'grades'){
             $data = array(
                 'grade' => $this->input->post('grade'),
             );
@@ -114,10 +130,26 @@ class Settings_mdl extends CI_Model
             );
         }elseif($table === 'divisions'){
             $data = array(
-                'division_name' => $this->input->post('division_name'),
-                'division_head' => $this->input->post('division_head'),
+                'division_name'     => $this->input->post('division_name', true),
+                'division_head'     => $this->input->post('division_head', true),
+                'focal_person'      => $this->input->post('focal_person', true),
+                'finance_officer'   => $this->input->post('finance_officer', true),
+                'admin_assistant'   => $this->input->post('admin_assistant', true),
             );
-        }elseif($table === 'grades'){
+        
+        }
+        elseif($table === 'nationalities'){
+            $data = array(
+                'nationality'       => $this->input->post('nationality', true),
+                'nationality_name'  => $this->input->post('nationality_name', true),
+                'continent'         => $this->input->post('continent', true),
+                'iso2'              => strtoupper($this->input->post('iso2', true)),
+                'iso3'              => strtoupper($this->input->post('iso3', true)),
+                'region_id'         => (int) $this->input->post('region_id', true),
+            );
+        }
+        
+        elseif($table === 'grades'){
             $data = array(
                 'grade' => $this->input->post('grade'),
             );
