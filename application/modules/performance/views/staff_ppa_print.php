@@ -73,14 +73,13 @@
     <td><b>Division/Directorate</b></td>
     <td><?= acdc_division($contract->division_id) ?></td>
     <td><b>Performance Period</b></td>
-    <td><?php if(!empty($ppa->performance_period)){ echo str_replace('-',' ',$ppa->performance_period
-		); } else { echo current_period();} ?></td>
+    <td><?php  echo str_replace('-',' ',$ppa->performance_period); ?></td>
   </tr>
   <tr>
     <td><b>First Supervisor</b></td>
-    <td><?= staff_name(get_supervisor(current_contract($staff_id))->first_supervisor) ?></td>
+    <td><?= @staff_name($contract->first_supervisor) ?></td>
     <td><b>Second Supervisor</b></td>
-    <td><?= @staff_name(get_supervisor(current_contract($staff_id))->second_supervisor) ?></td>
+    <td><?= @staff_name($contract->second_supervisor)  ?></td>
   </tr>
   <tr>
     <td><b>Funder</b></td>
@@ -311,7 +310,7 @@
   </table>
 </div>
 
-<?php if ($this->uri->segment(5)==1){?>
+<?php if ($this->uri->segment(6)==1){?>
   <div class="page-break"></div>
   <div class="section-title">E. Approval Trail</div>
   <table>
