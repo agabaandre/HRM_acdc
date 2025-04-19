@@ -534,7 +534,7 @@ public function get_dashboard_data()
     $this->db->from('staff s');
     $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-    $this->db->where_in('sc.status_id', [1, 2,3]);
+    $this->db->where_in('sc.status_id', [1, 2, 3]);
     $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
