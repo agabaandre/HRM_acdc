@@ -48,7 +48,11 @@
     </div>
 
     <!-- Upload Form -->
-    <form id="uploadForm" action="<?= site_url('workplan/upload_workplan') ?>" method="post" enctype="multipart/form-data" class="mb-4">
+    <?= form_open_multipart('workplan/upload_workplan', [
+    'id' => 'uploadForm',
+    'class' => 'mb-4'
+        ]) ?>
+
         <div class="input-group shadow-sm">
             <input type="file" name="file" class="form-control" required>
             <button class="btn btn-success btn-sm" type="submit">
@@ -199,24 +203,54 @@ function edit(id) {
 }
 
 // Event bindings
+// Utility function to get CSRF token name and value
+function getCSRFToken() {
+  return {
+    name: '<?= $this->security->get_csrf_token_name(); ?>',
+    value: $('input[name="<?= $this->security->get_csrf_token_name(); ?>"]').val()
+  };
+}
+
+// Edit form submission with CSRF
 $('#editForm').on('submit', function(e) {
     e.preventDefault();
-    $.post("<?= site_url('workplan/update_task') ?>", $(this).serialize(), function() {
+
+    var formData = $(this).serializeArray();
+    var csrf = getCSRFToken();
+    formData.push({ name: csrf.name, value: csrf.value });
+
+    $.post("<?= site_url('workplan/update_task') ?>", formData, function(response) {
         $('#editModal').modal('hide');
         fetchTasks($('#searchBox').val(), $('#yearSelect').val());
         show_notification('Workplan activity updated successfully', 'success');
+
+        // Optionally update token if you're using csrf_regenerate = TRUE
+        if (response.new_csrf_hash) {
+            $('input[name="' + csrf.name + '"]').val(response.new_csrf_hash);
+        }
     });
 });
 
+// Create form submission with CSRF
 $('#createForm').on('submit', function(e) {
     e.preventDefault();
-    $.post("<?= site_url('workplan/create_task') ?>", $(this).serialize(), function() {
+
+    var formData = $(this).serializeArray();
+    var csrf = getCSRFToken();
+    formData.push({ name: csrf.name, value: csrf.value });
+
+    $.post("<?= site_url('workplan/create_task') ?>", formData, function(response) {
         $('#createModal').modal('hide');
         $('#createForm')[0].reset();
         fetchTasks($('#searchBox').val(), $('#yearSelect').val());
         show_notification('New workplan activity added successfully', 'success');
+
+        if (response.new_csrf_hash) {
+            $('input[name="' + csrf.name + '"]').val(response.new_csrf_hash);
+        }
     });
 });
+
 
 $('#searchBox, #yearSelect').on('input change', function() {
     fetchTasks($('#searchBox').val(), $('#yearSelect').val());
