@@ -81,7 +81,12 @@
             display: none !important;
         }
     }
-    </style>
+  
+  .msg-avatar {
+    object-fit: cover;
+  }
+</style>
+
     
 
 <body>

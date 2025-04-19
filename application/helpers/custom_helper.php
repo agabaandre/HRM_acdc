@@ -751,39 +751,68 @@ if (!function_exists('staff_details')) {
 
 
 if (!function_exists('generate_user_avatar')) {
-    function generate_user_avatar($surname, $other_name, $image_path,$photo=false)
+    function generate_user_avatar($surname, $other_name, $image_path, $photo = false)
     {
-   
-         
-        if (!empty($photo)) {
+
+        //dd($photo);
+
+        $relative_path = str_replace(base_url(), '', $image_path);
+        $absolute_path = FCPATH . $relative_path;
+
+        if ( is_valid_image($absolute_path)) {
+
+           // echo $absolute_path;
             return '<img src="' . $image_path . '" class="user-img" alt="user avatar" 
-                 style="cursor:pointer; width:50px; height:50px; border-radius:50%;" 
-                 onclick="openImageModal(\'' . $image_path . '\')">';
+                        style="cursor:pointer; width:50px; height:50px; border-radius:50%;" 
+                        onclick="openImageModal(\'' . $image_path . '\')">';
+        } else {
+            // Get the initials (first letter of surname & other name)
+            $surname_initial = !empty($surname) ? strtoupper(substr($surname, 0, 1)) : '';
+            $other_name_initial = !empty($other_name) ? strtoupper(substr($other_name, 0, 1)) : '';
+
+            // Generate the initials-based avatar
+            $initials = $surname_initial . $other_name_initial;
+            $bg_color = generate_random_color($surname . $other_name); // Unique background color
+
+            return '<div class="avatar-placeholder" style="background-color:' . $bg_color . '; color: #fff; 
+                                  width: 50px; height: 50px; display: flex; align-items: center; border: 1px solid #fff;
+                                  justify-content: center; border-radius: 50%; font-size: 18px; font-weight: bold;">
+                                      ' . $initials . '
+            </div>';
         }
-        
-        // Get the initials (first letter of surname & other name)
-        $surname_initial = !empty($surname) ? strtoupper(substr($surname, 0, 1)) : '';
-        $other_name_initial = !empty($other_name) ? strtoupper(substr($other_name, 0, 1)) : '';
-    
-        // Generate the initials-based avatar
-        $initials = $surname_initial . $other_name_initial;
-        $bg_color = generate_random_color($surname . $other_name); // Unique background color
-    
-        return '<div class="avatar-placeholder" style="background-color:' . $bg_color . '; color: #fff; 
-                width: 50px; height: 50px; display: flex; align-items: center; border: 1px solid #fff;
-                justify-content: center; border-radius: 50%; font-size: 18px; font-weight: bold;">
-                    ' . $initials . '
-                </div>';
     }
-    
-// Function to generate a random color based on name hash
-function generate_random_color($name)
+
+    // Function to generate a random color based on name hash
+    function generate_random_color($name)
 {
     $hash = md5($name);
     return '#' . substr($hash, 0, 6);
 }
 
 }
+
+
+function is_valid_image($absolute_path)
+{
+    if (!file_exists($absolute_path)) return false;
+
+    // Check by file type
+    $image_type = @exif_imagetype($absolute_path);
+
+    // Standard image types
+    $valid_types = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+    if (in_array($image_type, $valid_types)) return true;
+
+    // Check SVG manually
+    $ext = strtolower(pathinfo($absolute_path, PATHINFO_EXTENSION));
+    if ($ext === 'svg') {
+        $contents = file_get_contents($absolute_path);
+        return stripos($contents, '<svg') !== false;
+    }
+
+    return false;
+}
+
 
 if (!function_exists('log_user_action')) {
     function log_user_action($action)

@@ -811,38 +811,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
 $(document).ready(function () {
-    function loadMessages() {
-        $.ajax({
-            url: '<?=base_url("dashboard/fetch_messages_ajax");?>',
-            method: 'GET',
-            dataType: 'json',
-            success: function (messages) {
-                $('#ajax-messages').empty();
-                $('#message-count').text(messages.length);
+  function loadMessages() {
+    $.ajax({
+      url: '<?= base_url("dashboard/fetch_messages_ajax"); ?>',
+      method: 'GET',
+      dataType: 'json',
+      success: function (messages) {
+        $('#ajax-messages').empty();
 
-                messages.forEach(function (message) {
-                    let html = `
-                        <a class="dropdown-item" href="javascript:;">
-                            <div class="d-flex align-items-center" style="margin:5px;">
-                                <div class="user-online"></div>
-                                <div class="flex-grow-1">
-                                    <h6 class="msg-name">${message.trigger} <span class="msg-time float-end">${message.time_ago}</span></h6>
-                                    <p class="msg-info">${message.subject}</p>
-                                </div>
-                            </div>
-                        </a>`;
-                    $('#ajax-messages').append(html);
-                });
-            }
+        if (messages.length === 0) {
+          $('#ajax-messages').html('<div class="text-center text-muted py-3">No new messages</div>');
+        }
+
+        $('#message-count').text(messages.length);
+
+        messages.forEach(function (message) {
+          let html = `
+            <a class="dropdown-item" href="javascript:;">
+              <div class="d-flex align-items-center mb-2">
+                <div class="user-online me-2">
+                  <img src="${message.avatar || 'assets/images/avatar.svg'}" class="msg-avatar rounded-circle" alt="avatar" style="width: 35px; height: 35px;">
+                </div>
+                <div class="flex-grow-1">
+                  <h6 class="msg-name mb-1">${message.trigger}
+                    <span class="msg-time float-end small">${message.time_ago}</span>
+                  </h6>
+                  <p class="msg-info small mb-0">${message.subject}</p>
+                </div>
+              </div>
+            </a>`;
+          $('#ajax-messages').append(html);
         });
-    }
+      },
+      error: function () {
+        $('#ajax-messages').html('<div class="text-center text-danger py-3">Failed to load messages</div>');
+      }
+    });
+  }
 
-    loadMessages();
-
-    // Optional: refresh every 30 seconds
-    setInterval(loadMessages, 30000);
+  loadMessages(); // Load on page ready
+  setInterval(loadMessages, 30000); // Auto refresh every 30 sec
 });
 </script>
+
 <script type="text/javascript">
   function googleTranslateElementInit() {
     new google.translate.TranslateElement({
