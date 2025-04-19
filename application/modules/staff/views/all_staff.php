@@ -77,6 +77,7 @@
 							$surname=$data->lname;
 							$other_name=$data->fname;
 							$image_path=base_url().'uploads/staff/'.@$data->photo;
+							//dd($image_path);
 							echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$data->photo);
 							
 							?>

@@ -1,35 +1,36 @@
 <!--start header -->
 <style>
-.modal.modal-bottom .modal-dialog {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: 0 auto;
-  max-height: 90vh;
-  transition: transform 0.3s ease-out;
-}
+	.modal.modal-bottom .modal-dialog {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		margin: 0 auto;
+		max-height: 90vh;
+		transition: transform 0.3s ease-out;
+	}
 
-.modal.fade .modal-dialog.modal-bottom {
-  transform: translateY(100%);
-}
+	.modal.fade .modal-dialog.modal-bottom {
+		transform: translateY(100%);
+	}
 
-.modal.fade.show .modal-dialog.modal-bottom {
-  transform: translateY(0);
-}
+	.modal.fade.show .modal-dialog.modal-bottom {
+		transform: translateY(0);
+	}
 </style>
 <style>
-.breadcrumb-sm {
-    font-size: 0.8rem;
-}
-.goog-te-banner-frame.skiptranslate,
-    .goog-logo-link,
-    .VIpgJd-ZVi9od-ORHb-OEVmcd,
-    .goog-te-gadget-icon,
-    div.feedback-form-container,
-    div.feedback-prompt {
-     display: none !important;
-}
+	.breadcrumb-sm {
+		font-size: 0.8rem;
+	}
+
+	.goog-te-banner-frame.skiptranslate,
+	.goog-logo-link,
+	.VIpgJd-ZVi9od-ORHb-OEVmcd,
+	.goog-te-gadget-icon,
+	div.feedback-form-container,
+	div.feedback-prompt {
+		display: none !important;
+	}
 </style>
 
 <header>
@@ -38,7 +39,7 @@
 			<div class="topbar-logo-header">
 				<div class="">
 					<img src="<?php echo base_url() ?>assets/images/AU_CDC_Logo-800.png" width="200" style="filter: brightness(0) invert(1);">
-					
+
 				</div>
 
 			</div>
@@ -90,26 +91,33 @@
 						</div>
 					</li>
 
-					<li class="nav-item dropdown-large">
-						<a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+					<!-- Notification Icon with Counter -->
+					<li class="nav-item dropdown" style="border:none !important;">
+					    <a class="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 							<span class="alert-count" id="message-count">0</span>
 							<i class='bx bx-comment' style="color:#FFF;"></i>
 						</a>
-						<div class="dropdown-menu dropdown-menu-end">
-							<a href="javascript:;">
-								<div class="msg-header">
-									<p class="msg-header-title">Messages</p>
-									<p class="msg-header-clear ms-auto">Marks all as read</p>
-								</div>
-							</a>
-							<div class="header-message-list" id="ajax-messages">
-								<!-- Messages will be loaded here via AJAX -->
+
+						<!-- Dropdown -->
+						<div class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3" style="min-width: 340px;">
+							<div class="dropdown-header d-flex justify-content-between align-items-center px-3 pt-2">
+								<span class="fw-semibold">Messages</span>
+								<a href="javascript:;" class="small text-muted">Mark all as read</a>
 							</div>
-							<a href="<?= base_url('dashboard/all_messages'); ?>">
-								<div class="text-center msg-footer">View All Messages</div>
-							</a>
+
+							<!-- Message List -->
+							<div class="header-message-list ps-2 pe-2 pt-2" id="ajax-messages" style="max-height: 300px; overflow-y: auto;">
+								<!-- Messages will be injected here via JS -->
+								<div class="text-center text-muted py-3">Loading messages...</div>
+							</div>
+
+							<!-- Footer -->
+							<div class="dropdown-footer text-center border-top py-2">
+								<a href="<?= base_url('messages'); ?>" class="text-decoration-none">View All Messages</a>
+							</div>
 						</div>
 					</li>
+
 
 				</ul>
 			</div>
@@ -123,8 +131,9 @@
 					$other_name = $name_parts[0];
 					$image_path = base_url() . 'uploads/staff/' . $this->session->userdata('user')->photo;
 					$photo = $this->session->userdata('user')->photo;
+					
 					echo  $staff_photo = generate_user_avatar($other_name, $surname, $image_path, $photo);
-
+      
 					?>
 
 					<div class="user-info ps-3">
