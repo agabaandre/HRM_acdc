@@ -401,13 +401,13 @@ $config['encryption_key'] = '';
 // $config['sess_time_to_update'] = 300;
 // $config['sess_regenerate_destroy'] = FALSE;
 
-$config['sess_driver'] = 'database';
-$config['sess_cookie_name'] = 'attendances';
-$config['sess_expiration'] = 0;
-$config['sess_save_path'] = 'access_sessions';
-$config['sess_match_ip'] = FALSE;
-$config['sess_time_to_update'] = 300;
-$config['sess_regenerate_destroy'] = FALSE;
+$config['sess_driver']            = 'database';
+$config['sess_cookie_name']       = 'attendances';
+$config['sess_expiration']        = 7200;                     // Session lasts 2 hours
+$config['sess_save_path']         = 'access_sessions';        // CI session table name
+$config['sess_match_ip']          = TRUE;                     // Match client IP (enabled again)
+$config['sess_time_to_update']    = 300;                      // Regenerate session ID every 5 minutes
+$config['sess_regenerate_destroy']= TRUE;          
 
 /*
 |--------------------------------------------------------------------------
@@ -425,10 +425,10 @@ $config['sess_regenerate_destroy'] = FALSE;
 |
 */
 $config['cookie_prefix']  = '';
-$config['cookie_domain']  = '';
+$config['cookie_domain']  = 'tools.africacdc.org/staff';
 $config['cookie_path']    = '/';
-$config['cookie_secure']  = FALSE;
-$config['cookie_httponly']   = FALSE;
+$config['cookie_secure']  = TRUE;
+$config['cookie_httponly']   = TRUE;
 
 /*
 |--------------------------------------------------------------------------
@@ -472,7 +472,7 @@ $config['global_xss_filtering'] = FALSE;
 | 'csrf_regenerate' = Regenerate token on every submission
 | 'csrf_exclude_uris' = Array of URIs which ignore CSRF checks
 */
-$config['csrf_protection'] = FALSE;
+$config['csrf_protection'] = TRUE;
 $config['csrf_token_name'] = 'hp_name';
 $config['csrf_cookie_name'] = 'hp_cookie_name';
 $config['csrf_expire'] = 7200;

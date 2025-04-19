@@ -298,7 +298,7 @@ public function revert()
     // Clear session
    // Unset all session variables
    $log_message = "Logged Out";
-   log_user_action($log_message);
+   //log_user_action($log_message);
    $this->session->unset_userdata('user');
    $this->session->sess_destroy();
 

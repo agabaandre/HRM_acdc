@@ -397,10 +397,13 @@
       }
 
       // Check if email already exists
+      var csrfName = '<?= $this->security->get_csrf_token_name(); ?>';
+      var csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
       $.ajax({
         url: '<?= base_url("staff/check_work_email"); ?>',
+
         method: 'POST',
-        data: { work_email: work_email },
+        data: { [csrfName]: csrfHash,work_email: work_email },
         dataType: 'json',
         success: function (response) {
           if (response.exists) {
@@ -411,10 +414,13 @@
             emailField.removeClass("is-invalid");
 
             // Submit if email is unique
+            let formData = form.serializeArray();
+            formData.push({ name: '<?= $this->security->get_csrf_token_name(); ?>', value: '<?= $this->security->get_csrf_hash(); ?>' });
+
             $.ajax({
               url: '<?= base_url("staff/new_submit"); ?>',
               type: "POST",
-              data: form.serialize(),
+              data: formData,
               dataType: "json",
               success: function (response) {
                 show_notification("Form submitted successfully!", "success");

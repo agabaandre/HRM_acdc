@@ -41,13 +41,14 @@ class Performance extends MX_Controller
 	public function save_ppa()
 {
     $data = $this->input->post();
+    
     $staff_id = $data['staff_id'];
     $performance_period = str_replace(' ','-',current_period());
     $entry_id = md5($staff_id . '_' . str_replace(' ', '', $performance_period));
 
     $save_data = [
         'staff_id' => $data['staff_id'],
-        'staff_id' => $data['staff_contract_id'],
+        'staff_contract_id' => $data['staff_contract_id'],
         'performance_period' => $performance_period,
         'entry_id' => $entry_id,
         'supervisor_id' => $data['supervisor_id'],
@@ -62,7 +63,7 @@ class Performance extends MX_Controller
         'draft_status' => $data['submit_action'] === 'submit' ? 0 : 1,
         'updated_at' => date('Y-m-d H:i:s'),
     ];
-
+//dd($save_data);
     $exists = $this->per_mdl->get_staff_plan_id($entry_id);
     //$ppa = $this->db->query("SELECT * FROM ppa_entries WHERE performance_period='$performance_period' and staff_id='$staff_id'")->row();
 
@@ -182,8 +183,10 @@ class Performance extends MX_Controller
         //draft status 0 is for summitted entries, 1 is in in draft mode, 2 is for approved.
 		$staff_id = $this->session->userdata('user')->staff_id;
 		$action = $this->input->post('action');
-        $staff_id = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row()->staff_id;
-        $name = staff_name($staff_id);
+        //FOR LOGGING 
+        $staffno = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row()->staff_id;
+        $name = staff_name($staffno);
+     
 
 	
 		if (!in_array($action, ['approve', 'return'])) {
@@ -209,10 +212,9 @@ class Performance extends MX_Controller
 				'draft_status' => 1,
 				'updated_at'   => date('Y-m-d H:i:s')
 			]);
-        $staff_id = $this->db->query("SELECT staff_id from ppa_entries where entry_id='$entry_id'")->row()->staff_id;
-        $name = staff_name($staff_id);
+       
 
-        $log_message = "Returned PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
+        $log_message = "Returned PPA entry [{$entry_id}] for staff ID [{$staffno}] , [{$name}]";
         log_user_action($log_message);
 		}
         else if ($action === 'approve') {
@@ -221,7 +223,7 @@ class Performance extends MX_Controller
 				'updated_at'   => date('Y-m-d H:i:s')
 			]);
 
-            $log_message = "Approved PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
+            $log_message = "Approved PPA entry [{$entry_id}] for staff ID [{$staffno}] , [{$name}]";
             log_user_action($log_message);
 		}
 	
