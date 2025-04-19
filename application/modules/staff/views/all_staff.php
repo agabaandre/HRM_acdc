@@ -72,6 +72,7 @@
 					    <td><?= $i++ ?></td>
 						<td><?= $data->SAPNO ?></td>
 						<td><?= $data->title ?></td>
+						
 						<td>
 							<?php 
 							$surname=$data->lname;
