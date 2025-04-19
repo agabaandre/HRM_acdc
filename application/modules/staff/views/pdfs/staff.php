@@ -35,6 +35,7 @@
                         <th>#</th>
                         <th>SAPNO</th>
                         <th>Name</th>
+                        <th>Photo</th>
                         <th>Gender</th>
                         <th>Nationality</th>
                         <th>Duty Station</th>
@@ -56,7 +57,18 @@
                         <tr>
                             <td><?= $i++ ?></td>
                             <td><?= $data->SAPNO ?></td>
-                            <td><?= $data->lname . ' ' . $data->fname ?></td>
+                            <td><?= $data->lname . ' ' . $data->fname. ' ' . @$data->oname  ?></td>
+                            <td>
+							<?php 
+							$surname=$data->lname;
+							$other_name=$data->fname;
+							$image_path=base_url().'uploads/staff/'.@$data->photo;
+							//dd($image_path);
+							echo  $staff_photo = generate_user_avatar($surname, $other_name, $image_path,$data->photo);
+							
+							?>
+							
+						    </td>
                             <td><?= $data->gender ?></td>
                             <td><?= $data->nationality ?></td>
                             <td><?= $data->duty_station_name ?></td>

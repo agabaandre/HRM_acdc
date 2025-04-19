@@ -763,7 +763,7 @@ if (!function_exists('generate_user_avatar')) {
 
            // echo $absolute_path;
             return '<img src="' . $image_path . '" class="user-img" alt="user avatar" 
-                        style="cursor:pointer; width:50px; height:50px; border-radius:50%;" 
+                        style="cursor:pointer; width:50px; height:50px; border-radius:50%; align-items: center; border: 1px solid #fff;justify-content: center; " 
                         onclick="openImageModal(\'' . $image_path . '\')">';
         } else {
             // Get the initials (first letter of surname & other name)
