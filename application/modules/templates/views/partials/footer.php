@@ -715,11 +715,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (query.length >= 2) {
         console.log("Searching for:", query);
-
+        var csrfName = '<?= $this->security->get_csrf_token_name(); ?>';
+        var csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
         $.ajax({
           url: baseUrl + 'dashboard/search_staff',
           type: 'POST',
-          data: { query: query },
+          data: { [csrfName]: csrfHash, query: query },
           dataType: 'json',
           beforeSend: function () {
             $('#staff-results-body').html('<tr><td colspan="6" class="text-center text-muted">Searching...</td></tr>');

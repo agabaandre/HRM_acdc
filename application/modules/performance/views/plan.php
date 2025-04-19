@@ -303,7 +303,10 @@ input[type="number"] {
   //dd($showApprovalBtns); 
   $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && (in_array('83', $permissions)));
   if (($showApprovalBtns ==='show')||(in_array('83', $permissions))){ ?>
-  <form method="post" id="approvalForm_<?= $ppa->entry_id ?>" action="<?= base_url('performance/approve_ppa/' . $ppa->entry_id) ?>">
+  <?php echo form_open('performance/approve_ppa/' . $ppa->entry_id, [
+      'method' => 'post',
+      'id'     => 'approvalForm_' . $ppa->entry_id
+  ]); ?>
   <?php if((intval($ppa_settings->allow_employee_comments)==1)||(@$status)){?>
     <div class="mb-3">
       <label for="comments">Comments for Approval/Return</label>

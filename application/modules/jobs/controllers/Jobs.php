@@ -553,6 +553,35 @@ public function notify_supervisors_pending_ppas()
     
 }
 
+public function update_latest_contracts_in_ppa()
+{
+    // Subquery to get latest contract ID per staff
+    $subquery = $this->db
+        ->select('staff_id, MAX(staff_contract_id) AS latest_contract_id', false)
+        ->from('staff_contracts')
+        ->group_by('staff_id')
+        ->get_compiled_select();
+
+    // Join latest contracts to staff
+    $this->db->select('s.staff_id, sc.staff_contract_id');
+    $this->db->from('staff_contracts sc');
+    $this->db->join('staff s', 'sc.staff_id = s.staff_id');
+    $this->db->join("($subquery) latest_contracts", 
+        'sc.staff_id = latest_contracts.staff_id AND sc.staff_contract_id = latest_contracts.latest_contract_id', 
+        'inner');
+
+    $latest = $this->db->get()->result();
+
+    foreach ($latest as $row) {
+        $this->db->where('staff_id', $row->staff_id);
+        $this->db->update('ppa_entries', [
+            'staff_contract_id' => $row->staff_contract_id
+        ]);
+    }
+
+    log_message('info', '[CRON] staff_contract_id in PPA entries updated from latest contracts.');
+}
+
 
 
 
