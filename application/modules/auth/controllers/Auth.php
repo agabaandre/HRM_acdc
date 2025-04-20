@@ -330,7 +330,7 @@ public function revert()
 
   public function users()
   {
-    $searchkey = $this->input->post('search_key');
+    $searchkey = $this->input->get('search_key');
     if (empty($searchkey)) {
       $searchkey = "";
     }
