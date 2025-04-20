@@ -51,7 +51,7 @@
 <body>
 
     <div class="header">
-        <img src="<?= base_url('assets/images/AU_CDC_Logo-800.png') ?>" alt="AU CDC Logo">
+        <img src="<?= base_url('assets/images/AU_CDC_Logo-800.png') ?>" alt="AU CDC Logo" style="height:100px;">
         <?php if (!empty($staff)): ?>
             <h3><?= $staff->title . ' ' . $staff->fname . ' ' . $staff->lname ?></h3>
         <?php else: ?>
@@ -62,12 +62,12 @@
 
     <table class="info-table">
         <tr>
-            <td><strong>Division:</strong> <?= !empty($staff) ? $staff->division_name : 'N/A' ?></td>
-            <td><strong>Job Title:</strong> <?= !empty($staff) ? $staff->job_name : 'N/A' ?></td>
+            <td><strong>Division:</strong> <?= !empty($tasks) ? $tasks[0]->division_name : 'N/A' ?></td>
+            <td><strong>Job Title:</strong> <?= !empty($tasks) ? $tasks[0]->job_name : 'N/A' ?></td>
         </tr>
         <tr>
-            <td><strong>Week:</strong> <?= $week_label ?? 'N/A' ?></td>
-            <td><strong>Date Range:</strong> <?= ($week_range['start'] ?? 'N/A') . ' - ' . ($week_range['end'] ?? 'N/A') ?></td>
+            <td><strong>Range:</strong> <?= $week_label ?? 'N/A' ?></td>
+         
         </tr>
     </table>
 

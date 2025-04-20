@@ -406,7 +406,7 @@ $config['sess_cookie_name']       = 'attendances';
 $config['sess_expiration']        = 7200;                     // Session lasts 2 hours
 $config['sess_save_path']         = 'access_sessions';        // CI session table name
 $config['sess_match_ip']          = TRUE;                     // Match client IP (enabled again)
-$config['sess_time_to_update']    = 300;                      // Regenerate session ID every 5 minutes
+$config['sess_time_to_update']    = 7200;                      // Regenerate session ID every 5 minutes
 $config['sess_regenerate_destroy']= TRUE;          
 
 /*
@@ -476,7 +476,7 @@ $config['csrf_protection'] = TRUE;
 $config['csrf_token_name'] = 'hp_name';
 $config['csrf_cookie_name'] = 'hp_cookie_name';
 $config['csrf_expire'] = 7200;
-$config['csrf_regenerate'] = FALSE;
+$config['csrf_regenerate'] = TRUE;
 $config['csrf_exclude_uris'] = array();
 
 /*

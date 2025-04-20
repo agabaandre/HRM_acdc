@@ -54,7 +54,7 @@ class Tasks extends MX_Controller {
                 }
     
                 $data = [
-                    'staff_id' => $staff_id,
+                    'created_by' => $staff_id,
                     'workplan_id' => $quarterly_output_id,
                     'activity_name' => $activity_names[$i],
                     'start_date' => date('Y-m-d', strtotime($start_dates[$i])),
@@ -103,7 +103,7 @@ class Tasks extends MX_Controller {
             if(!empty($id)) {
                 $update['status']=1;
                 $this->db->where('activity_id', $id);
-                $this->db->update('activities',$update);
+                $this->db->update('work_planner_tasks',$update);
                 //dd($this->db->last_query());
             }
            render('add_activity', $data);
@@ -118,7 +118,7 @@ class Tasks extends MX_Controller {
                 'activity_id' => $activity_id,
                 'report_date' => date('Y-m-d'),
                 'description' => $this->input->post('description'),
-                'status' => 'pending'
+                'status' => 'approved'
             );
             $this->tasks_mdl->submit_report($data);
             redirect('tasks/view_reports');
@@ -168,7 +168,7 @@ class Tasks extends MX_Controller {
     
         // Update the activity record where activity_id equals $id
         $this->db->where('activity_id', $id);
-        $this->db->update('activities', $data);
+        $this->db->update('work_planner_tasks', $data);
     
         // Return JSON response with a success message
         echo json_encode(['status' => 'success', 'message' => 'Successful', 'data' => $data]);
@@ -238,8 +238,7 @@ class Tasks extends MX_Controller {
             $data['activity_id']= $this->input->post('activity_id');
         	$data['report_date'] = date('Y-m-d');
             $data['description']= $this->input->post('description');
-            $data['week']= $this->input->post('week');
-            $data['status']	= 'pending';
+            $data['status']	= 'approved';
             if(!empty($data['report_id'])){
                 $this->db->where('reports.report_id', $data['report_id']);
                 $this->db->update('reports',$data);
