@@ -2,7 +2,12 @@
 <div class="modal fade" id="addActivitiesModal" tabindex="-1" aria-labelledby="addActivitiesModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
-      <form id="addActivityForm" method="post" class="needs-validation" novalidate>
+    <?= form_open('', [
+    'id' => 'addActivityForm',
+    'class' => 'needs-validation',
+    'novalidate' => 'novalidate'
+     ]) ?>
+
 
         <div class="modal-header">
           <h5 class="modal-title" id="addActivitiesModalLabel">Add New Sub-Activities</h5>
@@ -74,7 +79,7 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         </div>
 
-      </form>
+        <?= form_close(); ?>
     </div>
   </div>
 </div>
@@ -120,19 +125,13 @@
                     </div>
                     <div class="form-group">
                         <label>Start Date</label>
-                        <input type="text" id="edit_start_date" class="form-control datepicker" required>
+                        <input type="date" id="edit_start_date" class="form-control " required>
                     </div>
                     <div class="form-group">
                         <label>End Date</label>
-                        <input type="text" id="edit_end_date" class="form-control datepicker" required>
+                        <input type="date" id="edit_end_date" class="form-control " required>
                     </div>
-                    <label>Priority (Low, Medium, High)</label>
-                    <select name="priority" class="form-control form-control-md"  id="edit_priority" required>
-                                                <option value="Low">Low</option>
-                                                <option value="Medium">Medium</option>
-                                                <option value="High">High</option>
-                                                    
-                    </select>
+                  
 
                     <div class="form-group">
                         <label>Comments</label>
@@ -286,31 +285,46 @@ $(document).ready(function () {
     });
 
     $('#addActivityForm').on('submit', function (e) {
-        e.preventDefault();
-        if (!this.checkValidity()) {
-            $(this).addClass('was-validated');
-            return;
+    e.preventDefault();
+
+    if (!this.checkValidity()) {
+        $(this).addClass('was-validated');
+        return;
+    }
+
+    // Extract form and CSRF token
+    var form = $(this);
+    var formData = form.serializeArray();
+    var csrfName = '<?= $this->security->get_csrf_token_name(); ?>';
+    var csrfValue = $('input[name="<?= $this->security->get_csrf_token_name(); ?>"]').val();
+
+    formData.push({ name: csrfName, value: csrfValue });
+
+    $.post('<?= base_url("tasks/add_activity") ?>', formData, function (res) {
+        if (res.status === 'success') {
+            show_notification(res.message, 'success');
+            $('#addActivityForm')[0].reset();
+            $('#addActivityForm').removeClass('was-validated');
+            table.ajax.reload();
+        } else {
+            show_notification(res.message, 'error');
         }
 
-        $.post('<?= base_url("tasks/add_activity") ?>', $(this).serialize(), function (res) {
-            if (res.status === 'success') {
-                show_notification(res.message, 'success');
-                $('#addActivityForm')[0].reset();
-                $('#addActivityForm').removeClass('was-validated');
-                table.ajax.reload();
-            } else {
-                show_notification(res.message, 'error');
-            }
-        }, 'json');
-    });
+        // If you're using csrf_regenerate = TRUE
+        if (res.new_csrf_hash) {
+            $('input[name="<?= $this->security->get_csrf_token_name(); ?>"]').val(res.new_csrf_hash);
+        }
+    }, 'json');
+});
+
 
     $(document).on('click', '.edit-btn', function () {
         const d = $(this).data();
+        //console.log(d);
         $('#activity_id').val(d.id);
         $('#edit_activity_name').val(d.name);
         $('#edit_start_date').val(d.start_date);
         $('#edit_end_date').val(d.end_date);
-        $('#edit_priority').val(d.priority);
         $('#edit_comments').val(d.comments);
         $('#activityModal').modal('show');
     });

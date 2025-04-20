@@ -6,11 +6,15 @@
       <i class="fa fa-plus-circle me-1"></i> Add Weekly Task
     </button>
   </div>
+  <input type="hidden" id="csrf_token" 
+       name="<?= $this->security->get_csrf_token_name(); ?>" 
+       value="<?= $this->security->get_csrf_hash(); ?>">
 
   <!-- Filters -->
   <div class="card shadow-sm mb-4">
     <div class="card-body">
-      <form id="filterForm">
+    <?= form_open('', ['id' => 'filterForm']) ?>
+
         <div class="row g-3 align-items-end">
           <div class="col-md-3">
             <label class="form-label fw-semibold">Division</label>
@@ -71,6 +75,11 @@
             <i class="fa fa-print me-1"></i> Print Division Report
           </button>
         </div>
+        <div class="col-md-3">
+          <button class="btn btn-outline-success w-100" id="printCombinedBtn">
+            <i class="fa fa-print me-1"></i> Combined Effort Report
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -99,6 +108,9 @@
 <?php $this->load->view('modals.php'); ?>
 <script>
 $(function () {
+  const csrfName = '<?= $this->security->get_csrf_token_name(); ?>';
+  const csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
+
   const table = $('#activitiesTable').DataTable({
     processing: true,
     serverSide: true,
@@ -107,12 +119,13 @@ $(function () {
       url: '<?= base_url("weektasks/fetch") ?>',
       type: 'POST',
       data: function (d) {
-        d.division = $('#filterDivision').val();
-        d.staff_id = $('#filterStaff').val(); // multiple select
-        d.output = $('#filterOutput').val();
-        d.start_date = $('#filterStartDate').val();
-        d.end_date = $('#filterEndDate').val();
-      }
+      d.division = $('#filterDivision').val();
+      d.staff_id = $('#filterStaff').val();
+      d.output = $('#filterOutput').val();
+      d.start_date = $('#filterStartDate').val();
+      d.end_date = $('#filterEndDate').val();
+      d['<?= $this->security->get_csrf_token_name(); ?>'] = $('#csrf_token').val();
+    }
     },
     pageLength: 10,
     columns: [
@@ -120,7 +133,7 @@ $(function () {
       { data: 'start_date' },
       { data: 'end_date' },
       { data: 'comments' },
-      { data: 'executed_by' }, // from PHP: staffname csv
+      { data: 'executed_by' },
       { data: 'created_by_name' },
       { data: 'updated_by_name' },
       {
@@ -140,22 +153,20 @@ $(function () {
         orderable: false,
         render: function (row) {
           return `<button class="btn btn-sm btn-primary edit-btn"
-                data-id="${row.activity_id}"
-                data-name="${row.activity_name}"
-                data-comments="${row.comments}"
-                data-status="${row.status}"
-                data-staff_id="${row.staff_id}">
-                <i class="fa fa-edit"></i> Edit
-            </button>`;
+                  data-id="${row.activity_id}"
+                  data-name="${row.activity_name}"
+                  data-comments="${row.comments}"
+                  data-status="${row.status}"
+                  data-staff_id="${row.staff_id}">
+                  <i class="fa fa-edit"></i> Edit
+              </button>`;
         }
       }
     ]
   });
 
-  // Apply filters
   $('#applyFilters').on('click', () => table.ajax.reload());
 
-  // Notification using Lobibox
   function show_notification(message, type) {
     Lobibox.notify(type, {
       pauseDelayOnHover: true,
@@ -166,7 +177,7 @@ $(function () {
     });
   }
 
-  // Add Activity Submit
+  // Add Activity
   $('#addActivityForm').on('submit', function (e) {
     e.preventDefault();
     if (!this.checkValidity()) {
@@ -174,7 +185,10 @@ $(function () {
       return;
     }
 
-    $.post('<?= base_url("weektasks/save") ?>', $(this).serialize(), function (res) {
+    const formData = $(this).serializeArray();
+    formData.push({ name: csrfName, value: csrfHash });
+
+    $.post('<?= base_url("weektasks/save") ?>', formData, function (res) {
       if (res.status === 'success') {
         $('#addModal').modal('hide');
         $('#addActivityForm')[0].reset();
@@ -187,92 +201,85 @@ $(function () {
     }, 'json');
   });
 
-  // Open Edit Modal
+  // Edit Activity
   $(document).on('click', '.edit-btn', function () {
-  const data = $(this).data();
+    const data = $(this).data();
+    $('#edit_id').val(data.id);
+    $('#edit_name').val(data.name);
+    $('#edit_comments').val(data.comments);
+    $('#edit_status').val(data.status);
+    $('#editModal .edit-staff-checkbox').prop('checked', false);
 
-  $('#edit_id').val(data.id);
-  $('#edit_name').val(data.name);
-  $('#edit_comments').val(data.comments);
-  $('#edit_status').val(data.status);
-
-  // Step 1: Clear checkboxes only inside #editModal
-  $('#editModal .edit-staff-checkbox').prop('checked', false);
-
-  // Step 2: Get staff IDs from button and check them inside #editModal
-  const staff_ids_raw = $(this).attr('data-staff_id');
-
-  if (staff_ids_raw) {
-    const staffIds = staff_ids_raw.toString().split(',');
-    staffIds.forEach(id => {
-      $('#editModal #staff_' + id.trim()).prop('checked', true);
-    });
-  }
-
-  $('#editModal').modal('show');
-});
-
-
-
-  // Update Activity Submit
-  $('#editActivityForm').on('submit', function (e) {
-  e.preventDefault();
-
-  const formData = $(this).serialize();
-
-  console.log("Form Data Being Sent to Server:");
- // console.log(formData); 
-
-  $.post('<?= base_url("weektasks/update") ?>', formData, function (res) {
-    if (res.status === 'success') {
-      $('#editModal').modal('hide');
-      $('#editActivityForm')[0].reset();
-      $('#editActivityForm').removeClass('was-validated');
-      table.ajax.reload();
-      show_notification(res.message, 'success');
-    } else {
-      show_notification(res.message, 'error');
+    const staff_ids_raw = $(this).attr('data-staff_id');
+    if (staff_ids_raw) {
+      const staffIds = staff_ids_raw.toString().split(',');
+      staffIds.forEach(id => {
+        $('#editModal #staff_' + id.trim()).prop('checked', true);
+      });
     }
-  }, 'json');
-});
 
+    $('#editModal').modal('show');
+  });
 
-  // Enable Print Buttons when filters are valid
-// Enable Print Buttons when filters are valid
-function checkPrintEligibility() {
-  const staff = $('#filterStaff').val();
-  const start = $('#filterStartDate').val();
-  const end = $('#filterEndDate').val();
+  // Update Activity
+  $('#editActivityForm').on('submit', function (e) {
+    e.preventDefault();
+    const formData = $(this).serializeArray();
+    formData.push({ name: csrfName, value: csrfHash });
 
-  if ((staff && start && end) || ($('#filterDivision').val() && start && end)) {
-    $('#printButtons').fadeIn();
-  } else {
-    $('#printButtons').fadeOut();
+    $.post('<?= base_url("weektasks/update") ?>', formData, function (res) {
+      if (res.status === 'success') {
+        $('#editModal').modal('hide');
+        $('#editActivityForm')[0].reset();
+        $('#editActivityForm').removeClass('was-validated');
+        table.ajax.reload();
+        show_notification(res.message, 'success');
+      } else {
+        show_notification(res.message, 'error');
+      }
+    }, 'json');
+  });
+
+  // Enable Print Buttons
+  function checkPrintEligibility() {
+    const staff = $('#filterStaff').val();
+    const start = $('#filterStartDate').val();
+    const end = $('#filterEndDate').val();
+    if ((staff && start && end) || ($('#filterDivision').val() && start && end)) {
+      $('#printButtons').fadeIn();
+    } else {
+      $('#printButtons').fadeOut();
+    }
   }
-}
 
-$('#filterStaff, #filterStartDate, #filterEndDate, #filterDivision').on('change keyup', checkPrintEligibility);
+  $('#filterStaff, #filterStartDate, #filterEndDate, #filterDivision').on('change keyup', checkPrintEligibility);
 
-// Print Staff Report
-$('#printStaffBtn').on('click', function () {
-  const staff = $('#filterStaff').val();
-  const start = $('#filterStartDate').val();
-  const end = $('#filterEndDate').val();
-  if (staff && start && end) {
-    window.open(`<?= base_url('weektasks/print_staff_report/') ?>${staff[0]}/${start}/${end}`, '_blank');
-  }
-});
+  $('#printStaffBtn').on('click', function () {
+    const staff = $('#filterStaff').val();
+    const start = $('#filterStartDate').val();
+    const end = $('#filterEndDate').val();
+    if (staff && start && end) {
+      window.open(`<?= base_url('weektasks/print_staff_report/') ?>${staff[0]}/${start}/${end}`, '_blank');
+    }
+  });
 
-// Print Division Report
-$('#printDivisionBtn').on('click', function () {
-  const division = $('#filterDivision').val();
-  const start = $('#filterStartDate').val();
-  const end = $('#filterEndDate').val();
-  if (division && start && end) {
-    window.open(`<?= base_url('weektasks/print_division_report/') ?>${division}/${start}/${end}`, '_blank');
-  }
-});
+  $('#printDivisionBtn').on('click', function () {
+    const division = $('#filterDivision').val();
+    const start = $('#filterStartDate').val();
+    const end = $('#filterEndDate').val();
+    if (division && start && end) {
+      window.open(`<?= base_url('weektasks/print_division_report/') ?>${division}/${start}/${end}`, '_blank');
+    }
+  });
 
+  $('#printCombinedBtn').on('click', function () {
+    const division = $('#filterDivision').val();
+    const start = $('#filterStartDate').val();
+    const end = $('#filterEndDate').val();
+    if (division && start && end) {
+      window.open(`<?= base_url('weektasks/print_combined_division_report/') ?>${division}/${start}/${end}`, '_blank');
+    }
+  });
 
 });
 </script>

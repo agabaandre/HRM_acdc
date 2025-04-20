@@ -60,7 +60,8 @@ class Weektasks extends MX_Controller {
             'draw' => intval($draw),
             'recordsTotal' => $total,
             'recordsFiltered' => $total,
-            'data' => $tasks
+            'data' => $tasks,
+            
         ]);
     }
     
@@ -226,6 +227,24 @@ class Weektasks extends MX_Controller {
 
     echo json_encode($events);
 }
+
+public function print_combined_division_report($division_id, $start_date, $end_date)
+{
+    $this->load->model('weektasks_mdl');
+
+    $tasks = $this->weektasks_mdl->get_combined_tasks_for_division($division_id, $start_date, $end_date);
+
+    $data['module'] = 'weektasks';
+    $data['tasks'] = $tasks;
+    $data['week_label'] = $this->get_week_label($start_date, $end_date);
+    $data['week_range'] = "$start_date to $end_date";
+
+    log_user_action("Printed combined weekly division task report for division ID: $division_id");
+
+    pdf_print_data($data, 'Division_Combined_Weekly_Report.pdf', 'L', 'pdfs/combined_tasks');
+}
+
+
 
     
 }

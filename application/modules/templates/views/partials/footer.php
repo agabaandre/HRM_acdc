@@ -831,7 +831,7 @@ $(document).ready(function () {
             <a class="dropdown-item" href="javascript:;">
               <div class="d-flex align-items-center mb-2">
                 <div class="user-online me-2">
-                  <img src="${message.avatar || 'uploads/staff/user.png'}" class="msg-avatar rounded-circle" alt="avatar" style="width: 35px; height: 35px;">
+                  <img src="<?php echo base_url()?>uploads/staff/user.png" class="msg-avatar rounded-circle" alt="avatar" style="width: 35px; height: 35px;">
                 </div>
                 <div class="flex-grow-1">
                   <h6 class="msg-name mb-1">${message.trigger}
