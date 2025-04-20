@@ -251,36 +251,44 @@ class Settings extends MX_Controller
 		$data['title'] = "Regions";
 		render('regions', $data);
 	}
-	public function sysvariables()
-	{
-		$data['title'] = "Settings - Constants & Variables";
-		$data['uptitle'] = "Constants & Variables";
-		$data['module'] = 'settings';
-		$data['view'] = "sys_variables";
-		$postdata = $this->input->post();
-		$data['setting'] = $this->settings_mdl->getSettings();
-		if ($this->input->post('language')) {
-			$res = $this->settings_mdl->update_variables($postdata);
-			if ($res) {
-				$msg = array(
-					'msg' => 'Successfully Saved',
-					'type' => 'success'
-				);
-				Modules::run('utility/setFlash', $msg);
-				redirect('settings/sysvariables');
-			} else {
-				$msg = array(
-					'msg' => 'Failed',
-					'type' => 'error'
-				);
-				Modules::run('utility/setFlash', $msg);
-				redirect("settings/sysvariables");
-			}
-			
+public function sysvariables()
+{
+	$data['title'] = "Settings - Constants & Variables";
+	$data['uptitle'] = "Constants & Variables";
+	$data['module'] = 'settings';
+	$data['view'] = "sys_variables";
+	$postdata = $this->input->post();
+	$data['setting'] = $this->settings_mdl->getSettings();
+
+	if ($this->input->method() === 'post' && $this->input->post('language')) {
+		unset($postdata['africacdc_staff']);
+		//dd($postdata);
+		$res = $this->settings_mdl->update_variables($postdata);
+
+		//dd($data);
+
+		if ($this->input->is_ajax_request()) {
+			// Respond to AJAX
+			return $this->output
+				->set_content_type('application/json')
+				->set_output(json_encode([
+					'status' => $res ? 'success' : 'error',
+					'message' => $res ? 'Successfully Saved' : 'Failed to save'
+				]));
 		} else {
-			echo Modules::run('templates/main', $data);
+			// Non-AJAX fallback
+			$msg = array(
+				'msg' => $res ? 'Successfully Saved' : 'Failed',
+				'type' => $res ? 'success' : 'error'
+			);
+			Modules::run('utility/setFlash', $msg);
+			redirect('settings/sysvariables');
 		}
+	} else {
+		echo Modules::run('templates/main', $data);
 	}
+}
+
 
 	public function ppa_variables()
 	{
@@ -289,6 +297,7 @@ class Settings extends MX_Controller
 		$data['module'] = 'settings';
 		$data['view'] = "ppa_variables";
 		$postdata = $this->input->post();
+		unset($postdata['africacdc_staff']);
 		$data['setting'] = $this->settings_mdl->get_ppa();
 		if ($this->input->post()) {
 			$res = $this->settings_mdl->update_ppa_variables($postdata);
