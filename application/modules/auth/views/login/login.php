@@ -57,19 +57,19 @@
 
     <div id="logreg-forms">
     
-        <?php 
-
-        if (settings()->allow_form_login==1){
-      
-        echo form_open_multipart(base_url('index.php/auth/cred_login'), array('id' => 'login', 'class' => 'login')); ?>
-           
+         
          <div class="logo col-md-12" style="text-align:center;">
          <img src="<?php echo base_url(); ?>assets/images/AU_CDC_Logo-800.png" width="200">
          </div>
            <h1 class="h3 mb-3 font-weight-normal" style="text-align: center">Staff Tracker Sign in</h1>
         
 
+            <?php 
 
+                if (settings()->allow_form_login==1){
+
+                echo form_open_multipart(base_url('index.php/auth/cred_login'), array('id' => 'login', 'class' => 'login')); ?>
+                
 
             <!-- Checkbox to toggle the form -->
             <label class="checkbox-label">
