@@ -58,8 +58,10 @@
     <div id="logreg-forms">
     
         <?php 
+
+        if (settings()->allow_form_login==1){
       
-        echo form_open_multipart(base_url('index.php/auth/other_login'), array('id' => 'login', 'class' => 'login')); ?>
+        echo form_open_multipart(base_url('index.php/auth/cred_login'), array('id' => 'login', 'class' => 'login')); ?>
            
          <div class="logo col-md-12" style="text-align:center;">
          <img src="<?php echo base_url(); ?>assets/images/AU_CDC_Logo-800.png" width="200">
@@ -81,13 +83,15 @@
                 <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required>
                 <button class="btn btn-success btn-block" type="submit"><i class="fas fa-sign-in-alt"></i> Sign in</button>
             </div>
+            </form> 
+            <?php } ?>
 
             <div class="social-login mt-2">
                 <a href="<?= base_url('auth/login') ?>" class="btn btn-success social-btn btn-ms">Staff Mail Sign In</a>
             </div>
 
             <hr>
-        </form>
+       
 
         
        

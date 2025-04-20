@@ -152,7 +152,7 @@ private function handle_login($user_data, $email) {
 //     redirect('https://login.microsoftonline.com/' . $this->tenant_id . '/oauth2/logout?post_logout_redirect_uri=' . base_url());
 // }
 
-public function other_login()
+public function cred_login()
 {
     $postdata = $this->input->post();
     $post_password = trim($this->input->post('password'));
