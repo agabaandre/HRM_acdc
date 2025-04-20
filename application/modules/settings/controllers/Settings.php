@@ -261,7 +261,7 @@ public function sysvariables()
 	$data['setting'] = $this->settings_mdl->getSettings();
 
 	if ($this->input->method() === 'post' && $this->input->post('language')) {
-		unset($postdata['africacdc_staff']);
+		unset($postdata['africacdc_csrf_cookie']);
 		//dd($postdata);
 		$res = $this->settings_mdl->update_variables($postdata);
 
@@ -297,7 +297,7 @@ public function sysvariables()
 		$data['module'] = 'settings';
 		$data['view'] = "ppa_variables";
 		$postdata = $this->input->post();
-		unset($postdata['africacdc_staff']);
+		unset($postdata['africacdc_csrf_cookie']);
 		$data['setting'] = $this->settings_mdl->get_ppa();
 		if ($this->input->post()) {
 			$res = $this->settings_mdl->update_ppa_variables($postdata);

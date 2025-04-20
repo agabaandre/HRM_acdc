@@ -401,13 +401,14 @@ $config['encryption_key'] = '';
 // $config['sess_time_to_update'] = 300;
 // $config['sess_regenerate_destroy'] = FALSE;
 
-$config['sess_driver'] = 'database';
-$config['sess_cookie_name'] = 'attendances';
-$config['sess_expiration'] = 0;
-$config['sess_save_path'] = 'access_sessions';
-$config['sess_match_ip'] = FALSE;
-$config['sess_time_to_update'] = 300;
-$config['sess_regenerate_destroy'] = FALSE;
+$config['sess_driver']             = 'database';
+$config['sess_cookie_name']        = 'africacdc_attendance_session'; // More unique, avoids conflicts
+$config['sess_expiration']         = 7200;        // 2 hours (in seconds)
+$config['sess_save_path']          = 'access_sessions'; // Must match your DB table name
+$config['sess_match_ip']           = TRUE;        // Match IP to reduce hijacking risk
+$config['sess_time_to_update']     = 300;         // Session ID is regenerated every 5 minutes
+$config['sess_regenerate_destroy'] = TRUE;        // Destroy old session on regeneration
+
 
 /*
 |--------------------------------------------------------------------------
@@ -472,12 +473,16 @@ $config['global_xss_filtering'] = FALSE;
 | 'csrf_regenerate' = Regenerate token on every submission
 | 'csrf_exclude_uris' = Array of URIs which ignore CSRF checks
 */
-$config['csrf_protection'] = TRUE;
-$config['csrf_token_name'] = 'hp_name';
-$config['csrf_cookie_name'] = 'hp_cookie_name';
-$config['csrf_expire'] = 7200;
-$config['csrf_regenerate'] = TRUE;
-$config['csrf_exclude_uris'] = array();
+$config['csrf_protection']       = TRUE;
+$config['csrf_token_name']       = 'africacdc_csrf_token';      // Use a more distinct name
+$config['csrf_cookie_name']      = 'africacdc_csrf_cookie';     // Separate from token name
+$config['csrf_expire']           = 7200;                         // 2 hours
+$config['csrf_regenerate']       = TRUE;                         // Regenerate token after each request
+$config['csrf_exclude_uris']     = array(
+    'settings/sysvariables',
+    'settings/ppa_variables'
+);
+
 
 /*
 |--------------------------------------------------------------------------
