@@ -16,20 +16,29 @@ $usergroups = Modules::run("permissions/getUserGroups");
         <hr>
         <br>
 
-        <?php echo form_open('auth/users', array('class' => 'form-horizontal', 'style' => 'margin-top: 4px !important;')); ?>
+        <?php 
+          echo form_open('auth/users', array(
+            'class' => 'form-horizontal',
+            'style' => 'margin-top: 4px !important;'
+          )); 
+        ?>
 
-          <div class="form-group col-md-5">
-            <label>Advanced User Search</label>
-            <div class="input-group mb-3">
-              <input type="text" name="search_key" class="form-control" placeholder="Username or Name">
-              <div class="input-group-append">
-                <button class="btn btn-default" type="submit">Search</button>
-              </div>
+        <!-- ✅ Manually add CSRF token -->
+        <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" 
+              value="<?= $this->security->get_csrf_hash(); ?>">
+
+        <div class="form-group col-md-5">
+          <label>Advanced User Search</label>
+          <div class="input-group mb-3">
+            <input type="text" name="search_key" class="form-control" placeholder="Username or Name">
+            <div class="input-group-append">
+              <button class="btn btn-default" type="submit">Search</button>
             </div>
-
-
+          </div>
+        </div>
 
         </form>
+
 
       </div>
       <!-- /.card-header -->
@@ -246,52 +255,78 @@ function show_notification(message, msgtype) {
     });
 }
 
-// Submit user update
-$(".update_user").submit(function(e) {
+
+  function getCSRFToken() {
+    return {
+      name: '<?= $this->security->get_csrf_token_name(); ?>',
+      value: '<?= $this->security->get_csrf_hash(); ?>'
+    };
+  }
+
+  // Submit user update with CSRF
+  $(".update_user").submit(function(e) {
     e.preventDefault();
     var formData = new FormData(this);
-    console.log(formData);
-    var url = "<?php echo base_url(); ?>auth/updateUser";
-    $.ajax({
-        url: url,
-        method: 'post',
-        contentType: false,
-        processData: false,
-        data: formData,
-        success: function(result) {
-            console.log(result);
-            setTimeout(function() {
-                $('.status').html(result);
-                show_notification('Successfully Updated', 'success'); // Using Lobibox notification
-                $('.status').html('');
-                $('.clear').click();
-            }, 3000);
-        }
-    });
-});
+    var csrf = getCSRFToken();
 
-// Submit password reset
-$(".reset").submit(function(e) {
+    // Append CSRF token to FormData
+    formData.append(csrf.name, csrf.value);
+
+    var url = "<?= base_url(); ?>auth/updateUser";
+    $.ajax({
+      url: url,
+      method: 'POST',
+      contentType: false,
+      processData: false,
+      data: formData,
+      dataType: 'json',
+      success: function(result) {
+        console.log(result);
+        setTimeout(function() {
+          $('.status').html(result.message || 'Updated.');
+          show_notification('Successfully Updated', 'success');
+          $('.status').html('');
+          $('.clear').click();
+        }, 3000);
+
+        // Update CSRF token if returned
+        if (result.new_csrf_hash) {
+          $('input[name="' + csrf.name + '"]').val(result.new_csrf_hash);
+        }
+      }
+    });
+  });
+
+  // Submit password reset with CSRF
+  $(".reset").submit(function(e) {
     e.preventDefault();
-    var formData = $(this).serialize();
-    console.log(formData);
-    var url = "<?php echo base_url(); ?>auth/resetPass";
+    var formData = $(this).serializeArray();
+    var csrf = getCSRFToken();
+
+    // Append CSRF token
+    formData.push({ name: csrf.name, value: csrf.value });
+
+    var url = "<?= base_url(); ?>auth/resetPass";
     $.ajax({
-        url: url,
-        method: 'post',
-        data: formData,
-        success: function(result) {
-            setTimeout(function() {
-                $('.status').html(result);
-                show_notification('Successfully Updated', 'success'); // Using Lobibox notification
-                $('.status').html('');
-                $('.clear').click();
-            }, 3000);
+      url: url,
+      method: 'POST',
+      data: formData,
+      dataType: 'json',
+      success: function(result) {
+        setTimeout(function() {
+          $('.status').html(result.message || 'Updated.');
+          show_notification('Successfully Updated', 'success');
+          $('.status').html('');
+          $('.clear').click();
+        }, 3000);
+
+        if (result.new_csrf_hash) {
+          $('input[name="' + csrf.name + '"]').val(result.new_csrf_hash);
         }
+      }
     });
+  });
 });
-}); //doc ready
+</script>
 
 
-
-  </script>
