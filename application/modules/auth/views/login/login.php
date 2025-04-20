@@ -68,9 +68,11 @@
 
                 if (settings()->allow_form_login==1){
 
-                echo form_open_multipart(base_url('index.php/auth/cred_login'), array('id' => 'login', 'class' => 'login')); ?>
-                
+                     echo form_open_multipart(base_url('index.php/auth/cred_login'), array('id' => 'login', 'class' => 'login')); ?>
 
+                    <!-- CSRF Protection -->
+                    <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" 
+                           value="<?= $this->security->get_csrf_hash(); ?>" />
             <!-- Checkbox to toggle the form -->
             <label class="checkbox-label">
            
