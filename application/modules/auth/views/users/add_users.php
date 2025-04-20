@@ -18,12 +18,11 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
         <?php 
           echo form_open('auth/users', array(
+            'method' => 'get',
             'class' => 'form-horizontal',
             'style' => 'margin-top: 4px !important;'
           )); 
         ?>
-
-        <!-- ✅ Manually add CSRF token -->
         <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" 
               value="<?= $this->security->get_csrf_hash(); ?>">
 
@@ -37,7 +36,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
           </div>
         </div>
 
-        </form>
+      <?=form_close()?>
 
 
       </div>
