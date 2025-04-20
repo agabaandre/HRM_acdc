@@ -427,8 +427,8 @@ $config['sess_regenerate_destroy']= TRUE;
 $config['cookie_prefix']  = '';
 $config['cookie_domain']  = 'tools.africacdc.org/staff';
 $config['cookie_path']    = '/';
-$config['cookie_secure']  = TRUE;
-$config['cookie_httponly']   = TRUE;
+$config['cookie_secure']  = FALSE;
+$config['cookie_httponly']   = FALSE;
 
 /*
 |--------------------------------------------------------------------------
@@ -481,7 +481,6 @@ $config['csrf_exclude_uris'] = array(
     'settings/sysvariables',
     'settings/ppa_variables'
 );
-
 
 
 /*
