@@ -167,7 +167,7 @@ public function cred_login()
         return;
     }
 
-    $data['contract'] = $this->staff_mdl->get_latest_contracts(594);
+    $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->staff_id);
     //dd( $data['contract']);
 
     $users_array = (array)$data['users'];

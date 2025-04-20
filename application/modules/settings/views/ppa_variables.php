@@ -1,29 +1,35 @@
 <div class="row">
-	<div class="col-md-12">
-		<!-- general form elements disabled -->
-		<div class="card card-default">
-			<div class="card-header">
-				
-				<hr>
-			</div>
-			<!-- /.card-header -->
+  <div class="col-md-12">
+    <div class="card border shadow-sm">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">PPA System Configuration</h5>
+      </div>
 
-			<div class="card-body">
-				<?php echo form_open_multipart(base_url('settings/ppa_variables')); ?>
-				<?php foreach ($setting as $key => $value) { ?>
-					<div id="">
-						<label><?php echo strtoupper(str_replace("_", " ", $key)); ?></label>
-						<input type="text" class="form-control" name="<?php echo $key; ?>" style="width:100%; padding:10px;" value="<?php echo $value; ?>" if <?php if ($key == 'id') {
-																											echo "readonly";
-																										} ?>>
-					</div>
-				<?php  } ?>
+      <div class="card-body">
+        <?= form_open(base_url('settings/ppa_variables')) ?>
 
-				<button class="btn btn-success mt-3" type="submit"><span class="add"></span>Save</button>
+        <div class="row g-3">
+          <?php foreach ($setting as $key => $value): ?>
+            <div class="col-md-<?= ($key === 'id') ? '12' : '6' ?>">
+              <label class="form-label text-uppercase small fw-semibold"><?= str_replace("_", " ", $key) ?></label>
+              <input 
+                type="text" 
+                name="<?= $key ?>" 
+                class="form-control <?= ($key === 'id') ? 'bg-light' : '' ?>" 
+                value="<?= $value ?>" 
+                <?= ($key === 'id') ? 'readonly' : '' ?>>
+            </div>
+          <?php endforeach; ?>
+        </div>
 
-				</form>
-			</div>
-		</div>
-		<!-- /.card-body -->
-	</div>
+        <div class="mt-4 text-end">
+          <button class="btn btn-success px-4" type="submit">
+            <i class="fa fa-save me-1"></i> Save Settings
+          </button>
+        </div>
+
+        <?= form_close() ?>
+      </div>
+    </div>
+  </div>
 </div>
