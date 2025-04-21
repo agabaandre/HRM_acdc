@@ -477,7 +477,7 @@ $config['csrf_protection']       = TRUE;
 $config['csrf_token_name']       = 'africacdc_csrf_token';      // Use a more distinct name
 $config['csrf_cookie_name']      = 'africacdc_csrf_cookie';     // Separate from token name
 $config['csrf_expire']           = 7200;                         // 2 hours
-$config['csrf_regenerate']       = TRUE;                         // Regenerate token after each request
+$config['csrf_regenerate']       = FALSE;                         // Regenerate token after each request
 $config['csrf_exclude_uris']     = array(
     'settings/sysvariables',
     'settings/ppa_variables',
