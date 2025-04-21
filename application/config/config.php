@@ -480,7 +480,8 @@ $config['csrf_expire']           = 7200;                         // 2 hours
 $config['csrf_regenerate']       = TRUE;                         // Regenerate token after each request
 $config['csrf_exclude_uris']     = array(
     'settings/sysvariables',
-    'settings/ppa_variables'
+    'settings/ppa_variables',
+    'dashboard/search_staff'
 );
 
 
