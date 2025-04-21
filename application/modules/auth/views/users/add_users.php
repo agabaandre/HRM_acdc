@@ -77,7 +77,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
                 <td><span class="badge text-bg-primary"><?php echo $user->group_name; ?></span></td>
 
-                <td>
+                
                 <td>
                     <?php if ($user->status == 1): ?>
                         <span class="badge bg-success">Enabled</span>
@@ -85,6 +85,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
                         <span class="badge bg-secondary">Disabled</span>
                     <?php endif; ?>
                 </td>
+                <td>
 
                 <a href="<?php echo site_url('auth/impersonate/' . $user->user_id); ?>" class="btn btn-sm btn-warning">
                   <i class="fa fa-user-secret"></i> Impersonate
