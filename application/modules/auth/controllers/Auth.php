@@ -106,6 +106,7 @@ private function get_user_data($access_token) {
 }
 
 private function handle_login($user_data, $email) {
+  //dd($user_data->auth_staff_id);
     $data['contract'] = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
     $users_array = (array) $user_data;
     $contract_array = (array) $data['contract'];
