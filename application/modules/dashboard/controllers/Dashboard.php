@@ -57,12 +57,20 @@ class Dashboard extends MX_Controller
 
 	}
 	public function search_staff()
-{
-    $this->load->model('staff_mdl');
-    $query = $this->input->post('query');
-    $results = $this->dash_mdl->search_staff($query);
-    echo json_encode($results);
-}
+	{
+		$this->load->model('staff_mdl');
+		$query = $this->input->post('query');
+		$results = $this->dash_mdl->search_staff($query);
+	
+		$response = [
+			'data' => $results,
+			'csrfName' => $this->security->get_csrf_token_name(),
+			'csrfHash' => $this->security->get_csrf_hash()
+		];
+	
+		echo json_encode($response);
+	}
+	
 public function all_messages() {
     $data['module'] = $this->dashmodule;
     $data['title'] = "Main Dashboard";
