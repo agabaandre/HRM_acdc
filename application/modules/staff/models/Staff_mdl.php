@@ -200,6 +200,7 @@ class Staff_mdl extends CI_Model
 	
 		// Apply all staff filter (status_id IN (1,2))
 		$this->db->where_in('sc.status_id', [1,2,3,7]);
+		
 
 		// Handle filters for divsion_id & dutystation
 		if (!empty($filters['division_id'])) {
