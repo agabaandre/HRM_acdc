@@ -403,7 +403,7 @@ $config['encryption_key'] = '';
 
 $config['sess_driver']             = 'database';
 $config['sess_cookie_name']        = 'africacdc_attendance_session'; // More unique, avoids conflicts
-$config['sess_expiration']         = 7200;        // 2 hours (in seconds)
+$config['sess_expiration']         = 0;        // 2 hours (in seconds)
 $config['sess_save_path']          = 'access_sessions'; // Must match your DB table name
 $config['sess_match_ip'] = TRUE;
 $config['sess_time_to_update'] = 300;
