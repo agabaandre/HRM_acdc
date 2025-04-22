@@ -279,6 +279,7 @@ class Staff extends MX_Controller
 		$data['staff_id'] = $staff_id;
 		$filters = array('staff_id' => $staff_id);
 		$data['staffs'] = $this->staff_mdl->get_all_staff_data($filters,$per_page = 20, $page=0);
+
 		$staffs = $data['staffs'];
 		//dd($staffs);
 		$data['title'] = $staffs[0]->lname." ".$staffs[0]->fname;
@@ -286,6 +287,7 @@ class Staff extends MX_Controller
 		
 		render('new_contract', $data);
 	}
+
 	
 
 	function timer_after($time,$function)
@@ -303,6 +305,7 @@ class Staff extends MX_Controller
 	public function add_new_contract(){
 		$data['module'] = $this->module;
 		$data = $this->input->post();
+		//dd($data);
 		$new_contract = $this->staff_mdl->add_new_contract($data);
 		//dd($new_contract);
 		$staffid = $this->input->post('staff_id');

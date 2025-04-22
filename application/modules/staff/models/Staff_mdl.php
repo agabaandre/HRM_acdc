@@ -26,7 +26,7 @@ class Staff_mdl extends CI_Model
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
 			ct.contract_type, n.nationality, d.division_name, 
-			sc.first_supervisor, sc.second_supervisor,f.funder, ds.duty_station_name, 
+			sc.first_supervisor, sc.second_supervisor,f.funder, f.funder_id, ds.duty_station_name, 
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
 			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.photo,
@@ -175,7 +175,7 @@ class Staff_mdl extends CI_Model
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 
 			ct.contract_type, n.nationality, d.division_name, 
-			sc.first_supervisor, sc.second_supervisor,f.funder, ds.duty_station_name, 
+			sc.first_supervisor, sc.second_supervisor,f.funder,f.funder_id, ds.duty_station_name, 
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
 			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.photo,
@@ -334,7 +334,7 @@ class Staff_mdl extends CI_Model
 			'contracting_institution_id' => $this->input->post('contracting_institution_id'),
 			'funder_id' => $this->input->post('funder_id'),
 			'first_supervisor' => $this->input->post('first_supervisor'),
-			'second_supervisor' => $this->input->post('second_supervisor'),
+			'second_supervisor' => $this->input->post('second_supervisor') !== '' ? $this->input->post('second_supervisor') : NULL,
 			'contract_type_id' => $this->input->post('contract_type_id'),
 			'duty_station_id' => $this->input->post('duty_station_id'),
 			'division_id' => $this->input->post('division_id'),
@@ -345,10 +345,11 @@ class Staff_mdl extends CI_Model
 			'comments' => $this->input->post('comments'),
 		);
 		$this->db->insert('staff_contracts', $data);
+		$lastid = $this->db->insert_id();
 		if ($this->db->affected_rows() > 0) {
            
             $this->mark_enabled($this->input->post('staff_id'),$this->input->post('status_id')) ;
-			return $this->db->insert_id();
+			return  $lastid;
 
 		} else {
 			// Log or handle the error:
