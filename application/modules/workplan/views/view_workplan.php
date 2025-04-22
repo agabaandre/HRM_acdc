@@ -1,11 +1,12 @@
 <div class="container mt-4">
-<?php $this->load->view('tasks_tabs')?>
-    <!-- Toolbar Card -->
+    <?php $this->load->view('tasks_tabs') ?>
+
+    <!-- Toolbar -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
             <div class="row align-items-end g-3">
 
-                <!-- Create Button -->
+                <!-- Create New -->
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Create New</label>
                     <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#createModal">
@@ -21,8 +22,16 @@
                     </a>
                 </div>
 
+                <!-- Export to CSV -->
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Export Data</label>
+                    <button id="exportCsvBtn" class="btn btn-outline-success w-100">
+                        <i class="fa fa-file-csv me-1"></i> Export to CSV
+                    </button>
+                </div>
+
                 <!-- Search -->
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-semibold">Search Activity</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fa fa-search"></i></span>
@@ -42,34 +51,26 @@
                         ?>
                     </select>
                 </div>
-
             </div>
         </div>
     </div>
 
     <!-- Upload Form -->
-    <?= form_open_multipart('workplan/upload_workplan', [
-    'id' => 'uploadForm',
-    'class' => 'mb-4'
-        ]) ?>
-
+    <?= form_open_multipart('workplan/upload_workplan', ['id' => 'uploadForm', 'class' => 'mb-4']) ?>
         <div class="input-group shadow-sm">
             <input type="file" name="file" class="form-control" required>
             <button class="btn btn-success btn-sm" type="submit">
                 <i class="fa fa-upload me-1"></i> Upload Workplan
             </button>
         </div>
-    </form>
+    <?= form_close() ?>
 
     <!-- Workplan Table -->
     <div class="table-responsive">
-           <!-- Pagination -->
-    <nav style="float:left;">
-        <ul class="pagination justify-content-center mt-3" id="paginationContainer"></ul>
-    </nav>
         <table class="table table-bordered align-middle text-wrap">
             <thead class="table-dark text-center">
                 <tr>
+                    <th>#</th>
                     <th>Year</th>
                     <th>Division</th>
                     <th>Intermediate Outcome</th>
@@ -77,6 +78,7 @@
                     <th>Output Indicator</th>
                     <th>Target</th>
                     <th>Activity Name</th>
+                    <th>Has Budget</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -85,21 +87,21 @@
     </div>
 
     <!-- Pagination -->
-    <nav style="float:left;">
+    <nav>
         <ul class="pagination justify-content-center mt-3" id="paginationContainer"></ul>
     </nav>
-
 </div>
 
-<!-- Modals -->
 <?php $this->load->view('modals/edit_workplan'); ?>
 <?php $this->load->view('modals/add_workplan'); ?>
 
+<!-- Scripts -->
 <script>
-function show_notification(message, msgtype) {
-    Lobibox.notify(msgtype, {
+let latestFetchedData = [];
+
+function show_notification(message, type) {
+    Lobibox.notify(type, {
         pauseDelayOnHover: true,
-        continueDelayOnInactiveTab: false,
         position: 'top right',
         icon: 'bx bx-check-circle',
         msg: message
@@ -113,6 +115,7 @@ function fetchTasks(query = '', year = '') {
         data: { q: query, year: year },
         dataType: "json",
         success: function(data) {
+            latestFetchedData = data;
             renderPaginatedTable(data);
         }
     });
@@ -131,11 +134,13 @@ function renderPaginatedTable(data) {
         const pageItems = data.slice(start, end);
 
         if (pageItems.length === 0) {
-            html = `<tr><td colspan="8" class="text-center text-muted">No records found.</td></tr>`;
+            html = `<tr><td colspan="10" class="text-center text-muted">No records found.</td></tr>`;
         } else {
-            pageItems.forEach(item => {
+            pageItems.forEach((item, index) => {
+                const rowNumber = start + index + 1;
                 html += `
                     <tr>
+                        <td>${rowNumber}</td>
                         <td>${item.year}</td>
                         <td>${item.division_name}</td>
                         <td>${item.intermediate_outcome}</td>
@@ -143,6 +148,7 @@ function renderPaginatedTable(data) {
                         <td>${item.output_indicator}</td>
                         <td>${item.cumulative_target}</td>
                         <td>${item.activity_name}</td>
+                        <td>${item.has_budget == 1 ? 'Yes' : 'No'}</td>
                         <td>
                             <button class="btn btn-sm btn-primary mb-1" onclick="edit(${item.id})">
                                 <i class="fa fa-pencil-alt"></i>
@@ -198,60 +204,48 @@ function edit(id) {
         $('#edit_activity_name').val(task.activity_name);
         $('#edit_division_id').val(task.division_id);
         $('#edit_year').val(task.year);
+        $('#edit_has_budget').prop('checked', task.has_budget == 1);
         new bootstrap.Modal(document.getElementById('editModal')).show();
     });
 }
 
-// Event bindings
-// Utility function to get CSRF token name and value
-function getCSRFToken() {
-  return {
-    name: '<?= $this->security->get_csrf_token_name(); ?>',
-    value: $('input[name="<?= $this->security->get_csrf_token_name(); ?>"]').val()
-  };
+// CSV Export
+function convertToCSV(data) {
+    if (!data.length) return '';
+    const headers = Object.keys(data[0]);
+    const csvRows = [headers.join(',')];
+
+    data.forEach(row => {
+        const values = headers.map(h => `"${(row[h] ?? '').toString().replace(/"/g, '""')}"`);
+        csvRows.push(values.join(','));
+    });
+
+    return csvRows.join('\n');
 }
 
-// Edit form submission with CSRF
-$('#editForm').on('submit', function(e) {
-    e.preventDefault();
+function downloadCSV(data, filename) {
+    const csv = convertToCSV(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
-    var formData = $(this).serializeArray();
-    var csrf = getCSRFToken();
-    formData.push({ name: csrf.name, value: csrf.value });
+$('#exportCsvBtn').on('click', function () {
+    if (!latestFetchedData.length) {
+        show_notification('No data available to export.', 'warning');
+        return;
+    }
 
-    $.post("<?= site_url('workplan/update_task') ?>", formData, function(response) {
-        $('#editModal').modal('hide');
-        fetchTasks($('#searchBox').val(), $('#yearSelect').val());
-        show_notification('Workplan activity updated successfully', 'success');
-
-        // Optionally update token if you're using csrf_regenerate = TRUE
-        if (response.new_csrf_hash) {
-            $('input[name="' + csrf.name + '"]').val(response.new_csrf_hash);
-        }
-    });
+    const division = "<?= preg_replace('/[^a-zA-Z0-9_]/', '_', $this->session->userdata('user')->division_name ?? 'Division') ?>";
+    const filename = `Workplan_Export_${division}.csv`;
+    downloadCSV(latestFetchedData, filename);
 });
 
-// Create form submission with CSRF
-$('#createForm').on('submit', function(e) {
-    e.preventDefault();
-
-    var formData = $(this).serializeArray();
-    var csrf = getCSRFToken();
-    formData.push({ name: csrf.name, value: csrf.value });
-
-    $.post("<?= site_url('workplan/create_task') ?>", formData, function(response) {
-        $('#createModal').modal('hide');
-        $('#createForm')[0].reset();
-        fetchTasks($('#searchBox').val(), $('#yearSelect').val());
-        show_notification('New workplan activity added successfully', 'success');
-
-        if (response.new_csrf_hash) {
-            $('input[name="' + csrf.name + '"]').val(response.new_csrf_hash);
-        }
-    });
-});
-
-
+// Filters
 $('#searchBox, #yearSelect').on('input change', function() {
     fetchTasks($('#searchBox').val(), $('#yearSelect').val());
 });
@@ -260,7 +254,7 @@ $(document).ready(function() {
     fetchTasks();
 
     <?php if ($this->session->flashdata('msg')): ?>
-        show_notification("<?= $this->session->flashdata('type') ?>", "<?= $this->session->flashdata('msg') ?>");
+        show_notification("<?= $this->session->flashdata('msg') ?>", "<?= $this->session->flashdata('type') ?>");
     <?php endif; ?>
 });
 </script>
