@@ -21,12 +21,10 @@ class Auth extends MX_Controller
     $this->client_secret = $_ENV['CLIENT_SEC_VALUE'];
     $this->tenant_id = $_ENV['TENANT_ID'];
     $this->redirect_uri = base_url('auth/callback');
-    if (!$this->session->userdata('user')) {
-      redirect('auth', 'refresh');
-      exit;
+  
   }
    
-  }
+  
   public function index()
   {
 
@@ -162,36 +160,31 @@ private function get_user_data($access_token) {
 // }
 private function handle_login($user_data, $email) {
   if (empty($user_data)) {
-      // No user data found, go to login page
       $this->session->set_flashdata('error', 'Authentication failed. Please try again.');
       redirect('auth', 'refresh');
       exit;
   }
 
-  // Fetch latest contract and merge
   $contract = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
-  $users = array_merge((array) $user_data, (array) $contract);
-
-  // Clean sensitive info
+  $users = array_merge((array)$user_data, (array)$contract);
   unset($users['password']);
 
-  // Permissions and session
   $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
   $users['is_admin'] = false;
 
   $this->session->set_userdata('user', (object)$users);
-
-  // Log the event
   log_user_action("User Logged in Successfully using MS SSO: $email");
 
-  // Redirect safely
+  // Debugging line — check logs
+  log_message('debug', 'Redirecting with session: ' . json_encode($this->session->userdata('user')));
+
   if ($users['role'] == 17) {
       redirect('auth/profile', 'refresh');
   } else {
       redirect('dashboard/index', 'refresh');
   }
 
-  exit; // Ensure no further execution
+  exit;
 }
 
 public function cred_login()
