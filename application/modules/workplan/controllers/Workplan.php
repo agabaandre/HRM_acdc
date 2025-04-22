@@ -115,6 +115,7 @@ class Workplan extends MX_Controller {
             'output_indicator' => $this->input->post('output_indicator'),
             'cumulative_target' => $this->input->post('cumulative_target'),
             'activity_name' => $this->input->post('activity_name'),
+            'activity_name' => $this->input->post('has_budget'),
         ];
         $this->workplan_mdl->update($id, $data);
     }

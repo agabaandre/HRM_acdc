@@ -66,6 +66,11 @@
             </div>
           </div>
         </div>
+                  <!-- Has Budget -->
+          <div class="mb-3 form-check mt-3">
+            <input type="checkbox" class="form-check-input" id="edit_has_budget" name="has_budget" value="1">
+            <label class="form-check-label" for="edit_has_budget">This activity has a budget</label>
+          </div>
 
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">
