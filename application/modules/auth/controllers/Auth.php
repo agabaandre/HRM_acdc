@@ -128,10 +128,10 @@ private function handle_login($user_data, $email) {
          $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
           $users['is_admin'] = false;
           $_SESSION['user'] = (object)$users;
-          dd($_SESSION['user']);
-          // $log_message = "User Logged in Successfully using MS SSO";
-          // log_user_action($log_message);
-          redirect('dashboard');
+          //dd($_SESSION['user']);
+          $log_message = "User Logged in Successfully using MS SSO";
+          log_user_action($log_message);
+          redirect('dashboard/index');
 
        
       
