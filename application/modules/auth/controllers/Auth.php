@@ -129,8 +129,8 @@ private function handle_login($user_data, $email) {
           $users['is_admin'] = false;
           $_SESSION['user'] = (object)$users;
           //dd($user_data);
-          $log_message = "User Logged in Successfully using MS SSO";
-          log_user_action($log_message);
+          // $log_message = "User Logged in Successfully using MS SSO";
+          // log_user_action($log_message);
           redirect('dashboard');
 
        
