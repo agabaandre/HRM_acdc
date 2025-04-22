@@ -10,6 +10,7 @@
                     
                       
                          $staffs = $staffs[0];
+                       //  dd($staffs);
                         ?>
                     <div class="row">
 
@@ -94,7 +95,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="first_supervisor">First Supervisor:</label>
+                                <label for="first_supervisor">First Supervisor:<?php echo asterik()?></label>
                                 <select class="form-control select2" name="first_supervisor" id="first_supervisor" required>
                                     <option value="">Select First Supervisor</option>
                                     <?php $filters =array();
@@ -112,8 +113,8 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="second_supervisor">Second Supervisor:<?php echo asterik()?></label>
-                                <select class="form-control select2" name="second_supervisor" id="second_supervisor" required>
+                                <label for="second_supervisor">Second Supervisor:</label>
+                                <select class="form-control select2" name="second_supervisor" id="second_supervisor">
                                     <option value="">Select Second Supervisor</option>
                                     <?php 
                                      $filters =array();
