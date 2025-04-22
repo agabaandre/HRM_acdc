@@ -66,7 +66,7 @@ public function callback() {
         $postdata = ['email' => $email];
         $data['users'] = $this->auth_mdl->login($postdata);
 
-        dd($data['users']);
+        //dd($data['users']);
 
         if (!empty($data['users'])) {
             // Proceed with login
@@ -108,6 +108,7 @@ private function get_user_data($access_token) {
 
 private function handle_login($user_data, $email) {
   //dd($user_data->auth_staff_id);
+  dd($user_data);
     $data['contract'] = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
     $users_array = (array) $user_data;
     $contract_array = (array) $data['contract'];
