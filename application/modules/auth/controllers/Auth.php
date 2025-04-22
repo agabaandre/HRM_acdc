@@ -21,6 +21,10 @@ class Auth extends MX_Controller
     $this->client_secret = $_ENV['CLIENT_SEC_VALUE'];
     $this->tenant_id = $_ENV['TENANT_ID'];
     $this->redirect_uri = base_url('auth/callback');
+    if (!$this->session->userdata('user')) {
+      redirect('auth', 'refresh');
+      exit;
+  }
    
   }
   public function index()
@@ -106,56 +110,89 @@ private function get_user_data($access_token) {
     return $response ?? null;
 }
 
-private function handle_login($user_data, $email) {
-  //dd($user_data->auth_staff_id);
-  //dd($user_data);
-    $data['contract'] = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
-    $users_array = (array) $user_data;
-    $contract_array = (array) $data['contract'];
-    $users = array_merge($users_array, $contract_array);
+// private function handle_login($user_data, $email) {
+//   //dd($user_data->auth_staff_id);
+//   //dd($user_data);
+//     $data['contract'] = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
+//     $users_array = (array) $user_data;
+//     $contract_array = (array) $data['contract'];
+//     $users = array_merge($users_array, $contract_array);
     
-    $role = $user_data->role;
+//     $role = $user_data->role;
 
-    unset($users['password']);
-    $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
-    $users['is_admin'] = false;
-    $_SESSION['user'] = (object) $users;
+//     unset($users['password']);
+//     $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+//     $users['is_admin'] = false;
+//     $_SESSION['user'] = (object) $users;
 
-    //dd($data);
+//     //dd($data);
 
-    if (!empty($user_data)&& $role!=17 ) {
-      unset($users['password']);
-         $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
-          $users['is_admin'] = false;
-          $_SESSION['user'] = (object)$users;
-          //dd($_SESSION['user']);
-          $log_message = "User Logged in Successfully using MS SSO";
-          log_user_action($log_message);
-          redirect('dashboard/index');
+//     if (!empty($user_data)&& $role!=17 ) {
+//       unset($users['password']);
+//          $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+//           $users['is_admin'] = false;
+//           $_SESSION['user'] = (object)$users;
+//           //dd($_SESSION['user']);
+//           $log_message = "User Logged in Successfully using MS SSO";
+//           log_user_action($log_message);
+//           redirect('dashboard/index');
 
        
       
-  }
-  else if (!empty($user_data)&& $role==17 ) {
-    unset($users['password']);
-       $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
-        $users['is_admin'] = false;
-        $_SESSION['user'] = (object)$users;
-        $log_message = "User Logged in Successfully using MS SSO";
-        log_user_action($log_message);
-        redirect('auth/profile');
+//   }
+//   else if (!empty($user_data)&& $role==17 ) {
+//     unset($users['password']);
+//        $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+//         $users['is_admin'] = false;
+//         $_SESSION['user'] = (object)$users;
+//         $log_message = "User Logged in Successfully using MS SSO";
+//         log_user_action($log_message);
+//         redirect('auth/profile');
     
-}
-  else {
+// }
+//   else {
   
-      redirect('auth');
-  }
-}
+//       redirect('auth');
+//   }
+// }
 
 // public function logout() {
 //     $this->session->sess_destroy();
 //     redirect('https://login.microsoftonline.com/' . $this->tenant_id . '/oauth2/logout?post_logout_redirect_uri=' . base_url());
 // }
+private function handle_login($user_data, $email) {
+  if (empty($user_data)) {
+      // No user data found, go to login page
+      $this->session->set_flashdata('error', 'Authentication failed. Please try again.');
+      redirect('auth', 'refresh');
+      exit;
+  }
+
+  // Fetch latest contract and merge
+  $contract = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
+  $users = array_merge((array) $user_data, (array) $contract);
+
+  // Clean sensitive info
+  unset($users['password']);
+
+  // Permissions and session
+  $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  $users['is_admin'] = false;
+
+  $this->session->set_userdata('user', (object)$users);
+
+  // Log the event
+  log_user_action("User Logged in Successfully using MS SSO: $email");
+
+  // Redirect safely
+  if ($users['role'] == 17) {
+      redirect('auth/profile', 'refresh');
+  } else {
+      redirect('dashboard/index', 'refresh');
+  }
+
+  exit; // Ensure no further execution
+}
 
 public function cred_login()
 {
