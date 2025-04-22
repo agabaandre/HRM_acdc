@@ -71,27 +71,29 @@ class Workplan extends MX_Controller {
         redirect('workplan/index');
     }
     public function download_template() {
-        // Get sample data
-        $datas = $this->db->get('workplan_tasks')->limit(5)->result();
+        // Get 5 sample rows
+        $results = $this->db->limit(5)->get('workplan_tasks')->result();
     
-        // Get division from session
+        // Get division info from session
         $division_id = $this->session->userdata('user')->division_id;
         $division_name = $this->session->userdata('user')->division_name ?? 'Division';
     
-        // Replace division_id with session division in each row
-        foreach ($datas as &$row) {
-            $row->division_id = $division_id;
+        // Prepare final array with division_id replaced
+        $fd = [];
+        foreach ($results as $row) {
+            $row_array = (array) $row;
+            $row_array['division_id'] = $division_id; // override with session value
+            $fd[] = $row_array;
         }
     
-        // Clean up division name for filename (no spaces or special characters)
+        // Clean division name for filename
         $safe_division = preg_replace('/[^a-zA-Z0-9_]/', '_', $division_name);
-    
-        // Create filename with division
-        $file_name = 'Workplan_Upload_Template_' . $safe_division;
+        $file_name = 'Workplan_Upload_Template_' . $safe_division.'.csv';
     
         // Generate CSV
-        render_csv_data($datas, $file_name);
+        render_csv_data($fd, $file_name);
     }
+    
     
 
     public function delete($id) {
