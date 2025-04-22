@@ -1,4 +1,4 @@
-<div class="container mt-4">
+<div class="container-fluid mt-4">
     <?php $this->load->view('tasks_tabs') ?>
 
     <!-- Toolbar -->
