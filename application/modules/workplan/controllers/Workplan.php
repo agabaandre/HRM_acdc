@@ -45,13 +45,14 @@ class Workplan extends MX_Controller {
                     // Expected CSV column order:
                     // [0] => Intermediate Outcome, [1] => Broad Activity, [2] => Output Indicator, [3] => Cumulative Target, [4] => Activity Name
                     $data = [
-                        'division_id' => $division_id,
-                        'intermediate_outcome' => $row[0],
-                        'broad_activity' => $row[1],
-                        'output_indicator' => $row[2],
-                        'cumulative_target' => $row[3],
-                        'activity_name' => $row[4],
-                        'year' => date('Y')
+                        'division_id' => $row[0],
+                        'intermediate_outcome' => $row[1],
+                        'broad_activity' => $row[2],
+                        'output_indicator' => $row[3],
+                        'cumulative_target' => $row[4],
+                        'activity_name' => $row[5],
+                        'year' => $row[6],
+                        'has_budget' => $row[7],
                     ];
     
                     $this->workplan_mdl->insert($data);
@@ -68,6 +69,28 @@ class Workplan extends MX_Controller {
 		log_user_action($log_message);
         }
         redirect('workplan/index');
+    }
+    public function download_template() {
+        // Get sample data
+        $datas = $this->db->get('workplan_tasks')->limit(5)->result();
+    
+        // Get division from session
+        $division_id = $this->session->userdata('user')->division_id;
+        $division_name = $this->session->userdata('user')->division_name ?? 'Division';
+    
+        // Replace division_id with session division in each row
+        foreach ($datas as &$row) {
+            $row->division_id = $division_id;
+        }
+    
+        // Clean up division name for filename (no spaces or special characters)
+        $safe_division = preg_replace('/[^a-zA-Z0-9_]/', '_', $division_name);
+    
+        // Create filename with division
+        $file_name = 'Workplan_Upload_Template_' . $safe_division;
+    
+        // Generate CSV
+        render_csv_data($datas, $file_name);
     }
     
 
