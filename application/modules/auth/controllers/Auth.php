@@ -51,13 +51,13 @@ public function callback() {
     }
 
     $token = $this->get_access_token($this->input->get('code'));
-    dd($token);
+   // dd($token);
     if (!$token) {
         exit('Error retrieving access token.');
     }
 
     $user = $this->get_user_data($token);
-    //dd($user);
+    dd($user);
     if ($user) {
         $email = $user['mail'] ?? $user['userPrincipalName']; // Use mail or userPrincipalName if mail is missing
         $name = $user['displayName'];
