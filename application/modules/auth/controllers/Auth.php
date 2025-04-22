@@ -73,7 +73,7 @@ public function callback() {
         if (!empty($data['users'])) {
             // Proceed with login
             $this->handle_login($data['users'], $email);
-            exit;
+            
         } else {
 
             // Reject login
