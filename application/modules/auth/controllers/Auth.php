@@ -73,7 +73,9 @@ public function callback() {
         if (!empty($data['users'])) {
             // Proceed with login
             $this->handle_login($data['users'], $email);
+            exit;
         } else {
+
             // Reject login
             $this->session->set_flashdata('error', 'Staff profile missing. Contact HR.');
             redirect('auth');
