@@ -51,6 +51,7 @@ public function callback() {
     }
 
     $token = $this->get_access_token($this->input->get('code'));
+    dd($token);
     if (!$token) {
         exit('Error retrieving access token.');
     }

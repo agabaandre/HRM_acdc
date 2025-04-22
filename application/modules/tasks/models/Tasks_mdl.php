@@ -41,8 +41,11 @@ class Tasks_mdl extends CI_Model {
         if($output_id){
         $this->db->where('workplan_tasks.id', $output_id);
         }
+          // Apply filters if provided
+        $this->db->where('workplan_tasks.has_budget',1);
         $this->db->order_by('year', 'DESC');
         $this->db->order_by('created_at','DESC');
+       // dd($this->db->last_query());
         return $this->db->get('workplan_tasks')->result();
     }
     public function get_work_planner_tasks($staff_id = null, $output_id = null, $start_date = null, $end_date = null, $limit = null, $offset = null) {
@@ -157,7 +160,7 @@ class Tasks_mdl extends CI_Model {
         $this->db->select('*','divisions.division_name');
     $this->db->from('workplan_tasks');
     
-    // Apply filters if provided
+  
     $division_id = $this->session->userdata('user')->division_id;
     if (!empty($division_id)) {
         $this->db->where('divisions.division_id', $division_id);
