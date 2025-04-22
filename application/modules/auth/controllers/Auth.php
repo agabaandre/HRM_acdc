@@ -108,7 +108,7 @@ private function get_user_data($access_token) {
 
 private function handle_login($user_data, $email) {
   //dd($user_data->auth_staff_id);
-  dd($user_data);
+  //dd($user_data);
     $data['contract'] = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
     $users_array = (array) $user_data;
     $contract_array = (array) $data['contract'];
@@ -120,6 +120,8 @@ private function handle_login($user_data, $email) {
     $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
     $users['is_admin'] = false;
     $_SESSION['user'] = (object) $users;
+
+    dd($data);
 
     if (!empty($user_data)&& $role!=17 ) {
       unset($users['password']);
