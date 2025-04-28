@@ -197,10 +197,13 @@ public function auth($key){
 	}
 }
 
-public function get_staff(){
-    dd($this->staff_mdl->get_all_staff_data());
+public function get_current_staff(){
 
+    $filters = $this->input->get();
+    $limit = $filters['limit'];
+    $start = $filters['start'];
     
+return  $this->staff_mdl->get_active_staff_data($filters = array(), $limit = FALSE, $start = FALSE);   
 }
 
 
