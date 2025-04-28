@@ -339,7 +339,9 @@ $config['cache_query_string'] = FALSE;
 | https://codeigniter.com/user_guide/libraries/encryption.html
 |
 */
-$config['encryption_key'] = '';
+//$config['encryption_key'] = '';
+$config['encryption_key'] = 'X7@8d9LqZ#2rT8s!p9bDf1eYq0kFzLmN'; // 32+ random chars
+
 //$config['encryption_key'] = 'MySuperEncryptionKEY2017';
 /*
 |--------------------------------------------------------------------------
@@ -429,7 +431,7 @@ $config['cookie_prefix']  = '';
 $config['cookie_domain']  = '';
 $config['cookie_path']    = '/';
 $config['cookie_secure']  = FALSE;
-$config['cookie_httponly']   = FALSE;
+$config['cookie_httponly']   = TRUE;
 
 /*
 |--------------------------------------------------------------------------
