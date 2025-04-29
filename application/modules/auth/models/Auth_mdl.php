@@ -184,8 +184,8 @@ return $qry->num_rows();
 	// change password
 	public function changePass($postdata)
 	{
-		$oldpass = $this->argon->make($postdata['oldpass']);
-		$newpass = $this->argon->make($postdata['newpass']);
+		$oldpass = $this->argonhash->make($postdata['oldpass']);
+		$newpass = $this->argonhash->make($postdata['newpass']);
 		$user = $this->session->get_userdata();
 		$uid = $user['user_id'];
 		$this->db->select('password');
@@ -260,7 +260,6 @@ return $qry->num_rows();
 			log_message('error', 'STAFF update failed: ' . $this->db->last_query());
 			log_message('error', 'Error: ' . $this->db->_error_message());
 		} else {
-			// ✅ Refresh only relevant fields in session
 			$session_user = $this->session->userdata('user');
 	
 			foreach (['tel_1', 'tel_2', 'private_email', 'whatsapp', 'langauge'] as $key) {
