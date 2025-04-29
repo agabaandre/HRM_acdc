@@ -164,7 +164,7 @@ public function visualise($key)
 
 	
 public function auth($key){
-    if(($key=="YWZyY2FjZGNzdGFmZnRyYWNrZXI")||($key=="VZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")){
+    if(($key=="YWZyY2FjZGNzdGFmZnRyYWNrZXI")||($key=="VZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")||($key=="samZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")){
 		return true;
 	}
 		else{
@@ -197,13 +197,24 @@ public function auth($key){
 	}
 }
 
-public function get_current_staff(){
+public function get_current_staff($key){
+
+    if($this->auth($key)){
 
     $filters = $this->input->get();
     $limit = $filters['limit'];
     $start = $filters['start'];
     
-return  $this->staff_mdl->get_active_staff_data($filters = array(), $limit = FALSE, $start = FALSE);   
+$data =  $this->staff_mdl->get_active_staff_data($filters = array(), $limit = FALSE, $start = FALSE);   
+
+header('Content-Type: application/json');
+			echo json_encode($data);
+	}
+	else{
+		header('Content-Type: application/json');
+		echo json_encode(array('success'=> false,'error'=> 'Invalid Reuest'));
+	
+
 }
 
 
