@@ -117,7 +117,7 @@ input[type="number"] {
   <tr>
     <td><b>Position</b></td>
     <td><?= $contract->job_name ?></td>
-    <td><b>In this Position Since</b></td>
+    <td><b>Initiatition Date</b></td>
     <td><?= $contract->initiation_date ?></td>
   </tr>
   <tr>
