@@ -183,7 +183,7 @@ private function handle_login($user_data, $email) {
   if ($users['role'] == 17) {
       redirect('auth/profile', 'refresh');
   } else {
-      redirect('dashboard/index', 'refresh');
+      redirect('home/index', 'refresh');
   }
 
   exit;
@@ -223,7 +223,7 @@ public function cred_login()
         $_SESSION['user'] = (object)$users;
         $log_message = "User Logged in Successfully using Email and Password";
         log_user_action($log_message);
-        redirect('dashboard');
+        redirect('home');
     } elseif ($auth && !empty($data['users']) && $role == 17) {
         unset($users['password']);
         $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
@@ -231,7 +231,7 @@ public function cred_login()
         $_SESSION['user'] = (object)$users;
         $log_message = "User Logged in Successfully using Email and Password";
         log_user_action($log_message);
-        redirect('auth/profile');
+        redirect('home');
     } else {
         $this->session->set_flashdata('error', 'Incorrect password. Please try again.');
         redirect('auth'); // Redirect back to login page
