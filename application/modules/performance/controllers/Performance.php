@@ -22,6 +22,8 @@ class Performance extends MX_Controller
         $performance_period = str_replace(' ','-',current_period());
 		// Fetch existing plan if any
         $data['ppa'] = $this->employee_ppa($performance_period,$staff_id);
+
+        //dd($this->session->userdata('user'));
 		
 		render('plan', $data);
 	}
