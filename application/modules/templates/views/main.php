@@ -13,9 +13,11 @@ $defaultLangCode = $this->session->userdata('user')->langauge ?? 'en';
 //dd($ppa_exists);
 require_once('partials/css_files.php');
 require_once('partials/header.php');
+if($this->uri->segment(1)!='home'){
 include("partials/nav.php");
+}
 require_once('partials/breadcrumb.php');
-//print_r($session);
+//print_r($session);cd 
 
 
 //dd($ppa_exists);

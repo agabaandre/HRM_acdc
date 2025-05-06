@@ -37,7 +37,7 @@
     $session['base_url'] = base_url();
     $settings = [
       ['staff/dashboard', 'HR Dashbaord', 'bx-user', false],//admin /dashboard
-      ['http://localhost/laravel?token='.urlencode(base64_encode(json_encode($session))), 'BMS', 'bx-building', true],
+      [$session['base_url'].'bms?token='.urlencode(base64_encode(json_encode($session))), 'BMS', 'bx-building', true],
     ];
 
     foreach ($settings as [$path, $label, $icon, $absolute]) :
