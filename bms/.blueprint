@@ -1,0 +1,62 @@
+created:
+    - database/factories/StaffFactory.php
+    - database/factories/FundTypeFactory.php
+    - database/factories/DivisionFactory.php
+    - database/factories/DirectorateFactory.php
+    - database/factories/LocationFactory.php
+    - database/factories/BudgetFactory.php
+    - database/factories/MatrixFactory.php
+    - database/factories/RequestTypeFactory.php
+    - database/factories/ActivityFactory.php
+    - database/factories/ActivityApprovalTrailFactory.php
+    - database/factories/ServiceRequestFactory.php
+    - database/factories/ServiceRequestApprovalTrailFactory.php
+    - database/factories/NonTravelMemoFactory.php
+    - database/factories/NonTravelMemoCategoryFactory.php
+    - database/factories/NonTravelMemoApprovalTrailFactory.php
+    - database/migrations/2025_05_07_235333_create_staff_table.php
+    - database/migrations/2025_05_07_235334_create_fund_types_table.php
+    - database/migrations/2025_05_07_235335_create_divisions_table.php
+    - database/migrations/2025_05_07_235336_create_directorates_table.php
+    - database/migrations/2025_05_07_235337_create_locations_table.php
+    - database/migrations/2025_05_07_235338_create_budgets_table.php
+    - database/migrations/2025_05_07_235339_create_matrices_table.php
+    - database/migrations/2025_05_07_235340_create_request_types_table.php
+    - database/migrations/2025_05_07_235341_create_activities_table.php
+    - database/migrations/2025_05_07_235342_create_activity_approval_trails_table.php
+    - database/migrations/2025_05_07_235343_create_service_requests_table.php
+    - database/migrations/2025_05_07_235344_create_service_request_approval_trails_table.php
+    - database/migrations/2025_05_07_235345_create_non_travel_memos_table.php
+    - database/migrations/2025_05_07_235346_create_non_travel_memo_categories_table.php
+    - database/migrations/2025_05_07_235347_create_non_travel_memo_approval_trails_table.php
+    - app/Models/Staff.php
+    - app/Models/FundType.php
+    - app/Models/Division.php
+    - app/Models/Directorate.php
+    - app/Models/Location.php
+    - app/Models/Budget.php
+    - app/Models/Matrix.php
+    - app/Models/RequestType.php
+    - app/Models/Activity.php
+    - app/Models/ActivityApprovalTrail.php
+    - app/Models/ServiceRequest.php
+    - app/Models/ServiceRequestApprovalTrail.php
+    - app/Models/NonTravelMemo.php
+    - app/Models/NonTravelMemoCategory.php
+    - app/Models/NonTravelMemoApprovalTrail.php
+models:
+    Staff: { staff_id: 'integer unique', work_email: 'string unique', sap_no: string, title: 'string nullable', fname: string, lname: string, oname: 'string nullable', grade: 'string nullable', gender: string, date_of_birth: date, job_name: 'string nullable', contracting_institution: 'string nullable', contract_type: 'string nullable', nationality: 'string nullable', division_name: 'string nullable', division_id: 'id nullable', duty_station_id: 'id nullable', status: 'string nullable', tel_1: 'string nullable', whatsapp: 'string nullable', private_email: 'string nullable', photo: 'string nullable', physical_location: 'string nullable', relationships: { belongsTo: Division, hasMany: 'Matrix, Activity, NonTravelMemo' } }
+    FundType: { name: string, relationships: { hasMany: FundCode } }
+    Division: { name: string, staff_ids: json, is_external: boolean, directorate_id: id, is_active: boolean, relationships: { hasMany: 'FundCode, Matrix, Staff', belongsTo: Directorate } }
+    Directorate: { name: string, is_active: boolean }
+    Location: { name: text }
+    Budget: { division_id: 'id foreign', code: string, year: year, amount: 'decimal:16,2', balance: 'decimal:16,2', relationships: { belongsTo: Division } }
+    Matrix: { focal_person_id: 'id foreign', division_id: 'id foreign', year: year, quarter: 'enum:Q1,Q2,Q3,Q4', key_result_area: json, relationships: { belongsTo: 'Division, Staff', hasMany: 'Activity, ActivityApprovalTrail' } }
+    RequestType: { name: string, relationships: { hasMany: 'Activity, SpecialMemo, NonTravelMemo' } }
+    Activity: { forward_workflow_id: id, reverse_workflow_id: id, workplan_activity_code: string, matrix_id: 'id foreign', staff_id: 'id foreign', date_from: date, date_to: date, location_id: json, total_participants: integer, internal_participants: json, budget_id: json, key_result_area: text, request_type_id: 'id foreign', activity_title: string, background: text, activity_request_remarks: text, is_sepecial_memo: 'boolean default false', budget: json, attachment: json, relationships: { belongsTo: 'Matrix, RequestType, Staff', hasMany: 'ServiceRequest, ActivityApprovalTrail' } }
+    ActivityApprovalTrail: { matrix_id: 'id foreign', activity_id: 'id foreign', action: string, remarks: 'text nullable', relationships: { belongsTo: 'Activity, Matrix' } }
+    ServiceRequest: { activity_id: 'id foreign', workflow_id: id, reverse_workflow_id: id, approval_status: 'enum:pending,approved,rejected', relationships: { belongsTo: Activity, hasMany: ServiceRequestApprovalTrail } }
+    ServiceRequestApprovalTrail: { service_request_id: 'id foreign', action: string, remarks: 'text nullable', relationships: { belongsTo: ServiceRequest } }
+    NonTravelMemo: { forward_workflow_id: id, reverse_workflow_id: id, workplan_activity_code: string, staff_id: 'id foreign', memo_date: date, location_id: json, non_travel_memo_category_id: 'id foreign', budget_id: json, activity_title: string, background: text, activity_request_remarks: text, justification: text, budget_breakdown: json, attachment: json, relationships: { belongsTo: 'Staff, NonTravelMemoCategory', hasMany: 'ServiceRequest, ServiceRequestApprovalTrail' } }
+    NonTravelMemoCategory: { name: string, relationships: { hasMany: 'Activity, SpecialMemo, NonTravelMemo' } }
+    NonTravelMemoApprovalTrail: { non_travel_memo_id: 'id foreign', action: string, remarks: 'text nullable', relationships: { belongsTo: NonTravelMemo } }

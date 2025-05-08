@@ -4,10 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Division extends Model
+class FundType extends Model
 {
     use HasFactory;
 
@@ -18,10 +17,6 @@ class Division extends Model
      */
     protected $fillable = [
         'name',
-        'staff_ids',
-        'is_external',
-        'directorate_id',
-        'is_active',
     ];
 
     /**
@@ -33,30 +28,11 @@ class Division extends Model
     {
         return [
             'id' => 'integer',
-            'staff_ids' => 'array',
-            'is_external' => 'boolean',
-            'directorate_id' => 'integer',
-            'is_active' => 'boolean',
         ];
     }
 
     public function fundCodes(): HasMany
     {
         return $this->hasMany(FundCode::class);
-    }
-
-    public function matrices(): HasMany
-    {
-        return $this->hasMany(Matrix::class);
-    }
-
-    public function staff(): HasMany
-    {
-        return $this->hasMany(Staff::class);
-    }
-
-    public function directorate(): BelongsTo
-    {
-        return $this->belongsTo(Directorate::class);
     }
 }
