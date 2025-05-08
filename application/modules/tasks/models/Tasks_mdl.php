@@ -42,7 +42,7 @@ class Tasks_mdl extends CI_Model {
         $this->db->where('workplan_tasks.id', $output_id);
         }
           // Apply filters if provided
-        $this->db->where('workplan_tasks.has_budget',1);
+       // $this->db->where('workplan_tasks.has_budget',1);
         $this->db->order_by('year', 'DESC');
         $this->db->order_by('created_at','DESC');
        // dd($this->db->last_query());
@@ -184,6 +184,8 @@ class Tasks_mdl extends CI_Model {
     $this->db->join('divisions','divisions.division_id=workplan_tasks.division_id');
   
     $query = $this->db->get();
+
+    //dd($this->db->last_query());
     return $query->result();
     
     }
