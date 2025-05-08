@@ -19,9 +19,12 @@
           <!-- Output Selection -->
           <div class="mb-4">
             <label for="output" class="form-label fw-bold">Work Plan Activity:</label>
-            <?php @$division_id = $this->session->userdata('user')->division_id; ?>
+            <?php @$division_id = $this->session->userdata('user')->division_id; 
+            
+       ?>
+
             <select name="quarterly_output_id" class="form-select select2" required>
-              <option value="">Select Output</option>
+              <option value="">Select Workplan Activity</option>
               <?php foreach ($outputs as $deliverable): ?>
 
                 <?php 
@@ -48,27 +51,30 @@
                   <th>Comments</th>
                 </tr>
               </thead>
-              <tbody>
-                <?php for ($i = 0; $i < 3; $i++): ?>
-                  <tr>
-                    <td>
-                      <input type="text" name="activity_name[]" class="form-control" required>
-                      <div class="invalid-feedback">Required</div>
-                    </td>
-                    <td>
-                      <input type="text" name="start_date[]" class="form-control datepicker" required autocomplete="off">
-                      <div class="invalid-feedback">Required</div>
-                    </td>
-                    <td>
-                      <input type="text" name="end_date[]" class="form-control datepicker" required autocomplete="off">
-                      <div class="invalid-feedback">Required</div>
-                    </td>
-                    <td>
-                      <textarea name="comments[]" class="form-control" rows="1"></textarea>
-                    </td>
-                  </tr>
-                <?php endfor; ?>
-              </tbody>
+              <tbody id="activityRows">
+  <tr class="activity-row">
+    <td>
+      <input type="text" name="activity_name[]" class="form-control" required>
+      <div class="invalid-feedback">Required</div>
+    </td>
+    <td>
+      <input type="text" name="start_date[]" class="form-control datepicker" required autocomplete="off">
+      <div class="invalid-feedback">Required</div>
+    </td>
+    <td>
+      <input type="text" name="end_date[]" class="form-control datepicker" required autocomplete="off">
+      <div class="invalid-feedback">Required</div>
+    </td>
+    <td>
+      <div class="d-flex">
+        <textarea name="comments[]" class="form-control me-2" rows="1"></textarea>
+        <button type="button" class="btn btn-success btn-sm add-row me-1"><i class="fa fa-plus"></i></button>
+        <button type="button" class="btn btn-danger btn-sm remove-row"><i class="fa fa-trash"></i></button>
+      </div>
+    </td>
+  </tr>
+</tbody>
+
             </table>
           </div>
 
@@ -87,7 +93,8 @@
 <button class="btn btn-dark mb-3" data-bs-toggle="modal" data-bs-target="#addActivitiesModal">
   <i class="fa fa-plus-circle me-1"></i> Add Sub-Activities
 </button>
-
+<?php      
+           // dd(count($outputs))?> 
 <!-- Activities Table -->
 <div class="table-responsive mt-3">
     <table class="table table-bordered" id="activitiesTable">
@@ -401,3 +408,44 @@ $(document).ready(function () {
     }
 });
 </script>
+
+
+<script>
+$(document).ready(function () {
+  const minRows = 1;
+
+  function updateRemoveButtons() {
+    const rowCount = $('#activityRows .activity-row').length;
+    $('.remove-row').prop('disabled', rowCount <= minRows);
+  }
+
+  // Handle add row
+  $('#activityRows').on('click', '.add-row', function () {
+    const newRow = $(this).closest('tr').clone();
+    newRow.find('input, textarea').val('');
+    $('#activityRows').append(newRow);
+    updateRemoveButtons();
+  });
+
+  // Handle remove row
+  $('#activityRows').on('click', '.remove-row', function () {
+    const rowCount = $('#activityRows .activity-row').length;
+    if (rowCount > minRows) {
+      $(this).closest('tr').remove();
+      updateRemoveButtons();
+    }
+  });
+
+  updateRemoveButtons();
+
+  // Initialize datepickers
+  $(document).on('focus', '.datepicker', function () {
+    $(this).datepicker({
+      autoclose: true,
+      todayHighlight: true,
+      format: 'yyyy-mm-dd'
+    });
+  });
+});
+</script>
+
