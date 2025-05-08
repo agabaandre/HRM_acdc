@@ -36,7 +36,6 @@ class Workplan extends MX_Controller {
         if (!empty($_FILES['file']['name'])) {
             $file = $_FILES['file']['tmp_name'];
             $division_id = $this->session->userdata('user')->division_id ?: 21; // fallback to 21 (MIS)
-    
             // Open and read CSV
             if (($handle = fopen($file, 'r')) !== FALSE) {
                 $header = fgetcsv($handle); // skip header row

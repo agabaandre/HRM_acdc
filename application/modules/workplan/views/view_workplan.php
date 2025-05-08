@@ -56,6 +56,11 @@
     </div>
 
     <!-- Upload Form -->
+     <?php 
+     
+     $session = $this->session->userdata('user');
+     $permissions = $session->permissions;?>
+    <?php if (in_array('86', $permissions)) : ?>
     <?= form_open_multipart('workplan/upload_workplan', ['id' => 'uploadForm', 'class' => 'mb-4']) ?>
         <div class="input-group shadow-sm">
             <input type="file" name="file" class="form-control" required>
@@ -64,6 +69,7 @@
             </button>
         </div>
     <?= form_close() ?>
+    <?php endif; ?>
 
     <!-- Workplan Table -->
     <div class="table-responsive">
