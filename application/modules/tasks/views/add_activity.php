@@ -433,11 +433,13 @@
                 altInput: true,
                 altFormat: "F j, Y",
                 dateFormat: "Y-m-d",
-                allowInput: true
+                allowInput: true,
+                appendTo: document.body // 👈 Ensure correct positioning
             });
         }
 
-        // Initialize on first load
+
+        // Initialize flatpickr on existing datepickers
         $('.datepicker').each(function() {
             initFlatpickr(this);
         });
@@ -449,32 +451,34 @@
 
         // Add new row
         $('#activityRows').on('click', '.add-row', function() {
-            const currentRow = $(this).closest('tr');
+            // Create new row from clean HTML, not a clone of an existing one
+            const newRow = `
+                <tr class="activity-row">
+                    <td>
+                        <input type="text" name="activity_name[]" class="form-control" required>
+                        <div class="invalid-feedback">Required</div>
+                    </td>
+                    <td>
+                        <input type="text" name="start_date[]" class="form-control datepicker" required autocomplete="off">
+                        <div class="invalid-feedback">Required</div>
+                    </td>
+                    <td>
+                        <input type="text" name="end_date[]" class="form-control datepicker" required autocomplete="off">
+                        <div class="invalid-feedback">Required</div>
+                    </td>
+                    <td>
+                        <div class="d-flex">
+                            <textarea name="comments[]" class="form-control me-2" rows="1"></textarea>
+                            <button type="button" class="btn btn-success btn-sm add-row me-1"><i class="fa fa-plus"></i></button>
+                            <button type="button" class="btn btn-danger btn-sm remove-row"><i class="fa fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
 
-            // Destroy existing flatpickr to avoid duplicating DOM
-            currentRow.find('.datepicker').each(function() {
-                if (this._flatpickr) {
-                    this._flatpickr.destroy();
-                }
-            });
-
-            // Clone and clean the row
-            const newRow = currentRow.clone();
-
-            // Remove flatpickr-generated DOM elements
-            newRow.find('.flatpickr-input').remove(); // This removes the alt input if generated
-
-            // Reset values in cloned row
-            newRow.find('input, textarea').val('');
-
-            // Re-apply 'datepicker' class if it got stripped
-            newRow.find('input[name="start_date[]"], input[name="end_date[]"]').addClass('datepicker');
-
-            // Append the clean new row
             $('#activityRows').append(newRow);
 
-            // Re-initialize flatpickr on the new row only
-            newRow.find('.datepicker').each(function() {
+            // Only initialize flatpickr on new fields
+            $('#activityRows tr:last .datepicker').each(function() {
                 initFlatpickr(this);
             });
 
