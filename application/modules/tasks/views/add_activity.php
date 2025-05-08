@@ -409,43 +409,75 @@ $(document).ready(function () {
 });
 </script>
 
-
 <script>
 $(document).ready(function () {
   const minRows = 1;
+
+  function initFlatpickr(elem) {
+    flatpickr(elem, {
+      theme: "confetti",
+      altInput: true,
+      altFormat: "F j, Y",
+      dateFormat: "Y-m-d",
+      allowInput: true
+    });
+  }
+
+  // Initialize on first load
+  $('.datepicker').each(function () {
+    initFlatpickr(this);
+  });
 
   function updateRemoveButtons() {
     const rowCount = $('#activityRows .activity-row').length;
     $('.remove-row').prop('disabled', rowCount <= minRows);
   }
 
-  // Handle add row
+  // Add new row
   $('#activityRows').on('click', '.add-row', function () {
-    const newRow = $(this).closest('tr').clone();
+    const currentRow = $(this).closest('tr');
+
+    // Destroy existing flatpickr to avoid duplicating DOM
+    currentRow.find('.datepicker').each(function () {
+      if (this._flatpickr) {
+        this._flatpickr.destroy();
+      }
+    });
+
+    // Clone and clean the row
+    const newRow = currentRow.clone();
+
+    // Remove flatpickr-generated DOM elements
+    newRow.find('.flatpickr-input').remove(); // This removes the alt input if generated
+
+    // Reset values in cloned row
     newRow.find('input, textarea').val('');
+
+    // Re-apply 'datepicker' class if it got stripped
+    newRow.find('input[name="start_date[]"], input[name="end_date[]"]').addClass('datepicker');
+
+    // Append the clean new row
     $('#activityRows').append(newRow);
+
+    // Re-initialize flatpickr on the new row only
+    newRow.find('.datepicker').each(function () {
+      initFlatpickr(this);
+    });
+
     updateRemoveButtons();
   });
 
-  // Handle remove row
+  // Remove row
   $('#activityRows').on('click', '.remove-row', function () {
-    const rowCount = $('#activityRows .activity-row').length;
-    if (rowCount > minRows) {
+    if ($('#activityRows .activity-row').length > minRows) {
       $(this).closest('tr').remove();
       updateRemoveButtons();
     }
   });
 
   updateRemoveButtons();
-
-  // Initialize datepickers
-  $(document).on('focus', '.datepicker', function () {
-    $(this).datepicker({
-      autoclose: true,
-      todayHighlight: true,
-      format: 'yyyy-mm-dd'
-    });
-  });
 });
 </script>
+
+
 
