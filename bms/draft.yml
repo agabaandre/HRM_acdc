@@ -1,0 +1,153 @@
+models:
+  Staff:
+    staff_id: integer unique
+    work_email: string unique
+    sap_no: string
+    title: string nullable
+    fname: string
+    lname: string
+    oname: string nullable
+    grade: string nullable
+    gender: string
+    date_of_birth: date
+    job_name: string nullable
+    contracting_institution: string nullable
+    contract_type: string nullable
+    nationality: string nullable
+    division_name: string nullable
+    division_id: id nullable
+    duty_station_id: id nullable
+    status: string nullable
+    tel_1: string nullable
+    whatsapp: string nullable
+    private_email: string nullable
+    photo: string nullable
+    physical_location: string nullable
+    relationships:
+      belongsTo: Division
+      hasMany: Matrix, Activity, NonTravelMemo
+
+  FundType:
+    name: string
+    relationships:
+      hasMany: FundCode
+
+  Division:
+    name: string
+    staff_ids: json
+    is_external: boolean
+    directorate_id: id
+    is_active: boolean
+    relationships:
+      hasMany: FundCode, Matrix, Staff
+      belongsTo: Directorate
+
+  Directorate:
+    name: string
+    is_active: boolean
+
+  Location:
+    name: text
+
+  Budget:
+    division_id: id foreign
+    code: string
+    year: year
+    amount: decimal:16,2
+    balance: decimal:16,2
+    relationships:
+      belongsTo: Division
+
+  Matrix:
+    focal_person_id: id foreign
+    division_id: id foreign
+    year: year
+    quarter: enum:Q1,Q2,Q3,Q4
+    key_result_area: json
+    relationships:
+      belongsTo: Division, Staff
+      hasMany: Activity, ActivityApprovalTrail
+
+  RequestType:
+    name: string
+    relationships:
+      hasMany: Activity, SpecialMemo, NonTravelMemo
+
+  Activity:
+    forward_workflow_id: id
+    reverse_workflow_id: id
+    workplan_activity_code: string
+    matrix_id: id foreign
+    staff_id: id foreign
+    date_from: date
+    date_to: date
+    location_id: json
+    total_participants: integer
+    internal_participants: json
+    budget_id: json
+    key_result_area: text
+    request_type_id: id foreign
+    activity_title: string
+    background: text
+    activity_request_remarks: text
+    is_sepecial_memo: boolean default false
+    budget: json
+    attachment: json
+    relationships:
+      belongsTo: Matrix, RequestType, Staff
+      hasMany: ServiceRequest, ActivityApprovalTrail
+
+  ActivityApprovalTrail:
+    matrix_id: id foreign
+    activity_id: id foreign
+    action: string
+    remarks: text nullable
+    relationships:
+      belongsTo: Activity, Matrix
+
+  ServiceRequest:
+    activity_id: id foreign
+    workflow_id: id
+    reverse_workflow_id: id
+    approval_status: enum:pending,approved,rejected
+    relationships:
+      belongsTo: Activity
+      hasMany: ServiceRequestApprovalTrail
+
+  ServiceRequestApprovalTrail:
+    service_request_id: id foreign
+    action: string
+    remarks: text nullable
+    relationships:
+      belongsTo: ServiceRequest
+
+  NonTravelMemo:
+    forward_workflow_id: id
+    reverse_workflow_id: id
+    workplan_activity_code: string
+    staff_id: id foreign
+    memo_date: date
+    location_id: json
+    non_travel_memo_category_id: id foreign
+    budget_id: json
+    activity_title: string
+    background: text
+    activity_request_remarks: text
+    justification: text
+    budget_breakdown: json
+    attachment: json
+    relationships:
+      belongsTo: Staff, NonTravelMemoCategory
+      hasMany: ServiceRequest, ServiceRequestApprovalTrail
+
+  NonTravelMemoCategory:
+    name: string
+    relationships:
+      hasMany: Activity, SpecialMemo, NonTravelMemo
+
+  NonTravelMemoApprovalTrail:
+    non_travel_memo_id: id foreign
+    action: string
+    remarks: text nullable
+    relationships:
+      belongsTo: NonTravelMemo

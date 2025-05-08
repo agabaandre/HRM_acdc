@@ -175,18 +175,21 @@ private function handle_login($user_data, $email) {
   $users['is_admin'] = false;
 
   $this->session->set_userdata('user', (object)$users);
-  log_user_action("User Logged in Successfully using MS SSO: $email");
+  //log_user_action("User Logged in Successfully using MS SSO: $email");
 
   // Debugging line — check logs
-  log_message('debug', 'Redirecting with session: ' . json_encode($this->session->userdata('user')));
+  //log_message('debug', 'Redirecting with session: ' . json_encode($this->session->userdata('user')));
 
-  if ($users['role'] == 17) {
-      redirect('auth/profile', 'refresh');
-  } else {
+
+  if ($users['role']) {
       redirect('home/index', 'refresh');
   }
+  else{
+    $this->session->set_flashdata('error', 'Incorrect password. Please try again.');
+        redirect('auth'); // Redirect back to login page
+  }
 
-  exit;
+ 
 }
 
 public function cred_login()
@@ -216,7 +219,7 @@ public function cred_login()
     $role = $data['users']->role;
     $auth = $this->validate_password($post_password, $dbpassword);
 
-    if ($auth && !empty($data['users']) && $role != 17) {
+    if ($auth && !empty($data['users'])) {
         unset($users['password']);
         $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
         $users['is_admin'] = false;
@@ -224,15 +227,7 @@ public function cred_login()
         $log_message = "User Logged in Successfully using Email and Password";
         log_user_action($log_message);
         redirect('home');
-    } elseif ($auth && !empty($data['users']) && $role == 17) {
-        unset($users['password']);
-        $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
-        $users['is_admin'] = false;
-        $_SESSION['user'] = (object)$users;
-        $log_message = "User Logged in Successfully using Email and Password";
-        log_user_action($log_message);
-        redirect('home');
-    } else {
+    }else{
         $this->session->set_flashdata('error', 'Incorrect password. Please try again.');
         redirect('auth'); // Redirect back to login page
     }
