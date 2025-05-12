@@ -107,26 +107,49 @@ class Workplan extends MX_Controller {
     }
     
     public function update_task() {
-        $id = $this->input->post('id');
-        $data = [
-            'intermediate_outcome' => $this->input->post('intermediate_outcome'),
-            'broad_activity' => $this->input->post('broad_activity'),
-            'output_indicator' => $this->input->post('output_indicator'),
-            'cumulative_target' => $this->input->post('cumulative_target'),
-            'activity_name' => $this->input->post('activity_name'),
-            'activity_name' => $this->input->post('has_budget'),
-        ];
-        $this->workplan_mdl->update($id, $data);
+        if ($this->input->method() === 'post') {
+            $id = $this->input->post('id');
+            $data = [
+                'intermediate_outcome' => $this->input->post('intermediate_outcome'),
+                'broad_activity'       => $this->input->post('broad_activity'),
+                'output_indicator'     => $this->input->post('output_indicator'),
+                'cumulative_target'    => $this->input->post('cumulative_target'),
+                'activity_name'        => $this->input->post('activity_name'),
+                'year'                 => $this->input->post('year'),
+                'division_id'          => $this->input->post('division_id'),
+                'has_budget'           => $this->input->post('has_budget') ? 1 : 0
+            ];
+    
+            if ($this->workplan_mdl->update($id, $data)) {
+                echo json_encode(['status' => 'success']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to update workplan.']);
+            }
+        } else {
+            show_404();
+        }
     }
+    
     public function get_workplan_by_id($id) {
         echo json_encode($this->workplan_mdl->get_by_id($id));
     }
     
     public function create_task() {
-        $data = $this->input->post();
-        $data['division_id'] = $this->session->userdata('user')->division_id ?: 21;
-        $this->workplan_mdl->insert($data);
+        if ($this->input->method() === 'post') {
+            $data = $this->input->post();
+            $data['division_id'] = $this->session->userdata('user')->division_id ?: 21;
+            $data['has_budget'] = $this->input->post('has_budget') ? 1 : 0;
+    
+            if ($this->workplan_mdl->insert($data)) {
+                echo json_encode(['status' => 'success']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to create workplan.']);
+            }
+        } else {
+            show_404();
+        }
     }
+    
     
     
 }
