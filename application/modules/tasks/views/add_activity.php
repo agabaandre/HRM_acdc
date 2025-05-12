@@ -105,9 +105,9 @@
                 <th>Work Plan Actvity</th>
                 <th>Start Date</th>
                 <th>End Date</th>
+                <th>Team Lead</th>
                 <th>Comments</th>
                 <th>Reporting Date</th>
-                <!-- <th>Status</th> -->
                 <th>Actions</th>
             </tr>
         </thead>
@@ -258,6 +258,9 @@
                     data: 'end_date'
                 },
                 {
+                    data: 'team_lead'
+                },
+                {
                     data: 'comments',
                     createdCell: function(td) {
                         $(td).addClass('text-wrap');
@@ -287,6 +290,7 @@
                                 data-reportname="${row.activity_name}"
                                 data-reportstart_date="${row.start_date}"
                                 data-reportend_date="${row.end_date}"
+
                                 data-reportdescription="${row.report || ''}">
                                 <i class="fa fa-book"></i> Report
                             </button>`;
