@@ -833,8 +833,8 @@
 </script>
 
 <script>
-  $(document).ready(function() {
-    // Today's date at midnight
+  $(document).ready(function () {
+    // Set today's date to midnight
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -856,9 +856,8 @@
     const nextFriday = new Date(nextMonday);
     nextFriday.setDate(nextMonday.getDate() + 4);
 
-    // Collect allowed dates (weekdays only: Mon–Fri for both weeks)
+    // Allowed weekdays (Mon–Fri from both weeks)
     const allowedDates = [];
-
     for (let d = new Date(thisMonday); d <= nextFriday; d.setDate(d.getDate() + 1)) {
       const day = d.getDay(); // 0=Sun, 6=Sat
       if (day !== 0 && day !== 6) {
@@ -866,15 +865,20 @@
       }
     }
 
+    // Initialize flatpickr with Monday as the first day
     $('.activity-dates').flatpickr({
       altInput: true,
       altFormat: "F j, Y",
       dateFormat: "Y-m-d",
       allowInput: true,
-      enable: allowedDates.map(d => d.toISOString().split('T')[0]) // Convert to "YYYY-MM-DD"
+      enable: allowedDates.map(d => d.toISOString().split('T')[0]),
+      locale: {
+        firstDayOfWeek: 1 // Monday
+      }
     });
   });
 </script>
+
 
 
 
