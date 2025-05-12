@@ -3,17 +3,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Weektasks_mdl extends CI_Model {
 
-    public function get_sub_activities() {
-        $division_id = $this->session->userdata('user')->division_id;
-        return $this->db
-            ->select('wpt.activity_id, wpt.activity_name')
-            ->from('work_planner_tasks wpt')
-            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
-            ->where('wt.division_id', $division_id)
-            ->get()
-            ->result();
-    }
-
     public function insert_task($data) {
         $log_message = "Added weekly activities";
 		log_user_action($log_message);

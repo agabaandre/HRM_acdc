@@ -15,14 +15,24 @@
        value="<?= $this->security->get_csrf_hash(); ?>">
 
     <div class="modal-body">
+
+        <!-- Team Lead -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Team Lead</label>
+        <select name="team_lead" id="team_lead_select" class="form-select select2" required>
+          <option value="">Select</option>
+          <?php foreach ($team_leads as $leader): ?>
+            <option value="<?= $leader->staff_id ?>"><?= $leader->fname . ' ' . $leader->lname ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
       <!-- Sub Activity -->
       <div class="mb-3">
         <label class="form-label fw-semibold">Sub-Activity</label>
-        <select name="work_planner_tasks_id" class="form-select select2" required>
+        <select name="work_planner_tasks_id" id="sub_activity_select" class="form-select select2" required>
           <option value="">Select</option>
-          <?php foreach ($outputs as $o): ?>
-            <option value="<?= $o->activity_id ?>"><?= $o->activity_name ?></option>
-          <?php endforeach; ?>
+          <!-- Will be populated dynamically -->
         </select>
       </div>
       <!-- Assigned Staff -->
@@ -61,16 +71,19 @@
       </div>
 
       <!-- Activities -->
-      <?php for ($i = 0; $i < 3; $i++): ?>
-        <div class="row g-3 mb-2">
-          <div class="col">
-            <input type="text" name="activity_name[]" class="form-control" placeholder="Activity Name" required>
-          </div>
-          <div class="col">
-            <input type="text" name="comments[]" class="form-control" placeholder="Comments">
-          </div>
+    <div id="activityContainer">
+      <div class="activity-row row g-3 mb-2">
+        <div class="col">
+          <input type="text" name="activity_name[]" class="form-control" placeholder="Activity Name" required>
         </div>
-      <?php endfor; ?>
+        <div class="col">
+          <input type="text" name="comments[]" class="form-control" placeholder="Comments">
+        </div>
+        <div class="col-auto">
+          <button type="button" class="btn btn-success btn-sm add-activity"><i class="fa fa-plus"></i></button>
+          <button type="button" class="btn btn-danger btn-sm remove-activity"><i class="fa fa-trash"></i></button>
+        </div>
+      </div>
     </div>
 
     <div class="modal-footer">
@@ -157,3 +170,4 @@
 
   </div>
 </div>
+
