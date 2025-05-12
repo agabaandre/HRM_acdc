@@ -1,7 +1,6 @@
 <style>
   table.dataTable td {
   white-space: normal !important;
-  word-break: break-word;
 }
 </style>
 <div class="container-fluid my-4">
@@ -147,7 +146,7 @@ $(function () {
       data: 'activity_name',
       render: function (data, type, row) {
         const wordCount = data.trim().split(/\s+/).length;
-        if (wordCount > 5) {
+        if (wordCount > 4) {
           return `<span class="text-wrap d-block" style="white-space: normal;">${data}</span>`;
         }
         return data;
