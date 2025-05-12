@@ -54,6 +54,7 @@ class Tasks_mdl extends CI_Model {
             work_planner_tasks.activity_name, 
             work_planner_tasks.workplan_id, 
             CONCAT(staff.fname, " ", staff.lname) AS `team_lead`,
+            created_by AS `staff_id`,
             workplan_tasks.activity_name AS work_activity_name, 
             work_planner_tasks.start_date, 
             work_planner_tasks.end_date, 
