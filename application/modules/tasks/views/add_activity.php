@@ -101,6 +101,7 @@
     <table class="table table-bordered" id="activitiesTable">
         <thead class="table-dark text-center">
             <tr>
+                <th>#</th>
                 <th>Sub Activities</th>
                 <th>Work Plan Actvity</th>
                 <th>Start Date</th>
@@ -217,89 +218,100 @@
 <script>
     $(document).ready(function() {
         const table = $('#activitiesTable').DataTable({
-            ajax: {
-                url: '<?= base_url("tasks/fetch_activities") ?>',
-                dataSrc: '',
-                data: function(d) {
-                    return {
-                        output: $('#filterOutput').val(),
-                        start_date: $('#filterStartDate').val(),
-                        end_date: $('#filterEndDate').val()
-                    };
+    ajax: {
+        url: '<?= base_url("tasks/fetch_activities") ?>',
+        dataSrc: '',
+        data: function(d) {
+            return {
+                output: $('#filterOutput').val(),
+                start_date: $('#filterStartDate').val(),
+                end_date: $('#filterEndDate').val()
+            };
+        }
+    },
+    pageLength: 25,
+    dom: 'Bfrtip',
+    buttons: [
+        {
+            extend: 'excelHtml5',
+            title: 'Activities Export'
+        },
+        {
+            extend: 'csvHtml5',
+            title: 'Activities Export'
+        }
+    ],
+    columns: [
+        {
+            data: null,
+            title: '#',
+            orderable: false,
+            searchable: false,
+            render: function (data, type, row, meta) {
+                return meta.row + 1 + meta.settings._iDisplayStart;
+            }
+        },
+        {
+            data: 'activity_name',
+            createdCell: function(td) {
+                $(td).addClass('text-wrap');
+            }
+        },
+        {
+            data: 'work_activity_name',
+            createdCell: function(td) {
+                $(td).addClass('text-wrap');
+            }
+        },
+        {
+            data: 'start_date'
+        },
+        {
+            data: 'end_date'
+        },
+        {
+            data: 'team_lead'
+        },
+        {
+            data: 'comments',
+            createdCell: function(td) {
+                $(td).addClass('text-wrap');
+            }
+        },
+        {
+            data: 'report_date'
+        },
+        {
+            data: null,
+            render: function(row) {
+                const user_id = "<?= $this->session->userdata('user')->staff_id ?>";
+                if (row.staff_id == user_id) {
+                    return `
+                        <button class="btn btn-sm btn-primary edit-btn"
+                            data-id="${row.activity_id}"
+                            data-name="${row.activity_name}"
+                            data-start_date="${row.start_date}"
+                            data-end_date="${row.end_date}"
+                            data-priority="${row.priority}"
+                            data-comments="${row.comments}">
+                            <i class="fa fa-pencil"></i> Edit
+                        </button>
+                        <button class="btn btn-sm btn-success report-btn"
+                            data-reportid="${row.activity_id}"
+                            data-report_id="${row.report_id || ''}"
+                            data-reportname="${row.activity_name}"
+                            data-reportstart_date="${row.start_date}"
+                            data-reportend_date="${row.end_date}"
+                            data-reportdescription="${row.report || ''}">
+                            <i class="fa fa-book"></i> Report
+                        </button>`;
                 }
-            },
-            pageLength: 25,
-            dom: 'Bfrtip',
-            buttons: [{
-                    extend: 'excelHtml5',
-                    title: 'Activities Export'
-                },
-                {
-                    extend: 'csvHtml5',
-                    title: 'Activities Export'
-                }
-            ],
-            columns: [{
-                    data: 'activity_name',
-                    createdCell: function(td) {
-                        $(td).addClass('text-wrap');
-                    }
-                },
-                {
-                    data: 'work_activity_name',
-                    createdCell: function(td) {
-                        $(td).addClass('text-wrap');
-                    }
-                },
-                {
-                    data: 'start_date'
-                },
-                {
-                    data: 'end_date'
-                },
-                {
-                    data: 'team_lead'
-                },
-                {
-                    data: 'comments',
-                    createdCell: function(td) {
-                        $(td).addClass('text-wrap');
-                    }
-                },
-                {
-                    data: 'report_date'
-                },
-                {
-                    data: null,
-                    render: function(row) {
-                        const user_id = "<?= $this->session->userdata('user')->staff_id ?>";
-                        if (row.staff_id == user_id) {
-                            return `
-                            <button class="btn btn-sm btn-primary edit-btn"
-                                data-id="${row.activity_id}"
-                                data-name="${row.activity_name}"
-                                data-start_date="${row.start_date}"
-                                data-end_date="${row.end_date}"
-                                data-priority="${row.priority}"
-                                data-comments="${row.comments}">
-                                <i class="fa fa-pencil"></i> Edit
-                            </button>
-                            <button class="btn btn-sm btn-success report-btn"
-                                data-reportid="${row.activity_id}"
-                                data-report_id="${row.report_id || ''}"
-                                data-reportname="${row.activity_name}"
-                                data-reportstart_date="${row.start_date}"
-                                data-reportend_date="${row.end_date}"
+                return '<span class="text-muted">No actions available</span>';
+            }
+        }
+    ]
+});
 
-                                data-reportdescription="${row.report || ''}">
-                                <i class="fa fa-book"></i> Report
-                            </button>`;
-                        }
-                        return '<span class="text-muted">No actions available</span>';
-                    }
-                }
-            ]
-        });
 
         $('#applyFilters').on('click', function(e) {
             e.preventDefault();
