@@ -831,60 +831,54 @@
     // }
   });
 </script>
+
 <script>
   $(document).ready(function () {
-    // Helper to clone a date object
-    function cloneDate(date) {
-      return new Date(date.getTime());
-    }
-
-    // Set today to midnight
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Find this week's Monday
-    const currentDay = today.getDay(); // 0 = Sunday, ..., 6 = Saturday
+    // Calculate this Monday
+    const currentDay = today.getDay(); // 0 = Sunday ... 6 = Saturday
     const thisMonday = new Date(today);
-    const offsetToMonday = currentDay === 0 ? -6 : 1 - currentDay;
-    thisMonday.setDate(today.getDate() + offsetToMonday);
+    thisMonday.setDate(today.getDate() - ((currentDay + 6) % 7)); // back to Monday
 
-    // Get Friday of this week and next week
+    // This Friday = thisMonday + 4
     const thisFriday = new Date(thisMonday);
     thisFriday.setDate(thisMonday.getDate() + 4);
 
+    // Next Monday = thisMonday + 7
     const nextMonday = new Date(thisMonday);
     nextMonday.setDate(thisMonday.getDate() + 7);
 
+    // Next Friday = nextMonday + 4
     const nextFriday = new Date(nextMonday);
     nextFriday.setDate(nextMonday.getDate() + 4);
 
-    // Generate array of allowed weekdays (Mon–Fri) for this and next week
-    const allowedDates = [];
-    for (let d = cloneDate(thisMonday); d <= nextFriday; d.setDate(d.getDate() + 1)) {
-      const day = d.getDay();
-      if (day !== 0 && day !== 6) { // skip Sunday (0) and Saturday (6)
-        allowedDates.push(d.toISOString().split('T')[0]);
-      }
+    // Build disable function: allow Mon–Fri only within the two weeks
+    function isDisabled(date) {
+      const time = date.getTime();
+      const day = date.getDay();
+
+      const inRange =
+        (time >= thisMonday.getTime() && time <= thisFriday.getTime()) ||
+        (time >= nextMonday.getTime() && time <= nextFriday.getTime());
+
+      return !(inRange && day >= 1 && day <= 5); // disable everything not Mon–Fri in range
     }
 
-    // Load Flatpickr with Monday start via locale (needs to be set globally)
-    flatpickr.localize({
-      ...flatpickr.l10ns.default,
-      firstDayOfWeek: 1 // Monday
-    });
-
-    // Initialize picker
+    // Init flatpickr
     $('.activity-dates').flatpickr({
       altInput: true,
       altFormat: "F j, Y",
       dateFormat: "Y-m-d",
       allowInput: true,
-      enable: allowedDates
+      disable: [isDisabled],
+      locale: {
+        firstDayOfWeek: 1 // ensure calendar view starts on Monday
+      }
     });
   });
 </script>
-
-
 
 
 
