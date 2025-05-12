@@ -72,9 +72,9 @@
 <div class="container">
   <div class="row justify-content-center">
     <div class="col-12">
-      <h5 class="settings-title">Africa CDC Systems</h5>
+      <h5 class="settings-title">Home</h5>
       <input type="text" id="settingsSearch" class="form-control form-control-sm settings-search"
-        placeholder="Search Systems...">
+        placeholder="Search...">
     </div>
   </div>
 

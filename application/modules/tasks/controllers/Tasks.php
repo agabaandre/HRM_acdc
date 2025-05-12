@@ -136,7 +136,7 @@ class Tasks extends MX_Controller {
 
         // Fetch activities from the model
         $activities = $this->tasks_mdl->get_work_planner_tasks($staff_id, $output_id, $start_date, $end_date);
-
+       // dd($activities);
         // Return JSON response
         //dd($activities);
         echo json_encode($activities);
