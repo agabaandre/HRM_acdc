@@ -12,9 +12,14 @@ class Weektasks extends MX_Controller {
     public function tasks() {
         $data['title'] = 'Weekly Tasks';
         $data['module'] = 'weektasks';
-        $data['outputs'] = $this->weektasks_mdl->get_sub_activities();
+        $data['team_leads'] = $this->db
+        ->select('staff.staff_id, staff.fname, staff.lname')
+        ->distinct()
+        ->from('staff')
+        ->join('units', 'staff.staff_id = units.staff_id')
+        ->get()
+        ->result();
         $data['divisions'] = $this->db->order_by('division_name','ASC')->get('divisions')->result();
-
         $division_id = $this->session->userdata('user')->division_id;
         $data['staff_list'] = $this->staff_mdl->get_staff_by_division($division_id);
 
@@ -27,7 +32,22 @@ class Weektasks extends MX_Controller {
         render('weekly_calendar', $data);
     }
     
-  
+    public function get_sub_activities_by_teamlead()
+    {
+        $team_lead_id = $this->input->post('team_lead_id');
+        $division_id = $this->session->userdata('user')->division_id;
+    
+        $results = $this->db
+            ->select('wpt.activity_id, wpt.activity_name')
+            ->from('work_planner_tasks wpt')
+            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
+            ->where('wt.division_id', $division_id)
+            ->where('wpt.created_by', $team_lead_id) // Assuming this column exists
+            ->get()
+            ->result();
+    
+        echo json_encode($results);
+    }
     
     
     public function fetch() {

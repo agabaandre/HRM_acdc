@@ -89,11 +89,14 @@
         </div>
     </div>
 </div>
-
+<?php  
+$session = $this->session->userdata('user');
+if(is_unit_lead($session->staff_id)): ?>
 <button class="btn btn-dark mb-3" data-bs-toggle="modal" data-bs-target="#addActivitiesModal">
     <i class="fa fa-plus-circle me-1"></i> Add Sub-Activities
 </button>
 <?php
+endif;
 // dd(count($outputs))
 ?>
 <!-- Activities Table -->

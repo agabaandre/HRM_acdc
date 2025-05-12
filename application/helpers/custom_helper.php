@@ -1146,6 +1146,20 @@ if (!function_exists('days_to_ppa_deadline')) {
     }
 }
 
+function is_unit_lead($staff_id){
+    $CI =& get_instance();
+        $query = $CI->db
+            ->where('staff_id', $staff_id)
+            ->limit(1)
+            ->get('units')
+            ->row(); 
+    if($query>1){
+        return TRUE;
+    }
+    else{
+        return FALSE;
+    }
 
+}
 
 }

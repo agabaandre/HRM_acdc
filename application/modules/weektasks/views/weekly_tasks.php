@@ -89,6 +89,7 @@
     <table class="table table-bordered table-hover" id="activitiesTable">
       <thead class="table-dark text-center">
         <tr>
+          <th>#</th>
           <th>Activity</th>
           <th>Start Date</th>
           <th>End Date</th>
@@ -112,13 +113,13 @@ $(function () {
   const csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
 
   const table = $('#activitiesTable').DataTable({
-    processing: true,
-    serverSide: true,
-    searching: false,
-    ajax: {
-      url: '<?= base_url("weektasks/fetch") ?>',
-      type: 'POST',
-      data: function (d) {
+  processing: true,
+  serverSide: true,
+  searching: false,
+  ajax: {
+    url: '<?= base_url("weektasks/fetch") ?>',
+    type: 'POST',
+    data: function (d) {
       d.division = $('#filterDivision').val();
       d.staff_id = $('#filterStaff').val();
       d.output = $('#filterOutput').val();
@@ -126,33 +127,42 @@ $(function () {
       d.end_date = $('#filterEndDate').val();
       d['<?= $this->security->get_csrf_token_name(); ?>'] = $('#csrf_token').val();
     }
+  },
+  pageLength: 10,
+  columns: [
+    {
+      data: null,
+      title: '#',
+      orderable: false,
+      searchable: false,
+      render: function (data, type, row, meta) {
+        return meta.row + 1 + meta.settings._iDisplayStart;
+      }
     },
-    pageLength: 10,
-    columns: [
-      { data: 'activity_name' },
-      { data: 'start_date' },
-      { data: 'end_date' },
-      { data: 'comments' },
-      { data: 'executed_by' },
-      { data: 'created_by_name' },
-      { data: 'updated_by_name' },
-      {
-        data: 'status',
-        render: function (status) {
-          switch (parseInt(status)) {
-            case 1: return '<span class="badge bg-warning">Pending</span>';
-            case 2: return '<span class="badge bg-success">Done</span>';
-            case 3: return '<span class="badge bg-primary">Next Week</span>';
-            case 4: return '<span class="badge bg-danger">Cancelled</span>';
-            default: return '<span class="badge bg-secondary">Unknown</span>';
-          }
+    { data: 'activity_name' },
+    { data: 'start_date' },
+    { data: 'end_date' },
+    { data: 'comments' },
+    { data: 'executed_by' },
+    { data: 'created_by_name' },
+    { data: 'updated_by_name' },
+    {
+      data: 'status',
+      render: function (status) {
+        switch (parseInt(status)) {
+          case 1: return '<span class="badge bg-warning">Pending</span>';
+          case 2: return '<span class="badge bg-success">Done</span>';
+          case 3: return '<span class="badge bg-primary">Next Week</span>';
+          case 4: return '<span class="badge bg-danger">Cancelled</span>';
+          default: return '<span class="badge bg-secondary">Unknown</span>';
         }
-      },
-      {
-        data: null,
-        orderable: false,
-        render: function (row) {
-          return `<button class="btn btn-sm btn-primary edit-btn"
+      }
+    },
+    {
+      data: null,
+      orderable: false,
+      render: function (row) {
+        return `<button class="btn btn-sm btn-primary edit-btn"
                   data-id="${row.activity_id}"
                   data-name="${row.activity_name}"
                   data-comments="${row.comments}"
@@ -160,10 +170,10 @@ $(function () {
                   data-staff_id="${row.staff_id}">
                   <i class="fa fa-edit"></i> Edit
               </button>`;
-        }
       }
-    ]
-  });
+    }
+  ]
+});
 
   $('#applyFilters').on('click', () => table.ajax.reload());
 
@@ -283,3 +293,73 @@ $(function () {
 
 });
 </script>
+<script>
+$(document).ready(function () {
+  const minActivities = 1;
+
+  function updateRemoveButtons() {
+    const count = $('#activityContainer .activity-row').length;
+    $('.remove-activity').prop('disabled', count <= minActivities);
+  }
+
+  // Add new activity row
+  $('#activityContainer').on('click', '.add-activity', function () {
+    const row = $(this).closest('.activity-row');
+    const newRow = row.clone();
+
+    newRow.find('input').val('');
+    $('#activityContainer').append(newRow);
+
+    updateRemoveButtons();
+  });
+
+  // Remove activity row
+  $('#activityContainer').on('click', '.remove-activity', function () {
+    const count = $('#activityContainer .activity-row').length;
+    if (count > minActivities) {
+      $(this).closest('.activity-row').remove();
+      updateRemoveButtons();
+    }
+  });
+
+  updateRemoveButtons();
+});
+</script>
+<script>
+$(document).ready(function () {
+  $('#team_lead_select').on('change', function () {
+    const teamLeadId = $(this).val();
+    const subActivitySelect = $('#sub_activity_select');
+
+    subActivitySelect.html('<option value="">Loading...</option>');
+
+    // Get CSRF token data
+    const csrfName = '<?= $this->security->get_csrf_token_name(); ?>';
+    const csrfHash = '<?= $this->security->get_csrf_hash(); ?>';
+
+    const requestData = {
+      team_lead_id: teamLeadId
+    };
+    requestData[csrfName] = csrfHash;
+
+    $.ajax({
+      url: '<?= base_url("weektasks/get_sub_activities_by_teamlead") ?>',
+      type: 'POST',
+      data: requestData,
+      dataType: 'json',
+      success: function (data) {
+        let options = '<option value="">Select</option>';
+        $.each(data, function (i, item) {
+          options += `<option value="${item.activity_id}">${item.activity_name}</option>`;
+        });
+        subActivitySelect.html(options);
+      },
+      error: function (xhr, status, error) {
+        console.error('AJAX Error:', status, error);
+        subActivitySelect.html('<option value="">Failed to load</option>');
+      }
+    });
+  });
+});
+</script>
+
