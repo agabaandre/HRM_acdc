@@ -1,8 +1,10 @@
 <style>
   table.dataTable td {
-  white-space: normal !important;
-}
+    white-space: normal !important;
+    word-break: break-word;
+  }
 </style>
+
 <div class="container-fluid my-4">
 <?php $this->load->view('tasks_tabs')?>
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -145,13 +147,19 @@ $(function () {
     {
       data: 'activity_name',
       render: function (data, type, row) {
+        if (!data) return ''; // handle empty/null
         const wordCount = data.trim().split(/\s+/).length;
-        if (wordCount > 4) {
-          return `<span class="text-wrap d-block" style="white-space: normal;">${data}</span>`;
-        }
-        return data;
+        const safeText = $('<div>').text(data).html(); // escape HTML
+
+        return wordCount > 5
+          ? `<div class="text-wrap" style="white-space: normal;">${safeText}</div>`
+          : safeText;
+      },
+      createdCell: function (td) {
+        $(td).css('white-space', 'normal');
       }
-    },
+    }
+    ,
     { data: 'start_date' },
     { data: 'end_date' },
     { data: 'comments' },
