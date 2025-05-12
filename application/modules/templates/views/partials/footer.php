@@ -831,53 +831,59 @@
     // }
   });
 </script>
-
 <script>
   $(document).ready(function () {
-    // Set today's date to midnight
+    // Helper to clone a date object
+    function cloneDate(date) {
+      return new Date(date.getTime());
+    }
+
+    // Set today to midnight
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get this week's Monday
-    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    // Find this week's Monday
+    const currentDay = today.getDay(); // 0 = Sunday, ..., 6 = Saturday
     const thisMonday = new Date(today);
-    const offsetToMonday = (currentDay === 0) ? -6 : 1 - currentDay;
+    const offsetToMonday = currentDay === 0 ? -6 : 1 - currentDay;
     thisMonday.setDate(today.getDate() + offsetToMonday);
 
-    // This week's Friday
+    // Get Friday of this week and next week
     const thisFriday = new Date(thisMonday);
     thisFriday.setDate(thisMonday.getDate() + 4);
 
-    // Next week's Monday
     const nextMonday = new Date(thisMonday);
     nextMonday.setDate(thisMonday.getDate() + 7);
 
-    // Next week's Friday
     const nextFriday = new Date(nextMonday);
     nextFriday.setDate(nextMonday.getDate() + 4);
 
-    // Allowed weekdays (Mon–Fri from both weeks)
+    // Generate array of allowed weekdays (Mon–Fri) for this and next week
     const allowedDates = [];
-    for (let d = new Date(thisMonday); d <= nextFriday; d.setDate(d.getDate() + 1)) {
-      const day = d.getDay(); // 0=Sun, 6=Sat
-      if (day !== 0 && day !== 6) {
-        allowedDates.push(new Date(d));
+    for (let d = cloneDate(thisMonday); d <= nextFriday; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      if (day !== 0 && day !== 6) { // skip Sunday (0) and Saturday (6)
+        allowedDates.push(d.toISOString().split('T')[0]);
       }
     }
 
-    // Initialize flatpickr with Monday as the first day
+    // Load Flatpickr with Monday start via locale (needs to be set globally)
+    flatpickr.localize({
+      ...flatpickr.l10ns.default,
+      firstDayOfWeek: 1 // Monday
+    });
+
+    // Initialize picker
     $('.activity-dates').flatpickr({
       altInput: true,
       altFormat: "F j, Y",
       dateFormat: "Y-m-d",
       allowInput: true,
-      enable: allowedDates.map(d => d.toISOString().split('T')[0]),
-      locale: {
-        firstDayOfWeek: 1 // Monday
-      }
+      enable: allowedDates
     });
   });
 </script>
+
 
 
 
