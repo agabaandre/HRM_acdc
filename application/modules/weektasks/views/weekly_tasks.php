@@ -1,8 +1,8 @@
 <style>
-  table.dataTable td {
-    white-space: normal !important;
-    word-break: break-word;
-  }
+.activity-col {
+  width: 250px; /* optional fixed width */
+}
+
 </style>
 
 <div class="container-fluid my-4">
@@ -95,7 +95,7 @@
       <thead class="table-dark text-center">
         <tr>
           <th>#</th>
-          <th>Activity</th>
+          <th class="activity-col">Activity</th>
           <th>Start Date</th>
           <th>End Date</th>
           <th>Comments</th>
