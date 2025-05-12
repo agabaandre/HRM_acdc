@@ -122,6 +122,7 @@ class Weektasks extends MX_Controller {
     public function update() {
         $id = $this->input->post('activity_id');
         $task = $this->weektasks_mdl->get_by_id($id);
+        $staff_ids = implode(',', $this->input->post('staff_ids'));
 
         if (!$task || $task->status != 1) {
             echo json_encode(['status' => 'error', 'message' => 'Task not found or not editable']);
@@ -131,6 +132,7 @@ class Weektasks extends MX_Controller {
         $updated_by = $this->session->userdata('user')->staff_id;
 
         $data = [
+            'staff_id' => $staff_ids,
             'activity_name' => $this->input->post('activity_name'),
             'comments' => $this->input->post('comments'),
             'status' => $this->input->post('status'),
