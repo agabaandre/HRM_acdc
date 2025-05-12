@@ -1,3 +1,83 @@
+
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <?= form_open('weektasks/update', [
+      'id' => 'editActivityForm',
+      'class' => 'modal-content needs-validation',
+      'novalidate' => 'novalidate'
+    ]) ?>
+    <div class="modal-header">
+      <h5 class="modal-title">Edit Task</h5>
+      <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Close"></button>
+    </div>
+
+    <input type="hidden"
+       name="<?= $this->security->get_csrf_token_name(); ?>"
+       value="<?= $this->security->get_csrf_hash(); ?>">
+
+    <div class="modal-body">
+      <input type="hidden" name="activity_id" id="edit_id">
+
+      <!-- Activity Name -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Activity Name</label>
+        <input type="text" name="activity_name" id="edit_name" class="form-control" required>
+        <div class="invalid-feedback">Activity name is required.</div>
+      </div>
+
+      <!-- Assigned Staff -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Assign Staff</label>
+        <div class="row">
+          <?php foreach ($staff_list as $staff): ?>
+            <div class="col-md-6">
+              <div class="form-check mb-2">
+                <input class="form-check-input edit-staff-checkbox"
+                  type="checkbox"
+                  name="staff_ids[]"
+                  value="<?= $staff->staff_id ?>"
+                  id="staff_<?= $staff->staff_id ?>">
+                <label class="form-check-label" for="staff_<?= $staff->staff_id ?>">
+                  <?= $staff->title . ' ' . $staff->fname . ' ' . $staff->lname ?>
+                </label>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
+
+
+      <!-- Status -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Status</label>
+        <select name="status" id="edit_status" class="form-select" required>
+          <option value="1">Pending</option>
+          <option value="2">Completed</option>
+          <option value="3">Carried Forward</option>
+          <option value="4">Cancelled</option>
+        </select>
+        <div class="invalid-feedback">Please select a status.</div>
+      </div>
+
+      <!-- Comments -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Comments</label>
+        <textarea name="comments" id="edit_comments" class="form-control" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-primary" type="submit">
+        <i class="fa fa-check-circle me-1"></i> Update Task
+      </button>
+    </div>
+    <?= form_close(); ?>
+
+  </div>
+</div>
+
 <!-- Add Weekly Task Modal -->
 <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -92,82 +172,3 @@
     <?= form_close(); ?>
   </div>
 </div>
-<!-- Edit Task Modal -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-md modal-dialog-centered">
-    <?= form_open('weektasks/update', [
-      'id' => 'editActivityForm',
-      'class' => 'modal-content needs-validation',
-      'novalidate' => 'novalidate'
-    ]) ?>
-    <div class="modal-header">
-      <h5 class="modal-title">Edit Task</h5>
-      <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Close"></button>
-    </div>
-
-    <input type="hidden"
-       name="<?= $this->security->get_csrf_token_name(); ?>"
-       value="<?= $this->security->get_csrf_hash(); ?>">
-
-    <div class="modal-body">
-      <input type="hidden" name="activity_id" id="edit_id">
-
-      <!-- Activity Name -->
-      <div class="mb-3">
-        <label class="form-label fw-semibold">Activity Name</label>
-        <input type="text" name="activity_name" id="edit_name" class="form-control" required>
-        <div class="invalid-feedback">Activity name is required.</div>
-      </div>
-
-      <!-- Assigned Staff -->
-      <div class="mb-3">
-        <label class="form-label fw-semibold">Assign Staff</label>
-        <div class="row">
-          <?php foreach ($staff_list as $staff): ?>
-            <div class="col-md-6">
-              <div class="form-check mb-2">
-                <input class="form-check-input edit-staff-checkbox"
-                  type="checkbox"
-                  name="staff_ids[]"
-                  value="<?= $staff->staff_id ?>"
-                  id="staff_<?= $staff->staff_id ?>">
-                <label class="form-check-label" for="staff_<?= $staff->staff_id ?>">
-                  <?= $staff->title . ' ' . $staff->fname . ' ' . $staff->lname ?>
-                </label>
-              </div>
-            </div>
-          <?php endforeach; ?>
-        </div>
-      </div>
-
-
-
-      <!-- Status -->
-      <div class="mb-3">
-        <label class="form-label fw-semibold">Status</label>
-        <select name="status" id="edit_status" class="form-select" required>
-          <option value="1">Pending</option>
-          <option value="2">Completed</option>
-          <option value="3">Carried Forward</option>
-          <option value="4">Cancelled</option>
-        </select>
-        <div class="invalid-feedback">Please select a status.</div>
-      </div>
-
-      <!-- Comments -->
-      <div class="mb-3">
-        <label class="form-label fw-semibold">Comments</label>
-        <textarea name="comments" id="edit_comments" class="form-control" rows="3"></textarea>
-      </div>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn btn-primary" type="submit">
-        <i class="fa fa-check-circle me-1"></i> Update Task
-      </button>
-    </div>
-    <?= form_close(); ?>
-
-  </div>
-</div>
-
