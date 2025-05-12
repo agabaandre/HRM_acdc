@@ -1,5 +1,10 @@
-
-<div class="container my-4">
+<style>
+  table.dataTable td {
+  white-space: normal !important;
+  word-break: break-word;
+}
+</style>
+<div class="container-fluid my-4">
 <?php $this->load->view('tasks_tabs')?>
   <div class="d-flex justify-content-between align-items-center mb-3">
     <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addModal">
@@ -138,7 +143,16 @@ $(function () {
         return meta.row + 1 + meta.settings._iDisplayStart;
       }
     },
-    { data: 'activity_name' },
+    {
+      data: 'activity_name',
+      render: function (data, type, row) {
+        const wordCount = data.trim().split(/\s+/).length;
+        if (wordCount > 5) {
+          return `<span class="text-wrap d-block" style="white-space: normal;">${data}</span>`;
+        }
+        return data;
+      }
+    },
     { data: 'start_date' },
     { data: 'end_date' },
     { data: 'comments' },
