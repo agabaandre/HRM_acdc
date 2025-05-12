@@ -834,36 +834,48 @@
 
 <script>
   $(document).ready(function() {
-    // Get today's date at midnight (to prevent timezone issues)
+    // Today's date at midnight
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Calculate the next Monday
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const daysUntilNextMonday = (dayOfWeek === 1) ? 7 : ((8 - dayOfWeek) % 7 || 7);
-    const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilNextMonday);
+    // Get this week's Monday
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const thisMonday = new Date(today);
+    const offsetToMonday = (currentDay === 0) ? -6 : 1 - currentDay;
+    thisMonday.setDate(today.getDate() + offsetToMonday);
 
-    // Calculate the corresponding Friday
+    // This week's Friday
+    const thisFriday = new Date(thisMonday);
+    thisFriday.setDate(thisMonday.getDate() + 4);
+
+    // Next week's Monday
+    const nextMonday = new Date(thisMonday);
+    nextMonday.setDate(thisMonday.getDate() + 7);
+
+    // Next week's Friday
     const nextFriday = new Date(nextMonday);
-    nextFriday.setDate(nextMonday.getDate() + 4); // Monday + 4 = Friday
+    nextFriday.setDate(nextMonday.getDate() + 4);
 
-    // Init flatpickr
+    // Collect allowed dates (weekdays only: Mon–Fri for both weeks)
+    const allowedDates = [];
+
+    for (let d = new Date(thisMonday); d <= nextFriday; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay(); // 0=Sun, 6=Sat
+      if (day !== 0 && day !== 6) {
+        allowedDates.push(new Date(d));
+      }
+    }
+
     $('.activity-dates').flatpickr({
       altInput: true,
       altFormat: "F j, Y",
       dateFormat: "Y-m-d",
       allowInput: true,
-      minDate: nextMonday,
-      maxDate: nextFriday,
-      disable: [
-        function(date) {
-          return date < nextMonday || date > nextFriday;
-        }
-      ]
+      enable: allowedDates.map(d => d.toISOString().split('T')[0]) // Convert to "YYYY-MM-DD"
     });
   });
 </script>
+
 
 
 <script>
