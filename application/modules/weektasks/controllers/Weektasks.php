@@ -251,11 +251,11 @@ class Weektasks extends MX_Controller {
     echo json_encode($events);
 }
 
-public function print_combined_division_report($division_id, $start_date, $end_date)
+public function print_combined_division_report($division_id, $start_date, $end_date, $status=FALSE)
 {
     $this->load->model('weektasks_mdl');
 
-    $tasks = $this->weektasks_mdl->get_combined_tasks_for_division($division_id, $start_date, $end_date);
+    $tasks = $this->weektasks_mdl->get_combined_tasks_for_division($division_id, $start_date, $end_date, $status);
 
     $data['module'] = 'weektasks';
     $data['tasks'] = $tasks;
