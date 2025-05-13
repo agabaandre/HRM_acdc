@@ -1,6 +1,9 @@
 <style>
 .activity-col {
-  width: 250px; /* optional fixed width */
+  width: 300px; /* optional fixed width */
+}
+.comments-col {
+  width: 200px; /* optional fixed width */
 }
 
 </style>
@@ -109,7 +112,7 @@
           <th class="activity-col">Activity</th>
           <th>Start Date</th>
           <th>End Date</th>
-          <th>Comments</th>
+          <th class="comments-col">Comments</th>
           <th>Assigned To</th>
           <th>Created By</th>
           <th>Updated By</th>
