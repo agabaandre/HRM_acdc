@@ -1152,13 +1152,14 @@ function is_unit_lead($staff_id){
             ->where('staff_id', $staff_id)
             ->limit(1)
             ->get('units')
-            ->row(); 
-    if($query>1){
+            ->num_rows(); 
+    if($query>0){
         return TRUE;
     }
     else{
         return FALSE;
     }
+ //dd($query);
 
 }
 
