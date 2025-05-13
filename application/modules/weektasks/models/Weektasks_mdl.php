@@ -146,7 +146,7 @@ class Weektasks_mdl extends CI_Model {
             ->get()
             ->result();
     }
-    public function get_tasks_by_staff_and_range($staff_id, $start_date, $end_date, $status) {
+    public function get_tasks_by_staff_and_range($staff_id, $start_date, $end_date, $status=null) {
         // Subquery to get the latest contract ID for the staff
     
         $latest_contract_subquery = $this->db
