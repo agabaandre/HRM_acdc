@@ -23,30 +23,44 @@ class Weektasks_mdl extends CI_Model {
             ->get('work_plan_weekly_tasks')
             ->row();
     }
-
     public function fetch_tasks($filters = [], $start = 0, $length = 10, $search = '') {
-        $this->db->select('
+        $logged_in_user_id = $this->session->userdata('user')->staff_id;
+    
+        // Add computed column using a bound variable
+        $priority_case = "
+            CASE
+                WHEN FIND_IN_SET(?, work_plan_weekly_tasks.staff_id) > 0 THEN 1
+                ELSE 0
+            END AS user_priority
+        ";
+    
+        // Build the main query
+        $this->db->select("
             work_plan_weekly_tasks.*, 
             work_planner_tasks.activity_name AS work_activity_name,
             reports.status AS report_status,
             reports.description AS report,
-            reports.report_date,divisions.division_name
-        ');
+            reports.report_date,
+            divisions.division_name,
+            $priority_case
+        ", false); // disable escaping to allow CASE
+    
         $this->db->from('work_plan_weekly_tasks');
         $this->db->join('work_planner_tasks', 'work_plan_weekly_tasks.work_planner_tasks_id = work_planner_tasks.activity_id', 'left');
-        $this->db->join('workplan_tasks', 'workplan_tasks.id=work_planner_tasks.workplan_id','left');
-        $this->db->join('divisions', 'workplan_tasks.division_id=divisions.division_id');
+        $this->db->join('workplan_tasks', 'workplan_tasks.id = work_planner_tasks.workplan_id', 'left');
+        $this->db->join('divisions', 'workplan_tasks.division_id = divisions.division_id', 'left');
         $this->db->join('reports', 'work_plan_weekly_tasks.activity_id = reports.activity_id', 'left');
     
-        // Handle multiple staff_id values (array)
+        // Filter by multiple staff_id values
         if (!empty($filters['staff_id']) && is_array($filters['staff_id'])) {
             $this->db->group_start();
-            foreach ($filters['staff_id'] as $staff_id) {
-                $this->db->or_where("FIND_IN_SET(" . $this->db->escape($staff_id) . ", work_plan_weekly_tasks.staff_id) >", 0);
+            foreach ($filters['staff_id'] as $sid) {
+                $this->db->or_where("FIND_IN_SET(" . $this->db->escape($sid) . ", work_plan_weekly_tasks.staff_id) >", 0);
             }
             $this->db->group_end();
         }
     
+        // Additional filters
         if (!empty($filters['output'])) {
             $this->db->where('work_plan_weekly_tasks.work_planner_tasks_id', $filters['output']);
         }
@@ -58,24 +72,36 @@ class Weektasks_mdl extends CI_Model {
         if (!empty($filters['end_date'])) {
             $this->db->where('work_plan_weekly_tasks.end_date <=', $filters['end_date']);
         }
-        if (!empty($filters['status']) && ($filters['status']!='all')) {
+    
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $this->db->where('work_plan_weekly_tasks.status', $filters['status']);
         }
-        if (!empty($filters['teamlead']) && ($filters['teamlead']!='all')) {
+    
+        if (!empty($filters['teamlead']) && $filters['teamlead'] !== 'all') {
             $this->db->where('work_planner_tasks.created_by', $filters['teamlead']);
         }
+    
         if (!empty($search)) {
-            $this->db->group_start()
-                ->like('work_plan_weekly_tasks.activity_name', $search)
-                ->or_like('work_planner_tasks.activity_name', $search)
-                ->or_like('work_plan_weekly_tasks.comments', $search)
-                ->group_end();
+            $this->db->group_start();
+            $this->db->like('work_plan_weekly_tasks.activity_name', $search);
+            $this->db->or_like('work_planner_tasks.activity_name', $search);
+            $this->db->or_like('work_plan_weekly_tasks.comments', $search);
+            $this->db->group_end();
         }
     
+        // Prioritize user-involved tasks, then recent ones
+        $this->db->order_by('user_priority', 'DESC');
         $this->db->order_by('work_plan_weekly_tasks.created_at', 'DESC');
+    
+        // Limit for pagination
         $this->db->limit($length, $start);
-        return $this->db->get()->result();
+    
+        // Compile and run with bound parameter for priority
+        $query = $this->db->get_compiled_select();
+        return $this->db->query($query, [$logged_in_user_id])->result();
     }
+    
+    
     
     public function count_tasks($filters = [], $search = '') {
         $this->db->from('work_plan_weekly_tasks');
