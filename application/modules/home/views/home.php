@@ -47,7 +47,7 @@
   .widgets-icons i {
     font-size: 1.6rem;
     color: #C3A366;
-    padding: 0.4rem;
+    padding: 0.8rem;
     border-radius: 50%;
     background: #f4f4f4;
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.05);
