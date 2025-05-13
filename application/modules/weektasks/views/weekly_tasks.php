@@ -1,9 +1,11 @@
 <style>
 .activity-col {
-  width: 300px; /* optional fixed width */
+  width: 300px !important;
+  text-overflow: wordwrap; /* optional fixed width */
 }
 .comments-col {
-  width: 200px; /* optional fixed width */
+  width: 200px !important;
+  text-overflow: wordwrap; /* optional fixed width */
 }
 
 </style>
