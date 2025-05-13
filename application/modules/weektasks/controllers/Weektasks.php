@@ -89,24 +89,27 @@ class Weektasks extends MX_Controller {
     
 
     public function save() {
-
-
         $created_by = $this->session->userdata('user')->staff_id;
-        $staff_ids = implode(',', $this->input->post('staff_ids'));
-
+    
+        //  Fallback: use session staff_id if none selected
+        $posted_staff_ids = $this->input->post('staff_ids');
+        $staff_ids = is_array($posted_staff_ids) && count($posted_staff_ids) > 0
+            ? implode(',', $posted_staff_ids)
+            : $created_by;
+    
         $common_data = [
-            'staff_id' => $staff_ids,
+            'staff_id'              => $staff_ids,
             'work_planner_tasks_id' => $this->input->post('work_planner_tasks_id'),
-            'start_date' => $this->input->post('start_date'),
-            'end_date' => $this->input->post('end_date'),
-            'week' => $this->get_week_label($this->input->post('start_date')),
-            'created_by' => $created_by,
-            'updated_by' => $created_by
+            'start_date'            => $this->input->post('start_date'),
+            'end_date'              => $this->input->post('end_date'),
+            'week'                  => $this->get_week_label($this->input->post('start_date')),
+            'created_by'            => $created_by,
+            'updated_by'            => $created_by
         ];
-
+    
         $activity_names = $this->input->post('activity_name');
         $comments = $this->input->post('comments');
-
+    
         $saved = 0;
         for ($i = 0; $i < count($activity_names); $i++) {
             if (!empty($activity_names[$i])) {
@@ -117,56 +120,64 @@ class Weektasks extends MX_Controller {
                 $saved++;
             }
         }
-
+    
         echo json_encode(['status' => 'success', 'message' => "$saved task(s) saved successfully!"]);
     }
+    
 
     public function update() {
         $id = $this->input->post('activity_id');
         $task = $this->weektasks_mdl->get_by_id($id);
-        $staff_ids = implode(',', $this->input->post('staff_ids'));
-
+    
+        // Get staff_ids[] from POST or fallback to session user
+        $posted_staff_ids = $this->input->post('staff_ids');
+        $staff_ids = is_array($posted_staff_ids) && count($posted_staff_ids) > 0
+            ? implode(',', $posted_staff_ids)
+            : $this->session->userdata('user')->staff_id;
+    
         if (!$task || $task->status != 1) {
             echo json_encode(['status' => 'error', 'message' => 'Task not found or not editable']);
             return;
         }
-
+    
         $updated_by = $this->session->userdata('user')->staff_id;
-
+    
         $data = [
-            'staff_id' => $staff_ids,
-            'activity_name' => $this->input->post('activity_name'),
-            'comments' => $this->input->post('comments'),
-            'status' => $this->input->post('status'),
-            'updated_by' => $updated_by
+            'staff_id'     => $staff_ids,
+            'activity_name'=> $this->input->post('activity_name'),
+            'comments'     => $this->input->post('comments'),
+            'status'       => $this->input->post('status'),
+            'updated_by'   => $updated_by
         ];
-
+    
         $this->weektasks_mdl->update_task($id, $data);
-
+    
+        //  If status is "Carried Forward", clone for next week
         if ($data['status'] == 3) {
             $original = $this->weektasks_mdl->get_by_id($id);
-
+    
             $new_start = date('Y-m-d', strtotime($original->start_date . ' +7 days'));
             $new_end = date('Y-m-d', strtotime($original->end_date . ' +7 days'));
-
+    
             $clone = [
-                'staff_id' => $original->staff_id,
+                'staff_id'              => $original->staff_id,
                 'work_planner_tasks_id' => $original->work_planner_tasks_id,
-                'activity_name' => $original->activity_name,
-                'start_date' => $new_start,
-                'end_date' => $new_end,
-                'week' => $this->get_week_label($new_start),
-                'comments' => 'Auto-copied from previous week',
-                'status' => 1,
-                'created_by' => $updated_by,
-                'updated_by' => $updated_by
+                'activity_name'         => $original->activity_name,
+                'start_date'            => $new_start,
+                'end_date'              => $new_end,
+                'week'                  => $this->get_week_label($new_start),
+                'comments'              => 'Auto-copied from previous week',
+                'status'                => 1,
+                'created_by'            => $updated_by,
+                'updated_by'            => $updated_by
             ];
-
+    
             $this->weektasks_mdl->insert_task($clone);
         }
-
+    
         echo json_encode(['status' => 'success', 'message' => 'Task updated successfully!']);
     }
+    
 
     private function get_week_label($start) {
         $start_fmt = date('M d', strtotime($start));
