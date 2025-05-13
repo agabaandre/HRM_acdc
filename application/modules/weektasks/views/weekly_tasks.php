@@ -42,11 +42,11 @@
           </div>
 
           <div class="col-md-3">
-            <label class="form-label fw-semibold">Sub-Activity</label>
-            <select id="filterOutput" class="form-select select2">
-              <option value="">All Sub-Activities</option>
-              <?php foreach ($outputs as $output): ?>
-                <option value="<?= $output->activity_id ?>"><?= $output->activity_name ?></option>
+            <label class="form-label fw-semibold">Team Lead</label>
+            <select id="filterLead" class="form-select select2">
+              <option value="all">All Team Leads</option>
+              <?php foreach ($team_leads as $lead): ?>
+                <option value="<?= $lead->staff_id ?>"><?= $lead->fname.' '. $lead->lname?></option>
               <?php endforeach; ?>
             </select>
           </div>
@@ -138,7 +138,7 @@ $(function () {
     data: function (d) {
       d.division = $('#filterDivision').val();
       d.staff_id = $('#filterStaff').val();
-      d.output = $('#filterOutput').val();
+      d.teamlead = $('#filterLead').val();
       d.start_date = $('#filterStartDate').val();
       d.end_date = $('#filterEndDate').val();
       d.status = $('#filterStatus').val();

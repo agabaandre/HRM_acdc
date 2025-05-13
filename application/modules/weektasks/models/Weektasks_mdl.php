@@ -61,6 +61,9 @@ class Weektasks_mdl extends CI_Model {
         if (!empty($filters['status']) && ($filters['status']!='all')) {
             $this->db->where('work_plan_weekly_tasks.status', $filters['status']);
         }
+        if (!empty($filters['teamlead']) && ($filters['teamlead']!='all')) {
+            $this->db->where('work_planner_tasks.created_by', $filters['teamlead']);
+        }
         if (!empty($search)) {
             $this->db->group_start()
                 ->like('work_plan_weekly_tasks.activity_name', $search)
@@ -100,6 +103,10 @@ class Weektasks_mdl extends CI_Model {
         }
         if (!empty($filters['status']) && ($filters['status']!='all')) {
             $this->db->where('work_plan_weekly_tasks.status', $filters['status']);
+        }
+
+        if (!empty($filters['teamlead']) && ($filters['teamlead']!='all')) {
+            $this->db->where('work_planner_tasks.created_by', $filters['teamlead']);
         }
     
         if (!empty($search)) {
@@ -146,7 +153,7 @@ class Weektasks_mdl extends CI_Model {
             ->get()
             ->result();
     }
-    public function get_tasks_by_staff_and_range($staff_id, $start_date, $end_date, $status=null) {
+    public function get_tasks_by_staff_and_range($staff_id, $start_date, $end_date, $teamlead, $status=null) {
         // Subquery to get the latest contract ID for the staff
     
         $latest_contract_subquery = $this->db
@@ -178,7 +185,9 @@ class Weektasks_mdl extends CI_Model {
         if (!empty($status) && ($status!='all')) {
             $this->db->where('w.status', $status);
         }
-    
+        if (!empty($teamlead) && ($teamlead!='all')) {
+            $this->db->where('p.created_by', $teamlead);
+        }
         return $this->db
             ->order_by('w.start_date', 'ASC')
             ->get()
@@ -187,7 +196,7 @@ class Weektasks_mdl extends CI_Model {
     
     
     
-    public function get_combined_tasks_for_division($division_id, $start_date, $end_date, $status = null)
+    public function get_combined_tasks_for_division($division_id, $start_date, $end_date, $teamlead, $status = null)
 {
     $this->db
         ->select('
@@ -210,6 +219,9 @@ class Weektasks_mdl extends CI_Model {
 
         if (!empty($status) && ($status!='all')) {
             $this->db->where('w.status', $status);
+        }
+        if (!empty($teamlead) && ($teamlead!='all')) {
+            $this->db->where('p.created_by', $teamlead);
         }
 
     return $this->db
