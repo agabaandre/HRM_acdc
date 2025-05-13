@@ -181,6 +181,9 @@ class Weektasks extends MX_Controller {
     }
 
     public function print_staff_report($staff_id, $start_date, $end_date,$status=FALSE) {
+        if(empty($staff_id)){
+            $staff_id = $this->session->userdata('user')->staff_id;
+        }
         $data['module'] = 'weektasks';
         $data['staff'] = $this->weektasks_mdl->get_staff($staff_id);
         $data['week_label'] = $this->get_week_label($start_date, $end_date);

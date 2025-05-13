@@ -80,19 +80,19 @@
         </div>
         <?= form_close(); ?>
       <!-- Print Buttons -->
-      <div class="row mt-4" id="printButtons" style="display: none;">
+      <div class="row mt-4" id="printButtons">
         <div class="col-md-3">
-          <button class="btn btn-outline-dark w-100" id="printStaffBtn">
+          <button class="btn btn-outline-dark w-100" id="printStaffBtn" style="display: none;">
             <i class="fa fa-print me-1"></i> Print Staff Report
           </button>
         </div>
         <div class="col-md-3">
-          <button class="btn btn-outline-success w-100" id="printDivisionBtn">
+          <button class="btn btn-outline-success w-100" id="printDivisionBtn" style="display: none;">
             <i class="fa fa-print me-1"></i> Print Division Report
           </button>
         </div>
         <div class="col-md-3">
-          <button class="btn btn-outline-success w-100" id="printCombinedBtn">
+          <button class="btn btn-outline-success w-100" id="printCombinedBtn" style="display: none;"> 
             <i class="fa fa-print me-1"></i> Combined Effort Report
           </button>
         </div>
@@ -288,10 +288,19 @@ $(function () {
     const staff = $('#filterStaff').val();
     const start = $('#filterStartDate').val();
     const end = $('#filterEndDate').val();
-    if ((staff && start && end) || ($('#filterDivision').val() && start && end)) {
-      $('#printButtons').fadeIn();
+    if (($('#filterDivision').val() && start && end)) {
+      $('#printDivisionBtn').fadeIn();
+      $('#printCombinedBtn').fadeIn();
     } else {
-      $('#printButtons').fadeOut();
+      $('#printDivisionBtn').fadeIn();
+      $('#printCombinedBtn').fadeIn();
+    }
+
+    if(staff && start && end){
+      $('#printStaffBtn').fadeIn();
+  
+    } else {
+      $('#printStaffBtn').fadeIn();
     }
   }
 

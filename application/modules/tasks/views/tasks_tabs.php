@@ -34,7 +34,7 @@ $segment = $this->uri->segment(2);
     <?php if (in_array('79', $permissions)) : ?>
       <li class="nav-item" role="presentation">
         <a class="nav-link <?php if ($this->uri->segment(2) == 'calendar') echo 'active'; ?>" href="<?= base_url('weektasks/calendar'); ?>">
-          <i class="bx bx-calendar"></i> Weely Task Calendar
+          <i class="bx bx-calendar"></i> Weekly Task Calendar
         </a>
       </li>
     <?php endif; ?>
