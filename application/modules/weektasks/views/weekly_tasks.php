@@ -132,6 +132,7 @@ $(function () {
   processing: true,
   serverSide: true,
   searching: false,
+  ordering: true,
   ajax: {
     url: '<?= base_url("weektasks/fetch") ?>',
     type: 'POST',
