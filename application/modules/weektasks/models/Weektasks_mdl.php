@@ -174,7 +174,7 @@ class Weektasks_mdl extends CI_Model {
             ->where('w.start_date <=', $start_date)
             ->where('w.end_date <=', $end_date);
     
-        if (!empty($status)||($status!='all')) {
+        if (!empty($status)||($status=='all')) {
             $this->db->where('w.status', $status);
         }
     
@@ -207,7 +207,7 @@ class Weektasks_mdl extends CI_Model {
         ->where('w.start_date >=', $start_date)
         ->where('w.end_date <=', $end_date);
 
-        if (!empty($status)||($status!='all')) {
+        if (!empty($status)||($status=='all')) {
             $this->db->where('w.status', $status);
         }
 
