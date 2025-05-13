@@ -89,10 +89,9 @@ class Weektasks_mdl extends CI_Model {
             $this->db->group_end();
         }
     
-        
-        $this->db->order_by('work_plan_weekly_tasks.created_at', 'DESC');
         // Prioritize user-involved tasks, then recent ones
         $this->db->order_by('user_priority', 'DESC');
+        $this->db->order_by('work_plan_weekly_tasks.created_at', 'DESC');
     
         // Limit for pagination
         $this->db->limit($length, $start);
