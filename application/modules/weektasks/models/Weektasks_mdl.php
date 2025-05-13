@@ -58,7 +58,7 @@ class Weektasks_mdl extends CI_Model {
         if (!empty($filters['end_date'])) {
             $this->db->where('work_plan_weekly_tasks.end_date <=', $filters['end_date']);
         }
-        if (!empty($filters['status'])||($filters['status']=='all')) {
+        if (!empty($filters['status']) && ($filters['status']!='all')) {
             $this->db->where('work_plan_weekly_tasks.status', $filters['status']);
         }
         if (!empty($search)) {
@@ -98,7 +98,7 @@ class Weektasks_mdl extends CI_Model {
         if (!empty($filters['end_date'])) {
             $this->db->where('work_plan_weekly_tasks.end_date <=', $filters['end_date']);
         }
-        if (!empty($filters['status'])||($filters['status']=='all')) {
+        if (!empty($filters['status']) && ($filters['status']!='all')) {
             $this->db->where('work_plan_weekly_tasks.status', $filters['status']);
         }
     
@@ -148,6 +148,7 @@ class Weektasks_mdl extends CI_Model {
     }
     public function get_tasks_by_staff_and_range($staff_id, $start_date, $end_date, $status) {
         // Subquery to get the latest contract ID for the staff
+    
         $latest_contract_subquery = $this->db
             ->select('MAX(staff_contract_id)', false)
             ->from('staff_contracts')
@@ -174,7 +175,7 @@ class Weektasks_mdl extends CI_Model {
             ->where('w.start_date <=', $start_date)
             ->where('w.end_date <=', $end_date);
     
-        if (!empty($status)||($status=='all')) {
+        if (!empty($status) && ($status!='all')) {
             $this->db->where('w.status', $status);
         }
     
@@ -207,7 +208,7 @@ class Weektasks_mdl extends CI_Model {
         ->where('w.start_date >=', $start_date)
         ->where('w.end_date <=', $end_date);
 
-        if (!empty($status)||($status=='all')) {
+        if (!empty($status) && ($status!='all')) {
             $this->db->where('w.status', $status);
         }
 
