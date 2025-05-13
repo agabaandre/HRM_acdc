@@ -181,7 +181,7 @@ class Weektasks extends MX_Controller {
     }
 
     public function print_staff_report($staff_id, $start_date, $end_date,$status=FALSE) {
-        if(empty($staff_id)){
+        if(empty($staff_id)||($staff_id=='undefined')){
             $staff_id = $this->session->userdata('user')->staff_id;
         }
         $data['module'] = 'weektasks';
