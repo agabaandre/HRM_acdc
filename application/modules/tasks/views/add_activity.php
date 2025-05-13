@@ -91,6 +91,8 @@
 </div>
 <?php  
 $session = $this->session->userdata('user');
+// dd($session->staff_id);
+// dd(is_unit_lead($session->staff_id));
 if(is_unit_lead($session->staff_id)): ?>
 <button class="btn btn-dark mb-3" data-bs-toggle="modal" data-bs-target="#addActivitiesModal">
     <i class="fa fa-plus-circle me-1"></i> Add Sub-Activities
