@@ -26,7 +26,7 @@ class Weektasks_mdl extends CI_Model {
     public function fetch_tasks($filters = [], $start = 0, $length = 10, $search = '') {
         $logged_in_user_id = $this->session->userdata('user')->staff_id;
     
-        // Add computed column using a bound variable
+        // CASE expressions for prioritization
         $priority_case = "
             CASE
                 WHEN FIND_IN_SET(?, work_plan_weekly_tasks.staff_id) > 0 THEN 1
@@ -34,7 +34,13 @@ class Weektasks_mdl extends CI_Model {
             END AS user_priority
         ";
     
-        // Build the main query
+        $status_case = "
+            CASE
+                WHEN work_plan_weekly_tasks.status = 1 THEN 1
+                ELSE 0
+            END AS status_priority
+        ";
+    
         $this->db->select("
             work_plan_weekly_tasks.*, 
             work_planner_tasks.activity_name AS work_activity_name,
@@ -42,8 +48,9 @@ class Weektasks_mdl extends CI_Model {
             reports.description AS report,
             reports.report_date,
             divisions.division_name,
-            $priority_case
-        ", false); // disable escaping to allow CASE
+            $priority_case,
+            $status_case
+        ", false); // disable escaping to keep CASE expressions
     
         $this->db->from('work_plan_weekly_tasks');
         $this->db->join('work_planner_tasks', 'work_plan_weekly_tasks.work_planner_tasks_id = work_planner_tasks.activity_id', 'left');
@@ -51,7 +58,7 @@ class Weektasks_mdl extends CI_Model {
         $this->db->join('divisions', 'workplan_tasks.division_id = divisions.division_id', 'left');
         $this->db->join('reports', 'work_plan_weekly_tasks.activity_id = reports.activity_id', 'left');
     
-        // Filter by multiple staff_id values
+        // Filter by multiple staff_id
         if (!empty($filters['staff_id']) && is_array($filters['staff_id'])) {
             $this->db->group_start();
             foreach ($filters['staff_id'] as $sid) {
@@ -60,7 +67,6 @@ class Weektasks_mdl extends CI_Model {
             $this->db->group_end();
         }
     
-        // Additional filters
         if (!empty($filters['output'])) {
             $this->db->where('work_plan_weekly_tasks.work_planner_tasks_id', $filters['output']);
         }
@@ -89,17 +95,17 @@ class Weektasks_mdl extends CI_Model {
             $this->db->group_end();
         }
     
-        // Prioritize user-involved tasks, then recent ones
+        // Prioritize pending tasks first, then user-assigned tasks, then recent
+        $this->db->order_by('status_priority', 'DESC');
         $this->db->order_by('user_priority', 'DESC');
         $this->db->order_by('work_plan_weekly_tasks.created_at', 'DESC');
     
-        // Limit for pagination
         $this->db->limit($length, $start);
     
-        // Compile and run with bound parameter for priority
         $query = $this->db->get_compiled_select();
         return $this->db->query($query, [$logged_in_user_id])->result();
     }
+    
     
     
     
