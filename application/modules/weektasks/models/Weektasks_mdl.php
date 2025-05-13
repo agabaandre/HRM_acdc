@@ -58,7 +58,9 @@ class Weektasks_mdl extends CI_Model {
         if (!empty($filters['end_date'])) {
             $this->db->where('work_plan_weekly_tasks.end_date <=', $filters['end_date']);
         }
-    
+        if (!empty($filters['status'])||($filters['status']=='all')) {
+            $this->db->where('work_plan_weekly_tasks.status', $filters['status']);
+        }
         if (!empty($search)) {
             $this->db->group_start()
                 ->like('work_plan_weekly_tasks.activity_name', $search)
@@ -95,6 +97,9 @@ class Weektasks_mdl extends CI_Model {
     
         if (!empty($filters['end_date'])) {
             $this->db->where('work_plan_weekly_tasks.end_date <=', $filters['end_date']);
+        }
+        if (!empty($filters['status'])||($filters['status']=='all')) {
+            $this->db->where('work_plan_weekly_tasks.status', $filters['status']);
         }
     
         if (!empty($search)) {
@@ -141,8 +146,7 @@ class Weektasks_mdl extends CI_Model {
             ->get()
             ->result();
     }
-
-    public function get_tasks_by_staff_and_range($staff_id, $start_date, $end_date) {
+    public function get_tasks_by_staff_and_range($staff_id, $start_date, $end_date, $status) {
         // Subquery to get the latest contract ID for the staff
         $latest_contract_subquery = $this->db
             ->select('MAX(staff_contract_id)', false)
@@ -150,7 +154,7 @@ class Weektasks_mdl extends CI_Model {
             ->where('staff_id', $staff_id)
             ->get_compiled_select();
     
-        return $this->db
+        $this->db
             ->select('
                 w.*, 
                 p.activity_name AS parent_activity,
@@ -160,48 +164,60 @@ class Weektasks_mdl extends CI_Model {
             ->from('work_plan_weekly_tasks w')
             ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
             ->join('workplan_tasks', 'workplan_tasks.id = p.workplan_id', 'left')
-    
-            // Join latest staff contract
-            ->join("(SELECT * FROM staff_contracts WHERE staff_contract_id = ($latest_contract_subquery)) sc", "FIND_IN_SET('$staff_id', w.staff_id) > 0", 'left')
-    
-            // Join job and division from the latest contract
+            ->join("(
+                SELECT * FROM staff_contracts 
+                WHERE staff_contract_id = ($latest_contract_subquery)
+            ) sc", "FIND_IN_SET('$staff_id', w.staff_id) > 0", 'left')
             ->join('jobs', 'jobs.job_id = sc.job_id', 'left')
             ->join('divisions', 'divisions.division_id = sc.division_id', 'left')
-    
             ->where("FIND_IN_SET('$staff_id', w.staff_id) >", 0)
-            ->where('w.start_date >=', $start_date)
-            ->where('w.end_date <=', $end_date)
-            ->order_by('w.start_date', 'ASC')
-            ->get()
-            ->result();
-    }
+            ->where('w.start_date <=', $start_date)
+            ->where('w.end_date <=', $end_date);
     
+        if (!empty($status)||($status!='all')) {
+            $this->db->where('w.status', $status);
+        }
     
-    public function get_combined_tasks_for_division($division_id, $start_date, $end_date)
-    {
         return $this->db
-            ->select('
-                w.activity_name, 
-                w.start_date, 
-                w.end_date, 
-                w.comments, 
-                w.status, 
-                p.activity_name AS parent_activity, 
-                wp.activity_name AS workplan_activity, 
-                d.division_name
-            ')
-            ->from('work_plan_weekly_tasks w')
-            ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
-            ->join('workplan_tasks wp', 'wp.id = p.workplan_id', 'left')
-            ->join('divisions d', 'd.division_id = wp.division_id', 'left')
-            ->where('wp.division_id', $division_id)
-            ->where('w.start_date >=', $start_date)
-            ->where('w.end_date <=', $end_date)
-            ->group_by('w.activity_name, w.start_date, w.end_date') // ensures uniqueness
             ->order_by('w.start_date', 'ASC')
             ->get()
             ->result();
     }
+    
+    
+    
+    public function get_combined_tasks_for_division($division_id, $start_date, $end_date, $status = null)
+{
+    $this->db
+        ->select('
+            w.activity_name, 
+            w.start_date, 
+            w.end_date, 
+            w.comments, 
+            w.status, 
+            p.activity_name AS parent_activity, 
+            wp.activity_name AS workplan_activity, 
+            d.division_name
+        ')
+        ->from('work_plan_weekly_tasks w')
+        ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
+        ->join('workplan_tasks wp', 'wp.id = p.workplan_id', 'left')
+        ->join('divisions d', 'd.division_id = wp.division_id', 'left')
+        ->where('wp.division_id', $division_id)
+        ->where('w.start_date >=', $start_date)
+        ->where('w.end_date <=', $end_date);
+
+        if (!empty($status)||($status!='all')) {
+            $this->db->where('w.status', $status);
+        }
+
+    return $this->db
+        ->group_by('w.activity_name, w.start_date, w.end_date') // ensures uniqueness
+        ->order_by('w.start_date', 'ASC')
+        ->get()
+        ->result();
+}
+
     
 
 }

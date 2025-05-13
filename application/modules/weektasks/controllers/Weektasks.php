@@ -61,7 +61,8 @@ class Weektasks extends MX_Controller {
             'staff_id'   => $this->input->post('staff_id'),
             'output'     => $this->input->post('output'),
             'start_date' => $this->input->post('start_date'),
-            'end_date'   => $this->input->post('end_date')
+            'end_date'   => $this->input->post('end_date'),
+            'status'   => $this->input->post('status')
         ];
     
         $total = $this->weektasks_mdl->count_tasks($filters, $search);
@@ -179,24 +180,24 @@ class Weektasks extends MX_Controller {
         ];
     }
 
-    public function print_staff_report($staff_id, $start_date, $end_date) {
+    public function print_staff_report($staff_id, $start_date, $end_date,$status=FALSE) {
         $data['module'] = 'weektasks';
         $data['staff'] = $this->weektasks_mdl->get_staff($staff_id);
         $data['week_label'] = $this->get_week_label($start_date, $end_date);
         $data['week_range'] = "$start_date to $end_date";
-        $data['tasks'] = $this->weektasks_mdl->get_tasks_by_staff_and_range($staff_id, $start_date, $end_date);
+        $data['tasks'] = $this->weektasks_mdl->get_tasks_by_staff_and_range($staff_id, $start_date, $end_date,$status);
         $log_message = "Printed a weekly task staff report";
 		log_user_action($log_message);
         pdf_print_data($data, 'Staff_Weekly_Report.pdf', 'P', 'pdfs/print_staff');
     }
     
-    public function print_division_report($division_id, $start_date, $end_date) {
+    public function print_division_report($division_id, $start_date, $end_date,$status=FALSE) {
         $data['module'] = 'weektasks';
         $staffs = $this->staff_mdl->get_staff_by_division($division_id);
         $data['division_tasks'] = [];
     
         foreach ($staffs as $staff) {
-            $tasks = $this->weektasks_mdl->get_tasks_by_staff_and_range($staff->staff_id, $start_date, $end_date);
+            $tasks = $this->weektasks_mdl->get_tasks_by_staff_and_range($staff->staff_id, $start_date, $end_date,$status);
             if (!empty($tasks)) {
                 $data['division_tasks'][$staff->title . ' ' . $staff->fname . ' ' . $staff->lname] = $tasks;
             }
