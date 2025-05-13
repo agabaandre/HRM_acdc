@@ -79,11 +79,11 @@ class Weektasks_mdl extends CI_Model {
             $this->db->where('work_plan_weekly_tasks.end_date <=', $filters['end_date']);
         }
     
-        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        if (!empty($filters['status']) && $filters['status'] != 'all') {
             $this->db->where('work_plan_weekly_tasks.status', $filters['status']);
         }
     
-        if (!empty($filters['teamlead']) && $filters['teamlead'] !== 'all') {
+        if (!empty($filters['teamlead']) && $filters['teamlead'] != 'all') {
             $this->db->where('work_planner_tasks.created_by', $filters['teamlead']);
         }
     
