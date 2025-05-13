@@ -1,11 +1,15 @@
 <style>
 .activity-col {
   width: 300px !important;
-  text-overflow: wordwrap; /* optional fixed width */
+  text-overflow: break-word; /* optional fixed width */
 }
 .comments-col {
   width: 200px !important;
-  text-overflow: wordwrap; /* optional fixed width */
+  word-break: break-word; /* optional fixed width */
+}
+.text-wrap {
+  white-space: normal;
+  word-break: break-word;
 }
 
 </style>
@@ -169,7 +173,7 @@ $(function () {
         const wordCount = data.trim().split(/\s+/).length;
         const safeText = $('<div>').text(data).html(); // escape HTML
 
-        return wordCount > 5
+        return wordCount > 6
           ? `<div class="text-wrap" style="white-space: normal;">${safeText}</div>`
           : safeText;
       },
@@ -180,7 +184,22 @@ $(function () {
     ,
     { data: 'start_date' },
     { data: 'end_date' },
-    { data: 'comments' },
+    {
+  data: 'comments',
+      render: function (data, type, row) {
+        if (!data) return ''; // handle empty or null comments
+
+        const wordCount = data.trim().split(/\s+/).length;
+        const safeText = $('<div>').text(data).html(); // escape HTML
+
+        return wordCount > 6
+          ? `<div class="text-wrap" style="white-space: normal;">${safeText}</div>`
+          : safeText;
+      },
+      createdCell: function (td) {
+        $(td).css('white-space', 'normal');
+      }
+    },
     { data: 'executed_by' },
     { data: 'created_by_name' },
     { data: 'updated_by_name' },
