@@ -60,6 +60,17 @@
             <label class="form-label fw-semibold">End Date</label>
             <input type="text" id="filterEndDate" class="form-control datepicker" placeholder="YYYY-MM-DD">
           </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Status</label>
+            <select id="filterStatus" class="form-select">
+              <option value="">All Statuses</option>
+              <option value="1">Pending</option>
+              <option value="2">Done</option>
+              <option value="3">Next Week</option>
+              <option value="4">Cancelled</option>
+            </select>
+          </div>
+
 
           <div class="col-md-3 mt-2">
             <button type="button" class="btn btn-success w-100 mt-1" id="applyFilters">
@@ -130,6 +141,7 @@ $(function () {
       d.output = $('#filterOutput').val();
       d.start_date = $('#filterStartDate').val();
       d.end_date = $('#filterEndDate').val();
+      d.status = $('#filterStatus').val();
       d['<?= $this->security->get_csrf_token_name(); ?>'] = $('#csrf_token').val();
     }
   },
@@ -286,31 +298,38 @@ $(function () {
   $('#filterStaff, #filterStartDate, #filterEndDate, #filterDivision').on('change keyup', checkPrintEligibility);
 
   $('#printStaffBtn').on('click', function () {
-    const staff = $('#filterStaff').val();
-    const start = $('#filterStartDate').val();
-    const end = $('#filterEndDate').val();
-    if (staff && start && end) {
-      window.open(`<?= base_url('weektasks/print_staff_report/') ?>${staff[0]}/${start}/${end}`, '_blank');
-    }
-  });
+  const staff = $('#filterStaff').val();
+  const start = $('#filterStartDate').val();
+  const end = $('#filterEndDate').val();
+  const status = $('#filterStatus').val() || 'all'; // ← default to 'all'
 
-  $('#printDivisionBtn').on('click', function () {
-    const division = $('#filterDivision').val();
-    const start = $('#filterStartDate').val();
-    const end = $('#filterEndDate').val();
-    if (division && start && end) {
-      window.open(`<?= base_url('weektasks/print_division_report/') ?>${division}/${start}/${end}`, '_blank');
-    }
-  });
+  if (staff && start && end) {
+    window.open(`<?= base_url('weektasks/print_staff_report/') ?>${staff[0]}/${start}/${end}/${status}`, '_blank');
+  }
+});
 
-  $('#printCombinedBtn').on('click', function () {
-    const division = $('#filterDivision').val();
-    const start = $('#filterStartDate').val();
-    const end = $('#filterEndDate').val();
-    if (division && start && end) {
-      window.open(`<?= base_url('weektasks/print_combined_division_report/') ?>${division}/${start}/${end}`, '_blank');
-    }
-  });
+$('#printDivisionBtn').on('click', function () {
+  const division = $('#filterDivision').val();
+  const start = $('#filterStartDate').val();
+  const end = $('#filterEndDate').val();
+  const status = $('#filterStatus').val() || 'all';
+
+  if (division && start && end) {
+    window.open(`<?= base_url('weektasks/print_division_report/') ?>${division}/${start}/${end}/${status}`, '_blank');
+  }
+});
+
+$('#printCombinedBtn').on('click', function () {
+  const division = $('#filterDivision').val();
+  const start = $('#filterStartDate').val();
+  const end = $('#filterEndDate').val();
+  const status = $('#filterStatus').val() || 'all';
+
+  if (division && start && end) {
+    window.open(`<?= base_url('weektasks/print_combined_division_report/') ?>${division}/${start}/${end}/${status}`, '_blank');
+  }
+});
+
 
 });
 </script>
