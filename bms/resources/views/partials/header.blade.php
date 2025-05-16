@@ -148,7 +148,7 @@
                                 href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 
                                 @if(session('user.photo'))
-                                    <img src="{{ session('baseUrl', '') }}uploads/staff/{{ session('user.photo') }}"
+                                    <img src="{{ session('user.base_url', '') }}uploads/staff/{{ session('user.photo') }}"
                                         class="user-img" alt="user avatar">
                                 @else
                                     <div class="user-avatar bg-primary text-white">
@@ -162,26 +162,19 @@
                                 </div>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{{ session('baseUrl', '') }}auth/profile"><i
-                                            class="bx bx-user"></i><span>Profile</span></a>
-                                </li>
-                                <li><a class="dropdown-item" href="{{ session('baseUrl', '') }}auth/change_password"><i
-                                            class="bx bx-cog"></i><span>Change Password</span></a>
-                                </li>
-
-                                <li>
-                                    <div class="dropdown-divider mb-0"></div>
-                                </li>
+                               
+                          
                                 @if(session('original_user'))
-                                    <a href="{{ session('baseUrl', '') }}auth/revert" class="btn btn-sm btn-danger">
+                                    <a href="{{ session('user.base_url', '') }}auth/revert" class="btn btn-sm btn-danger">
                                         <i class="fa fa-undo"></i> Revert to Admin
                                     </a>
-                                @endif
-                                <li>
+                                    <li>
                                     <div class="dropdown-divider mb-0"></div>
-                                </li>
+                                    </li>
+                                @endif
+                             
 
-                                <li><a class="dropdown-item" href="{{ session('baseUrl', '') }}auth/logout"><i
+                                <li><a class="dropdown-item" href="{{ session('user.base_url', '') }}auth/logout"><i
                                             class="bx bx-log-out-circle"></i><span>Logout</span></a>
                                 </li>
                             </ul>
@@ -191,3 +184,5 @@
                 </div>
             </header>
             <!--end header -->
+
+            
