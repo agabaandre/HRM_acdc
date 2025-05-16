@@ -103,7 +103,7 @@
       $token = urlencode(base64_encode(json_encode($session)));
       $settings[] = [
         $session['base_url'] . 'bms?token=' . $token,
-        'Business Management System (BMS)',
+        'Approval Management System (BMS)',
         'bx-building',
         true,
         'Track, manage, and report on organizational budgets and fund allocations.'

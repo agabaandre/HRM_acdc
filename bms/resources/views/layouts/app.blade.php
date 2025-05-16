@@ -5,7 +5,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <title>@yield('title', config('app.name', 'Laravel'))</title>
+        <title>@yield('title', config('app.name', 'Business Management System'))</title>
 
         @include('partials.css')
         @stack('styles')
@@ -52,11 +52,13 @@
                         <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
                             <!-- Home -->
                             <li class="nav-item">
-                                <a href="{{ url('/') }}" class="nav-link {{ Request::is('/') ? 'active' : '' }}">
+                                <a href="{{ str_replace('bms/', '', url('home/index')) }}" 
+                                class="nav-link {{ Request::is('home/index') ? 'active' : '' }}">
                                     <div class="parent-icon"><i class="bx bx-home-circle"></i></div>
                                     <div class="menu-title">Home</div>
                                 </a>
                             </li>
+
 
                             <!-- Workflow Management Dropdown -->
                             <li class="nav-item dropdown">
