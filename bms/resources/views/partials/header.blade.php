@@ -1,43 +1,6 @@
-<!doctype html>
-<html lang="en">
 
-    <head>
-        <!-- Required meta tags -->
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-
-        <!-- Include CSS from separated partial -->
-        @include('partials.css')
-
-        <!-- jQuery -->
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-        <!-- Core Highcharts -->
-        <script src="https://code.highcharts.com/highcharts.js"></script>
-
-        <!-- Dependencies for Solid Gauge -->
-        <script src="https://code.highcharts.com/highcharts-more.js"></script>
-        <script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
-
-        <!-- Optional Modules -->
-        <script src="https://code.highcharts.com/modules/exporting.js"></script>
-        <script src="https://code.highcharts.com/modules/export-data.js"></script>
-        <script src="https://code.highcharts.com/modules/accessibility.js"></script>
-
-        <!-- Global: Disable Highcharts Credits -->
-        <script type="text/javascript">
-            $(window).on('load', function () {
-                $('#status').delay(900).fadeOut(1000); // will first fade out the loading animation
-                $('#preloader').delay(900).fadeOut(1000); // will fade out the white div
-            });
-        </script>
-    </head>
-
-    <body>
-        <!--wrapper-->
         <div class="wrapper">
-            <div id="google_translate_element" style="display: none;"></div>
-
+         
             <!--start header -->
             <header>
                 <div class="topbar d-flex">
