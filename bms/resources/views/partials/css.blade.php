@@ -36,6 +36,28 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <!-- jQuery UI CSS -->
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+      <!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Core Highcharts -->
+<script src="https://code.highcharts.com/highcharts.js"></script>
+
+<!-- Dependencies for Solid Gauge -->
+<script src="https://code.highcharts.com/highcharts-more.js"></script>
+<script src="https://code.highcharts.com/modules/solid-gauge.js"></script>
+
+<!-- Optional Modules -->
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/export-data.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+<!-- Global: Disable Highcharts Credits -->
+<script type="text/javascript">
+    $(window).on('load', function () {
+        $('#status').delay(900).fadeOut(1000); // will first fade out the loading animation
+        $('#preloader').delay(900).fadeOut(1000); // will fade out the white div
+    });
+</script>
 
 <!-- Global CSS Styles -->
 <style>
