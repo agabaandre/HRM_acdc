@@ -62,3 +62,12 @@ Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.i
 Route::get('approvals/{memo}', [ApprovalController::class, 'show'])->name('approvals.show');
 Route::post('approvals/{memo}', [ApprovalController::class, 'approve'])->name('approvals.approve');
 Route::get('approvals/{memo}/history', [ApprovalController::class, 'history'])->name('approvals.history');
+// Settings-related routes
+Route::middleware(['auth'])->group(function () {
+    Route::resource('fundtypes', App\Http\Controllers\FundTypeController::class);
+    Route::resource('fundcodes', App\Http\Controllers\FundCodeController::class);
+    Route::resource('divisions', App\Http\Controllers\DivisionController::class);
+    Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
+    Route::resource('staff', App\Http\Controllers\StaffController::class);
+    Route::resource('requesttypes', App\Http\Controllers\RequestTypeController::class);
+});
