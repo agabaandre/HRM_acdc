@@ -16,7 +16,7 @@
 
     <!-- Include the breadcrumbs partial -->
     @include('partials.breadcrumbs')
-
+    @include('partials.nav')
 
             <!-- Content Area -->
             @yield('content')
