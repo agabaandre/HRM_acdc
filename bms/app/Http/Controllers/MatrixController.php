@@ -6,8 +6,9 @@ use App\Models\Matrix;
 use App\Models\Division;
 use App\Models\Staff;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\View as ViewFacade;
 
 class MatrixController extends Controller
 {
@@ -30,10 +31,11 @@ class MatrixController extends Controller
     {
         $divisions = Division::all();
         $staff = Staff::active()->get();
+        $focalPersons = Staff::active()->get();  // Adding focal persons list
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
 
-        return view('matrices.create', compact('divisions', 'staff', 'quarters', 'years'));
+        return view('matrices.create', compact('divisions', 'staff', 'quarters', 'years', 'focalPersons'));
     }
 
     /**
@@ -73,10 +75,11 @@ class MatrixController extends Controller
     {
         $divisions = Division::all();
         $staff = Staff::active()->get();
+        $focalPersons = Staff::active()->get();  // Adding focal persons list
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
 
-        return view('matrices.edit', compact('matrix', 'divisions', 'staff', 'quarters', 'years'));
+        return view('matrices.edit', compact('matrix', 'divisions', 'staff', 'quarters', 'years', 'focalPersons'));
     }
 
     /**
