@@ -105,7 +105,7 @@
         <p>Plan and track quarterly travel for all staff.</p>
       </div>
       <div>
-        <a href="{{ url('quarterly-travel') }}" class="btn btn-outline-success btn-sm mt-2">Open Matrix</a>
+        <a href="{{ route('matrices.index') }}" class="btn btn-outline-success btn-sm mt-2">Open Matrix</a>
         <div class="settings-icon mt-3"><i class="bx bx-calendar"></i></div>
       </div>
     </div>

@@ -12,12 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('divisions', function (Blueprint $table) {
-            $table->integer('division_id')->autoIncrement();
+            $table->id();
             $table->string('division_name', 150);
             $table->integer('division_head');
             $table->integer('focal_person');
             $table->integer('admin_assistant');
             $table->integer('finance_officer');
+            $table->timestamps();
         });
     }
 

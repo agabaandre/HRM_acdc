@@ -15,7 +15,7 @@ return new class extends Migration
 
         Schema::create('matrices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('focal_person_id')->constrained();
+            $table->foreignId('focal_person_id')->constrained('staff');
             $table->foreignId('division_id')->constrained();
             $table->year('year');
             $table->enum('quarter', ["Q1","Q2","Q3","Q4"]);

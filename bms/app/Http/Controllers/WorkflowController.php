@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Workflow;
 use App\Models\WorkflowDefinition;
+use App\Models\Staff;
+use App\Models\Approver;
 use Illuminate\Http\Request;
 
 class WorkflowController extends Controller
@@ -160,5 +162,129 @@ class WorkflowController extends Controller
 
         return redirect()->route('workflows.show', $workflow->id)
             ->with('success', 'Workflow definition added successfully.');
+    }
+
+    /**
+     * Show form for assigning staff to workflow definition.
+     *
+     * @param  \App\Models\Workflow  $workflow
+     * @return \Illuminate\View\View
+     */
+    public function assignStaff(Workflow $workflow)
+    {
+        $workflowDefinitions = $workflow->workflowDefinitions()
+            ->orderBy('approval_order')
+            ->with(['approvers.staff'])
+            ->get();
+
+        $availableStaff = Staff::where('status', 'active')
+            ->orderBy('fname')
+            ->get();
+
+        return view('workflows.assign_staff', compact('workflow', 'workflowDefinitions', 'availableStaff'));
+    }
+
+    /**
+     * Store staff assignments for workflow definition.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Workflow  $workflow
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeStaff(Request $request, Workflow $workflow)
+    {
+        $validated = $request->validate([
+            'assignments' => 'required|array',
+            'assignments.*.workflow_dfn_id' => 'required|exists:workflow_definition,id',
+            'assignments.*.staff_id' => 'required|exists:staff,staff_id',
+            'assignments.*.oic_staff_id' => 'nullable|exists:staff,staff_id',
+            'assignments.*.start_date' => 'required|date',
+            'assignments.*.end_date' => 'nullable|date|after:start_date',
+        ]);
+
+        foreach ($validated['assignments'] as $assignment) {
+            // Update or create approver record
+            Approver::updateOrCreate(
+                [
+                    'workflow_dfn_id' => $assignment['workflow_dfn_id'],
+                    'staff_id' => $assignment['staff_id']
+                ],
+                [
+                    'oic_staff_id' => $assignment['oic_staff_id'] ?? null,
+                    'start_date' => $assignment['start_date'],
+                    'end_date' => $assignment['end_date']
+                ]
+            );
+        }
+
+        return redirect()->route('workflows.show', $workflow->id)
+            ->with('success', 'Staff assignments updated successfully.');
+    }
+
+    /**
+     * Handle AJAX staff assignment request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Workflow  $workflow
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function ajaxStoreStaff(Request $request, Workflow $workflow)
+    {
+        try {
+            $validated = $request->validate([
+                'workflow_dfn_id' => 'required|exists:workflow_definition,id',
+                'staff_id' => 'required|exists:staff,staff_id',
+                'oic_staff_id' => 'nullable|exists:staff,staff_id',
+                'start_date' => 'required|date',
+                'end_date' => 'nullable|date|after:start_date',
+            ]);
+
+            $approver = Approver::create([
+                'workflow_dfn_id' => $validated['workflow_dfn_id'],
+                'staff_id' => $validated['staff_id'],
+                'oic_staff_id' => $validated['oic_staff_id'],
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
+            ]);
+
+            $approver->load(['staff', 'oicStaff']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Staff assigned successfully',
+                'approver' => $approver
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Handle AJAX staff removal request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Workflow  $workflow
+     * @param  int  $approverId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function ajaxRemoveStaff(Request $request, Workflow $workflow, $approverId)
+    {
+        try {
+            $approver = Approver::findOrFail($approverId);
+            $approver->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Staff removed successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 422);
+        }
     }
 }

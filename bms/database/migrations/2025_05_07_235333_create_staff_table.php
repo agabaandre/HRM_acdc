@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('staff', function (Blueprint $table) {
             $table->id();
             $table->integer('staff_id')->unique();
-            $table->string('work_email')->unique();
+            $table->string('work_email');
             $table->string('sap_no');
             $table->string('title')->nullable();
             $table->string('fname');

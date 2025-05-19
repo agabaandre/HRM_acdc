@@ -17,7 +17,11 @@ class Division extends Model
      * @var array
      */
     protected $fillable = [
-        'name',
+        'division_name',
+        'division_head',
+        'focal_person',
+        'admin_assistant',
+        'finance_officer',
         'staff_ids',
         'is_external',
         'directorate_id',
@@ -33,6 +37,10 @@ class Division extends Model
     {
         return [
             'id' => 'integer',
+            'division_head' => 'integer',
+            'focal_person' => 'integer',
+            'admin_assistant' => 'integer',
+            'finance_officer' => 'integer',
             'staff_ids' => 'array',
             'is_external' => 'boolean',
             'directorate_id' => 'integer',

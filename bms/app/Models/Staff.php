@@ -57,6 +57,22 @@ class Staff extends Model
         ];
     }
 
+    /**
+     * Scope a query to only include active staff.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Get the full name of the staff member.
+     */
+    public function getNameAttribute()
+    {
+        return "{$this->fname} {$this->lname}";
+    }
+
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class);

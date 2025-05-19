@@ -1,11 +1,6 @@
 @php
 $workflowMenuItems = [
     [
-        'route' => 'memos.index',
-        'icon' => 'bx bx-file',
-        'title' => 'Memos'
-    ],
-    [
         'route' => 'workflows.index',
         'icon' => 'bx bx-git-branch',
         'title' => 'Workflows'
