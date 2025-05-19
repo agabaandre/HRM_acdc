@@ -19,6 +19,9 @@
                     </ol>
                 </nav>
             </div>
+            <div class="ms-auto">
+                @yield('header-actions')
+            </div>
         </div>
         <!--end breadcrumb-->
         <div id="preloader">

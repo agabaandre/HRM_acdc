@@ -33,6 +33,7 @@ class Staff extends Model
         'nationality',
         'division_name',
         'division_id',
+        'directorate_id',
         'duty_station_id',
         'status',
         'tel_1',
@@ -40,6 +41,8 @@ class Staff extends Model
         'private_email',
         'photo',
         'physical_location',
+        'supervisor_id',
+        'active',
     ];
 
     /**
@@ -53,7 +56,10 @@ class Staff extends Model
             'id' => 'integer',
             'date_of_birth' => 'date',
             'division_id' => 'integer',
+            'directorate_id' => 'integer',
             'duty_station_id' => 'integer',
+            'supervisor_id' => 'integer',
+            'active' => 'boolean',
         ];
     }
 
@@ -77,6 +83,11 @@ class Staff extends Model
     {
         return $this->belongsTo(Division::class);
     }
+    
+    public function directorate(): BelongsTo
+    {
+        return $this->belongsTo(Directorate::class);
+    }
 
     public function dutyStation(): BelongsTo
     {
@@ -96,5 +107,21 @@ class Staff extends Model
     public function nonTravelMemos(): HasMany
     {
         return $this->hasMany(NonTravelMemo::class);
+    }
+    
+    /**
+     * Get the supervisor of this staff member.
+     */
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'supervisor_id');
+    }
+    
+    /**
+     * Get the subordinates of this staff member.
+     */
+    public function subordinates(): HasMany
+    {
+        return $this->hasMany(Staff::class, 'supervisor_id');
     }
 }

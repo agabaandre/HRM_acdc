@@ -16,27 +16,32 @@
 @endsection
 
 @section('content')
-<div class="card">
-    <div class="card-header">
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
         <div class="row align-items-center">
             <div class="col-md-6">
-                <h5 class="mb-md-0">All Activities</h5>
+                <h5 class="mb-md-0"><i class="bx bx-calendar-check me-2 text-primary"></i>All Activities</h5>
             </div>
             <div class="col-md-6">
                 <form class="d-flex gap-2 justify-content-md-end">
-                    <input type="text"
-                           class="form-control w-auto"
-                           id="searchInput"
-                           placeholder="Search activities...">
+                    <div class="input-group">
+                        <input type="text"
+                               class="form-control"
+                               id="searchInput"
+                               placeholder="Search activities...">
+                        <button class="btn btn-outline-primary" type="button">
+                            <i class="bx bx-search"></i>
+                        </button>
+                    </div>
 
-                    <select class="form-select w-auto" id="typeFilter">
+                    <select class="form-select" id="typeFilter">
                         <option value="">All Types</option>
                         @foreach($requestTypes as $type)
                             <option value="{{ $type->id }}">{{ $type->name }}</option>
                         @endforeach
                     </select>
 
-                    <select class="form-select w-auto" id="statusFilter">
+                    <select class="form-select" id="statusFilter">
                         <option value="">All Status</option>
                         <option value="pending">Pending</option>
                         <option value="approved">Approved</option>
@@ -46,10 +51,22 @@
             </div>
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
+        @if(session('success'))
+            <div class="alert alert-success m-3">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger m-3">
+                {{ session('error') }}
+            </div>
+        @endif
+        
         <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
                     <tr>
                         <th>Activity Code</th>
                         <th>Title</th>
@@ -57,7 +74,7 @@
                         <th>Location</th>
                         <th>Budget</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -90,7 +107,7 @@
                             <td>
                                 <span class="badge bg-warning">Pending</span>
                             </td>
-                            <td>
+                            <td class="text-end">
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}"
                                        class="btn btn-sm btn-info"
@@ -108,6 +125,7 @@
                                             class="btn btn-sm btn-danger"
                                             data-bs-toggle="modal"
                                             data-bs-target="#deleteModal{{ $activity->id }}"
+                                            data-bs-toggle="tooltip"
                                             title="Delete Activity">
                                         <i class="bx bx-trash"></i>
                                     </button>
