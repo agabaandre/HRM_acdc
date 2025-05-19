@@ -12,8 +12,8 @@
 
 @section('content')
 <div class="card shadow-sm">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bx bx-grid-alt me-2"></i>Matrix Details</h5>
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bx bx-grid-alt me-2 text-primary"></i>Matrix Details</h5>
     </div>
     <div class="card-body p-4">
         <form action="{{ route('matrices.store') }}" method="POST" id="matrixForm">
@@ -193,8 +193,8 @@
                 </div>
 
                 <div class="text-center mt-3">
-                    <button type="button" class="btn btn-success btn-lg px-4 shadow-sm" id="addArea">
-                        <i class="bx bx-plus-circle me-2"></i> Add New Key Result Area
+                    <button type="button" id="addArea" class="btn btn-outline-primary btn-lg">
+                        <i class="bx bx-plus-circle me-1"></i> Add Key Result Area
                     </button>
                 </div>
             </div>
@@ -221,6 +221,10 @@
             theme: 'bootstrap-5',
             dropdownParent: $('#matrixForm')
         });
+
+        // Add SweetAlert2 library with Bootstrap 4 theme
+        document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css">');
+        document.write('<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.all.min.js"><\/script>');
 
         // Add new key result area with animation
         $('#addArea').click(function() {
@@ -290,7 +294,11 @@
                     icon: 'warning',
                     title: 'Cannot Remove',
                     text: 'At least one key result area is required.',
-                    confirmButtonColor: '#3085d6'
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: '<i class="bx bx-check me-1"></i> OK',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    }
                 });
             }
         });
@@ -303,7 +311,11 @@
                     icon: 'error',
                     title: 'Validation Error',
                     text: 'At least one key result area is required.',
-                    confirmButtonColor: '#3085d6'
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: '<i class="bx bx-check me-1"></i> OK',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    }
                 });
                 return false;
             }
