@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\MatrixController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WorkflowController;
@@ -71,3 +73,6 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('staff', App\Http\Controllers\StaffController::class);
     Route::resource('requesttypes', App\Http\Controllers\RequestTypeController::class);
 });
+
+Route::resource('matrices', MatrixController::class);
+Route::resource('matrices.activities', ActivityController::class);

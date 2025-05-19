@@ -53,7 +53,7 @@ class Matrix extends Model
 
     public function focalPerson(): BelongsTo
     {
-        return $this->belongsTo(FocalPerson::class);
+        return $this->belongsTo(Staff::class, 'focal_person_id');
     }
 
     public function activities(): HasMany

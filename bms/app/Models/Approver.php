@@ -44,4 +44,20 @@ class Approver extends Model
     {
         return $this->belongsTo(WorkflowDefinition::class, 'workflow_dfn_id');
     }
+
+    /**
+     * Get the staff member assigned as approver.
+     */
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
+    }
+
+    /**
+     * Get the staff member assigned as Officer In Charge (OIC).
+     */
+    public function oicStaff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'oic_staff_id', 'staff_id');
+    }
 }
