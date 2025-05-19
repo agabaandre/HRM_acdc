@@ -52,9 +52,10 @@ Route::get('/home', function () {
 Route::resource('workflows', WorkflowController::class);
 Route::get('workflows/{workflow}/add-definition', [WorkflowController::class, 'addDefinition'])->name('workflows.add-definition');
 Route::post('workflows/{workflow}/store-definition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
-
-// Division Management Routes
-Route::resource('divisions', DivisionController::class);
+Route::get('workflows/{workflow}/assign-staff', [WorkflowController::class, 'assignStaff'])->name('workflows.assign-staff');
+Route::post('workflows/{workflow}/assign-staff', [WorkflowController::class, 'storeStaff'])->name('workflows.store-assigned-staff');
+Route::post('workflows/{workflow}/ajax-store-staff', [WorkflowController::class, 'ajaxStoreStaff'])->name('workflows.ajax-store-staff');
+Route::delete('workflows/{workflow}/ajax-remove-staff/{approverId}', [WorkflowController::class, 'ajaxRemoveStaff'])->name('workflows.ajax-remove-staff');
 
 // Memo Management Routes
 Route::resource('memos', MemoController::class);
@@ -64,14 +65,16 @@ Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.i
 Route::get('approvals/{memo}', [ApprovalController::class, 'show'])->name('approvals.show');
 Route::post('approvals/{memo}', [ApprovalController::class, 'approve'])->name('approvals.approve');
 Route::get('approvals/{memo}/history', [ApprovalController::class, 'history'])->name('approvals.history');
-// Settings-related routes
-Route::middleware(['auth'])->group(function () {
-    Route::resource('fundtypes', App\Http\Controllers\FundTypeController::class);
-    Route::resource('fundcodes', App\Http\Controllers\FundCodeController::class);
+
+// Disable authentication for all routes in the group
+Route::group(['middleware' => ['web']], function () {
+    // Resource Routes
+    Route::resource('fund-types', App\Http\Controllers\FundTypeController::class);
+    Route::resource('fund-codes', App\Http\Controllers\FundCodeController::class);
     Route::resource('divisions', App\Http\Controllers\DivisionController::class);
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     Route::resource('staff', App\Http\Controllers\StaffController::class);
-    Route::resource('requesttypes', App\Http\Controllers\RequestTypeController::class);
+    Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
 });
 
 Route::resource('matrices', MatrixController::class);

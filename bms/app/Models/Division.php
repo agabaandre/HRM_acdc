@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Division extends Model
 {
     use HasFactory;
+    
+    // Using standard Laravel 'id' as primary key
 
     /**
      * The attributes that are mass assignable.

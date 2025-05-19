@@ -53,22 +53,24 @@ class DivisionController extends Controller
     /**
      * Display the specified division.
      *
-     * @param  \App\Models\Division  $division
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
-    public function show(Division $division)
+    public function show($id)
     {
+        $division = Division::findOrFail($id);
         return view('divisions.show', compact('division'));
     }
 
     /**
      * Show the form for editing the specified division.
      *
-     * @param  \App\Models\Division  $division
+     * @param  int  $id
      * @return \Illuminate\View\View
      */
-    public function edit(Division $division)
+    public function edit($id)
     {
+        $division = Division::findOrFail($id);
         return view('divisions.edit', compact('division'));
     }
 
@@ -76,11 +78,13 @@ class DivisionController extends Controller
      * Update the specified division in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Division  $division
+     * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, Division $division)
+    public function update(Request $request, $id)
     {
+        $division = Division::findOrFail($id);
+        
         $validated = $request->validate([
             'division_name' => 'required|string|max:150',
             'division_head' => 'required|integer',
@@ -98,11 +102,12 @@ class DivisionController extends Controller
     /**
      * Remove the specified division from storage.
      *
-     * @param  \App\Models\Division  $division
+     * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy(Division $division)
+    public function destroy($id)
     {
+        $division = Division::findOrFail($id);
         $division->delete();
 
         return redirect()->route('divisions.index')

@@ -14,12 +14,12 @@ $workflowMenuItems = [
 
 $settingsMenuItems = [
     [
-        'route' => 'fundtypes.index',
+        'route' => 'fund-types.index',
         'icon' => 'bx bx-wallet',
         'title' => 'Fund Types'
     ],
     [
-        'route' => 'fundcodes.index',
+        'route' => 'fund-codes.index',
         'icon' => 'bx bx-barcode',
         'title' => 'Fund Codes'
     ],
@@ -39,7 +39,7 @@ $settingsMenuItems = [
         'title' => 'Staff'
     ],
     [
-        'route' => 'requesttypes.index',
+        'route' => 'request-types.index',
         'icon' => 'bx bx-spreadsheet',
         'title' => 'Request Types'
     ]
@@ -78,7 +78,7 @@ $settingsMenuItems = [
 
             <!-- Settings Dropdown -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('fundtypes*') || Request::is('fundcodes*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('staff*') || Request::is('requesttypes*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('staff*') || Request::is('request-types*') ? 'active' : '' }}"
                    href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="bx bx-cog"></i></div>
                     <div class="menu-title">Settings</div>
