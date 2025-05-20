@@ -144,7 +144,7 @@
         <p>Submit your Activity Request Form for approvals.</p>
       </div>
       <div>
-        <a href="{{ url('arf-request') }}" class="btn btn-outline-success btn-sm mt-2">Submit ARF</a>
+        <a href="{{ url('request-arf') }}" class="btn btn-outline-success btn-sm mt-2">Submit ARF</a>
         <div class="settings-icon mt-3"><i class="bx bx-edit"></i></div>
       </div>
     </div>
