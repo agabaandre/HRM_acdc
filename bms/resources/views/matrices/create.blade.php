@@ -4,6 +4,7 @@
 
 @section('header', 'Create New Matrix')
 
+
 @section('header-actions')
 <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
     <i class="bx bx-arrow-back"></i> Back to List
@@ -96,7 +97,7 @@
                         <label for="focal_person_id" class="form-label fw-semibold"><i class="bx bx-user-voice me-1 text-primary"></i>Focal Person <span class="text-danger">*</span></label>
                         <select name="focal_person_id" id="focal_person_id" class="form-select form-select-lg @error('focal_person_id') is-invalid @enderror" required>
                             <option value="">Select Focal Person</option>
-                            @foreach($focalPersons as $person)
+                            @foreach($staff as $person)
                                 <option value="{{ $person->id }}" {{ old('focal_person_id') == $person->id ? 'selected' : '' }}>
                                     {{ $person->name }}
                                 </option>
@@ -157,35 +158,39 @@
                             </div>
                         @endforeach
                     @else
-                        <div class="key-result-area">
-                            <div class="row">
-                                <div class="col-md-11">
+                        <div class="key-result-area mb-4">
+                            <div class="card border shadow-sm">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0 fw-semibold">Result Area #1</h6>
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-area">
+                                        <i class="bx bx-trash me-1"></i> Remove
+                                    </button>
+                                </div>
+                                <div class="card-body p-4">
                                     <div class="mb-3">
-                                        <label class="form-label">Title</label>
+                                        <label class="form-label fw-semibold"><i class="bx bx-heading me-1 text-primary"></i>Title</label>
                                         <input type="text"
                                                name="key_result_area[0][title]"
-                                               class="form-control"
+                                               class="form-control form-control-lg"
+                                               placeholder="Enter area title"
                                                required>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Description</label>
+                                        <label class="form-label fw-semibold"><i class="bx bx-detail me-1 text-primary"></i>Description</label>
                                         <textarea name="key_result_area[0][description]"
                                                   class="form-control"
-                                                  rows="2"
+                                                  rows="3"
+                                                  placeholder="Describe this key result area"
                                                   required></textarea>
                                     </div>
                                     <div>
-                                        <label class="form-label">Expected Results</label>
+                                        <label class="form-label fw-semibold"><i class="bx bx-bullseye me-1 text-primary"></i>Expected Results</label>
                                         <textarea name="key_result_area[0][targets]"
                                                   class="form-control"
-                                                  rows="2"
+                                                  rows="3"
+                                                  placeholder="What are the expected results/outcomes?"
                                                   required></textarea>
                                     </div>
-                                </div>
-                                <div class="col-md-1">
-                                    <button type="button" class="btn btn-link text-danger remove-area">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -211,23 +216,25 @@
     </div>
 </div>
 
+
 @push('scripts')
-<script>
+
+<!-- Import Select2, SweetAlert -->
+<link href="{{ asset('assets/libs/select2/css/select2.min.css') }}" rel="stylesheet" type="text/css" />
+<script src="{{ asset('assets/libs/select2/js/select2.min.js') }}"></script>
+<script src="{{ asset('assets/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+
+<script type="text/javascript">
     $(document).ready(function() {
         let areaIndex = {{ old('key_result_area') ? count(old('key_result_area')) : 1 }};
 
-        // Initialize Select2 for better dropdown UX
-        $('.form-select').select2({
-            theme: 'bootstrap-5',
-            dropdownParent: $('#matrixForm')
-        });
+// Initialize Select2 for better dropdown UX
+$('.form-select').select2({
+    dropdownParent: $('#matrixForm'),
+});
 
-        // Add SweetAlert2 library with Bootstrap 4 theme
-        document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css">');
-        document.write('<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.all.min.js"><\/script>');
-
-        // Add new key result area with animation
-        $('#addArea').click(function() {
+// Add new key result area with animation
+$('#addArea').click(function() {
             const newArea = `
                 <div class="key-result-area mb-4" style="display: none;">
                     <div class="card border shadow-sm">
@@ -331,4 +338,5 @@
     });
 </script>
 @endpush
+
 @endsection
