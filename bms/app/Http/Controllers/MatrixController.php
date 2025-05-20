@@ -21,7 +21,7 @@ class MatrixController extends Controller
             ->latest()
             ->paginate(10);
 
-        return view('matrices.index', compact('matrices'));
+        return ViewFacade::make('matrices.index', compact('matrices'));
     }
 
     /**
@@ -35,7 +35,7 @@ class MatrixController extends Controller
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
 
-        return view('matrices.create', compact('divisions', 'staff', 'quarters', 'years', 'focalPersons'));
+        return ViewFacade::make('matrices.create', compact('divisions', 'staff', 'quarters', 'years', 'focalPersons'));
     }
 
     /**
@@ -65,7 +65,7 @@ class MatrixController extends Controller
     public function show(Matrix $matrix): View
     {
         $matrix->load(['division', 'staff', 'focalPerson', 'activities']);
-        return view('matrices.show', compact('matrix'));
+        return ViewFacade::make('matrices.show', compact('matrix'));
     }
 
     /**
@@ -79,7 +79,7 @@ class MatrixController extends Controller
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
 
-        return view('matrices.edit', compact('matrix', 'divisions', 'staff', 'quarters', 'years', 'focalPersons'));
+        return ViewFacade::make('matrices.edit', compact('matrix', 'divisions', 'staff', 'quarters', 'years', 'focalPersons'));
     }
 
     /**

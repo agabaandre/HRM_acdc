@@ -75,7 +75,8 @@ Route::group(['middleware' => ['web']], function () {
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     Route::resource('staff', App\Http\Controllers\StaffController::class);
     Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
+    
+    // Add matrices and activities resources inside the middleware group
+    Route::resource('matrices', MatrixController::class);
+    Route::resource('matrices.activities', ActivityController::class);
 });
-
-Route::resource('matrices', MatrixController::class);
-Route::resource('matrices.activities', ActivityController::class);
