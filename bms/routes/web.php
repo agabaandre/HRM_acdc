@@ -79,4 +79,20 @@ Route::group(['middleware' => ['web']], function () {
     // Add matrices and activities resources inside the middleware group
     Route::resource('matrices', MatrixController::class);
     Route::resource('matrices.activities', ActivityController::class);
+    
+    // Non-Travel Memo Routes
+    Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);
+    Route::delete('non-travel/{nonTravel}/remove-attachment', [App\Http\Controllers\NonTravelMemoController::class, 'removeAttachment'])->name('non-travel.remove-attachment');
+    
+    // Request for ARF Routes
+    Route::resource('request-arf', App\Http\Controllers\RequestARFController::class);
+    Route::delete('request-arf/{requestARF}/remove-attachment', [App\Http\Controllers\RequestARFController::class, 'removeAttachment'])->name('request-arf.remove-attachment');
+    
+    // Special Memo Routes
+    Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
+    Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
+    
+    // Request for Services Routes
+    Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
+    Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
 });
