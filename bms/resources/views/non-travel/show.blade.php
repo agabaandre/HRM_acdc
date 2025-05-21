@@ -148,11 +148,11 @@
             <div class="card-body">
                 <div class="mb-3">
                     <p class="mb-1 fw-semibold text-muted"><i class="bx bx-git-branch me-1 text-primary"></i> Forward Workflow:</p>
-                    <p class="mb-0 fs-6">{{ $nonTravel->forwardWorkflow->name ?? 'Not specified' }}</p>
+                    <p class="mb-0 fs-6">{{ $nonTravel->forwardworkflow->workflow_name ?? 'Not specified' }}</p>
                 </div>
                 <div>
                     <p class="mb-1 fw-semibold text-muted"><i class="bx bx-git-repo-forked me-1 text-primary"></i> Reverse Workflow:</p>
-                    <p class="mb-0 fs-6">{{ $nonTravel->reverseWorkflow->name ?? 'Not specified' }}</p>
+                    <p class="mb-0 fs-6">{{ $nonTravel->reverseworkflow->workflow_name ?? 'Not specified' }}</p>
                 </div>
             </div>
         </div>

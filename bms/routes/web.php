@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\MatrixController;
+use App\Http\Middleware\CheckSessionMiddleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WorkflowController;
@@ -21,6 +22,8 @@ Route::get('/', function (Request $request) {
 
             // Parse the JSON data
             $json = json_decode($decodedToken, true);
+
+            // dd($json);
 
             if (!$json) {
                 throw new Exception('Invalid token format');
@@ -46,28 +49,30 @@ Route::get('/home', function () {
         'permissions' => session('permissions', []),
         'base_url' => session('base_url', ''),
     ]);
-})->name('home');
+})->name('home')->middleware(CheckSessionMiddleware::class);
 
 // Workflow Management Routes
-Route::resource('workflows', WorkflowController::class);
-Route::get('workflows/{workflow}/add-definition', [WorkflowController::class, 'addDefinition'])->name('workflows.add-definition');
-Route::post('workflows/{workflow}/store-definition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
-Route::get('workflows/{workflow}/assign-staff', [WorkflowController::class, 'assignStaff'])->name('workflows.assign-staff');
-Route::post('workflows/{workflow}/assign-staff', [WorkflowController::class, 'storeStaff'])->name('workflows.store-assigned-staff');
-Route::post('workflows/{workflow}/ajax-store-staff', [WorkflowController::class, 'ajaxStoreStaff'])->name('workflows.ajax-store-staff');
-Route::delete('workflows/{workflow}/ajax-remove-staff/{approverId}', [WorkflowController::class, 'ajaxRemoveStaff'])->name('workflows.ajax-remove-staff');
+Route::middleware([CheckSessionMiddleware::class])->group(function () {
+    Route::resource('workflows', WorkflowController::class);
+    Route::get('workflows/{workflow}/add-definition', [WorkflowController::class, 'addDefinition'])->name('workflows.add-definition');
+    Route::post('workflows/{workflow}/store-definition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
+    Route::get('workflows/{workflow}/assign-staff', [WorkflowController::class, 'assignStaff'])->name('workflows.assign-staff');
+    Route::post('workflows/{workflow}/assign-staff', [WorkflowController::class, 'storeStaff'])->name('workflows.store-assigned-staff');
+    Route::post('workflows/{workflow}/ajax-store-staff', [WorkflowController::class, 'ajaxStoreStaff'])->name('workflows.ajax-store-staff');
+    Route::delete('workflows/{workflow}/ajax-remove-staff/{approverId}', [WorkflowController::class, 'ajaxRemoveStaff'])->name('workflows.ajax-remove-staff');
 
-// Memo Management Routes
-Route::resource('memos', MemoController::class);
+    // Memo Management Routes
+    Route::resource('memos', MemoController::class);
 
-// Approval Management Routes
-Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');
-Route::get('approvals/{memo}', [ApprovalController::class, 'show'])->name('approvals.show');
-Route::post('approvals/{memo}', [ApprovalController::class, 'approve'])->name('approvals.approve');
-Route::get('approvals/{memo}/history', [ApprovalController::class, 'history'])->name('approvals.history');
+    // Approval Management Routes
+    Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+    Route::get('approvals/{memo}', [ApprovalController::class, 'show'])->name('approvals.show');
+    Route::post('approvals/{memo}', [ApprovalController::class, 'approve'])->name('approvals.approve');
+    Route::get('approvals/{memo}/history', [ApprovalController::class, 'history'])->name('approvals.history');
+});
 
-// Disable authentication for all routes in the group
-Route::group(['middleware' => ['web']], function () {
+// Group with session check for all resource routes
+Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function () {
     // Resource Routes
     Route::resource('fund-types', App\Http\Controllers\FundTypeController::class);
     Route::resource('fund-codes', App\Http\Controllers\FundCodeController::class);

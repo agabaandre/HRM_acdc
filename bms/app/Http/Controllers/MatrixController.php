@@ -31,11 +31,33 @@ class MatrixController extends Controller
     {
         $divisions = Division::all();
         $staff = Staff::active()->get();
-        $focalPersons = Staff::active()->get();  // Adding focal persons list
+        // Initialize focal persons to all active staff (will be filtered by JS on division selection)
+        $focalPersons = Staff::active()->get();
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
+        
+        // Create an array of staff IDs by division for use in JavaScript
+        $staffByDivision = [];
+        $divisionFocalPersons = [];
+        
+        foreach ($divisions as $division) {
+            // Get staff for each division
+            $divisionStaff = Staff::active()->where('division_id', $division->id)->get();
+            $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
+            
+            // Store the focal person for each division
+            $divisionFocalPersons[$division->id] = $division->focal_person;
+        }
 
-        return ViewFacade::make('matrices.create', compact('divisions', 'staff', 'quarters', 'years', 'focalPersons'));
+        return ViewFacade::make('matrices.create', compact(
+            'divisions', 
+            'staff', 
+            'quarters', 
+            'years', 
+            'focalPersons', 
+            'staffByDivision',
+            'divisionFocalPersons'
+        ));
     }
 
     /**
@@ -75,11 +97,33 @@ class MatrixController extends Controller
     {
         $divisions = Division::all();
         $staff = Staff::active()->get();
-        $focalPersons = Staff::active()->get();  // Adding focal persons list
+        $focalPersons = Staff::active()->get();
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
+        
+        // Create an array of staff IDs by division for use in JavaScript
+        $staffByDivision = [];
+        $divisionFocalPersons = [];
+        
+        foreach ($divisions as $division) {
+            // Get staff for each division
+            $divisionStaff = Staff::active()->where('division_id', $division->id)->get();
+            $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
+            
+            // Store the focal person for each division
+            $divisionFocalPersons[$division->id] = $division->focal_person;
+        }
 
-        return ViewFacade::make('matrices.edit', compact('matrix', 'divisions', 'staff', 'quarters', 'years', 'focalPersons'));
+        return ViewFacade::make('matrices.edit', compact(
+            'matrix',
+            'divisions', 
+            'staff', 
+            'quarters', 
+            'years', 
+            'focalPersons', 
+            'staffByDivision',
+            'divisionFocalPersons'
+        ));
     }
 
     /**

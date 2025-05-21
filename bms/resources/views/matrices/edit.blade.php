@@ -96,12 +96,13 @@
                         <label for="focal_person_id" class="form-label fw-semibold"><i class="bx bx-user-voice me-1 text-primary"></i>Focal Person <span class="text-danger">*</span></label>
                         <select name="focal_person_id" id="focal_person_id" class="form-select form-select-lg select2 @error('focal_person_id') is-invalid @enderror" required>
                             <option value="">Select Focal Person</option>
-                            @foreach($staff as $member)
-                                <option value="{{ $member->id }}" {{ old('focal_person_id', $matrix->focal_person_id) == $member->id ? 'selected' : '' }}>
-                                    {{ $member->name }}
+                            @foreach($focalPersons as $person)
+                                <option value="{{ $person->id }}" {{ old('focal_person_id', $matrix->focal_person_id) == $person->id ? 'selected' : '' }} data-division-id="{{ $person->division_id }}">
+                                    {{ $person->name }} {{ $person->division ? '('.$person->division->division_name.')' : '' }}
                                 </option>
                             @endforeach
                         </select>
+                        <small class="text-muted mt-1 d-block">Person who will coordinate activities in this matrix</small>
                         @error('focal_person_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -254,6 +255,57 @@
             }
             return true;
         });
+        
+        // Division-based focal person filtering
+        // Store staff by division and division focal persons data from PHP
+        const staffByDivision = @json($staffByDivision);
+        const divisionFocalPersons = @json($divisionFocalPersons);
+        
+        // Handle division selection change
+        $('#division_id').on('change', function() {
+            const divisionId = $(this).val();
+            const focalPersonSelect = $('#focal_person_id');
+            
+            if (!divisionId) {
+                // If no division selected, show all focal persons
+                focalPersonSelect.find('option').show();
+                return;
+            }
+            
+            // Hide all options first except the placeholder
+            focalPersonSelect.find('option:not(:first)').hide();
+            
+            // Get the staff IDs for the selected division
+            const divisionStaffIds = staffByDivision[divisionId] || [];
+            
+            // Show only staff from the selected division
+            focalPersonSelect.find('option').each(function() {
+                const value = $(this).val();
+                if (!value) return; // Skip placeholder
+                
+                if (divisionStaffIds.includes(parseInt(value))) {
+                    $(this).show();
+                }
+            });
+            
+            // If there's a designated focal person for this division, select it (unless editing with existing selection)
+            const divisionFocalPerson = divisionFocalPersons[divisionId];
+            const currentFocalPerson = focalPersonSelect.val();
+            
+            // Only auto-select if no focal person is currently selected
+            if (!currentFocalPerson && divisionFocalPerson) {
+                // Check if the option exists and is visible
+                const focalPersonOption = focalPersonSelect.find(`option[value="${divisionFocalPerson}"]`);
+                if (focalPersonOption.length && divisionStaffIds.includes(parseInt(divisionFocalPerson))) {
+                    focalPersonSelect.val(divisionFocalPerson);
+                }
+            }
+        });
+        
+        // Trigger the change event on page load if there's a selected division
+        if ($('#division_id').val()) {
+            $('#division_id').trigger('change');
+        }
     });
 </script>
 @endpush

@@ -208,7 +208,7 @@
                                     <div class="mb-3">
                                         <h6 class="fw-semibold small mb-2">Forward Workflow</h6>
                                         <div class="bg-light p-2 rounded border mb-2">
-                                            {{ $specialMemo->forwardWorkflow->name ?? 'Not Specified' }}
+                                            {{ $specialMemo->forwardworkflow->workflow_name ?? 'Not Specified' }}
                                         </div>
                                         <div class="text-muted small">
                                             This workflow is used for forwarding the memo to the next approver.
@@ -217,7 +217,7 @@
                                     <div>
                                         <h6 class="fw-semibold small mb-2">Reverse Workflow</h6>
                                         <div class="bg-light p-2 rounded border mb-2">
-                                            {{ $specialMemo->reverseWorkflow->name ?? 'Not Specified' }}
+                                            {{ $specialMemo->reverseworkflow->workflow_name ?? 'Not Specified' }}
                                         </div>
                                         <div class="text-muted small">
                                             This workflow is used when the memo needs to be returned to previous approvers.

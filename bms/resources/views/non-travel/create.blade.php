@@ -156,7 +156,7 @@
                             <option value="">Select Forward Workflow</option>
                             @foreach($workflows as $workflow)
                                 <option value="{{ $workflow->id }}" {{ old('forward_workflow_id') == $workflow->id ? 'selected' : '' }}>
-                                    {{ $workflow->name }}
+                                    {{ $workflow->workflow_name }}
                                 </option>
                             @endforeach
                         </select>
@@ -178,7 +178,7 @@
                             <option value="">Select Reverse Workflow</option>
                             @foreach($workflows as $workflow)
                                 <option value="{{ $workflow->id }}" {{ old('reverse_workflow_id') == $workflow->id ? 'selected' : '' }}>
-                                    {{ $workflow->name }}
+                                    {{ $workflow->workflow_name }}
                                 </option>
                             @endforeach
                         </select>

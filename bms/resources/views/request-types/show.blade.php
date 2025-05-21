@@ -54,7 +54,7 @@
                         <span class="badge bg-primary me-2">
                             <i class="bx bx-git-branch me-1"></i> Workflow
                         </span>
-                        <h5 class="mb-0">{{ $requestType->workflow->name }}</h5>
+                        <h5 class="mb-0">{{ $requestType->workflow->workflow_name }}</h5>
                     </div>
                 </div>
                 @endif
