@@ -55,7 +55,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="form-group position-relative">
                         <label for="division_id" class="form-label fw-semibold"><i class="bx bx-building me-1 text-primary"></i>Division <span class="text-danger">*</span></label>
                         <select name="division_id" id="division_id" class="form-select form-select-lg @error('division_id') is-invalid @enderror" required>
@@ -71,28 +71,8 @@
                         @enderror
                     </div>
                 </div>
-            </div>
 
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="staff_id" class="form-label fw-semibold"><i class="bx bx-user me-1 text-primary"></i>Staff <span class="text-danger">*</span></label>
-                        <select name="staff_id" id="staff_id" class="form-select form-select-lg @error('staff_id') is-invalid @enderror" required>
-                            <option value="">Select Staff</option>
-                            @foreach($staff as $member)
-                                <option value="{{ $member->id }}" {{ old('staff_id') == $member->id ? 'selected' : '' }}>
-                                    {{ $member->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted mt-1 d-block">Primary staff member responsible for this matrix</small>
-                        @error('staff_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="form-group position-relative">
                         <label for="focal_person_id" class="form-label fw-semibold"><i class="bx bx-user-voice me-1 text-primary"></i>Focal Person <span class="text-danger">*</span></label>
                         <select name="focal_person_id" id="focal_person_id" class="form-select form-select-lg @error('focal_person_id') is-invalid @enderror" required>
@@ -109,6 +89,12 @@
                         @enderror
                     </div>
                 </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                
+
+                
             </div>
 
             <div class="mb-4">
