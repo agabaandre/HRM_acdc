@@ -66,7 +66,7 @@
                         <option value="">Select Workflow (Optional)</option>
                         @foreach($workflows as $workflow)
                             <option value="{{ $workflow->id }}" {{ old('workflow_id', $requestType->workflow_id) == $workflow->id ? 'selected' : '' }}>
-                                {{ $workflow->name }}
+                                {{ $workflow->workflow_name }}
                             </option>
                         @endforeach
                     </select>
