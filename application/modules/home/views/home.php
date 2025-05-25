@@ -100,7 +100,7 @@ body {
     if (in_array('85', $permissions)) {
       $token = urlencode(base64_encode(json_encode($session)));
       $settings[] = [
-        $session['base_url'] . 'bms?token=' . $token,
+        $session['base_url'] . 'apm?token=' . $token,
         'Approvals Management',
         'fa-building-columns',
         true,
