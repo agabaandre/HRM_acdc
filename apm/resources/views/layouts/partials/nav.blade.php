@@ -51,7 +51,7 @@ $settingsMenuItems = [
         <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
             <!-- Start Page -->
             <li class="nav-item">
-                <a href="{{ str_replace('bms/', '', url('home/index')) }}"
+                <a href="{{ str_replace('apm/', '', url('home/index')) }}"
                     class="nav-link {{ Request::is('home/index') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-home"></i></div>
                     <div class="menu-title">Start Page</div>

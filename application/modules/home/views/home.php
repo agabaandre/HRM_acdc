@@ -45,12 +45,17 @@ body {
 }
 
 .widgets-icons i {
+  width: 60px;
+  height: 60px;
   font-size: 1.6rem;
   color: #C3A366;
-  padding: 0.8rem;
-  border-radius: 50%;
   background: #f4f4f4;
+  border-radius: 50%;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
 }
 
 .settings-title {
@@ -70,21 +75,11 @@ body {
 </style>
 
 <div class="container">
-  <div class="row justify-content-center">
-    <div class="col-12">
-      <h5 class="settings-title">Home</h5>
-      <input type="text" id="settingsSearch" class="form-control form-control-sm settings-search"
-        placeholder="Search...">
-    </div>
-  </div>
-
   <div class="row g-4 justify-content-center" id="settingsContainer">
     <?php
     $sessionobj = $this->session->userdata('user');
     $permissions = $sessionobj->permissions;
 
-    // dd($permissions);
-    
     $session = (array) $sessionobj;
     $session['base_url'] = base_url();
     $settings = [];
@@ -95,7 +90,7 @@ body {
       $settings[] = [
         $hrPath,
         'Staff Portal',
-        'bx-user',
+        'fa-user',
         false,
         'Manage staff details, contracts, appraisals and access HR services efficiently.'
       ];
@@ -106,8 +101,8 @@ body {
       $token = urlencode(base64_encode(json_encode($session)));
       $settings[] = [
         $session['base_url'] . 'bms?token=' . $token,
-        'Approvals Management System (AMS)',
-        'bx-building',
+        'Approvals Management',
+        'fa-building-columns',
         true,
         'Track, manage, and report on organizational budgets and fund allocations.'
       ];
@@ -122,7 +117,7 @@ body {
             <h6><?= $label ?></h6>
             <p><?= $desc ?></p>
           </div>
-          <div class="widgets-icons text-end"><i class='bx <?= $icon ?>'></i></div>
+          <div class="widgets-icons"><i class="fas <?= $icon ?>"></i></div>
         </div>
       </a>
     </div>
@@ -131,9 +126,9 @@ body {
 </div>
 
 <script>
-document.getElementById("settingsSearch").addEventListener("keyup", function() {
+document.getElementById("settingsSearch")?.addEventListener("keyup", function () {
   let filter = this.value.toLowerCase();
-  document.querySelectorAll(".setting-card-item").forEach(function(card) {
+  document.querySelectorAll(".setting-card-item").forEach(function (card) {
     card.style.display = card.getAttribute("data-title").includes(filter) ? "block" : "none";
   });
 });

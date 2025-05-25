@@ -160,14 +160,7 @@
                                     </button>
                                 </div>
                                 <div class="card-body p-4">
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold"><i class="bx text-success bx-heading me-1 text-primary"></i>Title</label>
-                                        <input type="text"
-                                               name="key_result_area[0][title]"
-                                               class="form-control form-control-lg"
-                                               placeholder="Enter area title"
-                                               required>
-                                    </div>
+                             
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold"><i class="bx text-success bx-detail me-1 text-primary"></i>Description</label>
                                         <textarea name="key_result_area[0][description]"
@@ -176,14 +169,7 @@
                                                   placeholder="Describe this key result area"
                                                   required></textarea>
                                     </div>
-                                    <div>
-                                        <label class="form-label fw-semibold"><i class="bx text-success bx-bullseye me-1 text-primary"></i>Expected Results</label>
-                                        <textarea name="key_result_area[0][targets]"
-                                                  class="form-control"
-                                                  rows="3"
-                                                  placeholder="What are the expected results/outcomes?"
-                                                  required></textarea>
-                                    </div>
+                                
                                 </div>
                             </div>
                         </div>
