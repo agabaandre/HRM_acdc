@@ -2,12 +2,12 @@
 $workflowMenuItems = [
     [
         'route' => 'workflows.index',
-        'icon' => 'bx bx-git-branch',
+        'icon' => 'fas fa-project-diagram',
         'title' => 'Workflows'
     ],
     [
         'route' => 'approvals.index',
-        'icon' => 'bx bx-check-circle',
+        'icon' => 'fas fa-check-circle',
         'title' => 'Approvals'
     ]
 ];
@@ -15,32 +15,32 @@ $workflowMenuItems = [
 $settingsMenuItems = [
     [
         'route' => 'fund-types.index',
-        'icon' => 'bx bx-wallet',
+        'icon' => 'fas fa-hand-holding-usd',
         'title' => 'Fund Types'
     ],
     [
         'route' => 'fund-codes.index',
-        'icon' => 'bx bx-barcode',
+        'icon' => 'fas fa-barcode',
         'title' => 'Fund Codes'
     ],
     [
         'route' => 'divisions.index',
-        'icon' => 'bx bx-building-house',
+        'icon' => 'fas fa-building',
         'title' => 'Divisions'
     ],
     [
         'route' => 'directorates.index',
-        'icon' => 'bx bx-sitemap',
+        'icon' => 'fas fa-network-wired',
         'title' => 'Directorates'
     ],
     [
         'route' => 'staff.index',
-        'icon' => 'bx bx-user',
+        'icon' => 'fas fa-users',
         'title' => 'Staff'
     ],
     [
         'route' => 'request-types.index',
-        'icon' => 'bx bx-spreadsheet',
+        'icon' => 'fas fa-file-alt',
         'title' => 'Request Types'
     ]
 ];
@@ -49,20 +49,29 @@ $settingsMenuItems = [
 <div class="nav-container primary-menu">
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
-            <!-- Home -->
+            <!-- Start Page -->
             <li class="nav-item">
                 <a href="{{ str_replace('bms/', '', url('home/index')) }}"
-                   class="nav-link {{ Request::is('home/index') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="bx bx-home-circle"></i></div>
-                    <div class="menu-title">Home</div>
+                    class="nav-link {{ Request::is('home/index') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-home"></i></div>
+                    <div class="menu-title">Start Page</div>
                 </a>
             </li>
 
-            <!-- Workflow Management Dropdown -->
+            <!-- APMS Home -->
+            <li class="nav-item">
+                <a href="{{ url('home') }}"
+                    class="nav-link {{ Request::is('home') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-house-user"></i></div>
+                    <div class="menu-title">APM Home</div>
+                </a>
+            </li>
+
+            <!-- Workflow Management -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('memos*') || Request::is('workflows*') || Request::is('approvals*') ? 'active' : '' }}"
-                   href="#" data-bs-toggle="dropdown">
-                    <div class="parent-icon"><i class="bx bx-list-check"></i></div>
+                <a class="nav-link dropdown-toggle {{ Request::is('workflows*') || Request::is('approvals*') ? 'active' : '' }}"
+                    href="#" data-bs-toggle="dropdown">
+                    <div class="parent-icon"><i class="fas fa-tasks"></i></div>
                     <div class="menu-title">Workflow Management</div>
                 </a>
                 <ul class="dropdown-menu">
@@ -76,11 +85,11 @@ $settingsMenuItems = [
                 </ul>
             </li>
 
-            <!-- Settings Dropdown -->
+            <!-- Settings -->
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('staff*') || Request::is('request-types*') ? 'active' : '' }}"
-                   href="#" data-bs-toggle="dropdown">
-                    <div class="parent-icon"><i class="bx bx-cog"></i></div>
+                    href="#" data-bs-toggle="dropdown">
+                    <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                     <div class="menu-title">Settings</div>
                 </a>
                 <ul class="dropdown-menu">

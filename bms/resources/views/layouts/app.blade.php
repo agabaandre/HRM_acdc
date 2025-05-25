@@ -7,16 +7,16 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name', 'Business Management System'))</title>
 
-    @include('partials.css')
+    @include('layouts.partials.css')
     <!-- @stack('styles') -->
 </head>
 
 <body>
-    @include('partials.header')
+    @include('layouts.partials.header')
 
     <!-- Include the breadcrumbs partial -->
-    @include('partials.breadcrumbs')
-    @include('partials.nav')
+    @include('layouts.partials.breadcrumbs')
+    @include('layouts.partials.nav')
 
             <!-- Content Area -->
             @yield('content')
@@ -24,7 +24,7 @@
     </div>
     <!--end page wrapper -->
 
-    @include('partials.footer')
+    @include('layouts.partials.footer')
     @stack('scripts')
 </body>
 

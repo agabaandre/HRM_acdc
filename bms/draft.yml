@@ -34,12 +34,16 @@ models:
 
   Division:
     name: string
-    staff_ids: json
+    focal_person: id
+    finance_officer: id
+    division_head: string
+    admin_assistant: id
     is_external: boolean
     directorate_id: id
     is_active: boolean
+    timestamps: true
     relationships:
-      hasMany: FundCode, Matrix, Staff
+      hasMany: FundCode, Matrix
       belongsTo: Directorate
 
   Directorate:

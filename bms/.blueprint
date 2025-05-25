@@ -14,21 +14,21 @@ created:
     - database/factories/NonTravelMemoFactory.php
     - database/factories/NonTravelMemoCategoryFactory.php
     - database/factories/NonTravelMemoApprovalTrailFactory.php
-    - database/migrations/2025_05_07_235333_create_staff_table.php
-    - database/migrations/2025_05_07_235334_create_fund_types_table.php
-    - database/migrations/2025_05_07_235335_create_divisions_table.php
-    - database/migrations/2025_05_07_235336_create_directorates_table.php
-    - database/migrations/2025_05_07_235337_create_locations_table.php
-    - database/migrations/2025_05_07_235338_create_budgets_table.php
-    - database/migrations/2025_05_07_235339_create_matrices_table.php
-    - database/migrations/2025_05_07_235340_create_request_types_table.php
-    - database/migrations/2025_05_07_235341_create_activities_table.php
-    - database/migrations/2025_05_07_235342_create_activity_approval_trails_table.php
-    - database/migrations/2025_05_07_235343_create_service_requests_table.php
-    - database/migrations/2025_05_07_235344_create_service_request_approval_trails_table.php
-    - database/migrations/2025_05_07_235345_create_non_travel_memos_table.php
-    - database/migrations/2025_05_07_235346_create_non_travel_memo_categories_table.php
-    - database/migrations/2025_05_07_235347_create_non_travel_memo_approval_trails_table.php
+    - database/migrations/2025_05_23_082207_create_staff_table.php
+    - database/migrations/2025_05_23_082208_create_fund_types_table.php
+    - database/migrations/2025_05_23_082209_create_divisions_table.php
+    - database/migrations/2025_05_23_082210_create_directorates_table.php
+    - database/migrations/2025_05_23_082211_create_locations_table.php
+    - database/migrations/2025_05_23_082212_create_budgets_table.php
+    - database/migrations/2025_05_23_082213_create_matrices_table.php
+    - database/migrations/2025_05_23_082214_create_request_types_table.php
+    - database/migrations/2025_05_23_082215_create_activities_table.php
+    - database/migrations/2025_05_23_082216_create_activity_approval_trails_table.php
+    - database/migrations/2025_05_23_082217_create_service_requests_table.php
+    - database/migrations/2025_05_23_082218_create_service_request_approval_trails_table.php
+    - database/migrations/2025_05_23_082219_create_non_travel_memos_table.php
+    - database/migrations/2025_05_23_082220_create_non_travel_memo_categories_table.php
+    - database/migrations/2025_05_23_082221_create_non_travel_memo_approval_trails_table.php
     - app/Models/Staff.php
     - app/Models/FundType.php
     - app/Models/Division.php
@@ -47,7 +47,7 @@ created:
 models:
     Staff: { staff_id: 'integer unique', work_email: 'string unique', sap_no: string, title: 'string nullable', fname: string, lname: string, oname: 'string nullable', grade: 'string nullable', gender: string, date_of_birth: date, job_name: 'string nullable', contracting_institution: 'string nullable', contract_type: 'string nullable', nationality: 'string nullable', division_name: 'string nullable', division_id: 'id nullable', duty_station_id: 'id nullable', status: 'string nullable', tel_1: 'string nullable', whatsapp: 'string nullable', private_email: 'string nullable', photo: 'string nullable', physical_location: 'string nullable', relationships: { belongsTo: Division, hasMany: 'Matrix, Activity, NonTravelMemo' } }
     FundType: { name: string, relationships: { hasMany: FundCode } }
-    Division: { name: string, staff_ids: json, is_external: boolean, directorate_id: id, is_active: boolean, relationships: { hasMany: 'FundCode, Matrix, Staff', belongsTo: Directorate } }
+    Division: { name: string, focal_person: id, finance_officer: id, division_head: string, admin_assistant: id, is_external: boolean, directorate_id: id, is_active: boolean, timestamps: timestamps, relationships: { hasMany: 'FundCode, Matrix', belongsTo: Directorate } }
     Directorate: { name: string, is_active: boolean }
     Location: { name: text }
     Budget: { division_id: 'id foreign', code: string, year: year, amount: 'decimal:16,2', balance: 'decimal:16,2', relationships: { belongsTo: Division } }

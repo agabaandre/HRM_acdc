@@ -7,14 +7,20 @@
 
 @section('header-actions')
 <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
-    <i class="bx bx-arrow-back"></i> Back to List
+    <i class="bx text-dark bx-arrow-back"></i> Back to List
 </a>
 @endsection
 
 @section('content')
+@php
+    $isAdmin = user_session('user_role') == 10;
+    $userDivisionId = user_session('division_id');
+    $defaultFocal = old('focal_person_id', user_session('focal_person'));
+   
+@endphp
 <div class="card shadow-sm">
     <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="bx bx-grid-alt me-2 text-primary"></i>Matrix Details</h5>
+        <h5 class="mb-0"><i class="bx text-success bx-grid-alt me-2 text-primary"></i>Matrix Details</h5>[FW=1, RWF=2]
     </div>
     <div class="card-body p-4">
         <form action="{{ route('matrices.store') }}" method="POST" id="matrixForm">
@@ -23,7 +29,7 @@
             <div class="row g-4 mb-4">
                 <div class="col-md-3">
                     <div class="form-group position-relative">
-                        <label for="year" class="form-label fw-semibold"><i class="bx bx-calendar me-1 text-primary"></i>Year <span class="text-danger">*</span></label>
+                        <label for="year" class="form-label fw-semibold"><i class="bx text-success bx-calendar me-1 text-primary"></i>Year <span class="text-danger">*</span></label>
                         <select name="year" id="year" class="form-select form-select-lg @error('year') is-invalid @enderror" required>
                             <option value="">Select Year</option>
                             @foreach($years as $year)
@@ -37,10 +43,9 @@
                         @enderror
                     </div>
                 </div>
-
                 <div class="col-md-3">
                     <div class="form-group position-relative">
-                        <label for="quarter" class="form-label fw-semibold"><i class="bx bx-grid-small me-1 text-primary"></i>Quarter <span class="text-danger">*</span></label>
+                        <label for="quarter" class="form-label fw-semibold"><i class="bx text-success bx-grid-small me-1 text-primary"></i>Quarter <span class="text-danger">*</span></label>
                         <select name="quarter" id="quarter" class="form-select form-select-lg @error('quarter') is-invalid @enderror" required>
                             <option value="">Select Quarter</option>
                             @foreach($quarters as $quarter)
@@ -57,13 +62,15 @@
 
                 <div class="col-md-3">
                     <div class="form-group position-relative">
-                        <label for="division_id" class="form-label fw-semibold"><i class="bx bx-building me-1 text-primary"></i>Division <span class="text-danger">*</span></label>
+                        <label for="division_id" class="form-label fw-semibold"><i class="bx text-success bx-building me-1 text-primary"></i>Division <span class="text-danger">*</span></label>
                         <select name="division_id" id="division_id" class="form-select form-select-lg @error('division_id') is-invalid @enderror" required>
                             <option value="">Select Division</option>
                             @foreach($divisions as $division)
-                                <option value="{{ $division->id }}" {{ old('division_id') == $division->id ? 'selected' : '' }}>
-                                    {{ $division->division_name }}
-                                </option>
+                                @if($isAdmin || $division->id == $userDivisionId)
+                                    <option value="{{ $division->id }}" {{ $division->id == old('division_id', $userDivisionId) ? 'selected' : '' }}>
+                                        {{ $division->name }}
+                                    </option>
+                                @endif
                             @endforeach
                         </select>
                         @error('division_id')
@@ -72,24 +79,39 @@
                     </div>
                 </div>
 
-                <div class="col-md-3">
-                    <div class="form-group position-relative">
-                        <label for="focal_person_id" class="form-label fw-semibold"><i class="bx bx-user-voice me-1 text-primary"></i>Focal Person <span class="text-danger">*</span></label>
-                        <select name="focal_person_id" id="focal_person_id" class="form-select form-select-lg @error('focal_person_id') is-invalid @enderror" required>
-                            <option value="">Select Focal Person</option>
-                            @foreach($focalPersons as $person)
-                                <option value="{{ $person->id }}" {{ old('focal_person_id') == $person->id ? 'selected' : '' }} data-division-id="{{ $person->division_id }}">
-                                    {{ $person->name }} {{ $person->division ? '('.$person->division->division_name.')' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted mt-1 d-block">Person who will coordinate activities in this matrix</small>
-                        @error('focal_person_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
+
+<div class="col-md-3">
+    <div class="form-group position-relative">
+        <label for="focal_person_id" class="form-label fw-semibold">
+            <i class="bx text-success bx-user-voice me-1 text-primary"></i>
+            Focal Person <span class="text-danger">*</span>
+        </label>
+
+        <select name="focal_person_id" id="focal_person_id"
+                class="form-select form-select-lg @error('focal_person_id') is-invalid @enderror"
+                {{ $isAdmin ? '' : 'readonly' }} required>
+            <option value="">Select Focal Person</option>
+            @foreach($focalPersons as $person)
+                @if($isAdmin || $person->division_id == $userDivisionId)
+                    <option value="{{ $person->staff_id }}"
+                            data-division-id="{{ $person->division_id }}"
+                            {{ $defaultFocal == $person->staff_id ? 'selected' : '' }}>
+                        {{ $person->name }} {{ $person->division ? '(' . $person->division->name . ')' : '' }}
+                    </option>
+                @endif
+            @endforeach
+        </select>
+
+        <small class="text-muted mt-1 d-block">Person who will coordinate activities in this matrix</small>
+        @error('focal_person_id')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+</div>
+
             </div>
+
+            
 
             <div class="row g-4 mb-4">
                 
@@ -99,8 +121,8 @@
 
             <div class="mb-4">
                 <div class="d-flex align-items-center mb-3">
-                    <h5 class="fw-semibold m-0"><i class="bx bx-target-lock text-primary me-2"></i>Key Result Areas <span class="text-danger">*</span></h5>
-                    <hr class="flex-grow-1 mx-3">
+                    <h5 class="fw-semibold m-0"><i class="bx text-success bx-target-lock text-primary me-2"></i>Key Result Areas <span class="text-danger">*</span></h5>
+                    
                 </div>
                 <div id="keyResultAreas" class="mb-4">
                     @if(old('key_result_area'))
@@ -110,35 +132,20 @@
                                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                         <h6 class="m-0 fw-semibold">Result Area #{{ $index + 1 }}</h6>
                                         <button type="button" class="btn btn-sm btn-outline-danger remove-area">
-                                            <i class="bx bx-trash me-1"></i> Remove
+                                            <i class="bx text-danger bx-trash me-1"></i> Remove
                                         </button>
                                     </div>
                                     <div class="card-body p-4">
+                                    
                                         <div class="mb-3">
-                                            <label class="form-label fw-semibold"><i class="bx bx-heading me-1 text-primary"></i>Title</label>
-                                            <input type="text"
-                                                   name="key_result_area[{{ $index }}][title]"
-                                                   class="form-control form-control-lg"
-                                                   value="{{ $area['title'] ?? '' }}"
-                                                   placeholder="Enter area title"
-                                                   required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label fw-semibold"><i class="bx bx-detail me-1 text-primary"></i>Description</label>
+                                            <label class="form-label fw-semibold"><i class="bx text-success bx-detail me-1 text-primary"></i>Description</label>
                                             <textarea name="key_result_area[{{ $index }}][description]"
                                                       class="form-control"
                                                       rows="3"
                                                       placeholder="Describe this key result area"
                                                       required>{{ $area['description'] ?? '' }}</textarea>
                                         </div>
-                                        <div>
-                                            <label class="form-label fw-semibold"><i class="bx bx-bullseye me-1 text-primary"></i>Expected Results</label>
-                                            <textarea name="key_result_area[{{ $index }}][targets]"
-                                                      class="form-control"
-                                                      rows="3"
-                                                      placeholder="What are the expected results/outcomes?"
-                                                      required>{{ $area['targets'] ?? '' }}</textarea>
-                                        </div>
+                                    
                                     </div>
                                 </div>
                             </div>
@@ -149,12 +156,12 @@
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="m-0 fw-semibold">Result Area #1</h6>
                                     <button type="button" class="btn btn-sm btn-outline-danger remove-area">
-                                        <i class="bx bx-trash me-1"></i> Remove
+                                        <i class="bx text-danger bx-trash me-1"></i> Remove
                                     </button>
                                 </div>
                                 <div class="card-body p-4">
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold"><i class="bx bx-heading me-1 text-primary"></i>Title</label>
+                                        <label class="form-label fw-semibold"><i class="bx text-success bx-heading me-1 text-primary"></i>Title</label>
                                         <input type="text"
                                                name="key_result_area[0][title]"
                                                class="form-control form-control-lg"
@@ -162,7 +169,7 @@
                                                required>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label fw-semibold"><i class="bx bx-detail me-1 text-primary"></i>Description</label>
+                                        <label class="form-label fw-semibold"><i class="bx text-success bx-detail me-1 text-primary"></i>Description</label>
                                         <textarea name="key_result_area[0][description]"
                                                   class="form-control"
                                                   rows="3"
@@ -170,7 +177,7 @@
                                                   required></textarea>
                                     </div>
                                     <div>
-                                        <label class="form-label fw-semibold"><i class="bx bx-bullseye me-1 text-primary"></i>Expected Results</label>
+                                        <label class="form-label fw-semibold"><i class="bx text-success bx-bullseye me-1 text-primary"></i>Expected Results</label>
                                         <textarea name="key_result_area[0][targets]"
                                                   class="form-control"
                                                   rows="3"
@@ -184,18 +191,18 @@
                 </div>
 
                 <div class="text-center mt-3">
-                    <button type="button" id="addArea" class="btn btn-outline-primary btn-lg">
-                        <i class="bx bx-plus-circle me-1"></i> Add Key Result Area
+                    <button type="button" id="addArea" class="btn btn-sm btn-outline-success btn-lg">
+                        <i class="bx text-success bx-plus-circle me-1"></i> Add Key Result Area
                     </button>
                 </div>
             </div>
 
             <div class="d-flex justify-content-between align-items-center border-top pt-4 mt-4">
                 <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary px-4">
-                    <i class="bx bx-arrow-back me-1"></i> Cancel
+                    <i class="bx text-success bx-arrow-back me-1"></i> Cancel
                 </a>
-                <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
-                    <i class="bx bx-save me-2"></i> Create Matrix
+                <button type="submit" class="btn btn-primary btn-md px-5 shadow-sm">
+                    <i class="bx text-white bx-save me-2"></i> Create Matrix
                 </button>
             </div>
         </form>
@@ -227,34 +234,20 @@ $('#addArea').click(function() {
                         <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <h6 class="m-0 fw-semibold">Result Area #${areaIndex + 1}</h6>
                             <button type="button" class="btn btn-sm btn-outline-danger remove-area">
-                                <i class="bx bx-trash me-1"></i> Remove
+                                <i class="bx text-danger bx-trash me-1"></i> Remove
                             </button>
                         </div>
                         <div class="card-body p-4">
+                          
                             <div class="mb-3">
-                                <label class="form-label fw-semibold"><i class="bx bx-heading me-1 text-primary"></i>Title</label>
-                                <input type="text"
-                                       name="key_result_area[${areaIndex}][title]"
-                                       class="form-control form-control-lg"
-                                       placeholder="Enter area title"
-                                       required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold"><i class="bx bx-detail me-1 text-primary"></i>Description</label>
+                                <label class="form-label fw-semibold"><i class="bx text-success bx-detail me-1 text-primary"></i>Description</label>
                                 <textarea name="key_result_area[${areaIndex}][description]"
                                           class="form-control"
                                           rows="3"
                                           placeholder="Describe this key result area"
                                           required></textarea>
                             </div>
-                            <div>
-                                <label class="form-label fw-semibold"><i class="bx bx-bullseye me-1 text-primary"></i>Expected Results</label>
-                                <textarea name="key_result_area[${areaIndex}][targets]"
-                                          class="form-control"
-                                          rows="3"
-                                          placeholder="What are the expected results/outcomes?"
-                                          required></textarea>
-                            </div>
+                         
                         </div>
                     </div>
                 </div>
@@ -288,7 +281,7 @@ $('#addArea').click(function() {
                     title: 'Cannot Remove',
                     text: 'At least one key result area is required.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: '<i class="bx bx-check me-1"></i> OK',
+                    confirmButtonText: '<i class="bx text-success bx-check me-1"></i> OK',
                     customClass: {
                         confirmButton: 'btn btn-primary'
                     }
@@ -305,7 +298,7 @@ $('#addArea').click(function() {
                     title: 'Validation Error',
                     text: 'At least one key result area is required.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: '<i class="bx bx-check me-1"></i> OK',
+                    confirmButtonText: '<i class="bx text-success bx-check me-1"></i> OK',
                     customClass: {
                         confirmButton: 'btn btn-primary'
                     }
@@ -316,7 +309,7 @@ $('#addArea').click(function() {
             // Show loading indicator
             const submitBtn = $(this).find('button[type="submit"]');
             const originalText = submitBtn.html();
-            submitBtn.html('<i class="bx bx-loader bx-spin me-2"></i> Creating...');
+            submitBtn.html('<i class="bx text-success bx-loader text-success bx-spin me-2"></i> Creating...');
             submitBtn.prop('disabled', true);
 
             return true;

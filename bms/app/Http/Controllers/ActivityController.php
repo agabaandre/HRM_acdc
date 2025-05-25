@@ -5,10 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Activity;
 use App\Models\Matrix;
 use App\Models\RequestType;
+use App\Models\FundType;
+use App\Models\FundCode;
+use App\Models\Location;
 use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
+
 
 class ActivityController extends Controller
 {
@@ -23,8 +28,9 @@ class ActivityController extends Controller
             ->paginate(10);
 
         $requestTypes = RequestType::all();
+        $fundTypes = FundType::all();
 
-        return view('activities.index', compact('matrix', 'activities', 'requestTypes'));
+        return view('activities.index', compact('matrix', 'activities', 'requestTypes','fundTypes'));
     }
 
     /**
@@ -34,8 +40,14 @@ class ActivityController extends Controller
     {
         $requestTypes = RequestType::all();
         $staff = Staff::active()->get();
-
-        return view('activities.create', compact('matrix', 'requestTypes', 'staff'));
+    
+        // Cache the location data for 60 minutes
+        $locations = Cache::remember('locations', 60, function () {
+            return Location::all();
+        });
+        $fundTypes = FundType::all();
+        $budgetCodes = FundCode::all();
+        return view('activities.create', compact('matrix', 'requestTypes', 'staff', 'locations','fundTypes','budgetCodes'));
     }
 
     /**
