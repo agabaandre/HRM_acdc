@@ -30,6 +30,7 @@ class MatrixController extends Controller
     public function create(): View
     {
         $divisions = Division::all();
+        //dd($divisions);
         $staff = Staff::active()->get();
         // Initialize focal persons to all active staff (will be filtered by JS on division selection)
         $focalPersons = Staff::active()->get();
@@ -63,23 +64,47 @@ class MatrixController extends Controller
     /**
      * Store a newly created matrix.
      */
-    public function store(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'focal_person_id' => 'required|exists:staff,id',
-            'division_id' => 'required|exists:divisions,id',
-            'year' => 'required|numeric|min:2024|max:2099',
-            'quarter' => 'required|in:Q1,Q2,Q3,Q4',
-            'key_result_area' => 'required|array',
-            'staff_id' => 'required|exists:staff,id',
-        ]);
+   
+public function store(Request $request)
+{
+    $isAdmin = session('user.user_role') == 10;
+    $userDivisionId = session('user.division_id');
+    $userStaffId = session('user.auth_staff_id');
 
-        Matrix::create($validated);
+    // Validate input
+    $validated = $request->validate([
+        'year' => 'required|integer',
+        'quarter' => 'required|in:Q1,Q2,Q3,Q4',
+        'division_id' => 'required|exists:divisions,id',
+        'focal_person_id' => 'required|exists:staff,staff_id',
+        'key_result_area' => 'required|array|min:1',
+        'key_result_area.*.title' => 'required|string|max:255',
+        'key_result_area.*.description' => 'required|string',
+        'key_result_area.*.targets' => 'required|string',
+    ]);
 
-        return redirect()
-            ->route('matrices.index')
-            ->with('success', 'Matrix created successfully.');
+    // Restrict division_id and focal_person_id if not admin
+    if (! $isAdmin) {
+        $validated['division_id'] = $userDivisionId;
+        $validated['focal_person_id'] = $userStaffId;
     }
+
+    // Store Matrix
+    $matrix = Matrix::create([
+        'division_id' => $validated['division_id'],
+        'focal_person_id' => $validated['focal_person_id'],
+        'year' => $validated['year'],
+        'quarter' => $validated['quarter'],
+        'key_result_area' => json_encode($validated['key_result_area']),
+        'staff_id' => user_session('staff_id'),
+        'forward_workflow_id' => 1,
+        'forward_workflow_id' => 2
+
+    ]);
+
+    return redirect()->route('matrices.index')
+                     ->with('success', 'Matrix created successfully.');
+}
 
     /**
      * Display the specified matrix.

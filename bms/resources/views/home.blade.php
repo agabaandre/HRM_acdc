@@ -10,7 +10,7 @@
 
   .settings-title {
     font-size: 1.4rem;
-    color: #119A48; /* AU Green */
+    color: #119A48;
     font-weight: bold;
     text-align: center;
     margin: 2rem 0 1rem;
@@ -40,7 +40,7 @@
   .setting-card h6 {
     font-weight: 700;
     font-size: 1.1rem;
-    color: #911C39; /* CDC Red */
+    color: #911C39;
     margin-bottom: 0.5rem;
   }
 
@@ -55,49 +55,24 @@
   }
 
   .settings-icon {
-    font-size: 1.6rem;
-    color: #C3A366;
-    background: #f4f4f4;
-    padding: 0.6rem;
-    border-radius: 50%;
-    display: inline-block;
-    margin-top: 1rem;
-  }
-</style>
+  width: 60px;
+  height: 60px;
+  background-color: #f4f4f4;
+  color: #C3A366;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1rem auto 0;
+  font-size: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
 
-<h5 class="settings-title">Menu</h5>
+</style>
 
 <div class="row justify-content-center settings-container">
 
-  @if(session('role') == 10)
-  <div class="col-md-4">
-    <div class="setting-card text-center">
-      <div>
-        <h6>Workflows</h6>
-        <p>Manage workflow definitions and templates across departments.</p>
-      </div>
-      <div>
-        <a href="{{ route('workflows.index') }}" class="btn btn-outline-success btn-sm mt-2">Manage Workflows</a>
-        <div class="settings-icon mt-3"><i class="bx bx-git-branch"></i></div>
-      </div>
-    </div>
-  </div>
-  @endif
-
-  <div class="col-md-4">
-    <div class="setting-card text-center">
-      <div>
-        <h6>Divisions</h6>
-        <p>Set up and manage organizational divisions and hierarchies.</p>
-      </div>
-      <div>
-        <a href="{{ route('divisions.index') }}" class="btn btn-outline-success btn-sm mt-2">Manage Divisions</a>
-        <div class="settings-icon mt-3"><i class="bx bx-sitemap"></i></div>
-      </div>
-    </div>
-  </div>
-
-  {{-- Additional Menu Items --}}
+  {{-- Quarterly Travel Matrix --}}
   <div class="col-md-4">
     <div class="setting-card text-center">
       <div>
@@ -105,25 +80,13 @@
         <p>Plan and track quarterly travel for all staff.</p>
       </div>
       <div>
-        <a href="{{ route('matrices.index') }}" class="btn btn-outline-success btn-sm mt-2">Open Matrix</a>
-        <div class="settings-icon mt-3"><i class="bx bx-calendar"></i></div>
+        <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm mt-2">Open Matrix</a>
+        <div class="settings-icon mt-3"><i class="fas fa-calendar-alt"></i></div>
       </div>
     </div>
   </div>
 
-  <div class="col-md-4">
-    <div class="setting-card text-center">
-      <div>
-        <h6>Request for Services</h6>
-        <p>Submit requests for tickets, DSA, procurement, or imprest.</p>
-      </div>
-      <div>
-        <a href="{{ url('service-requests') }}" class="btn btn-outline-success btn-sm mt-2">Request Services</a>
-        <div class="settings-icon mt-3"><i class="bx bx-package"></i></div>
-      </div>
-    </div>
-  </div>
-
+  {{-- Non-Travel --}}
   <div class="col-md-4">
     <div class="setting-card text-center">
       <div>
@@ -131,25 +94,12 @@
         <p>Manage activities that are not related to travel logistics.</p>
       </div>
       <div>
-        <a href="{{ url('non-travel') }}" class="btn btn-outline-success btn-sm mt-2">Open Module</a>
-        <div class="settings-icon mt-3"><i class="bx bx-walk"></i></div>
+        <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm mt-2">Open Module</a>
+        <div class="settings-icon mt-3"><i class="fas fa-walking"></i></div>
       </div>
     </div>
   </div>
-
-  <div class="col-md-4">
-    <div class="setting-card text-center">
-      <div>
-        <h6>Request for ARF</h6>
-        <p>Submit your Activity Request Form for approvals.</p>
-      </div>
-      <div>
-        <a href="{{ url('request-arf') }}" class="btn btn-outline-success btn-sm mt-2">Submit ARF</a>
-        <div class="settings-icon mt-3"><i class="bx bx-edit"></i></div>
-      </div>
-    </div>
-  </div>
-
+  {{-- Special Memo --}}
   <div class="col-md-4">
     <div class="setting-card text-center">
       <div>
@@ -157,8 +107,38 @@
         <p>Create and send special memos for specific activities.</p>
       </div>
       <div>
-        <a href="{{ url('special-memo') }}" class="btn btn-outline-success btn-sm mt-2">Create Memo</a>
-        <div class="settings-icon mt-3"><i class="bx bx-envelope"></i></div>
+        <a href="{{ url('special-memo') }}" class="btn btn-success btn-sm mt-2">Create Memo</a>
+        <div class="settings-icon mt-3"><i class="fas fa-envelope-open-text"></i></div>
+      </div>
+    </div>
+  </div>
+
+  {{-- Request for Services --}}
+  <div class="col-md-4">
+    <div class="setting-card text-center">
+      <div>
+        <h6>Request for Services</h6>
+        <p>Submit requests for tickets, DSA, procurement, or imprest.</p>
+      </div>
+      <div>
+        <a href="{{ url('service-requests') }}" class="btn btn-success btn-sm mt-2">Request Services</a>
+        <div class="settings-icon mt-3"><i class="fas fa-box"></i></div>
+      </div>
+    </div>
+  </div>
+
+
+
+  {{-- Request for ARF --}}
+  <div class="col-md-4">
+    <div class="setting-card text-center">
+      <div>
+        <h6>Request for ARF</h6>
+        <p>Submit your Activity Request Form for approvals.</p>
+      </div>
+      <div>
+        <a href="{{ url('request-arf') }}" class="btn btn-success btn-sm mt-2">Submit ARF</a>
+        <div class="settings-icon mt-3"><i class="fas fa-file-signature"></i></div>
       </div>
     </div>
   </div>
