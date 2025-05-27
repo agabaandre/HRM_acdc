@@ -5,7 +5,9 @@
         <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
             <div class="breadcrumb-title pe-3">
                 <a href="{{ session('baseUrl', '') }}{{ request()->segment(1) }}" style="color:#947645;">
-                    {{ ucwords(request()->segment(1)) }}
+                {{ isset($module) ? ucwords($module) : 'Home' }}
+
+
                 </a>
             </div>
             <div class="ps-3">
