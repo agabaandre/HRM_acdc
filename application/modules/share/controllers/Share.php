@@ -75,7 +75,7 @@ class Share extends MX_Controller
         echo json_encode($data);
     } else {
         header('Content-Type: application/json');
-        echo json_encode(array('success' => false, 'error' => 'Invalid Request'));
+        echo json_encode(array('success' => false, 'error' => 'Authentication Failed! Invalid Request'));
     }
 }
 
@@ -148,7 +148,7 @@ public function visualise($key)
         echo json_encode($data);
     } else {
         header('Content-Type: application/json');
-        echo json_encode(array('success' => false, 'error' => 'Invalid Request'));
+        echo json_encode(array('success' => false, 'error' => 'Authentication Failed! Invalid Request'));
     }
 }
 
@@ -164,7 +164,7 @@ public function visualise($key)
 
 	
 public function auth($key){
-    if(($key=="YWZyY2FjZGNzdGFmZnRyYWNrZXI")||($key=="VZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")||($key=="samZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")){
+    if(($key=="DHI-YWZyY2FjZGNzdGFmZnRyYWNrZXI")||($key=="DHI-VZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")||($key=="DHI-samZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")){
 		return true;
 	}
 		else{
@@ -193,7 +193,7 @@ public function auth($key){
 	}
 	else{
 		header('Content-Type: application/json');
-		echo json_encode(array('success'=> false,'error'=> 'Invalid Reuest'));
+		echo json_encode(array('success'=> false,'error'=> 'Authentication Failed! Invalid Request'));
 	}
 }
 
@@ -212,7 +212,7 @@ header('Content-Type: application/json');
 	}
 	else{
 		header('Content-Type: application/json');
-		echo json_encode(array('success'=> false,'error'=> 'Invalid Reuest'));
+		echo json_encode(array('success'=> false,'error'=> 'Authentication Failed! Invalid Request'));
 	
 
 }
