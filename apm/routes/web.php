@@ -72,6 +72,10 @@ Route::middleware([CheckSessionMiddleware::class])->group(function () {
 });
 
 // Group with session check for all resource routes
+// AJAX route to get budget codes by fund type and division
+Route::get('/budget-codes/by-fund-type', [App\Http\Controllers\ActivityController::class, 'getBudgetCodesByFundType'])
+    ->name('budget-codes.by-fund-type');
+
 Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function () {
     // Resource Routes
     Route::resource('fund-types', App\Http\Controllers\FundTypeController::class);

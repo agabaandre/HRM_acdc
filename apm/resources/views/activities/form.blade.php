@@ -1,10 +1,6 @@
 
 <div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <label for="workplan_activity_code" class="form-label">Activity Code *</label>
-        <input type="text" name="workplan_activity_code" id="workplan_activity_code" class="form-control" value="{{ old('workplan_activity_code') }}" required>
-    </div>
-    <div class="col-md-6">
+    <div class="col-md-12">
         <label for="request_type_id" class="form-label">Request Type *</label>
         <select name="request_type_id" id="request_type_id" class="form-select" required>
             <option value="">Select</option>

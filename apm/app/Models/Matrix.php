@@ -23,12 +23,17 @@ class Matrix extends Model
         'quarter',
         'key_result_area',
         'staff_id',
+        'forward_workflow_id',
+        'reverse_workflow_id',
+        'approval_level',
+        'next_approval_level',
+        'overall_status',
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Get the casts for the model.
      *
-     * @return array<string, string>
+     * @return array
      */
     protected function casts(): array
     {
@@ -38,7 +43,26 @@ class Matrix extends Model
             'division_id' => 'integer',
             'key_result_area' => 'array',
             'staff_id' => 'integer',
+            'forward_workflow_id' => 'integer',
+            'reverse_workflow_id' => 'integer',
+            'approval_level' => 'integer',
+            'next_approval_level' => 'integer',
         ];
+    }
+    
+    /**
+     * Set the key_result_area attribute.
+     *
+     * @param  mixed  $value
+     * @return void
+     */
+    public function setKeyResultAreaAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['key_result_area'] = json_encode($value);
+        } else {
+            $this->attributes['key_result_area'] = $value;
+        }
     }
 
     public function division(): BelongsTo
@@ -53,7 +77,7 @@ class Matrix extends Model
 
     public function focalPerson(): BelongsTo
     {
-        return $this->belongsTo(Staff::class, 'focal_person_id');
+        return $this->belongsTo(Staff::class, 'focal_person_id', 'staff_id');
     }
 
     public function activities(): HasMany

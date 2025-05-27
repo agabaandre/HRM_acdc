@@ -33,16 +33,10 @@
                 </div>
                 <div class="col-md-4">
                     <label for="budget_codes" class="form-label fw-semibold">Budget Code(s) <span class="text-danger">*</span></label>
-                    <select name="budget_codes[]" id="budget_codes" class="form-select" multiple required>
-                        @foreach($fundTypes as $type)
-                            <optgroup label="{{ $type->name }}">
-                                @foreach($budgetCodes->where('division_id', user_session('division_id'))->where('fund_type_id', $type->id) as $code)
-                                    <option value="{{ $code->id }}">{{ $code->code }} - {{ $code->description }}</option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
+                    <select name="budget_codes[]" id="budget_codes" class="form-select" multiple required disabled>
+                        <option value="" selected disabled>Select a fund type first</option>
                     </select>
-                    <small class="text-muted">Hold Ctrl/Command to select multiple</small>
+                    <small class="text-muted">Select a fund type to see available budget codes</small>
                 </div>
                 <div class="col-md-4">
                     <label for="key_result_link" class="form-label fw-semibold">Link to Key Result <span class="text-danger">*</span></label>
@@ -88,11 +82,14 @@
 
             <div class="d-flex justify-content-between align-items-center border-top pt-4 mt-4">
                 <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary px-4">
-                    <i class="bx bx-arrow-back me-1"></i> Cancel
+                    <i class="bx bx-x me-1"></i> Cancel
                 </a>
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="bx bx-save me-1"></i> Save Activity
+                <div class="d-grid gap-3 d-md-flex justify-content-md-end">
+                    <button type="submit" name="save_as_draft" value="1" class="btn btn-outline-primary btn-lg">
+                        <i class="bx bx-save me-1"></i> Save as Draft
+                    </button>
+                    <button type="submit" name="submit" value="1" class="btn btn-primary btn-lg px-4">
+                        <i class="bx bx-check-shield me-1"></i> Submit Activity
                     </button>
                 </div>
             </div>
@@ -109,6 +106,71 @@ $(document).ready(function () {
     let participantsTable = $('#participantsTable tbody');
     let grandTotalInput = $('#grandBudgetTotalInput');
     let grandTotalDisplay = $('#grandBudgetTotal');
+    
+    // Handle fund type change
+    $('#fund_type').on('change', function() {
+        const fundTypeId = $(this).val();
+        const divisionId = {{ user_session('division_id') }}; // Get division ID from session
+        const budgetCodesSelect = $('#budget_codes');
+        
+        // Clear and disable the budget codes select while loading
+        budgetCodesSelect.empty().prop('disabled', true);
+        
+        if (!fundTypeId) {
+            budgetCodesSelect.append($('<option>', {
+                value: '',
+                text: 'Select a fund type first'
+            }));
+            return;
+        }
+        
+        // Show loading state
+        budgetCodesSelect.append($('<option>', {
+            value: '',
+            text: 'Loading budget codes...',
+            disabled: true,
+            selected: true
+        }));
+        
+        // Fetch budget codes via AJAX
+        $.ajax({
+            url: '{{ route("budget-codes.by-fund-type") }}',
+            type: 'GET',
+            data: {
+                fund_type_id: fundTypeId,
+                division_id: divisionId
+            },
+            success: function(response) {
+                budgetCodesSelect.empty();
+                
+                if (response.length > 0) {
+                    $.each(response, function(index, code) {
+                        budgetCodesSelect.append($('<option>', {
+                            value: code.id,
+                            text: code.code + ' - ' + (code.description || 'No description')
+                        }));
+                    });
+                    budgetCodesSelect.prop('disabled', false);
+                } else {
+                    budgetCodesSelect.append($('<option>', {
+                        value: '',
+                        text: 'No budget codes available for this fund type and division',
+                        disabled: true,
+                        selected: true
+                    }));
+                }
+            },
+            error: function(xhr) {
+                console.error('Error loading budget codes:', xhr);
+                budgetCodesSelect.empty().append($('<option>', {
+                    value: '',
+                    text: 'Error loading budget codes. Please try again.',
+                    disabled: true,
+                    selected: true
+                }));
+            }
+        });
+    });
 
     function updateParticipantDays() {
         const start = new Date(startDateInput.val());
