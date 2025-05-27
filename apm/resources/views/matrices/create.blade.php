@@ -30,10 +30,16 @@ $defaultFocal = old('focal_person_id', user_session('focal_person'));
                 <div class="col-md-3">
                     <div class="form-group position-relative">
                         <label for="year" class="form-label fw-semibold"><i class="bx text-success bx-calendar me-1 text-primary"></i>Year <span class="text-danger">*</span></label>
+                        @php
+                            $currentYear = date('Y');
+                            $currentMonth = date('n');
+                            $currentQuarter = ceil($currentMonth / 3);
+                            $currentQuarter = 'Q' . $currentQuarter;
+                        @endphp
                         <select name="year" id="year" class="form-select form-select-lg @error('year') is-invalid @enderror" required>
                             <option value="">Select Year</option>
                             @foreach($years as $year)
-                            <option value="{{ $year }}" {{ old('year') == $year ? 'selected' : '' }}>
+                            <option value="{{ $year }}" {{ old('year', $currentYear) == $year ? 'selected' : '' }}>
                                 {{ $year }}
                             </option>
                             @endforeach
@@ -49,7 +55,7 @@ $defaultFocal = old('focal_person_id', user_session('focal_person'));
                         <select name="quarter" id="quarter" class="form-select form-select-lg @error('quarter') is-invalid @enderror" required>
                             <option value="">Select Quarter</option>
                             @foreach($quarters as $quarter)
-                            <option value="{{ $quarter }}" {{ old('quarter') == $quarter ? 'selected' : '' }}>
+                            <option value="{{ $quarter }}" {{ old('quarter', $currentQuarter) == $quarter ? 'selected' : '' }}>
                                 {{ $quarter }}
                             </option>
                             @endforeach

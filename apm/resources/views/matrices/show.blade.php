@@ -40,12 +40,8 @@
                         <td>{{ $matrix->division->name }}</td>
                     </tr>
                     <tr>
-                        <th class="text-muted"><i class="bx bx-user me-1 text-primary"></i> Staff:</th>
-                        <td>{{ $matrix->staff->name }}</td>
-                    </tr>
-                    <tr>
                         <th class="text-muted"><i class="bx bx-user-voice me-1 text-primary"></i> Focal Person:</th>
-                        <td>{{ $matrix->focalPerson->name }}</td>
+                        <td>{{ $matrix->focalPerson ? $matrix->focalPerson->name : 'Not assigned' }}</td>
                     </tr>
                     <tr>
                         <th class="text-muted"><i class="bx bx-calendar-plus me-1 text-primary"></i> Created At:</th>
@@ -64,24 +60,47 @@
                 <h5 class="mb-0"><i class="bx bx-target-lock me-2 text-primary"></i>Key Result Areas</h5>
             </div>
             <div class="card-body p-4">
-                @foreach($matrix->key_result_area as $index => $area)
-                    <div class="key-result-area card border shadow-sm mb-3">
-                        <div class="card-header bg-light">
-                            <h6 class="m-0 fw-semibold"><i class="bx bx-bullseye me-1 text-primary"></i> {{ $area['title'] }}</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label class="fw-semibold d-block text-primary"><i class="bx bx-detail me-1"></i> Description</label>
-                                <p class="mb-0">{{ $area['description'] }}</p>
-                            </div>
-                            <div>
-                                <label class="fw-semibold d-block text-primary"><i class="bx bx-bullseye me-1"></i> Expected Results</label>
-                                <p class="mb-0">{{ $area['targets'] }}</p>
-                            </div>
-                        </div>
-                    </div>
+                @php
+                    $keyResultAreas = $matrix->key_result_area;
+                    // Decode json
+                    $keyResultAreas = json_decode($keyResultAreas, true);
+                @endphp
 
-                @endforeach
+                @if(empty($keyResultAreas))
+                    <div class="alert alert-info mb-0">
+                        <i class="bx bx-info-circle me-2"></i> No key result areas have been added yet.
+                    </div>
+                @else
+                    @foreach($keyResultAreas as $index => $area)
+                        @php
+                            $area = is_array($area) ? $area : [];
+                            $title = $area['title'] ?? 'Untitled';
+                            $description = $area['description'] ?? 'No description provided';
+                            $targets = $area['targets'] ?? 'No targets specified';
+                        @endphp
+                        <div class="key-result-area card border shadow-sm mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="m-0 fw-semibold">
+                                    <i class="bx bx-bullseye me-1 text-primary"></i> {{ $title }}
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="fw-semibold d-block text-primary">
+                                        <i class="bx bx-detail me-1"></i> Description
+                                    </label>
+                                    <p class="mb-0">{{ $description }}</p>
+                                </div>
+                                <div>
+                                    <label class="fw-semibold d-block text-primary">
+                                        <i class="bx bx-bullseye me-1"></i> Expected Results
+                                    </label>
+                                    <p class="mb-0">{{ $targets }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
             </div>
         </div>
     </div>

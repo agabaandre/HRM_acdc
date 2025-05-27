@@ -57,7 +57,6 @@
                         <th><i class="bx bx-calendar-alt me-1 text-primary"></i> Year</th>
                         <th><i class="bx bx-calendar-week me-1 text-primary"></i> Quarter</th>
                         <th><i class="bx bx-building me-1 text-primary"></i> Division</th>
-                        <th><i class="bx bx-user me-1 text-primary"></i> Staff</th>
                         <th><i class="bx bx-user-voice me-1 text-primary"></i> Focal Person</th>
                         <th><i class="bx bx-list-check me-1 text-primary"></i> Activities</th>
                         <th><i class="bx bx-time me-1 text-primary"></i> Created At</th>
@@ -70,7 +69,6 @@
                             <td>{{ $matrix->year }}</td>
                             <td>{{ $matrix->quarter }}</td>
                             <td>{{ $matrix->division->name ?? 'N/A' }}</td>
-                            <td>{{ $matrix->staff->name ?? 'N/A' }}</td>
                             <td>{{ $matrix->focalPerson->name ?? 'N/A' }}</td>
                             <td>
                                 <a href="{{ route('matrices.activities.index', $matrix) }}" class="btn btn-sm btn-outline-primary">
@@ -92,52 +90,10 @@
                                        title="Edit Matrix">
                                         <i class="bx bx-edit"></i>
                                     </a>
-                                    <button type="button"
-                                            class="btn btn-sm btn-outline-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteModal{{ $matrix->id }}"
-                                            title="Delete Matrix">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
+
                                 </div>
 
-                                <!-- Delete Modal -->
-                                <div class="modal fade" id="deleteModal{{ $matrix->id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header bg-danger text-white">
-                                                <h5 class="modal-title"><i class="bx bx-trash me-2"></i>Delete Matrix</h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="alert alert-warning">
-                                                    <i class="bx bx-error-circle me-2"></i>Are you sure you want to delete this matrix? This action cannot be undone.
-                                                </div>
-                                                <div class="card border shadow-sm">
-                                                    <div class="card-body py-3">
-                                                        <p class="mb-0">
-                                                            <i class="bx bx-calendar-alt me-1 text-primary"></i> <strong>Year:</strong> {{ $matrix->year }}<br>
-                                                            <i class="bx bx-calendar-week me-1 text-primary"></i> <strong>Quarter:</strong> {{ $matrix->quarter }}<br>
-                                                            <i class="bx bx-building me-1 text-primary"></i> <strong>Division:</strong> {{ $matrix->division->name ?? 'N/A' }}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                                                    <i class="bx bx-x me-1"></i>Cancel
-                                                </button>
-                                                <form action="{{ route('matrices.destroy', $matrix) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">
-                                                        <i class="bx bx-trash me-1"></i>Delete
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+
                             </td>
                         </tr>
                     @empty

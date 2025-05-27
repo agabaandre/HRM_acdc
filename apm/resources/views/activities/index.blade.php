@@ -6,9 +6,11 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success">
-        <i class="bx bx-plus"></i> Add Activity
-    </a>
+    @if($matrix->overall_status !== 'approved')
+        <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success">
+            <i class="bx bx-plus"></i> Add Activity
+        </a>
+    @endif
     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
@@ -115,20 +117,22 @@
                                        title="View Activity">
                                         <i class="bx bx-show"></i>
                                     </a>
-                                    <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}"
-                                       class="btn btn-sm btn-warning"
-                                       data-bs-toggle="tooltip"
-                                       title="Edit Activity">
-                                        <i class="bx bx-edit"></i>
-                                    </a>
-                                    <button type="button"
-                                            class="btn btn-sm btn-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteModal{{ $activity->id }}"
-                                            data-bs-toggle="tooltip"
-                                            title="Delete Activity">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
+                                    @if($matrix->overall_status !== 'approved')
+                                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}"
+                                           class="btn btn-sm btn-warning"
+                                           data-bs-toggle="tooltip"
+                                           title="Edit Activity">
+                                            <i class="bx bx-edit"></i>
+                                        </a>
+                                        <button type="button"
+                                                class="btn btn-sm btn-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal{{ $activity->id }}"
+                                                data-bs-toggle="tooltip"
+                                                title="Delete Activity">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                    @endif
                                 </div>
 
                                 <!-- Delete Modal -->

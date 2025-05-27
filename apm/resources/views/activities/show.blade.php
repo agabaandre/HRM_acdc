@@ -6,9 +6,11 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning">
-        <i class="bx bx-edit"></i> Edit Activity
-    </a>
+    @if($matrix->overall_status !== 'approved')
+        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning">
+            <i class="bx bx-edit"></i> Edit Activity
+        </a>
+    @endif
     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
