@@ -20,8 +20,12 @@ class MatrixController extends Controller
         $matrices = Matrix::with(['division', 'staff', 'focalPerson'])
             ->latest()
             ->paginate(10);
+        $title = user_session('division_name');
+        $module = 'Quarterly Matrix';
+        
 
-        return ViewFacade::make('matrices.index', compact('matrices'));
+        return ViewFacade::make('matrices.index', compact('matrices',  'title',
+        'module',));
     }
 
     /**
@@ -38,6 +42,9 @@ class MatrixController extends Controller
         $years = range(date('Y'), date('Y') + 5);
         
         // Create an array of staff IDs by division for use in JavaScript
+     
+        $title = user_session('division_name');
+        $module = 'Quarterly Matrix';
         $staffByDivision = [];
         $divisionFocalPersons = [];
         
@@ -52,6 +59,8 @@ class MatrixController extends Controller
 
         return ViewFacade::make('matrices.create', compact(
             'divisions', 
+            'title',
+            'module',
             'staff', 
             'quarters', 
             'years', 

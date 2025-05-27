@@ -29,7 +29,7 @@
 <div class="row g-4 mb-4">
     <div class="col-md-6">
         <label for="staff_id" class="form-label">Responsible Person *</label>
-        <select name="staff_id" id="staff_id" class="form-select" required>
+        <select name="staff_id" id="staff_id" class="form-select select2" required>
             <option value="">Select</option>
             @foreach($staff as $member)
                 <option value="{{ $member->id }}" {{ old('staff_id') == $member->id ? 'selected' : '' }}>{{ $member->name }}</option>
@@ -38,11 +38,11 @@
     </div>
     <div class="col-md-3">
         <label for="date_from" class="form-label">Date From *</label>
-        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ old('date_from') }}" required>
+        <input type="text" name="date_from" id="date_from" class="form-control datepicker" value="{{ old('date_from') }}" required>
     </div>
     <div class="col-md-3">
         <label for="date_to" class="form-label">Date To *</label>
-        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ old('date_to') }}" required>
+        <input type="text" name="date_to" id="date_to" class="form-control datepicker" value="{{ old('date_to') }}" required>
     </div>
 </div>
 

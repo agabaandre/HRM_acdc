@@ -13,10 +13,10 @@
 
 @section('content')
 @php
-    $isAdmin = user_session('user_role') == 10;
-    $userDivisionId = user_session('division_id');
-    $defaultFocal = old('focal_person_id', user_session('focal_person'));
-   
+$isAdmin = user_session('user_role') == 10;
+$userDivisionId = user_session('division_id');
+$defaultFocal = old('focal_person_id', user_session('focal_person'));
+
 @endphp
 <div class="card shadow-sm">
     <div class="card-header bg-light">
@@ -33,13 +33,13 @@
                         <select name="year" id="year" class="form-select form-select-lg @error('year') is-invalid @enderror" required>
                             <option value="">Select Year</option>
                             @foreach($years as $year)
-                                <option value="{{ $year }}" {{ old('year') == $year ? 'selected' : '' }}>
-                                    {{ $year }}
-                                </option>
+                            <option value="{{ $year }}" {{ old('year') == $year ? 'selected' : '' }}>
+                                {{ $year }}
+                            </option>
                             @endforeach
                         </select>
                         @error('year')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                        <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>
@@ -49,130 +49,83 @@
                         <select name="quarter" id="quarter" class="form-select form-select-lg @error('quarter') is-invalid @enderror" required>
                             <option value="">Select Quarter</option>
                             @foreach($quarters as $quarter)
-                                <option value="{{ $quarter }}" {{ old('quarter') == $quarter ? 'selected' : '' }}>
-                                    {{ $quarter }}
-                                </option>
+                            <option value="{{ $quarter }}" {{ old('quarter') == $quarter ? 'selected' : '' }}>
+                                {{ $quarter }}
+                            </option>
                             @endforeach
                         </select>
                         @error('quarter')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="form-group position-relative">
-                        <label for="division_id" class="form-label fw-semibold"><i class="bx text-success bx-building me-1 text-primary"></i>Division <span class="text-danger">*</span></label>
-                        <select name="division_id" id="division_id" class="form-select form-select-lg @error('division_id') is-invalid @enderror" required>
-                            <option value="">Select Division</option>
-                            @foreach($divisions as $division)
-                                @if($isAdmin || $division->id == $userDivisionId)
-                                    <option value="{{ $division->id }}" {{ $division->id == old('division_id', $userDivisionId) ? 'selected' : '' }}>
-                                        {{ $division->name }}
-                                    </option>
-                                @endif
-                            @endforeach
-                        </select>
-                        @error('division_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                        <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>
 
 
-<div class="col-md-3">
-    <div class="form-group position-relative">
-        <label for="focal_person_id" class="form-label fw-semibold">
-            <i class="bx text-success bx-user-voice me-1 text-primary"></i>
-            Focal Person <span class="text-danger">*</span>
-        </label>
-
-        <select name="focal_person_id" id="focal_person_id"
-                class="form-select form-select-lg @error('focal_person_id') is-invalid @enderror"
-                {{ $isAdmin ? '' : 'readonly' }} required>
-            <option value="">Select Focal Person</option>
-            @foreach($focalPersons as $person)
-                @if($isAdmin || $person->division_id == $userDivisionId)
-                    <option value="{{ $person->staff_id }}"
-                            data-division-id="{{ $person->division_id }}"
-                            {{ $defaultFocal == $person->staff_id ? 'selected' : '' }}>
-                        {{ $person->name }} {{ $person->division ? '(' . $person->division->name . ')' : '' }}
-                    </option>
-                @endif
-            @endforeach
-        </select>
-
-        <small class="text-muted mt-1 d-block">Person who will coordinate activities in this matrix</small>
-        @error('focal_person_id')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
-    </div>
-</div>
 
             </div>
 
-            
+
 
             <div class="row g-4 mb-4">
-                
 
-                
+
+
             </div>
 
             <div class="mb-4">
                 <div class="d-flex align-items-center mb-3">
                     <h5 class="fw-semibold m-0"><i class="bx text-success bx-target-lock text-primary me-2"></i>Key Result Areas <span class="text-danger">*</span></h5>
-                    
+
                 </div>
                 <div id="keyResultAreas" class="mb-4">
                     @if(old('key_result_area'))
-                        @foreach(old('key_result_area') as $index => $area)
-                            <div class="key-result-area mb-4">
-                                <div class="card border shadow-sm">
-                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                        <h6 class="m-0 fw-semibold">Result Area #{{ $index + 1 }}</h6>
-                                        <button type="button" class="btn btn-sm btn-outline-danger remove-area">
-                                            <i class="bx text-danger bx-trash me-1"></i> Remove
-                                        </button>
-                                    </div>
-                                    <div class="card-body p-4">
-                                    
-                                        <div class="mb-3">
-                                            <label class="form-label fw-semibold"><i class="bx text-success bx-detail me-1 text-primary"></i>Description</label>
-                                            <textarea name="key_result_area[{{ $index }}][description]"
-                                                      class="form-control"
-                                                      rows="3"
-                                                      placeholder="Describe this key result area"
-                                                      required>{{ $area['description'] ?? '' }}</textarea>
-                                        </div>
-                                    
-                                    </div>
-                                </div>
+                    @foreach(old('key_result_area') as $index => $area)
+                    <div class="key-result-area mb-4">
+                        <div class="card border shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 fw-semibold">Result Area #{{ $index + 1 }}</h6>
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-area">
+                                    <i class="bx text-danger bx-trash me-1"></i> Remove
+                                </button>
                             </div>
-                        @endforeach
-                    @else
-                        <div class="key-result-area mb-4">
-                            <div class="card border shadow-sm">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 fw-semibold">Result Area #1</h6>
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-area">
-                                        <i class="bx text-danger bx-trash me-1"></i> Remove
-                                    </button>
+                            <div class="card-body p-4">
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold"><i class="bx text-success bx-detail me-1 text-primary"></i>Description</label>
+                                    <textarea name="key_result_area[{{ $index }}][description]"
+                                        class="form-control"
+                                        rows="3"
+                                        placeholder="Describe this key result area"
+                                        required>{{ $area['description'] ?? '' }}</textarea>
                                 </div>
-                                <div class="card-body p-4">
-                             
-                                    <div class="mb-3">
-                                        <label class="form-label fw-semibold"><i class="bx text-success bx-detail me-1 text-primary"></i>Description</label>
-                                        <textarea name="key_result_area[0][description]"
-                                                  class="form-control"
-                                                  rows="3"
-                                                  placeholder="Describe this key result area"
-                                                  required></textarea>
-                                    </div>
-                                
-                                </div>
+
                             </div>
                         </div>
+                    </div>
+                    @endforeach
+                    @else
+                    <div class="key-result-area mb-4">
+                        <div class="card border shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 fw-semibold">Result Area #1</h6>
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-area">
+                                    <i class="bx text-danger bx-trash me-1"></i> Remove
+                                </button>
+                            </div>
+                            <div class="card-body p-4">
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold"><i class="bx text-success bx-detail me-1 text-primary"></i>Description</label>
+                                    <textarea name="key_result_area[0][description]"
+                                        class="form-control"
+                                        rows="3"
+                                        placeholder="Describe this key result area"
+                                        required></textarea>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
                     @endif
                 </div>
 
@@ -182,17 +135,26 @@
                     </button>
                 </div>
             </div>
+            @php
+            $isFocal = isfocal_person();
+            @endphp
 
+            @if ($isFocal)
             <div class="d-flex justify-content-between align-items-center border-top pt-4 mt-4">
                 <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary px-4">
                     <i class="bx text-success bx-arrow-back me-1"></i> Cancel
                 </a>
+
                 <button type="submit" class="btn btn-primary btn-md px-5 shadow-sm">
                     <i class="bx text-white bx-save me-2"></i> Create Matrix
                 </button>
             </div>
-        </form>
+            @endif
+
+
     </div>
+    </form>
+</div>
 </div>
 
 
@@ -205,15 +167,19 @@
 
 <script type="text/javascript">
     $(document).ready(function() {
-        let areaIndex = {{ old('key_result_area') ? count(old('key_result_area')) : 1 }};
+        let areaIndex = {
+            {
+                old('key_result_area') ? count(old('key_result_area')) : 1
+            }
+        };
 
-// Initialize Select2 for better dropdown UX
-$('.form-select').select2({
-    dropdownParent: $('#matrixForm'),
-});
+        // Initialize Select2 for better dropdown UX
+        $('.form-select').select2({
+            dropdownParent: $('#matrixForm'),
+        });
 
-// Add new key result area with animation
-$('#addArea').click(function() {
+        // Add new key result area with animation
+        $('#addArea').click(function() {
             const newArea = `
                 <div class="key-result-area mb-4" style="display: none;">
                     <div class="card border shadow-sm">
@@ -300,39 +266,39 @@ $('#addArea').click(function() {
 
             return true;
         });
-        
+
         // Division-based focal person filtering
         // Store staff by division and division focal persons data from PHP
         const staffByDivision = @json($staffByDivision);
         const divisionFocalPersons = @json($divisionFocalPersons);
-        
+
         // Handle division selection change
         $('#division_id').on('change', function() {
             const divisionId = $(this).val();
             const focalPersonSelect = $('#focal_person_id');
-            
+
             if (!divisionId) {
                 // If no division selected, show all focal persons
                 focalPersonSelect.find('option').show();
                 return;
             }
-            
+
             // Hide all options first except the placeholder
             focalPersonSelect.find('option:not(:first)').hide();
-            
+
             // Get the staff IDs for the selected division
             const divisionStaffIds = staffByDivision[divisionId] || [];
-            
+
             // Show only staff from the selected division
             focalPersonSelect.find('option').each(function() {
                 const value = $(this).val();
                 if (!value) return; // Skip placeholder
-                
+
                 if (divisionStaffIds.includes(parseInt(value))) {
                     $(this).show();
                 }
             });
-            
+
             // If there's a designated focal person for this division, select it
             const divisionFocalPerson = divisionFocalPersons[divisionId];
             if (divisionFocalPerson) {
@@ -349,7 +315,7 @@ $('#addArea').click(function() {
                 focalPersonSelect.val('');
             }
         });
-        
+
         // Trigger the change event on page load if there's a selected division
         if ($('#division_id').val()) {
             $('#division_id').trigger('change');

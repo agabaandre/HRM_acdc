@@ -5,9 +5,16 @@
 @section('header', 'Quarterly Travel Matrices')
 
 @section('header-actions')
+@php
+ $isFocal = isfocal_person();
+ //dd(user_session());
+@endphp
+
+@if ($isFocal)
 <a href="{{ route('matrices.create') }}" class="btn btn-success">
     <i class="bx bx-plus"></i> Create New Matrix
 </a>
+@endif
 @endsection
 
 @section('content')
