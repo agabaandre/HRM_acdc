@@ -6,7 +6,7 @@ class Templates extends MX_Controller
 {
 	public function __construct() {
         parent::__construct();
-        $this->db->query("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
+		$this->db->query('SET SESSION sql_mode = ""');
     }
 
 	public function main($data)
