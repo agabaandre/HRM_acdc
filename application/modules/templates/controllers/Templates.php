@@ -4,7 +4,10 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Templates extends MX_Controller
 {
-
+	public function __construct() {
+        parent::__construct();
+        $this->db->query("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
+    }
 
 	public function main($data)
 	{
