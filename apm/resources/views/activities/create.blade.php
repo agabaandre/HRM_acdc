@@ -210,9 +210,10 @@ $(document).ready(function () {
                     </div>
                     <div class="card-body">
                         <input type="hidden" name="budget[groups][${codeId}][code_id]" value="${codeId}">
-                        <div id="budgetItems-${codeId}" class="budget-items"></div>
-                        <div class="text-end">
-                            <button type="button" class="btn btn-success add-budget-item" data-code="${codeId}"><i class="bx bx-plus"></i> Add Item</button>
+                        <div id="budgetItems-${codeId}" class="budget-items">
+                            <div class="text-muted text-center py-3">
+                                <i class="bx bx-loader-circle bx-spin"></i> Loading budget items...
+                            </div>
                         </div>
                         <div class="text-end mt-3">
                             <strong>Total for ${label}: $<span class="budget-total" id="total-${codeId}">0.00</span></strong>
@@ -229,27 +230,44 @@ $(document).ready(function () {
 
     function addBudgetItem(codeId) {
         const container = $(`#budgetItems-${codeId}`);
-        const index = container.children().length;
-        const row = $(
-            `<div class="row g-2 mb-3 budget-row">
-                <div class="col-md-4">
-                    <input type="text" name="budget[groups][${codeId}][items][${index}][description]" class="form-control" placeholder="Item description" required>
-                </div>
-                <div class="col-md-2">
-                    <input type="number" name="budget[groups][${codeId}][items][${index}][amount]" class="form-control amount-input" placeholder="Unit Cost" required>
-                </div>
-                <div class="col-md-2">
-                    <input type="number" name="budget[groups][${codeId}][items][${index}][quantity]" class="form-control quantity-input" placeholder="Qty" value="1" required>
-                </div>
-                <div class="col-md-2">
-                    <input type="number" name="budget[groups][${codeId}][items][${index}][days]" class="form-control days-input" placeholder="Days" value="1">
-                </div>
-                <div class="col-md-2 d-flex align-items-center">
-                    <button type="button" class="btn btn-outline-danger remove-item"><i class="bx bx-trash"></i></button>
-                </div>
-            </div>`
-        );
-        container.append(row);
+        const expenseTypes = [
+            { id: 'ticket', label: 'Ticket' },
+            { id: 'dsa', label: 'DSA' },
+            { id: 'conference', label: 'Conference' },
+            { id: 'accommodation', label: 'Accommodation' }
+        ];
+
+        // Clear existing items
+        container.empty();
+
+        // Add a row for each expense type
+        expenseTypes.forEach((type, index) => {
+            const row = $(
+                `<div class="row g-2 mb-3 budget-row">
+                    <div class="col-md-4">
+                        <input type="text" name="budget[groups][${codeId}][items][${index}][description]" 
+                               class="form-control" value="${type.label}" readonly>
+                        <input type="hidden" name="budget[groups][${codeId}][items][${index}][type]" value="${type.id}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" name="budget[groups][${codeId}][items][${index}][amount]" 
+                               class="form-control amount-input" placeholder="Unit Cost" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" name="budget[groups][${codeId}][items][${index}][quantity]" 
+                               class="form-control quantity-input" placeholder="Qty" value="1" min="1" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" name="budget[groups][${codeId}][items][${index}][days]" 
+                               class="form-control days-input" placeholder="Days" value="1" min="1">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-center">
+                        <button type="button" class="btn btn-outline-danger remove-item"><i class="bx bx-trash"></i></button>
+                    </div>
+                </div>`
+            );
+            container.append(row);
+        });
     }
 
     $(document).on('click', '.add-budget-item', function () {
