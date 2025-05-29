@@ -33,14 +33,16 @@
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label for="budget_codes" class="form-label fw-semibold">Budget Code(s) <span                                 class="text-danger">*</span></label>
+                        <label for="budget_codes" class="form-label fw-semibold">Budget Code(s) <span
+                                class="text-danger">*</span></label>
                         <select name="budget_codes[]" id="budget_codes" class="form-select" multiple required disabled>
-                        <option value="" selected disabled>Select a fund type first</option>
+                            <option value="" selected disabled>Select a fund type first</option>
                         </select>
                         <small class="text-muted">Hold Ctrl/Command to select multiple</small>
                     </div>
                     <div class="col-md-4">
-                        <label for="key_result_link" class="form-label fw-semibold">Link to Key Result <span                                 class="text-danger">*</span></label>
+                        <label for="key_result_link" class="form-label fw-semibold">Link to Key Result <span
+                                class="text-danger">*</span></label>
                         <select name="key_result_link" id="key_result_link" class="form-select" required>
                             <option value="">Select Key Result</option>
                             @foreach(json_decode($matrix->key_result_area ?? '[]') as $index => $kr)
@@ -97,38 +99,38 @@
         </div>
     </div>
 
+    <style>
+        .select2-container .select2-selection--single {
+            height: 38px !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border: 1px solid #dee2e6 !important;
+            border-radius: 0.375rem !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: 12px !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+        }
+
+        .select2-container--default .select2-results__option--highlighted[aria-selected] {
+            background-color: var(--bs-primary) !important;
+        }
+    </style>
+
     @push('scripts')
+
         {{-- Add select2 --}}
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet">
+        {{-- <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet"> --}}
         <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
-        {{-- Custom styles to match Select2 height with Bootstrap 5 --}}
-        <style>
-            .select2-container .select2-selection--single {
-                height: 38px !important;
-            }
-
-            .select2-container--default .select2-selection--single {
-                border: 1px solid #dee2e6 !important;
-                border-radius: 0.375rem !important;
-            }
-
-            .select2-container--default .select2-selection--single .select2-selection__rendered {
-                line-height: 36px !important;
-                padding-left: 12px !important;
-            }
-
-            .select2-container--default .select2-selection--single .select2-selection__arrow {
-                height: 36px !important;
-            }
-
-            .select2-container--default .select2-results__option--highlighted[aria-selected] {
-                background-color: var(--bs-primary) !important;
-            }
-        </style>
-
-        {{-- Add Bootstrap 5 JS --}}
         <script>
+
             $(document).ready(function () {
                 let startDateInput = $('#date_from');
                 let endDateInput = $('#date_to');
@@ -136,6 +138,24 @@
                 let participantsTable = $('#participantsTable tbody');
                 let grandTotalInput = $('#grandBudgetTotalInput');
                 let grandTotalDisplay = $('#grandBudgetTotal');
+
+                // Initialize Select2 for fund type and budget codes
+                $('#fund_type').select2({
+                    placeholder: 'Select Fund Type',
+                    allowClear: true
+                });
+
+                $('.item-description').select2({
+                    placeholder: "Select an item",
+                    width: '100%'
+                });
+
+                $('#key_result_link').select2({
+                    placeholder: 'Select Key Result',
+                    allowClear: true
+                });
+
+
 
                 // Handle fund type change
                 $('#fund_type').on('change', function () {
@@ -202,20 +222,6 @@
                     });
                 });
 
-                // Initialize Select2 on existing item descriptions
-                $('.item-description').select2({
-                    placeholder: "Select an item",
-                    width: '100%'
-                });
-
-                // Initialize Select2 on new item descriptions when they're added
-                function initializeSelect2(element) {
-                    $(element).select2({
-                        placeholder: "Select an item",
-                        width: '100%'
-                    });
-                }
-
                 function updateParticipantDays() {
                     const start = new Date(startDateInput.val());
                     const end = new Date(endDateInput.val());
@@ -276,29 +282,28 @@
                     const index = container.children().length;
                     const row = $(
                         `<div class="row g-2 mb-3 budget-row">
-                                <div class="col-md-4">
-                                    <select name="budget[groups][${codeId}][items][${index}][description]" class="form-control item-description" required>
-                                        @foreach($costItems as $item)
-                                            <option value="{{ $item->name }}">{{ $item->name }} ({{ $item->cost_type }})</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" name="budget[groups][${codeId}][items][${index}][amount]" class="form-control amount-input" placeholder="Unit Cost" required>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" name="budget[groups][${codeId}][items][${index}][quantity]" class="form-control quantity-input" placeholder="Qty" value="1" required>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" name="budget[groups][${codeId}][items][${index}][days]" class="form-control days-input" placeholder="Days" value="1">
-                                </div>
-                                <div class="col-md-2 d-flex align-items-center">
-                                    <button type="button" class="btn btn-outline-danger remove-item"><i class="bx bx-trash"></i></button>
-                                </div>
-                            </div>`
+                                        <div class="col-md-4">
+                                            <select name="budget[groups][${codeId}][items][${index}][description]" class="form-control item-description" required>
+                                                @foreach($costItems as $item)
+                                                    <option value="{{ $item->name }}">{{ $item->name }} ({{ $item->cost_type }})</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" name="budget[groups][${codeId}][items][${index}][amount]" class="form-control amount-input" placeholder="Unit Cost" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" name="budget[groups][${codeId}][items][${index}][quantity]" class="form-control quantity-input" placeholder="Qty" value="1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" name="budget[groups][${codeId}][items][${index}][days]" class="form-control days-input" placeholder="Days" value="1">
+                                        </div>
+                                        <div class="col-md-2 d-flex align-items-center">
+                                            <button type="button" class="btn btn-outline-danger remove-item"><i class="bx bx-trash"></i></button>
+                                        </div>
+                                    </div>`
                     );
                     container.append(row);
-                    // Initialize Select2 on the new description field
                     initializeSelect2(row.find('.item-description'));
                 }
 
