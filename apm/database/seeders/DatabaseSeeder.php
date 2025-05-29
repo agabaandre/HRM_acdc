@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             ApprovalConditionSeeder::class,  // Then approval conditions
             ApproverSeeder::class,        // Then seed approvers
             MemoSeeder::class,            // Finally, seed memos
+            CostItemSeeder::class,        // Then seed cost items
         ]);
     }
 }

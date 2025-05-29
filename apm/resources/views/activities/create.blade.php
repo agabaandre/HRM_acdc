@@ -230,24 +230,18 @@ $(document).ready(function () {
 
     function addBudgetItem(codeId) {
         const container = $(`#budgetItems-${codeId}`);
-        const expenseTypes = [
-            { id: 'ticket', label: 'Ticket' },
-            { id: 'dsa', label: 'DSA' },
-            { id: 'conference', label: 'Conference' },
-            { id: 'accommodation', label: 'Accommodation' }
-        ];
+        const costItems = @json($costItems);
 
         // Clear existing items
         container.empty();
 
-        // Add a row for each expense type
-        expenseTypes.forEach((type, index) => {
+        costItems.forEach((item, index) => {
             const row = $(
-                `<div class="row g-2 mb-3 budget-row">
+                `<div class="row g-2 mb-3 budget-row" data-cost-type="${item.cost_type}">
                     <div class="col-md-4">
                         <input type="text" name="budget[groups][${codeId}][items][${index}][description]" 
-                               class="form-control" value="${type.label}" readonly>
-                        <input type="hidden" name="budget[groups][${codeId}][items][${index}][type]" value="${type.id}">
+                               class="form-control" value="${item.name}" readonly>
+                        <input type="hidden" name="budget[groups][${codeId}][items][${index}][type]" value="${item.id}">
                     </div>
                     <div class="col-md-2">
                         <input type="number" name="budget[groups][${codeId}][items][${index}][amount]" 
@@ -259,7 +253,8 @@ $(document).ready(function () {
                     </div>
                     <div class="col-md-2">
                         <input type="number" name="budget[groups][${codeId}][items][${index}][days]" 
-                               class="form-control days-input" placeholder="Days" value="1" min="1">
+                               class="form-control days-input" placeholder="Days" value="1" min="1"
+                               ${item.cost_type === 'Individual Cost' ? 'required' : ''}>
                     </div>
                     <div class="col-md-2 d-flex align-items-center">
                         <button type="button" class="btn btn-outline-danger remove-item"><i class="bx bx-trash"></i></button>
@@ -267,6 +262,22 @@ $(document).ready(function () {
                 </div>`
             );
             container.append(row);
+        });
+        
+        // Add cost type filter
+        const filterDiv = $('<div class="mb-3"><select class="form-select cost-type-filter"><option value="all">All Cost Types</option><option value="Individual Cost">Individual Costs</option><option value="Other Cost">Other Costs</option></select></div>');
+        container.prepend(filterDiv);
+
+        // Handle cost type filtering
+        container.find('.cost-type-filter').on('change', function() {
+            const selectedType = $(this).val();
+            container.find('.budget-row').each(function() {
+                if (selectedType === 'all' || $(this).data('cost-type') === selectedType) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
         });
     }
 

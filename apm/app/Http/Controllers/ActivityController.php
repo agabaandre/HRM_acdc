@@ -9,6 +9,7 @@ use App\Models\FundType;
 use App\Models\FundCode;
 use App\Models\Location;
 use App\Models\Staff;
+use App\Models\CostItem;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,7 @@ class ActivityController extends Controller
     {
         // Eager load the division relationship
         $matrix->load('division');
-        
+
         $activities = $matrix->activities()
             ->with(['staff', 'requestType'])
             ->latest()
@@ -49,17 +50,18 @@ class ActivityController extends Controller
     {
         // Eager load the division relationship
         $matrix->load('division');
-        
+
         $requestTypes = RequestType::all();
         $staff = Staff::active()->get();
-    
+
         // Cache the location data for 60 minutes
         $locations = Cache::remember('locations', 60, function () {
             return Location::all();
         });
         $fundTypes = FundType::all();
         $budgetCodes = FundCode::all();
-        
+        $costItems = CostItem::all();
+
         return view('activities.create', [
             'matrix' => $matrix,
             'requestTypes' => $requestTypes,
@@ -67,6 +69,7 @@ class ActivityController extends Controller
             'locations' => $locations,
             'fundTypes' => $fundTypes,
             'budgetCodes' => $budgetCodes,
+            'costItems' => $costItems,
             'title' => 'Create Activity',
             'editing' => true
         ]);
@@ -106,16 +109,16 @@ class ActivityController extends Controller
         // Set initial workflow IDs
         $validated['forward_workflow_id'] = 1; // Default initial workflow
         $validated['reverse_workflow_id'] = 1;
-        
+
         // Set status based on which button was clicked
-        $validated['status'] = $request->has('submit') 
-            ? Activity::STATUS_SUBMITTED 
+        $validated['status'] = $request->has('submit')
+            ? Activity::STATUS_SUBMITTED
             : Activity::STATUS_DRAFT;
 
         $activity = $matrix->activities()->create($validated);
 
-        $message = $request->has('submit') 
-            ? 'Activity submitted successfully.' 
+        $message = $request->has('submit')
+            ? 'Activity submitted successfully.'
             : 'Activity saved as draft.';
 
         return redirect()
@@ -132,7 +135,7 @@ class ActivityController extends Controller
         $matrix->load('division');
         $activity->load(['staff', 'requestType', 'serviceRequests']);
         $staff = Staff::active()->get();
-        
+
         return view('activities.show', [
             'matrix' => $matrix,
             'activity' => $activity,
@@ -179,7 +182,7 @@ class ActivityController extends Controller
 
         // Eager load the division relationship
         $matrix->load('division');
-        
+
         $requestTypes = RequestType::all();
         $staff = Staff::active()->get();
         $locations = Location::all();
@@ -241,8 +244,8 @@ class ActivityController extends Controller
 
         $activity->update($validated);
 
-        $message = $request->has('submit') 
-            ? 'Activity submitted successfully.' 
+        $message = $request->has('submit')
+            ? 'Activity submitted successfully.'
             : 'Activity updated successfully.';
 
         return redirect()
