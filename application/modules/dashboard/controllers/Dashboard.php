@@ -8,7 +8,7 @@ class Dashboard extends MX_Controller
 	public  function __construct()
 	{
 		parent::__construct();
-
+        $this->db->query('SET SESSION sql_mode = ""');
 		$this->dashmodule = "dashboard";
 		$this->load->model("dashboard_mdl",'dash_mdl');
 	}
