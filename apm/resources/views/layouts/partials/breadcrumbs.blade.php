@@ -14,7 +14,7 @@
                         @if(isset($matrix))
                             <li class="breadcrumb-item">
                                 <a href="{{ route('matrices.show', $matrix) }}">
-                                    Matrix: {{ $matrix->quarter }} {{ $matrix->year }}
+                                    Matrix
                                 </a>
                             </li>
                             @if(isset($matrix->division))
