@@ -31,20 +31,33 @@ class Activity extends Model
         'staff_id',
         'date_from',
         'date_to',
-        'location_id',
         'total_participants',
-        'internal_participants',
-        'budget_id',
         'key_result_area',
         'request_type_id',
         'activity_title',
         'background',
         'activity_request_remarks',
         'is_special_memo',
-        'budget',
-        'attachment',
         'status',
+        'fund_type_id',
     ];
+    
+    /**
+     * The attributes that should be hidden for arrays.
+     *
+     * @var array
+     */
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+    ];
+    
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['formatted_dates'];
 
     /**
      * The attributes that should be cast.
@@ -58,49 +71,116 @@ class Activity extends Model
         'matrix_id' => 'integer',
         'staff_id' => 'integer',
         'request_type_id' => 'integer',
+        'fund_type_id' => 'integer',
         'is_special_memo' => 'boolean',
         'date_from' => 'date',
         'date_to' => 'date',
-        'location_id' => 'array',
-        'internal_participants' => 'array',
-        'budget_id' => 'array',
-        'budget' => 'array',
-        'attachment' => 'array',
+        'total_participants' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
+    /**
+     * Get the matrix that owns the activity.
+     */
     public function matrix(): BelongsTo
     {
         return $this->belongsTo(Matrix::class);
     }
 
+    /**
+     * Get the request type that owns the activity.
+     */
     public function requestType(): BelongsTo
     {
         return $this->belongsTo(RequestType::class);
     }
 
+    /**
+     * Get the staff member that owns the activity.
+     */
     public function staff(): BelongsTo
     {
         return $this->belongsTo(Staff::class);
     }
 
+    /**
+     * Get the fund type that owns the activity.
+     */
+    public function fundType(): BelongsTo
+    {
+        return $this->belongsTo(FundType::class);
+    }
+
+    /**
+     * The locations that belong to the activity.
+     */
+    public function locations()
+    {
+        return $this->belongsToMany(Location::class, 'activity_location');
+    }
+
+    /**
+     * The fund codes that belong to the activity.
+     */
+    public function fundCodes()
+    {
+        return $this->belongsToMany(FundCode::class, 'activity_fund_code');
+    }
+
+    /**
+     * The participants that belong to the activity.
+     */
+    public function participants()
+    {
+        return $this->belongsToMany(Staff::class, 'activity_participant')
+            ->withPivot('days')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the forward workflow for the activity.
+     */
     public function forwardWorkflow(): BelongsTo
     {
         return $this->belongsTo(ForwardWorkflow::class);
     }
 
+    /**
+     * Get the reverse workflow for the activity.
+     */
     public function reverseWorkflow(): BelongsTo
     {
         return $this->belongsTo(ReverseWorkflow::class);
     }
 
+    /**
+     * Get the service requests for the activity.
+     */
     public function serviceRequests(): HasMany
     {
         return $this->hasMany(ServiceRequest::class);
     }
 
+    /**
+     * Get the approval trails for the activity.
+     */
     public function activityApprovalTrails(): HasMany
     {
         return $this->hasMany(ActivityApprovalTrail::class);
+    }
+    
+    /**
+     * Get the formatted dates attribute.
+     *
+     * @return string
+     */
+    public function getFormattedDatesAttribute(): string
+    {
+        $startDate = $this->date_from->format('M j, Y');
+        $endDate = $this->date_to->format('M j, Y');
+        
+        return $startDate . ' - ' . $endDate;
     }
 
     /**
