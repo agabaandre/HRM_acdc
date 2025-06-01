@@ -46,6 +46,7 @@
     <div class="col-md-4">
         <label for="location_id" class="form-label">Location/Venue *</label>
         <select name="location_id[]" id="location_id" class="form-select multiple-select" required>
+            <option value="" disabled selected>Select Location/Venue</option>
             @foreach($locations as $location)
                 <option value="{{ $location->id }}" {{ in_array($location->id, old('location_id', [])) ? 'selected' : '' }}>{{ $location->name }}</option>
             @endforeach
@@ -54,10 +55,6 @@
     <div class="col-md-4">
         <label for="total_participants" class="form-label">Total Participants *</label>
         <input type="number" name="total_participants" id="total_participants" class="form-control" value="{{ old('total_participants') }}" min="1" required>
-    </div>
-    <div class="col-md-4">
-        <label for="external_participants" class="form-label">External Participants</label>
-        <input type="number" name="external_participants" id="external_participants" class="form-control" value="{{ old('external_participants', 0) }}" min="0">
     </div>
 </div>
 
