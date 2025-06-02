@@ -194,7 +194,7 @@
     });
 </script>
 
-<script>
+<!-- <script>
     $(document).ready(function () {
         function loadMessages() {
             $.ajax({
@@ -237,7 +237,7 @@
         loadMessages(); // Load on page ready
         setInterval(loadMessages, 30000); // Auto refresh every 30 sec
     });
-</script>
+</script> -->
 
 <script type="text/javascript">
     function googleTranslateElementInit() {
