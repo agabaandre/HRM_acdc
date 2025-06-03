@@ -45,18 +45,27 @@
                         </select>
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
-
+   
                     <div class="col-md-4">
-                        <label for="key_result_link" class="form-label fw-semibold">
-                            <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
-                        </label>
-                        <select name="key_result_link" id="key_result_link" class="form-select border-success" required>
-                            <option value="">Select Key Result</option>
-                            @foreach(json_decode($matrix->key_result_area ?? '[]') as $index => $kr)
-                                <option value="{{ $index }}">{{ $kr->title ?? 'Untitled' }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <label for="key_result_link" class="form-label fw-semibold">
+                        <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
+                    </label>
+                    <select name="key_result_link" id="key_result_link" class="form-select border-success" required>
+                        <option value="">Select Key Result</option>
+                        @php
+                            $keyResults = is_array($matrix->key_result_area) 
+                                        ? $matrix->key_result_area 
+                                        : json_decode($matrix->key_result_area ?? '[]', true);
+                        @endphp
+                        @foreach($keyResults as $index => $kr)
+                            <option value="{{ $index }}">
+                                {{ $kr['description'] ?? 'No Description' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+
                 </div>
 
 

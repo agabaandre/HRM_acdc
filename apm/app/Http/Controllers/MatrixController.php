@@ -141,53 +141,84 @@ class MatrixController extends Controller
         $focalPersons = Staff::active()->get();
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
-        
-        // Create an array of staff IDs by division for use in JavaScript
+    
+        // Prepare staff and focal person mapping per division
         $staffByDivision = [];
         $divisionFocalPersons = [];
-        
+    
         foreach ($divisions as $division) {
-            // Get staff for each division
-            $divisionStaff = Staff::active()->where('division_id', $division->id)->get();
+            $divisionStaff = $staff->where('division_id', $division->id);
             $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
-            
-            // Store the focal person for each division
             $divisionFocalPersons[$division->id] = $division->focal_person;
         }
-
-        return ViewFacade::make('matrices.edit', compact(
+    
+        // Ensure key_result_area is an array
+        if (is_string($matrix->key_result_area)) {
+            $decoded = json_decode($matrix->key_result_area, true);
+            $matrix->key_result_area = is_array($decoded) ? $decoded : [];
+        }
+    
+        return view('matrices.edit', compact(
             'matrix',
-            'divisions', 
-            'staff', 
-            'quarters', 
-            'years', 
-            'focalPersons', 
+            'divisions',
+            'staff',
+            'quarters',
+            'years',
+            'focalPersons',
             'staffByDivision',
             'divisionFocalPersons'
         ));
     }
+    
+    
 
     /**
      * Update the specified matrix.
      */
     public function update(Request $request, Matrix $matrix): RedirectResponse
     {
+        $isAdmin = session('user.user_role') == 10;
+        $userDivisionId = session('user.division_id');
+        $userStaffId = session('user.auth_staff_id');
+    
+        // Validate basic fields
         $validated = $request->validate([
-            'focal_person_id' => 'required|exists:staff,id',
-            'division_id' => 'required|exists:divisions,id',
-            'year' => 'required|numeric|min:2024|max:2099',
+            'year' => 'required|integer',
             'quarter' => 'required|in:Q1,Q2,Q3,Q4',
             'key_result_area' => 'required|array',
-            'staff_id' => 'required|exists:staff,id',
+            'key_result_area.*.description' => 'required|string',
         ]);
-
-        $matrix->update($validated);
-
-        return redirect()
-            ->route('matrices.index')
-            ->with('success', 'Matrix updated successfully.');
+    
+        // For admins, allow editing focal person and division
+        if ($isAdmin) {
+            $validated += $request->validate([
+                'division_id' => 'required|exists:divisions,id',
+                'focal_person_id' => 'required|exists:staff,staff_id',
+            ]);
+        } else {
+            $validated['division_id'] = $userDivisionId;
+            $validated['focal_person_id'] = $userStaffId;
+        }
+    
+        // Update matrix
+        $matrix->update([
+            'division_id'         => $validated['division_id'],
+            'focal_person_id'     => $validated['focal_person_id'],
+            'year'                => $validated['year'],
+            'quarter'             => $validated['quarter'],
+            'key_result_area'     => json_encode($validated['key_result_area']),
+            'staff_id'            => user_session('staff_id'),
+            'forward_workflow_id' => 1,
+        ]);
+    
+        return redirect()->route('matrices.index')->with([
+            'msg' => 'Matrix updated successfully.',
+            'type' => 'success'
+        ]);
+        
     }
-
+    
+    
     /**
      * Remove the specified matrix.
      */
