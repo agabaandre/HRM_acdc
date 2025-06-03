@@ -80,27 +80,26 @@ class ActivityController extends Controller
      */
     public function store(Request $request, Matrix $matrix): RedirectResponse
     {
-        // Check if matrix is approved
-        dd($request);
         if ($matrix->overall_status === 'approved') {
             return redirect()
                 ->route('matrices.show', $matrix)
-                ->with('error', 'Cannot create new activity. The matrix has been approved.');
+                ->with([
+                    'msg' => 'Cannot create new activity. The matrix has been approved.',
+                    'type' => 'error'
+                ]);
         }
-
-        // Start database transaction
+    
         return \DB::transaction(function () use ($request, $matrix) {
             try {
-                // Validate the request data
                 $validated = $request->validate([
                     'staff_id' => 'required|exists:staff,id',
                     'date_from' => 'required|date',
                     'date_to' => 'required|date|after_or_equal:date_from',
                     'location_id' => 'required|array|min:1',
-                    'location_id.*' => 'exists:locations,id',
+                    'location_id.*' => 'string',
                     'total_participants' => 'required|integer|min:1',
                     'internal_participants' => 'required|array|min:1',
-                    'internal_participants.*' => 'exists:staff,id',
+                    'internal_participants.*' => 'string',
                     'request_type_id' => 'required|exists:request_types,id',
                     'activity_title' => 'required|string|max:255',
                     'background' => 'required|string',
@@ -110,11 +109,24 @@ class ActivityController extends Controller
                     'budget_codes.*' => 'exists:fund_codes,id',
                     'key_result_link' => 'required|string',
                     'participant_days' => 'required|array',
-                    'participant_days.*' => 'integer|min:0',
+                    'budget' => 'required|array',
                 ]);
-
-                // Set initial workflow IDs and status
-                $activityData = [
+    
+                // Convert location names to IDs
+                $locationIds = \App\Models\Location::whereIn('name', $validated['location_id'])->pluck('id')->toArray();
+    
+                // Convert participant names to IDs
+                $staffMap = \App\Models\Staff::whereIn('name', $validated['internal_participants'])->pluck('id', 'name');
+    
+                // Format participant days using IDs
+                $participantDays = [];
+                foreach ($validated['participant_days'] as $name => $days) {
+                    if ($staffMap->has($name)) {
+                        $participantDays[$staffMap[$name]] = ['days' => (int)$days];
+                    }
+                }
+    
+                $activity = $matrix->activities()->create([
                     'staff_id' => $validated['staff_id'],
                     'date_from' => $validated['date_from'],
                     'date_to' => $validated['date_to'],
@@ -124,91 +136,42 @@ class ActivityController extends Controller
                     'activity_title' => $validated['activity_title'],
                     'background' => $validated['background'],
                     'activity_request_remarks' => $validated['activity_request_remarks'],
-                    'forward_workflow_id' => 1, // Default initial workflow
+                    'forward_workflow_id' => 1,
                     'reverse_workflow_id' => 1,
-                    'status' => Activity::STATUS_DRAFT,
+                    'status' => \App\Models\Activity::STATUS_DRAFT,
                     'fund_type_id' => $validated['fund_type'],
-                ];
-
-                // Create the activity
-                $activity = $matrix->activities()->create($activityData);
-
-                // Sync locations
-                if (isset($validated['location_id'])) {
-                    $activity->locations()->sync($validated['location_id']);
-                }
-
-                // Sync budget codes
-                if (isset($validated['budget_codes'])) {
-                    $activity->fundCodes()->sync($validated['budget_codes']);
-                }
-
-                // Sync participants and their days
-                $participantDays = [];
-                if (isset($validated['participant_days']) && isset($validated['internal_participants'])) {
-                    foreach ($validated['participant_days'] as $participantId => $days) {
-                        if (in_array($participantId, $validated['internal_participants'])) {
-                            $participantDays[$participantId] = ['days' => (int)$days];
-                        }
-                    }
-                    $activity->participants()->sync($participantDays);
-                }
-
-                // Commit the transaction
-                \DB::commit();
-
-                if ($request->ajax()) {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Activity created successfully.',
-                        'redirect' => route('matrices.activities.show', [$matrix, $activity])
-                    ]);
-                }
-
-
+                    'location_id' => json_encode($validated['location_id']), // keep names
+                    'internal_participants' => json_encode($validated['internal_participants']), // keep names
+                    'budget' => json_encode($validated['budget']),
+                    'budget_id' => json_encode($validated['budget_codes']),
+                ]);
+    
+                // Sync related tables
+                $activity->locations()->sync($locationIds);
+                $activity->fundCodes()->sync($validated['budget_codes']);
+                $activity->participants()->sync($participantDays);
+    
                 return redirect()
                     ->route('matrices.activities.show', [$matrix, $activity])
-                    ->with('success', 'Activity created successfully.');
-
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                // Rollback the transaction on validation error
-                \DB::rollBack();
-                
-                if ($request->ajax()) {
-                    return response()->json([
-                        'success' => false,
-                        'errors' => $e->validator->getMessageBag()->toArray(),
-                        'message' => 'Please fix the errors in the form.'
-                    ], 422);
-                }
-                
-                return redirect()
-                    ->back()
-                    ->withErrors($e->validator)
-                    ->withInput();
-                    
+                    ->with([
+                        'msg' => 'Activity created successfully.',
+                        'type' => 'success'
+                    ]);
+    
             } catch (\Exception $e) {
-                // Rollback the transaction on any other error
                 \DB::rollBack();
-                \Log::error('Error creating activity: ' . $e->getMessage(), [
-                    'exception' => $e,
-                    'trace' => $e->getTraceAsString()
+                \Log::error('Error creating activity', ['exception' => $e]);
+    
+                return redirect()->back()->withInput()->with([
+                    'msg' => 'An error occurred while creating the activity. Please try again.',
+                    'type' => 'error'
                 ]);
-                
-                if ($request->ajax()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'An error occurred while creating the activity. Please try again.'
-                    ], 500);
-                }
-                
-                return redirect()
-                    ->back()
-                    ->with('error', 'An error occurred while creating the activity. Please try again.')
-                    ->withInput();
             }
         });
     }
+    
+    
+
 
     /**
      * Display the specified activity.
