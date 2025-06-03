@@ -84,11 +84,12 @@
 
                                 <!-- Modal -->
                                 <div class="modal fade" id="kraModal{{ $matrix->id }}" tabindex="-1" aria-labelledby="kraModalLabel{{ $matrix->id }}" aria-hidden="true">
-                                   <div class="modal-dialog modal-md modal-dialog-centered">
-
+                                    <div class="modal-dialog modal-md modal-dialog-centered">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="kraModalLabel{{ $matrix->id }}">Key Result Areas - {{ $matrix->year }} {{ $matrix->quarter }}</h5>
+                                                <h5 class="modal-title" id="kraModalLabel{{ $matrix->id }}">
+                                                    Key Result Areas - {{ $matrix->year }} {{ $matrix->quarter }}
+                                                </h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body">
@@ -134,21 +135,27 @@
     </div>
 
     @if($matrices->hasPages())
-    <div class="card-footer bg-light py-2">
-        {{ $matrices->withQueryString()->links() }}
-    </div>
+        <div class="card-footer bg-light py-2">
+            {{ $matrices->withQueryString()->links() }}
+        </div>
     @endif
 </div>
+@endsection
 
 @push('scripts')
 <script>
     $(document).ready(function () {
+        // Pre-fill filters from URL
         const params = new URLSearchParams(window.location.search);
         $('#yearFilter').val(params.get('year') || '');
         $('#quarterFilter').val(params.get('quarter') || '');
         $('#divisionFilter').val(params.get('division') || '');
         $('#focalFilter').val(params.get('focal_person') || '');
 
+        // Apply Select2
+        $('.select2').select2({ width: '100%' });
+
+        // Handle filter change
         $('#yearFilter, #quarterFilter, #divisionFilter, #focalFilter').change(function () {
             const url = new URL(window.location.href);
             ['year', 'quarter', 'division', 'focal_person'].forEach(id => {
@@ -161,4 +168,3 @@
     });
 </script>
 @endpush
-@endsection
