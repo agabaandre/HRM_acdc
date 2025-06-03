@@ -61,7 +61,7 @@
                 </label>
                 <select name="location_id[]" id="location_id" class="form-select border-success" multiple required>
                     @foreach($locations as $location)
-                    <option value="{{ $location->id }}" {{ in_array($location->id, old('location_id', [])) ? 'selected' : '' }}>
+                    <option value="{{ $location->name }}" {{ in_array($location->name, old('location_name', [])) ? 'selected' : '' }}>
                         {{ $location->name }}
                     </option>
                     @endforeach
@@ -83,7 +83,7 @@
                 </label>
                 <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple required>
                     @foreach($staff as $member)
-                    <option value="{{ $member->id }}" {{ in_array($member->id, old('internal_participants', [])) ? 'selected' : '' }}>
+                    <option value="{{ $member->name }}" {{ in_array($member->name, old('internal_participants', [])) ? 'selected' : '' }}>
                         {{ $member->name }}
                     </option>
                     @endforeach
