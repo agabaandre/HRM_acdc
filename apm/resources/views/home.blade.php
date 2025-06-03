@@ -80,7 +80,7 @@
         <p>Plan and track quarterly travel for all staff.</p>
       </div>
       <div>
-        <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm mt-2">Open Matrix</a>
+        <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm mt-2">Open </a>
         <div class="settings-icon mt-3"><i class="fas fa-calendar-alt"></i></div>
       </div>
     </div>
@@ -94,7 +94,7 @@
         <p>Manage activities that are not related to travel logistics.</p>
       </div>
       <div>
-        <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm mt-2">Open Module</a>
+        <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm mt-2">Open</a>
         <div class="settings-icon mt-3"><i class="fas fa-walking"></i></div>
       </div>
     </div>
@@ -107,7 +107,7 @@
         <p>Create and send special memos for specific activities.</p>
       </div>
       <div>
-        <a href="{{ url('special-memo') }}" class="btn btn-success btn-sm mt-2">Create Memo</a>
+        <a href="{{ url('special-memo') }}" class="btn btn-success btn-sm mt-2">Open</a>
         <div class="settings-icon mt-3"><i class="fas fa-envelope-open-text"></i></div>
       </div>
     </div>
@@ -121,7 +121,7 @@
         <p>Submit requests for tickets, DSA, procurement, or imprest.</p>
       </div>
       <div>
-        <a href="{{ url('service-requests') }}" class="btn btn-success btn-sm mt-2">Request Services</a>
+        <a href="{{ url('service-requests') }}" class="btn btn-success btn-sm mt-2">Open</a>
         <div class="settings-icon mt-3"><i class="fas fa-box"></i></div>
       </div>
     </div>
@@ -137,7 +137,7 @@
         <p>Submit your Activity Request Form for approvals.</p>
       </div>
       <div>
-        <a href="{{ url('request-arf') }}" class="btn btn-success btn-sm mt-2">Submit ARF</a>
+        <a href="{{ url('request-arf') }}" class="btn btn-success btn-sm mt-2">Open</a>
         <div class="settings-icon mt-3"><i class="fas fa-file-signature"></i></div>
       </div>
     </div>
