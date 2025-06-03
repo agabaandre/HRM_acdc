@@ -16,6 +16,9 @@ class Staff extends Model
      *
      * @var array
      */
+    protected $primaryKey = 'staff_id';
+    public $incrementing = true;
+    protected $keyType = 'int';
     protected $fillable = [
         'staff_id',
         'work_email',
@@ -79,20 +82,20 @@ class Staff extends Model
         return "{$this->fname} {$this->lname}";
     }
 
-    public function division(): BelongsTo
-    {
-        return $this->belongsTo(Division::class);
-    }
+    // public function division(): BelongsTo
+    // {
+    //     return $this->belongsTo(Division::class);
+    // }
     
-    public function directorate(): BelongsTo
-    {
-        return $this->belongsTo(Directorate::class);
-    }
+    // public function directorate(): BelongsTo
+    // {
+    //     return $this->belongsTo(Directorate::class);
+    // }
 
-    public function dutyStation(): BelongsTo
-    {
-        return $this->belongsTo(DutyStation::class);
-    }
+    // public function dutyStation(): BelongsTo
+    // {
+    //     return $this->belongsTo(DutyStation::class);
+    // }
 
     public function matrices(): HasMany
     {

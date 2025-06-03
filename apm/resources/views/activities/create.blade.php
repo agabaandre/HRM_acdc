@@ -45,31 +45,30 @@
                         </select>
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
-   
+
                     <div class="col-md-4">
-                    <label for="key_result_link" class="form-label fw-semibold">
-                        <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
-                    </label>
-                    <select name="key_result_link" id="key_result_link" class="form-select border-success" required>
-                        <option value="">Select Key Result</option>
-                        @php
-                            $keyResults = is_array($matrix->key_result_area) 
-                                        ? $matrix->key_result_area 
-                                        : json_decode($matrix->key_result_area ?? '[]', true);
-                        @endphp
-                        @foreach($keyResults as $index => $kr)
-                            <option value="{{ $index }}">
-                                {{ $kr['description'] ?? 'No Description' }}
-                            </option>
-                        @endforeach
-                    </select>
+                        <label for="key_result_link" class="form-label fw-semibold">
+                            <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
+                        </label>
+                        <select name="key_result_link" id="key_result_link" class="form-select border-success" required>
+                            <option value="">Select Key Result</option>
+                            @php
+                                $keyResults = is_array($matrix->key_result_area) 
+                                            ? $matrix->key_result_area 
+                                            : json_decode($matrix->key_result_area ?? '[]', true);
+                            @endphp
+                            @foreach($keyResults as $index => $kr)
+                                <option value="{{ $index }}">
+                                    {{ $kr['description'] ?? 'No Description' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
-
-                </div>
-
-
-                <h6 class="fw-bold text-success mb-3"><i class="fas fa-users-cog me-2"></i> Internal Participants - Days</h6>
+                <h6 class="fw-bold text-success mb-3 mt-4">
+                    <i class="fas fa-users-cog me-2"></i> Internal Participants - Days
+                </h6>
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm align-middle" id="participantsTable">
                         <thead class="table-light">
@@ -83,6 +82,9 @@
                         </tbody>
                     </table>
                 </div>
+
+              
+                <div id="externalParticipantsWrapper"></div>
 
                 <div id="budgetGroupContainer" class="mt-4"></div>
 
@@ -112,6 +114,95 @@
 
 @push('scripts')
 <script>
+
+const staffData = @json($allStaffGroupedByDivision);
+
+$(document).ready(function () {
+    $('#addDivisionBlock').click(function () {
+        const divisions = Object.keys(staffData);
+        let divisionOptions = '<option value="">Select Division</option>';
+        divisions.forEach(div => {
+            divisionOptions += `<option value="${div}">${div}</option>`;
+        });
+
+        const block = `
+            <div class="division-block border p-3 mb-3 rounded bg-light position-relative">
+                <button type="button" class="btn-close btn-danger position-absolute end-0 top-0 m-3 remove-division-block" aria-label="Close"></button>
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <label class="form-label">Division</label>
+                        <select class="form-select division-select">
+                            ${divisionOptions}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Filter By</label>
+                        <select class="form-select filter-type">
+                            <option value="">Select Filter</option>
+                            <option value="title">Job Title</option>
+                            <option value="name">Name</option>
+                            <option value="number">Number of Staff</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 job-title-col d-none">
+                        <label class="form-label">Job Title(s)</label>
+                        <select class="form-select job-titles" name="external_staff_by_title[]" multiple></select>
+                    </div>
+                    <div class="col-md-3 staff-name-col d-none">
+                        <label class="form-label">Staff Info</label>
+                        <select class="form-select staff-names" name="external_staff_by_name[]" multiple></select>
+                    </div>
+                    <div class="col-md-3 staff-number-col d-none">
+                        <label class="form-label">No. of Staff</label>
+                        <input type="number" class="form-control staff-number" name="external_staff_by_number[]" placeholder="Enter Number">
+                    </div>
+                </div>
+            </div>`;
+
+        const $block = $(block);
+        $('#externalParticipantsWrapper').append($block);
+
+        // Initialize Select2 fields
+        $block.find('.division-select').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'Select Division' });
+        $block.find('.job-titles').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'Select Job Title(s)', allowClear: true });
+        $block.find('.staff-names').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'Select Staff', allowClear: true });
+    });
+
+    $(document).on('click', '.remove-division-block', function () {
+        $(this).closest('.division-block').remove();
+    });
+
+    $(document).on('change', '.division-select', function () {
+        const division = $(this).val();
+        const container = $(this).closest('.division-block');
+        const jobSelect = container.find('.job-titles');
+        const staffSelect = container.find('.staff-names');
+
+        const staff = staffData[division] || [];
+        const uniqueJobs = [...new Set(staff.map(s => s.job_name).filter(Boolean))];
+
+        jobSelect.empty().append(uniqueJobs.map(j => `<option value="${j}">${j}</option>`));
+        staffSelect.empty().append(staff.map(s => `<option value="${s.staff_id}">${s.fname} ${s.lname}</option>`));
+
+        jobSelect.trigger('change');
+        staffSelect.trigger('change');
+    });
+
+    $(document).on('change', '.filter-type', function () {
+        const selected = $(this).val();
+        const block = $(this).closest('.division-block');
+
+        // Hide all
+        block.find('.job-title-col, .staff-name-col, .staff-number-col').addClass('d-none');
+
+        // Show based on selection
+        if (selected === 'title') block.find('.job-title-col').removeClass('d-none');
+        if (selected === 'name') block.find('.staff-name-col').removeClass('d-none');
+if (selected === 'number') block.find('.staff-number-col').removeClass('d-none');
+    });
+});
+
+  
 $(document).ready(function () {
     const today = new Date().setHours(0, 0, 0, 0);
     const divisionId = {{ user_session('division_id') }};
@@ -266,58 +357,71 @@ $(document).ready(function () {
     });
 
     $('#budget_codes').on('change', function () {
-        const selected = $(this).find('option:selected');
-        const container = $('#budgetGroupContainer');
-        container.empty();
+    const selected = $(this).find('option:selected');
+    const container = $('#budgetGroupContainer');
+    container.empty();
 
-        selected.each(function () {
-            const codeId = $(this).val();
-            const label = $(this).text();
-            const balance = $(this).data('balance');
+    selected.each(function () {
+        const codeId = $(this).val();
+        const label = $(this).text();
+        const balance = $(this).data('balance');
 
-            container.append(`
-                <div class="card mt-4">
-                    <div class="card-header bg-light">
-                        <h6 class="fw-semibold">
-                            Budget for: ${label}
-                            <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toFixed(2)}</span></span>
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-bordered text-center align-middle">
-                            <thead class="table-light fw-bold">
-                                <tr>
-                                    <th>Cost</th>
-                                    <th>Description</th>
-                                    <th>Unit Cost</th>
-                                    <th>Units/People</th>
-                                    <th>Days/Frequency</th>
-                                    <th>Total</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="budget-body" data-code="${codeId}">
-                                ${createBudgetRow(codeId, 0)}
-                            </tbody>
-                        </table>
-                        <div class="text-end mt-2">
-                            <button type="button" class="btn btn-primary btn-sm add-row" data-code="${codeId}"><i class="fas fa-plus"></i> Add</button>
-                            <strong class="ms-3">Sub Total: $<span class="subtotal" data-code="${codeId}">0.00</span></strong>
-                        </div>
+        const cardHtml = `
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="fw-semibold">
+                        Budget for: ${label}
+                        <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toFixed(2)}</span></span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered text-center align-middle">
+                        <thead class="table-light fw-bold">
+                            <tr>
+                                <th>Cost</th>
+                                <th>Description</th>
+                                <th>Unit Cost</th>
+                                <th>Units/People</th>
+                                <th>Days/Frequency</th>
+                                <th>Total</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="budget-body" data-code="${codeId}">
+                            ${createBudgetRow(codeId, 0)}
+                        </tbody>
+                    </table>
+                    <div class="text-end mt-2">
+                        <button type="button" class="btn btn-primary btn-sm add-row" data-code="${codeId}">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                        <strong class="ms-3">Sub Total: $<span class="subtotal" data-code="${codeId}">0.00</span></strong>
                     </div>
                 </div>
-            `);
+            </div>
+        `;
+
+        container.append(cardHtml);
+
+        container.find('.select-cost-item').select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            placeholder: 'Select Cost Item',
+            allowClear: true
         });
     });
+});
+
 
     function createBudgetRow(codeId, index) {
     return `
     <tr>
         <td>
             <select name="budget[${codeId}][${index}][cost]" 
-                    class="form-select" 
-                    required>
-                <option value="">Select Cost Item</option>
+                    class="form-select select-cost-item" 
+                    required 
+                    data-placeholder="Select Cost Item">
+                <option></option> <!-- Required for placeholder to work with Select2 -->
                 @foreach($costItems as $item)
                     <option value="{{ $item->name }}">{{ $item->name }} ({{ $item->cost_type }})</option>
                 @endforeach
@@ -337,15 +441,25 @@ $(document).ready(function () {
         <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="0.00"></td>
         <td><button type="button" class="btn btn-danger remove-row"><i class="fas fa-trash"></i></button></td>
     </tr>`;
- }
+}
 
+        $(document).on('click', '.add-row', function () {
+            const codeId = $(this).data('code');
+            const tbody = $(`.budget-body[data-code="${codeId}"]`);
+            const index = tbody.find('tr').length;
+            const newRow = $(createBudgetRow(codeId, index));
 
-    $(document).on('click', '.add-row', function () {
-        const codeId = $(this).data('code');
-        const tbody = $(`.budget-body[data-code="${codeId}"]`);
-        const index = tbody.find('tr').length;
-        tbody.append(createBudgetRow(codeId, index));
-    });
+            tbody.append(newRow);
+
+            // Initialize select2 on the new cost item select
+            newRow.find('.select-cost-item').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Select Cost Item',
+                allowClear: true
+            });
+        });
+
 
     $(document).on('click', '.remove-row', function () {
         $(this).closest('tr').remove();
