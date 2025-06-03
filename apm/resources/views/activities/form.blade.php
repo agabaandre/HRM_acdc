@@ -92,7 +92,7 @@
 
             <div class="col-md-12">
                 <label for="activity_request_remarks" class="form-label fw-semibold">
-                    <i class="fas fa-comment-dots me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
+                    <i class="fas fa-comment-dots me-1 text-success"></i>Justification / Request for Approval <span class="text-danger">*</span>
                 </label>
                 <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks') }}</textarea>
             </div>

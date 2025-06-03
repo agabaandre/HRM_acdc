@@ -62,8 +62,8 @@ $settingsMenuItems = [
             <li class="nav-item">
                 <a href="{{ url('home') }}"
                     class="nav-link {{ Request::is('home') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-house-user"></i></div>
-                    <div class="menu-title">APM Home</div>
+                    <div class="parent-icon"><i class="fas fa-th"></i></div>
+                    <div class="menu-title">AMS Home</div>
                 </a>
             </li>
 
