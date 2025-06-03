@@ -101,10 +101,10 @@ body {
       $token = urlencode(base64_encode(json_encode($session)));
       $settings[] = [
         $session['base_url'] . 'apm?token=' . $token,
-        'Approvals Management (AMS)',
+        'Approvals Management (APM)',
         'fa-building-columns',
         true,
-        'Track, manage, and report on organizational budgets and fund allocations.'
+        'Tracks submissions, reviews, and approvals requests for Travel Matrix, Single and Special Memos, Change, DSA and ARF requests'
       ];
     }
 
