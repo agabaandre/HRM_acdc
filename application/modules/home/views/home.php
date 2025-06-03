@@ -104,7 +104,7 @@ body {
         'Approvals Management (APM)',
         'fa-building-columns',
         true,
-        'Tracks submissions, reviews, and approvals requests for Travel Matrix, Single and Special Memos, Change, DSA and ARF requests'
+        'Tracks submissions, reviews, and approvals ie requests for Travel Matrix, Single and Special Memos, Change, DSA and ARF requests'
       ];
     }
 
