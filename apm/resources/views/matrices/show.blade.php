@@ -6,14 +6,14 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success shadow-sm">
+    <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Add Activity
     </a>
-    <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning shadow-sm">
+    <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
         <i class="bx bx-edit me-1"></i> Edit Matrix
     </a>
-    <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
-        <i class="bx bx-arrow-back me-1"></i> Back to List
+    <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bx bx-arrow-back me-1"></i> Back
     </a>
 </div>
 @endsection
@@ -56,53 +56,35 @@
         </div>
 
         <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="bx bx-target-lock me-2 text-primary"></i>Key Result Areas</h5>
-            </div>
-            <div class="card-body p-4">
-                @php
-                    $keyResultAreas = $matrix->key_result_area;
-                    // Decode json
-                    $keyResultAreas = json_decode($keyResultAreas, true);
-                @endphp
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="bx bx-target-lock me-2 text-primary"></i>Key Result Areas</h5>
+    </div>
+    <div class="card-body p-4">
+        @php
+            $keyResultAreas = is_array($matrix->key_result_area)
+                ? $matrix->key_result_area
+                : json_decode($matrix->key_result_area ?? '[]', true);
+        @endphp
 
-                @if(empty($keyResultAreas))
-                    <div class="alert alert-info mb-0">
-                        <i class="bx bx-info-circle me-2"></i> No key result areas have been added yet.
-                    </div>
-                @else
-                    @foreach($keyResultAreas as $index => $area)
-                        @php
-                            $area = is_array($area) ? $area : [];
-                            $title = $area['title'] ?? 'Untitled';
-                            $description = $area['description'] ?? 'No description provided';
-                            $targets = $area['targets'] ?? 'No targets specified';
-                        @endphp
-                        <div class="key-result-area card border shadow-sm mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="m-0 fw-semibold">
-                                    <i class="bx bx-bullseye me-1 text-primary"></i> {{ $title }}
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label class="fw-semibold d-block text-primary">
-                                        <i class="bx bx-detail me-1"></i> Description
-                                    </label>
-                                    <p class="mb-0">{{ $description }}</p>
-                                </div>
-                                <div>
-                                    <label class="fw-semibold d-block text-primary">
-                                        <i class="bx bx-bullseye me-1"></i> Expected Results
-                                    </label>
-                                    <p class="mb-0">{{ $targets }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                @endif
+        @if(empty($keyResultAreas))
+            <div class="alert alert-info mb-0">
+                <i class="bx bx-info-circle me-2"></i> No key result areas have been added yet.
             </div>
-        </div>
+        @else
+            @foreach($keyResultAreas as $index => $area)
+                <div class="border-bottom pb-2 mb-3">
+                    <h6 class="fw-bold text-success">
+                        <i class="bx bx-bullseye me-1"></i> Area {{ $index + 1 }}
+                    </h6>
+                    <p class="mb-0 text-muted">
+                        {{ $area['description'] ?? 'No description provided' }}
+                    </p>
+                </div>
+            @endforeach
+        @endif
+    </div>
+</div>
+
     </div>
 
     <div class="col-md-8">
@@ -127,7 +109,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover align-middle mb-0" id="activitiesTable">
                         <thead class="bg-light">
                             <tr>
                                 <th class="fw-semibold">Title</th>
@@ -228,7 +210,7 @@
                                         <div class="text-muted">
                                             <i class="bx bx-calendar-x fs-1 mb-3"></i>
                                             <p class="h5 text-muted">No activities found</p>
-                                            <p class="small mt-2 text-muted">Click the "Add Activity" button to create a new activity</p>
+                                            <p class="small mt-2 text-muted">Click the "Add" button to create a new activity</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -240,33 +222,26 @@
         </div>
     </div>
 </div>
+@endsection
 
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Initialize tooltips
         $('[data-bs-toggle="tooltip"]').tooltip();
-        // Activity search
         $('#searchInput').on('keyup', function() {
             const value = $(this).val().toLowerCase();
-            $('tbody tr').filter(function() {
+            $('#activitiesTable tbody tr').filter(function() {
                 $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
             });
         });
 
-        // Status filter
         $('#statusFilter').change(function() {
             const value = $(this).val().toLowerCase();
-            if (value) {
-                $('tbody tr').filter(function() {
-                    const status = $(this).find('.badge').text().toLowerCase();
-                    $(this).toggle(status === value);
-                });
-            } else {
-                $('tbody tr').show();
-            }
+            $('#activitiesTable tbody tr').each(function () {
+                const status = $(this).find('.badge').text().toLowerCase();
+                $(this).toggle(!value || status === value);
+            });
         });
     });
 </script>
 @endpush
-@endsection

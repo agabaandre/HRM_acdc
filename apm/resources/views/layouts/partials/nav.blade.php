@@ -1,48 +1,48 @@
 @php
 $workflowMenuItems = [
-    [
-        'route' => 'workflows.index',
-        'icon' => 'fas fa-project-diagram',
-        'title' => 'Workflows'
-    ],
-    [
-        'route' => 'approvals.index',
-        'icon' => 'fas fa-check-circle',
-        'title' => 'Approvals'
-    ]
+[
+'route' => 'workflows.index',
+'icon' => 'fas fa-project-diagram',
+'title' => 'Workflows'
+],
+[
+'route' => 'approvals.index',
+'icon' => 'fas fa-check-circle',
+'title' => 'Approvals'
+]
 ];
 
 $settingsMenuItems = [
-    [
-        'route' => 'fund-types.index',
-        'icon' => 'fas fa-hand-holding-usd',
-        'title' => 'Fund Types'
-    ],
-    [
-        'route' => 'fund-codes.index',
-        'icon' => 'fas fa-barcode',
-        'title' => 'Fund Codes'
-    ],
-    [
-        'route' => 'divisions.index',
-        'icon' => 'fas fa-building',
-        'title' => 'Divisions'
-    ],
-    [
-        'route' => 'directorates.index',
-        'icon' => 'fas fa-network-wired',
-        'title' => 'Directorates'
-    ],
-    [
-        'route' => 'staff.index',
-        'icon' => 'fas fa-users',
-        'title' => 'Staff'
-    ],
-    [
-        'route' => 'request-types.index',
-        'icon' => 'fas fa-file-alt',
-        'title' => 'Request Types'
-    ]
+[
+'route' => 'fund-types.index',
+'icon' => 'fas fa-hand-holding-usd',
+'title' => 'Fund Types'
+],
+[
+'route' => 'fund-codes.index',
+'icon' => 'fas fa-barcode',
+'title' => 'Fund Codes'
+],
+[
+'route' => 'divisions.index',
+'icon' => 'fas fa-building',
+'title' => 'Divisions'
+],
+[
+'route' => 'directorates.index',
+'icon' => 'fas fa-network-wired',
+'title' => 'Directorates'
+],
+[
+'route' => 'staff.index',
+'icon' => 'fas fa-users',
+'title' => 'Staff'
+],
+[
+'route' => 'request-types.index',
+'icon' => 'fas fa-file-alt',
+'title' => 'Request Types'
+]
 ];
 @endphp
 
@@ -67,6 +67,44 @@ $settingsMenuItems = [
                 </a>
             </li>
 
+            <!-- Quarterly Matrix -->
+            <li class="nav-item">
+                <a href="{{ route('matrices.index') }}" class="nav-link {{ Request::is('matrices*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="menu-title">Quarterly Matrix</div>
+                </a>
+            </li>
+
+            <!-- Requests Menu -->
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle {{ Request::is('service-requests*') || Request::is('request-arf*') || Request::is('non-travel*') ? 'active' : '' }}"
+                    href="#" data-bs-toggle="dropdown">
+                    <div class="parent-icon"><i class="fas fa-boxes"></i></div>
+                    <div class="menu-title">Requests</div>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}" href="{{ url('service-requests') }}">Request for Services</a></li>
+                    <li><a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}" href="{{ url('request-arf') }}">Request for ARF</a></li>
+                    <li><a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">Non-Travel</a></li>
+                </ul>
+            </li>
+
+            <!-- Memos Menu -->
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle {{ Request::is('special-memo*') ? 'active' : '' }}"
+                    href="#" data-bs-toggle="dropdown">
+                    <div class="parent-icon"><i class="fas fa-envelope-open-text"></i></div>
+                    <div class="menu-title">Memos</div>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">Special Memo</a></li>
+                </ul>
+            </li>
+
+
+
+
+
             <!-- Workflow Management -->
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle {{ Request::is('workflows*') || Request::is('approvals*') ? 'active' : '' }}"
@@ -76,14 +114,15 @@ $settingsMenuItems = [
                 </a>
                 <ul class="dropdown-menu">
                     @foreach($workflowMenuItems as $item)
-                        <li>
-                            <a class="dropdown-item" href="{{ route($item['route']) }}">
-                                <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
-                            </a>
-                        </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route($item['route']) }}">
+                            <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
+                        </a>
+                    </li>
                     @endforeach
                 </ul>
             </li>
+
 
             <!-- Settings -->
             <li class="nav-item dropdown">
@@ -94,11 +133,11 @@ $settingsMenuItems = [
                 </a>
                 <ul class="dropdown-menu">
                     @foreach($settingsMenuItems as $item)
-                        <li>
-                            <a class="dropdown-item" href="{{ route($item['route']) }}">
-                                <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
-                            </a>
-                        </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route($item['route']) }}">
+                            <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
+                        </a>
+                    </li>
                     @endforeach
                 </ul>
             </li>

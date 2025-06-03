@@ -2,6 +2,12 @@
 
     <div class="card-body">
         <div class="row g-4">
+        <div class="col-md-6">
+                <label for="activity_title" class="form-label fw-semibold">
+                    <i class="fas fa-pen-nib me-1 text-success"></i> Activity Title <span class="text-danger">*</span>
+                </label>
+                <input type="text" name="activity_title" id="activity_title" class="form-control " value="{{ old('activity_title') }}" required>
+            </div>
             <div class="col-md-6">
                 <label for="request_type_id" class="form-label fw-semibold">
                     <i class="fas fa-tags me-1 text-success"></i> Request Type <span class="text-danger">*</span>
@@ -14,12 +20,7 @@
                 </select>
             </div>
 
-            <div class="col-md-6">
-                <label for="activity_title" class="form-label fw-semibold">
-                    <i class="fas fa-pen-nib me-1 text-success"></i> Activity Title <span class="text-danger">*</span>
-                </label>
-                <input type="text" name="activity_title" id="activity_title" class="form-control " value="{{ old('activity_title') }}" required>
-            </div>
+          
 
             <div class="col-md-12">
                 <label for="background" class="form-label fw-semibold">
