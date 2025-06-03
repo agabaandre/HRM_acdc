@@ -129,25 +129,38 @@
         });
     });
 </script>
+
 <script>
     $(document).ready(function () {
-        // Check for messages in Laravel flash session
+      
         @if(session('msg') && session('type'))
-            show_notification("{{ session('msg') }}", "{{ session('type') }}");
+            show_notification(`{!! session('msg') !!}`, "{{ session('type') }}");
+        @endif
+
+       
+        @if($errors->any())
+            @foreach ($errors->all() as $error)
+                show_notification(`{!! $error !!}`, "error");
+            @endforeach
         @endif
     });
-</script>
-<script>
-    function show_notification(message, msgtype) {
+
+   
+    function show_notification(message, msgtype = 'info') {
         Lobibox.notify(msgtype, {
             pauseDelayOnHover: true,
             continueDelayOnInactiveTab: false,
             position: 'top right',
-            icon: 'bx bx-check-circle',
+            icon: msgtype === 'success' ? 'bx bx-check-circle' :
+                  msgtype === 'error'   ? 'bx bx-error-circle' :
+                  msgtype === 'warning' ? 'bx bx-error' :
+                                           'bx bx-info-circle',
+            sound: false,
             msg: message
         });
     }
 </script>
+
 <script>
     $('.select2').select2({
         theme: 'bootstrap4',
