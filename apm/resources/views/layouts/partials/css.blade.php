@@ -38,7 +38,7 @@
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
       <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
+<script src="{{ asset('assets/plugins/notifications/js/lobibox.min.js') }}"></script>
 <!-- Core Highcharts -->
 <script src="https://code.highcharts.com/highcharts.js"></script>
 
