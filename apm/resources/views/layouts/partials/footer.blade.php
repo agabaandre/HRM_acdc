@@ -85,10 +85,10 @@
 <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-FHgNHNh4rHcmJ8s9jP3J7iYmMOTtMnJ0A2gU2wZSwRPmpZuUMHefPlU+GfNwH3zU" crossorigin="anonymous"></script> -->
 
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-<script type="text/javascript"
-    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<!-- <script type="text/javascript"
+    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
-<script src="{{ asset('assets/plugins/notifications/js/lobibox.min.js') }}"></script>
+
 <script src="{{ asset('assets/plugins/notifications/js/notifications.min.js') }}"></script>
 <script src="{{ asset('assets/js/pace.min.js') }}"></script>
 <script src="{{ asset('assets/plugins/notifications/js/notification-custom-script.js') }}"></script>

@@ -81,6 +81,7 @@ class ActivityController extends Controller
     public function store(Request $request, Matrix $matrix): RedirectResponse
     {
         // Check if matrix is approved
+        dd($request);
         if ($matrix->overall_status === 'approved') {
             return redirect()
                 ->route('matrices.show', $matrix)
@@ -255,7 +256,7 @@ class ActivityController extends Controller
         $budgetCodes = FundCode::where('fund_type_id', $request->fund_type_id)
             ->where('division_id', $request->division_id)
             ->where('is_active', true)
-            ->get(['id', 'code', 'description']);
+            ->get(['id', 'code', 'description','available_balance']);
 
         return response()->json($budgetCodes);
     }

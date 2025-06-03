@@ -43,7 +43,7 @@
                         <select name="budget_codes[]" id="budget_codes" class="form-select border-success" multiple required disabled>
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
-                        <small class="text-muted">Hold Ctrl/Command to select multiple</small>
+                        <small class="text-muted">Select up to 2 codes</small>
                     </div>
 
                     <div class="col-md-4">
@@ -59,7 +59,6 @@
                     </div>
                 </div>
 
-                <hr class="my-4">
 
                 <h6 class="fw-bold text-success mb-3"><i class="fas fa-users-cog me-2"></i> Internal Participants - Days</h6>
                 <div class="table-responsive">
@@ -70,16 +69,8 @@
                                 <th>No. of Days</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @foreach($staff as $member)
-                                <tr data-participant-id="{{ $member->id }}" class="d-none">
-                                    <td>{{ $member->name }}</td>
-                                    <td>
-                                        <input type="number" name="participant_days[{{ $member->id }}]"
-                                               class="form-control participant-days border-success" value="0" min="0">
-                                    </td>
-                                </tr>
-                            @endforeach
+                        <tbody id="participantsTableBody">
+                            <tr><td colspan="2" class="text-muted text-center">No participants selected yet</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -108,253 +99,265 @@
             </form>
         </div>
     </div>
-
-
-    <style>
-        .select2-container .select2-selection--single {
-            height: 38px !important;
-        }
-
-        .select2-container--default .select2-selection--single {
-            border: 1px solid #dee2e6 !important;
-            border-radius: 0.375rem !important;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 36px !important;
-            padding-left: 12px !important;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 36px !important;
-        }
-
-        .select2-container--default .select2-results__option--highlighted[aria-selected] {
-            background-color: var(--bs-primary) !important;
-        }
-    </style>
-
-    @push('scripts')
-
-        {{-- Add select2 --}}
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-
-        <script>
-
-            $(document).ready(function () {
-                let startDateInput = $('#date_from');
-                let endDateInput = $('#date_to');
-                let internalParticipants = $('#internal_participants');
-                let participantsTable = $('#participantsTable tbody');
-                let grandTotalInput = $('#grandBudgetTotalInput');
-                let grandTotalDisplay = $('#grandBudgetTotal');
-
-                // Initialize Select2 for fund type and budget codes
-                $('#fund_type').select2({
-                    placeholder: 'Select Fund Type',
-                    allowClear: true
-                });
-
-                $('.item-description').select2({
-                    placeholder: "Select an item",
-                    width: '100%'
-                });
-
-                $('#key_result_link').select2({
-                    placeholder: 'Select Key Result',
-                    allowClear: true
-                });
-
-
-
-                // Handle fund type change
-                $('#fund_type').on('change', function () {
-                    const fundTypeId = $(this).val();
-                    const divisionId = {{ user_session('division_id') }}; // Get division ID from session
-                    const budgetCodesSelect = $('#budget_codes');
-
-                    // Clear and disable the budget codes select while loading
-                    budgetCodesSelect.empty().prop('disabled', true);
-
-                    if (!fundTypeId) {
-                        budgetCodesSelect.append($('<option>', {
-                            value: '',
-                            text: 'Select a fund type first'
-                        }));
-                        return;
-                    }
-
-                    // Show loading state
-                    budgetCodesSelect.append($('<option>', {
-                        value: '',
-                        text: 'Loading budget codes...',
-                        disabled: true,
-                        selected: true
-                    }));
-
-                    // Fetch budget codes via AJAX
-                    $.ajax({
-                        url: '{{ route("budget-codes.by-fund-type") }}',
-                        type: 'GET',
-                        data: {
-                            fund_type_id: fundTypeId,
-                            division_id: divisionId
-                        },
-                        success: function (response) {
-                            budgetCodesSelect.empty();
-
-                            if (response.length > 0) {
-                                $.each(response, function (index, code) {
-                                    budgetCodesSelect.append($('<option>', {
-                                        value: code.id,
-                                        text: code.code + ' - ' + (code.description || 'No description')
-                                    }));
-                                });
-                                budgetCodesSelect.prop('disabled', false);
-                            } else {
-                                budgetCodesSelect.append($('<option>', {
-                                    value: '',
-                                    text: 'No budget codes available for this fund type and division',
-                                    disabled: true,
-                                    selected: true
-                                }));
-                            }
-                        },
-                        error: function (xhr) {
-                            console.error('Error loading budget codes:', xhr);
-                            budgetCodesSelect.empty().append($('<option>', {
-                                value: '',
-                                text: 'Error loading budget codes. Please try again.',
-                                disabled: true,
-                                selected: true
-                            }));
-                        }
-                    });
-                });
-
-                function updateParticipantDays() {
-                    const start = new Date(startDateInput.val());
-                    const end = new Date(endDateInput.val());
-                    const timeDiff = Math.abs(end - start);
-                    const dayDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
-
-                    participantsTable.empty();
-                    internalParticipants.find('option:selected').each(function () {
-                        const name = $(this).text();
-                        const id = $(this).val();
-                        participantsTable.append(`
-                                <tr>
-                                    <td>${name}</td>
-                                    <td><input type="number" name="participant_days[${id}]" class="form-control" value="${dayDiff}" min="1"></td>
-                                </tr>
-                            `);
-                    });
-                }
-
-                internalParticipants.on('change', updateParticipantDays);
-                startDateInput.on('change', updateParticipantDays);
-                endDateInput.on('change', updateParticipantDays);
-
-                $('#budget_codes').on('change', function () {
-                    const selectedCodes = $(this).val();
-                    const container = $('#budgetGroupContainer');
-                    container.empty();
-                    let grandTotal = 0;
-
-                    selectedCodes.forEach(function (codeId) {
-                        const label = $('#budget_codes option[value="' + codeId + '"]').text();
-                        const section = $(
-                            `<div class="card mt-4">
-                                    <div class="card-header bg-light">
-                                        <h6 class="fw-semibold">Budget Breakdown - ${label}</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <input type="hidden" name="budget[groups][${codeId}][code_id]" value="${codeId}">
-                                        <div id="budgetItems-${codeId}" class="budget-items"></div>
-                                        <div class="text-end">
-                                            <button type="button" class="btn btn-success add-budget-item" data-code="${codeId}"><i class="bx bx-plus"></i> Add Item</button>
-                                        </div>
-                                        <div class="text-end mt-3">
-                                            <strong>Total for ${label}: $<span class="budget-total" id="total-${codeId}">0.00</span></strong>
-                                            <input type="hidden" name="budget[groups][${codeId}][total]" id="total-input-${codeId}" value="0">
-                                        </div>
-                                    </div>
-                                </div>`
-                        );
-                        container.append(section);
-                        addBudgetItem(codeId);
-                    });
-                    calculateGrandTotal();
-                });
-
-                function addBudgetItem(codeId) {
-                    const container = $(`#budgetItems-${codeId}`);
-                    const index = container.children().length;
-                    const row = $(
-                        `<div class="row g-2 mb-3 budget-row">
-                                        <div class="col-md-4">
-                                            <select name="budget[groups][${codeId}][items][${index}][description]" class="form-control item-description" required>
-                                                @foreach($costItems as $item)
-                                                    <option value="{{ $item->name }}">{{ $item->name }} ({{ $item->cost_type }})</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <input type="number" name="budget[groups][${codeId}][items][${index}][amount]" class="form-control amount-input" placeholder="Unit Cost" required>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <input type="number" name="budget[groups][${codeId}][items][${index}][quantity]" class="form-control quantity-input" placeholder="Qty" value="1" required>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <input type="number" name="budget[groups][${codeId}][items][${index}][days]" class="form-control days-input" placeholder="Days" value="1">
-                                        </div>
-                                        <div class="col-md-2 d-flex align-items-center">
-                                            <button type="button" class="btn btn-outline-danger remove-item"><i class="bx bx-trash"></i></button>
-                                        </div>
-                                    </div>`
-                    );
-                    container.append(row);
-                    initializeSelect2(row.find('.item-description'));
-                }
-
-                $(document).on('click', '.add-budget-item', function () {
-                    const codeId = $(this).data('code');
-                    addBudgetItem(codeId);
-                });
-
-                $(document).on('click', '.remove-item', function () {
-                    $(this).closest('.budget-row').remove();
-                    calculateGrandTotal();
-                });
-
-                $(document).on('input', '.amount-input, .quantity-input, .days-input', function () {
-                    calculateGrandTotal();
-                });
-
-                function calculateGrandTotal() {
-                    let total = 0;
-                    $('.budget-items').each(function () {
-                        let groupTotal = 0;
-                        $(this).find('.budget-row').each(function () {
-                            const amt = parseFloat($(this).find('.amount-input').val()) || 0;
-                            const qty = parseFloat($(this).find('.quantity-input').val()) || 1;
-                            const days = parseFloat($(this).find('.days-input').val()) || 1;
-                            groupTotal += amt * qty * days;
-                        });
-                        const groupId = $(this).attr('id').split('-')[1];
-                        $(`#total-${groupId}`).text(groupTotal.toFixed(2));
-                        $(`#total-input-${groupId}`).val(groupTotal.toFixed(2));
-                        total += groupTotal;
-                    });
-                    grandTotalInput.val(total.toFixed(2));
-                    grandTotalDisplay.text(total.toFixed(2));
-                }
-            });
-
-        </script>
-
-
-
-
-    @endpush
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    const today = new Date().setHours(0, 0, 0, 0);
+    const divisionId = {{ user_session('division_id') }};
+
+    function show_notification(message, msgtype) {
+        Lobibox.notify(msgtype, {
+            pauseDelayOnHover: true,
+            continueDelayOnInactiveTab: false,
+            position: 'top right',
+            icon: 'bx bx-check-circle',
+            msg: message
+        });
+    }
+
+    function validateDates(showError = true) {
+        const startDateVal = $('#date_from').val();
+        const endDateVal = $('#date_to').val();
+
+        if (!startDateVal || !endDateVal) return false;
+
+        const startDate = new Date(startDateVal);
+        const endDate = new Date(endDateVal);
+
+        if (isNaN(startDate) || isNaN(endDate)) return false;
+
+        if (startDate < today) {
+            if (showError) show_notification('Start date must be today or later.', 'error');
+            $('#date_from').val('');
+            return false;
+        }
+        if (endDate <= startDate) {
+            if (showError) show_notification('End date must be after the start date.', 'error');
+            $('#date_to').val('');
+            return false;
+        }
+        return true;
+    }
+
+    function getActivityDays() {
+        const start = new Date($('#date_from').val());
+        const end = new Date($('#date_to').val());
+        const msPerDay = 1000 * 60 * 60 * 24;
+        return Math.max(Math.ceil((end - start) / msPerDay) + 1, 1);
+    }
+
+    function limitInternalParticipants() {
+        const selected = $('#internal_participants').val() || [];
+        const totalAllowed = parseInt($('#total_participants').val()) || 0;
+
+        if (selected.length > totalAllowed) {
+            const trimmed = selected.slice(0, totalAllowed);
+            $('#internal_participants').val(trimmed).trigger('change.select2');
+            show_notification(`You can only select up to ${totalAllowed} participants.`, 'warning');
+        }
+    }
+
+    function updateParticipantsTable() {
+        const selectedIds = $('#internal_participants').val();
+        const participantsTableBody = $('#participantsTableBody');
+        const days = getActivityDays();
+        participantsTableBody.empty();
+
+        if (!selectedIds || selectedIds.length === 0) {
+            participantsTableBody.append('<tr><td colspan="2" class="text-muted text-center">No participants selected yet</td></tr>');
+            return;
+        }
+
+        selectedIds.forEach(id => {
+            const name = $(`#internal_participants option[value="${id}"]`).text();
+            participantsTableBody.append(`
+                <tr>
+                    <td>${name}</td>
+                    <td><input type="number" name="participant_days[${id}]" class="form-control" value="${days}" min="1"></td>
+                </tr>`);
+        });
+    }
+
+    function handleParticipantsChange() {
+        const selected = $('#internal_participants').val() || [];
+        const totalAllowed = parseInt($('#total_participants').val()) || 0;
+
+        if (selected.length > totalAllowed) {
+            const trimmed = selected.slice(0, totalAllowed);
+            $('#internal_participants').val(trimmed).trigger('change.select2');
+            show_notification(`You can only select up to ${totalAllowed} participants.`, 'warning');
+            return;
+        }
+
+        if (!validateDates(false)) return;
+        updateParticipantsTable();
+    }
+
+    function toggleParticipantSelection() {
+        const hasDates = $('#date_from').val() && $('#date_to').val();
+        const hasTotal = $('#total_participants').val();
+
+        if (hasDates && hasTotal) {
+            $('#internal_participants').prop('disabled', false);
+        } else {
+            $('#internal_participants').val(null).trigger('change.select2');
+            $('#internal_participants').prop('disabled', true);
+            $('#participantsTableBody').empty().append('<tr><td colspan="2" class="text-muted text-center">No participants selected yet</td></tr>');
+        }
+    }
+
+    $('#date_from, #date_to').on('change', function () {
+        toggleParticipantSelection();
+        if (validateDates()) {
+            updateParticipantsTable();
+        }
+    });
+
+    $('#total_participants').on('input', function () {
+        toggleParticipantSelection();
+        setTimeout(() => {
+            limitInternalParticipants();
+            updateParticipantsTable();
+        }, 100);
+    });
+
+    $('#internal_participants').select2({
+        placeholder: 'Select Internal Participants',
+        width: '100%'
+    }).on('select2:select select2:unselect', function () {
+        handleParticipantsChange();
+    });
+
+    $('#location_id').select2({
+        placeholder: "Select Location/Venue",
+        allowClear: true,
+        width: '100%'
+    });
+
+    $('#budget_codes').select2({ maximumSelectionLength: 2, width: '100%' });
+
+    $('#fund_type').on('change', function () {
+        const fundTypeId = $(this).val();
+        const budgetCodesSelect = $('#budget_codes');
+        budgetCodesSelect.empty().prop('disabled', true).append('<option disabled selected>Loading...</option>');
+
+        $.get('{{ route("budget-codes.by-fund-type") }}', { fund_type_id: fundTypeId, division_id: divisionId }, function (data) {
+            budgetCodesSelect.empty();
+            if (data.length) {
+                data.forEach(code => {
+                    budgetCodesSelect.append(`<option value="${code.id}" data-balance="${code.available_balance}">${code.code} - ${code.description || ''}</option>`);
+                });
+                budgetCodesSelect.prop('disabled', false);
+            } else {
+                budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
+            }
+        });
+    });
+
+    $('#budget_codes').on('change', function () {
+        const selected = $(this).find('option:selected');
+        const container = $('#budgetGroupContainer');
+        container.empty();
+
+        selected.each(function () {
+            const codeId = $(this).val();
+            const label = $(this).text();
+            const balance = $(this).data('balance');
+
+            container.append(`
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        <h6 class="fw-semibold">
+                            Budget for: ${label}
+                            <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toFixed(2)}</span></span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered text-center align-middle">
+                            <thead class="table-light fw-bold">
+                                <tr>
+                                    <th>Cost</th>
+                                    <th>Unit Cost</th>
+                                    <th>Units/People</th>
+                                    <th>Days/Frequency</th>
+                                    <th>Total</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="budget-body" data-code="${codeId}">
+                                ${createBudgetRow(codeId, 0)}
+                            </tbody>
+                        </table>
+                        <div class="text-end mt-2">
+                            <button type="button" class="btn btn-primary btn-sm add-row" data-code="${codeId}"><i class="fas fa-plus"></i> Add</button>
+                            <strong class="ms-3">Sub Total: $<span class="subtotal" data-code="${codeId}">0.00</span></strong>
+                        </div>
+                    </div>
+                </div>
+            `);
+        });
+    });
+
+    function createBudgetRow(codeId, index) {
+        return `
+        <tr>
+            <td>
+                <select name="budget[${codeId}][${index}][cost]" class="form-select" required>
+                    @foreach($costItems as $item)
+                        <option value="{{ $item->name }}">{{ $item->name }} ({{ $item->cost_type }})</option>
+                    @endforeach
+                </select>
+            </td>
+            <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0"></td>
+            <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0"></td>
+            <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0"></td>
+            <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="0.00"></td>
+            <td><button type="button" class="btn btn-danger remove-row"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+    }
+
+    $(document).on('click', '.add-row', function () {
+        const codeId = $(this).data('code');
+        const tbody = $(`.budget-body[data-code="${codeId}"]`);
+        const index = tbody.find('tr').length;
+        tbody.append(createBudgetRow(codeId, index));
+    });
+
+    $(document).on('click', '.remove-row', function () {
+        $(this).closest('tr').remove();
+        updateAllTotals();
+    });
+
+    $(document).on('input', '.unit-cost, .units, .days', function () {
+        const row = $(this).closest('tr');
+        const unitCost = parseFloat(row.find('.unit-cost').val()) || 0;
+        const units = parseFloat(row.find('.units').val()) || 0;
+        const days = parseFloat(row.find('.days').val()) || 0;
+        const total = (unitCost * units * days).toFixed(2);
+        row.find('.total').val(total);
+        updateAllTotals();
+    });
+
+    function updateAllTotals() {
+        let grand = 0;
+        $('.budget-body').each(function () {
+            const code = $(this).data('code');
+            let subtotal = 0;
+            $(this).find('tr').each(function () {
+                subtotal += parseFloat($(this).find('.total').val()) || 0;
+            });
+            $(`.subtotal[data-code="${code}"]`).text(subtotal.toFixed(2));
+            grand += subtotal;
+        });
+        $('#grandBudgetTotal').text(grand.toFixed(2));
+        $('#grandBudgetTotalInput').val(grand.toFixed(2));
+    }
+
+    // Initial check
+    toggleParticipantSelection();
+});
+</script>
+
+@endpush
