@@ -48,32 +48,47 @@ class ActivityController extends Controller
      */
     public function create(Matrix $matrix): View
     {
-        // Eager load the division relationship
+        // Eager load division
         $matrix->load('division');
-
+    
+        // Request Types
         $requestTypes = RequestType::all();
-        $staff = Staff::active()->get();
-
-        // Cache the location data for 60 minutes
+    
+        // Staff only from current matrix division
+        $staff = Staff::active()
+            ->where('division_id', $matrix->division_id)
+            ->get();
+    
+        // All staff grouped by division for external participants
+        $allStaff = Staff::active()
+            ->where('division_id', '!=', $matrix->division_id)
+            ->get()
+            ->groupBy('division_name');
+    
+        // Cache locations
         $locations = Cache::remember('locations', 60, function () {
             return Location::all();
         });
+    
+        // Fund and Cost items
         $fundTypes = FundType::all();
         $budgetCodes = FundCode::all();
         $costItems = CostItem::all();
-
+    
         return view('activities.create', [
             'matrix' => $matrix,
             'requestTypes' => $requestTypes,
             'staff' => $staff,
+            'allStaffGroupedByDivision' => $allStaff,
             'locations' => $locations,
             'fundTypes' => $fundTypes,
             'budgetCodes' => $budgetCodes,
             'costItems' => $costItems,
             'title' => 'Create Activity',
-            'editing' => true
+            'editing' => false,
         ]);
     }
+    
 
     /**
      * Store a newly created activity.
@@ -92,7 +107,7 @@ class ActivityController extends Controller
         return \DB::transaction(function () use ($request, $matrix) {
             try {
                 $validated = $request->validate([
-                    'staff_id' => 'required|exists:staff,id',
+                    'staff_id' => 'required|exists:staff,staff_id',
                     'date_from' => 'required|date',
                     'date_to' => 'required|date|after_or_equal:date_from',
                     'location_id' => 'required|array|min:1',

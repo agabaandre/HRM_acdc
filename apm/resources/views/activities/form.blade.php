@@ -54,20 +54,20 @@
                 </label>
                 <input type="text" name="date_to" id="date_to" class="form-control datepicker " value="{{ old('date_to') }}" required>
             </div>
-
             <div class="col-md-4">
                 <label for="location_id" class="form-label fw-semibold">
                     <i class="fas fa-map-marker-alt me-1 text-success"></i> Location/Venue <span class="text-danger">*</span>
                 </label>
                 <select name="location_id[]" id="location_id" class="form-select border-success" multiple required>
                     @foreach($locations as $location)
-                    <option value="{{ $location->name }}" {{ in_array($location->name, old('location_name', [])) ? 'selected' : '' }}>
-                        {{ $location->name }}
-                    </option>
+                        <option value="{{ $location->id }}" {{ in_array($location->id, old('location_id', [])) ? 'selected' : '' }}>
+                            {{ $location->name }}
+                        </option>
                     @endforeach
                 </select>
                 <small class="text-muted">Hold CTRL or CMD to select multiple locations</small>
             </div>
+
 
 
             <div class="col-md-4">
@@ -83,13 +83,22 @@
                 </label>
                 <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple required>
                     @foreach($staff as $member)
-                    <option value="{{ $member->name }}" {{ in_array($member->name, old('internal_participants', [])) ? 'selected' : '' }}>
-                        {{ $member->name }}
-                    </option>
+                        <option value="{{ $member->staff_id }}" {{ in_array($member->staff_id, old('internal_participants', [])) ? 'selected' : '' }}>
+                            {{ $member->name }}
+                        </option>
                     @endforeach
                 </select>
                 <small class="text-muted">You cannot select more than the total participants</small>
             </div>
+
+            <div class="mt-5">
+                    <h6 class="fw-bold text-success mb-3"><i class="fas fa-user-plus me-2"></i> Add Participants from other Division</h6>
+                    <div id="externalParticipantsWrapper"></div>
+                    <button type="button" class="btn btn-outline-success btn-sm mt-2" id="addDivisionBlock">
+                        <i class="fas fa-plus-circle me-1"></i> Add Division Participants
+                    </button>
+            </div>
+
 
             <div class="col-md-12">
                 <label for="activity_request_remarks" class="form-label fw-semibold">
@@ -97,6 +106,7 @@
                 </label>
                 <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks') }}</textarea>
             </div>
+
         </div>
     </div>
 </div>
