@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Matrix;
 use App\Models\Division;
-use App\Models\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\View as ViewFacade;
+use App\Models\Matrix;
+use App\Models\Location;
+use App\Models\Staff;
+use App\Models\FundCode;
+// use Illuminate\Support\Facades\View as ViewFacade;
 
 class MatrixController extends Controller
 {
@@ -17,9 +19,16 @@ class MatrixController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = Matrix::with(['division', 'staff', 'focalPerson']);
+        $query = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'activities' => function ($q) {
+                $q->select('matrix_id', 'total_participants', 'budget')
+                  ->whereNotNull('matrix_id');
+            }
+        ]);
     
-        // Apply filters
         if ($request->filled('year')) {
             $query->where('year', $request->year);
         }
@@ -38,15 +47,26 @@ class MatrixController extends Controller
     
         $matrices = $query->latest()->paginate(10);
     
-        $title = user_session('division_name');
-        $module = 'Quarterly Matrix';
-        $divisions = \App\Models\Division::all();
-        $focalPersons = \App\Models\Staff::active()->get();
+        $matrices->getCollection()->transform(function ($matrix) {
+            $matrix->total_activities = $matrix->activities->count();
+            $matrix->total_participants = $matrix->activities->sum('total_participants');
+            $matrix->total_budget = $matrix->activities->sum(function ($activity) {
+                return is_array($activity->budget) && isset($activity->budget['total'])
+                    ? $activity->budget['total']
+                    : 0;
+            });
+            return $matrix;
+        });
     
-        return view('matrices.index', compact(
-            'matrices', 'title', 'module', 'divisions', 'focalPersons'
-        ));
+        return view('matrices.index', [
+            'matrices' => $matrices,
+            'title' => user_session('division_name'),
+            'module' => 'Quarterly Matrix',
+            'divisions' => \App\Models\Division::all(),
+            'focalPersons' => \App\Models\Staff::active()->get(),
+        ]);
     }
+    
     
 
     /**
@@ -125,11 +145,38 @@ class MatrixController extends Controller
     /**
      * Display the specified matrix.
      */
-    public function show(Matrix $matrix): View
-    {
-        $matrix->load(['division', 'staff', 'focalPerson', 'activities']);
-        return ViewFacade::make('matrices.show', compact('matrix'));
-    }
+
+
+     public function show(Matrix $matrix): View
+     {
+         // Load primary relationships
+         $matrix->load(['division', 'staff', 'focalPerson']);
+     
+         // Paginate related activities and eager load direct relationships
+         $activities = $matrix->activities()->with(['requestType', 'fundType'])->latest()->paginate(10);
+     
+         // Prepare additional decoded & related data per activity
+         foreach ($activities as $activity) {
+             // Decode JSON arrays
+             $locationIds = is_array($activity->location_id)
+                 ? $activity->location_id
+                 : json_decode($activity->location_id ?? '[]', true);
+     
+             $internalRaw = is_string($activity->internal_participants)
+                 ? json_decode($activity->internal_participants ?? '[]', true)
+                 : ($activity->internal_participants ?? []);
+     
+             $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+     
+             // Attach related models
+             $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
+             $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+         }
+     
+         return view('matrices.show', compact('matrix', 'activities'));
+     }
+    
+    
 
     /**
      * Show the form for editing the specified matrix.

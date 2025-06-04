@@ -12,16 +12,10 @@ class Activity extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
-    // Activity status constants
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
     const STATUS_APPROVED = 'approved';
-    const STATUS_REJECTED = 'rejected';
+    const STATUS_REJECTED = 'returned';
 
     protected $fillable = [
         'forward_workflow_id',
@@ -29,9 +23,11 @@ class Activity extends Model
         'workplan_activity_code',
         'matrix_id',
         'staff_id',
+        'responsible_person_id',
         'date_from',
         'date_to',
         'total_participants',
+        'total_external_participants',
         'key_result_area',
         'request_type_id',
         'activity_title',
@@ -40,152 +36,117 @@ class Activity extends Model
         'is_special_memo',
         'status',
         'fund_type_id',
+
+        // JSON fields
+        'location_id',
+        'internal_participants',
+        'budget_id',
+        'budget',
+        'attachment',
     ];
-    
-    /**
-     * The attributes that should be hidden for arrays.
-     *
-     * @var array
-     */
-    protected $hidden = [
-        'created_at',
-        'updated_at',
-    ];
-    
-    /**
-     * The accessors to append to the model's array form.
-     *
-     * @var array
-     */
+
+    protected $hidden = ['created_at', 'updated_at'];
+
     protected $appends = ['formatted_dates'];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array
-     */
     protected $casts = [
         'id' => 'integer',
         'forward_workflow_id' => 'integer',
         'reverse_workflow_id' => 'integer',
         'matrix_id' => 'integer',
         'staff_id' => 'integer',
+        'responsible_person_id' => 'integer',
         'request_type_id' => 'integer',
         'fund_type_id' => 'integer',
         'is_special_memo' => 'boolean',
         'date_from' => 'date',
         'date_to' => 'date',
         'total_participants' => 'integer',
+        'total_external_participants' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+
+        // JSON
+        'location_id' => 'array',
+        'internal_participants' => 'array',
+        'budget_id' => 'array',
+        'budget' => 'array',
+        'attachment' => 'array',
     ];
 
-    /**
-     * Get the matrix that owns the activity.
-     */
+    // --- Relationships ---
+
     public function matrix(): BelongsTo
     {
         return $this->belongsTo(Matrix::class);
     }
 
-    /**
-     * Get the request type that owns the activity.
-     */
     public function requestType(): BelongsTo
     {
         return $this->belongsTo(RequestType::class);
     }
 
-    /**
-     * Get the staff member that owns the activity.
-     */
     public function staff(): BelongsTo
     {
         return $this->belongsTo(Staff::class);
     }
 
-    /**
-     * Get the fund type that owns the activity.
-     */
+    public function responsiblePerson(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'responsible_person_id');
+    }
+
     public function fundType(): BelongsTo
     {
         return $this->belongsTo(FundType::class);
     }
 
-    /**
-     * The locations that belong to the activity.
-     */
-    public function locations()
-    {
-        return $this->belongsToMany(Location::class, 'activity_location');
-    }
-
-    /**
-     * The fund codes that belong to the activity.
-     */
-    public function fundCodes()
-    {
-        return $this->belongsToMany(FundCode::class, 'activity_fund_code');
-    }
-
-    /**
-     * The participants that belong to the activity.
-     */
-    public function participants()
-    {
-        return $this->belongsToMany(Staff::class, 'activity_participant')
-            ->withPivot('days')
-            ->withTimestamps();
-    }
-
-    /**
-     * Get the forward workflow for the activity.
-     */
     public function forwardWorkflow(): BelongsTo
     {
-        return $this->belongsTo(ForwardWorkflow::class);
+        return $this->belongsTo(Workflow::class, 'forward_workflow_id');
     }
 
-    /**
-     * Get the reverse workflow for the activity.
-     */
     public function reverseWorkflow(): BelongsTo
     {
-        return $this->belongsTo(ReverseWorkflow::class);
+        return $this->belongsTo(Workflow::class, 'reverse_workflow_id');
     }
 
-    /**
-     * Get the service requests for the activity.
-     */
     public function serviceRequests(): HasMany
     {
         return $this->hasMany(ServiceRequest::class);
     }
 
-    /**
-     * Get the approval trails for the activity.
-     */
     public function activityApprovalTrails(): HasMany
     {
         return $this->hasMany(ActivityApprovalTrail::class);
     }
-    
-    /**
-     * Get the formatted dates attribute.
-     *
-     * @return string
-     */
-    public function getFormattedDatesAttribute(): string
+
+    // JSON-BASED: location_id[] mapped to Location model
+    public function getLocationsAttribute()
     {
-        $startDate = $this->date_from->format('M j, Y');
-        $endDate = $this->date_to->format('M j, Y');
-        
-        return $startDate . ' - ' . $endDate;
+        return Location::whereIn('id', $this->location_id ?? [])->get();
     }
 
-    /**
-     * Boot the model.
-     */
+    // JSON-BASED: budget_id[] mapped to FundCode model
+    public function getFundCodesAttribute()
+    {
+        return FundCode::whereIn('id', $this->budget_id ?? [])->get();
+    }
+
+    // JSON-BASED: internal_participants[] mapped to Staff
+    public function getInternalParticipantsDetailsAttribute()
+    {
+        return Staff::whereIn('staff_id', $this->internal_participants ?? [])->get();
+    }
+
+
+    // --- Accessors & Utility ---
+
+    public function getFormattedDatesAttribute(): string
+    {
+        return $this->date_from->format('M j, Y') . ' - ' . $this->date_to->format('M j, Y');
+    }
+
     protected static function boot()
     {
         parent::boot();
@@ -197,34 +158,38 @@ class Activity extends Model
         });
     }
 
-    /**
-     * Generate the next activity code.
-     *
-     * @return string
-     */
     protected function generateActivityCode(): string
     {
-        $prefix = 'AU/CDC/DHIS/QM';
+        $division_name = user_session('division_name');
+        $short = ucwords($this->generateShortCodeFromDivision($division_name));
+        $prefix = 'AU/CDC/' . $short . '/QM';
         $quarter = 'Q' . $this->matrix->quarter;
         $year = $this->matrix->year;
-        
-        // Get the latest activity for this matrix
+    
         $latestActivity = self::where('matrix_id', $this->matrix_id)
-            ->where('workplan_activity_code', 'like', $prefix . '/' . $quarter . '/' . $year . '/%')
+            ->where('workplan_activity_code', 'like', "{$prefix}/{$quarter}/{$year}/%")
             ->orderBy('id', 'desc')
             ->first();
-        
-        // Extract the last sequence number
-        $sequence = 1;
-        if ($latestActivity) {
-            $codeParts = explode('/', $latestActivity->workplan_activity_code);
-            $lastSequence = (int) end($codeParts);
-            $sequence = $lastSequence + 1;
-        }
-        
-        // Format the sequence with leading zeros (4 digits)
-        $sequencePadded = str_pad($sequence, 4, '0', STR_PAD_LEFT);
-        
-        return "{$prefix}/{$quarter}/{$year}/{$sequencePadded}";
+    
+        $sequence = $latestActivity
+            ? ((int) last(explode('/', $latestActivity->workplan_activity_code)) + 1)
+            : 1;
+    
+        return "{$prefix}/{$quarter}/{$year}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
+    
+    /**
+     * Generate short code from division name by removing joining words and using initials
+     */
+    protected function generateShortCodeFromDivision(string $name): string
+    {
+        $ignore = ['of', 'and', 'for', 'the', 'in'];
+        $words = preg_split('/\s+/', strtolower($name));
+        $initials = array_map(function ($word) use ($ignore) {
+            return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+        }, $words);
+    
+        return implode('', array_filter($initials));
+    }
+    
 }

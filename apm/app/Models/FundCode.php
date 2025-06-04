@@ -10,46 +10,37 @@ class FundCode extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
+    protected $table = 'fund_codes';
+
     protected $fillable = [
+        'year',
         'code',
         'name',
         'description',
         'fund_type_id',
         'division_id',
         'is_active',
+        'end_date',
+        'available_balance',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'id' => 'integer',
-            'fund_type_id' => 'integer',
-            'division_id' => 'integer',
-            'is_active' => 'boolean',
-        ];
-    }
+    protected $casts = [
+        'id' => 'integer',
+        'year' => 'integer',
+        'fund_type_id' => 'integer',
+        'division_id' => 'integer',
+        'is_active' => 'boolean',
+        'end_date' => 'date',
+        'available_balance' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
-    /**
-     * Get the fund type that owns the fund code.
-     */
     public function fundType(): BelongsTo
     {
         return $this->belongsTo(FundType::class);
     }
 
-    /**
-     * Get the division that owns the fund code.
-     */
     public function division(): BelongsTo
     {
         return $this->belongsTo(Division::class);

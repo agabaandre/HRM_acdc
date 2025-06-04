@@ -56,192 +56,97 @@
         </div>
 
         <div class="card shadow-sm">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="bx bx-target-lock me-2 text-primary"></i>Key Result Areas</h5>
-    </div>
-    <div class="card-body p-4">
-        @php
-            $keyResultAreas = is_array($matrix->key_result_area)
-                ? $matrix->key_result_area
-                : json_decode($matrix->key_result_area ?? '[]', true);
-        @endphp
-
-        @if(empty($keyResultAreas))
-            <div class="alert alert-info mb-0">
-                <i class="bx bx-info-circle me-2"></i> No key result areas have been added yet.
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bx bx-target-lock me-2 text-primary"></i>Key Result Areas</h5>
             </div>
-        @else
-            @foreach($keyResultAreas as $index => $area)
-                <div class="border-bottom pb-2 mb-3">
-                    <h6 class="fw-bold text-success">
-                        <i class="bx bx-bullseye me-1"></i> Area {{ $index + 1 }}
-                    </h6>
-                    <p class="mb-0 text-muted">
-                        {{ $area['description'] ?? 'No description provided' }}
-                    </p>
-                </div>
-            @endforeach
-        @endif
-    </div>
-</div>
+            <div class="card-body p-4">
+                @php
+                    $keyResultAreas = is_array($matrix->key_result_area)
+                        ? $matrix->key_result_area
+                        : json_decode($matrix->key_result_area ?? '[]', true);
+                @endphp
 
+                @if(empty($keyResultAreas))
+                    <div class="alert alert-info mb-0">
+                        <i class="bx bx-info-circle me-2"></i> No key result areas have been added yet.
+                    </div>
+                @else
+                    @foreach($keyResultAreas as $index => $area)
+                        <div class="border-bottom pb-2 mb-3">
+                            <h6 class="fw-bold text-success">
+                                <i class="bx bx-bullseye me-1"></i> Area {{ $index + 1 }}
+                            </h6>
+                            <p class="mb-0 text-muted">
+                                {{ $area['description'] ?? 'No description provided' }}
+                            </p>
+                        </div>
+                    @endforeach
+                @endif
+            </div>
+        </div>
     </div>
 
     <div class="col-md-8">
         <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <h5 class="mb-0"><i class="bx bx-calendar-event me-2 text-primary"></i>Activities</h5>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex justify-content-end gap-2">
-                            <input type="text" class="form-control w-auto shadow-sm" id="searchInput" placeholder="Search activities...">
-                            <select class="form-select w-auto shadow-sm" id="statusFilter">
-                                <option value="">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bx bx-calendar-event me-2 text-primary"></i>Activities</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="activitiesTable">
+                    <table class="table table-hover align-middle mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th class="fw-semibold">Title</th>
-                                <th class="fw-semibold">Date Range</th>
-                                <th class="fw-semibold">Location</th>
-                                <th class="fw-semibold">Budget</th>
-                                <th class="fw-semibold">Status</th>
-                                <th class="fw-semibold text-center">Actions</th>
+                                <th>Title</th>
+                                <th>Date Range</th>
+                                <th>Participants</th>
+                                <th>Budget (USD)</th>
+                                <th>Status</th>
+                                <th class="text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($matrix->activities as $activity)
+                            @forelse($activities as $activity)
                                 <tr>
+                                    <td>{{ $activity->activity_title }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }} - {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</td>
+                                    <td>{{ $activity->total_participants }}</td>
                                     <td>
-                                        <div class="fw-bold text-primary">{{ $activity->activity_title }}</div>
-                                        <small class="text-muted">{{ Str::limit($activity->description, 50) }}</small>
+                                        @php
+                                            $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
+                                            $totalBudget = 0;
+                                            if (is_array($budget)) {
+                                                foreach ($budget as $item) {
+                                                    $totalBudget += ($item['unit_cost'] ?? 0) * ($item['units'] ?? 0) * ($item['days'] ?? 1);
+                                                }
+                                            }
+                                        @endphp
+                                        {{ number_format($totalBudget, 2) }}
                                     </td>
                                     <td>
-                                        {{ $activity->date_from->format('Y-m-d') }}<br>
-                                        <small class="text-muted">to</small><br>
-                                        {{ $activity->date_to->format('Y-m-d') }}
+                                        <span class="badge bg-{{ $activity->status === 'approved' ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }}">
+                                            {{ ucfirst($activity->status) }}
+                                        </span>
                                     </td>
-                                    <td>
-                                        @foreach($activity->location_id as $location)
-                                            <span class="badge bg-info">{{ $location }}</span>
-                                        @endforeach
-                                    </td>
-                                    <td>
-                                        @if(isset($activity->budget['total']))
-                                            <span class="text-success">
-                                                ${{ number_format($activity->budget['total'], 2) }}
-                                            </span>
-                                        @else
-                                            <span class="text-muted">N/A</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-warning text-dark"><i class="bx bx-time-five me-1"></i>Pending</span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group" aria-label="Activity actions">
-                                            <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}"
-                                               class="btn btn-sm btn-info"
-                                               data-bs-toggle="tooltip"
-                                               title="View Activity Details">
-                                                <i class="bx bx-show-alt"></i>
-                                            </a>
-                                            <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}"
-                                               class="btn btn-sm btn-warning"
-                                               data-bs-toggle="tooltip"
-                                               title="Edit Activity">
-                                                <i class="bx bx-edit"></i>
-                                            </a>
-                                            <button type="button"
-                                                    class="btn btn-sm btn-danger"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#deleteModal{{ $activity->id }}"
-                                                    title="Delete Activity">
-                                                <i class="bx bx-trash"></i>
-                                            </button>
-                                        </div>
-
-                                        <!-- Delete Modal -->
-                                        <div class="modal fade" id="deleteModal{{ $activity->id }}" tabindex="-1">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content">
-                                                    <div class="modal-header bg-danger text-white">
-                                                        <h5 class="modal-title"><i class="bx bx-trash me-1"></i> Delete Activity</h5>
-                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div class="alert alert-warning mb-3">
-                                                            <i class="bx bx-error me-1"></i> Are you sure you want to delete this activity? This action cannot be undone.
-                                                        </div>
-                                                        <div class="card border">
-                                                            <div class="card-body p-3">
-                                                                <p class="mb-1"><strong><i class="bx bx-heading me-1 text-primary"></i> Title:</strong> {{ $activity->activity_title }}</p>
-                                                                <p class="mb-0"><strong><i class="bx bx-calendar me-1 text-primary"></i> Date:</strong> {{ $activity->date_from->format('Y-m-d') }} to {{ $activity->date_to->format('Y-m-d') }}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <form action="{{ route('matrices.activities.destroy', [$matrix, $activity]) }}" method="POST" class="d-inline">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-danger">Delete</button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <td class="text-center">
+                                        <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" class="btn btn-outline-primary btn-sm">
+                                            <i class="bx bx-show"></i>
+                                        </a>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-5">
-                                        <div class="text-muted">
-                                            <i class="bx bx-calendar-x fs-1 mb-3"></i>
-                                            <p class="h5 text-muted">No activities found</p>
-                                            <p class="small mt-2 text-muted">Click the "Add" button to create a new activity</p>
-                                        </div>
-                                    </td>
+                                    <td colspan="6" class="text-center text-muted py-4">No activities found for this matrix.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+
+                <div class="p-3">
+                    {{ $activities->withQueryString()->links() }}
                 </div>
             </div>
         </div>
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    $(document).ready(function() {
-        $('[data-bs-toggle="tooltip"]').tooltip();
-        $('#searchInput').on('keyup', function() {
-            const value = $(this).val().toLowerCase();
-            $('#activitiesTable tbody tr').filter(function() {
-                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
-            });
-        });
-
-        $('#statusFilter').change(function() {
-            const value = $(this).val().toLowerCase();
-            $('#activitiesTable tbody tr').each(function () {
-                const status = $(this).find('.badge').text().toLowerCase();
-                $(this).toggle(!value || status === value);
-            });
-        });
-    });
-</script>
-@endpush
