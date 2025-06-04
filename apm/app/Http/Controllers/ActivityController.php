@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Cache;
 
 class ActivityController extends Controller
 {
+    
     /**
      * Display a listing of activities for a matrix.
      */
@@ -88,11 +89,7 @@ class ActivityController extends Controller
             'editing' => false,
         ]);
     }
-    
 
-    /**
-     * Store a newly created activity.
-     */
     public function store(Request $request, Matrix $matrix): RedirectResponse
     {
         if ($matrix->overall_status === 'approved') {
@@ -104,67 +101,61 @@ class ActivityController extends Controller
                 ]);
         }
     
-        return \DB::transaction(function () use ($request, $matrix) {
+        $userStaffId = session('user.auth_staff_id');
+    
+        return \DB::transaction(function () use ($request, $matrix, $userStaffId) {
             try {
+                // Validate required fields
                 $validated = $request->validate([
-                    'staff_id' => 'required|exists:staff,staff_id',
-                    'date_from' => 'required|date',
-                    'date_to' => 'required|date|after_or_equal:date_from',
-                    'location_id' => 'required|array|min:1',
-                    'location_id.*' => 'string',
-                    'total_participants' => 'required|integer|min:1',
-                    'internal_participants' => 'required|array|min:1',
-                    'internal_participants.*' => 'string',
-                    'request_type_id' => 'required|exists:request_types,id',
                     'activity_title' => 'required|string|max:255',
-                    'background' => 'required|string',
-                    'activity_request_remarks' => 'required|string',
-                    'fund_type' => 'required|exists:fund_types,id',
-                    'budget_codes' => 'required|array|min:1',
-                    'budget_codes.*' => 'exists:fund_codes,id',
-                    'key_result_link' => 'required|string',
+                    'location_id' => 'required|array|min:1',
+                    'location_id.*' => 'exists:locations,id',
+                    'participant_start' => 'required|array',
+                    'participant_end' => 'required|array',
                     'participant_days' => 'required|array',
-                    'budget' => 'required|array',
                 ]);
     
-                // Convert location names to IDs
-                $locationIds = \App\Models\Location::whereIn('name', $validated['location_id'])->pluck('id')->toArray();
+                // Build internal_participants array with staff_id as key
+                $participantStarts = $request->input('participant_start', []);
+                $participantEnds = $request->input('participant_end', []);
+                $participantDays = $request->input('participant_days', []);
     
-                // Convert participant names to IDs
-                $staffMap = \App\Models\Staff::whereIn('name', $validated['internal_participants'])->pluck('id', 'name');
+                $internalParticipants = [];
     
-                // Format participant days using IDs
-                $participantDays = [];
-                foreach ($validated['participant_days'] as $name => $days) {
-                    if ($staffMap->has($name)) {
-                        $participantDays[$staffMap[$name]] = ['days' => (int)$days];
-                    }
+                foreach ($participantStarts as $staffId => $startDate) {
+                    $internalParticipants[$staffId] = [
+                        'participant_start' => $startDate,
+                        'participant_end' => $participantEnds[$staffId] ?? null,
+                        'participant_days' => $participantDays[$staffId] ?? null,
+                    ];
                 }
     
+                // Debug formatted array before insertion
+                //dd($internalParticipants);
+    
+                // Create the activity record
                 $activity = $matrix->activities()->create([
-                    'staff_id' => $validated['staff_id'],
-                    'date_from' => $validated['date_from'],
-                    'date_to' => $validated['date_to'],
-                    'total_participants' => $validated['total_participants'],
-                    'key_result_area' => $validated['key_result_link'],
-                    'request_type_id' => $validated['request_type_id'],
-                    'activity_title' => $validated['activity_title'],
-                    'background' => $validated['background'],
-                    'activity_request_remarks' => $validated['activity_request_remarks'],
+                    'staff_id' => $userStaffId,
+                    'responsible_person_id' => $request->input('responsible_person_id', 1),
+                    'date_from' => $request->input('date_from', now()->toDateString()),
+                    'date_to' => $request->input('date_to', now()->toDateString()),
+                    'total_participants' => (int) $request->input('total_participants', 1),
+                    'total_external_participants' => (int) $request->input('total_external_participants', 0),
+                    'key_result_area' => $request->input('key_result_link', '-'),
+                    'request_type_id' => (int) $request->input('request_type_id', 1),
+                    'activity_title' => $request->input('activity_title'),
+                    'background' => $request->input('background', ''),
+                    'activity_request_remarks' => $request->input('activity_request_remarks', ''),
                     'forward_workflow_id' => 1,
                     'reverse_workflow_id' => 1,
                     'status' => \App\Models\Activity::STATUS_DRAFT,
-                    'fund_type_id' => $validated['fund_type'],
-                    'location_id' => json_encode($validated['location_id']), // keep names
-                    'internal_participants' => json_encode($validated['internal_participants']), // keep names
-                    'budget' => json_encode($validated['budget']),
-                    'budget_id' => json_encode($validated['budget_codes']),
+                    'fund_type_id' => $request->input('fund_type', 1),
+                    'location_id' => json_encode($request->input('location_id', [])),
+                    'internal_participants' => json_encode($internalParticipants),
+                    'budget_id' => json_encode($request->input('budget_codes', [])),
+                    'budget' => json_encode($request->input('budget', [])),
+                    'attachment' => json_encode($request->input('attachments', [])),
                 ]);
-    
-                // Sync related tables
-                $activity->locations()->sync($locationIds);
-                $activity->fundCodes()->sync($validated['budget_codes']);
-                $activity->participants()->sync($participantDays);
     
                 return redirect()
                     ->route('matrices.activities.show', [$matrix, $activity])
@@ -185,45 +176,80 @@ class ActivityController extends Controller
         });
     }
     
-    
 
-
-    /**
-     * Display the specified activity.
-     */
     public function show(Matrix $matrix, Activity $activity): View
     {
-        // Eager load all necessary relationships
+        // Load related models
         $activity->load([
             'staff',
             'requestType',
             'serviceRequests',
             'fundType',
-            'locations',
-            'fundCodes',
-            'participants'
+            'matrix.division',
         ]);
-        
-        $matrix->load('division');
+    
+        // Load all staff
         $staff = Staff::active()->get();
-
+    
+        // Decode JSON fields
+        $locationIds = is_string($activity->location_id)
+            ? json_decode($activity->location_id, true)
+            : ($activity->location_id ?? []);
+    
+        $budgetIds = is_string($activity->budget_id)
+            ? json_decode($activity->budget_id, true)
+            : ($activity->budget_id ?? []);
+    
+        $budgetItems = is_string($activity->budget)
+            ? json_decode($activity->budget, true)
+            : ($activity->budget ?? []);
+    
+        $attachments = is_string($activity->attachment)
+            ? json_decode($activity->attachment, true)
+            : ($activity->attachment ?? []);
+    
+        // Decode internal participants (new format)
+        $rawParticipants = is_string($activity->internal_participants)
+            ? json_decode($activity->internal_participants, true)
+            : ($activity->internal_participants ?? []);
+    
+        // Extract staff details and append date/days info
+        $internalParticipants = [];
+        if (!empty($rawParticipants)) {
+            $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))->get()->keyBy('staff_id');
+    
+            foreach ($rawParticipants as $staffId => $participantData) {
+                if (isset($staffDetails[$staffId])) {
+                    $internalParticipants[] = [
+                        'staff' => $staffDetails[$staffId],
+                        'participant_start' => $participantData['participant_start'] ?? null,
+                        'participant_end' => $participantData['participant_end'] ?? null,
+                        'participant_days' => $participantData['participant_days'] ?? null,
+                    ];
+                }
+            }
+        }
+    
+        // Fetch related data
+        $locations = Location::whereIn('id', $locationIds ?: [])->get();
+        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
+    
         return view('activities.show', [
             'matrix' => $matrix,
             'activity' => $activity,
             'staff' => $staff,
+            'locations' => $locations,
+            'fundCodes' => $fundCodes,
+            'internalParticipants' => $internalParticipants,
+            'budgetItems' => $budgetItems,
+            'attachments' => $attachments,
             'title' => 'View Activity: ' . $activity->activity_title
         ]);
     }
+    
 
-    /**
-     * Show the form for editing the specified activity.
-     */
-    /**
-     * Get budget codes by fund type and division.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
+
+    
     public function getBudgetCodesByFundType(Request $request)
     {
         $request->validate([

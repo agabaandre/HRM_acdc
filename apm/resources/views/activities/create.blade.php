@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Add Activity')
-@section('header', "Add Activity - {$matrix->quarter} {$matrix->year}")
+@section('header', "Add Activity - {{$matrix->quarter}} {{$matrix->year}}")
 
 @section('header-actions')
     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
@@ -18,7 +18,7 @@
         </div>
 
         <div class="card-body p-4">
-            <form action="{{ route('matrices.activities.store', $matrix) }}" method="POST" id="activityForm">
+            <form action="{{ route('matrices.activities.store', $matrix) }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf
 
                 @includeIf('activities.form')
@@ -66,27 +66,40 @@
                     </div>
                 </div>
 
-                <h6 class="fw-bold text-success mb-3 mt-4">
-                    <i class="fas fa-users-cog me-2"></i> Internal Participants - Days
-                </h6>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm align-middle" id="participantsTable">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Participant Name</th>
-                                <th>No. of Days</th>
-                            </tr>
-                        </thead>
-                        <tbody id="participantsTableBody">
-                            <tr><td colspan="2" class="text-muted text-center">No participants selected yet</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+<div class="row mt-3">
+    <div class="col-md-4 offset-md-8">
+        <label for="total_participants" class="form-label fw-semibold">
+            <i class="fas fa-users me-1 text-success"></i> Total Participants
+        </label>
+        <input type="text" id="total_participants_display" class="form-control bg-white border-success fw-bold" readonly value="0">
+        <input type="hidden" name="total_participants" id="total_participants" value="0">
+    </div>
+</div>
 
-              
+
+
+
                 <div id="externalParticipantsWrapper"></div>
 
                 <div id="budgetGroupContainer" class="mt-4"></div>
+
+                <!-- Attachments Section -->
+                <div class="mt-5">
+                    <h5 class="fw-bold text-success mb-3">
+                        <i class="fas fa-paperclip me-2"></i> Attachments
+                    </h5>
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
+                    </div>
+                    <div class="row g-3" id="attachmentContainer">
+                        <div class="col-md-4 attachment-block">
+                            <label class="form-label">Document Type*</label>
+                            <input type="text" name="attachments[0][type]" class="form-control" required>
+                            <input type="file" name="attachments[0][file]" class="form-control mt-1" required>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="d-flex justify-content-end mt-4">
                     <div class="border p-4 rounded-3 shadow-sm bg-light">
@@ -114,11 +127,125 @@
 
 @push('scripts')
 <script>
-
+  
 const staffData = @json($allStaffGroupedByDivision);
 
 $(document).ready(function () {
+
+  
+
+
+    function isValidActivityDates() {
+        return $('#date_from').val() && $('#date_to').val();
+    }
+    function updateTotalParticipants() {
+    let internalCount = 0;
+
+    $('#participantsTableBody tr').each(function () {
+        if (!$(this).find('td').hasClass('text-muted')) {
+            internalCount++;
+        }
+    });
+
+    const externalCount = parseInt($('#total_external_participants').val()) || 0;
+    const total = internalCount + externalCount;
+
+    $('#total_participants_display').val(total);
+    $('#total_participants').val(total);
+}
+
+$('#internal_participants').on('change', function () {
+    const selectedIds = $(this).val() || [];
+    const staffList = selectedIds.map(id => {
+        return {
+            id: id,
+            name: $(`#internal_participants option[value="${id}"]`).text()
+        };
+    });
+
+    appendToInternalParticipantsTable(staffList); // appends rows
+    updateTotalParticipants(); //  force count update
+});
+
+$(document).on('input change', '#participantsTableBody input, #internal_participants, .staff-names, #total_external_participants', function () {
+    updateTotalParticipants();
+});
+
+
+
+    function getActivityDays(startDate, endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const msPerDay = 1000 * 60 * 60 * 24;
+        return Math.max(Math.ceil((end - start) / msPerDay) + 1, 1);
+    }
+
+    function appendToInternalParticipantsTable(staffList) {
+    const mainStart = $('#date_from').val();
+    const mainEnd = $('#date_to').val();
+    const days = getActivityDays(mainStart, mainEnd);
+    const tableBody = $('#participantsTableBody');
+
+    if (tableBody.find('td').length === 1 && tableBody.find('td').hasClass('text-muted')) {
+        tableBody.empty();
+    }
+
+    staffList.forEach(({ id, name }) => {
+        if (!tableBody.find(`input[name="participant_days[${id}]"]`).length) {
+            const row = $(`
+                <tr data-participant-id="${id}">
+                    <td>${name}</td>
+                    <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
+                    <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
+                    <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
+                </tr>
+            `);
+            tableBody.append(row);
+
+            // Flatpickr initialization
+            const $start = row.find('.participant-start');
+            const $end = row.find('.participant-end');
+            const $days = row.find('.participant-days');
+
+            $start.flatpickr({
+                dateFormat: 'Y-m-d',
+                defaultDate: mainStart,
+                onChange: function () {
+                    const startDate = $start.val();
+                    const endDate = $end.val();
+                    if (startDate && endDate) {
+                        $days.val(getActivityDays(startDate, endDate));
+                        updateTotalParticipants(); // 🔁 trigger here too
+                    }
+                }
+            });
+
+            $end.flatpickr({
+                dateFormat: 'Y-m-d',
+                defaultDate: mainEnd,
+                onChange: function () {
+                    const startDate = $start.val();
+                    const endDate = $end.val();
+                    if (startDate && endDate) {
+                        $days.val(getActivityDays(startDate, endDate));
+                        updateTotalParticipants(); // 🔁 trigger here too
+                    }
+                }
+            });
+        }
+    });
+
+    updateTotalParticipants(); // 🔁 TRIGGER HERE AFTER ALL PARTICIPANTS ADDED
+}
+
+
+
     $('#addDivisionBlock').click(function () {
+        if (!isValidActivityDates()) {
+            show_notification("Please select both Start Date and End Date before adding division staff.", "warning");
+            return;
+        }
+
         const divisions = Object.keys(staffData);
         let divisionOptions = '<option value="">Select Division</option>';
         divisions.forEach(div => {
@@ -127,34 +254,29 @@ $(document).ready(function () {
 
         const block = `
             <div class="division-block border p-3 mb-3 rounded bg-light position-relative">
-                <button type="button" class="btn-close btn-danger position-absolute end-0 top-0 m-3 remove-division-block" aria-label="Close"></button>
+                <button type="button" class="btn btn-danger remove-division-block position-absolute end-0 top-0 m-3">
+                    <i class="fas fa-trash"></i>
+                </button>
                 <div class="row g-3 align-items-center">
                     <div class="col-md-3">
                         <label class="form-label">Division</label>
-                        <select class="form-select division-select">
-                            ${divisionOptions}
-                        </select>
+                        <select class="form-select division-select">${divisionOptions}</select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Filter By</label>
-                        <select class="form-select filter-type">
-                            <option value="">Select Filter</option>
-                            <option value="title">Job Title</option>
-                            <option value="name">Name</option>
-                            <option value="number">Number of Staff</option>
+                        <label class="form-label">Division Staff By</label>
+                        <select class="form-select filter-type" disabled>
+                            <option value="title" disabled>Job Title</option>
+                            <option value="name" selected>Name</option>
+                            <option value="number" disabled>Number of Staff</option>
                         </select>
                     </div>
                     <div class="col-md-3 job-title-col d-none">
                         <label class="form-label">Job Title(s)</label>
-                        <select class="form-select job-titles" name="external_staff_by_title[]" multiple></select>
+                        <select class="form-select job-titles" multiple disabled></select>
                     </div>
-                    <div class="col-md-3 staff-name-col d-none">
+                    <div class="col-md-3 staff-name-col">
                         <label class="form-label">Staff Info</label>
-                        <select class="form-select staff-names" name="external_staff_by_name[]" multiple></select>
-                    </div>
-                    <div class="col-md-3 staff-number-col d-none">
-                        <label class="form-label">No. of Staff</label>
-                        <input type="number" class="form-control staff-number" name="external_staff_by_number[]" placeholder="Enter Number">
+                        <select class="form-select staff-names" multiple></select>
                     </div>
                 </div>
             </div>`;
@@ -162,10 +284,11 @@ $(document).ready(function () {
         const $block = $(block);
         $('#externalParticipantsWrapper').append($block);
 
-        // Initialize Select2 fields
-        $block.find('.division-select').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'Select Division' });
-        $block.find('.job-titles').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'Select Job Title(s)', allowClear: true });
-        $block.find('.staff-names').select2({ theme: 'bootstrap4', width: '100%', placeholder: 'Select Staff', allowClear: true });
+        $block.find('.division-select, .staff-names').select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            placeholder: 'Select'
+        });
     });
 
     $(document).on('click', '.remove-division-block', function () {
@@ -175,47 +298,36 @@ $(document).ready(function () {
     $(document).on('change', '.division-select', function () {
         const division = $(this).val();
         const container = $(this).closest('.division-block');
-        const jobSelect = container.find('.job-titles');
         const staffSelect = container.find('.staff-names');
-
         const staff = staffData[division] || [];
-        const uniqueJobs = [...new Set(staff.map(s => s.job_name).filter(Boolean))];
 
-        jobSelect.empty().append(uniqueJobs.map(j => `<option value="${j}">${j}</option>`));
-        staffSelect.empty().append(staff.map(s => `<option value="${s.staff_id}">${s.fname} ${s.lname}</option>`));
-
-        jobSelect.trigger('change');
-        staffSelect.trigger('change');
+        staffSelect.empty().append(
+            staff.map(s => `<option value="${s.staff_id}">${s.fname} ${s.lname}</option>`)
+        ).trigger('change');
     });
 
-    $(document).on('change', '.filter-type', function () {
-        const selected = $(this).val();
-        const block = $(this).closest('.division-block');
+    $(document).on('change', '.staff-names', function () {
+        const container = $(this).closest('.division-block');
+        const division = container.find('.division-select').val();
+        const selected = $(this).val() || [];
+        const staff = staffData[division] || [];
 
-        // Hide all
-        block.find('.job-title-col, .staff-name-col, .staff-number-col').addClass('d-none');
+        const selectedStaff = staff
+            .filter(s => selected.includes(s.staff_id.toString()))
+            .map(s => ({
+                id: s.staff_id,
+                name: `${s.fname} ${s.lname}`
+            }));
 
-        // Show based on selection
-        if (selected === 'title') block.find('.job-title-col').removeClass('d-none');
-        if (selected === 'name') block.find('.staff-name-col').removeClass('d-none');
-if (selected === 'number') block.find('.staff-number-col').removeClass('d-none');
+        appendToInternalParticipantsTable(selectedStaff);
     });
 });
 
-  
+
 $(document).ready(function () {
     const today = new Date().setHours(0, 0, 0, 0);
     const divisionId = {{ user_session('division_id') }};
 
-    function show_notification(message, msgtype) {
-        Lobibox.notify(msgtype, {
-            pauseDelayOnHover: true,
-            continueDelayOnInactiveTab: false,
-            position: 'top right',
-            icon: 'bx bx-check-circle',
-            msg: message
-        });
-    }
 
     function validateDates(showError = true) {
         const startDateVal = $('#date_from').val();
@@ -233,7 +345,7 @@ $(document).ready(function () {
             $('#date_from').val('');
             return false;
         }
-        if (endDate <= startDate) {
+        if (endDate < startDate) {
             if (showError) show_notification('End date must be after the start date.', 'error');
             $('#date_to').val('');
             return false;
@@ -248,48 +360,55 @@ $(document).ready(function () {
         return Math.max(Math.ceil((end - start) / msPerDay) + 1, 1);
     }
 
-    function limitInternalParticipants() {
-        const selected = $('#internal_participants').val() || [];
-        const totalAllowed = parseInt($('#total_participants').val()) || 0;
-
-        if (selected.length > totalAllowed) {
-            const trimmed = selected.slice(0, totalAllowed);
-            $('#internal_participants').val(trimmed).trigger('change.select2');
-            show_notification(`You can only select up to ${totalAllowed} participants.`, 'warning');
-        }
-    }
+  
 
     function updateParticipantsTable() {
-        const selectedIds = $('#internal_participants').val();
-        const participantsTableBody = $('#participantsTableBody');
-        const days = getActivityDays();
-        participantsTableBody.empty();
+    const selectedIds = $('#internal_participants').val();
+    const participantsTableBody = $('#participantsTableBody');
+    const mainStart = $('#date_from').val();
+    const mainEnd = $('#date_to').val();
+    const days = getActivityDays(mainStart, mainEnd);
+    participantsTableBody.empty();
 
-        if (!selectedIds || selectedIds.length === 0) {
-            participantsTableBody.append('<tr><td colspan="2" class="text-muted text-center">No participants selected yet</td></tr>');
-            return;
-        }
-
-        selectedIds.forEach(id => {
-            const name = $(`#internal_participants option[value="${id}"]`).text();
-            participantsTableBody.append(`
-                <tr>
-                    <td>${name}</td>
-                    <td><input type="number" name="participant_days[${id}]" class="form-control" value="${days}" min="1"></td>
-                </tr>`);
-        });
+    if (!selectedIds || selectedIds.length === 0) {
+        participantsTableBody.append('<tr><td colspan="4" class="text-muted text-center">No participants selected yet</td></tr>');
+        return;
     }
 
-    function handleParticipantsChange() {
-        const selected = $('#internal_participants').val() || [];
-        const totalAllowed = parseInt($('#total_participants').val()) || 0;
+    selectedIds.forEach(id => {
+        const name = $(`#internal_participants option[value="${id}"]`).text();
+        participantsTableBody.append(`
+            <tr data-participant-id="${id}">
+                <td>${name}</td>
+                <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
+                <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
+                <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
+            </tr>
+        `);
+    });
 
-        if (selected.length > totalAllowed) {
-            const trimmed = selected.slice(0, totalAllowed);
-            $('#internal_participants').val(trimmed).trigger('change.select2');
-            show_notification(`You can only select up to ${totalAllowed} participants.`, 'warning');
-            return;
-        }
+    flatpickr('.date-picker', {
+        dateFormat: 'Y-m-d'
+    });
+}
+
+
+$(document).on('change', '.participant-start, .participant-end', function () {
+    const row = $(this).closest('tr');
+    const $start = row.find('.participant-start').get(0)._flatpickr;
+    const $end = row.find('.participant-end').get(0)._flatpickr;
+
+    if ($start && $end && $start.selectedDates.length && $end.selectedDates.length) {
+        const start = $start.selectedDates[0];
+        const end = $end.selectedDates[0];
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const days = Math.max(Math.ceil((end - start) / msPerDay) + 1, 1);
+        row.find('.participant-days').val(days);
+    }
+});
+
+
+    function handleParticipantsChange() {
 
         if (!validateDates(false)) return;
         updateParticipantsTable();
@@ -297,9 +416,9 @@ $(document).ready(function () {
 
     function toggleParticipantSelection() {
         const hasDates = $('#date_from').val() && $('#date_to').val();
-        const hasTotal = $('#total_participants').val();
+       
 
-        if (hasDates && hasTotal) {
+        if (hasDates) {
             $('#internal_participants').prop('disabled', false);
         } else {
             $('#internal_participants').val(null).trigger('change.select2');
@@ -315,13 +434,7 @@ $(document).ready(function () {
         }
     });
 
-    $('#total_participants').on('input', function () {
-        toggleParticipantSelection();
-        setTimeout(() => {
-            limitInternalParticipants();
-            updateParticipantsTable();
-        }, 100);
-    });
+   
 
     $('#internal_participants').select2({
         placeholder: 'Select Internal Participants',
@@ -494,6 +607,48 @@ $(document).ready(function () {
     // Initial check
     toggleParticipantSelection();
 });
+
+let attachmentIndex = 1;
+
+// Allowed extensions
+const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+
+// Add new attachment block
+$('#addAttachment').on('click', function () {
+    const newField = `
+        <div class="col-md-4 attachment-block">
+            <label class="form-label">Document Type*</label>
+            <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
+            <input type="file" name="attachments[${attachmentIndex}][file]" 
+                   class="form-control mt-1 attachment-input" 
+                   accept=".pdf, .jpg, .jpeg, .png, image/*" 
+                   required>
+        </div>`;
+    $('#attachmentContainer').append(newField);
+    attachmentIndex++;
+});
+
+// Remove attachment block
+$('#removeAttachment').on('click', function () {
+    if ($('.attachment-block').length > 1) {
+        $('.attachment-block').last().remove();
+        attachmentIndex--;
+    }
+});
+
+// Validate file extension on upload
+$(document).on('change', '.attachment-input', function () {
+    const fileInput = this;
+    const fileName = fileInput.files[0]?.name || '';
+    const ext = fileName.split('.').pop().toLowerCase();
+
+    if (!allowedExtensions.includes(ext)) {
+        show_notification("Only PDF, JPG, JPEG, or PNG files are allowed.", "warning");
+        $(fileInput).val(''); // Clear invalid file
+    }
+});
+
+
 </script>
 
 @endpush

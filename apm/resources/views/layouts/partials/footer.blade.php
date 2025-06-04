@@ -150,7 +150,7 @@
         Lobibox.notify(msgtype, {
             pauseDelayOnHover: true,
             continueDelayOnInactiveTab: false,
-            position: 'top right',
+            position: 'center top',
             icon: msgtype === 'success' ? 'bx bx-check-circle' :
                   msgtype === 'error'   ? 'bx bx-error-circle' :
                   msgtype === 'warning' ? 'bx bx-error' :

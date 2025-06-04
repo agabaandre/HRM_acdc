@@ -30,13 +30,13 @@
             </div>
 
             <div class="col-md-6">
-                <label for="staff_id" class="form-label fw-semibold">
+                <label for="responsible_person" class="form-label fw-semibold">
                     <i class="fas fa-user-tie me-1 text-success"></i> Responsible Person <span class="text-danger">*</span>
                 </label>
-                <select name="staff_id" id="staff_id" class="form-select select2 " required>
+                <select name="responsible_person_id" id="responsible_person_id" class="form-select select2 " required>
                     <option value="">Select</option>
                     @foreach($staff as $member)
-                    <option value="{{ $member->id }}" {{ old('staff_id') == $member->id ? 'selected' : '' }}>{{ $member->name }}</option>
+                    <option value="{{ $member->staff_id }}" {{ old('staff_id') == $member->staff_id ? 'selected' : '' }}>{{ $member->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -70,12 +70,7 @@
 
 
 
-            <div class="col-md-4">
-                <label for="total_participants" class="form-label fw-semibold">
-                    <i class="fas fa-users me-1 text-success"></i> Total Participants <span class="text-danger">*</span>
-                </label>
-                <input type="number" name="total_participants" id="total_participants" class="form-control border-success" value="{{ old('total_participants') }}" min="1" required>
-            </div>
+          
 
             <div class="col-md-4">
                 <label for="internal_participants" class="form-label fw-semibold">
@@ -91,6 +86,13 @@
                 <small class="text-muted">You cannot select more than the total participants</small>
             </div>
 
+            <div class="col-md-4">
+                <label for="total_participants" class="form-label fw-semibold">
+                    <i class="fas fa-users me-1 text-success"></i> Number of External Participants <span class="text-danger">*</span>
+                </label>
+                <input type="number" name="total_external_participants" id="total_external_participants" value="0" class="form-control border-success" value="{{ old('total_external_participants') }}" min="1" required>
+            </div>
+
             <div class="mt-5">
                     <h6 class="fw-bold text-success mb-3"><i class="fas fa-user-plus me-2"></i> Add Participants from other Division</h6>
                     <div id="externalParticipantsWrapper"></div>
@@ -100,12 +102,35 @@
             </div>
 
 
+            <h6 class="fw-bold text-success mb-3 mt-4">
+                    <i class="fas fa-users-cog me-2"></i> Participants - Days
+                </h6>
+                <div class="table-responsive">
+    <table class="table table-bordered table-sm align-middle" id="participantsTable">
+        <thead class="table-light">
+            <tr>
+                <th>Participant Name</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>No. of Days</th>
+            </tr>
+        </thead>
+        <tbody id="participantsTableBody">
+            <tr><td colspan="4" class="text-muted text-center">No participants selected yet</td></tr>
+        </tbody>
+    </table>
+
+</div>
+
+
             <div class="col-md-12">
                 <label for="activity_request_remarks" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i>Justification / Request for Approval <span class="text-danger">*</span>
                 </label>
                 <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks') }}</textarea>
             </div>
+
+            
 
         </div>
     </div>
