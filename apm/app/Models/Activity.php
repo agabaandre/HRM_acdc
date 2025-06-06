@@ -164,7 +164,7 @@ class Activity extends Model
         $short = ucwords($this->generateShortCodeFromDivision($division_name));
         $prefix = 'AU/CDC/' . $short . '/QM';
         $quarter = 'Q' . $this->matrix->quarter;
-        $year = $this->matrix->year;
+        $year = substr($this->matrix->year, -2);
     
         $latestActivity = self::where('matrix_id', $this->matrix_id)
             ->where('workplan_activity_code', 'like', "{$prefix}/{$quarter}/{$year}/%")
@@ -190,6 +190,11 @@ class Activity extends Model
         }, $words);
     
         return implode('', array_filter($initials));
+    }
+
+    public function getBudgetAttribute($value)
+    {
+        return json_decode($value); // or false for object
     }
     
 }
