@@ -147,16 +147,21 @@
                             </div>
                         </div>
 
+        
+                        @php
+                             $internal_participants = array_keys(json_decode($activity->internal_participants, true));
+                        @endphp
+
                         <div class="col-md-6">
                             <div class="form-group position-relative">
                                 <label for="internal_participants" class="form-label fw-semibold"><i class="bx bx-group me-1 text-primary"></i>Internal Participants <span class="text-danger">*</span></label>
                                 <select name="internal_participants[]"
                                         id="internal_participants"
-                                        class="form-select form-select-lg @error('internal_participants') is-invalid @enderror"
+                                        class="form-select select2 form-select-lg @error('internal_participants') is-invalid @enderror"
                                         multiple
                                         required>
                                     @foreach($staff as $member)
-                                        <option value="{{ $member->id }}" {{ in_array($member->id, old('internal_participants', $activity->internal_participants)) ? 'selected' : '' }}>
+                                        <option value="{{ $member->id }}" {{ in_array($member->id, old('internal_participants', $internal_participants)) ? 'selected' : '' }}>
                                             {{ $member->name }}
                                         </option>
                                     @endforeach
@@ -194,7 +199,7 @@
                                         multiple
                                         required>
                                     @foreach(['Kampala', 'Entebbe', 'Jinja', 'Mbarara', 'Gulu'] as $location)
-                                        <option value="{{ $location }}" {{ in_array($location, old('location_id', $activity->location_id)) ? 'selected' : '' }}>
+                                        <option value="{{ $location }}" {{ in_array($location, old('location_id', array_keys(json_decode($activity->location_id, true)))) ? 'selected' : '' }}>
                                             {{ $location }}
                                         </option>
                                     @endforeach
@@ -212,9 +217,19 @@
                 <div class="card-header bg-light">
                     <h6 class="m-0 fw-semibold"><i class="bx bx-money me-2 text-primary"></i>Budget Details</h6>
                 </div>
+
+                @php
+                $budgetItems = old('budget.items', json_decode($activity->budget, true) ?? []);
+                @endphp
                 <div class="card-body p-4">
                     <div id="budgetItems">
-                        @foreach(old('budget.items', $activity->budget['items'] ?? []) as $index => $item)
+                        @foreach($budgetCodes ?? [] as $type)
+                            @php
+                              $items = isset($budgetItems[$type->id]) ? $budgetItems[$type->id] : [];
+                              $index = 0;
+                            @endphp
+                            @if($items)
+                            @foreach($items ?? [] as  $item)
                             <div class="budget-item mb-3">
                                 <div class="row">
                                     <div class="col-md-5">
@@ -227,18 +242,18 @@
                                     </div>
                                     <div class="col-md-3">
                                         <input type="number"
-                                               name="budget[items][{{ $index }}][amount]"
+                                               name="budget[items][{{ $index }}][unit_cost]"
                                                class="form-control amount-input"
                                                placeholder="Amount"
-                                               value="{{ $item['amount'] }}"
+                                               value="{{ $item['unit_cost'] }}"
                                                required>
                                     </div>
                                     <div class="col-md-3">
                                         <input type="number"
-                                               name="budget[items][{{ $index }}][quantity]"
+                                               name="budget[items][{{ $index }}][units]"
                                                class="form-control quantity-input"
                                                placeholder="Quantity"
-                                               value="{{ $item['quantity'] ?? 1 }}"
+                                               value="{{ $item['units'] ?? 1 }}"
                                                required>
                                     </div>
                                     <div class="col-md-1">
@@ -248,6 +263,11 @@
                                     </div>
                                 </div>
                             </div>
+                            @endforeach
+                            @endif
+                            @php
+                            $index++;
+                            @endphp
                         @endforeach
                     </div>
 
@@ -286,7 +306,7 @@
                               id="key_result_area"
                               class="form-control form-control-lg @error('key_result_area') is-invalid @enderror"
                               rows="2"
-                              required>{{ old('key_result_area', $activity->key_result_area) }}</textarea>
+                              required>{{ old('key_result_area', $matrix->key_result_area[intval($activity->key_result_area)]['description'] ?? '') }}</textarea>
                     @error('key_result_area')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
