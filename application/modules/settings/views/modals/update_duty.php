@@ -31,7 +31,7 @@
                             <select type="text" name="country" autocomplete="off" placeholder="Country" class="form-control">
                                 <!-- <option selected disabled value="<?php //echo $coutry->name?>"><?php //echo $coutry->name?> <span style="color: red;">| Selected Country</span></option> -->
                                 <?php foreach($countries->result() as $coutry): ?>
-                                    <option value="<?php echo $coutry->name?>"><?php echo $coutry->name?></option>
+                                    <option value="<?php echo $coutry->nationality_id?>"><?php echo $coutry->nationality_name?></option>
                                 <?php endforeach; ?>
                             </select>
                           </div>
