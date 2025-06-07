@@ -163,7 +163,7 @@ class Activity extends Model
         $division_name = user_session('division_name');
         $short = ucwords($this->generateShortCodeFromDivision($division_name));
         $prefix = 'AU/CDC/' . $short . '/QM';
-        $quarter = 'Q' . $this->matrix->quarter;
+        $quarter = $this->matrix->quarter;
         $year = $this->matrix->year;
     
         $latestActivity = self::where('matrix_id', $this->matrix_id)
