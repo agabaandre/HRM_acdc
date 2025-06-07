@@ -12,6 +12,10 @@
 @endif
 @endsection
 
+@php
+//dd($matrices->toArray());
+@endphp
+
 @section('content')
 <div class="card shadow-sm">
     <div class="card-header bg-light">
@@ -62,6 +66,8 @@
                         <th>Focal Person</th>
                         <th>Key Result Areas</th>
                         <th>Created At</th>
+                        <th>Level</th>
+                        <th>Status</th>
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
@@ -110,6 +116,8 @@
                                 </div>
                             </td>
                             <td>{{ $matrix->created_at->format('Y-m-d H:i') }}</td>
+                            <td>{{ ($matrix->workflow_definition)?$matrix->workflow_definition->role:'N/A' }}</td>
+                            <td> <span class="p-1 rounded {{config('approval_states')[$matrix->overall_status]}}">{{ strtoupper($matrix->overall_status)}}</span></td>
                             <td class="text-center">
                                 <div class="btn-group">
                                     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-info" title="View">

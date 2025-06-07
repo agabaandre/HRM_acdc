@@ -26,16 +26,23 @@
                 @includeIf('activities.form')
 
                 <div class="row g-4 mt-2">
-                    <div class="col-md-4">
+                    <div class="col-md-4 fund_type">
                         <label for="fund_type" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> Fund Type <span class="text-danger">*</span>
                         </label>
-                        <select name="fund_type" id="fund_type" class="form-select border-success" required>
+                        <select name="fund_type" id="fund_type" class="form-select border-success" required >
                             <option value="">Select Fund Type</option>
                             @foreach($fundTypes as $type)
-                                <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                <option value="{{ $type->id }}">{{ ucfirst($type->name) }}</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <div class="col-md-2 activity_code" style="display: none;">
+                        <label for="activity_code" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
+                        </label>
+                        <input name="activity_code" id="activity_code" class="form-control border-success" />
                     </div>
 
                     <div class="col-md-4">
@@ -114,10 +121,7 @@
                 </div>
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
-                    <button type="submit" class="btn btn-warning btn-lg px-4">
-                        <i class="bx bx-save me-1"></i> Save Draft Activity
-                    </button>
-
+                   
                     <button type="submit" class="btn btn-success btn-lg px-5">
                         <i class="bx bx-check-circle me-1"></i> Save Activity
                     </button>
@@ -135,7 +139,26 @@ const staffData = @json($allStaffGroupedByDivision);
 $(document).ready(function () {
 
   
+    
 
+    $('#fund_type').change(function(event){
+        let selectedText = $('#fund_type option:selected').text();
+
+        if(selectedText.toLocaleLowerCase().indexOf("intramural")>-1){
+            $('.fund_type').removeClass('col-md-4');
+            $('.fund_type').addClass('col-md-2');
+            $('.activity_code').show();
+        }
+        else{
+            $('#activity_code').value=""
+            $('.activity_code').hide();
+             $('.fund_type').removeClass('col-md-2');
+             $('.fund_type').ddClass('col-md-4');
+        }
+
+        console.log(event);
+        console.log(selectedText);
+    })
 
     function isValidActivityDates() {
         return $('#date_from').val() && $('#date_to').val();
