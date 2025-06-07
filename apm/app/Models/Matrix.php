@@ -30,6 +30,8 @@ class Matrix extends Model
         'overall_status',
     ];
 
+    protected $appends =['workflow_definition'];
+
     /**
      * Get the casts for the model.
      *
@@ -83,6 +85,26 @@ class Matrix extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(Activity::class);
+    }
+
+    public function forwardWorkflow(): BelongsTo
+    {
+        return $this->belongsTo(Workflow::class, 'forward_workflow_id', 'id');
+    }
+
+    public function reverseWorkflow(): BelongsTo
+    {
+        return $this->belongsTo(Workflow::class, 'reverse_workflow_id', 'id');
+    }
+
+
+
+    public function getWorkflowDefinitionAttribute()
+    {
+        return WorkflowDefinition::where('approval_order', $this->approval_level)
+            ->where('workflow_id', $this->forward_workflow_id)
+            ->where('is_enabled',1)
+            ->first();
     }
 
     public function activityApprovalTrails(): HasMany

@@ -17,9 +17,13 @@
 </div>
 @endsection
 
+@php
+//dd($fundCodes);
+@endphp
+
 @section('content')
 <div class="row">
-    <div class="col-md-8">
+    <div class="col-md-10">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
@@ -33,7 +37,7 @@
                     </div>
                     <div class="col-md-6">
                         <strong>Key Result Area:</strong>
-                        <p>{{ $activity->key_result_area }}</p>
+                        <p>{{ $matrix->key_result_area[intval($activity->key_result_area)]['description'] ?? '' }}</p>
                     </div>
                 </div>
 
@@ -118,20 +122,33 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($activity->budget['items'] ?? [] as $item)
+                            @foreach($fundCodes ?? [] as $fundCode )
+                            @php
+                              $items = $budgetItems[$fundCode->id];
+                            @endphp
+                            @if($items)
+                            <tr>
+                                <th colspan="5">{{ $fundCode->description  }}- {{ $fundCode->code }}</th>
+                            </tr>
+                            @foreach($items ?? [] as $item)
+                            @php
+                            $total = $item['unit_cost'] * $item['units'] * $item['days'];
+                            @endphp
                                 <tr>
                                     <td>{{ $item['description'] }}</td>
                                     <td class="text-end">{{ number_format($item['unit_cost'], 2) }}</td>
                                     <td class="text-end">{{ $item['units'] }}</td>
                                     <td class="text-end">{{ $item['days'] }}</td>
-                                    <td class="text-end">{{ number_format($item['unit_cost'] * $item['units'] * $item['days'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($total, 2) }}</td>
                                 </tr>
+                            @endforeach
+                            @endif
                             @endforeach
                         </tbody>
                         <tfoot>
                             <tr>
                                 <th colspan="4" class="text-end">Grand Total</th>
-                                <th class="text-end">{{ number_format($activity->budget['total'] ?? 0, 2) }}</th>
+                                <th class="text-end">{{ $budgetItems ? number_format($budgetItems['grand_total'] ?? 0, 2) : 0 }}</th>
                             </tr>
                         </tfoot>
                     </table>
@@ -140,7 +157,7 @@
         </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-md-2">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Timeline</h5>

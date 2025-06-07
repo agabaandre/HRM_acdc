@@ -144,7 +144,7 @@ class Activity extends Model
 
     public function getFormattedDatesAttribute(): string
     {
-        return $this->date_from->format('M j, Y') . ' - ' . $this->date_to->format('M j, Y');
+        return ($this->date_from)?$this->date_from->format('M j, Y') . ' - ' . $this->date_to->format('M j, Y'):'';
     }
 
     protected static function boot()
@@ -163,8 +163,8 @@ class Activity extends Model
         $division_name = user_session('division_name');
         $short = ucwords($this->generateShortCodeFromDivision($division_name));
         $prefix = 'AU/CDC/' . $short . '/QM';
-        $quarter = $this->matrix->quarter;
-        $year = $this->matrix->year;
+        $quarter = 'Q' . $this->matrix->quarter;
+        $year = substr($this->matrix->year, -2);
     
         $latestActivity = self::where('matrix_id', $this->matrix_id)
             ->where('workplan_activity_code', 'like', "{$prefix}/{$quarter}/{$year}/%")
@@ -190,6 +190,11 @@ class Activity extends Model
         }, $words);
     
         return implode('', array_filter($initials));
+    }
+
+    public function getBudgetAttribute($value)
+    {
+        return json_decode($value); // or false for object
     }
     
 }
