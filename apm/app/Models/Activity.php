@@ -144,7 +144,7 @@ class Activity extends Model
 
     public function getFormattedDatesAttribute(): string
     {
-        return $this->date_from->format('M j, Y') . ' - ' . $this->date_to->format('M j, Y');
+        return ($this->date_from)?$this->date_from->format('M j, Y') . ' - ' . $this->date_to->format('M j, Y'):'';
     }
 
     protected static function boot()
