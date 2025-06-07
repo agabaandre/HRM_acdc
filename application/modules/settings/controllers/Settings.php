@@ -157,7 +157,20 @@ class Settings extends MX_Controller
 		$data['title'] = "Divisions";
 		render('divisions', $data);
 	}
+	public function directorates()
+	{
+		$this->load->model('settings_mdl');
+	
+		$data['directorates'] = $this->settings_mdl->get_content('directorates');
 
+	
+		// Additional metadata
+		$data['module'] = $this->module;
+		$data['title'] = "Directorates";
+	
+		render('directorates', $data);
+	}
+	
 	public function grades()
 	{
 		$this->load->model('settings_mdl');

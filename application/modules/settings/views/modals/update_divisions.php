@@ -14,77 +14,86 @@
         <input type="hidden" name="column_name" value="division_id">
         <input type="hidden" name="caller_value" value="<?= $division->division_id; ?>">
 
+        <div class="row">
+          <!-- Basic Fields -->
+          <div class="col-md-6">
+            <div class="form-group">
+              <label>Division Name</label>
+              <input type="text" class="form-control" name="division_name" value="<?= $division->division_name; ?>" required>
+            </div>
+          </div>
 
-<div class="row">
-  <div class="col-md-6">
-    <div class="form-group">
-      <label>Division Name</label>
-      <input type="text" class="form-control" value="<?= $division->division_name; ?>" name="division_name" required>
-    </div>
-  </div>
+          <div class="col-md-6">
+            <div class="form-group">
+              <label>Category</label>
+              <select name="category" class="form-control" required>
+                <option value="">Select Category</option>
+                <option value="Programs" <?= $division->category == 'Programs' ? 'selected' : '' ?>>Programs</option>
+                <option value="Operations" <?= $division->category == 'Operations' ? 'selected' : '' ?>>Operations</option>
+                <option value="Other" <?= $division->category == 'Other' ? 'selected' : '' ?>>Other</option>
+              </select>
+            </div>
+          </div>
 
-  <div class="col-md-6">
-    <div class="form-group">
-      <label>Division Head</label>
-      <select name="division_head" class="form-control select2" required>
-        <option value="">Select  Head</option>
-        <?php foreach ($lists as $staff): ?>
-          <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == $division->focal_person) ? 'selected' : '' ?>>
-            <?= $staff->lname . ' ' . $staff->fname ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="form-group">
-      <label>Focal Person</label>
-      <select name="focal_person" class="form-control select2" required>
-        <option value="">Select Focal Person</option>
-        <?php foreach ($lists as $staff): ?>
-          <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == $division->focal_person) ? 'selected' : '' ?>>
-            <?= $staff->lname . ' ' . $staff->fname ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-  </div>
+          <?php
+          $fields = [
+            'division_head' => 'Division Head',
+            'focal_person' => 'Focal Person',
+            'finance_officer' => 'Finance Officer',
+            'admin_assistant' => 'Admin Assistant',
+            'directorate_id' => 'Directorate',
+            'head_oic_id' => 'Division Head OIC',
+            'director_id' => 'Director',
+            'director_oic_id' => 'Director OIC',
+          ];
+          foreach ($fields as $key => $label): ?>
+            <div class="col-md-6 mt-2">
+              <div class="form-group">
+                <label><?= $label ?></label>
+                <select name="<?= $key ?>" class="form-control select2">
+                  <option value="">Select <?= $label ?></option>
+                  <?php foreach ($lists as $staff): ?>
+                    <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == @$division->$key) ? 'selected' : '' ?>>
+                      <?= $staff->lname . ' ' . $staff->fname ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            </div>
+          <?php endforeach; ?>
 
-  <div class="col-md-6">
-    <div class="form-group">
-      <label>Finance Officer</label>
-      <select name="finance_officer" class="form-control select2" required>
-        <option value="">Select Finance Officer</option>
-        <?php foreach ($lists as $staff): ?>
-          <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == $division->finance_officer) ? 'selected' : '' ?>>
-            <?= $staff->lname . ' ' . $staff->fname ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-  </div>
+          <!-- OIC Dates -->
+          <div class="col-md-6 mt-2">
+            <div class="form-group">
+              <label>Head OIC Start Date</label>
+              <input type="date" class="form-control" name="head_oic_start_date" value="<?= $division->head_oic_start_date ?>">
+            </div>
+          </div>
+          <div class="col-md-6 mt-2">
+            <div class="form-group">
+              <label>Head OIC End Date</label>
+              <input type="date" class="form-control" name="head_oic_end_date" value="<?= $division->head_oic_end_date ?>">
+            </div>
+          </div>
 
-  <div class="col-md-6">
-    <div class="form-group">
-      <label>Admin Assistant</label>
-      <select name="admin_assistant" class="form-control select2" required>
-        <option value="">Select Admin Assistant</option>
-        <?php foreach ($lists as $staff): ?>
-          <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == $division->admin_assistant) ? 'selected' : '' ?>>
-            <?= $staff->lname . ' ' . $staff->fname ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-  </div>
-</div>
-
-
-        <div class="form-group text-end mt-4">
-          <input type="submit" class="btn btn-dark" value="Update">
-          <input type="reset" class="btn btn-danger" value="Reset">
+          <div class="col-md-6 mt-2">
+            <div class="form-group">
+              <label>Director OIC Start Date</label>
+              <input type="date" class="form-control" name="director_oic_start_date" value="<?= $division->director_oic_start_date ?>">
+            </div>
+          </div>
+          <div class="col-md-6 mt-2">
+            <div class="form-group">
+              <label>Director OIC End Date</label>
+              <input type="date" class="form-control" name="director_oic_end_date" value="<?= $division->director_oic_end_date ?>">
+            </div>
+          </div>
         </div>
 
+        <div class="form-group text-end mt-4">
+          <button type="submit" class="btn btn-dark"><i class="fa fa-save"></i> Update</button>
+          <button type="reset" class="btn btn-danger"><i class="fa fa-undo"></i> Reset</button>
+        </div>
         <?= form_close(); ?>
       </div>
     </div>
