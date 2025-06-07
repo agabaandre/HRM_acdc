@@ -18,6 +18,8 @@
     $currentYear = date('Y');
     $currentMonth = date('n');
     $currentQuarter = 'Q' . ceil($currentMonth / 3);
+   //dd(user_session());
+ 
 @endphp
 
 <div class="card shadow-sm">
