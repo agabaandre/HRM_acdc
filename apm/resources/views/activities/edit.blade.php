@@ -302,11 +302,20 @@
             <div class="mb-4">
                 <div class="form-group">
                     <label for="key_result_area" class="form-label">Key Result Area <span class="text-danger">*</span></label>
-                    <textarea name="key_result_area"
-                              id="key_result_area"
-                              class="form-control form-control-lg @error('key_result_area') is-invalid @enderror"
-                              rows="2"
-                              required>{{ old('key_result_area', $matrix->key_result_area[intval($activity->key_result_area)]['description'] ?? '') }}</textarea>
+                    <select name="key_result_area" id="key_result_area" class="form-select border-success" required>
+                            <option value="" disabled>Select Key Result</option>
+                            @php
+                                $keyResults = is_array($matrix->key_result_area) 
+                                            ? $matrix->key_result_area 
+                                            : json_decode($matrix->key_result_area ?? '[]', true);
+                            @endphp
+                            @foreach($keyResults as $index => $kr)
+                                <option value="{{ $index }}" {{ (intval($activity->key_result_area)==$index)?'selected':''}}>
+                                    {{ $kr['description'] ?? 'No Description' }}
+                                </option>
+                            @endforeach
+                        </select>
+
                     @error('key_result_area')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -390,6 +399,13 @@
             }
         });
 
+        
+       function  formatMoney(amount){
+            const parts = amount.toFixed(2).split("."); // ["1234567", "50"]
+          return  parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + parts[1];
+        }
+
+
         // Calculate total
         function calculateTotal() {
             let total = 0;
@@ -398,7 +414,7 @@
                 const quantity = parseFloat($(this).find('.quantity-input').val()) || 1;
                 total += amount * quantity;
             });
-            $('#budgetTotal').text(total.toFixed(2));
+            $('#budgetTotal').text(formatMoney(total));
             $('#budgetTotalInput').val(total.toFixed(2));
         }
 
