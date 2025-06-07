@@ -23,7 +23,7 @@
 
 @section('content')
 <div class="row">
-    <div class="col-md-8">
+    <div class="col-md-10">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
@@ -157,7 +157,7 @@
         </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-md-2">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Timeline</h5>

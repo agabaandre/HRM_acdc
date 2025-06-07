@@ -49,27 +49,32 @@ class ActivityController extends Controller
      */
     public function create(Matrix $matrix): View
     {
+        ini_set('memory_limit', '1024M');
         // Eager load division
         $matrix->load('division');
-    
+      
         // Request Types
         $requestTypes = RequestType::all();
     
         // Staff only from current matrix division
-        $staff = Staff::active()
+        $staff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
             ->where('division_id', $matrix->division_id)
             ->get();
     
         // All staff grouped by division for external participants
-        $allStaff = Staff::active()
+        $allStaff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
             ->where('division_id', '!=', $matrix->division_id)
             ->get()
             ->groupBy('division_name');
     
         // Cache locations
-        $locations = Cache::remember('locations', 60, function () {
-            return Location::all();
-        });
+        // $locations = Cache::remember('locations', 60, function () {
+        //     return Location::all();
+        // });
+
+        $locations =Location::all();
     
         // Fund and Cost items
         $fundTypes = FundType::all();

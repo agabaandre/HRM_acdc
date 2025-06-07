@@ -23,6 +23,7 @@ class MatrixController extends Controller
             'division',
             'staff',
             'focalPerson',
+            'forwardWorkflow',
             'activities' => function ($q) {
                 $q->select('matrix_id', 'total_participants', 'budget')
                   ->whereNotNull('matrix_id');
