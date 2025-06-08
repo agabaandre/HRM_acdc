@@ -6,12 +6,14 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
-        <i class="bx bx-plus-circle me-1"></i> Add Activity
-    </a>
-    <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
-        <i class="bx bx-edit me-1"></i> Edit Matrix
-    </a>
+   @if(still_with_creator($matrix))
+        <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
+            <i class="bx bx-plus-circle me-1"></i> Add Activity
+        </a>
+        <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
+            <i class="bx bx-edit me-1"></i> Edit Matrix
+        </a>
+    @endif
     <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary btn-sm">
         <i class="bx bx-arrow-back me-1"></i> Back
     </a>
@@ -81,6 +83,16 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="row">
+                @if($matrix->overall_status !=='approved')
+                <div class="badge {{config('approval_states')[$matrix->overall_status]}} col-md-6">
+                <i class="fa fa-clock text-bold"></i>   {{ ($matrix->workflow_definition)?$matrix->workflow_definition->role:strtoupper($matrix->overall_status) }}
+                </div>
+                @endif
+                @if($matrix->overall_status =='approved')
+                    <div class="badge bg-success col-md-6"><i class="bx bx-check text-bold"></i>  {{strtoupper($matrix->overall_status)}}</div>
+                @endif
                 </div>
             </div>
         </div>
@@ -178,6 +190,12 @@
             <div class="p-3">
                 {{ $activities->withQueryString()->links() }}
             </div>
+
+             @if(can_take_action($matrix))
+                <div class="col-md-4 mb-2 px-2 ms-auto">
+                    @include('matrices.partials.approval-actions', ['matrix' => $matrix])
+                 </div>
+            @endif
         </div>
     </div>
 </div>

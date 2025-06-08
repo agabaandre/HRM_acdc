@@ -123,9 +123,11 @@
                                     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-info" title="View">
                                         <i class="bx bx-show"></i>
                                     </a>
+                                    @if(still_with_creator($matrix))
                                     <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-sm btn-outline-warning" title="Edit">
                                         <i class="bx bx-edit"></i>
                                     </a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

@@ -5,8 +5,8 @@
 @section('header', 'Activity Details')
 
 @section('header-actions')
-<div class="d-flex gap-2">
-    @if($matrix->overall_status !== 'approved')
+<div class="d-flex gap-1">
+    @if(still_with_creator($matrix))
         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning">
             <i class="bx bx-edit"></i> Edit Activity
         </a>
@@ -23,7 +23,7 @@
 
 @section('content')
 <div class="row">
-    <div class="col-md-10">
+    <div class="col-md-9">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
@@ -153,11 +153,19 @@
                         </tfoot>
                     </table>
                 </div>
+
+            @if(can_take_action($matrix))
+            <div class="col-md-4 mb-2 px-2 ms-auto">
+              @include('activities.partials.approval-actions',['activity'=>$activity,'matrix'=>$matrix])
+            </div>
+            @endif
+     
+
             </div>
         </div>
     </div>
 
-    <div class="col-md-2">
+    <div class="col-md-3">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Timeline</h5>
@@ -170,9 +178,9 @@
                     </div>
                     @foreach($activity->activityApprovalTrails as $trail)
                         <div class="list-group-item">
-                            <strong>{{ ucfirst($trail->status) }}</strong><br>
+                            <small class="badge bg-info">{{ucwords($trail->action)}}</small><br>
                             <small>{{ $trail->created_at->format('Y-m-d H:i') }} - {{ $trail->staff->name }}</small><br>
-                            <p class="mb-0">{{ $trail->remarks }}</p>
+                            <p class="mb-0 text-muted">{{ $trail->remarks }}</p>
                         </div>
                     @endforeach
                 </div>
@@ -197,6 +205,7 @@
                 @endforelse
             </div>
         </div>
+      
     </div>
 </div>
 @endsection
