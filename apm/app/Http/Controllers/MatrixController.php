@@ -252,7 +252,7 @@ class MatrixController extends Controller
         }
 
         $last_workflow_id=null;
-        $last_approval_order=null;
+        $last_approval_order=$matrix->approval_level;
 
         $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->where('action','!=','approved')->first();
 
@@ -273,7 +273,7 @@ class MatrixController extends Controller
             'key_result_area'     => json_encode($validated['key_result_area']),
             'staff_id'            => user_session('staff_id'),
             'forward_workflow_id' => ($request->action == 'approvals' && $last_workflow_id==null)?1:$last_workflow_id,
-            'approval_level' => ($request->action == 'approvals' && $last_approval_order==null)?1:$last_approval_order,
+            'approval_level' => $last_approval_order,
         ]);
     
         return redirect()->route('matrices.index')->with([
