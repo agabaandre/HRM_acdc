@@ -936,10 +936,11 @@ public function get_staff_without_ppa($period = null, $division_id = null)
     }));
 }
 
+public function ppa_exists($entry_id){
 
-
-
+}
 
 
 
 }
+

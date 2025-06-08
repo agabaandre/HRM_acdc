@@ -29,6 +29,15 @@ $ppa_entryid = md5($staff_id . '_' . str_replace(' ', '', $current_period));
 
         <?php if (in_array('38', $permissions)) : ?>
             <li class="nav-item" role="presentation">
+                <a class="nav-link <?php if ($this->uri->segment(2) == 'midterm') echo 'active'; ?>" href="<?= base_url('performance/midterm'); ?>">
+                    <i class="bx bx-collection"></i> Mid Term Review
+                </a>
+            </li>
+        <?php endif; ?>
+
+
+        <?php if (in_array('38', $permissions)) : ?>
+            <li class="nav-item" role="presentation">
                 <a class="nav-link <?php if ($this->uri->segment(2) == 'my_ppas') echo 'active'; ?>" href="<?= base_url('performance/my_ppas'); ?>">
                     <i class="bx bx-collection"></i> My PPAs
                 </a>

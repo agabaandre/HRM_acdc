@@ -11,6 +11,7 @@ class Performance extends MX_Controller
 		parent::__construct();
 		$this->module = "performance";
 		$this->load->model("performance_mdl", 'per_mdl');
+        $this->load->model("midterm_mdl", 'midterm_mdl');
 	}
 
 	public function index()
@@ -124,8 +125,6 @@ class Performance extends MX_Controller
     redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);
 }
 
-
-
 	
 	public function view_ppa($entry_id)
 	{
@@ -179,7 +178,11 @@ class Performance extends MX_Controller
 		render('staff_ppa', $data); // your blade/PHP view
 
 		
+
 	}
+
+
+    
 	public function approve_ppa($entry_id)
 	{
         //draft status 0 is for summitted entries, 1 is in in draft mode, 2 is for approved.
@@ -545,8 +548,17 @@ public function ppa_contract($contract_id){
     return $data;
   }
 
-        
-        
+       // In models/Au_model.php
+       public function get_competencies_by_version($version = 1)
+       {
+           $query = $this->db->where('version', $version);
+       return  $this->db->get('au_values')->result_array();
+             
+       
+       // /dd($this->db->last_query());
+       }      
+
+ 
     
 	
 }

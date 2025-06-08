@@ -46,6 +46,11 @@
                        class="btn btn-sm btn-outline-primary" target="_blank">
                       <i class="fa fa-eye"></i> View PPA
                     </a>
+                    
+                    
+                  
+
+
                   <?php else: ?>
                     <span class="text-muted">No PPA</span>
                   <?php endif; ?>

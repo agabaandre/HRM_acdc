@@ -11,6 +11,7 @@ class Midterm extends MX_Controller
 		parent::__construct();
 		$this->module = "performance";
 		$this->load->model("performance_mdl", 'per_mdl');
+        $this->load->model("midterm_mdl", 'midterm_mdl');
 	}
 
 	public function index()
@@ -40,123 +41,86 @@ class Midterm extends MX_Controller
 
     }
 
-	public function save_ppa()
-{
-    $data = $this->input->post();
+    public function save_ppa()
+    {
+        $data = $this->input->post();
+        $staff_id = $data['staff_id'];
+        $entry_id = $data['entry_id'];
+        $user_id = $this->session->userdata('user')->staff_id;
     
-    $staff_id = $data['staff_id'];
-    $performance_period = str_replace(' ','-',current_period());
-    $entry_id = md5($staff_id . '_' . str_replace(' ', '', $performance_period));
-
-    $save_data = [
-        'staff_id' => $data['staff_id'],
-        'staff_contract_id' => $data['staff_contract_id'],
-        'performance_period' => $performance_period,
-        'entry_id' => $entry_id,
-        'supervisor_id' => $data['supervisor_id'],
-        'supervisor2_id' => NULL, //Set to NULL beacuse its PPA
-        'objectives' => json_encode($data['objectives']),
-        'training_recommended' => $data['training_recommended'] ?? 'No',
-        'required_skills' => isset($data['required_skills']) ? json_encode($data['required_skills']) : null,
-        'training_contributions' => $data['training_contributions'] ?? null,
-        'recommended_trainings' => $data['recommended_trainings'] ?? null,
-        'recommended_trainings_details' => $data['recommended_trainings_details'] ?? null,
-        'staff_sign_off' => 1,
-        'draft_status' => $data['submit_action'] === 'submit' ? 0 : 1,
-        'updated_at' => date('Y-m-d H:i:s'),
-    ];
-//dd($save_data);
-    $exists = $this->per_mdl->get_staff_plan_id($entry_id);
-    //$ppa = $this->db->query("SELECT * FROM ppa_entries WHERE performance_period='$performance_period' and staff_id='$staff_id'")->row();
-
-    if ($exists) {
-       // dd($exists);
+        // Prepare midterm save data
+        $save_data = [
+            'midterm_objectives'             => isset($data['objectives']) ? json_encode($data['objectives']) : null,
+            'midterm_competency'             => isset($data['midterm_competency']) ? json_encode($data['midterm_competency']) : null,
+            'midterm_comments'               => $data['midterm_comments'] ?? null,
+            'midterm_training_review'        => $data['midterm_training_review'] ?? null,
+            'midterm_recommended_skills'     => isset($data['midterm_recommended_skills']) ? json_encode($data['midterm_recommended_skills']) : null,
+            'midterm_achievements'           => $data['midterm_achievements'] ?? null,
+            'midterm_non_achievements'       => $data['midterm_non_achievements'] ?? null,
+            'midterm_rating_by'              => $this->session->userdata('user')->staff_id,
+            'midterm_sign_off'               => 1,
+            'midterm_draft_status'           => $data['midterm_submit_action'] === 'submit' ? 0 : 1,
+            'midterm_updated_at'             => date('Y-m-d H:i:s'),
+        ];
+        
+    //dd($save_data);
+        // First-time save sets midterm_created_at
+        $exists = $this->db->where('entry_id', $entry_id)->get('ppa_entries')->row();
+        if (empty($exists->midterm_created_at)) {
+            $save_data['midterm_created_at'] = date('Y-m-d H:i:s');
+        }
+    
+        // Perform DB update
         $this->db->where('entry_id', $entry_id)->update('ppa_entries', $save_data);
-        $msg = [
-            'msg' => $data['submit_action'] === 'submit' ? 'Saved Successfully.' : 'Draft saved successfully.',
+    
+        // Insert into approval trail only on submit
+        if ($data['midterm_submit_action'] === 'submit') {
+            $this->db->insert('ppa_approval_trail', [
+                'entry_id'   => $entry_id,
+                'staff_id'   => $user_id,
+                'comments'   => $data['midterm_comments'] ?? '',
+                'action'     => 'Midterm Submitted',
+                'type'       => 'MID-TERM REVIEW',
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+    
+            $save_data['type'] = 'midterm_submission';
+            $save_data['staff_id'] = $staff_id;
+            $this->notify_ppa_status($save_data);
+        }
+    
+        // Notify and redirect
+        Modules::run('utility/setFlash', [
+            'msg'  => $data['midterm_submit_action'] === 'submit'
+                ? 'Midterm submitted successfully.'
+                : 'Midterm draft saved successfully.',
             'type' => 'success'
-        ];
-        $name = staff_name($staff_id);
-        $log_message = "Updated PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
-        log_user_action($log_message);
-    } else {
-        $save_data['created_at'] = date('Y-m-d H:i:s');
-        $this->db->insert('ppa_entries', $save_data);
-        $msg = [
-            'msg' => $data['submit_action'] === 'submit' ? 'Plan submitted for Review.' : 'Draft saved successfully.',
-            'type' => 'success'
-        ];
-
-        $name = staff_name($staff_id);
-        $log_message = "Created PPA entry [{$entry_id}] for staff ID [{$staff_id}] , [{$name}]";
-        log_user_action($log_message);
-    }
-
-    // 📝 Insert to approval trail only if submit
-    if ($data['submit_action'] === 'submit') {
-        if($staff_id == $this->session->userdata('user')->staff_id){
-
-        $this->db->insert('ppa_approval_trail', [
-            'entry_id' => $entry_id,
-            'staff_id' => $staff_id,
-            'comments' => $this->input->post('comments'),
-            'action' => 'Submitted',
-            'created_at' => date('Y-m-d H:i:s')
         ]);
-    }else{
-        $this->db->insert('ppa_approval_trail', [
-            'entry_id' => $entry_id,
-            'staff_id' => $data['supervisor_id'],
-            'comments' => $this->input->post('comments'),
-            'action' => 'Updated',
-            'created_at' => date('Y-m-d H:i:s')
-        ]); 
+    
+        redirect("performance/midterm/midterm_review/{$entry_id}/{$staff_id}");
     }
-
-    //$data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
-    $save_data['type']='submission';
-    $this->notify_ppa_status($save_data);
-    }
-
-   
-
-    Modules::run('utility/setFlash', $msg);
-    redirect('performance/view_ppa/' . $entry_id.'/'.$staff_id);
-}
-
-
-
-	
-	public function view_ppa($entry_id)
+    
+    
+public function midterm_review($entry_id)
 	{
 		// Extract staff_id from entry_id
 		$staff_id = explode('_', $entry_id)[0];
 	
 		// Load dependencies
 		$data['module'] = $this->module;
-		$data['title'] = "Performance Plan - " . staff_name($this->uri->segment(4));
+		$data['title'] = "Mid Term Review - " . staff_name($this->uri->segment(4));
 		$data['skills'] = $this->db->get('training_skills')->result();
 	
 		// Get saved PPA form
 		$data['ppa'] = $this->per_mdl->get_plan_by_entry_id($entry_id);
+
+        $data['midppa'] = $this->midterm_mdl->get_plan_by_entry_id($entry_id);
 	
 		// Get approval logs if any
 		$data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
 	
-		render('plan', $data);
-	}
-			public function pending_approval()
-		{
-			$data['module'] = $this->module;
-			$data['title'] = "Performance Plans Pending Action";
-			$staff_id = $this->session->userdata('user')->staff_id;
-			
-			$data['plans'] = $this->per_mdl->get_pending_ppa($staff_id);
-			//$data['pendingcount'] = count($data['plans']);
-			//dd($data);
-
-			render('pending_ppa', $data);
-		}
+		render('midterm', $data);
+}
 
 	
 	public function recent_ppa(){
@@ -179,7 +143,11 @@ class Midterm extends MX_Controller
 		render('staff_ppa', $data); // your blade/PHP view
 
 		
+
 	}
+
+
+    
 	public function approve_ppa($entry_id)
 	{
         //draft status 0 is for summitted entries, 1 is in in draft mode, 2 is for approved.
@@ -205,7 +173,8 @@ class Midterm extends MX_Controller
 			'staff_id'   => $staff_id,
 			'comments'   => $this->input->post('comments') ?? null,
 			'action'     => $log_action,
-			'created_at' => date('Y-m-d H:i:s')
+			'created_at' => date('Y-m-d H:i:s'),
+            'type'=>'MIDTERM'
 		]);
 	
 		// If returned, update the draft status
@@ -410,7 +379,7 @@ public function approved_by_me()
 
     render('approved_by_me', $data);
 }
-public function print_ppa($entry_id,$staff_id,$staff_contract_id,$approval_trail=FALSE)
+public function print_midterm($entry_id,$staff_id,$staff_contract_id,$approval_trail=FALSE)
     {
         $this->load->model('performance_mdl', 'per_mdl');
 
@@ -545,8 +514,9 @@ public function ppa_contract($contract_id){
     return $data;
   }
 
-        
-        
+   
+
+ 
     
 	
 }

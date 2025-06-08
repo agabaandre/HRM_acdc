@@ -15,7 +15,7 @@
         </thead>
         <tbody>
           <?php $i = 1;
-		  //dd($plans);
+		 // dd($plans);
           foreach ($plans as $plan): ?>
             <tr data-status="<?= $plan['overall_status']; ?>">
               <td><?= $i++; ?></td>
@@ -39,9 +39,12 @@
 				
 			</td>
 
-              <td>
-                <a href="<?php echo base_url()?>performance/view_ppa/<?=$plan['entry_id']; ?>/<?=$plan['staff_id']?>" class="btn btn-primary btn-sm" >
-                  <i class="fa fa-eye"></i> Preview
+        <td>
+                <a href="<?php echo base_url()?>performance/view_ppa/<?=$plan['entry_id']; ?>/<?=$plan['staff_id']?>" class="btn btn-primary btn-sm " >
+                  <i class="fa fa-eye"></i> Preview PPA
+
+
+                  
 				</a>
               </td>
             </tr>
