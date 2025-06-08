@@ -41,7 +41,7 @@ $permissions = $session->permissions;
 							<label>Country</label>
 							<select type="text" name="country" autocomplete="off" placeholder="Country" class="form-control">
 								<?php foreach ($countries->result() as $coutry) : ?>
-									<option value="<?php echo $coutry->name ?>"><?php echo $coutry->name ?></option>
+									<option value="<?php echo $coutry->nationality_id ?>"><?php echo $coutry->nationality ?></option>
 								<?php endforeach; ?>
 							</select>
 						</div>

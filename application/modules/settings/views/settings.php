@@ -29,26 +29,29 @@
   </div>
 
   <div class="row" id="settingsContainer">
-    <?php
-    $settings = [
-      ['settings/nationalities', 'Nationalities', 'bx-globe'],
-      ['settings/duty_stations', 'Duty Stations', 'bx-map'],
-      ['settings/contracting_institutions', 'Contracting Institutions', 'bx-network-chart'],
-      ['settings/contract_types', 'Contract Types', 'bx-group'],
-      ['settings/divisions', 'Divisions', 'bx-sitemap'],
-      ['settings/grades', 'Grades', 'bx-bar-chart-alt-2'],
-      ['settings/jobs', 'Jobs', 'bx-briefcase'],
-      ['settings/jobs_acting', 'Jobs Acting', 'bx-id-card'],
-      ['settings/au_values', 'AU Values', 'bx-star'],
-      ['settings/funders', 'Funders', 'bx-dollar'],
-      ['settings/leave_types', 'Leave Types', 'bx-time-five'],
-      ['settings/sysvariables', 'System Variables', 'bx-cog'],
-      ['settings/training_skills', 'Training Skills', 'bx-book'],
-      ['settings/regions', 'Regions', 'bx-compass'],
-      ['settings/units', 'Units', 'bx-building'],
-      ['settings/ppa_variables', 'PPA Configuration', 'bx-slider-alt']
-    ];
+  <?php
+$settings = [
+  ['settings/nationalities', 'Nationalities', 'bx-globe'],
+  ['settings/duty_stations', 'Duty Stations', 'bx-map'],
+  ['settings/contracting_institutions', 'Contracting Institutions', 'bx-network-chart'],
+  ['settings/contract_types', 'Contract Types', 'bx-group'],
+  ['settings/directorates', 'Directorates', 'bx-git-branch'], 
+  ['settings/divisions', 'Divisions', 'bx-sitemap'],
+  ['settings/grades', 'Grades', 'bx-bar-chart-alt-2'],
+  ['settings/jobs', 'Jobs', 'bx-briefcase'],
+  ['settings/jobs_acting', 'Jobs Acting', 'bx-id-card'],
+  ['settings/au_values', 'AU Values', 'bx-star'],
+  ['settings/funders', 'Funders', 'bx-dollar'],
+  ['settings/leave_types', 'Leave Types', 'bx-time-five'],
+  ['settings/sysvariables', 'System Variables', 'bx-cog'],
+  ['settings/training_skills', 'Training Skills', 'bx-book'],
+  ['settings/regions', 'Regions', 'bx-compass'],
+  ['settings/units', 'Units', 'bx-building'],
+  ['settings/ppa_variables', 'PPA Configuration', 'bx-slider-alt']
+];
+?>
 
+<?php
     foreach ($settings as [$path, $label, $icon]) :
     ?>
       <div class="col-6 col-md-4 col-lg-3 mb-3 setting-card-item" data-title="<?= strtolower($label) ?>">
