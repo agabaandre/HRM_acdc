@@ -1,14 +1,92 @@
 <?php
 
-class Performance_mdl extends CI_Model
+class Midterm_mdl extends CI_Model
 {
-
     public function __construct()
     {
         parent::__construct();
     }
 
-	public function get_staff_plan_id($entry_id)
+
+
+    public function get_plan_by_entry_id($entry_id)
+    {
+        $query = $this->db->get_where('ppa_entries', ['entry_id' => $entry_id]);
+        $result = $query->row();
+
+        if ($result) {
+            $result->objectives = $result->objectives ? json_decode($result->objectives, true) : [];
+            $result->required_skills = $result->required_skills ? json_decode($result->required_skills, true) : [];
+
+            $result->midterm_objectives = $result->midterm_objectives ? json_decode($result->midterm_objectives, true) : [];
+            $result->midterm_competency = $result->midterm_competency ? json_decode($result->midterm_competency, true) : [];
+            $result->midterm_recommended_skills = $result->midterm_recommended_skills ? json_decode($result->midterm_recommended_skills, true) : [];
+        }
+
+        return $result;
+    }
+
+    public function save_midterm_review($entry_id, $data)
+    {
+        if (empty($entry_id) || empty($data)) return false;
+
+        $this->db->where('entry_id', $entry_id);
+        return $this->db->update('ppa_entries', $data);
+    }
+
+    public function get_midterm_entries($filters = [], $limit = 40, $offset = 0)
+    {
+        $this->db->select('pe.*, CONCAT(s.fname, " ", s.lname) AS staff_name');
+        $this->db->from('ppa_entries pe');
+        $this->db->join('staff s', 's.staff_id = pe.staff_id');
+
+        if (!empty($filters['performance_period'])) {
+            $this->db->where('pe.performance_period', $filters['performance_period']);
+        }
+
+        if (!empty($filters['midterm_draft_status']) || $filters['midterm_draft_status'] === "0") {
+            $this->db->where('pe.midterm_draft_status', $filters['midterm_draft_status']);
+        }
+
+        if (!empty($filters['staff_id'])) {
+            $this->db->where('pe.staff_id', $filters['staff_id']);
+        }
+
+        $this->db->order_by('pe.midterm_updated_at', 'DESC');
+
+        if ($limit > 0) {
+            $this->db->limit($limit, $offset);
+        }
+
+        return $this->db->get()->result_array();
+    }
+
+    public function get_midterm_status($entry_id)
+    {
+        $entry = $this->db->get_where('ppa_entries', ['entry_id' => $entry_id])->row();
+        if (!$entry) return 'Not Started';
+
+        if ((int) $entry->midterm_draft_status === 0 && $entry->midterm_sign_off == 1) {
+            return 'Submitted';
+        } elseif ((int) $entry->midterm_draft_status === 1) {
+            return 'Draft';
+        } else {
+            return 'Not Started';
+        }
+    }
+
+    public function is_midterm_editable($entry_id, $staff_id)
+    {
+        $entry = $this->db->get_where('ppa_entries', ['entry_id' => $entry_id])->row();
+
+        if (!$entry) return false;
+
+        $status = (int) $entry->midterm_draft_status;
+        $isOwner = $entry->staff_id == $staff_id;
+
+        return ($status === 1 && $isOwner);
+    }
+    public function get_staff_plan_id($entry_id)
 	{
 		
 		if ($entry_id) {
@@ -21,19 +99,6 @@ class Performance_mdl extends CI_Model
 		
 	}
 
-    public function get_plan_by_entry_id($entry_id)
-    {
-        $query = $this->db->get_where('ppa_entries', ['entry_id' => $entry_id]);
-        $result = $query->row();
-    
-        if ($result) {
-            // Decode only if the field is not null
-            $result->objectives = $result->objectives ? json_decode($result->objectives) : [];
-            $result->required_skills = $result->required_skills ? json_decode($result->required_skills) : [];
-        }
-    
-        return $result;
-    }
     
 public function get_approval_trail($entry_id)
 {
@@ -942,5 +1007,7 @@ public function ppa_exists($entry_id){
 
 
 
-}
 
+
+
+}

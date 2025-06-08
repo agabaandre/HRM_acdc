@@ -157,7 +157,20 @@ class Settings extends MX_Controller
 		$data['title'] = "Divisions";
 		render('divisions', $data);
 	}
+	public function directorates()
+	{
+		$this->load->model('settings_mdl');
+	
+		$data['directorates'] = $this->settings_mdl->get_content('directorates');
 
+	
+		// Additional metadata
+		$data['module'] = $this->module;
+		$data['title'] = "Directorates";
+	
+		render('directorates', $data);
+	}
+	
 	public function grades()
 	{
 		$this->load->model('settings_mdl');
@@ -290,37 +303,34 @@ public function sysvariables()
 }
 
 
-	public function ppa_variables()
-	{
-		$data['title'] = "PPA Configuration";
-		$data['uptitle'] = "PPA Configuration";
-		$data['module'] = 'settings';
-		$data['view'] = "ppa_variables";
-		$postdata = $this->input->post();
-		unset($postdata['africacdc_csrf_cookie']);
-		$data['setting'] = $this->settings_mdl->get_ppa();
-		if ($this->input->post()) {
-			$res = $this->settings_mdl->update_ppa_variables($postdata);
-			if ($res) {
-				$msg = array(
-					'msg' => 'Successfully Saved',
-					'type' => 'success'
-				);
-				Modules::run('utility/setFlash', $msg);
-				redirect('settings/ppa_variables');
-			} else {
-				$msg = array(
-					'msg' => 'Failed',
-					'type' => 'error'
-				);
-				Modules::run('utility/setFlash', $msg);
-				redirect("settings/ppa_variables");
-			}}
-			else {
-				echo Modules::run('templates/main', $data);
-			}
-		
-	}
+public function ppa_variables()
+{
+    $data['title'] = "PPA Configuration";
+    $data['uptitle'] = "PPA Configuration";
+    $data['module'] = 'settings';
+    $data['view'] = "ppa_variables";
+
+    $postdata = $this->input->post();
+
+   
+    unset($postdata['africacdc_csrf_cookie'], $postdata['africacdc_csrf_token']);
+
+    $data['setting'] = $this->settings_mdl->get_ppa();
+
+    if ($this->input->post()) {
+        $res = $this->settings_mdl->update_ppa_variables($postdata);
+        if ($res) {
+            $msg = ['msg' => 'Successfully Saved', 'type' => 'success'];
+        } else {
+            $msg = ['msg' => 'Failed', 'type' => 'error'];
+        }
+        Modules::run('utility/setFlash', $msg);
+        redirect('settings/ppa_variables');
+    } else {
+        echo Modules::run('templates/main', $data);
+    }
+}
+
 	
 		
 	

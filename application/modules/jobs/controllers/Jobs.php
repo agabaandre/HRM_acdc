@@ -581,6 +581,56 @@ public function update_latest_contracts_in_ppa()
 
     log_message('info', '[CRON] staff_contract_id in PPA entries updated from latest contracts.');
 }
+//midterm
+
+public function add_midterm_fields_to_ppa_entries($drop = false)
+{
+    // Field definitions with insert order preserved
+    $fields = [
+        'midterm_objectives'         => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'midterm_competency'         => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'midterm_achievements'       => "TEXT",
+        'midterm_non_achievements'   => "TEXT",
+        'midterm_comments'           => "TEXT",
+        'midterm_training_review'    => "TEXT",
+        'midterm_recommended_skills' => "LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+        'midterm_rating_by'          => "INT DEFAULT NULL",
+        'midterm_sign_off'           => "TINYINT(1) DEFAULT 0",
+        'midterm_draft_status'       => "TINYINT(1) DEFAULT 1",
+        'midterm_created_at'         => "DATETIME DEFAULT NULL",
+        'midterm_updated_at'         => "DATETIME DEFAULT NULL"
+    ];
+    
+
+    if ($drop) {
+        foreach ($fields as $field => $definition) {
+            $exists = $this->db->query("SHOW COLUMNS FROM `ppa_entries` LIKE '$field'")->num_rows();
+
+            if ($exists > 0) {
+                $sql = "ALTER TABLE `ppa_entries` DROP COLUMN `$field`";
+                $this->db->query($sql);
+                echo "🗑️ Dropped column: <strong>$field</strong><br>";
+            } else {
+                echo "⚠️ Column does not exist: <strong>$field</strong><br>";
+            }
+        }
+    } else {
+        $previous = 'updated_at';
+        foreach ($fields as $field => $definition) {
+            $exists = $this->db->query("SHOW COLUMNS FROM `ppa_entries` LIKE '$field'")->num_rows();
+
+            if ($exists === 0) {
+                $sql = "ALTER TABLE `ppa_entries` ADD `$field` $definition AFTER `$previous`";
+                $this->db->query($sql);
+                echo "✅ Added column: <strong>$field</strong><br>";
+            } else {
+                echo "ℹ️ Column already exists: <strong>$field</strong><br>";
+            }
+
+            $previous = $field;
+        }
+    }
+}
 
 
 
