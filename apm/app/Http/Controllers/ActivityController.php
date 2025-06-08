@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\ActivityApprovalTrail;
 use App\Models\Matrix;
 use App\Models\RequestType;
 use App\Models\FundType;
@@ -372,5 +373,34 @@ class ActivityController extends Controller
         return redirect()
             ->route('matrices.activities.index', $matrix)
             ->with('success', 'Activity deleted successfully.');
+    }
+
+    public function update_status(Request $request, Matrix $matrix, Activity $activity): RedirectResponse
+    {
+        $request->validate(['action' => 'required']);
+     
+        $activityTrail = new ActivityApprovalTrail();
+
+        $activityTrail->remarks  = $request->comment  ?? 'passed';
+        $activityTrail->action   = $request->action;
+        $activityTrail->activity_id   = $activity->id;
+        $activityTrail->matrix_id   = $matrix->id;
+        $activityTrail->staff_id = user_session('staff_id');
+        $activityTrail->save();
+
+        if($activityTrail->action !=='passed'){
+
+            $matrix->forward_workflow_id = null;
+            $matrix->overall_status ='pending';
+            $matrix->update();
+
+        }
+
+        $message = "Activity Updated successfully";
+
+        return redirect()
+        ->route('matrices.activities.show', [$matrix, $activity])
+        ->with('success', $message);
+
     }
 }

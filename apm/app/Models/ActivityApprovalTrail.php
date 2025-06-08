@@ -18,6 +18,8 @@ class ActivityApprovalTrail extends Model
     protected $fillable = [
         'matrix_id',
         'activity_id',
+        'staff_id',
+        'oic_staff_id',
         'action',
         'remarks',
     ];
@@ -44,5 +46,15 @@ class ActivityApprovalTrail extends Model
     public function matrix(): BelongsTo
     {
         return $this->belongsTo(Matrix::class);
+    }
+
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class,"staff_id","staff_id");
+    }
+
+    public function inchargeStaff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class,"oic_staff_id","staff_id");
     }
 }

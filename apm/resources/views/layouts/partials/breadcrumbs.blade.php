@@ -83,13 +83,13 @@
                         @endphp
 
                         @if($loop->last || empty($url))
-                        <li class="breadcrumb-item active" aria-current="page">
-                            {{ $displayName }}
+                        <li class="breadcrumb-item active" aria-current="page" title="{{$displayName}}">
+                            {{  Str::limit($displayName,30) }}
                         </li>
                         @else
                         <li class="breadcrumb-item">
-                            <a href="{{ url($url) }}">
-                                {{ $displayName }}
+                            <a href="{{ url($url) }}" title="{{$displayName}}">
+                                {{  Str::limit($displayName,30) }}
                             </a>
                         </li>
                         @endif

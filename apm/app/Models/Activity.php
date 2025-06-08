@@ -16,6 +16,7 @@ class Activity extends Model
     const STATUS_SUBMITTED = 'submitted';
     const STATUS_APPROVED = 'approved';
     const STATUS_REJECTED = 'returned';
+    const STATUS_OK = 'passed';
 
     protected $fillable = [
         'forward_workflow_id',

@@ -1,4 +1,9 @@
 <?php
+use App\Models\Approver;
+use App\Models\MatrixApprovalTrail;
+use App\Models\WorkflowDefinition;
+use Carbon\Carbon;
+
 
 if (!function_exists('user_session')) {
     /**
@@ -32,5 +37,84 @@ if (!function_exists('user_session')) {
         }
         
     }
+
+    if (!function_exists('still_with_creator')) {
+        /**
+         * Get a value from session('user') using dot notation
+         */
+        function still_with_creator($matrix)
+        {
+
+            $user = session('user', []);
+            return ($matrix->staff_id == $user['staff_id'] && !$matrix->forward_workflow_id && $matrix->overall_status !== 'approved');
+        }
+
+    }
+
+    
+    if (!function_exists('done_approving')) {
+        /**
+         * Get a value from session('user') using dot notation
+         */
+        function done_approving($matrix)
+        {
+            $user = session('user', []);
+            $my_appoval =  MatrixApprovalTrail::where('matrix_id',$matrix->id)
+            ->where('action','approved')
+            ->where('staff_id',$user['staff_id'])->pluck('id');
+
+            return count($my_appoval)>0;
+        }
+
+    }
+
+
+    if (!function_exists('can_take_action')) {
+        /**
+         * Get a value from session('user') using dot notation
+         */
+        function can_take_action($matrix)
+        {
+            $user = session('user', []);
+
+            if (empty($user['staff_id']) || done_approving($matrix)) {
+                return false;
+            }
+
+            $today = Carbon::today();
+
+            //Checker that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
+
+            $workflow_dfns = Approver::where('staff_id', $user['staff_id'])
+            ->where('workflow_dfn_id',$matrix->forward_workflow_id)
+            ->orWhere(function ($query) use ($today, $user,$matrix) {
+                    $query ->where('workflow_dfn_id',$matrix->forward_workflow_id)
+                    ->where('oic_staff_id', $user['staff_id'])
+                    ->where('end_date', '>=', $today);
+                })
+                ->pluck('workflow_dfn_id');
+
+            if ($workflow_dfns->isEmpty()) {
+                return false;
+            }
+
+            $myWorkFlowDef = WorkflowDefinition::whereIn('id', $workflow_dfns)
+                ->orderBy('approval_order')
+                ->first();
+
+           /**TODO
+            * Factor in approval conditions 
+            */
+
+            $still_with_creator = still_with_creator($matrix);
+
+            $is_at_my_approval_level = ($myWorkFlowDef)?($myWorkFlowDef->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level =  $myWorkFlowDef->approval_order):false;
+
+            return ( ($is_at_my_approval_level  || $still_with_creator) && $matrix->overall_status !== 'approved');
+        }
+        
+    }
+
+   
     
 }

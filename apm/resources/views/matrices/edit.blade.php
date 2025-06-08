@@ -80,9 +80,29 @@
                 <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary px-4">
                     <i class="bx bx-arrow-back me-1"></i> Cancel
                 </a>
-                <button type="submit" class="btn btn-warning px-5 shadow-sm">
-                    <i class="bx bx-save me-2"></i> Update Matrix
-                </button>
+                
+
+                <div class="dropdown">
+                    <button class="btn btn-success dropdown-toggle w-100 text-white" type="button" id="approvalActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 0px;">
+                        Choose Action
+                    </button>
+                    <ul class="dropdown-menu w-100" aria-labelledby="approvalActionsDropdown">
+                        <li>
+                            <button type="submit" class="dropdown-item">
+                                <i class="bx bx-save me-2"></i> Update Matrix
+                            </button>
+                        </li>
+
+                        @if($matrix->activities->count()>0 && still_with_creator($matrix))
+                            <li>
+                            <button type="submit" class="dropdown-item"  name="action" value="approvals">
+                                    <i class="bx bx-save me-2"></i> Request Approval
+                                </button>
+                            </li>
+                        @endif
+                        
+                    </ul>
+                </div>
             </div>
         </form>
     </div>

@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Approver;
 use App\Models\Division;
+use App\Models\MatrixApprovalTrail;
+use App\Models\WorkflowDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -247,7 +250,20 @@ class MatrixController extends Controller
             $validated['division_id'] = $userDivisionId;
             $validated['focal_person_id'] = $userStaffId;
         }
-    
+
+        $last_workflow_id=null;
+        $last_approval_order=null;
+
+        $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->where('action','!=','approved')->first();
+
+     
+        if($last_approval_trail && $request->action == 'approvals'){
+
+            $workflow_defn       = WorkflowDefinition::where('approval_order', $last_approval_trail->approval_order)->first();
+            $last_workflow_id    = $workflow_defn->workflow_id;
+            $last_approval_order = $last_approval_trail->approval_order;
+        }
+
         // Update matrix
         $matrix->update([
             'division_id'         => $validated['division_id'],
@@ -256,7 +272,8 @@ class MatrixController extends Controller
             'quarter'             => $validated['quarter'],
             'key_result_area'     => json_encode($validated['key_result_area']),
             'staff_id'            => user_session('staff_id'),
-            'forward_workflow_id' => 1,
+            'forward_workflow_id' => ($request->action == 'approvals' && $last_workflow_id==null)?1:$last_workflow_id,
+            'approval_level' => ($request->action == 'approvals' && $last_approval_order==null)?1:$last_approval_order,
         ]);
     
         return redirect()->route('matrices.index')->with([
@@ -277,5 +294,52 @@ class MatrixController extends Controller
         return redirect()
             ->route('matrices.index')
             ->with('success', 'Matrix deleted successfully.');
+    }
+
+    public function update_status(Request $request, Matrix $matrix): RedirectResponse
+    {
+        $request->validate(['action' => 'required']);
+     
+        $activityTrail = new MatrixApprovalTrail();
+
+        $activityTrail->remarks  = $request->comment  ?? 'approved';
+        $activityTrail->action   = $request->action;
+        $activityTrail->matrix_id   = $matrix->id;
+        $activityTrail->approval_order   = $matrix->approval_level ?? 1;
+        $activityTrail->staff_id = user_session('staff_id');
+        $activityTrail->save();
+
+        if($activityTrail->action !=='approved'){
+
+            $matrix->forward_workflow_id = null;
+            $matrix->overall_status ='returned';
+            $matrix->update();
+
+        }else{
+            //move to next
+           $definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+           ->where('is_enabled',1)
+           ->where('approval_order',$matrix->approval_level +1)->first();
+
+           if($definition){
+
+            $matrix->forward_workflow_id = $definition->workflow_id;
+            $matrix->approval_level = $definition->approval_order;
+            $matrix->overall_status = 'pending';
+            $matrix->update();
+
+           }
+           else{
+            //no more approval levels
+            $matrix->overall_status = 'approved';
+           }
+        }
+
+        $message = "Matrix Updated successfully";
+
+        return redirect()
+        ->route('matrices.show', [$matrix])
+        ->with('success', $message);
+
     }
 }

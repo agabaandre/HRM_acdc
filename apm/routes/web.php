@@ -87,7 +87,14 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     
     // Add matrices and activities resources inside the middleware group
     Route::resource('matrices', MatrixController::class);
+    Route::post('/matrices/{matrix}/status', [MatrixController::class, 'update_status'])
+    ->name('matrices.status');
+    
+
     Route::resource('matrices.activities', ActivityController::class);
+
+    Route::post('/matrices/{matrix}/activities/{activity}/status', [ActivityController::class, 'update_status'])
+    ->name('matrices.activities.status');
     
     // Non-Travel Memo Routes
     Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);

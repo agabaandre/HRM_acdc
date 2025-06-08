@@ -61,4 +61,9 @@ class WorkflowDefinition extends Model
     {
         return $this->hasMany(Approver::class, 'workflow_dfn_id');
     }
+
+    public function level(): BelongsTo
+    {
+        return $this->belongsTo(Approver::class, 'approval_order');
+    }
 }
