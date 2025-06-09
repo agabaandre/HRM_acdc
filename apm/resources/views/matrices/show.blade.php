@@ -169,7 +169,7 @@
                                 </td>
                                 <td>
                                     <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }}">
-                                        {{ ucfirst($activity->my_last_action->action ?? ucfirst($activity->status) ) }}
+                                        {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : ucfirst($activity->status) ) }}
                                     </span>
                                 </td>
                                 <td class="text-center">

@@ -135,7 +135,8 @@ class MatrixController extends Controller
         'quarter' => $validated['quarter'],
         'key_result_area' => json_encode($validated['key_result_area']),
         'staff_id' => user_session('staff_id'),
-        'forward_workflow_id' => 1, // You had this twice. Only one is needed.
+        'forward_workflow_id' => null, // You had this twice. Only one is needed.
+        'overall_status'=>'draft'
     ]);
 
     return redirect()->route('matrices.index')
