@@ -65,6 +65,7 @@ if (!function_exists('user_session')) {
             $my_appoval =  MatrixApprovalTrail::where('matrix_id',$matrix->id)
             ->where('action','approved')
             ->where('staff_id',$user['staff_id'])->pluck('id');
+            
 
             return count($my_appoval)>0;
         }
@@ -83,6 +84,13 @@ if (!function_exists('user_session')) {
             if (empty($user['staff_id']) || done_approving($matrix)) {
                 return false;
             }
+
+            
+
+            $still_with_creator = still_with_creator($matrix);
+
+            if($still_with_creator)
+            return true;
 
             $today = Carbon::today();
 
@@ -108,8 +116,6 @@ if (!function_exists('user_session')) {
            /**TODO
             * Factor in approval conditions 
             */
-
-            $still_with_creator = still_with_creator($matrix);
 
             $is_at_my_approval_level = ($myWorkFlowDef)?($myWorkFlowDef->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level =  $myWorkFlowDef->approval_order):false;
 
