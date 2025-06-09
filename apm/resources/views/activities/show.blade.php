@@ -154,7 +154,7 @@
                     </table>
                 </div>
 
-            @if(can_take_action($matrix )  && $activity->my_last_action->action !=='passed')
+            @if(can_take_action($matrix )  && (($activity->my_last_action)?($activity->my_last_action->action !=='passed'):true)
             <div class="col-md-4 mb-2 px-2 ms-auto">
               @include('activities.partials.approval-actions',['activity'=>$activity,'matrix'=>$matrix])
             </div>
