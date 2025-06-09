@@ -93,7 +93,7 @@
                             </button>
                         </li>
 
-                        @if($matrix->activities->count()>0 && still_with_creator($matrix))
+                        @if($matrix->activities->count()>0 && still_with_creator($matrix) && ($matrix->staff_id == session('user')['staff_id']))
                             <li>
                             <button type="submit" class="dropdown-item"  name="action" value="approvals">
                                     <i class="bx bx-save me-2"></i> Request Approval
