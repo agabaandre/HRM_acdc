@@ -186,8 +186,8 @@ return $qry->num_rows();
 	{
 		$oldpass = $this->argonhash->make($postdata['oldpass']);
 		$newpass = $this->argonhash->make($postdata['newpass']);
-		$user = $this->session->get_userdata();
-		$uid = $user['user_id'];
+		$user = $this->session->userdata('user');
+		$uid = $user->user_id;
 		$this->db->select('password');
 		$this->db->where('user_id', $uid);
 		$qry = $this->db->get($this->table);

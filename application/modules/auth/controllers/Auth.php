@@ -524,20 +524,15 @@ public function revert()
     // Attempt password change
     $res = $this->auth_mdl->changePass($postdata);
 
-    dd($res);
+    //dd($postdata);
 
     // Set flash message based on result
-    if ($res === true || $res === '1') {
+    if ($res) {
         Modules::run('utility/setFlash', [
-            'msg'  => 'Password changed successfully.',
-            'type' => 'success'
+            'msg'  => $res,
+            'type' => 'info'
         ]);
-    } else {
-        Modules::run('utility/setFlash', [
-            'msg'  => is_string($res) ? $res : 'Failed to change password.',
-            'type' => 'danger'
-        ]);
-    }
+    } 
 
     redirect('auth/change_password');
 }
