@@ -168,7 +168,7 @@
                                     {{ number_format($totalBudget, 2) }}
                                 </td>
                                 <td>
-                                    <span class="badge bg-{{ ($activity->status === 'approved' || $activity->my_last_action->action=='passed') ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }}">
+                                    <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }}">
                                         {{ ucfirst($activity->my_last_action->action ?? ucfirst($activity->status) ) }}
                                     </span>
                                 </td>
