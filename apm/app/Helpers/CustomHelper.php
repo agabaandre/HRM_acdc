@@ -30,10 +30,6 @@ if (!function_exists('user_session')) {
             $staff_id = $user['staff_id'] ?? null;
             $division_fp_id = $user['focal_person'] ?? null;
         
-
-            //dd($user);
-       
-        
             return $staff_id === $division_fp_id;
         }
         
