@@ -192,6 +192,9 @@ private function handle_login($user_data, $email) {
  
 }
 
+
+
+
 public function cred_login()
 {
     $postdata = $this->input->post();
@@ -515,11 +518,30 @@ public function revert()
   }
 
   public function changePass()
-  {
+{
     $postdata = $this->input->post();
-    echo $res = $this->auth_mdl->changePass($postdata);
-    redirect('users/change_pass');
-  }
+
+    // Attempt password change
+    $res = $this->auth_mdl->changePass($postdata);
+
+    dd($res);
+
+    // Set flash message based on result
+    if ($res === true || $res === '1') {
+        Modules::run('utility/setFlash', [
+            'msg'  => 'Password changed successfully.',
+            'type' => 'success'
+        ]);
+    } else {
+        Modules::run('utility/setFlash', [
+            'msg'  => is_string($res) ? $res : 'Failed to change password.',
+            'type' => 'danger'
+        ]);
+    }
+
+    redirect('auth/change_password');
+}
+
 
   public function change_password(){
     $data['title'] = "Change Password";
