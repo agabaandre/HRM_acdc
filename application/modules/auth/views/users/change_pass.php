@@ -18,7 +18,7 @@
                     </div>
                     <div class="form-group">
                         <label for="new">New Password</label>
-                        <input type="password" class="form-control" name="newpass" id="new" onkeyup="checker();" required>
+                        <input type="password" class="form-control" name="newpass" id="new" required>
                         <p class="help-block error"></p>
                     </div>
                     <div class="form-group">
