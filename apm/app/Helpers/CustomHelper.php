@@ -85,12 +85,10 @@ if (!function_exists('user_session')) {
                 return false;
             }
 
-            
-
             $still_with_creator = still_with_creator($matrix);
 
             if($still_with_creator)
-            return true;
+            return false;
 
             $today = Carbon::today();
 
