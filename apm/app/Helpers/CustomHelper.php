@@ -2,6 +2,7 @@
 use App\Models\Approver;
 use App\Models\MatrixApprovalTrail;
 use App\Models\WorkflowDefinition;
+use App\Models\Staff;
 use Carbon\Carbon;
 
 
@@ -46,7 +47,8 @@ if (!function_exists('user_session')) {
         {
 
             $user = session('user', []);
-            return ($matrix->staff_id == $user['staff_id'] && $matrix->forward_workflow_id==null && $matrix->overall_status !== 'approved');
+            $creator = Staff::where('staff_id',$matrix->staff_id)->first();
+            return ($creator->division_id == $user['division_id'] && $matrix->forward_workflow_id==null && $matrix->overall_status !== 'approved');
         }
 
     }
