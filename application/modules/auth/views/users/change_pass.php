@@ -10,7 +10,7 @@
                     
     
                     <p class="changed" style="color:#005662;"></p>
-                    <?php echo form_open_multipart(base_url('auth/changePass'), array('id' => 'changpass', 'class' => 'user_form')); ?>
+                    <?php echo form_open(base_url('auth/changePass'), array('id' => 'changpass', 'class' => 'user_form')); ?>
 
                     <div class="form-group">
                         <label for="old">Old Password</label>
@@ -24,7 +24,7 @@
                     <div class="form-group">
                         <label for="confirm">Confirm New Password</label>
                         <input type="hidden" value='1' name="changed">
-                        <input type="hidden" value='<?php echo $this->session->userdata('user_id'); ?>' name="user_id">
+                        <input type="hidden" value='<?php echo $this->session->userdata('user')->user_id; ?>' name="user_id">
                         <input type="password" class="form-control" name="confirm" id="confirm" onkeyup="checker();" required>
                         <p class="help-block error"></p>
                     </div>
