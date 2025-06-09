@@ -253,6 +253,7 @@ class MatrixController extends Controller
 
         $last_workflow_id=null;
         $last_approval_order=$matrix->approval_level;
+        $overall_status = $matrix->overall_status;
 
         $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->where('action','!=','approved')->first();
 
@@ -262,6 +263,7 @@ class MatrixController extends Controller
             $workflow_defn       = WorkflowDefinition::where('approval_order', $last_approval_trail->approval_order)->first();
             $last_workflow_id    = $workflow_defn->workflow_id;
             $last_approval_order = $last_approval_trail->approval_order;
+            $overall_status = 'pending';
         }
 
         // Update matrix
@@ -274,6 +276,7 @@ class MatrixController extends Controller
             'staff_id'            => user_session('staff_id'),
             'forward_workflow_id' => ($request->action == 'approvals' && $last_workflow_id==null)?1:$last_workflow_id,
             'approval_level' => $last_approval_order,
+            'overall_status' => $overall_status
         ]);
     
         return redirect()->route('matrices.index')->with([

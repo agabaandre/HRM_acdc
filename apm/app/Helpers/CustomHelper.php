@@ -46,7 +46,7 @@ if (!function_exists('user_session')) {
         {
 
             $user = session('user', []);
-            return ($matrix->staff_id == $user['staff_id'] && !$matrix->forward_workflow_id && $matrix->overall_status !== 'approved');
+            return ($matrix->staff_id == $user['staff_id'] && $matrix->forward_workflow_id==null && $matrix->overall_status !== 'approved');
         }
 
     }
@@ -58,6 +58,7 @@ if (!function_exists('user_session')) {
          */
         function done_approving($matrix)
         {
+         
             $user = session('user', []);
             $my_appoval =  MatrixApprovalTrail::where('matrix_id',$matrix->id)
             ->where('action','approved')
@@ -83,7 +84,7 @@ if (!function_exists('user_session')) {
 
             $today = Carbon::today();
 
-            //Checker that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
+            //Check that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
 
             $workflow_dfns = Approver::where('staff_id', $user['staff_id'])
             ->where('workflow_dfn_id',$matrix->forward_workflow_id)

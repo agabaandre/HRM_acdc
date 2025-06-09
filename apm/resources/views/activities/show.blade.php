@@ -154,7 +154,7 @@
                     </table>
                 </div>
 
-            @if(can_take_action($matrix))
+            @if(can_take_action($matrix )  && $activity->my_last_action->action !=='passed')
             <div class="col-md-4 mb-2 px-2 ms-auto">
               @include('activities.partials.approval-actions',['activity'=>$activity,'matrix'=>$matrix])
             </div>
@@ -179,7 +179,7 @@
                     @foreach($activity->activityApprovalTrails as $trail)
                         <div class="list-group-item">
                             <small class="badge bg-info">{{ucwords($trail->action)}}</small><br>
-                            <small>{{ $trail->created_at->format('Y-m-d H:i') }} - {{ $trail->staff->name }}</small><br>
+                            <small>{{ $trail->created_at->format('Y-m-d H:i') }} - {{ $trail->staff->name  }} <strong>{{($trail->staff_id == session('user')['staff_id'])?"(You)":""}}</strong></small><br>
                             <p class="mb-0 text-muted">{{ $trail->remarks }}</p>
                         </div>
                     @endforeach
