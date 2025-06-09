@@ -142,6 +142,7 @@ class ActivityController extends Controller
                 // Create the activity record
                 $activity = $matrix->activities()->create([
                     'staff_id' => $userStaffId,
+                    'workplan_activity_code'=> $request->input('activity_code'),
                     'responsible_person_id' => $request->input('responsible_person_id', 1),
                     'date_from' => $request->input('date_from', now()->toDateString()),
                     'date_to' => $request->input('date_to', now()->toDateString()),

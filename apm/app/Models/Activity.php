@@ -22,6 +22,7 @@ class Activity extends Model
         'forward_workflow_id',
         'reverse_workflow_id',
         'workplan_activity_code',
+        'activity_ref',
         'matrix_id',
         'staff_id',
         'responsible_person_id',
@@ -48,7 +49,7 @@ class Activity extends Model
 
     protected $hidden = ['created_at', 'updated_at'];
 
-    protected $appends = ['formatted_dates'];
+    protected $appends = ['formatted_dates','status','my_last_action'];
 
     protected $casts = [
         'id' => 'integer',
@@ -153,13 +154,13 @@ class Activity extends Model
         parent::boot();
 
         static::creating(function ($activity) {
-            if (empty($activity->workplan_activity_code)) {
-                $activity->workplan_activity_code = $activity->generateActivityCode();
+            if (empty($activity->activity_ref)) {
+                $activity->activity_ref = $activity->generateActivityRef();
             }
         });
     }
 
-    protected function generateActivityCode(): string
+    protected function generateActivityRef(): string
     {
         $division_name = user_session('division_name');
         $short = ucwords($this->generateShortCodeFromDivision($division_name));
@@ -168,7 +169,7 @@ class Activity extends Model
         $year = substr($this->matrix->year, -2);
     
         $latestActivity = self::where('matrix_id', $this->matrix_id)
-            ->where('workplan_activity_code', 'like', "{$prefix}/{$quarter}/{$year}/%")
+            ->where('activity_ref', 'like', "{$prefix}/{$quarter}/{$year}/%")
             ->orderBy('id', 'desc')
             ->first();
     
@@ -196,6 +197,30 @@ class Activity extends Model
     public function getBudgetAttribute($value)
     {
         return json_decode($value); // or false for object
+    }
+
+    public function getStatusAttribute(){
+        $user = session('user', []);
+        $matrix = $this->matrix;
+
+        if($matrix->staff_id == $user['staff_id'] ){
+         return ($matrix->forward_workflow_id==null)?'Draft':(($matrix->overall_status =='approved')?'Passed':'Pending');
+        }
+
+        $last_log = ActivityApprovalTrail::where('activity_id',$this->id)->orderBy('id','asc')->first();
+
+        if($last_log)
+         return strtoupper($last_log->action);
+
+         if(can_take_action($matrix))
+         return ' Pending';
+    }
+
+    public function getMyLastActionAttribute(){
+        $user = session('user', []);
+        return ActivityApprovalTrail::where('activity_id',$this->id)
+        ->where('staff_id',$user['staff_id'])
+        ->orderBy('id','asc')->first();
     }
     
 }
