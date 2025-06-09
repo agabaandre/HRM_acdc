@@ -221,6 +221,8 @@ public function api_login()
         header('WWW-Authenticate: Basic realm="API Access Required"');
         header('HTTP/1.0 401 Unauthorized');
         echo json_encode(['status' => false, 'message' => 'Authentication required']);
+        $log_message = $username." API Authentication Failed ";
+        log_user_action($log_message);
         exit;
     }
 
@@ -229,9 +231,12 @@ public function api_login()
     if (empty($user) || !$this->validate_password($password, $user->password)) {
         header('HTTP/1.0 401 Unauthorized');
         echo json_encode(['status' => false, 'message' => 'Invalid credentials']);
+        $log_message = $username." API Authentication Failed ";
+        log_user_action($log_message);
         exit;
     }
-
+        $log_message = $username." API Authentication Succeded";
+        log_user_action($log_message);
     return $user; // Authenticated user
 }
 
