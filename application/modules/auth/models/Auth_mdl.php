@@ -184,7 +184,7 @@ return $qry->num_rows();
 	// change password
 	public function changePass($postdata)
 	{
-		$oldpass = $this->argonhash->make($postdata['oldpass']);
+		$oldpass = $postdata['oldpass'];
 		$newpass = $this->argonhash->make($postdata['newpass']);
 		$user = $this->session->userdata('user');
 		$uid = $user->user_id;
@@ -192,7 +192,10 @@ return $qry->num_rows();
 		$this->db->where('user_id', $uid);
 		$qry = $this->db->get($this->table);
 		$user = $qry->row();
-		if ($user->password == $oldpass) {
+		$dbpassword = $user->password;
+
+		//dd($this->argonhash->check($oldpass, $dbpassword));
+		if  ($this->argonhash->check($oldpass, $dbpassword)) {
 			// change the password
 			$data = array("password" => $newpass, "isChanged" => 1);
 			$this->db->where('user_id', $uid);
