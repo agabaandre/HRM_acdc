@@ -27,7 +27,7 @@
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
-                <small class="text-muted">Activity Code: {{ $activity->workplan_activity_code }}</small>
+                <small class="text-muted">Activity Ref: {{ $activity->activity_ref }}</small>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
