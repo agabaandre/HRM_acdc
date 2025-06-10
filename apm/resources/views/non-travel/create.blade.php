@@ -119,7 +119,20 @@
                             </div>
                         </div>
                         
-                    
+                           {{-- Background --}}
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="background" class="form-label fw-semibold">
+                                    <i class="bx bx-info-circle me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="background" id="background" 
+                                          class="form-control @error('background') is-invalid @enderror" 
+                                          rows="3" required>{{ old('background') }}</textarea>
+                                @error('background')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
                         
                         <!-- Description -->
                           <div class="col-md-6">
@@ -135,20 +148,7 @@
                                 @enderror
                             </div>
                         </div>
-                        {{-- Background --}}
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="background" class="form-label fw-semibold">
-                                    <i class="bx bx-info-circle me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
-                                </label>
-                                <textarea name="background" id="background" 
-                                          class="form-control @error('background') is-invalid @enderror" 
-                                          rows="3" required>{{ old('background') }}</textarea>
-                                @error('background')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
+                     
                         
                         <!-- RA -->
                           <div class="col-md-6">
