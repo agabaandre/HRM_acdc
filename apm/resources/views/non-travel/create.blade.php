@@ -119,22 +119,23 @@
                             </div>
                         </div>
                         
-                        <!-- Approval Request -->
-                        <div class="col-md-6">
+                    
+                        
+                        <!-- Description -->
+                          <div class="col-md-6">
                             <div class="form-group">
-                                <label for="approval" class="form-label fw-semibold">
-                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
+                                <label for="description" class="form-label fw-semibold">
+                                    <i class="bx bx-comment-detail me-1 text-success"></i> Description <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="approval" id="approval" 
-                                          class="form-control @error('approval') is-invalid @enderror" 
-                                          rows="2" required>{{ old('approval') }}</textarea>
-                                @error('approval')
+                                <textarea name="description" id="description" 
+                                          class="form-control @error('description') is-invalid @enderror" 
+                                          rows="5" required>{{ old('description') }}</textarea>
+                                @error('description')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
-                        
-                        <!-- Background -->
+                        {{-- Background --}}
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="background" class="form-label fw-semibold">
@@ -149,20 +150,21 @@
                             </div>
                         </div>
                         
-                        <!-- Description -->
-                        <div class="col-md-6">
+                        <!-- RA -->
+                          <div class="col-md-6">
                             <div class="form-group">
-                                <label for="description" class="form-label fw-semibold">
-                                    <i class="bx bx-comment-detail me-1 text-success"></i> Description <span class="text-danger">*</span>
+                                <label for="approval" class="form-label fw-semibold">
+                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="description" id="description" 
-                                          class="form-control @error('description') is-invalid @enderror" 
-                                          rows="5" required>{{ old('description') }}</textarea>
-                                @error('description')
+                                <textarea name="approval" id="approval" 
+                                          class="form-control @error('approval') is-invalid @enderror" 
+                                          rows="2" required>{{ old('approval') }}</textarea>
+                                @error('approval')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
+                      
                         
                         <!-- Other Information -->
                         <div class="col-12">
