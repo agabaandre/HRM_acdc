@@ -86,7 +86,7 @@ $settingsMenuItems = [
                 </a>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">Non-Travel</a></li>
-                    <li><a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">Special Memo</a></li>
+                    <li><a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">Special Travel Memo</a></li>
                 </ul>
             </li>
 
