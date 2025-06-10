@@ -3,11 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\SpecialMemo;
+use App\Models\Activity;
+use App\Models\ActivityApprovalTrail;
+use App\Models\Matrix;
+use App\Models\RequestType;
+use App\Models\FundType;
+use App\Models\FundCode;
+use App\Models\Location;
 use App\Models\Staff;
-use App\Models\Workflow;
-use App\Models\Division;
+use App\Models\CostItem;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -54,14 +60,47 @@ class SpecialMemoController extends Controller
      */
     public function create(): View
     {
-        $staff = Staff::active()->get();
-        $divisions = Division::all();
-        $workflows = Workflow::all();
-        
-        // Generate a unique memo number
-        $memoNumber = SpecialMemo::generateMemoNumber();
-        
-        return view('special-memo.create', compact('staff', 'divisions', 'workflows', 'memoNumber'));
+        ini_set('memory_limit', '1024M');
+        $division_id = user_session('division_id');
+      
+        // Request Types
+        $requestTypes = RequestType::all();
+    
+        // Staff only from current matrix division
+        $staff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
+            ->where('division_id', $division_id)
+            ->get();
+    
+        // All staff grouped by division for external participants
+        $allStaff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
+            ->where('division_id', '!=', $division_id)
+            ->get()
+            ->groupBy('division_name');
+    
+       // Cache locations
+        $locations = Cache::remember('locations', 60, function () {
+            return Location::all();
+        });
+
+    
+        // Fund and Cost items
+        $fundTypes = FundType::all();
+        $budgetCodes = FundCode::all();
+        $costItems = CostItem::all();
+    
+        return view('special-memo.create', [
+            'requestTypes' => $requestTypes,
+            'staff' => $staff,
+            'allStaffGroupedByDivision' => $allStaff,
+            'locations' => $locations,
+            'fundTypes' => $fundTypes,
+            'budgetCodes' => $budgetCodes,
+            'costItems' => $costItems,
+            'title' => 'Create Activity',
+            'editing' => false,
+        ]);
     }
 
     /**
