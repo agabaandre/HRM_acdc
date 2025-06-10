@@ -109,7 +109,7 @@ $isMidtermRecommended = !empty($mid_skills);
   <div class="mb-3">
     <label class="form-label">4. How will the recommended training(s) contribute to the staff member’s development and the department’s work?</label>
     <textarea name="midterm_training_contributions" class="form-control" rows="3" <?= $midreadonly ?>>
-      <?= htmlspecialchars($ppa->midterm_training_contributions ?? '') ?>
+      <?= $ppa->midterm_training_contributions ?? '' ?>
     </textarea>
   </div>
 
