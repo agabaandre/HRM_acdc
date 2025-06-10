@@ -15,4 +15,12 @@ class MatrixApprovalTrail extends Model
         'action',
         'remarks',
     ];
+
+    public function staff(){
+        return $this->belongsTo(Staff::class,"staff_id","staff_id");
+    }
+
+    public function approver_role(){
+        return $this->belongsTo(WorkflowDefinition::class,"approval_order","approval_order");
+    }
 }

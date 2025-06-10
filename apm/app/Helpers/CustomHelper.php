@@ -3,6 +3,7 @@ use App\Models\Approver;
 use App\Models\MatrixApprovalTrail;
 use App\Models\WorkflowDefinition;
 use App\Models\Staff;
+use App\Models\Division;
 use Carbon\Carbon;
 
 
@@ -90,6 +91,7 @@ if (!function_exists('user_session')) {
 
             //Check that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
 
+
             $workflow_dfns = Approver::where('staff_id', $user['staff_id'])
             ->where('workflow_dfn_id',$matrix->forward_workflow_id)
             ->orWhere(function ($query) use ($today, $user,$matrix) {
@@ -99,24 +101,54 @@ if (!function_exists('user_session')) {
                 })
                 ->pluck('workflow_dfn_id');
 
+
+            $division_specific_access=false;
+
+           //if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
-                return false;
+
+            //$possible_approval_point = WorkflowDefinition where workflow_id = $matrix->forward_workflow_id and approval_order=$matrix->approval_level{
+            // if($current_approval_point->division_specific)
+            // get from staff where id is $matrix->staff_id and get their division_id
+            // $division = got to Division::where('directorate_id' is get the division_d of the staff_id that created the matrix .ie (matrix->staff_id)
+            // The get $division->{$possible_approval_point->divsion_reference_column} and that value must be equal to user_session()['staff_id'], if it is, return true
+           // }
+           
+                $possible_approval_point = WorkflowDefinition::where('approval_order', $matrix->approval_level)
+                    ->first();
+                
+                $division_specific_access = false;
+
+                if ($possible_approval_point && $possible_approval_point->division_specific) {
+                   
+                    $staff    = Staff::where('staff_id',$matrix->staff_id)->first();
+                    $division = Division::where('directorate_id', $staff->division_id)->first();
+                    
+                    if ($division && $division->{$possible_approval_point->division_reference_column} == user_session()['staff_id']) {
+                        $division_specific_access = true;
+                    }
+                }
+                //how to check approval levels against approver in approvers table???
+                
             }
 
-            $myWorkFlowDef = WorkflowDefinition::whereIn('id', $workflow_dfns)
+            $current_approval_point = WorkflowDefinition::whereIn('id', $workflow_dfns)
                 ->orderBy('approval_order')
                 ->first();
+
+                dd($current_approval_point);
 
            /**TODO
             * Factor in approval conditions 
             */
 
-            $is_at_my_approval_level = ($myWorkFlowDef)?($myWorkFlowDef->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level =  $myWorkFlowDef->approval_order):false;
+            $is_at_my_approval_level = ($current_approval_point)?($current_approval_point->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level =  $current_approval_point->approval_order):false;
 
-            return ( ($is_at_my_approval_level  || $still_with_creator) && $matrix->overall_status !== 'approved');
+            return ( ($is_at_my_approval_level  || $still_with_creator || $division_specific_access) && $matrix->overall_status !== 'approved');
         }
         
     }
+
 
    
     
