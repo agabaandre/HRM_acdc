@@ -55,35 +55,18 @@
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
 
-                    <div class="col-md-4">
-                        <label for="key_result_link" class="form-label fw-semibold">
-                            <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
-                        </label>
-                        <select name="key_result_link" id="key_result_link" class="form-select border-success" required>
-                            <option value="">Select Key Result</option>
-                            @php
-                                $keyResults = is_array($matrix->key_result_area) 
-                                            ? $matrix->key_result_area 
-                                            : json_decode($matrix->key_result_area ?? '[]', true);
-                            @endphp
-                            @foreach($keyResults as $index => $kr)
-                                <option value="{{ $index }}">
-                                    {{ $kr['description'] ?? 'No Description' }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+               
                 </div>
 
-<div class="row mt-3">
-    <div class="col-md-4 offset-md-8">
-        <label for="total_participants" class="form-label fw-semibold">
-            <i class="fas fa-users me-1 text-success"></i> Total Participants
-        </label>
-        <input type="text" id="total_participants_display" class="form-control bg-white border-success fw-bold" readonly value="0">
-        <input type="hidden" name="total_participants" id="total_participants" value="0">
-    </div>
-</div>
+                <div class="row mt-3">
+                    <div class="col-md-4 offset-md-8">
+                        <label for="total_participants" class="form-label fw-semibold">
+                            <i class="fas fa-users me-1 text-success"></i> Total Participants
+                        </label>
+                        <input type="text" id="total_participants_display" class="form-control bg-white border-success fw-bold" readonly value="0">
+                        <input type="hidden" name="total_participants" id="total_participants" value="0">
+                    </div>
+                </div>
 
 
 
