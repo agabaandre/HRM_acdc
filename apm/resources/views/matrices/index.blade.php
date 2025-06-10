@@ -116,7 +116,7 @@
                                 </div>
                             </td>
                             <td>{{ $matrix->created_at->format('Y-m-d H:i') }}</td>
-                            <td>{{ ($matrix->workflow_definition)?$matrix->workflow_definition->role:'N/A' }}</td>
+                            <td>{{ ($matrix->workflow_definition)?$matrix->workflow_definition->role:'Focal Person' }}</td>
                             <td> <span class="p-1 rounded {{config('approval_states')[$matrix->overall_status]}}">{{ strtoupper($matrix->overall_status)}}</span></td>
                             <td class="text-center">
                                 <div class="btn-group">

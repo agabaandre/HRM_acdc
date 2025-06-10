@@ -127,4 +127,8 @@ class Staff extends Model
     {
         return $this->hasMany(Staff::class, 'supervisor_id');
     }
+
+    public function division(){
+        return $this->belongsTo(Division::class);
+    }
 }

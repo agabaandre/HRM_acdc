@@ -21,115 +21,8 @@
 @endsection
 
 @section('content')
-<div class="row">
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="bx bx-info-circle me-2 text-primary"></i>Matrix Information</h5>
-            </div>
-            <div class="card-body p-4">
-                <div class="row">
-                    <div class="col-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="bx bx-calendar-alt me-2 text-primary"></i>
-                            <div>
-                                <small class="text-muted d-block">Year</small>
-                                <span>{{ $matrix->year }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="bx bx-calendar-week me-2 text-primary"></i>
-                            <div>
-                                <small class="text-muted d-block">Quarter</small>
-                                <span>{{ $matrix->quarter }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="bx bx-building me-2 text-primary"></i>
-                            <div>
-                                <small class="text-muted d-block">Division</small>
-                                <span>{{ $matrix->division->name }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="bx bx-user-voice me-2 text-primary"></i>
-                            <div>
-                                <small class="text-muted d-block">Focal Person</small>
-                                <span>{{ $matrix->focalPerson ? $matrix->focalPerson->name : 'Not assigned' }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="bx bx-calendar-plus me-2 text-primary"></i>
-                            <div>
-                                <small class="text-muted d-block">Created At</small>
-                                <span>{{ $matrix->created_at->format('Y-m-d H:i') }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="bx bx-calendar-edit me-2 text-primary"></i>
-                            <div>
-                                <small class="text-muted d-block">Last Update</small>
-                                <span>{{ $matrix->updated_at->format('Y-m-d H:i') }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                @if($matrix->overall_status !=='approved')
-                <div class="badge {{config('approval_states')[$matrix->overall_status]}} col-md-6">
-                <i class="fa fa-clock text-bold"></i>   {{ ($matrix->workflow_definition)?$matrix->workflow_definition->role:strtoupper($matrix->overall_status) }}
-                </div>
-                @endif
-                @if($matrix->overall_status =='approved')
-                    <div class="badge bg-success col-md-6"><i class="bx bx-check text-bold"></i>  {{strtoupper($matrix->overall_status)}}</div>
-                @endif
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <div class="col-md-6 mb-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="bx bx-target-lock me-2 text-primary"></i>Key Result Areas</h5>
-            </div>
-            <div class="card-body p-4">
-                @php
-                    $keyResultAreas = is_array($matrix->key_result_area)
-                        ? $matrix->key_result_area
-                        : json_decode($matrix->key_result_area ?? '[]', true);
-                @endphp
-
-                @if(empty($keyResultAreas))
-                    <div class="alert alert-info mb-0">
-                        <i class="bx bx-info-circle me-2"></i> No key result areas have been added yet.
-                    </div>
-                @else
-                    @foreach($keyResultAreas as $index => $area)
-                        <div class="border-bottom pb-2 mb-3">
-                            <h6 class="fw-bold text-success">
-                                <i class="bx bx-bullseye me-1"></i> Area {{ $index + 1 }}
-                            </h6>
-                            <p class="mb-0 text-muted">
-                                {{ $area['description'] ?? 'No description provided' }}
-                            </p>
-                        </div>
-                    @endforeach
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
+@include('matrices.partials.matrix-metadata')
    
 <div class="col-md-12">
     <div class="card shadow-sm">
@@ -199,7 +92,10 @@
         </div>
     </div>
 </div>
- 
 
+@if($matrix->matrixApprovalTrails)
+    @include('matrices.partials.approval-trail')
+@endif
+ 
 </div>
 @endsection
