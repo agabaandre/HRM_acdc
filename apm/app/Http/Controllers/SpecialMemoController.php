@@ -20,40 +20,39 @@ use Illuminate\Http\RedirectResponse;
 
 class SpecialMemoController extends Controller
 {
-    /**
-     * Display a listing of special memos.
-     */
     public function index(Request $request): View
     {
-        $query = SpecialMemo::with(['staff', 'division'])
-            ->latest();
-            
-        // Filter by staff if provided
+        $query = SpecialMemo::with(['staff'])->latest();
+    
         if ($request->has('staff_id') && $request->staff_id) {
             $query->where('staff_id', $request->staff_id);
         }
-        
-        // Filter by division if provided
+    
         if ($request->has('division_id') && $request->division_id) {
             $query->where('division_id', $request->division_id);
         }
-        
-        // Filter by priority if provided
+    
         if ($request->has('priority') && $request->priority) {
             $query->where('priority', $request->priority);
         }
-        
-        // Filter by status if provided
+    
         if ($request->has('status') && $request->status) {
             $query->where('status', $request->status);
         }
-        
+    
         $specialMemos = $query->paginate(10);
-        $divisions = Division::all();
         $staff = Staff::active()->get();
-        
-        return view('special-memo.index', compact('specialMemos', 'divisions', 'staff'));
+    
+        // Get distinct divisions from staff table
+        $divisions = Staff::select('division_id', 'division_name')
+            ->whereNotNull('division_id')
+            ->distinct()
+            ->orderBy('division_name')
+            ->get();
+    
+        return view('special-memo.index', compact('specialMemos', 'staff', 'divisions'));
     }
+    
 
     /**
      * Show the form for creating a new special memo.
