@@ -84,17 +84,19 @@
                 {{ $activities->withQueryString()->links() }}
             </div>
 
-             @if(can_take_action($matrix))
-                <div class="col-md-4 mb-2 px-2 ms-auto">
-                    @include('matrices.partials.approval-actions', ['matrix' => $matrix])
-                 </div>
-            @endif
         </div>
     </div>
 </div>
 
 @if($matrix->matrixApprovalTrails)
     @include('matrices.partials.approval-trail')
+@endif
+
+
+@if(can_take_action($matrix))
+<div class="col-md-4 mb-2 px-2 ms-auto">
+    @include('matrices.partials.approval-actions', ['matrix' => $matrix])
+    </div>
 @endif
  
 </div>

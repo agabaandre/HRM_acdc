@@ -391,7 +391,7 @@ class MatrixController extends Controller
         // get from $definition where fund_type=2, else where fund_type=2
         //if one, just return the one available
         if ($next_definition->count() > 1) {
-            
+
             if ($matrix->has_extramural && $matrix->approval_level !== $next_definition->first()->approval_order) {
                 return $next_definition->where('fund_type', 2);
             } 
@@ -399,8 +399,24 @@ class MatrixController extends Controller
                 return $next_definition->where('fund_type', 1);
             }
         }
+
+        $definition = $next_definition[0];
+        //intramural only, skip extra mural role
+        if(!$matrix->has_extramural &&  $definition->fund_type==2){
+          return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+            ->where('is_enabled',1)
+            ->where('approval_order',$definition->approval_order+1)->first();
+        }
+
+        //only extramural, skip by intramural roles
+        if(!$matrix->has_intramural &&  $definition->fund_type==1){
+            return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+              ->where('is_enabled',1)
+              ->where('approval_order', $definition->approval_order+2)->first();
+        }
+
        
-        return $next_definition[0];
+        return  $definition;
 
     }
 }
