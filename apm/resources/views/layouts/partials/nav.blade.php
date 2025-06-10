@@ -95,10 +95,10 @@ $settingsMenuItems = [
                 <a class="nav-link dropdown-toggle {{ Request::is('service-requests*') || Request::is('request-arf*') || Request::is('non-travel*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-boxes"></i></div>
-                    <div class="menu-title">Requests</div>
+                    <div class="menu-title">Request for Services</div>
                 </a>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}" href="{{ url('service-requests') }}">Request for Services</a></li>
+                    <li><a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}" href="{{ url('service-requests') }}">Request DSA,  Imprest and Ticket</a></li>
                     <li><a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}" href="{{ url('request-arf') }}">Request for ARF</a></li>
                    
                 </ul>
