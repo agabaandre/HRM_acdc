@@ -29,6 +29,8 @@ class Division extends Model
         'is_active',
     ];
 
+    protected $able="divisions2";
+
     /**
      * Get the attributes that should be cast.
      *
