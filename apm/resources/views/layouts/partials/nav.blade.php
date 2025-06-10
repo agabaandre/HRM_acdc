@@ -75,19 +75,7 @@ $settingsMenuItems = [
                 </a>
             </li>
 
-            <!-- Requests Menu -->
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('service-requests*') || Request::is('request-arf*') || Request::is('non-travel*') ? 'active' : '' }}"
-                    href="#" data-bs-toggle="dropdown">
-                    <div class="parent-icon"><i class="fas fa-boxes"></i></div>
-                    <div class="menu-title">Requests</div>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}" href="{{ url('service-requests') }}">Request for Services</a></li>
-                    <li><a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}" href="{{ url('request-arf') }}">Request for ARF</a></li>
-                    <li><a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">Non-Travel</a></li>
-                </ul>
-            </li>
+         
 
             <!-- Memos Menu -->
             <li class="nav-item dropdown">
@@ -97,13 +85,24 @@ $settingsMenuItems = [
                     <div class="menu-title">Memos</div>
                 </a>
                 <ul class="dropdown-menu">
+                    <li><a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">Non-Travel</a></li>
                     <li><a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">Special Memo</a></li>
                 </ul>
             </li>
 
-
-
-
+               <!-- Requests Menu -->
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle {{ Request::is('service-requests*') || Request::is('request-arf*') || Request::is('non-travel*') ? 'active' : '' }}"
+                    href="#" data-bs-toggle="dropdown">
+                    <div class="parent-icon"><i class="fas fa-boxes"></i></div>
+                    <div class="menu-title">Requests</div>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}" href="{{ url('service-requests') }}">Request for Services</a></li>
+                    <li><a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}" href="{{ url('request-arf') }}">Request for ARF</a></li>
+                   
+                </ul>
+            </li>
 
             <!-- Workflow Management -->
             <li class="nav-item dropdown">
