@@ -136,7 +136,7 @@ if (!function_exists('user_session')) {
                 ->orderBy('approval_order')
                 ->first();
 
-                dd($current_approval_point);
+               // dd($current_approval_point);
 
            /**TODO
             * Factor in approval conditions 
