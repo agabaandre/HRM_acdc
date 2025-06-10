@@ -30,7 +30,7 @@ class Matrix extends Model
         'overall_status',
     ];
 
-    protected $appends =['workflow_definition'];
+    protected $appends =['workflow_definition','has_intramural','has_extramural'];
 
     /**
      * Get the casts for the model.
@@ -110,5 +110,19 @@ class Matrix extends Model
     public function activityApprovalTrails(): HasMany
     {
         return $this->hasMany(ActivityApprovalTrail::class);
+    }
+
+    public function matrixApprovalTrails(){
+        return $this->hasMany(MatrixApprovalTrail::class);
+    }
+
+    public function getHasIntramuralAttribute(): bool
+    {
+        return $this->activities()->where('fund_type_id', 1)->exists();
+    }
+
+    public function getHasExtramuralAttribute(): bool
+    {
+        return $this->activities()->where('fund_type_id', 2)->exists();
     }
 }

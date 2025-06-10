@@ -259,11 +259,16 @@ class MatrixController extends Controller
         $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->where('action','!=','approved')->first();
 
      
-        if($last_approval_trail && $request->action == 'approvals'){
+        if($request->action == 'approvals'){
 
-            $workflow_defn       = WorkflowDefinition::where('approval_order', $last_approval_trail->approval_order)->first();
-            $last_workflow_id    = $workflow_defn->workflow_id;
-            $last_approval_order = $last_approval_trail->approval_order;
+            if($last_approval_trail){
+                $workflow_defn       = WorkflowDefinition::where('approval_order', $last_approval_trail->approval_order)->first();
+                $last_workflow_id    = $workflow_defn->workflow_id;
+                $last_approval_order = $last_approval_trail->approval_order;
+            }
+            else
+                $last_approval_order=1;
+
             $overall_status = 'pending';
         }
 
@@ -276,7 +281,7 @@ class MatrixController extends Controller
             'key_result_area'     => json_encode($validated['key_result_area']),
             'staff_id'            => user_session('staff_id'),
             'forward_workflow_id' => ($request->action == 'approvals' && $last_workflow_id==null)?1:$last_workflow_id,
-            'approval_level' => $last_approval_order,
+            'approval_level' => $last_approval_order ?? 1,
             'overall_status' => $overall_status
         ]);
     
@@ -303,6 +308,7 @@ class MatrixController extends Controller
     public function update_status(Request $request, Matrix $matrix): RedirectResponse
     {
         $request->validate(['action' => 'required']);
+
      
         $activityTrail = new MatrixApprovalTrail();
 
@@ -311,8 +317,7 @@ class MatrixController extends Controller
         $activityTrail->matrix_id   = $matrix->id;
         $activityTrail->approval_order   = $matrix->approval_level ?? 1;
         $activityTrail->staff_id = user_session('staff_id');
-        $activityTrail->save();
-
+       
         if($activityTrail->action !=='approved'){
 
             $matrix->forward_workflow_id = null;
@@ -321,17 +326,17 @@ class MatrixController extends Controller
 
         }else{
             //move to next
-           $definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
-           ->where('is_enabled',1)
-           ->where('approval_order',$matrix->approval_level +1)->first();
+            $next_approval_point = $this->get_next_approver($matrix);
+           
+           if($next_approval_point){
 
-           if($definition){
-
-            $matrix->forward_workflow_id = $definition->workflow_id;
-            $matrix->approval_level = $definition->approval_order;
+            $matrix->forward_workflow_id = $next_approval_point->workflow_id;
+            $matrix->approval_level = $next_approval_point->approval_order;
+            $matrix->next_approval_level = $next_approval_point->approval_order;
             $matrix->overall_status = 'pending';
             $matrix->update();
 
+            
            }
            else{
             //no more approval levels
@@ -339,11 +344,63 @@ class MatrixController extends Controller
            }
         }
 
+        $activityTrail->save();
+
         $message = "Matrix Updated successfully";
 
         return redirect()
         ->route('matrices.show', [$matrix])
         ->with('success', $message);
+
+    }
+
+    private function get_next_approver($matrix){
+
+        $division   = Staff::where('staff_id',$matrix->staff_id)->first()->division;
+
+      
+        $current_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+           ->where('is_enabled',1)
+           ->where('approval_order',$matrix->approval_level)->first();
+
+        $go_to_category_check_for_external =(!$matrix->has_extramural && !$matrix->has_extramural && ($matrix->approval_level!=null && $current_definition->approval_order > $matrix->approval_level));
+
+        //if it's time to trigger categroy check, just check and continue
+        if($current_definition && $current_definition->triggers_category_check || $go_to_category_check_for_external){
+            return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+                        ->where('is_enabled',1)
+                        ->where('category',$division->category)
+                        ->orderBy('approval_order','asc')
+                        ->first();
+        }
+
+        $nextStepIncrement = 1;
+
+        //Skip Directorate from HOD if no directorate
+        if($matrix->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)
+            $nextStepIncrement = 2;
+
+         if(!$matrix->forward_workflow_id)// null
+            $matrix->forward_workflow_id = 1;
+   
+        $next_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+           ->where('is_enabled',1)
+           ->where('approval_order',$matrix->approval_level +$nextStepIncrement)->get();
+            
+        //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
+        // get from $definition where fund_type=2, else where fund_type=2
+        //if one, just return the one available
+        if ($next_definition->count() > 1) {
+            
+            if ($matrix->has_extramural && $matrix->approval_level !== $next_definition->first()->approval_order) {
+                return $next_definition->where('fund_type', 2);
+            } 
+            else {
+                return $next_definition->where('fund_type', 1);
+            }
+        }
+       
+        return $next_definition[0];
 
     }
 }
