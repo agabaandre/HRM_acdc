@@ -31,15 +31,6 @@ class NonTravelMemoCategory extends Model
         ];
     }
 
-    public function activities(): HasMany
-    {
-        return $this->hasMany(Activity::class);
-    }
-
-    public function specialMemos(): HasMany
-    {
-        return $this->hasMany(SpecialMemo::class);
-    }
 
     public function nonTravelMemos(): HasMany
     {
