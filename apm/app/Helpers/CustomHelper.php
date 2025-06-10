@@ -114,9 +114,10 @@ if (!function_exists('user_session')) {
             // The get $division->{$possible_approval_point->divsion_reference_column} and that value must be equal to user_session()['staff_id'], if it is, return true
            // }
            
-                $possible_approval_point = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                    ->where('approval_order', $matrix->approval_level)
+                $possible_approval_point = WorkflowDefinition::where('approval_order', $matrix->approval_level)
                     ->first();
+                
+                $division_specific_access = false;
 
                 if ($possible_approval_point && $possible_approval_point->division_specific) {
                    
@@ -127,13 +128,15 @@ if (!function_exists('user_session')) {
                         $division_specific_access = true;
                     }
                 }
+                //how to check approval levels against approver in approvers table???
                 
-                $division_specific_access = false;
             }
 
             $current_approval_point = WorkflowDefinition::whereIn('id', $workflow_dfns)
                 ->orderBy('approval_order')
                 ->first();
+
+                dd($current_approval_point);
 
            /**TODO
             * Factor in approval conditions 
