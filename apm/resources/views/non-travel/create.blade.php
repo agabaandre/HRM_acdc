@@ -266,13 +266,7 @@
 @push('scripts')
 <script>
     $(function() {
-        // Initialize datepicker
-        $('.datepicker').datepicker({
-            format: 'yyyy-mm-dd',
-            autoclose: true,
-            todayHighlight: true
-        });
-
+        
         // Initialize select2
         $('.select2').select2({
             theme: 'bootstrap4',
