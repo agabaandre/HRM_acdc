@@ -12,7 +12,7 @@
 @section('content')
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
-            <h5 class="mb-0 text-success">
+            <h5 class="mb-0 text-dark">
                 <i class="fas fa-calendar-plus me-2"></i> Memo Details
             </h5>
         </div>
