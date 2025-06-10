@@ -20,9 +20,9 @@ class Share extends MX_Controller
 	
 
 
-	public function staff($key)
+	public function staff()
 {
-    if ($this->auth($key)) {
+    if ($this->api_login())  {
 
         $sql11 = "SELECT sc.start_date, sc.end_date, f.funder, s.SAPNO, st.status, ds.duty_station_name, s.title, s.fname, s.lname, s.oname, g.grade, s.date_of_birth, s.gender, j.job_name, ja.job_acting, ci.contracting_institution, ct.contract_type, n.nationality, d.division_name, sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.private_email, s.physical_location 
             FROM staff s, staff_contracts sc, grades g, nationalities n, divisions d, duty_stations ds, contracting_institutions ci, contract_types ct, jobs_acting ja, status st, jobs j, funders f 
@@ -79,9 +79,9 @@ class Share extends MX_Controller
     }
 }
 
-public function visualise($key)
+public function visualise()
 {
-    if ($this->auth($key)) {
+    if ($this->api_login()) {
 
         $sql11 = "SELECT sc.start_date, sc.end_date, f.funder, s.SAPNO, st.status, ds.duty_station_name, s.title, s.fname, s.lname, s.oname, g.grade, s.date_of_birth, s.gender, j.job_name, ja.job_acting, ci.contracting_institution, ct.contract_type, n.nationality, d.division_name, sc.first_supervisor, sc.second_supervisor, ds.duty_station_name, s.initiation_date, s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.private_email, s.physical_location 
             FROM staff s, staff_contracts sc, grades g, nationalities n, divisions d, duty_stations ds, contracting_institutions ci, contract_types ct, jobs_acting ja, status st, jobs j, funders f 
@@ -163,19 +163,9 @@ public function visualise($key)
     }
 
 	
-public function auth($key){
-    if(($key=="DHI-YWZyY2FjZGNzdGFmZnRyYWNrZXI")||($key=="DHI-VZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")||($key=="DHI-samZYWZyY2FjZGNzdGFmZnRyYWNrZXI88")){
-		return true;
-	}
-		else{
-			return false;
-		}
 
-
-  }
-
-  public function divisions($key){
-	if($this->auth($key)){
+  public function divisions(){
+	if($this->api_login()){
 		$not_in = array(16,20,27);
 	$this->db->where_not_in("division_id",$not_in);
 	$result = $this->db->get("divisions")->result_array();
@@ -197,9 +187,9 @@ public function auth($key){
 	}
 }
 
-public function get_current_staff($key){
+public function get_current_staff(){
 
-    if($this->auth($key)){
+    if($this->api_login()){
 
     $filters = $this->input->get();
     $limit = $filters['limit'];
@@ -217,9 +207,49 @@ header('Content-Type: application/json');
 
 }
 
-
-
-
 	
 }
+
+public function api_login()
+{
+    // Check if HTTP Basic Auth headers are present
+    $username = isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : null;
+    $password = isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : null;
+
+    // If not provided, prompt for credentials
+    if (!$username || !$password) {
+        header('WWW-Authenticate: Basic realm="API Access Required"');
+        header('HTTP/1.0 401 Unauthorized');
+        echo json_encode(['status' => false, 'message' => 'Authentication required']);
+        $log_message = $username." API Authentication Failed ";
+        log_user_action($log_message);
+        exit;
+    }
+
+    // Validate user
+    $user = $this->auth_mdl->login(['email' => $username]);
+    if (empty($user) || !$this->validate_password($password, $user->password)) {
+        header('HTTP/1.0 401 Unauthorized');
+        echo json_encode(['status' => false, 'message' => 'Invalid credentials']);
+        $log_message = $username." API Authentication Failed ";
+        log_user_action($log_message);
+        exit;
+    }
+        $log_message = $username." API Authentication Succeded";
+        log_user_action($log_message);
+    return $user; // Authenticated user
+}
+
+
+public function validate_password($post_password,$dbpassword){
+    $auth = ($this->argonhash->check($post_password, $dbpassword));
+     if ($auth) {
+       return TRUE;
+     }
+     else{
+       return FALSE;
+     }
+     
+   }
+
 }

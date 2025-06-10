@@ -1,605 +1,520 @@
 @extends('layouts.app')
 
 @section('title', 'Create Non-Travel Memo')
-
-@section('header', 'Create New Non-Travel Memo')
+@section('header', 'Fill Request')
 
 @section('header-actions')
-<a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
-    <i class="bx bx-arrow-back me-1"></i> Back to List
-</a>
+    <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
+        <i class="bx bx-arrow-back me-1 text-success"></i> Back to List
+    </a>
 @endsection
 
 @section('content')
-<div class="card shadow-sm">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="bx bx-file-plus me-2 text-primary"></i>Memo Details</h5>
-    </div>
-    <div class="card-body p-4">
-        <form action="{{ route('non-travel.store') }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
-            @csrf
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-header bg-white border-bottom">
+            <h5 class="mb-0 text-dark">
+                <i class="fas fa-calendar-plus me-2"></i> Memo Details
+            </h5>
+        </div>
+        <div class="card-body p-4">
+            <form action="{{ route('non-travel.store') }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
+                @csrf
 
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="activity_title" class="form-label fw-semibold">
-                            <i class="bx bx-heading me-1 text-primary"></i>Activity Title <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" 
-                               name="activity_title" 
-                               id="activity_title" 
-                               class="form-control form-control-lg @error('activity_title') is-invalid @enderror" 
-                               value="{{ old('activity_title') }}" 
-                               required>
-                        @error('activity_title')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="workplan_activity_code" class="form-label fw-semibold">
-                            <i class="bx bx-code-block me-1 text-primary"></i>Activity Code <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" 
-                               name="workplan_activity_code" 
-                               id="workplan_activity_code" 
-                               class="form-control form-control-lg @error('workplan_activity_code') is-invalid @enderror" 
-                               value="{{ old('workplan_activity_code') }}" 
-                               required>
-                        @error('workplan_activity_code')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="staff_id" class="form-label fw-semibold">
-                            <i class="bx bx-user me-1 text-primary"></i>Staff Member <span class="text-danger">*</span>
-                        </label>
-                        <select name="staff_id" 
-                                id="staff_id" 
-                                class="form-select form-select-lg @error('staff_id') is-invalid @enderror" 
-                                required>
-                            <option value="">Select Staff Member</option>
-                            @foreach($staff as $member)
-                                <option value="{{ $member->id }}" {{ old('staff_id') == $member->id ? 'selected' : '' }}>
-                                    {{ $member->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('staff_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="memo_date" class="form-label fw-semibold">
-                            <i class="bx bx-calendar me-1 text-primary"></i>Memo Date <span class="text-danger">*</span>
-                        </label>
-                        <input type="date" 
-                               name="memo_date" 
-                               id="memo_date" 
-                               class="form-control form-control-lg @error('memo_date') is-invalid @enderror" 
-                               value="{{ old('memo_date', date('Y-m-d')) }}" 
-                               required>
-                        @error('memo_date')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="non_travel_memo_category_id" class="form-label fw-semibold">
-                            <i class="bx bx-category me-1 text-primary"></i>Memo Category <span class="text-danger">*</span>
-                        </label>
-                        <select name="non_travel_memo_category_id" 
-                                id="non_travel_memo_category_id" 
-                                class="form-select form-select-lg @error('non_travel_memo_category_id') is-invalid @enderror" 
-                                required>
-                            <option value="">Select Category</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ old('non_travel_memo_category_id') == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('non_travel_memo_category_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="location_id" class="form-label fw-semibold">
-                            <i class="bx bx-map-pin me-1 text-primary"></i>Locations <span class="text-danger">*</span>
-                        </label>
-                        <select name="location_id[]" 
-                                id="location_id" 
-                                class="form-select form-select-lg @error('location_id') is-invalid @enderror" 
-                                multiple
-                                required>
-                            @foreach($locations as $location)
-                                <option value="{{ $location->id }}" {{ (old('location_id') && in_array($location->id, old('location_id'))) ? 'selected' : '' }}>
-                                    {{ $location->location_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted mt-1 d-block">Hold Ctrl/Cmd to select multiple locations</small>
-                        @error('location_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="forward_workflow_id" class="form-label fw-semibold">
-                            <i class="bx bx-git-branch me-1 text-primary"></i>Forward Workflow <span class="text-danger">*</span>
-                        </label>
-                        <select name="forward_workflow_id" 
-                                id="forward_workflow_id" 
-                                class="form-select form-select-lg @error('forward_workflow_id') is-invalid @enderror" 
-                                required>
-                            <option value="">Select Forward Workflow</option>
-                            @foreach($workflows as $workflow)
-                                <option value="{{ $workflow->id }}" {{ old('forward_workflow_id') == $workflow->id ? 'selected' : '' }}>
-                                    {{ $workflow->workflow_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('forward_workflow_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="reverse_workflow_id" class="form-label fw-semibold">
-                            <i class="bx bx-git-repo-forked me-1 text-primary"></i>Reverse Workflow <span class="text-danger">*</span>
-                        </label>
-                        <select name="reverse_workflow_id" 
-                                id="reverse_workflow_id" 
-                                class="form-select form-select-lg @error('reverse_workflow_id') is-invalid @enderror" 
-                                required>
-                            <option value="">Select Reverse Workflow</option>
-                            @foreach($workflows as $workflow)
-                                <option value="{{ $workflow->id }}" {{ old('reverse_workflow_id') == $workflow->id ? 'selected' : '' }}>
-                                    {{ $workflow->workflow_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('reverse_workflow_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="budget_id" class="form-label fw-semibold">
-                            <i class="bx bx-money me-1 text-primary"></i>Budget Items <span class="text-danger">*</span>
-                        </label>
-                        <select name="budget_id[]" 
-                                id="budget_id" 
-                                class="form-select form-select-lg @error('budget_id') is-invalid @enderror" 
-                                multiple
-                                required>
-                            @foreach($budgets as $budget)
-                                <option value="{{ $budget->id }}" {{ (old('budget_id') && in_array($budget->id, old('budget_id'))) ? 'selected' : '' }}>
-                                    {{ $budget->description }} ({{ number_format($budget->amount, 2) }})
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted mt-1 d-block">Hold Ctrl/Cmd to select multiple budget items</small>
-                        @error('budget_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="attachment" class="form-label fw-semibold">
-                            <i class="bx bx-paperclip me-1 text-primary"></i>Attachments
-                        </label>
-                        <input type="file" 
-                               name="attachment[]" 
-                               id="attachment" 
-                               class="form-control form-control-lg @error('attachment') is-invalid @enderror" 
-                               multiple>
-                        <small class="text-muted mt-1 d-block">Allowed file types: PDF, DOC, DOCX, JPG, JPEG, PNG (max 10MB each)</small>
-                        @error('attachment')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                        @error('attachment.*')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <div class="d-flex align-items-center mb-3">
-                    <h5 class="fw-semibold m-0"><i class="bx bx-receipt text-primary me-2"></i>Memo Content <span class="text-danger">*</span></h5>
-                    <hr class="flex-grow-1 mx-3">
-                </div>
-                
-                <div class="form-group position-relative mb-4">
-                    <label for="background" class="form-label fw-semibold">
-                        <i class="bx bx-info-circle me-1 text-primary"></i>Background <span class="text-danger">*</span>
-                    </label>
-                    <textarea name="background" 
-                             id="background" 
-                             class="form-control @error('background') is-invalid @enderror" 
-                             rows="4" 
-                             required>{{ old('background') }}</textarea>
-                    @error('background')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                
-                <div class="form-group position-relative mb-4">
-                    <label for="activity_request_remarks" class="form-label fw-semibold">
-                        <i class="bx bx-message-detail me-1 text-primary"></i>Request Remarks <span class="text-danger">*</span>
-                    </label>
-                    <textarea name="activity_request_remarks" 
-                             id="activity_request_remarks" 
-                             class="form-control @error('activity_request_remarks') is-invalid @enderror" 
-                             rows="4" 
-                             required>{{ old('activity_request_remarks') }}</textarea>
-                    @error('activity_request_remarks')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                
-                <div class="form-group position-relative">
-                    <label for="justification" class="form-label fw-semibold">
-                        <i class="bx bx-check-shield me-1 text-primary"></i>Justification <span class="text-danger">*</span>
-                    </label>
-                    <textarea name="justification" 
-                             id="justification" 
-                             class="form-control @error('justification') is-invalid @enderror" 
-                             rows="4" 
-                             required>{{ old('justification') }}</textarea>
-                    @error('justification')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <div class="d-flex align-items-center mb-3">
-                    <h5 class="fw-semibold m-0"><i class="bx bx-money text-primary me-2"></i>Budget Breakdown <span class="text-danger">*</span></h5>
-                    <hr class="flex-grow-1 mx-3">
-                </div>
-                
-                <div id="budget-items">
-                    @if(old('budget_breakdown') && is_array(old('budget_breakdown')))
-                        @foreach(old('budget_breakdown') as $index => $item)
-                            <div class="budget-item card border shadow-sm mb-3">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 fw-semibold">Budget Item #{{ $index + 1 }}</h6>
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-budget-item">
-                                        <i class="bx bx-trash me-1"></i> Remove
-                                    </button>
-                                </div>
-                                <div class="card-body p-4">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold">Description</label>
-                                                <input type="text" 
-                                                       name="budget_breakdown[{{ $index }}][description]" 
-                                                       class="form-control" 
-                                                       value="{{ $item['description'] ?? '' }}" 
-                                                       required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold">Quantity</label>
-                                                <input type="number" 
-                                                       name="budget_breakdown[{{ $index }}][quantity]" 
-                                                       class="form-control budget-quantity" 
-                                                       value="{{ $item['quantity'] ?? 1 }}" 
-                                                       min="1" 
-                                                       required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold">Unit Price</label>
-                                                <input type="number" 
-                                                       name="budget_breakdown[{{ $index }}][unit_price]" 
-                                                       class="form-control budget-unit-price" 
-                                                       value="{{ $item['unit_price'] ?? 0 }}" 
-                                                       min="0" 
-                                                       step="0.01" 
-                                                       required>
-                                            </div>
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold">Notes</label>
-                                                <textarea name="budget_breakdown[{{ $index }}][notes]" 
-                                                         class="form-control" 
-                                                         rows="2">{{ $item['notes'] ?? '' }}</textarea>
-                                            </div>
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="text-end">
-                                                <span class="fw-bold">
-                                                    Total: <span class="budget-item-total">{{ number_format(($item['quantity'] ?? 1) * ($item['unit_price'] ?? 0), 2) }}</span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    @else
-                        <div class="budget-item card border shadow-sm mb-3">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 fw-semibold">Budget Item #1</h6>
-                                <button type="button" class="btn btn-sm btn-outline-danger remove-budget-item">
-                                    <i class="bx bx-trash me-1"></i> Remove
-                                </button>
-                            </div>
-                            <div class="card-body p-4">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold">Description</label>
-                                            <input type="text" 
-                                                   name="budget_breakdown[0][description]" 
-                                                   class="form-control" 
-                                                   required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold">Quantity</label>
-                                            <input type="number" 
-                                                   name="budget_breakdown[0][quantity]" 
-                                                   class="form-control budget-quantity" 
-                                                   value="1" 
-                                                   min="1" 
-                                                   required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold">Unit Price</label>
-                                            <input type="number" 
-                                                   name="budget_breakdown[0][unit_price]" 
-                                                   class="form-control budget-unit-price" 
-                                                   value="0" 
-                                                   min="0" 
-                                                   step="0.01" 
-                                                   required>
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="form-group">
-                                            <label class="form-label fw-semibold">Notes</label>
-                                            <textarea name="budget_breakdown[0][notes]" 
-                                                     class="form-control" 
-                                                     rows="2"></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="text-end">
-                                            <span class="fw-bold">
-                                                Total: <span class="budget-item-total">0.00</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+                <!-- Section 1: Basic Information -->
+                <div class="mb-5">
+                    <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
+                        <i class="fas fa-info-circle me-2"></i> Basic Information
+                    </h6>
+                    
+                    <div class="row g-4">
+                        <!-- Request By -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="request_by" class="form-label fw-semibold">
+                                    <i class="bx bx-user me-1 text-success"></i> Request by
+                                </label>
+                                <input type="text" id="request_by" class="form-control" value="{{ user_session('name') }}" disabled>
                             </div>
                         </div>
-                    @endif
+                        
+                        <!-- Date Required -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="date_required" class="form-label fw-semibold">
+                                    <i class="bx bx-calendar me-1 text-success"></i> Date Required <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" name="date_required" id="date_required" 
+                                       class="form-control datepicker @error('date_required') is-invalid @enderror" 
+                                       value="{{ old('date_required') }}" required>
+                                @error('date_required')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        
+                        <!-- Location -->
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="location_id" class="form-label fw-semibold">
+                                    <i class="bx bx-map-pin me-1 text-success"></i> Location <span class="text-danger">*</span>
+                                </label>
+                                <select name="location_id[]" id="location_id" 
+                                        class="form-select border-success select2 @error('location_id') is-invalid @enderror" 
+                                        multiple required>
+                                    @foreach($locations as $loc)
+                                        <option value="{{ $loc->id }}" {{ in_array($loc->id, old('location_id', [])) ? 'selected' : '' }}>
+                                            {{ $loc->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('location_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        
+                        <!-- Category -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="non_travel_memo_category_id" class="form-label fw-semibold">
+                                    <i class="bx bx-category me-1 text-success"></i> Category <span class="text-danger">*</span>
+                                </label>
+                                <select name="non_travel_memo_category_id" id="non_travel_memo_category_id" 
+                                        class="form-select border-success @error('non_travel_memo_category_id') is-invalid @enderror" 
+                                        required>
+                                    <option value="">Select Category</option>
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat->id }}" {{ old('non_travel_memo_category_id') == $cat->id ? 'selected' : '' }}>
+                                            {{ $cat->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('non_travel_memo_category_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="text-center mt-3">
-                    <button type="button" class="btn btn-outline-primary btn-lg" id="add-budget-item">
-                        <i class="bx bx-plus-circle me-1"></i> Add Budget Item
+
+                <!-- Section 2: Mission Details -->
+                <div class="mb-5">
+                    <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
+                        <i class="fas fa-tasks me-2"></i> Mission Details
+                    </h6>
+                    
+                    <div class="row g-4">
+                        <!-- Title -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="title" class="form-label fw-semibold">
+                                    <i class="bx bx-heading me-1 text-success"></i> Title of Activity <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="title" id="title" 
+                                          class="form-control @error('title') is-invalid @enderror" 
+                                          rows="2" required>{{ old('title') }}</textarea>
+                                @error('title')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        
+                           {{-- Background --}}
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="background" class="form-label fw-semibold">
+                                    <i class="bx bx-info-circle me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="background" id="background" 
+                                          class="form-control @error('background') is-invalid @enderror" 
+                                          rows="3" required>{{ old('background') }}</textarea>
+                                @error('background')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        
+                        <!-- Description -->
+                          <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="description" class="form-label fw-semibold">
+                                    <i class="bx bx-comment-detail me-1 text-success"></i> Description <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="description" id="description" 
+                                          class="form-control @error('description') is-invalid @enderror" 
+                                          rows="5" required>{{ old('description') }}</textarea>
+                                @error('description')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                     
+                        
+                        <!-- RA -->
+                          <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="approval" class="form-label fw-semibold">
+                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="approval" id="approval" 
+                                          class="form-control @error('approval') is-invalid @enderror" 
+                                          rows="2" required>{{ old('approval') }}</textarea>
+                                @error('approval')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                      
+                        
+                        <!-- Other Information -->
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label for="other_information" class="form-label fw-semibold">
+                                    <i class="bx bx-info me-1 text-success"></i> Any Other Information
+                                </label>
+                                <textarea name="other_information" id="other_information" 
+                                          class="form-control" rows="2">{{ old('other_information') }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            
+                <!-- Budget Section -->
+                <div id="budgetGroupContainer" class="mt-4">
+                    <h5 class="fw-bold text-success mb-3">
+                        <i class="fas fa-money-bill-wave me-2"></i> Budget Details
+                    </h5>
+
+                <div class="row g-4 mt-2">
+                    <div class="col-md-4 fund_type">
+                        <label for="fund_type" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Fund Type <span class="text-danger">*</span>
+                        </label>
+                        <select name="fund_type" id="fund_type" class="form-select border-success" required>
+                            <option value="">Select Fund Type</option>
+                            @foreach($fundTypes as $type)
+                                <option value="{{ $type->id }}">{{ ucfirst($type->name) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-md-4 activity_code" style="display: none;">
+                        <label for="activity_code" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
+                        </label>
+                        <input name="activity_code" id="activity_code" class="form-control border-success" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="budget_codes" class="form-label fw-semibold">
+                            <i class="fas fa-wallet me-1 text-success"></i> Budget Code(s) <span class="text-danger">*</span>
+                        </label>
+                        <select name="budget_codes[]" id="budget_codes" class="form-select  select2 border-success" multiple disabled>
+                            <option value="" selected disabled>Select a fund type first</option>
+                        </select>
+                        <small class="text-muted">Select up to 2 codes</small>
+                    </div>
+                </div>
+                    <div class="alert alert-info">
+                        Select budget codes above to add budget items
+                    </div>
+                </div>
+
+
+                <div class="d-flex justify-content-end mt-4">
+                    <div class="border p-4 rounded-3 shadow-sm bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-coins me-2 text-success"></i>
+                            Total Budget: <span class="text-success fw-bold">$<span id="grandBudgetTotal">0.00</span></span>
+                        </h5>
+                        <input type="hidden" name="budget[grand_total]" id="grandBudgetTotalInput" value="0">
+                    </div>
+                </div>
+
+                <!-- Attachments Section -->
+                <div class="mt-5">
+                    <h5 class="fw-bold text-success mb-3">
+                        <i class="fas fa-paperclip me-2"></i> Attachments
+                    </h5>
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
+                    </div>
+                    <div class="row g-3" id="attachmentContainer">
+                        <div class="col-md-4 attachment-block">
+                            <label class="form-label">Document Type*</label>
+                            <input type="text" name="attachments[0][type]" class="form-control" required>
+                            <input type="file" name="attachments[0][file]" class="form-control mt-1" required>
+                        </div>
+                    </div>
+                </div>
+
+
+              
+
+                <div class="d-flex justify-content-end border-top pt-4 mt-5">
+                    <button type="submit" class="btn btn-success btn-lg px-5">
+                        <i class="bx bx-check-circle me-1"></i> Submit
                     </button>
                 </div>
-            </div>
-
-            <div class="d-flex justify-content-between mt-4">
-                <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary px-4 btn-lg">
-                    <i class="bx bx-arrow-back me-1"></i> Cancel
-                </a>
-                <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
-                    <i class="bx bx-save me-2"></i> Create Memo
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
-</div>
+@endsection
 
 @push('scripts')
-<!-- Import Select2, SweetAlert -->
-<link href="{{ asset('assets/libs/select2/css/select2.min.css') }}" rel="stylesheet" type="text/css" />
-<script src="{{ asset('assets/libs/select2/js/select2.min.js') }}"></script>
-<script src="{{ asset('assets/libs/sweetalert2/sweetalert2.min.js') }}"></script>
-
-<script type="text/javascript">
-    $(document).ready(function() {
-        let budgetIndex = {{ old('budget_breakdown') && is_array(old('budget_breakdown')) ? count(old('budget_breakdown')) : 1 }};
-
-        // Initialize Select2 for better dropdown UX
-        $('.form-select').select2({
-            dropdownParent: $('#nonTravelForm'),
+<script>
+    $(function() {
+        // Initialize datepicker
+        $('.datepicker').datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true
         });
 
-        // Add new budget item
-        $('#add-budget-item').click(function() {
-            const newItem = `
-                <div class="budget-item card border shadow-sm mb-3" style="display: none;">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 fw-semibold">Budget Item #${budgetIndex + 1}</h6>
-                        <button type="button" class="btn btn-sm btn-outline-danger remove-budget-item">
-                            <i class="bx bx-trash me-1"></i> Remove
-                        </button>
+        // Initialize select2
+        $('.select2').select2({
+            theme: 'bootstrap4',
+            width: '100%'
+        });
+
+        // Fund type change handler
+        $('#fund_type').change(function(event) {
+            let selectedText = $('#fund_type option:selected').text();
+
+            if (selectedText.toLowerCase().indexOf("intramural") > -1) {
+                $('.fund_type').removeClass('col-md-4').addClass('col-md-2');
+                $('.activity_code').show();
+            } else {
+                $('#activity_code').val("");
+                $('.activity_code').hide();
+                $('.fund_type').removeClass('col-md-2').addClass('col-md-4');
+            }
+        });
+
+        // Get budget codes based on fund type and division
+        const divisionId = @json(user_session('division_id'));
+        
+        $('#fund_type').on('change', function() {
+            const fundTypeId = $(this).val();
+            const $budgetCodes = $('#budget_codes')
+                .empty()
+                .prop('disabled', true)
+                .append('<option disabled selected>Loading...</option>');
+
+            if (fundTypeId) {
+                $.get(
+                    '{{ route("budget-codes.by-fund-type") }}',
+                    { fund_type_id: fundTypeId, division_id: divisionId },
+                    function(data) {
+                        $budgetCodes.empty();
+                        if (data.length) {
+                            data.forEach(code => {
+                                $budgetCodes.append(`
+                                    <option value="${code.id}" data-balance="${code.available_balance}">
+                                        ${code.code} – ${code.description || ''}
+                                    </option>
+                                `);
+                            });
+                            $budgetCodes.prop('disabled', false);
+                        } else {
+                            $budgetCodes.append('<option disabled selected>No budget codes found</option>');
+                        }
+                    }
+                );
+            }
+        });
+
+        // Budget codes change handler
+        $('#budget_codes').on('change', function() {
+            const selected = $(this).find('option:selected');
+            const container = $('#budgetGroupContainer');
+            container.empty();
+
+            if (selected.length === 0) {
+                container.html(`
+                    <h5 class="fw-bold text-success mb-3">
+                        <i class="fas fa-money-bill-wave me-2"></i> Budget Details
+                    </h5>
+                    <div class="alert alert-info">
+                        Select budget codes above to add budget items
                     </div>
-                    <div class="card-body p-4">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label fw-semibold">Description</label>
-                                    <input type="text" 
-                                           name="budget_breakdown[${budgetIndex}][description]" 
-                                           class="form-control" 
-                                           required>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label class="form-label fw-semibold">Quantity</label>
-                                    <input type="number" 
-                                           name="budget_breakdown[${budgetIndex}][quantity]" 
-                                           class="form-control budget-quantity" 
-                                           value="1" 
-                                           min="1" 
-                                           required>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label class="form-label fw-semibold">Unit Price</label>
-                                    <input type="number" 
-                                           name="budget_breakdown[${budgetIndex}][unit_price]" 
-                                           class="form-control budget-unit-price" 
-                                           value="0" 
-                                           min="0" 
-                                           step="0.01" 
-                                           required>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label class="form-label fw-semibold">Notes</label>
-                                    <textarea name="budget_breakdown[${budgetIndex}][notes]" 
-                                             class="form-control" 
-                                             rows="2"></textarea>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="text-end">
-                                    <span class="fw-bold">
-                                        Total: <span class="budget-item-total">0.00</span>
-                                    </span>
-                                </div>
+                `);
+                return;
+            }
+
+            container.html(`
+                <h5 class="fw-bold text-success mb-3">
+                    <i class="fas fa-money-bill-wave me-2"></i> Budget Details
+                </h5>
+            `);
+
+            selected.each(function() {
+                const codeId = $(this).val();
+                const label = $(this).text();
+                const balance = $(this).data('balance');
+
+                const cardHtml = `
+                    <div class="card mt-4 budget-card" data-code="${codeId}">
+                        <div class="card-header bg-light">
+                            <h6 class="fw-semibold">
+                                Budget for: ${label}
+                                <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toFixed(2)}</span></span>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-bordered align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Unit</th>
+                                        <th>Qty</th>
+                                        <th>Unit Cost</th>
+                                        <th>Total</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="budget-items">
+                                    ${createBudgetRow(codeId, 0)}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="4" class="text-end fw-bold">Subtotal:</td>
+                                        <td class="subtotal fw-bold text-success">0.00</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            <div class="text-end mt-2">
+                                <button type="button" class="btn btn-primary btn-sm add-budget-row" data-code="${codeId}">
+                                    <i class="fas fa-plus"></i> Add Row
+                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-            const $newItem = $(newItem);
-            $('#budget-items').append($newItem);
-            $newItem.slideDown(300);
-            budgetIndex++;
+                `;
 
-            // Scroll to the new item
-            $('html, body').animate({
-                scrollTop: $newItem.offset().top - 100
-            }, 300);
-        });
-
-        // Remove budget item
-        $(document).on('click', '.remove-budget-item', function() {
-            const itemsCount = $('.budget-item').length;
-            if (itemsCount > 1) {
-                const $item = $(this).closest('.budget-item');
-                $item.slideUp(300, function() {
-                    $item.remove();
-                    // Update the numbering of remaining items
-                    $('.budget-item').each(function(idx) {
-                        $(this).find('h6').text(`Budget Item #${idx + 1}`);
-                    });
-                    updateTotalBudget();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Cannot Remove',
-                    text: 'At least one budget item is required.',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: '<i class="bx bx-check me-1"></i> OK',
-                    customClass: {
-                        confirmButton: 'btn btn-primary'
-                    }
-                });
-            }
-        });
-
-        // Calculate budget item total
-        $(document).on('input', '.budget-quantity, .budget-unit-price', function() {
-            const $item = $(this).closest('.budget-item');
-            const quantity = parseFloat($item.find('.budget-quantity').val()) || 0;
-            const unitPrice = parseFloat($item.find('.budget-unit-price').val()) || 0;
-            const total = quantity * unitPrice;
-            $item.find('.budget-item-total').text(total.toFixed(2));
-            updateTotalBudget();
-        });
-
-        // Update total budget
-        function updateTotalBudget() {
-            let grandTotal = 0;
-            $('.budget-item').each(function() {
-                const itemTotal = parseFloat($(this).find('.budget-item-total').text()) || 0;
-                grandTotal += itemTotal;
+                container.append(cardHtml);
             });
-            $('#grand-total').text(grandTotal.toFixed(2));
+
+            updateGrandTotal();
+        });
+
+        function createBudgetRow(codeId, index) {
+            return `
+                <tr>
+                    <td>
+                        <input type="text" name="budget[${codeId}][${index}][description]" 
+                               class="form-control description" required>
+                    </td>
+                    <td>
+                        <input type="text" name="budget[${codeId}][${index}][unit]" 
+                               class="form-control unit" required>
+                    </td>
+                    <td>
+                        <input type="number" name="budget[${codeId}][${index}][quantity]" 
+                               class="form-control quantity" min="1" value="1" required>
+                    </td>
+                    <td>
+                        <input type="number" name="budget[${codeId}][${index}][unit_cost]" 
+                               class="form-control unit-cost" min="0" step="0.01" required>
+                    </td>
+                    <td class="total text-center">0.00</td>
+                    <td>
+                        <button type="button" class="btn btn-danger btn-sm remove-budget-row">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
         }
 
-        // Initialize totals
-        $('.budget-quantity, .budget-unit-price').trigger('input');
+        // Add budget row
+        $(document).on('click', '.add-budget-row', function() {
+            const codeId = $(this).data('code');
+            const $tbody = $(this).closest('.card-body').find('.budget-items');
+            const index = $tbody.find('tr').length;
+            
+            $tbody.append(createBudgetRow(codeId, index));
+            updateGrandTotal();
+        });
 
-        // Form validation
-        $('#nonTravelForm').on('submit', function(e) {
-            if ($('.budget-item').length === 0) {
-                e.preventDefault();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Validation Error',
-                    text: 'At least one budget item is required.',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: '<i class="bx bx-check me-1"></i> OK',
-                    customClass: {
-                        confirmButton: 'btn btn-primary'
-                    }
-                });
-                return false;
+        // Remove budget row
+        $(document).on('click', '.remove-budget-row', function() {
+            $(this).closest('tr').remove();
+            updateGrandTotal();
+        });
+
+        // Calculate row total when values change
+        $(document).on('input', '.quantity, .unit-cost', function() {
+            const $row = $(this).closest('tr');
+            const quantity = parseFloat($row.find('.quantity').val()) || 0;
+            const unitCost = parseFloat($row.find('.unit-cost').val()) || 0;
+            const total = (quantity * unitCost).toFixed(2);
+            
+            $row.find('.total').text(total);
+            updateSubtotal($row.closest('.budget-card'));
+            updateGrandTotal();
+        });
+
+        function updateSubtotal($card) {
+            let subtotal = 0;
+            $card.find('.budget-items tr').each(function() {
+                subtotal += parseFloat($(this).find('.total').text()) || 0;
+            });
+            
+            $card.find('.subtotal').text(subtotal.toFixed(2));
+        }
+
+        function updateGrandTotal() {
+            let grandTotal = 0;
+            $('.budget-card').each(function() {
+                grandTotal += parseFloat($(this).find('.subtotal').text()) || 0;
+            });
+            
+            $('#grandBudgetTotal').text(grandTotal.toFixed(2));
+            $('#grandBudgetTotalInput').val(grandTotal.toFixed(2));
+        }
+
+        // Attachments handling
+        let attachmentIndex = 1;
+        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+
+        // Add new attachment block
+        $('#addAttachment').on('click', function() {
+            const newField = `
+                <div class="col-md-4 attachment-block">
+                    <label class="form-label">Document Type*</label>
+                    <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
+                    <input type="file" name="attachments[${attachmentIndex}][file]" 
+                           class="form-control mt-1 attachment-input" 
+                           accept=".pdf, .jpg, .jpeg, .png" 
+                           required>
+                </div>`;
+            $('#attachmentContainer').append(newField);
+            attachmentIndex++;
+        });
+
+        // Remove attachment block
+        $('#removeAttachment').on('click', function() {
+            if ($('.attachment-block').length > 1) {
+                $('.attachment-block').last().remove();
+                attachmentIndex--;
             }
+        });
 
-            // Show loading indicator
-            const submitBtn = $(this).find('button[type="submit"]');
-            const originalText = submitBtn.html();
-            submitBtn.html('<i class="bx bx-loader bx-spin me-2"></i> Creating...');
-            submitBtn.prop('disabled', true);
+        // Validate file extension on upload
+        $(document).on('change', '.attachment-input', function() {
+            const fileInput = this;
+            const fileName = fileInput.files[0]?.name || '';
+            const ext = fileName.split('.').pop().toLowerCase();
 
-            return true;
+            if (!allowedExtensions.includes(ext)) {
+                alert("Only PDF, JPG, JPEG, or PNG files are allowed.");
+                $(fileInput).val(''); // Clear invalid file
+            }
         });
     });
 </script>
 @endpush
-@endsection

@@ -41,8 +41,5 @@ class RequestType extends Model
         return $this->hasMany(SpecialMemo::class);
     }
 
-    public function nonTravelMemos(): HasMany
-    {
-        return $this->hasMany(NonTravelMemo::class);
-    }
+
 }

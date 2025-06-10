@@ -192,6 +192,9 @@ private function handle_login($user_data, $email) {
  
 }
 
+
+
+
 public function cred_login()
 {
     $postdata = $this->input->post();
@@ -515,11 +518,25 @@ public function revert()
   }
 
   public function changePass()
-  {
+{
     $postdata = $this->input->post();
-    echo $res = $this->auth_mdl->changePass($postdata);
-    redirect('users/change_pass');
-  }
+
+    // Attempt password change
+    $res = $this->auth_mdl->changePass($postdata);
+
+    //dd($postdata);
+
+    // Set flash message based on result
+    if ($res) {
+        Modules::run('utility/setFlash', [
+            'msg'  => $res,
+            'type' => 'info'
+        ]);
+    } 
+
+    redirect('auth/change_password');
+}
+
 
   public function change_password(){
     $data['title'] = "Change Password";
