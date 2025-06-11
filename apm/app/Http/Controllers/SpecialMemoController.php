@@ -11,6 +11,7 @@ use App\Models\FundCode;
 use App\Models\Location;
 use App\Models\Staff;
 use App\Models\CostItem;
+use App\Models\SpecialMemo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +22,7 @@ class SpecialMemoController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = Activity::with(['staff'])->latest();
+        $query = SpecialMemo::with(['staff'])->latest();
 
      
     
