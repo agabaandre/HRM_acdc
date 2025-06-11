@@ -157,7 +157,7 @@ class MatrixController extends Controller
      public function show(Matrix $matrix): View
      {
          // Load primary relationships
-         $matrix->load(['division', 'staff', 'focalPerson']);
+         $matrix->load(['division', 'staff']);
      
          // Paginate related activities and eager load direct relationships
          $activities = $matrix->activities()->with(['requestType', 'fundType'])->latest()->paginate(10);
@@ -179,6 +179,7 @@ class MatrixController extends Controller
              $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
              $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
          }
+         //dd($matrix);
      
          return view('matrices.show', compact('matrix', 'activities'));
      }
