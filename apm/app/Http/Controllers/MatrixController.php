@@ -46,10 +46,12 @@ class MatrixController extends Controller
         }
     
         if ($request->filled('division')) {
-            $query->where('division_id', $request->division);
+            $query->where('id', $request->division);
         }
     
         $matrices = $query->latest()->paginate(10);
+
+        //dd($matrices);
     
         $matrices->getCollection()->transform(function ($matrix) {
             $matrix->total_activities = $matrix->activities->count();

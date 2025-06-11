@@ -28,19 +28,21 @@
                         // Handle special case: matrice or matrices
                         if (in_array($segmentLower, ['matrice', 'matrices'])) {
                         $displayName = 'Quarterly Matrix';
+                        
 
                         // Attach division if available
-                        if (isset($matrix) && $matrix->division) {
-                        $displayName .= ' - ' . $matrix->division->name;
-                        } elseif (session('division_name')) {
-                        $displayName .= ' - ' . session('division_name');
+                        //dd($matrix)
+                        if (isset($matrix)) {
+                        $displayName .= ' - ' . $matrix->division->division_name;
+                        } elseif (user_session('division_name')) {
+                        $displayName .= ' - ' . user_session('division_name');
                         }
                         }
 
                         // Handle numeric segments
                         elseif (is_numeric($segment)) {
                         if ($previousSegment === 'matrices' && isset($matrix)) {
-                        $displayName = $matrix->year . ' ' . $matrix->quarter . ' - ' . ($matrix->division->name ?? 'Unknown Division');
+                        $displayName = $matrix->year . ' ' . $matrix->quarter??'';
                         } elseif ($previousSegment === 'activities' && isset($activity)) {
                         $displayName = $activity->activity_title ?? 'Activity #' . $segment;
                         } elseif ($previousSegment === 'staff' && isset($staff)) {
@@ -57,8 +59,8 @@
                         // Check if previous was matrices
                         if (in_array(strtolower($previousSegment), ['matrice', 'matrices'])) {
                         if (isset($matrix) && $matrix->division) {
-                        $displayName = 'Quarterly Matrix - ' . $matrix->division->name;
-                        } elseif (session('division_name')) {
+                        $displayName = 'Quarterly Matrix - ' . $matrix->division->divsion_name;
+                        } elseif (user_session('division_name')) {
                         $displayName = 'Quarterly Matrix - ' . session('division_name');
                         }
                         }
@@ -84,12 +86,12 @@
 
                         @if($loop->last || empty($url))
                         <li class="breadcrumb-item active" aria-current="page" title="{{$displayName}}">
-                            {{  Str::limit($displayName,30) }}
+                            {{  Str::limit($displayName,50) }}
                         </li>
                         @else
                         <li class="breadcrumb-item">
                             <a href="{{ url($url) }}" title="{{$displayName}}">
-                                {{  Str::limit($displayName,30) }}
+                                {{  Str::limit($displayName,100) }}
                             </a>
                         </li>
                         @endif
