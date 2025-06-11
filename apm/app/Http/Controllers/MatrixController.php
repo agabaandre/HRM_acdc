@@ -282,7 +282,7 @@ class MatrixController extends Controller
             'year'                => $validated['year'],
             'quarter'             => $validated['quarter'],
             'key_result_area'     => json_encode($validated['key_result_area']),
-            'staff_id'            => user_session('staff_id'),
+            'staff_id'            => $matrix->staff_id ?? user_session('staff_id'),
             'forward_workflow_id' => ($request->action == 'approvals' && $last_workflow_id==null)?1:$last_workflow_id,
             'approval_level' => $last_approval_order ?? 1,
             'overall_status' => $overall_status
@@ -324,7 +324,7 @@ class MatrixController extends Controller
         if($activityTrail->action !=='approved'){
 
             $matrix->forward_workflow_id = ($matrix->forward_workflow_id==1)?null:1;
-            $matrix->approval_level = 0;
+            $matrix->approval_level = ($matrix->forward_workflow_id==1)?0:1;
             $matrix->overall_status ='returned';
             $matrix->update();
 
