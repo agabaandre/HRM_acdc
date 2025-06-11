@@ -365,7 +365,7 @@ class MatrixController extends Controller
         }
         
         $matrix->update();
-        $activityTrail->save();
+        $matrixTrail->save();
 
         $message = "Matrix Updated successfully";
 
