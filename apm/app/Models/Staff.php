@@ -129,6 +129,6 @@ class Staff extends Model
     }
 
     public function division(){
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(Division::class,"division_id","division_id");
     }
 }

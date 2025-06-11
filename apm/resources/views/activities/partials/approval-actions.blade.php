@@ -36,7 +36,7 @@
                             <div class="mb-3">
                                 <label for="recommendChangesComment" class="form-label">Comments</label>
                                 <textarea class="form-control" id="recommendChangesComment" name="comment" rows="3" required></textarea>
-                                <input type="hidden" name="action" value="returned"/>
+                                <input type="hidden" name="action" value="flagged"/>
                             </div>
                         </div>
                         <div class="modal-footer">

@@ -93,8 +93,8 @@
 @endif
 
 
-@if(can_take_action($matrix))
-<div class="col-md-4 mb-2 px-2 ms-auto">
+@if(can_take_action($matrix) && activities_approved_by_me($matrix))
+   <div class="col-md-4 mb-2 px-2 ms-auto">
     @include('matrices.partials.approval-actions', ['matrix' => $matrix])
     </div>
 @endif

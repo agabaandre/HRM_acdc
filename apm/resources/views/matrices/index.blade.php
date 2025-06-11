@@ -116,9 +116,9 @@
                                 </div>
                             </td>
                             <td>{{ $matrix->created_at->format('Y-m-d H:i') }}</td>
-                            <td>{{ ($matrix->workflow_definition)?$matrix->workflow_definition->role:'Focal Person' }}</td>
+                            <td>{{ ($matrix->overall_status=='approved')?'Registry':(($matrix->workflow_definition)?$matrix->workflow_definition->role:'Focal Person') }}</td>
                             <td> <span class="p-1 rounded {{config('approval_states')[$matrix->overall_status]}}">{{ strtoupper($matrix->overall_status)}}</span></td>
-                            <td class="text-center">
+                            <td class="text-left">
                                 <div class="btn-group">
                                     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-info" title="View">
                                         <i class="bx bx-show"></i>

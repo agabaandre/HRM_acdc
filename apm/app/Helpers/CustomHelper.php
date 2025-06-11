@@ -1,4 +1,5 @@
 <?php
+use App\Models\ActivityApprovalTrail;
 use App\Models\Approver;
 use App\Models\MatrixApprovalTrail;
 use App\Models\WorkflowDefinition;
@@ -44,8 +45,8 @@ if (!function_exists('user_session')) {
         {
 
             $user = session('user', []);
-            $creator = Staff::where('staff_id',$matrix->staff_id)->first();
-            return ($creator->division_id == $user['division_id'] && $matrix->forward_workflow_id==null && $matrix->overall_status !== 'approved');
+            $creator = $matrix->staff;
+            return ($creator->division_id == $user['division_id'] && ($matrix->forward_workflow_id==null || $matrix->forward_workflow_id==1) && in_array($matrix->overall_status,['draft','returned']));
         }
 
     }
@@ -69,6 +70,54 @@ if (!function_exists('user_session')) {
 
     }
 
+    if (!function_exists('done_approving_activty')) {
+        /**
+         *Check wether user approval activity
+         */
+        function done_approving_activty($activity)
+        {
+         
+            $user = session('user', []);
+            $my_appoval =  ActivityApprovalTrail::where('activity_id',$activity->id)
+            ->where('action','passed')
+            ->where('staff_id',$user['staff_id'])->pluck('id');
+
+            return count($my_appoval)>0;
+        }
+
+    }
+
+    if (!function_exists('activities_approved_by_me')) {
+        function activities_approved_by_me($matrix){
+            $user = session('user', []);
+            
+            // Get all unique activity_ids for this matrix
+            $unique_activities = ActivityApprovalTrail::where("matrix_id", $matrix->id)
+                ->where("staff_id", $user['staff_id'])
+                ->distinct()
+                ->pluck('activity_id');
+
+            // If no activities exist, return false
+            if ($unique_activities->isEmpty()) {
+                return false;
+            }
+
+            // For each unique activity, check if user has at least one 'passed' approval
+            foreach ($unique_activities as $activity_id) {
+                $has_approved = ActivityApprovalTrail::where("staff_id", $user['staff_id'])
+                    ->where("matrix_id", $matrix->id)
+                    ->where("activity_id", $activity_id)
+                    ->where("action", "passed")
+                    ->exists();
+
+                if (!$has_approved)
+                    return false;
+            }
+
+            return true;
+        }
+    }
+
 
     if (!function_exists('can_take_action')) {
         /**
@@ -78,9 +127,11 @@ if (!function_exists('user_session')) {
         {
             $user = session('user', []);
 
-            if (empty($user['staff_id']) || done_approving($matrix)) {
-                return false;
-            }
+           // dd($user);
+
+           if (empty($user['staff_id']) || done_approving($matrix)) {
+               return false;
+           }
 
             $still_with_creator = still_with_creator($matrix);
 
@@ -90,61 +141,75 @@ if (!function_exists('user_session')) {
             $today = Carbon::today();
 
             //Check that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
-
-
+            $current_approval_point = WorkflowDefinition::where('approval_order', $matrix->approval_level)
+            ->where('workflow_id',$matrix->forward_workflow_id)
+            ->first();
+           
+          
             $workflow_dfns = Approver::where('staff_id', $user['staff_id'])
-            ->where('workflow_dfn_id',$matrix->forward_workflow_id)
-            ->orWhere(function ($query) use ($today, $user,$matrix) {
-                    $query ->where('workflow_dfn_id',$matrix->forward_workflow_id)
+            ->where('workflow_dfn_id', $current_approval_point->id)
+            ->orWhere(function ($query) use ($today, $user,$current_approval_point) {
+                    $query ->where('workflow_dfn_id',$current_approval_point->id)
                     ->where('oic_staff_id', $user['staff_id'])
                     ->where('end_date', '>=', $today);
                 })
-                ->pluck('workflow_dfn_id');
+            ->orderBy('id','desc')
+            ->pluck('workflow_dfn_id');
 
-
+          
             $division_specific_access=false;
+            $is_at_my_approval_level =false;
 
+          
            //if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
 
+            
             //$possible_approval_point = WorkflowDefinition where workflow_id = $matrix->forward_workflow_id and approval_order=$matrix->approval_level{
             // if($current_approval_point->division_specific)
             // get from staff where id is $matrix->staff_id and get their division_id
             // $division = got to Division::where('directorate_id' is get the division_d of the staff_id that created the matrix .ie (matrix->staff_id)
             // The get $division->{$possible_approval_point->divsion_reference_column} and that value must be equal to user_session()['staff_id'], if it is, return true
            // }
-           
-                $possible_approval_point = WorkflowDefinition::where('approval_order', $matrix->approval_level)
-                    ->first();
-                
+            
                 $division_specific_access = false;
-
-                if ($possible_approval_point && $possible_approval_point->division_specific) {
-                   
-                    $staff    = Staff::where('staff_id',$matrix->staff_id)->first();
-                    $division = Division::where('directorate_id', $staff->division_id)->first();
-                    
-                    if ($division && $division->{$possible_approval_point->division_reference_column} == user_session()['staff_id']) {
+                
+                if ($current_approval_point && $current_approval_point->is_division_specific) {
+                    $division = $matrix->division;
+                  
+                    //staff holds current approval role in division
+                    if ($division && $division->{$current_approval_point->division_reference_column} == user_session()['staff_id']) {
                         $division_specific_access = true;
                     }
                 }
+
                 //how to check approval levels against approver in approvers table???
                 
-            }
+            }else{
 
-            $current_approval_point = WorkflowDefinition::whereIn('id', $workflow_dfns)
+                $next_definition = WorkflowDefinition::whereIn('workflow_id', $workflow_dfns->toArray())
+                ->where('approval_order',(int) $matrix->approval_level)
+                ->where('is_enabled',1)
                 ->orderBy('approval_order')
-                ->first();
+                ->get();
 
-               // dd($current_approval_point);
+                if ($next_definition->count() > 1) {
+
+                    if ($matrix->has_extramural && $matrix->approval_level !== $current_approval_point->first()->approval_order) {
+                        $current_approval_point =  $next_definition->where('fund_type', 2);
+                    } 
+                    else 
+                        $current_approval_point = $next_definition->where('fund_type', 1);
+                }
+
+                $is_at_my_approval_level = ($current_approval_point)?($current_approval_point->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level =  $current_approval_point->approval_order):false;
+            }      
 
            /**TODO
             * Factor in approval conditions 
             */
-
-            $is_at_my_approval_level = ($current_approval_point)?($current_approval_point->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level =  $current_approval_point->approval_order):false;
-
-            return ( ($is_at_my_approval_level  || $still_with_creator || $division_specific_access) && $matrix->overall_status !== 'approved');
+ 
+            return ( ($is_at_my_approval_level || $still_with_creator || $division_specific_access) && $matrix->overall_status !== 'approved');
         }
         
     }

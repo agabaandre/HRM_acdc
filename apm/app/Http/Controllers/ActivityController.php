@@ -382,7 +382,7 @@ class ActivityController extends Controller
      
         $activityTrail = new ActivityApprovalTrail();
 
-        $activityTrail->remarks  = $request->comment  ?? 'passed';
+        $activityTrail->remarks  = $request->comment  ?? 'Passed';
         $activityTrail->action   = $request->action;
         $activityTrail->activity_id   = $activity->id;
         $activityTrail->matrix_id   = $matrix->id;
@@ -391,10 +391,9 @@ class ActivityController extends Controller
 
         if($activityTrail->action !=='passed'){
 
-            $matrix->forward_workflow_id = null;
+            $matrix->forward_workflow_id = 1;
             $matrix->overall_status ='pending';
             $matrix->update();
-
         }
 
         $message = "Activity Updated successfully";
