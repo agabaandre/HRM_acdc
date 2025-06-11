@@ -93,12 +93,15 @@
                                         <td>
                                             <span class="fw-medium">{{ $memo->memo_number }}</span>
                                         </td>
-                                        <td>{{ $memo->memo_date->format('d-M-Y') }}</td>
+                                        <td>{{ $memo->memo_date}}</td>
                                         <td>
                                             <a href="{{ route('special-memo.show', $memo) }}" class="text-decoration-none fw-medium text-dark">
                                                 {{ Str::limit($memo->subject, 50) }}
                                             </a>
                                         </td>
+                                        @php 
+                                      
+                                        @endphp
                                         <td>{{ $memo->staff->first_name }} {{ $memo->staff->last_name }}</td>
                                         <td>{{ $memo->division->name }}</td>
                                         <td>
