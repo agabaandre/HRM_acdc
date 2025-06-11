@@ -29,7 +29,7 @@ class Division extends Model
         'is_active',
     ];
 
-    //protected $table="divisions2";
+    protected $table="divisions2";
 
     /**
      * Get the attributes that should be cast.

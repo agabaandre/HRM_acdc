@@ -69,7 +69,7 @@ class Matrix extends Model
 
     public function division()
     {
-        return $this->belongsTo(Division::class,"division_id","division_id");
+        return $this->belongsTo(Division::class,"division_id");
     }
 
     public function staff(): BelongsTo

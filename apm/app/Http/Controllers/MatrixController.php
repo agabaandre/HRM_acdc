@@ -90,9 +90,9 @@ class MatrixController extends Controller
         $divisionFocalPersons = [];
     
         foreach ($divisions as $division) {
-            $divisionStaff = Staff::active()->where('division_id', $division->division_id)->get();
-            $staffByDivision[$division->division_id] = $divisionStaff->pluck('id')->toArray();
-            $divisionFocalPersons[$division->division_id] = $division->focal_person;
+            $divisionStaff = Staff::active()->where('division_id', $division->id)->get();
+            $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
+            $divisionFocalPersons[$division->id] = $division->focal_person;
         }
     
         // Save division name in session for breadcrumb use
@@ -202,9 +202,9 @@ class MatrixController extends Controller
         $divisionFocalPersons = [];
     
         foreach ($divisions as $division) {
-            $divisionStaff = $staff->where('division_id', $division->division_id);
-            $staffByDivision[$division->division_id] = $divisionStaff->pluck('id')->toArray();
-            $divisionFocalPersons[$division->division_id] = $division->focal_person;
+            $divisionStaff = $staff->where('division_id', $division->id);
+            $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
+            $divisionFocalPersons[$division->id] = $division->focal_person;
         }
     
         // Ensure key_result_area is an array
