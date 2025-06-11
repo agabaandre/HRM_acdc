@@ -67,14 +67,14 @@ class Matrix extends Model
         }
     }
 
-    public function division(): BelongsTo
+    public function division()
     {
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(Division::class,"division_id","division_id");
     }
 
     public function staff(): BelongsTo
     {
-        return $this->belongsTo(Staff::class);
+        return $this->belongsTo(Staff::class,"staff_id","staff_id");
     }
 
     public function focalPerson(): BelongsTo
@@ -101,10 +101,15 @@ class Matrix extends Model
 
     public function getWorkflowDefinitionAttribute()
     {
-        return WorkflowDefinition::where('approval_order', $this->approval_level)
+        $definitions = WorkflowDefinition::where('approval_order', $this->approval_level)
             ->where('workflow_id', $this->forward_workflow_id)
             ->where('is_enabled',1)
-            ->first();
+            ->get();
+
+        if ( $definitions->count() > 1 && $definitions[0]->category )
+                return $definitions->where('category', $this->division->category)->first();
+
+          return ($definitions->count()>0)?$definitions[0]:WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)->where('approval_order', 1)->first();
     }
 
     public function activityApprovalTrails(): HasMany

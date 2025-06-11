@@ -88,9 +88,9 @@ class MatrixController extends Controller
         $divisionFocalPersons = [];
     
         foreach ($divisions as $division) {
-            $divisionStaff = Staff::active()->where('division_id', $division->id)->get();
-            $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
-            $divisionFocalPersons[$division->id] = $division->focal_person;
+            $divisionStaff = Staff::active()->where('division_id', $division->division_id)->get();
+            $staffByDivision[$division->division_id] = $divisionStaff->pluck('id')->toArray();
+            $divisionFocalPersons[$division->division_id] = $division->focal_person;
         }
     
         // Save division name in session for breadcrumb use
@@ -199,9 +199,9 @@ class MatrixController extends Controller
         $divisionFocalPersons = [];
     
         foreach ($divisions as $division) {
-            $divisionStaff = $staff->where('division_id', $division->id);
-            $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
-            $divisionFocalPersons[$division->id] = $division->focal_person;
+            $divisionStaff = $staff->where('division_id', $division->division_id);
+            $staffByDivision[$division->division_id] = $divisionStaff->pluck('id')->toArray();
+            $divisionFocalPersons[$division->division_id] = $division->focal_person;
         }
     
         // Ensure key_result_area is an array
@@ -256,7 +256,7 @@ class MatrixController extends Controller
         $last_approval_order=$matrix->approval_level;
         $overall_status = $matrix->overall_status;
 
-        $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->where('action','!=','approved')->first();
+        $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->where('action','!=','approved')->orderByDesc('id')->first();
 
      
         if($request->action == 'approvals'){
@@ -320,7 +320,8 @@ class MatrixController extends Controller
        
         if($activityTrail->action !=='approved'){
 
-            $matrix->forward_workflow_id = null;
+            $matrix->forward_workflow_id = ($matrix->forward_workflow_id==1)?null:1;
+            $matrix->approval_level = 0;
             $matrix->overall_status ='returned';
             $matrix->update();
 
@@ -334,16 +335,14 @@ class MatrixController extends Controller
             $matrix->approval_level = $next_approval_point->approval_order;
             $matrix->next_approval_level = $next_approval_point->approval_order;
             $matrix->overall_status = 'pending';
-            $matrix->update();
-
-            
            }
            else{
             //no more approval levels
             $matrix->overall_status = 'approved';
            }
         }
-
+        
+        $matrix->update();
         $activityTrail->save();
 
         $message = "Matrix Updated successfully";
@@ -356,22 +355,25 @@ class MatrixController extends Controller
 
     private function get_next_approver($matrix){
 
-        $division   = Staff::where('staff_id',$matrix->staff_id)->first()->division;
+        $division   = $matrix->division;
 
-      
         $current_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
            ->where('is_enabled',1)
-           ->where('approval_order',$matrix->approval_level)->first();
+           ->where('approval_order',$matrix->approval_level)
+           ->first();
 
         $go_to_category_check_for_external =(!$matrix->has_extramural && !$matrix->has_extramural && ($matrix->approval_level!=null && $current_definition->approval_order > $matrix->approval_level));
 
         //if it's time to trigger categroy check, just check and continue
-        if($current_definition && $current_definition->triggers_category_check || $go_to_category_check_for_external){
-            return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+        if(($current_definition && $current_definition->triggers_category_check) || $go_to_category_check_for_external){
+
+            $category_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
                         ->where('is_enabled',1)
                         ->where('category',$division->category)
                         ->orderBy('approval_order','asc')
                         ->first();
+
+            return $category_definition;
         }
 
         $nextStepIncrement = 1;
@@ -400,16 +402,16 @@ class MatrixController extends Controller
             }
         }
 
-        $definition = $next_definition[0];
+        $definition = ($next_definition->count()>0)?$next_definition[0]:null;
         //intramural only, skip extra mural role
-        if(!$matrix->has_extramural &&  $definition->fund_type==2){
+        if($definition  && !$matrix->has_extramural &&  $definition->fund_type==2){
           return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
             ->where('is_enabled',1)
             ->where('approval_order',$definition->approval_order+1)->first();
         }
 
         //only extramural, skip by intramural roles
-        if(!$matrix->has_intramural &&  $definition->fund_type==1){
+        if($definition  && !$matrix->has_intramural &&  $definition->fund_type==1){
             return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
               ->where('is_enabled',1)
               ->where('approval_order', $definition->approval_order+2)->first();

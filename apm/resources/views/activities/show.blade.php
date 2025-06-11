@@ -28,6 +28,9 @@
             <div class="card-header bg-light">
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
                 <small class="text-muted">Activity Ref: {{ $activity->activity_ref }}</small>
+                @if($activity->my_last_action)
+                    <p> You Action: <small class=" text-white rounded p-1 {{($activity->my_last_action->action=='passed')?'bg-success':'bg-danger'}}">{{strtoupper($activity->my_last_action->action)}}</small></p>
+                @endif
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -154,7 +157,7 @@
                     </table>
                 </div>
 
-            @if(can_take_action($matrix )  && (($activity->my_last_action)?($activity->my_last_action->action !=='passed'):true))
+            @if(can_take_action($matrix )  && !done_approving_activty($activity))
             <div class="col-md-4 mb-2 px-2 ms-auto">
               @include('activities.partials.approval-actions',['activity'=>$activity,'matrix'=>$matrix])
             </div>
@@ -178,7 +181,7 @@
                     </div>
                     @foreach($activity->activityApprovalTrails as $trail)
                         <div class="list-group-item">
-                            <small class="badge bg-info">{{ucwords($trail->action)}}</small><br>
+                            <small class="badge {{($trail->action=='passed')?'bg-success':'bg-danger'}}">{{ucwords($trail->action)}}</small><br>
                             <small>{{ $trail->created_at->format('Y-m-d H:i') }} - {{ $trail->staff->name  }} <strong>{{($trail->staff_id == session('user')['staff_id'])?"(You)":""}}</strong></small><br>
                             <p class="mb-0 text-muted">{{ $trail->remarks }}</p>
                         </div>

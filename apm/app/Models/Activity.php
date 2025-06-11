@@ -220,7 +220,7 @@ class Activity extends Model
         $user = session('user', []);
         return ActivityApprovalTrail::where('activity_id',$this->id)
         ->where('staff_id',$user['staff_id'])
-        ->orderBy('id','asc')->first();
+        ->orderByDesc('id')->first();
     }
     
 }
