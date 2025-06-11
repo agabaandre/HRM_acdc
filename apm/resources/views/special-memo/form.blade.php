@@ -92,6 +92,19 @@
                 </label>
                 <input type="number" name="total_external_participants" id="total_external_participants" value="0" class="form-control border-success" value="{{ old('total_external_participants') }}" min="1" required>
             </div>
+              <div class="col-md-12">
+                <label for="activity_request_remarks" class="form-label fw-semibold">
+                    <i class="fas fa-comment-dots me-1 text-success"></i>Request for Approval <span class="text-danger">*</span>
+                </label>
+                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks') }}</textarea>
+            </div>
+
+                 <div class="col-md-12">
+                <label for="activity_request_remarks" class="form-label fw-semibold">
+                    <i class="fas fa-comment-dots me-1 text-success"></i>Supporting reasons for the special memo <span class="text-danger">*</span>
+                </label>
+                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks') }}</textarea>
+            </div>
 
             <div class="mt-5">
                     <h6 class="fw-bold text-success mb-3"><i class="fas fa-user-plus me-2"></i> Add Participants from other Division</h6>
@@ -123,19 +136,7 @@
 </div>
 
 
-            <div class="col-md-12">
-                <label for="activity_request_remarks" class="form-label fw-semibold">
-                    <i class="fas fa-comment-dots me-1 text-success"></i>Request for Approval <span class="text-danger">*</span>
-                </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks') }}</textarea>
-            </div>
-
-                 <div class="col-md-12">
-                <label for="activity_request_remarks" class="form-label fw-semibold">
-                    <i class="fas fa-comment-dots me-1 text-success"></i>Supporting reasons for the special memo <span class="text-danger">*</span>
-                </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks') }}</textarea>
-            </div>
+          
 
             
 
