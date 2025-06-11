@@ -313,15 +313,15 @@ class MatrixController extends Controller
         $request->validate(['action' => 'required']);
 
      
-        $activityTrail = new MatrixApprovalTrail();
+        $matrixTrail = new MatrixApprovalTrail();
 
-        $activityTrail->remarks  = $request->comment  ?? 'approved';
-        $activityTrail->action   = $request->action;
-        $activityTrail->matrix_id   = $matrix->id;
-        $activityTrail->approval_order   = $matrix->approval_level ?? 1;
-        $activityTrail->staff_id = user_session('staff_id');
+        $matrixTrail->remarks  = $request->comment  ?? 'approved';
+        $matrixTrail->action   = $request->action;
+        $matrixTrail->matrix_id   = $matrix->id;
+        $matrixTrail->approval_order   = $matrix->approval_level ?? 1;
+        $matrixTrail->staff_id = user_session('staff_id');
        
-        if($activityTrail->action !=='approved'){
+        if($matrixTrail->action !=='approved'){
 
             $matrix->forward_workflow_id = ($matrix->forward_workflow_id==1)?null:1;
             $matrix->approval_level = ($matrix->forward_workflow_id==1)?0:1;
