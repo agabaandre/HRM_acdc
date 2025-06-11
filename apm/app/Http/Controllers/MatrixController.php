@@ -255,13 +255,23 @@ class MatrixController extends Controller
             $validated['focal_person_id'] = $userStaffId;
         }
 
+        $this->updateMatrix($matrix,$request,$validated);
+
+        return redirect()->route('matrices.index')->with([
+            'msg' => 'Matrix updated successfully.',
+            'type' => 'success'
+        ]);
+        
+    }
+
+    public function updateMatrix($matrix,$request,$validated=null){
+
         $last_workflow_id=null;
         $last_approval_order=$matrix->approval_level;
         $overall_status = $matrix->overall_status;
 
         $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->where('action','!=','approved')->orderByDesc('id')->first();
 
-     
         if($request->action == 'approvals'){
 
             if($last_approval_trail){
@@ -275,24 +285,33 @@ class MatrixController extends Controller
             $overall_status = 'pending';
         }
 
-        // Update matrix
-        $matrix->update([
-            'division_id'         => $validated['division_id'],
-            'focal_person_id'     => $validated['focal_person_id'],
-            'year'                => $validated['year'],
-            'quarter'             => $validated['quarter'],
-            'key_result_area'     => json_encode($validated['key_result_area']),
+        $update_data = [
             'staff_id'            => $matrix->staff_id ?? user_session('staff_id'),
             'forward_workflow_id' => ($request->action == 'approvals' && $last_workflow_id==null)?1:$last_workflow_id,
             'approval_level' => $last_approval_order ?? 1,
             'overall_status' => $overall_status
-        ]);
-    
+        ];
+
+        if($validated){
+            $update_data['division_id'] = $validated['division_id'];
+            $update_data['focal_person_id'] = $validated['focal_person_id'];
+            $update_data['year']    = $validated['year'];
+            $update_data['quarter'] = $validated['quarter'];
+            $update_data['key_result_area'] = json_encode($validated['key_result_area']);
+        }
+
+        // Update matrix
+        $matrix->update($update_data);
+    }
+
+    public function request_approval( Matrix $matrix){
+
+        $this->updateMatrix($matrix,(Object)['action'=>'approvals'],null);
+
         return redirect()->route('matrices.index')->with([
             'msg' => 'Matrix updated successfully.',
             'type' => 'success'
         ]);
-        
     }
     
     

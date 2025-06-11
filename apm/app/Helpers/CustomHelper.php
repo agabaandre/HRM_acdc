@@ -44,9 +44,10 @@ if (!function_exists('user_session')) {
         function still_with_creator($matrix)
         {
 
-            $user = session('user', []);
-            $creator = $matrix->staff;
-            return ($creator->division_id == $user['division_id'] && ($matrix->forward_workflow_id==null || $matrix->forward_workflow_id==1) && in_array($matrix->overall_status,['draft','returned']));
+            $user = (Object) session('user', []);
+            //$creator = $matrix->staff;
+            //$creator->division_id == $user['division_id'] &&
+            return ( ((($user->staff_id == $matrix->staff_id || $matrix->focal_person_id == $user->staff_id) && ($matrix->forward_workflow_id==null)) || ($matrix->division->division_head==$user->staff_id && $matrix->forward_workflow_id==1))  && in_array($matrix->overall_status,['draft','returned']));
         }
 
     }

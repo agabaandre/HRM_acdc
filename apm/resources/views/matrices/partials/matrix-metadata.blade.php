@@ -73,9 +73,10 @@
         </div>
         <div>
             @if($matrix->overall_status !=='approved')
-                <span class="badge {{config('approval_states')[$matrix->overall_status]}}">
+                <span class="p-1 rounded {{config('approval_states')[$matrix->overall_status]}}">
                     <i class="fa fa-clock text-bold"></i>
                     {{ ($matrix->workflow_definition)?$matrix->workflow_definition->role:strtoupper($matrix->overall_status) }}
+                    <small class="text-white">{{ ($matrix->current_actor)? "(".$matrix->current_actor->fname ." ".$matrix->current_actor->lname.")":""}}</small>
                 </span>
             @endif
             @if($matrix->overall_status =='approved')

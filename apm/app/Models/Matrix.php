@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use function React\Promise\Stream\first;
 
 class Matrix extends Model
 {
@@ -30,7 +31,7 @@ class Matrix extends Model
         'overall_status',
     ];
 
-    protected $appends =['workflow_definition','has_intramural','has_extramural'];
+    protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor'];
 
     /**
      * Get the casts for the model.
@@ -110,6 +111,26 @@ class Matrix extends Model
                 return $definitions->where('category', $this->division->category)->first();
 
           return ($definitions->count()>0)?$definitions[0]:WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)->where('approval_order', 1)->first();
+    }
+
+    public function getCurrentActorAttribute()
+    {
+        if($this->overall_status =='approved')
+        return null;
+
+        $role = $this->workflow_definition;
+        $staff_id = $this->focal_person_id;
+
+        if($role){
+
+        if($role->is_division_specific)
+         $staff_id =  $this->division->{$role->division_reference_column};
+        else
+         $staff_id =Approver::select('staff_id')->where('workflow_dfn_id',$this->forward_workflow_id)->first()->staff_id;
+      }
+       
+      return Staff::select('lname','fname','staff_id')->where('staff_id',$staff_id)->first();
+
     }
 
     public function activityApprovalTrails(): HasMany

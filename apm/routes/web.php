@@ -87,6 +87,7 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     
     // Add matrices and activities resources inside the middleware group
     Route::resource('matrices', MatrixController::class);
+    Route::get('/matrices/request_approval/{matrix}', [MatrixController::class, 'request_approval'])->name('matrices.request_approval');
     Route::post('/matrices/{matrix}/status', [MatrixController::class, 'update_status'])
     ->name('matrices.status');
     

@@ -126,7 +126,7 @@
                                 </div>
                             </td>
                             <td>{{ $matrix->created_at->format('Y-m-d H:i') }}</td>
-                            <td>{{ ($matrix->overall_status=='approved')?'Registry':(($matrix->workflow_definition)?$matrix->workflow_definition->role:'Focal Person') }}</td>
+                            <td>{{ ($matrix->overall_status=='approved')?'Registry':(($matrix->workflow_definition)?$matrix->workflow_definition->role:'Focal Person') }} <small class="text-muted">{{ ($matrix->current_actor)? "(".$matrix->current_actor->fname ." ".$matrix->current_actor->lname.")":""}}</small></td>
                             <td> <span class="p-1 rounded {{config('approval_states')[$matrix->overall_status]}}">{{ strtoupper($matrix->overall_status)}}</span></td>
                             <td class="text-left">
                                 <div class="btn-group">
