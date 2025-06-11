@@ -36,7 +36,6 @@ class Staff extends Model
         'nationality',
         'division_name',
         'division_id',
-        'directorate_id',
         'duty_station_id',
         'status',
         'tel_1',
@@ -112,23 +111,8 @@ class Staff extends Model
         return $this->hasMany(NonTravelMemo::class);
     }
     
-    /**
-     * Get the supervisor of this staff member.
-     */
-    public function supervisor(): BelongsTo
-    {
-        return $this->belongsTo(Staff::class, 'supervisor_id');
-    }
-    
-    /**
-     * Get the subordinates of this staff member.
-     */
-    public function subordinates(): HasMany
-    {
-        return $this->hasMany(Staff::class, 'supervisor_id');
-    }
 
     public function division(){
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(Division::class,'division_id');
     }
 }
