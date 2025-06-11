@@ -23,7 +23,7 @@
             <form action="{{ route('special-memo.store') }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf
 
-                @includeIf('activities.form')
+                @includeIf('special-memo.form')
 
                 <div class="row g-4 mt-2">
                     <div class="col-md-4 fund_type">
