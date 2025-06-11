@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SpecialMemo;
 use App\Models\Activity;
 use App\Models\ActivityApprovalTrail;
 use App\Models\Matrix;
@@ -12,6 +11,7 @@ use App\Models\FundCode;
 use App\Models\Location;
 use App\Models\Staff;
 use App\Models\CostItem;
+use App\Models\SpecialMemo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +23,8 @@ class SpecialMemoController extends Controller
     public function index(Request $request): View
     {
         $query = SpecialMemo::with(['staff'])->latest();
+
+     
     
         if ($request->has('staff_id') && $request->staff_id) {
             $query->where('staff_id', $request->staff_id);
@@ -39,7 +41,7 @@ class SpecialMemoController extends Controller
         if ($request->has('status') && $request->status) {
             $query->where('status', $request->status);
         }
-    
+        //dd($query);
         $specialMemos = $query->paginate(10);
         $staff = Staff::active()->get();
     
@@ -107,51 +109,80 @@ class SpecialMemoController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'staff_id' => 'required|exists:staff,id',
-            'forward_workflow_id' => 'required|exists:workflows,id',
-            'reverse_workflow_id' => 'required|exists:workflows,id',
-            'memo_number' => 'required|string|unique:special_memos,memo_number',
-            'memo_date' => 'required|date',
-            'subject' => 'required|string|max:255',
-            'body' => 'required|string',
-            'division_id' => 'required|exists:divisions,id',
-            'recipients' => 'sometimes|array',
-            'attachment' => 'nullable|array',
-            'attachment.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'status' => 'sometimes|in:draft,submitted,approved,rejected',
-            'remarks' => 'nullable|string',
-        ]);
-        
-        // Handle file attachments
-        $attachments = [];
-        if ($request->hasFile('attachment')) {
-            foreach ($request->file('attachment') as $file) {
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('special-memo-attachments', $filename, 'public');
-                $attachments[] = [
-                    'name' => $file->getClientOriginalName(),
-                    'path' => $path,
-                    'type' => $file->getClientMimeType(),
-                    'size' => $file->getSize(),
-                ];
+        $userStaffId = session('user.auth_staff_id');
+    
+        return \DB::transaction(function () use ($request, $userStaffId) {
+            try {
+                // Validate required fields
+                $validated = $request->validate([
+                    'activity_title' => 'required|string|max:255',
+                    'location_id' => 'required|array|min:1',
+                    'location_id.*' => 'exists:locations,id',
+                    'participant_start' => 'required|array',
+                    'participant_end' => 'required|array',
+                    'participant_days' => 'required|array',
+                ]);
+    
+                // Prepare internal participants structure
+                $participantStarts = $request->input('participant_start', []);
+                $participantEnds = $request->input('participant_end', []);
+                $participantDays = $request->input('participant_days', []);
+    
+                $internalParticipants = [];
+    
+                foreach ($participantStarts as $staffId => $startDate) {
+                    $internalParticipants[$staffId] = [
+                        'participant_start' => $startDate,
+                        'participant_end' => $participantEnds[$staffId] ?? null,
+                        'participant_days' => $participantDays[$staffId] ?? null,
+                    ];
+                }
+    
+                // Create the Special Memo (Activity)
+                $activity = Activity::create([
+                    'is_special_memo' => 1, // ← Flag as special memo
+                    'staff_id' => $userStaffId,
+                    'workplan_activity_code' => '',
+                    'responsible_person_id' => $request->input('responsible_person_id', 1),
+                    'date_from' => $request->input('date_from', now()->toDateString()),
+                    'date_to' => $request->input('date_to', now()->toDateString()),
+                    'total_participants' => (int) $request->input('total_participants', 1),
+                    'total_external_participants' => (int) $request->input('total_external_participants', 0),
+                    'key_result_area' => $request->input('key_result_link', '-'),
+                    'request_type_id' => (int) $request->input('request_type_id', 1),
+                    'activity_title' => $request->input('activity_title'),
+                    'background' => $request->input('background', ''),
+                    'activity_request_remarks' => $request->input('activity_request_remarks', ''),
+                    'forward_workflow_id' => 1,
+                    'reverse_workflow_id' => 1,
+                    'status' => Activity::STATUS_DRAFT,
+                    'fund_type_id' => $request->input('fund_type', 1),
+                    'location_id' => json_encode($request->input('location_id', [])),
+                    'internal_participants' => json_encode($internalParticipants),
+                    'budget_id' => json_encode($request->input('budget_codes', [])),
+                    'budget' => json_encode($request->input('budget', [])),
+                    'attachment' => json_encode($request->input('attachments', [])),
+                ]);
+    
+                return redirect()
+                    ->route('special-memo.index')
+                    ->with([
+                        'msg' => 'Special Memo created successfully.',
+                        'type' => 'success'
+                    ]);
+    
+            } catch (\Exception $e) {
+                \DB::rollBack();
+                \Log::error('Error creating special memo', ['exception' => $e]);
+    
+                return redirect()->back()->withInput()->with([
+                    'msg' => 'An error occurred while creating the special memo. Please try again.',
+                    'type' => 'error'
+                ]);
             }
-        }
-        
-        $validated['attachment'] = $attachments;
-        
-        // Set default status if not provided
-        if (!isset($validated['status'])) {
-            $validated['status'] = 'draft';
-        }
-        
-        SpecialMemo::create($validated);
-        
-        return redirect()
-            ->route('special-memo.index')
-            ->with('success', 'Special memo created successfully.');
+        });
     }
+    
 
     /**
      * Display the specified special memo.

@@ -10,104 +10,66 @@ class SpecialMemo extends Model
 {
     use HasFactory;
 
+    protected $table = 'special_memos'; // Uses the 'activities' table
+
     /**
      * The attributes that are mass assignable.
-     *
-     * @var array
      */
     protected $fillable = [
+        'activity_id',
         'staff_id',
-        'forward_workflow_id',
-        'reverse_workflow_id',
-        'memo_number',
-        'memo_date',
-        'subject',
-        'body',
         'division_id',
-        'recipients',
+        'date_from',
+        'date_to',
+        'location_id',
+        'total_participants',
+        'internal_participants',
+        'total_external_participants',
+        'key_result_area',
+        'request_type_id',
+        'activity_title',
+        'background',
+        'activity_request_remarks',
+        'justification',
+        'is_special_memo',
+        'budget',
         'attachment',
-        'priority',
         'status',
-        'remarks',
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Casts for attribute types.
      */
-    protected function casts(): array
-    {
-        return [
-            'id' => 'integer',
-            'staff_id' => 'integer',
-            'forward_workflow_id' => 'integer',
-            'reverse_workflow_id' => 'integer',
-            'division_id' => 'integer',
-            'memo_date' => 'date',
-            'recipients' => 'array',
-            'attachment' => 'array',
-        ];
-    }
+    protected $casts = [
+        'staff_id' => 'integer',
+        'division_id' => 'integer',
+        'request_type_id' => 'integer',
+        'date_from' => 'date',
+        'date_to' => 'date',
+        'location_id' => 'array',
+        'internal_participants' => 'array',
+        'budget' => 'array',
+        'attachment' => 'array',
+        'is_special_memo' => 'boolean',
+    ];
 
     /**
-     * Get the staff member that authored the special memo.
+     * Staff member who submitted the special memo.
      */
-    public function staff(): BelongsTo
+    public function staff()
     {
-        return $this->belongsTo(Staff::class);
-    }
-
-    /**
-     * Get the division associated with the special memo.
-     */
-    public function division(): BelongsTo
-    {
-        return $this->belongsTo(Division::class);
-    }
-
-    /**
-     * Get the forward workflow for this special memo.
-     */
-    public function forwardWorkflow(): BelongsTo
-    {
-        return $this->belongsTo(Workflow::class, 'forward_workflow_id');
-    }
-
-    /**
-     * Get the reverse workflow for this special memo.
-     */
-    public function reverseWorkflow(): BelongsTo
-    {
-        return $this->belongsTo(Workflow::class, 'reverse_workflow_id');
+        return $this->belongsTo(Staff::class, 'staff_id');
     }
     
-    /**
-     * Generate a unique memo number.
-     * 
-     * @return string
-     */
-    public static function generateMemoNumber(): string
+    public function division()
     {
-        $prefix = 'SPM';
-        $year = date('Y');
-        $month = date('m');
-        
-        // Get the latest memo number for this month
-        $latestMemo = self::where('memo_number', 'like', "{$prefix}-{$year}{$month}%")
-            ->orderBy('id', 'desc')
-            ->first();
-            
-        $nextNumber = 1;
-        
-        if ($latestMemo) {
-            // Extract the number part from the memo number
-            $parts = explode('-', $latestMemo->memo_number);
-            $lastNumber = intval(substr(end($parts), 6)); // Extract the sequence number
-            $nextNumber = $lastNumber + 1;
-        }
-        
-        // Format the memo number: SPM-YYYYMM-0001
-        return sprintf("%s-%s%s-%04d", $prefix, $year, $month, $nextNumber);
+        return $this->belongsTo(Division::class, 'division_id');
+    }
+    /**
+     * Request type relationship.
+     */
+    public function requestType(): BelongsTo
+    {
+        return $this->belongsTo(RequestType::class, 'request_type_id');
     }
 }

@@ -71,12 +71,22 @@
                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
+
+                   @php 
+
+                    //dd($matrix);
+                    @endphp
                 <tbody>
                     @forelse($matrices as $matrix)
+
+                 
+
+                          
+                          
                         <tr>
                             <td>{{ $matrix->year }}</td>
                             <td>{{ $matrix->quarter }}</td>
-                            <td>{{ $matrix->division->name ?? 'N/A' }}</td>
+                            <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
                             <td>{{ $matrix->focalPerson->name ?? 'N/A' }}</td>
                             <td>
                                 @php
