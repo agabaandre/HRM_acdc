@@ -81,10 +81,6 @@ class Staff extends Model
         return "{$this->fname} {$this->lname}";
     }
 
-    // public function division(): BelongsTo
-    // {
-    //     return $this->belongsTo(Division::class);
-    // }
     
     // public function directorate(): BelongsTo
     // {
