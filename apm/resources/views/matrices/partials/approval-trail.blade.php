@@ -40,13 +40,13 @@
     border-color: #28a745;
     color: #28a745;
 }
-.timeline-badge.returned {
+.timeline-badge.rejected {
     border-color: #dc3545;
     color: #dc3545;
 }
-.timeline-badge.other {
-    border-color: #007bff;
-    color: #007bff;
+.timeline-badge.returned {
+    border-color:rgb(217, 136, 15);
+    color:rgb(208, 149, 12);
 }
 .timeline-time {
     font-size: 0.9rem;
@@ -72,13 +72,13 @@
             @forelse($matrix->matrixApprovalTrails as $trail)
                 <li class="timeline-item">
                     <div class="timeline-badge 
-                        {{ strtolower($trail->action) === 'approved' ? 'approved' : (strtolower($trail->action) === 'returned' ? 'returned' : 'other') }}">
+                        {{ strtolower($trail->action) === 'approved' ? 'approved' : (strtolower($trail->action) === 'rejected' ? 'rejected' : 'rejected') }}">
                         @if(strtolower($trail->action) === 'approved')
                             <i class="bx bx-check"></i>
-                        @elseif(strtolower($trail->action) === 'returned')
+                        @elseif(strtolower($trail->action) === 'rejected')
                             <i class="bx bx-x"></i>
                         @else
-                            <i class="bx bx-time"></i>
+                            <i class="bx bx-x"></i>
                         @endif
                     </div>
                     <div class="timeline-time">
@@ -87,7 +87,7 @@
                     <div class="timeline-title">
                         {{ $trail->staff->name ?? 'N/A' }} 
                         <span class="text-muted">({{ $trail->approver_role->role ?? '' }})</span>
-                        <span class="badge bg-{{ strtolower($trail->action) === 'approved' ? 'success' : (strtolower($trail->action) === 'returned' ? 'danger':'warning') }}">
+                        <span class="badge bg-{{ strtolower($trail->action) === 'approved' ? 'success' : (strtolower($trail->action) === 'rejected' ? 'danger':'warning') }}">
                             {{ ucfirst($trail->action) }}
                         </span>
                     </div>

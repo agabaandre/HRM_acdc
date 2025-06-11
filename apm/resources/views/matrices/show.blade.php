@@ -98,6 +98,12 @@
     @include('matrices.partials.approval-actions', ['matrix' => $matrix])
     </div>
 @endif
+
+@if($matrix->activities->count()>0 && still_with_creator($matrix) && ($matrix->staff_id == session('user')['staff_id']))
+ <div class="col-md-4 mb-2 px-2 ms-auto">
+    <a href="{{ route('matrices.request_approval', $matrix) }}"  class="btn btn-success"><i class="bx bx-save me-2"></i> Request Approval</a>
+ </div>
+ @endif
  
 </div>
 @endsection
