@@ -57,7 +57,7 @@
             </button>
 
             <!-- Key Result Areas -->
-            <div id="keyResultAreas">
+            <div id="keyResu(ltAreas">
                 @foreach($areas as $index => $area)
                 <div class="key-result-area mb-4">
                     <div class="card border shadow-sm">

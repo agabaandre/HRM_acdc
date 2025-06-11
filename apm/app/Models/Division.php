@@ -66,9 +66,10 @@ class Division extends Model
     {
         return $this->hasMany(Staff::class);
     }
-
-    public function directorate(): BelongsTo
+    public function Division(): HasMany
     {
-        return $this->belongsTo(Directorate::class);
+        return $this->hasMany(Directorate::class);
     }
+
+  
 }
