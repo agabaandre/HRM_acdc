@@ -46,25 +46,25 @@
 
                 <div class="row mb-3">
                     <div class="col-md-4">
-                        <strong>Date From:</strong><br>{{ $activity->date_from->format('Y-m-d') }}
+                        <strong>Date From: </strong>{{ $activity->date_from->format('Y-m-d') }}
                     </div>
                     <div class="col-md-4">
-                        <strong>Date To:</strong><br>{{ $activity->date_to->format('Y-m-d') }}
+                        <strong>Date To: </strong>{{ $activity->date_to->format('Y-m-d') }}
                     </div>
                     <div class="col-md-4">
-                        <strong>Status:</strong><br>{{ ucfirst($activity->status) }}
+                        <strong>Status: </strong><span badge class="badge {{((($activity->my_last_action)?$activity->my_last_action->action:$activity->status)=='passed')?'bg-success':'bg-danger'}}">{{ucwords(($activity->my_last_action)?$activity->my_last_action->action:$activity->status)}}</span>
                     </div>
                 </div>
 
                 <div class="row mb-3">
                     <div class="col-md-4">
-                        <strong>Request Type:</strong><br>{{ $activity->requestType->name ?? '-' }}
+                        <strong>Request Type: </strong>{{ $activity->requestType->name ?? '-' }}
                     </div>
                     <div class="col-md-4">
-                        <strong>Fund Type:</strong><br>{{ $activity->fundType->name ?? '-' }}
+                        <strong>Fund Type: </strong>{{ $activity->fundType->name ?? '-' }}
                     </div>
                     <div class="col-md-4">
-                        <strong>Responsible Staff:</strong><br>{{ $activity->staff->name ?? '-' }}
+                        <strong>Responsible Staff: </strong>{{ $activity->focalPerson ? ($activity->focalPerson->fname." ".$activity->focalPerson->lname): 'Not assigned' }}
                     </div>
                 </div>
 
