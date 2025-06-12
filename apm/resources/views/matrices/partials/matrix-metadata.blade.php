@@ -58,7 +58,7 @@
             <div class="matrix-meta-item">
                 <i class="bx bx-user-voice"></i>
                 <span class="matrix-meta-label">Focal Person:</span>
-                <span class="matrix-meta-value">{{ $matrix->focalPerson ? $matrix->focalPerson->name : 'Not assigned' }}</span>
+                <span class="matrix-meta-value">{{ $matrix->focalPerson ? ($matrix->focalPerson->fname." ".$matrix->focalPerson->lname): 'Not assigned' }}</span>
             </div>
             <div class="matrix-meta-item">
                 <i class="bx bx-calendar-plus"></i>

@@ -222,5 +222,10 @@ class Activity extends Model
         ->where('staff_id',$user['staff_id'])
         ->orderByDesc('id')->first();
     }
+
+    public function focalPerson(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'responsible_person_id', 'staff_id');
+    }
     
 }
