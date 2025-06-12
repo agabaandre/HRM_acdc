@@ -92,8 +92,9 @@
     @include('matrices.partials.approval-trail')
 @endif
 
+<div class="row">
 
-@if(can_take_action($matrix) && activities_approved_by_me($matrix))
+@if((can_take_action($matrix) && activities_approved_by_me($matrix)) || can_division_head_edit($matrix))
    <div class="col-md-4 mb-2 px-2 ms-auto">
     @include('matrices.partials.approval-actions', ['matrix' => $matrix])
     </div>
@@ -104,6 +105,8 @@
     <a href="{{ route('matrices.request_approval', $matrix) }}"  class="btn btn-success"><i class="bx bx-save me-2"></i> Request Approval</a>
  </div>
  @endif
+
+</div>
  
 </div>
 @endsection

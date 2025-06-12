@@ -48,6 +48,10 @@
     border-color:rgb(217, 136, 15);
     color:rgb(208, 149, 12);
 }
+.timeline-badge.submitted {
+    border-color:rgb(17, 166, 211);
+    color:rgb(27, 143, 216);
+}
 .timeline-time {
     font-size: 0.9rem;
     color: #888;
@@ -72,11 +76,13 @@
             @forelse($matrix->matrixApprovalTrails as $trail)
                 <li class="timeline-item">
                     <div class="timeline-badge 
-                        {{ strtolower($trail->action) === 'approved' ? 'approved' : (strtolower($trail->action) === 'rejected' ? 'rejected' : 'rejected') }}">
+                        {{ strtolower($trail->action)}}">
                         @if(strtolower($trail->action) === 'approved')
                             <i class="bx bx-check"></i>
                         @elseif(strtolower($trail->action) === 'rejected')
                             <i class="bx bx-x"></i>
+                       @elseif(strtolower($trail->action) === 'submitted')
+                            <i class="bx bx-time"></i>
                         @else
                             <i class="bx bx-x"></i>
                         @endif
@@ -86,7 +92,7 @@
                     </div>
                     <div class="timeline-title">
                         {{ $trail->staff->name ?? 'N/A' }} 
-                        <span class="text-muted">({{ $trail->approver_role->role ?? '' }})</span>
+                        <span class="text-muted">({{ $trail->approver_role->role ?? 'Focal Person' }})</span>
                         <span class="badge bg-{{ strtolower($trail->action) === 'approved' ? 'success' : (strtolower($trail->action) === 'rejected' ? 'danger':'warning') }}">
                             {{ ucfirst($trail->action) }}
                         </span>

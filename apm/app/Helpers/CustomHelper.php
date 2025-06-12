@@ -47,10 +47,18 @@ if (!function_exists('user_session')) {
             $user = (Object) session('user', []);
             //$creator = $matrix->staff;
             //$creator->division_id == $user['division_id'] &&
-            return ( ((($user->staff_id == $matrix->staff_id || $matrix->focal_person_id == $user->staff_id) && ($matrix->forward_workflow_id==null)) || ($matrix->division->division_head==$user->staff_id && $matrix->forward_workflow_id==1))  && in_array($matrix->overall_status,['draft','returned']));
+            return  can_division_head_edit($matrix) || ( ((($user->staff_id == $matrix->staff_id || $matrix->focal_person_id == $user->staff_id) && ($matrix->forward_workflow_id==null)))  && in_array($matrix->overall_status,['draft','returned']));
         }
 
     }
+
+
+    if (!function_exists('can_division_head_edit')) {
+        function can_division_head_edit($matrix){
+            $user = (Object) session('user', []);
+            return ($matrix->division->division_head==$user->staff_id && $matrix->approval_level==1 &&  in_array($matrix->overall_status,['draft','returned']));
+        }
+     }
 
     
     if (!function_exists('done_approving')) {
@@ -63,6 +71,7 @@ if (!function_exists('user_session')) {
             $user = session('user', []);
             $my_appoval =  MatrixApprovalTrail::where('matrix_id',$matrix->id)
             ->where('action','approved')
+            ->where('approval_order',$matrix->approval_level)
             ->where('staff_id',$user['staff_id'])->pluck('id');
             
 

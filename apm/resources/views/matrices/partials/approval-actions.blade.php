@@ -4,11 +4,13 @@
         Take Action
     </button>
     <ul class="dropdown-menu w-100" aria-labelledby="approvalActionsDropdown">
+    @if(!still_with_creator($matrix))
         <li>
             <a class="dropdown-item" href="#confirmReview" data-bs-toggle="modal">
                 <i class="bx bx-check text-bold"></i> Approve
             </a>
         </li>
+    @endif
         <li>
             <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#recommendChangesModal">
                 <i class="bx bx-edit text-bold"></i> Recommend Changes
