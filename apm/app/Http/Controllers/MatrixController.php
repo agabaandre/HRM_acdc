@@ -270,7 +270,7 @@ class MatrixController extends Controller
         $last_approval_order=$matrix->approval_level;
         $overall_status = $matrix->overall_status;
 
-        $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->where('action','!=','approved')->orderByDesc('id')->first();
+        $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->whereNotIn('action',['approved','submitted'])->orderByDesc('id')->first();
 
         if($request->action == 'approvals'){
 
@@ -283,6 +283,8 @@ class MatrixController extends Controller
                 $last_approval_order=1;
 
             $overall_status = 'pending';
+            $this->saveMatrixTrail($matrix,'Submitted for approval','submitted');
+
         }
 
         $update_data = [
@@ -330,23 +332,13 @@ class MatrixController extends Controller
     public function update_status(Request $request, Matrix $matrix): RedirectResponse
     {
         $request->validate(['action' => 'required']);
+        $this->saveMatrixTrail($matrix,$request->comment  ?? ($request->action=='approved')?'approved':'',$request->action);
+        
+        if($request->action !=='approved'){
 
-     
-        $matrixTrail = new MatrixApprovalTrail();
-
-        $matrixTrail->remarks  = $request->comment  ?? 'approved';
-        $matrixTrail->action   = $request->action;
-        $matrixTrail->matrix_id   = $matrix->id;
-        $matrixTrail->approval_order   = $matrix->approval_level ?? 1;
-        $matrixTrail->staff_id = user_session('staff_id');
-       
-        if($matrixTrail->action !=='approved'){
-
-            $matrix->forward_workflow_id = ($matrix->forward_workflow_id==1)?null:1;
-            $matrix->approval_level = ($matrix->forward_workflow_id==1)?0:1;
+            $matrix->forward_workflow_id = (intval($matrix->approval_level)==1)?null:1;
+            $matrix->approval_level = ($matrix->approval_level==1)?0:1;
             $matrix->overall_status ='returned';
-            $matrix->update();
-
         }else{
             //move to next
             $next_approval_point = $this->get_next_approver($matrix);
@@ -365,14 +357,24 @@ class MatrixController extends Controller
         }
         
         $matrix->update();
-        $matrixTrail->save();
-
+       
         $message = "Matrix Updated successfully";
 
         return redirect()
         ->route('matrices.show', [$matrix])
         ->with('success', $message);
 
+    }
+
+    private function saveMatrixTrail($matrix,$comment,$action){
+
+        $matrixTrail = new MatrixApprovalTrail();
+        $matrixTrail->remarks  = $comment;
+        $matrixTrail->action   = $action;
+        $matrixTrail->matrix_id   = $matrix->id;
+        $matrixTrail->approval_order   = $matrix->approval_level ?? 1;
+        $matrixTrail->staff_id = user_session('staff_id');
+        $matrixTrail->save();
     }
 
     private function get_next_approver($matrix){
