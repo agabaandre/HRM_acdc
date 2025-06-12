@@ -100,10 +100,10 @@
             </div>
 
                  <div class="col-md-12">
-                <label for="activity_request_remarks" class="form-label fw-semibold">
+                <label for="justification" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i>Supporting reasons for the special memo <span class="text-danger">*</span>
                 </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks') }}</textarea>
+                <textarea name="justification" id="justification" class="form-control" rows="3" required>{{ old('justification') }}</textarea>
             </div>
 
             <div class="mt-5">
