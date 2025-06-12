@@ -21,13 +21,15 @@ class DatabaseSeeder extends Seeder
 
         // Call our custom seeders in the correct order to maintain relationships
         $this->call([
-            DivisionSeeder::class,        // Seed divisions first
+            // DivisionSeeder::class,        // Seed divisions first
             WorkflowSeeder::class,        // Then seed workflows
             WorkflowDefinitionSeeder::class, // Then workflow definitions
             ApprovalConditionSeeder::class,  // Then approval conditions
             ApproverSeeder::class,        // Then seed approvers
             MemoSeeder::class,            // Finally, seed memos
-            CostItemSeeder::class,        // Then seed cost items
+            CostItemSeeder::class, 
+            FundTypesSeeder::class,     
+            FundCodesSeeder::class       // Then seed cost items
         ]);
     }
 }
