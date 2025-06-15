@@ -83,6 +83,7 @@
                                 <tr>
                                     <td>#</td>
                                     <th>Name</th>
+                                    <th>Division</th>
                                     <th>Start Date</th>
                                     <th>End Date</th>
                                     <th>Days</th>
@@ -95,6 +96,7 @@
                                 @foreach($internalParticipants as $entry)
                                     <tr><td>{{$count}}</td>
                                         <td>{{ $entry['staff']->name ?? 'N/A' }}</td>
+                                          <td>{{ $entry['staff']->division_name ?? 'N/A' }}</td>
                                         <td>{{ $entry['participant_start'] ?? '-' }}</td>
                                         <td>{{ $entry['participant_end'] ?? '-' }}</td>
                                         <td>{{ $entry['participant_days'] ?? '-' }}</td>
@@ -138,11 +140,19 @@
                             @endphp
                             @foreach($fundCodes ?? [] as $fundCode )
                             @php
+                           
                               $items = $budgetItems[$fundCode->id];
+
+                             // dd($fundCode);
+                             
                             @endphp
                             @if($items)
+
                             <tr>
-                                <th colspan="5">{{ $fundCode->description  }}- {{ $fundCode->code }}</th>
+                                <th colspan="5" style="color: #911C39; font-weight: 600;">
+                                    {{ $fundCode->activity }} - {{ $fundCode->code }}
+                                </th>
+
                             </tr>
                             @foreach($items ?? [] as $item)
                             @php
@@ -187,27 +197,6 @@
     </div>
 
     <div class="col-md-3">
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Timeline</h5>
-            </div>
-            <div class="card-body p-3">
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item">
-                        <strong>Created:</strong> {{ $activity->created_at->format('Y-m-d H:i') }}<br>
-                        <small>By {{ $activity->staff->name ?? '-' }}</small>
-                    </div>
-                    @foreach($activity->activityApprovalTrails as $trail)
-                        <div class="list-group-item">
-                            <small class="badge {{($trail->action=='passed')?'bg-success':'bg-danger'}}">{{ucwords($trail->action)}}</small><br>
-                            <small>{{ $trail->created_at->format('Y-m-d H:i') }} - {{ $trail->staff->name  }} <strong>{{($trail->staff_id == session('user')['staff_id'])?"(You)":""}}</strong></small><br>
-                            <p class="mb-0 text-muted">{{ $trail->remarks }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
         <div class="card shadow-sm">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Service Requests</h5>

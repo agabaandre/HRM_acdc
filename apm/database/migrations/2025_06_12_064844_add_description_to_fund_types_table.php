@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('workflow_definition', function (Blueprint $table) {
-            
-            $table->string('division_reference_column',20)->nullable();
+        Schema::table('fund_types', function (Blueprint $table) {
+            //
         });
     }
 
@@ -22,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('workflow_definition', function (Blueprint $table) {
+        Schema::table('fund_types', function (Blueprint $table) {
             //
         });
     }
