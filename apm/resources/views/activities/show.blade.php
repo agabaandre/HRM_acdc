@@ -81,6 +81,7 @@
                         <table class="table table-sm table-bordered">
                             <thead>
                                 <tr>
+                                    <td>#</td>
                                     <th>Name</th>
                                     <th>Start Date</th>
                                     <th>End Date</th>
@@ -88,13 +89,19 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                @php
+                                $count = 1;
+                                @endphp
                                 @foreach($internalParticipants as $entry)
-                                    <tr>
+                                    <tr><td>{{$count}}</td>
                                         <td>{{ $entry['staff']->name ?? 'N/A' }}</td>
                                         <td>{{ $entry['participant_start'] ?? '-' }}</td>
                                         <td>{{ $entry['participant_end'] ?? '-' }}</td>
                                         <td>{{ $entry['participant_days'] ?? '-' }}</td>
                                     </tr>
+                                    @php
+                                        $count++;
+                                    @endphp
                                 @endforeach
                             </tbody>
                         </table>
@@ -117,6 +124,7 @@
                     <table class="table table-bordered">
                         <thead>
                             <tr>
+                                <td>#<td>
                                 <th>Description</th>
                                 <th>Unit Cost</th>
                                 <th>Units</th>
@@ -125,6 +133,9 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @php
+                              $count = 1;
+                            @endphp
                             @foreach($fundCodes ?? [] as $fundCode )
                             @php
                               $items = $budgetItems[$fundCode->id];
@@ -138,6 +149,7 @@
                             $total = $item['unit_cost'] * $item['units'] * $item['days'];
                             @endphp
                                 <tr>
+                                    <td>{{$count}}</td>
                                     <td>{{ $item['description'] }}</td>
                                     <td class="text-end">{{ number_format($item['unit_cost'], 2) }}</td>
                                     <td class="text-end">{{ $item['units'] }}</td>
@@ -146,7 +158,13 @@
                                 </tr>
                             @endforeach
                             @endif
+
+                            @php
+                                $count++;
+                            @endphp
+
                             @endforeach
+                            
                         </tbody>
                         <tfoot>
                             <tr>

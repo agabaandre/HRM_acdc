@@ -69,7 +69,7 @@
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead class="table-light">
-                    <tr>
+                    <tr><th>#</th>
                         <th>Activity Code</th>
                         <th>Title</th>
                         <th>Date Range</th>
@@ -80,8 +80,12 @@
                     </tr>
                 </thead>
                 <tbody>
+                     @php
+                        $count=1;
+                       @endphp
                     @forelse($activities as $activity)
                         <tr data-type="{{ $activity->request_type_id }}">
+                            <td>{{$count}}</td>
                             <td>
                                 <small class="text-muted">{{ $activity->workplan_activity_code }}</small>
                             </td>
@@ -163,6 +167,9 @@
                                 </div>
                             </td>
                         </tr>
+                        @php
+                        $count++;
+                       @endphp
                     @empty
                         <tr>
                             <td colspan="7" class="text-center py-4">

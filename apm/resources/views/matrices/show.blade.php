@@ -34,6 +34,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
+                            <th>#</th>
                             <th>Title</th>
                             <th>Date Range</th>
                             <th>Participants</th>
@@ -43,8 +44,12 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @php
+                          $count=1;
+                        @endphp
                         @forelse($activities as $activity)
                             <tr>
+                               <th>{{$count}}</th>
                                 <td>{{ $activity->activity_title }}</td>
                                 <td>{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }} - {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</td>
                                 <td>{{ $activity->total_participants }}</td>
@@ -71,6 +76,9 @@
                                     </a>
                                 </td>
                             </tr>
+                        @php
+                          $count++;
+                        @endphp
                         @empty
                             <tr>
                                 <td colspan="6" class="text-center text-muted py-4">No activities found for this matrix.</td>

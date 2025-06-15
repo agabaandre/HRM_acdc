@@ -60,6 +60,7 @@
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th>#</th>
                         <th>Year</th>
                         <th>Quarter</th>
                         <th>Division</th>
@@ -77,13 +78,13 @@
                     //dd($matrix);
                     @endphp
                 <tbody>
+                    @php
+                        $count = 1;
+                    @endphp
                     @forelse($matrices as $matrix)
-
-                 
-
-                          
                           
                         <tr>
+                            <td>{{$count}}</td>
                             <td>{{ $matrix->year }}</td>
                             <td>{{ $matrix->quarter }}</td>
                             <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
@@ -141,6 +142,9 @@
                                 </div>
                             </td>
                         </tr>
+                        @php
+                        $count++;
+                       @endphp
                     @empty
                         <tr>
                             <td colspan="7" class="text-center py-4 text-muted">
