@@ -53,7 +53,7 @@
             <div class="matrix-meta-item">
                 <i class="bx bx-building"></i>
                 <span class="matrix-meta-label">Division:</span>
-                <span class="matrix-meta-value">{{ $matrix->division->name }}</span>
+                <span class="matrix-meta-value">{{ $matrix->division->division_name }}</span>
             </div>
             <div class="matrix-meta-item">
                 <i class="bx bx-user-voice"></i>

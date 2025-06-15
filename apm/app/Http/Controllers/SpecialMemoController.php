@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Activity;
 use App\Models\ActivityApprovalTrail;
 use App\Models\Matrix;
+use Illuminate\Support\Facades\DB;
 use App\Models\RequestType;
 use App\Models\FundType;
 use App\Models\FundCode;
@@ -33,11 +34,7 @@ class SpecialMemoController extends Controller
         if ($request->has('division_id') && $request->division_id) {
             $query->where('division_id', $request->division_id);
         }
-    
-        if ($request->has('priority') && $request->priority) {
-            $query->where('priority', $request->priority);
-        }
-    
+
         if ($request->has('status') && $request->status) {
             $query->where('status', $request->status);
         }
@@ -111,76 +108,74 @@ class SpecialMemoController extends Controller
     {
         $userStaffId = session('user.auth_staff_id');
     
-        return \DB::transaction(function () use ($request, $userStaffId) {
-            try {
-                // Validate required fields
-                $validated = $request->validate([
-                    'activity_title' => 'required|string|max:255',
-                    'location_id' => 'required|array|min:1',
-                    'location_id.*' => 'exists:locations,id',
-                    'participant_start' => 'required|array',
-                    'participant_end' => 'required|array',
-                    'participant_days' => 'required|array',
-                ]);
+        $validated = $request->validate([
+            'activity_title' => 'required|string|max:255',
+            'location_id' => 'required|array|min:1',
+            'location_id.*' => 'exists:locations,id',
+            'participant_start' => 'required|array',
+            'participant_end' => 'required|array',
+            'participant_days' => 'required|array',
+        ]);
     
-                // Prepare internal participants structure
-                $participantStarts = $request->input('participant_start', []);
-                $participantEnds = $request->input('participant_end', []);
-                $participantDays = $request->input('participant_days', []);
+        try {
+            DB::beginTransaction();
     
-                $internalParticipants = [];
-    
-                foreach ($participantStarts as $staffId => $startDate) {
-                    $internalParticipants[$staffId] = [
-                        'participant_start' => $startDate,
-                        'participant_end' => $participantEnds[$staffId] ?? null,
-                        'participant_days' => $participantDays[$staffId] ?? null,
-                    ];
-                }
-    
-                // Create the Special Memo (Activity)
-                $activity = Activity::create([
-                    'is_special_memo' => 1, // ← Flag as special memo
-                    'staff_id' => $userStaffId,
-                    'workplan_activity_code' => '',
-                    'responsible_person_id' => $request->input('responsible_person_id', 1),
-                    'date_from' => $request->input('date_from', now()->toDateString()),
-                    'date_to' => $request->input('date_to', now()->toDateString()),
-                    'total_participants' => (int) $request->input('total_participants', 1),
-                    'total_external_participants' => (int) $request->input('total_external_participants', 0),
-                    'key_result_area' => $request->input('key_result_link', '-'),
-                    'request_type_id' => (int) $request->input('request_type_id', 1),
-                    'activity_title' => $request->input('activity_title'),
-                    'background' => $request->input('background', ''),
-                    'activity_request_remarks' => $request->input('activity_request_remarks', ''),
-                    'forward_workflow_id' => 1,
-                    'reverse_workflow_id' => 1,
-                    'status' => Activity::STATUS_DRAFT,
-                    'fund_type_id' => $request->input('fund_type', 1),
-                    'location_id' => json_encode($request->input('location_id', [])),
-                    'internal_participants' => json_encode($internalParticipants),
-                    'budget_id' => json_encode($request->input('budget_codes', [])),
-                    'budget' => json_encode($request->input('budget', [])),
-                    'attachment' => json_encode($request->input('attachments', [])),
-                ]);
-    
-                return redirect()
-                    ->route('special-memo.index')
-                    ->with([
-                        'msg' => 'Special Memo created successfully.',
-                        'type' => 'success'
-                    ]);
-    
-            } catch (\Exception $e) {
-                \DB::rollBack();
-                \Log::error('Error creating special memo', ['exception' => $e]);
-    
-                return redirect()->back()->withInput()->with([
-                    'msg' => 'An error occurred while creating the special memo. Please try again.',
-                    'type' => 'error'
-                ]);
+            // Reformat internal participants
+            $internalParticipants = [];
+            foreach ($request->participant_start as $staffId => $start) {
+                $internalParticipants[$staffId] = [
+                    'participant_start' => $start,
+                    'participant_end' => $request->participant_end[$staffId] ?? null,
+                    'participant_days' => $request->participant_days[$staffId] ?? null,
+                ];
             }
-        });
+    
+            SpecialMemo::create([
+                'is_special_memo' => 1,
+                'staff_id' => $userStaffId,
+                'responsible_person_id' => $request->input('responsible_person_id', 1),
+                'date_from' => $request->input('date_from'),
+                'date_to' => $request->input('date_to'),
+                'activity_title' => $request->input('activity_title'),
+                'background' => $request->input('background', ''),
+                'justification' => $request->input('justification', ''),
+                'activity_request_remarks' => $request->input('activity_request_remarks', ''),
+                'key_result_area' => $request->input('key_result_link', '-'),
+                'request_type_id' => (int) $request->input('request_type_id', 1),
+                'fund_type_id' => (int) $request->input('fund_type', 1),
+                'status' => Activity::STATUS_DRAFT,
+                'forward_workflow_id' => 3,
+                'reverse_workflow_id' => null,
+    
+                'total_participants' => (int) $request->input('total_participants', 0),
+                'total_external_participants' => (int) $request->input('total_external_participants', 0),
+    
+                'location_id' => json_encode($request->input('location_id', [])),
+                'internal_participants' => json_encode($internalParticipants),
+    
+                'budget_id' => json_encode($request->input('budget_codes', [])),
+                'budget' => json_encode($request->input('budget', [])),
+                'attachment' => json_encode($request->input('attachments', [])),
+    
+                'supporting_reasons' => $request->input('supporting_reasons', null),
+            ]);
+    
+            DB::commit();
+    
+            return redirect()->route('special-memo.index')->with([
+                'msg' => 'Special Memo created successfully.',
+                'type' => 'success',
+            ]);
+    
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Log::error('Error creating special memo', ['exception' => $e]);
+    
+            return redirect()->back()->withInput()->with([
+                'msg' => 'An error occurred while creating the special memo. Please try again.',
+                'type' => 'error',
+            ]);
+        }
     }
     
 

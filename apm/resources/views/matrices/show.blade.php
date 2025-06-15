@@ -53,18 +53,27 @@
                                 <td>{{ $activity->activity_title }}</td>
                                 <td>{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }} - {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</td>
                                 <td>{{ $activity->total_participants }}</td>
-                                <td>
-                                    @php
-                                        $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
-                                        $totalBudget = 0;
-                                        if (is_array($budget)) {
-                                            foreach ($budget as $item) {
-                                                $totalBudget += ($item['unit_cost'] ?? 0) * ($item['units'] ?? 0) * ($item['days'] ?? 1);
+                             <td>
+                                @php
+                                    $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
+                                    $totalBudget = 0;
+
+                                    if (is_array($budget)) {
+                                        foreach ($budget as $key => $entries) {
+                                            if ($key === 'grand_total') continue;
+
+                                            foreach ($entries as $item) {
+                                                $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                $units = floatval($item['units'] ?? 0);
+                                                $days = floatval($item['days'] ?? 1);
+                                                $totalBudget += $unitCost * $units * $days;
                                             }
                                         }
-                                    @endphp
-                                    {{ number_format($totalBudget, 2) }}
-                                </td>
+                                    }
+                                @endphp
+                                {{ number_format($totalBudget, 2) }} USD
+                            </td>
+
                                 <td>
                                     <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }}">
                                         {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : ucfirst($activity->status) ) }}
