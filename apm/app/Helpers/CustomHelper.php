@@ -156,7 +156,6 @@ if (!function_exists('user_session')) {
             ->where('workflow_id',$matrix->forward_workflow_id)
             ->first();
            
-          
             $workflow_dfns = Approver::where('staff_id', $user['staff_id'])
             ->where('workflow_dfn_id', $current_approval_point->id)
             ->orWhere(function ($query) use ($today, $user,$current_approval_point) {
