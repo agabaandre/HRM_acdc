@@ -76,7 +76,7 @@
   <div class="col-md-4">
     <div class="setting-card text-center">
       <div>
-        <h6>Quarterly Travel Matrix</h6>
+        <h6>Quarterly Travel Matrix<sup><span class="alert-count" title="{{ get_staff_unread_notifications_count()}} Item(s)  require your attention">{{ get_staff_unread_notifications_count()}}</span><sup></h6>
         <p>Plan and track quarterly travel for all staff.</p>
       </div>
       <div>
