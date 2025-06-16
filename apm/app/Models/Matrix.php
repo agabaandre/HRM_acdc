@@ -158,6 +158,10 @@ class Matrix extends Model
 
     
     public function getDivisionScheduleAttribute(){
-        return   $this->participant_schedules()->with('staff')->where('division_id', $this->division_id)->get();
+        return   $this->participant_schedules()->with('staff')
+                      ->where('division_id', $this->division_id)
+                      ->where('quarter', $this->quarter)
+                      ->where('year', $this->year)
+                      ->get();
     }
 }

@@ -121,15 +121,24 @@ class Staff extends Model
         return $this->hasMany(ParticipantSchedule::class, 'participant_id', 'staff_id');
     }
     
-    public function getDivisionDaysAttribute(){
-        return  $this->participant_schedules()
-               ->where('is_home_division', 1)
-               ->sum('participant_days');
+    public function getDivisionDaysAttribute(): array
+    {
+        return $this->participant_schedules()
+            ->where('is_home_division', 1)
+            ->get()
+            ->groupBy(fn($s) =>  $s->quarter . '-' . $s->year)
+            ->map(fn($group) => $group->sum('participant_days'))
+            ->toArray(); // returns: ['Q2-2025' => 12, ...]
     }
 
-    public function getOtherDaysAttribute(){
+    public function getOtherDaysAttribute(): array
+    {
         return $this->participant_schedules()
-               ->where('is_home_division', 0)
-               ->sum('participant_days');
+            ->where('is_home_division', 0)
+            ->get()
+            ->groupBy(fn($s) =>  $s->quarter . '-' . $s->year)
+            ->map(fn($group) => $group->sum('participant_days'))
+            ->toArray(); // returns: ['Q2-2025' => 5, ...]
     }
+
 }

@@ -393,6 +393,8 @@ class ActivityController extends Controller
                     'participant_id' => $participantId,
                     'activity_id' => $activity->id,
                     'matrix_id' => $activity->matrix->id,
+                    'quarter' => $activity->matrix->quarter,
+                    'year' => $activity->matrix->year,
                     'division_id' => $activity->matrix->division_id,
                     'is_home_division' => intval($activity->matrix->division_id == $participant->division_id),
                     'participant_start' => $details['participant_start'],
