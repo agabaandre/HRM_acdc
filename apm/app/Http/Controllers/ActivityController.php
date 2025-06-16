@@ -11,11 +11,12 @@ use App\Models\FundCode;
 use App\Models\Location;
 use App\Models\Staff;
 use App\Models\CostItem;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
-
+use App\Models\ParticipantSchedule;
 
 class ActivityController extends Controller
 {
@@ -163,6 +164,9 @@ class ActivityController extends Controller
                     'budget' => json_encode($request->input('budget', [])),
                     'attachment' => json_encode($request->input('attachments', [])),
                 ]);
+
+                if(count($internalParticipants)>0)
+                $this->storeParticipantSchedules($internalParticipants,$activity);
     
                 return redirect()
                     ->route('matrices.activities.show', [$matrix, $activity])
@@ -348,6 +352,9 @@ class ActivityController extends Controller
 
         $activity->update($validated);
 
+        if($validated['internal_participants'])
+        $this->storeParticipantSchedules($validated['internal_participants'],$activity);
+
         $message = $request->has('submit')
             ? 'Activity submitted successfully.'
             : 'Activity updated successfully.';
@@ -374,6 +381,30 @@ class ActivityController extends Controller
         return redirect()
             ->route('matrices.activities.index', $matrix)
             ->with('success', 'Activity deleted successfully.');
+    }
+
+    public function storeParticipantSchedules($schedules,$activity)
+    {
+        try{
+
+            foreach ($schedules as $participantId => $details) {
+                $participant = Staff::where('staff_id',$participantId)->first();
+                ParticipantSchedule::create([
+                    'participant_id' => $participantId,
+                    'activity_id' => $activity->id,
+                    'matrix_id' => $activity->matrix->id,
+                    'division_id' => $activity->matrix->division_id,
+                    'is_home_division' => intval($activity->matrix->division_id == $participant->division_id),
+                    'participant_start' => $details['participant_start'],
+                    'participant_end' => $details['participant_end'],
+                    'participant_days' => $details['participant_days'],
+                ]);
+            }
+        }
+        catch(Exception $exception){
+            \Log::error("Error ocurred saving particiapnt schedule ".$exception->getMessage());
+        }
+
     }
 
     public function update_status(Request $request, Matrix $matrix, Activity $activity): RedirectResponse

@@ -31,7 +31,7 @@ class Matrix extends Model
         'overall_status',
     ];
 
-    protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor'];
+    protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor','division_schedule'];
 
     /**
      * Get the casts for the model.
@@ -150,5 +150,14 @@ class Matrix extends Model
     public function getHasExtramuralAttribute(): bool
     {
         return $this->activities()->where('fund_type_id', 2)->exists();
+    }
+
+    public function participant_schedules(){
+        return $this->hasMany(ParticipantSchedule::class);
+    }
+
+    
+    public function getDivisionScheduleAttribute(){
+        return   $this->participant_schedules()->with('staff')->where('division_id', $this->division_id)->get();
     }
 }

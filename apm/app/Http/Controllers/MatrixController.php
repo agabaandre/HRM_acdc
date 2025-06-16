@@ -157,7 +157,7 @@ class MatrixController extends Controller
      public function show(Matrix $matrix): View
      {
          // Load primary relationships
-         $matrix->load(['division', 'staff']);
+         $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff']);
      
          // Paginate related activities and eager load direct relationships
          $activities = $matrix->activities()->with(['requestType', 'fundType'])->latest()->paginate(10);

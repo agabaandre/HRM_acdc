@@ -105,16 +105,26 @@
     </div>
 </div>
 
+<div class="row">
+<div class="col-lg-8">
+@if(count($matrix->division_schedule)>0)
+ @include('matrices.partials.participants-schedule')
+@endif
+</div>
+
+<div class="col-lg-4">
 @if($matrix->matrixApprovalTrails)
     @include('matrices.partials.approval-trail')
 @endif
+</div>
+</div>
 
 <div class="row">
 
 @if((can_take_action($matrix) && activities_approved_by_me($matrix)) || can_division_head_edit($matrix))
-   <div class="col-md-4 mb-2 px-2 ms-auto">
+<div class="col-md-4 mb-2 px-2 ms-auto">
     @include('matrices.partials.approval-actions', ['matrix' => $matrix])
-    </div>
+</div>
 @endif
 
 @if($matrix->activities->count()>0 && still_with_creator($matrix) && ($matrix->staff_id == session('user')['staff_id']))
