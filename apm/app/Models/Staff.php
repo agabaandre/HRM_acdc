@@ -47,6 +47,10 @@ class Staff extends Model
         'active',
     ];
 
+    
+    protected $appends = ['division_days','other_days'];
+
+
     /**
      * Get the attributes that should be cast.
      *
@@ -110,5 +114,22 @@ class Staff extends Model
 
     public function division(){
         return $this->belongsTo(Division::class,'division_id');
+    }
+
+    public function participant_schedules()
+    {
+        return $this->hasMany(ParticipantSchedule::class, 'participant_id', 'staff_id');
+    }
+    
+    public function getDivisionDaysAttribute(){
+        return  $this->participant_schedules()
+               ->where('is_home_division', 1)
+               ->sum('participant_days');
+    }
+
+    public function getOtherDaysAttribute(){
+        return $this->participant_schedules()
+               ->where('is_home_division', 0)
+               ->sum('participant_days');
     }
 }
