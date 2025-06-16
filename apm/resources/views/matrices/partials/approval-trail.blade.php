@@ -98,8 +98,8 @@
                         </span>
                     </div>
                     <div class="timeline-remarks text-muted">
-                        {{ Str::limit($trail->remarks,25) ?? 'No remarks' }} {{ (strlen($trail->remarks)>25)?'...':''}}
-                        @if(strlen($trail->remarks)>1)
+                        {{ Str::limit($trail->remarks,100) ?? 'No remarks' }} {{ (strlen($trail->remarks)>100)?'...':''}}
+                        @if(strlen($trail->remarks)>100)
                             <a href="#trailDetail{{$trail->id}}" data-bs-toggle="modal">Read More</a>
                             @include('matrices.partials.trail-detail-modal',['trail'=>$trail])
                         @endif
