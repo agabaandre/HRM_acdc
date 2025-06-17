@@ -346,9 +346,7 @@ if (!function_exists('send_matrix_email_notification')) {
     {
         $recipient = get_matrix_notification_recipient($matrix);
         
-        dd($recipient);
-        
-        
+    
         if (!$recipient || !$recipient->work_email) {
             return false;
         }
