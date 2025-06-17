@@ -291,8 +291,6 @@ if (!function_exists('send_matrix_notification')) {
     {
         $recipient = get_matrix_notification_recipient($matrix);
 
-        dd($recipient);
-        
         if (!$recipient) {
             return null;
         }
@@ -347,6 +345,9 @@ if (!function_exists('send_matrix_email_notification')) {
     function send_matrix_email_notification(Matrix $matrix, $type = 'matrix_approval')
     {
         $recipient = get_matrix_notification_recipient($matrix);
+        
+        dd($recipient);
+        
         
         if (!$recipient || !$recipient->work_email) {
             return false;
