@@ -146,7 +146,7 @@ if (!function_exists('user_session')) {
 
             $still_with_creator = still_with_creator($matrix);
 
-            if($still_with_creator)
+            if($still_with_creator || !$matrix->forward_workflow_id)
             return false;
 
             $today = Carbon::today();
