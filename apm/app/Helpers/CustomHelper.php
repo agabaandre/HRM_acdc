@@ -7,6 +7,7 @@ use App\Models\Staff;
 use App\Models\Matrix;
 use Carbon\Carbon;
 use App\Mail\MatrixNotification;
+use App\Models\Notification;
 
 
 if (!function_exists('user_session')) {
@@ -174,14 +175,6 @@ if (!function_exists('user_session')) {
            //if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
 
-            
-            //$possible_approval_point = WorkflowDefinition where workflow_id = $matrix->forward_workflow_id and approval_order=$matrix->approval_level{
-            // if($current_approval_point->division_specific)
-            // get from staff where id is $matrix->staff_id and get their division_id
-            // $division = got to Division::where('directorate_id' is get the division_d of the staff_id that created the matrix .ie (matrix->staff_id)
-            // The get $division->{$possible_approval_point->divsion_reference_column} and that value must be equal to user_session()['staff_id'], if it is, return true
-           // }
-            
                 $division_specific_access = false;
                 
                 if ($current_approval_point && $current_approval_point->is_division_specific) {
@@ -297,6 +290,8 @@ if (!function_exists('send_matrix_notification')) {
     function send_matrix_notification(Matrix $matrix, $type = 'matrix_approval')
     {
         $recipient = get_matrix_notification_recipient($matrix);
+
+        dd($recipient);
         
         if (!$recipient) {
             return null;
@@ -329,7 +324,7 @@ if (!function_exists('send_matrix_notification')) {
         }
 
         // Create notification record
-        $notification = \App\Models\Notification::create([
+        $notification = Notification::create([
             'staff_id' => $recipient->staff_id,
             'matrix_id' => $matrix->id,
             'message' => $message,
@@ -385,7 +380,7 @@ if (!function_exists('send_matrix_email_notification')) {
             }
 
               // Create notification record
-             \App\Models\Notification::create([
+             Notification::create([
                     'staff_id' => $recipient->staff_id,
                     'matrix_id' => $matrix->id,
                     'message' => $message,
@@ -414,7 +409,7 @@ if (!function_exists('mark_matrix_notifications_read')) {
      */
     function mark_matrix_notifications_read($staff_id, $matrix_id)
     {
-        return \App\Models\Notification::where('staff_id', $staff_id)
+        return Notification::where('staff_id', $staff_id)
             ->where('matrix_id', $matrix_id)
             ->where('is_read', false)
             ->update([
@@ -436,7 +431,7 @@ if (!function_exists('get_staff_unread_notifications_count')) {
     {
         $user = session('user', []);
         $staff_id = $user['staff_id'];
-        $query = \App\Models\Notification::where('staff_id', $staff_id)
+        $query = Notification::where('staff_id', $staff_id)
             ->where('is_read', false);
 
         if ($type) {
