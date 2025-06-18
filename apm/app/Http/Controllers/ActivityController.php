@@ -271,7 +271,7 @@ class ActivityController extends Controller
         $budgetCodes = FundCode::where('fund_type_id', $request->fund_type_id)
             ->where('division_id', $request->division_id)
             ->where('is_active', true)
-            ->get(['id', 'code', 'description','available_balance']);
+            ->get(['id', 'code','activity','budget_balance']);
 
         return response()->json($budgetCodes);
     }

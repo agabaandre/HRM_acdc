@@ -26,8 +26,7 @@ class FundCodesSeeder extends Seeder
             }, $row);
 
             $data = array_combine($header, $row);
-
-            DB::table('fund_codes')->insert([
+            $idata = array(
                 'funder_id' => $data['funder_id'],
                 'year' => $data['year'],
                 'code' => $data['code'],
@@ -37,13 +36,17 @@ class FundCodesSeeder extends Seeder
                 'cost_centre' => $data['Cost Centres'] ?? null,
                 'amert_code' => $data['AMERT Code'] ?? null,
                 'fund' => $data['Fund'] ?? null,
-                'budget_balance' => isset($data['budget_balance']) ? str_replace(',', '', $data['Budget']) : null,
-                'uploaded_budget' => isset($data['Budget  Uploaded']) ? str_replace(',', '', $data['Uploaded']) : null,
-                'approved_budget' => isset($data['Approved in AMERT']) ? str_replace(',', '', $data['Approved in AMERT']) : null,
+                'budget_balance' => isset($data['budget_balance']) ? str_replace(',', '', $data['budget_balance']) : null,
+                'uploaded_budget' => isset($data['uploaded_budget']) ? str_replace(',', '', $data['uploaded_budget']) : null,
+                'approved_budget' => isset($data['budget_approved']) ? str_replace(',', '', $data['budget_approved']) : null,
                 'is_active' => isset($data['is_active']) ? (int) $data['is_active'] === 1 : true,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            );
+          //  dd($data);
+
+            DB::table('fund_codes')->insert($idata);
+          //  dd($data);
         }
 
         $this->command->info('Fund codes seeded successfully.');
