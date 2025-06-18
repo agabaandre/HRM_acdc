@@ -45,4 +45,8 @@ class FundCode extends Model
     {
         return $this->belongsTo(Division::class);
     }
+    public function funder(): BelongsTo
+{
+    return $this->belongsTo(Funder::class, 'funder_id');
+}
 }

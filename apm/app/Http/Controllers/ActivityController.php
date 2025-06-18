@@ -260,21 +260,31 @@ class ActivityController extends Controller
     
 
 
-    
     public function getBudgetCodesByFundType(Request $request)
-    {
-        $request->validate([
-            'fund_type_id' => 'required|exists:fund_types,id',
-            'division_id' => 'required|exists:divisions,id'
-        ]);
+{
+    $request->validate([
+        'fund_type_id' => 'required|exists:fund_types,id',
+        'division_id' => 'required|exists:divisions,id',
+    ]);
 
-        $budgetCodes = FundCode::where('fund_type_id', $request->fund_type_id)
-            ->where('division_id', $request->division_id)
-            ->where('is_active', true)
-            ->get(['id', 'code','activity','budget_balance']);
+    $budgetCodes = FundCode::with('funder:id,name')
+        ->where('fund_type_id', $request->fund_type_id)
+        ->where('division_id', $request->division_id)
+        ->where('is_active', true)
+        ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
 
-        return response()->json($budgetCodes);
-    }
+    $result = $budgetCodes->map(function ($code) {
+        return [
+            'id' => $code->id,
+            'code' => $code->code,
+            'activity' => $code->activity,
+            'budget_balance' => $code->budget_balance,
+            'funder_name' => optional($code->funder)->name,
+        ];
+    });
+
+    return response()->json($result);
+}
 
     /**
      * Show the form for editing the specified activity.
