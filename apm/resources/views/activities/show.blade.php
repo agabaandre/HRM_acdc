@@ -23,7 +23,7 @@
 
 @section('content')
 <div class="row">
-    <div class="col-md-9">
+    <div class="col-md-12">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
@@ -196,7 +196,7 @@
         </div>
     </div>
 
-    <div class="col-md-3">
+    {{-- <div class="col-md-3">
         <div class="card shadow-sm">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Service Requests</h5>
@@ -216,6 +216,6 @@
             </div>
         </div>
       
-    </div>
+    </div> --}}
 </div>
 @endsection
