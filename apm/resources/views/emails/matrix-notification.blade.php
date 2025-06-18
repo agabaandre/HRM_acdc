@@ -1,74 +1,111 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Matrix Notification</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .content {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 5px;
-            border: 1px solid #dee2e6;
-        }
-        .footer {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #6c757d;
-        }
-        .button {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Matrix Notification</title>
+  <style type="text/css">
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      max-width: 650px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 20px;
+      border: 1px solid #dddddd;
+    }
+    .header {
+      text-align: center;
+      padding: 15px 0;
+    }
+    .header img {
+      max-width: 30%;
+    }
+    .content {
+      padding: 20px 0;
+    }
+    h1 {
+      color: #333333;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+    p {
+      line-height: 1.6;
+      color: #444444;
+      font-size: 14px;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #007b5e;
+      color: #ffffff !important;
+      padding: 10px 18px;
+      border-radius: 5px;
+      text-decoration: none;
+      margin-top: 20px;
+    }
+    .btn:hover {
+      background-color: #005844;
+      color: #ffffff !important;
+      text-decoration: none;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #777777;
+      margin-top: 30px;
+      padding-top: 15px;
+      border-top: 1px solid #dddddd;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>{{ $type === 'matrix_approval' ? 'Matrix Approval Required' : 'Matrix Notification' }}</h2>
-        </div>
-        
-        <div class="content">
-            <p>Dear {{ $recipient->fname }} {{ $recipient->lname }},</p>
-            
-            <p>{{ $message }}</p>
-            
-            <p>Matrix Details:</p>
-            <ul>
-                <li>Matrix ID: #{{ $matrix->id }}</li>
-                <li>Created by: {{ $matrix->staff->fname }} {{ $matrix->staff->lname }}</li>
-                <li>Division: {{ $matrix->division->name }}</li>
-                <li>Status: {{ ucfirst($matrix->overall_status) }}</li>
-            </ul>
-
-            <a href="{{ config('app.url') }}/matrices/{{ $matrix->id }}" class="button">
-                View Matrix
-            </a>
-        </div>
-
-        <div class="footer">
-            <p>This is an automated message. Please do not reply to this email.</p>
-            <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
-        </div>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <img src="https://africacdc.org/wp-content/uploads/2020/02/AfricaCDC_Logo.png" alt="Africa CDC Logo">
     </div>
+
+    <!-- Main Content -->
+    <div class="content">
+      <h1>
+        @if($type === 'matrix_approval')
+          Matrix Approval Request
+        @elseif($type === 'matrix_returned')
+          Matrix Returned for Revision
+        @else
+          Matrix Notification
+        @endif
+      </h1>
+
+      <p>Dear <strong>{{ $recipient->fname }} {{ $recipient->lname }}</strong>,</p>
+
+      <p>{{ $message }}</p>
+
+      <p>Matrix Details:</p>
+      <ul>
+        <li>Matrix : #{{ $matrix->id }} - {{ $matrix->quarter }} {{ $matrix->year }}</li>
+        <li>Created by: {{ $matrix->staff->fname }} {{ $matrix->staff->lname }}</li>
+        <li>Division: {{ $matrix->division->name }}</li>
+        <li>Status: {{ ucfirst($matrix->overall_status) }}</li>
+      </ul>
+
+      <a href="{{ config('app.url') }}/matrices/{{ $matrix->id }}" class="btn">View Matrix</a>
+
+      <p style="margin-top: 20px;">
+        Best regards,<br>
+        <strong>Africa CDC Team</strong>
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      &copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
+      <br>
+      This is an automated message. Please do not reply to this email.
+    </div>
+  </div>
 </body>
 </html> 
