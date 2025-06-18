@@ -136,7 +136,7 @@ if (!function_exists('user_session')) {
 
            // dd($user);
 
-           if (empty($user['staff_id']) || done_approving($matrix)) {
+           if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft'])) {
                return false;
            }
 
