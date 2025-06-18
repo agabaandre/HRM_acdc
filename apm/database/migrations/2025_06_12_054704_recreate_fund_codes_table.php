@@ -18,9 +18,9 @@ return new class extends Migration {
             $table->string('cost_centre')->nullable();
             $table->string('amert_code')->nullable();
             $table->string('fund')->nullable();
-            $table->string('budget')->nullable();
-            $table->string('uploaded')->nullable();
-            $table->string('approved_amert')->nullable();
+            $table->string('budget_balance')->nullable();
+            $table->string('uploaded_budget')->nullable();
+            $table->string('approved_budget')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->foreign('fund_type_id')->references('id')->on('fund_types')->nullOnDelete();
