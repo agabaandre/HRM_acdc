@@ -4,6 +4,8 @@
     margin: 0;
     padding: 0;
     list-style: none;
+    max-height: 50vh;
+    overflow-y: auto;
 }
 .timeline:before {
     content: '';
