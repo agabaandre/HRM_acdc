@@ -61,17 +61,17 @@
                 <span class="matrix-meta-value">{{ $matrix->focalPerson ? ($matrix->focalPerson->fname." ".$matrix->focalPerson->lname): 'Not assigned' }}</span>
             </div>
             <div class="matrix-meta-item">
-                <i class="bx bx-calendar-plus"></i>
-                <span class="matrix-meta-label">Created:</span>
-                <span class="matrix-meta-value">{{ $matrix->created_at->format('Y-m-d H:i') }}</span>
+                <i class="bx bx-money"></i>
+                <span class="matrix-meta-label">Intramural Budget:</span>
+                <span class="matrix-meta-value">{{ 0 }}</span>
             </div>
             <div class="matrix-meta-item">
-                <i class="bx bx-calendar-edit"></i>
-                <span class="matrix-meta-label">Updated:</span>
-                <span class="matrix-meta-value">{{ $matrix->updated_at->format('Y-m-d H:i') }}</span>
+                <i class="bx bx-money"></i>
+                <span class="matrix-meta-label">ExtraMural Budget:</span>
+                <span class="matrix-meta-value">{{ 0 }}</span>
             </div>
         </div>
-        <div>
+        <div class="mt-3">
             @if($matrix->overall_status !=='approved')
                 <span class="p-1 rounded {{config('approval_states')[$matrix->overall_status]}}">
                     <i class="fa fa-clock text-bold"></i>

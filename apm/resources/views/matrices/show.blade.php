@@ -6,10 +6,12 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-   @if(still_with_creator($matrix))
+   @if($matrix->division_id == user_session()['division_id'] && $matrix->overall_status=='draft')
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Activity
         </a>
+    @endif
+     @if(still_with_creator($matrix))
         <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
             <i class="bx bx-edit me-1"></i> Edit Matrix
         </a>
