@@ -9,7 +9,8 @@
         "php": "^8.2",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
-        "staudenmeir/eloquent-json-relations": "^1.1"
+        "staudenmeir/eloquent-json-relations": "^1.1",
+        "phpmailer/phpmailer": "^6.10"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.15",
@@ -30,7 +31,9 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-        "app/Helpers/CustomHelper.php"
+        "app/Helpers/CustomHelper.php",
+        "app/Helpers/MailingHelper.php",
+        "app/Helpers/NotificationsHelper.php"
         ]
     },
     "autoload-dev": {

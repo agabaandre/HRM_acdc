@@ -6,19 +6,19 @@
     <ul class="dropdown-menu w-100" aria-labelledby="approvalActionsDropdown">
         <li>
             <a class="dropdown-item" href="#confirmReview" data-bs-toggle="modal">
-                <i class="bx bx-check text-bold"></i> Acknowledge
+                <i class="bx bx-check text-bold"></i> Pass
             </a>
         </li>
         <li>
             <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#recommendChangesModal">
-                <i class="bx bx-edit text-bold"></i> Recommend Changes
+                <i class="bx bx-edit text-bold"></i> Not Passed
             </a>
         </li>
-        <li>
+        {{-- <li>
             <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#notRequiredModal">
                 <i class="bx bx-x-circle text-bold"></i> Not Required
             </a>
-        </li>
+        </li> --}}
     </ul>
 </div>
         

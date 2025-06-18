@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\MatrixController;
 use App\Http\Middleware\CheckSessionMiddleware;
+use App\Models\Matrix;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WorkflowController;
@@ -112,4 +113,12 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     // Request for Services Routes
     Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
     Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
+
+    Route::get('/test', function(){
+        $matrix = Matrix::where('id',7)->first();
+        echo(send_matrix_email_notification( $matrix,  'matrix_approval'));
+    });
+
 });
+
+
