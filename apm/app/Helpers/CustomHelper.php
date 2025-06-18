@@ -53,7 +53,7 @@ if (!function_exists('user_session')) {
     if (!function_exists('can_division_head_edit')) {
         function can_division_head_edit($matrix){
             $user = (Object) session('user', []);
-            return ($matrix->division->division_head==$user->staff_id && $matrix->approval_level==1 &&  in_array($matrix->overall_status,['draft','returned']));
+            return ($matrix->division->division_head==$user->staff_id && $matrix->approval_level==1 && activities_approved_by_me($matrix) && in_array($matrix->overall_status,['returned']));
         }
      }
 
@@ -136,7 +136,7 @@ if (!function_exists('user_session')) {
 
            // dd($user);
 
-           if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft'])) {
+           if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft','returned'])) {
                return false;
            }
 
