@@ -127,11 +127,11 @@
                         <thead>
                             <tr>
                                 <td>#<td>
-                                <th>Description</th>
                                 <th>Unit Cost</th>
                                 <th>Units</th>
                                 <th>Days</th>
                                 <th>Total</th>
+                                <th>Description</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -160,11 +160,11 @@
                             @endphp
                                 <tr>
                                     <td>{{$count}}</td>
-                                    <td>{{ $item['description'] }}</td>
                                     <td class="text-end">{{ number_format($item['unit_cost'], 2) }}</td>
                                     <td class="text-end">{{ $item['units'] }}</td>
                                     <td class="text-end">{{ $item['days'] }}</td>
                                     <td class="text-end">{{ number_format($total, 2) }}</td>
+                                    <td>{{ $item['description'] }}</td>
                                 </tr>
                             @endforeach
                             @endif
