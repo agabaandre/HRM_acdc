@@ -113,7 +113,7 @@
 </div>
 
 <div class="col-lg-4">
-@if($matrix->matrixApprovalTrails)
+@if(count($matrix->matrixApprovalTrails)>0)
     @include('matrices.partials.approval-trail')
 @endif
 </div>
