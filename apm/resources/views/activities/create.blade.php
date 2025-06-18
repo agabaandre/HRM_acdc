@@ -38,12 +38,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2 activity_code" style="display: none;">
-                        <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
-                        </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" />
-                    </div>
+              
 
                     <div class="col-md-4">
                         <label for="budget_codes" class="form-label fw-semibold">
@@ -53,6 +48,13 @@
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
                         <small class="text-muted">Select up to 2 codes</small>
+                    </div>
+
+                    <div class="col-md-2 activity_code" style="display: none;">
+                        <label for="activity_code" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger"></span>
+                        </label>
+                        <input name="activity_code" id="activity_code" class="form-control border-success" />
                     </div>
 
                     <div class="col-md-4">
@@ -476,23 +478,29 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 
     $('#budget_codes').select2({ maximumSelectionLength: 2, width: '100%' });
 
-    $('#fund_type').on('change', function () {
-        const fundTypeId = $(this).val();
-        const budgetCodesSelect = $('#budget_codes');
-        budgetCodesSelect.empty().prop('disabled', true).append('<option disabled selected>Loading...</option>');
+  $('#fund_type').on('change', function () {
+    const fundTypeId = $(this).val();
+    const budgetCodesSelect = $('#budget_codes');
+    budgetCodesSelect.empty().prop('disabled', true).append('<option disabled selected>Loading...</option>');
 
-        $.get('{{ route("budget-codes.by-fund-type") }}', { fund_type_id: fundTypeId, division_id: divisionId }, function (data) {
-            budgetCodesSelect.empty();
-            if (data.length) {
-                data.forEach(code => {
-                    budgetCodesSelect.append(`<option value="${code.id}" data-balance="${code.available_balance}">${code.code} - ${code.description || ''}</option>`);
-                });
-                budgetCodesSelect.prop('disabled', false);
-            } else {
-                budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
-            }
-        });
+    $.get('{{ route("budget-codes.by-fund-type") }}', {
+        fund_type_id: fundTypeId,
+        division_id: divisionId
+    }, function (data) {
+        budgetCodesSelect.empty();
+        if (data.length) {
+            data.forEach(code => {
+                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
+                budgetCodesSelect.append(
+                    `<option value="${code.id}" data-balance="${code.budget_balance}">${label}</option>`
+                );
+            });
+            budgetCodesSelect.prop('disabled', false);
+        } else {
+            budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
+        }
     });
+});
 
     $('#budget_codes').on('change', function () {
     const selected = $(this).find('option:selected');
