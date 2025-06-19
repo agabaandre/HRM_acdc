@@ -16,21 +16,18 @@ class NonTravelMemoCategory extends Model
      * @var array
      */
     protected $fillable = [
-        'name',
+        'name'
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array
      */
-    protected function casts(): array
-    {
-        return [
-            'id' => 'integer',
-        ];
-    }
-
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
     public function nonTravelMemos(): HasMany
     {

@@ -34,15 +34,25 @@ $settingsMenuItems = [
 'title' => 'Directorates'
 ],
 [
-'route' => 'staff.index',
-'icon' => 'fas fa-users',
-'title' => 'Staff'
-],
-[
 'route' => 'request-types.index',
 'icon' => 'fas fa-file-alt',
 'title' => 'Request Types'
-]
+],
+[
+'route' => 'non-travel-categories.index',
+'icon' => 'fas fa-list',
+'title' => 'Non Travel Categories'
+],
+[
+'route' => 'locations.index',
+'icon' => 'fas fa-map-marker-alt',
+'title' => 'Locations'
+],
+[
+'route' => 'cost-items.index',
+'icon' => 'fas fa-coins',
+'title' => 'Cost Items'
+],
 ];
 @endphp
 
@@ -125,7 +135,7 @@ $settingsMenuItems = [
 
             <!-- Settings -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('staff*') || Request::is('request-types*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                     <div class="menu-title">Settings</div>

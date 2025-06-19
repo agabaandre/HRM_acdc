@@ -72,10 +72,24 @@ class Division extends Model
     {
         return $this->hasMany(Staff::class);
     }
-    public function Division(): HasMany
+
+    public function divisionHead(): BelongsTo
     {
-        return $this->hasMany(Directorate::class);
+        return $this->belongsTo(Staff::class, 'division_head', 'staff_id');
     }
 
-  
+    public function focalPerson(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'focal_person', 'staff_id');
+    }
+
+    public function adminAssistant(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'admin_assistant', 'staff_id');
+    }
+
+    public function financeOfficer(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'finance_officer', 'staff_id');
+    }
 }

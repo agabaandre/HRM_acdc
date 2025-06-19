@@ -67,7 +67,7 @@
                             <div class="col-sm-12">
                                 <div class="d-flex align-items-center">
                                     <i class="bx bx-user-circle fs-5 me-2 text-primary"></i>
-                                    <span>ID: {{ $division->division_head }}</span>
+                                    <span>{{ $division->divisionHead ? $division->divisionHead->fname . ' ' . $division->divisionHead->lname : 'N/A' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -76,7 +76,7 @@
                             <div class="col-sm-12">
                                 <div class="d-flex align-items-center">
                                     <i class="bx bx-user-voice fs-5 me-2 text-info"></i>
-                                    <span>ID: {{ $division->focal_person }}</span>
+                                    <span>{{ $division->focalPerson ? $division->focalPerson->fname . ' ' . $division->focalPerson->lname : 'N/A' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -85,7 +85,7 @@
                             <div class="col-sm-12">
                                 <div class="d-flex align-items-center">
                                     <i class="bx bx-support fs-5 me-2 text-success"></i>
-                                    <span>ID: {{ $division->admin_assistant }}</span>
+                                    <span>{{ $division->adminAssistant ? $division->adminAssistant->fname . ' ' . $division->adminAssistant->lname : 'N/A' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -94,7 +94,7 @@
                             <div class="col-sm-12">
                                 <div class="d-flex align-items-center">
                                     <i class="bx bx-dollar-circle fs-5 me-2 text-warning"></i>
-                                    <span>ID: {{ $division->finance_officer }}</span>
+                                    <span>{{ $division->financeOfficer ? $division->financeOfficer->fname . ' ' . $division->financeOfficer->lname : 'N/A' }}</span>
                                 </div>
                             </div>
                         </div>

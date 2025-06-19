@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->year('year');
             $table->string('code')->unique();
             $table->text('activity')->nullable();
+            $table->unsignedBigInteger('funder_id')->nullable();
             $table->unsignedBigInteger('fund_type_id')->nullable();
             $table->unsignedBigInteger('division_id')->nullable();
             $table->string('cost_centre')->nullable();
