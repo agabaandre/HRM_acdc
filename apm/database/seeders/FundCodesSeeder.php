@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use Exception;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -44,8 +45,12 @@ class FundCodesSeeder extends Seeder
                 'updated_at' => now(),
             );
           //  dd($data);
-
-            DB::table('fund_codes')->insert($idata);
+            try{
+                DB::table('fund_codes')->insert($idata);
+            }
+            catch(Exception $exception){
+                \Log::error("Insertion error");
+            }
           //  dd($data);
         }
 

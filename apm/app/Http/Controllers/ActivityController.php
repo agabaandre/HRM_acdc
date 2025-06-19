@@ -204,6 +204,8 @@ class ActivityController extends Controller
             'serviceRequests',
             'fundType',
             'matrix.division',
+            'activity_budget',
+            'activity_budget.fund_code'
         ]);
     
         // Load all staff
