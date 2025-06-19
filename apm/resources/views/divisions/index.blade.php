@@ -5,9 +5,9 @@
 @section('header', 'Divisions')
 
 @section('header-actions')
-<a href="{{ route('divisions.create') }}" class="btn btn-success">
+<!-- <a href="{{ route('divisions.create') }}" class="btn btn-success">
     <i class="bx bx-plus"></i> Add Division
-</a>
+</a> -->
 @endsection
 
 @section('content')
