@@ -42,7 +42,17 @@ $settingsMenuItems = [
 'route' => 'request-types.index',
 'icon' => 'fas fa-file-alt',
 'title' => 'Request Types'
-]
+],
+[
+'route' => 'non-travel-categories.index',
+'icon' => 'fas fa-list',
+'title' => 'Non Travel Categories'
+],
+[
+'route' => 'locations.index',
+'icon' => 'fas fa-map-marker-alt',
+'title' => 'Locations'
+],
 ];
 @endphp
 
