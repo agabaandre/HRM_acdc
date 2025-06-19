@@ -158,8 +158,9 @@ class Matrix extends Model
     }
 
     public function getDivisionStaffAttribute(){
+        $division_id = user_session()['division_id'];
         //Get staff with with the division days in this quater and year
-        return Staff::where('division_id', $this->division_id)
+        return Staff::where('division_id', $division_id)
         ->withSum([
             'participant_schedules as division_days' => function ($query) {
                 $query->where('quarter', $this->quarter)
