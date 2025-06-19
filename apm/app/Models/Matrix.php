@@ -32,7 +32,7 @@ class Matrix extends Model
         'overall_status',
     ];
 
-    protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor','division_schedule','division_staff'];
+    protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor','division_schedule','division_staff',"intramural_budget","extramural_budget"];
 
     /**
      * Get the casts for the model.
@@ -197,4 +197,33 @@ class Matrix extends Model
         ->groupBy('participant_id')
         ->get();
     }
+
+    public function getIntramuralBudgetAttribute(){
+        //sum ActivityBudget.total where ActivityBudget->fund_code->fundType->id in (1,3)
+        return $this->activities()
+            ->with(['activity_budget.fundcode.fundType'])
+            ->get()
+            ->flatMap(function($activity) {
+                return $activity->activity_budget;
+            })
+            ->filter(function($budget) {
+                return $budget->fundcode && $budget->fundcode->fundType && in_array($budget->fundcode->fundType->id, [1, 3]);
+            })
+            ->sum('total');
+    }
+
+    public function getExtramuralBudgetAttribute(){
+        //sum ActivityBudget.total where ActivityBudget->fund_code->fundType->id in (1,3)
+        return $this->activities()
+            ->with(['activity_budget.fundcode.fundType'])
+            ->get()
+            ->flatMap(function($activity) {
+                return $activity->activity_budget;
+            })
+            ->filter(function($budget) {
+                return $budget->fundcode && $budget->fundcode->fundType && $budget->fundcode->fundType->id==2;
+            })
+            ->sum('total');
+    }
+
 }

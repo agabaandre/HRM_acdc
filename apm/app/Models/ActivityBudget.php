@@ -24,7 +24,7 @@ class ActivityBudget extends Model
         return $this->belongsTo(FundType::class);
     }
 
-    public function fund_code(){
+    public function fundcode(){
         return $this->belongsTo(FundCode::class,"fund_code","id");
     }
 

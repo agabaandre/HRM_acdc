@@ -63,12 +63,12 @@
             <div class="matrix-meta-item">
                 <i class="bx bx-money"></i>
                 <span class="matrix-meta-label">Intramural Budget:</span>
-                <span class="matrix-meta-value">...</span>
+                <span class="matrix-meta-value">{{  number_format($matrix->intramural_budget,2)}}</span>
             </div>
             <div class="matrix-meta-item">
                 <i class="bx bx-money"></i>
                 <span class="matrix-meta-label">ExtraMural Budget:</span>
-                <span class="matrix-meta-value">...</span>
+                <span class="matrix-meta-value">{{ number_format($matrix->extramural_budget,2)}}</span>
             </div>
         </div>
         <div class="mt-3">
