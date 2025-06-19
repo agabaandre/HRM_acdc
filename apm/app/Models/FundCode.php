@@ -13,25 +13,31 @@ class FundCode extends Model
     protected $table = 'fund_codes';
 
     protected $fillable = [
+        'funder_id',
         'year',
         'code',
-        'name',
-        'description',
+        'activity',
         'fund_type_id',
         'division_id',
+        'cost_centre',
+        'amert_code',
+        'fund',
         'is_active',
-        'end_date',
-        'available_balance',
+        'budget_balance',
+        'approved_budget',
+        'uploaded_budget',
     ];
 
     protected $casts = [
         'id' => 'integer',
+        'funder_id' => 'integer',
         'year' => 'integer',
         'fund_type_id' => 'integer',
         'division_id' => 'integer',
         'is_active' => 'boolean',
-        'end_date' => 'date',
-        'available_balance' => 'decimal:2',
+        'budget_balance' => 'string',
+        'approved_budget' => 'string',
+        'uploaded_budget' => 'string',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
