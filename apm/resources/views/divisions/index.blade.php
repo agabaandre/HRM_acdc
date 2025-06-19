@@ -53,8 +53,8 @@
                         <tr>
                             <td>{{ $division->id }}</td>
                             <td>{{ $division->division_name }}</td>
-                            <td>{{ $division->division_head }}</td>
-                            <td>{{ $division->focal_person }}</td>
+                            <td>{{ $division->divisionHead ? $division->divisionHead->fname . ' ' . $division->divisionHead->lname : 'N/A' }}</td>
+                            <td>{{ $division->focalPerson ? $division->focalPerson->fname . ' ' . $division->focalPerson->lname : 'N/A' }}</td>
                             <td>
                                 @if($division->is_active)
                                     <span class="badge bg-success">Active</span>
