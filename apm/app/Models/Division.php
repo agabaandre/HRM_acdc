@@ -13,6 +13,13 @@ class Division extends Model
     
     // Using standard Laravel 'id' as primary key
 
+    protected $table="";
+    public function __construct(array $attributes = [])
+    {
+        parent::__construct($attributes);
+        $this->table = env('DIVISIONS_TABLE', 'divisions');
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -29,7 +36,6 @@ class Division extends Model
         'is_active',
     ];
 
-    //protected $table="divisions2";
 
     /**
      * Get the attributes that should be cast.

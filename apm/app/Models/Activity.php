@@ -227,5 +227,8 @@ class Activity extends Model
     {
         return $this->belongsTo(Staff::class, 'responsible_person_id', 'staff_id');
     }
-    
+
+    public function budget(){
+        return $this->hasMany(ActivityBudget::class);
+    }
 }
