@@ -16,7 +16,10 @@ class RequestType extends Model
      * @var array
      */
     protected $fillable = [
-        'name',
+        'request_type',
+        'description',
+        'workflow_id',
+        'is_active',
     ];
 
     /**
