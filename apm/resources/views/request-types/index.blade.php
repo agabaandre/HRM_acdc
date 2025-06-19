@@ -30,9 +30,8 @@
                 <thead class="table-light">
                     <tr>
                         <th>#</th>
-                        <th>Request Type</th>
-                        <th>Workflow</th>
-                        <th>Status</th>
+                        <th>Name</th>
+                        <th>Created At</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -41,21 +40,9 @@
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>
-                                <strong>{{ $requestType->request_type }}</strong>
-                                @if($requestType->description)
-                                    <div class="text-muted small">{{ Str::limit($requestType->description, 50) }}</div>
-                                @endif
+                                <strong>{{ $requestType->name }}</strong>
                             </td>
-                            <td>
-                                {{ $requestType->workflow->name ?? 'N/A' }}
-                            </td>
-                            <td>
-                                @if($requestType->is_active)
-                                    <span class="badge bg-success">Active</span>
-                                @else
-                                    <span class="badge bg-secondary">Inactive</span>
-                                @endif
-                            </td>
+                            <td>{{ $requestType->created_at->format('M d, Y') }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('request-types.show', $requestType) }}" 
@@ -74,7 +61,6 @@
                                             class="btn btn-sm btn-outline-danger" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#deleteModal{{ $requestType->id }}"
-                                            data-bs-toggle="tooltip" 
                                             title="Delete">
                                         <i class="bx bx-trash"></i>
                                     </button>
@@ -89,7 +75,7 @@
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body">
-                                                <p>Are you sure you want to delete the request type <strong>{{ $requestType->request_type }}</strong>?</p>
+                                                <p>Are you sure you want to delete the request type <strong>{{ $requestType->name }}</strong>?</p>
                                                 <p class="text-danger mb-0"><small>This action cannot be undone.</small></p>
                                             </div>
                                             <div class="modal-footer">
@@ -109,7 +95,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center py-5">
+                            <td colspan="4" class="text-center py-5">
                                 <div class="d-flex flex-column align-items-center">
                                     <div class="mb-3">
                                         <i class="bx bx-package text-muted" style="font-size: 3rem;"></i>
