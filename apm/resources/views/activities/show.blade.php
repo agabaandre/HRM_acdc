@@ -122,11 +122,17 @@
                 <h5 class="mb-0">Budget Details</h5>
             </div>
             <div class="card-body">
+            
+             @foreach($fundCodes ?? [] as $fundCode )
+             
+                 <h4  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} </h4>
+
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
-                                <td>#<td>
+                                <th>#</th>
+                                <th>Cost</th>
                                 <th>Unit Cost</th>
                                 <th>Units</th>
                                 <th>Days</th>
@@ -137,52 +143,38 @@
                         <tbody>
                             @php
                               $count = 1;
+                              $grandTotal = 0;
                             @endphp
-                            @foreach($fundCodes ?? [] as $fundCode )
-                            @php
                            
-                              $items = $budgetItems[$fundCode->id];
-
-                             // dd($fundCode);
-                             
-                            @endphp
-                            @if($items)
-
-                            <tr>
-                                <th colspan="5" style="color: #911C39; font-weight: 600;">
-                                    {{ $fundCode->activity }} - {{ $fundCode->code }}
-                                </th>
-
-                            </tr>
-                            @foreach($items ?? [] as $item)
-                            @php
-                            $total = $item['unit_cost'] * $item['units'] * $item['days'];
-                            @endphp
+                            @foreach($activity->activity_budget as $item)
+                                @php
+                                    $total = $item->unit_cost * $item->units * $item->days;
+                                    $grandTotal+=$total;
+                                @endphp
                                 <tr>
                                     <td>{{$count}}</td>
-                                    <td class="text-end">{{ number_format($item['unit_cost'], 2) }}</td>
-                                    <td class="text-end">{{ $item['units'] }}</td>
-                                    <td class="text-end">{{ $item['days'] }}</td>
-                                    <td class="text-end">{{ number_format($total, 2) }}</td>
-                                    <td>{{ $item['description'] }}</td>
+                                    <td class="text-end">{{ $item->cost }}</td>
+                                    <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
+                                    <td class="text-end">{{ $item->units }}</td>
+                                    <td class="text-end">{{ $item->days }}</td>
+                                    <td class="text-end">{{ number_format($item->total, 2) }}</td>
+                                    <td>{{ $item->description }}</td>
                                 </tr>
                             @endforeach
-                            @endif
 
                             @php
                                 $count++;
                             @endphp
-
-                            @endforeach
                             
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="4" class="text-end">Grand Total</th>
-                                <th class="text-end">{{ $budgetItems ? number_format($budgetItems['grand_total'] ?? 0, 2) : 0 }}</th>
+                                <th colspan="5" class="text-end">Grand Total</th>
+                                <th class="text-end">{{  number_format($grandTotal?? 0, 2)}}</th>
                             </tr>
                         </tfoot>
                     </table>
+                     @endforeach
                 </div>
 
             @if(can_take_action($matrix )  && !done_approving_activty($activity))
