@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\ActivityApprovalTrail;
+use App\Models\ActivityBudget;
 use App\Models\Matrix;
 use App\Models\RequestType;
 use App\Models\FundType;
@@ -139,6 +140,9 @@ class ActivityController extends Controller
     
                 // Debug formatted array before insertion
                 //dd($internalParticipants);
+
+                $budgetCodes = $request->input('budget_codes', []);
+                $budgetItems = $request->input('budget', []);
     
                 // Create the activity record
                 $activity = $matrix->activities()->create([
@@ -160,13 +164,16 @@ class ActivityController extends Controller
                     'fund_type_id' => $request->input('fund_type', 1),
                     'location_id' => json_encode($request->input('location_id', [])),
                     'internal_participants' => json_encode($internalParticipants),
-                    'budget_id' => json_encode($request->input('budget_codes', [])),
-                    'budget' => json_encode($request->input('budget', [])),
+                    'budget_id' => json_encode($budgetCodes),
+                    'budget' => json_encode($budgetItems),
                     'attachment' => json_encode($request->input('attachments', [])),
                 ]);
 
                 if(count($internalParticipants)>0)
                 $this->storeParticipantSchedules($internalParticipants,$activity);
+
+                if(count($budgetItems)>0)
+                $this->storeBudget($budgetCodes,$budgetItems,$activity);
     
                 return redirect()
                     ->route('matrices.activities.show', [$matrix, $activity])
@@ -383,7 +390,32 @@ class ActivityController extends Controller
             ->with('success', 'Activity deleted successfully.');
     }
 
-    public function storeParticipantSchedules($schedules,$activity)
+    private function storeBudget($budgetCodes,$budgetItems,$activity)
+    {
+
+        foreach($budgetCodes as $key=>$fundCode){
+            $items = $budgetItems[$fundCode];
+           
+            foreach($items as $item){
+                $item = (Object) $item;
+                $total = ($item->unit_cost * $item->units) * $item->days;
+
+                ActivityBudget::create([
+                    'activity_id'=>$activity->id,
+                    'matrix_id'=>$activity->matrix_id,
+                    'fund_type_id'=>$fundCode,
+                    'cost'=>$item->cost,
+                    'description'=>$item->description,
+                    'unit_cost'=>$item->unit_cost,
+                    'units'=>$item->units,
+                    'days'=>$item->days,
+                    'total'=>$total
+                ]);
+            }
+        }
+    }
+
+    private function storeParticipantSchedules($schedules,$activity)
     {
         try{
 
