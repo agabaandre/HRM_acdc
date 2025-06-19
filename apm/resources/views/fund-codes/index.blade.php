@@ -59,9 +59,17 @@
                 <thead class="table-light">
                     <tr>
                         <th>Code</th>
-                        <th>Name</th>
+                        <th>Year</th>
+                        <th>Funder</th>
                         <th>Fund Type</th>
                         <th>Division</th>
+                        <th>Activity</th>
+                        <th>Cost Centre</th>
+                        <th>Amert Code</th>
+                        <th>Fund</th>
+                        <th>Budget Balance</th>
+                        <th>Approved Budget</th>
+                        <th>Uploaded Budget</th>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -70,9 +78,17 @@
                     @forelse($fundCodes as $fundCode)
                         <tr>
                             <td><strong>{{ $fundCode->code }}</strong></td>
-                            <td>{{ $fundCode->name }}</td>
+                            <td>{{ $fundCode->year }}</td>
+                            <td>{{ $fundCode->funder->name ?? 'N/A' }}</td>
                             <td>{{ $fundCode->fundType->name ?? 'N/A' }}</td>
                             <td>{{ $fundCode->division->division_name ?? 'N/A' }}</td>
+                            <td>{{ $fundCode->activity }}</td>
+                            <td>{{ $fundCode->cost_centre }}</td>
+                            <td>{{ $fundCode->amert_code }}</td>
+                            <td>{{ $fundCode->fund }}</td>
+                            <td>{{ $fundCode->budget_balance }}</td>
+                            <td>{{ $fundCode->approved_budget }}</td>
+                            <td>{{ $fundCode->uploaded_budget }}</td>
                             <td>
                                 @if($fundCode->is_active)
                                     <span class="badge bg-success">Active</span>
@@ -81,46 +97,14 @@
                                 @endif
                             </td>
                             <td class="text-end">
-                                <div class="btn-group" role="group">
-                                    <a href="{{ route('fund-codes.show', $fundCode) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
-                                        <i class="bx bx-show"></i>
-                                    </a>
-                                    <a href="{{ route('fund-codes.edit', $fundCode) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit">
-                                        <i class="bx bx-edit"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $fundCode->id }}" data-bs-toggle="tooltip" title="Delete">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Delete Modal -->
-                                <div class="modal fade" id="deleteModal{{ $fundCode->id }}" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Delete Fund Code</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p>Are you sure you want to delete the fund code <strong>{{ $fundCode->code }}</strong>?</p>
-                                                <p class="text-danger"><small>This action cannot be undone.</small></p>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <form action="{{ route('fund-codes.destroy', $fundCode) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">Delete</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <a href="{{ route('fund-codes.show', $fundCode) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
+                                    <i class="bx bx-show"></i>
+                                </a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center py-4">
+                            <td colspan="14" class="text-center py-4">
                                 <div class="text-muted">
                                     <i class="bx bx-folder-open fs-1"></i>
                                     <p class="mt-2">No fund codes found</p>
