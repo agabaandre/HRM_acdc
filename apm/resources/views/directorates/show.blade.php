@@ -5,14 +5,9 @@
 @section('header', 'Directorate Details')
 
 @section('header-actions')
-<div class="d-flex gap-2">
-    <a href="{{ route('directorates.edit', $directorate) }}" class="btn btn-warning">
-        <i class="bx bx-edit"></i> Edit
-    </a>
-    <a href="{{ route('directorates.index') }}" class="btn btn-outline-secondary">
-        <i class="bx bx-arrow-back"></i> Back to List
-    </a>
-</div>
+<a href="{{ route('directorates.index') }}" class="btn btn-outline-secondary">
+    <i class="bx bx-arrow-back"></i> Back to List
+</a>
 @endsection
 
 @section('content')
@@ -25,8 +20,8 @@
             <div class="card-body p-4">
                 <div class="row mb-4">
                     <div class="col-md-6">
-                        <h6 class="text-muted mb-1">Directorate Code</h6>
-                        <h4 class="mb-0">{{ $directorate->code }}</h4>
+                        <h6 class="text-muted mb-1">ID</h6>
+                        <h4 class="mb-0">{{ $directorate->id }}</h4>
                     </div>
                     <div class="col-md-6 text-md-end">
                         <h6 class="text-muted mb-1">Status</h6>
@@ -42,15 +37,6 @@
                     <h6 class="text-muted mb-1">Directorate Name</h6>
                     <h5>{{ $directorate->name }}</h5>
                 </div>
-
-                @if($directorate->description)
-                <div class="mb-0">
-                    <h6 class="text-muted mb-2">Description</h6>
-                    <div class="p-3 bg-light rounded">
-                        {{ $directorate->description }}
-                    </div>
-                </div>
-                @endif
             </div>
         </div>
 
@@ -113,46 +99,6 @@
                         <span>{{ $directorate->updated_at->format('Y-m-d H:i') }}</span>
                     </li>
                 </ul>
-            </div>
-        </div>
-
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="bx bx-cog me-2 text-primary"></i>Actions</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ route('directorates.edit', $directorate) }}" class="btn btn-warning">
-                        <i class="bx bx-edit me-2"></i> Edit Directorate
-                    </a>
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                        <i class="bx bx-trash me-2"></i> Delete Directorate
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Directorate</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete the directorate <strong>{{ $directorate->name }}</strong>?</p>
-                <p class="text-danger"><small>This action cannot be undone. Please ensure this directorate is not in use before deleting.</small></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ route('directorates.destroy', $directorate) }}" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
             </div>
         </div>
     </div>

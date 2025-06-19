@@ -33,9 +33,4 @@ class Directorate extends Model
             'is_active' => 'boolean',
         ];
     }
-    public function directorate(): BelongsTo
-    {
-        return $this->belongsTo(Division::class);
-    }
-   
 }
