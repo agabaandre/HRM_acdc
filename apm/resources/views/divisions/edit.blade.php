@@ -49,6 +49,9 @@
                     <input type="number" class="form-control @error('division_head') is-invalid @enderror"
                         id="division_head" name="division_head"
                         value="{{ old('division_head', $division->division_head) }}" required>
+                    @if($division->divisionHead)
+                        <small class="text-muted">Current: {{ $division->divisionHead->fname }} {{ $division->divisionHead->lname }}</small>
+                    @endif
                     @error('division_head')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -58,6 +61,9 @@
                     <input type="number" class="form-control @error('focal_person') is-invalid @enderror"
                         id="focal_person" name="focal_person"
                         value="{{ old('focal_person', $division->focal_person) }}" required>
+                    @if($division->focalPerson)
+                        <small class="text-muted">Current: {{ $division->focalPerson->fname }} {{ $division->focalPerson->lname }}</small>
+                    @endif
                     @error('focal_person')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -70,6 +76,9 @@
                     <input type="number" class="form-control @error('admin_assistant') is-invalid @enderror"
                         id="admin_assistant" name="admin_assistant"
                         value="{{ old('admin_assistant', $division->admin_assistant) }}" required>
+                    @if($division->adminAssistant)
+                        <small class="text-muted">Current: {{ $division->adminAssistant->fname }} {{ $division->adminAssistant->lname }}</small>
+                    @endif
                     @error('admin_assistant')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -79,6 +88,9 @@
                     <input type="number" class="form-control @error('finance_officer') is-invalid @enderror"
                         id="finance_officer" name="finance_officer"
                         value="{{ old('finance_officer', $division->finance_officer) }}" required>
+                    @if($division->financeOfficer)
+                        <small class="text-muted">Current: {{ $division->financeOfficer->fname }} {{ $division->financeOfficer->lname }}</small>
+                    @endif
                     @error('finance_officer')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

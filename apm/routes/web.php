@@ -85,6 +85,9 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     Route::resource('staff', App\Http\Controllers\StaffController::class);
     Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
+    Route::resource('locations', App\Http\Controllers\LocationController::class);
+    Route::resource('cost-items', App\Http\Controllers\CostItemController::class);
+    Route::resource('non-travel-categories', App\Http\Controllers\NonTravelMemoCategoryController::class);
     
     // Add matrices and activities resources inside the middleware group
     Route::resource('matrices', MatrixController::class);

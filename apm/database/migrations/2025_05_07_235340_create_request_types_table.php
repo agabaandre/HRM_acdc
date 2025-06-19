@@ -15,8 +15,13 @@ return new class extends Migration
 
         Schema::create('request_types', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('request_type');
+            $table->text('description')->nullable();
+            $table->unsignedBigInteger('workflow_id')->nullable();
+            $table->boolean('is_active')->default(1);
             $table->timestamps();
+
+            $table->foreign('workflow_id')->references('id')->on('workflows')->nullOnDelete();
         });
 
         Schema::enableForeignKeyConstraints();

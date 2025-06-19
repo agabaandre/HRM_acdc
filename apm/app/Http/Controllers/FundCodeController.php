@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\FundCode;
 use App\Models\FundType;
 use App\Models\Division;
+use App\Models\Funder;
 use Illuminate\Http\Request;
 
 class FundCodeController extends Controller
@@ -14,15 +15,15 @@ class FundCodeController extends Controller
      */
     public function index(Request $request)
     {
-        $query = FundCode::query()->with(['fundType', 'division']);
+        $query = FundCode::query()->with(['fundType', 'division', 'funder']);
         
         // Apply search filter if provided
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                $q->where('code', 'like', "%{$search}%")
+                  ->orWhere('activity', 'like', "%{$search}%")
+                  ->orWhere('cost_centre', 'like', "%{$search}%");
             });
         }
         
@@ -48,8 +49,9 @@ class FundCodeController extends Controller
         $fundCodes = $query->orderBy('code')->paginate(10);
         $fundTypes = FundType::orderBy('name')->get();
         $divisions = Division::orderBy('division_name')->get();
+        $funders = Funder::orderBy('name')->get();
         
-        return view('fund-codes.index', compact('fundCodes', 'fundTypes', 'divisions'));
+        return view('fund-codes.index', compact('fundCodes', 'fundTypes', 'divisions', 'funders'));
     }
 
     /**
@@ -60,8 +62,9 @@ class FundCodeController extends Controller
         $fundTypes = FundType::orderBy('name')->get();
         $divisions = Division::where('is_active', true)->orderBy('division_name')->get();
         $selectedFundType = $request->input('fund_type_id');
+        $funders = Funder::orderBy('name')->get();
         
-        return view('fund-codes.create', compact('fundTypes', 'divisions', 'selectedFundType'));
+        return view('fund-codes.create', compact('fundTypes', 'divisions', 'selectedFundType', 'funders'));
     }
 
     /**
@@ -70,12 +73,19 @@ class FundCodeController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50|unique:fund_codes',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'fund_type_id' => 'required|exists:fund_types,id',
-            'division_id' => 'required|exists:divisions,id',
+            'funder_id' => 'nullable|exists:funders,id',
+            'year' => 'required|integer|min:2000|max:2100',
+            'code' => 'required|string|max:255|unique:fund_codes',
+            'activity' => 'nullable|string',
+            'fund_type_id' => 'nullable|exists:fund_types,id',
+            'division_id' => 'nullable|exists:divisions,id',
+            'cost_centre' => 'nullable|string|max:255',
+            'amert_code' => 'nullable|string|max:255',
+            'fund' => 'nullable|string|max:255',
             'is_active' => 'boolean',
+            'budget_balance' => 'nullable|string|max:255',
+            'approved_budget' => 'nullable|string|max:255',
+            'uploaded_budget' => 'nullable|string|max:255',
         ]);
 
         // Set is_active to true by default if not provided
@@ -94,7 +104,7 @@ class FundCodeController extends Controller
      */
     public function show(FundCode $fundCode)
     {
-        $fundCode->load(['fundType', 'division']);
+        $fundCode->load(['fundType', 'division', 'funder']);
         return view('fund-codes.show', compact('fundCode'));
     }
 
@@ -105,8 +115,9 @@ class FundCodeController extends Controller
     {
         $fundTypes = FundType::orderBy('name')->get();
         $divisions = Division::orderBy('division_name')->get();
+        $funders = \App\Models\Funder::orderBy('name')->get();
         
-        return view('fund-codes.edit', compact('fundCode', 'fundTypes', 'divisions'));
+        return view('fund-codes.edit', compact('fundCode', 'fundTypes', 'divisions', 'funders'));
     }
 
     /**
@@ -115,12 +126,19 @@ class FundCodeController extends Controller
     public function update(Request $request, FundCode $fundCode)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50|unique:fund_codes,code,' . $fundCode->id,
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'fund_type_id' => 'required|exists:fund_types,id',
-            'division_id' => 'required|exists:divisions,id',
+            'funder_id' => 'nullable|exists:funders,id',
+            'year' => 'required|integer|min:2000|max:2100',
+            'code' => 'required|string|max:255|unique:fund_codes,code,' . $fundCode->id,
+            'activity' => 'nullable|string',
+            'fund_type_id' => 'nullable|exists:fund_types,id',
+            'division_id' => 'nullable|exists:divisions,id',
+            'cost_centre' => 'nullable|string|max:255',
+            'amert_code' => 'nullable|string|max:255',
+            'fund' => 'nullable|string|max:255',
             'is_active' => 'boolean',
+            'budget_balance' => 'nullable|string|max:255',
+            'approved_budget' => 'nullable|string|max:255',
+            'uploaded_budget' => 'nullable|string|max:255',
         ]);
 
         // Handle checkbox for is_active
