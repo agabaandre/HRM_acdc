@@ -21,7 +21,7 @@
             @method('PUT')
 
             <div class="row g-4 mb-4">
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <div class="form-group position-relative">
                         <label for="name" class="form-label fw-semibold">
                             <i class="bx bx-text me-1 text-primary"></i>Directorate Name <span class="text-danger">*</span>
@@ -38,43 +38,6 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="form-group position-relative">
-                        <label for="code" class="form-label fw-semibold">
-                            <i class="bx bx-code me-1 text-primary"></i>Directorate Code <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" 
-                               class="form-control form-control-lg @error('code') is-invalid @enderror" 
-                               id="code" 
-                               name="code" 
-                               value="{{ old('code', $directorate->code) }}" 
-                               placeholder="Enter directorate code"
-                               required>
-                        <small class="text-muted mt-1 d-block">Short code or abbreviation for the directorate</small>
-                        @error('code')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <div class="form-group position-relative">
-                    <label for="description" class="form-label fw-semibold">
-                        <i class="bx bx-detail me-1 text-primary"></i>Description
-                    </label>
-                    <textarea 
-                        class="form-control @error('description') is-invalid @enderror" 
-                        id="description" 
-                        name="description" 
-                        rows="4" 
-                        placeholder="Enter detailed description">{{ old('description', $directorate->description) }}</textarea>
-                    <small class="text-muted mt-1 d-block">Additional information about this directorate</small>
-                    @error('description')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
                 </div>
             </div>
 
