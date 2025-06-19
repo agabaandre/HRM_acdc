@@ -17,9 +17,7 @@
 </div>
 @endsection
 
-@php
-//dd($fundCodes);
-@endphp
+
 
 @section('content')
 <div class="row">
@@ -125,14 +123,14 @@
             
              @foreach($fundCodes ?? [] as $fundCode )
              
-                 <h4  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} </h4>
+                 <h6  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} </h6>
 
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Cost</th>
+                                <th>Cost Item</th>
                                 <th>Unit Cost</th>
                                 <th>Units</th>
                                 <th>Days</th>

@@ -371,8 +371,11 @@ class ActivityController extends Controller
 
         $activity->update($validated);
 
+        if($validated['budget'])
+            $this->storeBudget($validated['budget_id'],$validated['budget'],$activity);
+
         if($validated['internal_participants'])
-        $this->storeParticipantSchedules($validated['internal_participants'],$activity);
+            $this->storeParticipantSchedules($validated['internal_participants'],$activity);
 
         $message = $request->has('submit')
             ? 'Activity submitted successfully.'
@@ -404,6 +407,8 @@ class ActivityController extends Controller
 
     private function storeBudget($budgetCodes,$budgetItems,$activity)
     {
+        if(count($budgetItems)>0)
+         ActivityBudget::where('activity_id',$activity->id)->delete();
 
         foreach($budgetCodes as $key=>$fundCode){
             $items = $budgetItems[$fundCode];
@@ -416,6 +421,7 @@ class ActivityController extends Controller
                     'activity_id'=>$activity->id,
                     'matrix_id'=>$activity->matrix_id,
                     'fund_type_id'=>$fundCode,
+                    'fund_code'=>$fundCode,
                     'cost'=>$item->cost,
                     'description'=>$item->description,
                     'unit_cost'=>$item->unit_cost,

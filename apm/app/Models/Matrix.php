@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use function React\Promise\Stream\first;
+use App\Models\Staff;
 
 class Matrix extends Model
 {
@@ -31,7 +32,7 @@ class Matrix extends Model
         'overall_status',
     ];
 
-    protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor','division_schedule'];
+    protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor','division_schedule','division_staff'];
 
     /**
      * Get the casts for the model.
@@ -156,12 +157,43 @@ class Matrix extends Model
         return $this->hasMany(ParticipantSchedule::class);
     }
 
+    public function getDivisionStaffAttribute(){
+        //Get staff with with the division days in this quater and year
+        return Staff::where('division_id', $this->division_id)
+        ->withSum([
+            'participant_schedules as division_days' => function ($query) {
+                $query->where('quarter', $this->quarter)
+                      ->where('year', $this->year)
+                      ->where('is_home_division', 1);
+            }
+        ], 'participant_days')
+        ->withSum([
+            'participant_schedules as other_days' => function ($query) {
+                $query->where('quarter', $this->quarter)
+                      ->where('year', $this->year)
+                      ->where('is_home_division', 0);
+            }
+        ], 'participant_days')
+        ->get();
+    }
+
+
     
     public function getDivisionScheduleAttribute(){
-        return   $this->participant_schedules()->with('staff')
-                      ->where('division_id', $this->division_id)
-                      ->where('quarter', $this->quarter)
-                      ->where('year', $this->year)
-                      ->get();
+        return   $this->participant_schedules()->selectRaw('
+        MAX(id) as id,
+        participant_id,
+        MAX(quarter) as quarter,
+        MAX(year) as year,
+        MAX(participant_days) as participant_days,
+        MAX(is_home_division) as is_home_division,
+        MAX(division_id) as division_id
+        ')
+        ->with('staff')
+        ->where('division_id', $this->division_id)
+        ->where('quarter', $this->quarter)
+        ->where('year', $this->year)
+        ->groupBy('participant_id')
+        ->get();
     }
 }

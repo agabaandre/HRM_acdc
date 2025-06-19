@@ -108,6 +108,11 @@
 </div>
 
 <div class="row">
+
+@php
+//dd($matrix->division_staff->toArray());
+@endphp
+
 <div class="col-lg-8">
 @if(count($matrix->division_schedule)>0)
  @include('matrices.partials.participants-schedule')
