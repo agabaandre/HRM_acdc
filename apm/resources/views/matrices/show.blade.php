@@ -52,7 +52,7 @@
                         @forelse($activities as $activity)
                             <tr>
                                <th>{{$count}}</th>
-                                <td class="text-wrap" style="max-width: 300px;">
+                                <td class="text-wrap" style="max-width: 350px;">
                                     {{ $activity->activity_title }}
                                 </td>
                                 <td>{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }} - {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</td>
