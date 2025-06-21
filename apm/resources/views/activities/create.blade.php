@@ -135,6 +135,8 @@
 
 @push('scripts')
 <script>
+
+
   
 const staffData = @json($allStaffGroupedByDivision);
 
@@ -516,8 +518,11 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             <div class="card mt-4">
                 <div class="card-header bg-light">
                     <h6 class="fw-semibold">
-                        Budget for: ${label}
-                        <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toFixed(2)}</span></span>
+                        <span class="float-end text-muted">
+                            Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </span>
+
+                        
                     </h6>
                 </div>
                 <div class="card-body">
@@ -541,6 +546,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
                         <button type="button" class="btn btn-primary btn-sm add-row" data-code="${codeId}">
                             <i class="fas fa-plus"></i> Add
                         </button>
+                      
                         <strong class="ms-3">Sub Total: $<span class="subtotal" data-code="${codeId}">0.00</span></strong>
                     </div>
                 </div>
@@ -632,10 +638,10 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             $(this).find('tr').each(function () {
                 subtotal += parseFloat($(this).find('.total').val()) || 0;
             });
-            $(`.subtotal[data-code="${code}"]`).text(subtotal.toFixed(2));
+            $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             grand += subtotal;
         });
-        $('#grandBudgetTotal').text(grand.toFixed(2));
+        $('#grandBudgetTotal').text(grand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         $('#grandBudgetTotalInput').val(grand.toFixed(2));
     }
 
