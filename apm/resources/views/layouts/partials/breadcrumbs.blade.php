@@ -32,7 +32,7 @@
 
                         // Attach division if available
                         //dd($matrix)
-                        if (isset($matrix)) {
+                        if (!empty($matrix)) {
                         $displayName .= ' - ' . $matrix->division->division_name;
                         } elseif (user_session('division_name')) {
                         $displayName .= ' - ' . user_session('division_name');
