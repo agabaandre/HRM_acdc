@@ -40,7 +40,7 @@
                 <select class="form-select select2" id="divisionFilter">
                     <option value="">All Divisions</option>
                     @foreach($divisions as $division)
-                        <option value="{{ $division->id }}">{{ $division->name }}</option>
+                        <option value="{{ $division->id }}">{{ $division->division_name }}</option>
                     @endforeach
                 </select>
             </div>
