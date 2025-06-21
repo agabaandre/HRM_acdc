@@ -525,11 +525,11 @@ $(document).on('change', '.participant-start, .participant-end', function () {
                         <thead class="table-light fw-bold">
                             <tr>
                                 <th>Cost</th>
-                                <th>Description</th>
                                 <th>Unit Cost</th>
                                 <th>Units/People</th>
                                 <th>Days/Frequency</th>
                                 <th>Total</th>
+                                <th>Description</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -574,17 +574,19 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             </select>
         </td>
 
-        <td>
+       
+
+        <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0"></td>
+        <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0"></td>
+        <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0"></td>
+        
+        <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="0.00"></td>
+         <td>
             <input type="text" 
                    name="budget[${codeId}][${index}][description]" 
                    class="form-control" 
                    placeholder="Description (optional)">
         </td>
-
-        <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0"></td>
-        <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0"></td>
-        <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0"></td>
-        <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="0.00"></td>
         <td><button type="button" class="btn btn-danger remove-row"><i class="fas fa-trash"></i></button></td>
     </tr>`;
 }

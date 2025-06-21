@@ -89,7 +89,7 @@
                 <label for="total_participants" class="form-label fw-semibold">
                     <i class="fas fa-users me-1 text-success"></i> Number of External Participants <span class="text-danger">*</span>
                 </label>
-                <input type="number" name="total_external_participants" id="total_external_participants" value="0" class="form-control border-success" value="{{ old('total_external_participants') }}" min="1" required>
+                <input type="number" name="total_external_participants" id="total_external_participants" value="0" class="form-control border-success" value="{{ old('total_external_participants') }}" min="1">
             </div>
 
             <div class="mt-5">
