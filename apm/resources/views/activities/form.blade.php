@@ -21,7 +21,6 @@
             </div>
 
           
-
             <div class="col-md-12">
                 <label for="background" class="form-label fw-semibold">
                     <i class="fas fa-align-left me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
