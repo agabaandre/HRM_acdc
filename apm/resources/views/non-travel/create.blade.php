@@ -290,35 +290,29 @@
         // Get budget codes based on fund type and division
         const divisionId = @json(user_session('division_id'));
         
-        $('#fund_type').on('change', function() {
-            const fundTypeId = $(this).val();
-            const $budgetCodes = $('#budget_codes')
-                .empty()
-                .prop('disabled', true)
-                .append('<option disabled selected>Loading...</option>');
+        $('#fund_type').on('change', function () {
+    const fundTypeId = $(this).val();
+    const budgetCodesSelect = $('#budget_codes');
+    budgetCodesSelect.empty().prop('disabled', true).append('<option disabled selected>Loading...</option>');
 
-            if (fundTypeId) {
-                $.get(
-                    '{{ route("budget-codes.by-fund-type") }}',
-                    { fund_type_id: fundTypeId, division_id: divisionId },
-                    function(data) {
-                        $budgetCodes.empty();
-                        if (data.length) {
-                            data.forEach(code => {
-                                $budgetCodes.append(`
-                                    <option value="${code.id}" data-balance="${code.available_balance}">
-                                        ${code.code} – ${code.description || ''}
-                                    </option>
-                                `);
-                            });
-                            $budgetCodes.prop('disabled', false);
-                        } else {
-                            $budgetCodes.append('<option disabled selected>No budget codes found</option>');
-                        }
-                    }
+    $.get('{{ route("budget-codes.by-fund-type") }}', {
+        fund_type_id: fundTypeId,
+        division_id: divisionId
+    }, function (data) {
+        budgetCodesSelect.empty();
+        if (data.length) {
+            data.forEach(code => {
+                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
+                budgetCodesSelect.append(
+                    `<option value="${code.id}" data-balance="${code.budget_balance}">${label}</option>`
                 );
-            }
-        });
+            });
+            budgetCodesSelect.prop('disabled', false);
+        } else {
+            budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
+        }
+    });
+});
 
         // Budget codes change handler
         $('#budget_codes').on('change', function() {

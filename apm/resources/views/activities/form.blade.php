@@ -113,10 +113,11 @@
                 <th>Start Date</th>
                 <th>End Date</th>
                 <th>No. of Days</th>
+                <th>International Travel</th>
             </tr>
         </thead>
         <tbody id="participantsTableBody">
-            <tr><td colspan="4" class="text-muted text-center">No participants selected yet</td></tr>
+            <tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>
         </tbody>
     </table>
 
