@@ -3,8 +3,11 @@
     <button class="btn btn-success dropdown-toggle w-100 text-white" type="button" id="approvalActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 0px;">
         Take Action
     </button>
+    @php
+     //dd(activities_approved_by_me($matrix));
+    @endphp
     <ul class="dropdown-menu w-100" aria-labelledby="approvalActionsDropdown">
-    @if(!still_with_creator($matrix))
+    @if(!still_with_creator($matrix) && activities_approved_by_me($matrix))
         <li>
             <a class="dropdown-item" href="#confirmReview" data-bs-toggle="modal">
                 <i class="bx bx-check text-bold"></i> Approve
@@ -13,12 +16,7 @@
     @endif
         <li>
             <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#recommendChangesModal">
-                <i class="bx bx-edit text-bold"></i> Recommend Changes
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#notRequiredModal">
-                <i class="bx bx-x-circle text-bold"></i> Reject
+                <i class="bx bx-edit text-bold"></i> Not Approved
             </a>
         </li>
     </ul>
@@ -29,7 +27,7 @@
             <div class="modal-dialog modal-sm  modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="recommendChangesModalLabel">Recommend Changes</h5>
+                        <h5 class="modal-title" id="recommendChangesModalLabel">Not Approved</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form action="{{ route('matrices.status', [$matrix])}}" method="POST">

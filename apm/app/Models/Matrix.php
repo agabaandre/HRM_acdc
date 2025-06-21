@@ -175,6 +175,7 @@ class Matrix extends Model
                       ->where('is_home_division', 0);
             }
         ], 'participant_days')
+        ->orderBy('fname','asc')
         ->get();
     }
 

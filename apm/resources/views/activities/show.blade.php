@@ -50,7 +50,12 @@
                         <strong>Date To: </strong>{{ $activity->date_to->format('Y-m-d') }}
                     </div>
                     <div class="col-md-4">
-                        <strong>Status: </strong><span badge class="badge {{((($activity->my_last_action)?$activity->my_last_action->action:$activity->status)=='passed')?'bg-success':'bg-danger'}}">{{ucwords(($activity->my_last_action)?$activity->my_last_action->action:$activity->status)}}</span>
+                        <strong>Status: </strong>
+                        @if(can_approve_activity($activity))
+                            <span badge class="badge {{((($activity->my_last_action)?$activity->my_last_action->action:$activity->status)=='passed')?'bg-success':'bg-danger'}}">{{ucwords(($activity->my_last_action)?$activity->my_last_action->action:$activity->status)}}</span>
+                        @else
+                            <span class="badge bg-success">No Action Required</span>
+                        @endif
                     </div>
                 </div>
 
@@ -175,7 +180,7 @@
                      @endforeach
                 </div>
 
-            @if(can_take_action($matrix )  && !done_approving_activty($activity))
+            @if((can_take_action($matrix ) && can_approve_activity($activity))  && !done_approving_activty($activity))
             <div class="col-md-4 mb-2 px-2 ms-auto">
               @include('activities.partials.approval-actions',['activity'=>$activity,'matrix'=>$matrix])
             </div>

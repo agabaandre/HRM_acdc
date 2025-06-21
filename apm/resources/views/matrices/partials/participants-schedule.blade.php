@@ -8,8 +8,8 @@
         <th>#</th>
         <th>Staff Name</th>
         <th>Position</th>
-        <th>Days In Division</th>
-        <th>Days In Other Disivions</th>
+        <th>Days For Division</th>
+        <th>Days For Other Divisions</th>
         <th>Total Days</th>
         <tbody>
         @php
@@ -25,7 +25,7 @@
         @endphp
         <tr>
             <td>{{$count}}</td>
-            <td>{{$staff->lname ." ".$staff->lname}}</td>
+            <td>{{$staff->fname ." ".$staff->lname}}</td>
             <td>{{$staff->job_name}}</td>
             <td>{{$division_days}}</td>
             <td>{{$other_days}}</td>
