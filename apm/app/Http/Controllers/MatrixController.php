@@ -32,6 +32,8 @@ class MatrixController extends Controller
                   ->whereNotNull('matrix_id');
             }
         ]);
+        
+        $query->where('division_id',user_session('division_id'));
     
         if ($request->filled('year')) {
             $query->where('year', $request->year);

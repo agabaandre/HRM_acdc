@@ -100,6 +100,8 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
 
     Route::post('/matrices/{matrix}/activities/{activity}/status', [ActivityController::class, 'update_status'])
     ->name('matrices.activities.status');
+    Route::post('/matrices/activities/batch/status', [ActivityController::class, 'batch_update_status'])
+    ->name('matrices.activities.batch.status');
     
     // Non-Travel Memo Routes
     Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);

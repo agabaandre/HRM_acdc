@@ -463,21 +463,7 @@ class ActivityController extends Controller
     {
         $request->validate(['action' => 'required']);
      
-        $activityTrail = new ActivityApprovalTrail();
-
-        $activityTrail->remarks  = $request->comment  ?? 'Passed';
-        $activityTrail->action   = $request->action;
-        $activityTrail->activity_id   = $activity->id;
-        $activityTrail->matrix_id   = $matrix->id;
-        $activityTrail->staff_id = user_session('staff_id');
-        $activityTrail->save();
-
-        if($activityTrail->action !=='passed'){
-
-            $matrix->forward_workflow_id = 1;
-            $matrix->overall_status ='pending';
-            $matrix->update();
-        }
+        $this->update_activity_status($request,$activity);
 
         $message = "Activity Updated successfully";
 
@@ -485,5 +471,44 @@ class ActivityController extends Controller
         ->route('matrices.activities.show', [$matrix, $activity])
         ->with('success', $message);
 
+    }
+
+    private function update_activity_status($request,$activity){
+        
+        $activityTrail = new ActivityApprovalTrail();
+
+        $activityTrail->remarks  = $request->comment  ?? 'Passed';
+        $activityTrail->action   = $request->action;
+        $activityTrail->activity_id   = $activity->id;
+        $activityTrail->matrix_id   = $activity->matrix_id;
+        $activityTrail->staff_id = user_session('staff_id');
+        $activityTrail->save();
+
+        $matrix = $activity->matrix;
+
+        if($activityTrail->action !=='passed'){
+            $matrix->forward_workflow_id = 1;
+            $matrix->overall_status ='pending';
+            $matrix->update();
+        }
+        
+    }
+
+    public function batch_update_status(Request $request){
+
+        $request->validate(['action' => 'required','activity_ids' => 'required|array']);
+        $activities = $request->input('activity_ids', []);
+        $matrix = Matrix::find($request->input('matrix_id'));
+
+        foreach($activities as $activity){
+            $activity = Activity::find($activity);
+            $this->update_activity_status($request, $activity);
+        }
+
+        $message = "Activities Updated successfully";
+
+        return redirect()
+        ->route('matrices.show', [$matrix])
+        ->with('success', $message);
     }
 }

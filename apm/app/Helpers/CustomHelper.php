@@ -40,11 +40,7 @@ if (!function_exists('user_session')) {
          */
         function still_with_creator($matrix)
         {
-
-            $user = (Object) session('user', []);
-            //$creator = $matrix->staff;
-            //$creator->division_id == $user['division_id'] &&
-            return  can_division_head_edit($matrix) || ( ((($user->staff_id == $matrix->staff_id || $matrix->focal_person_id == $user->staff_id) && ($matrix->forward_workflow_id==null)))  && in_array($matrix->overall_status,['draft','returned']));
+            return  ((can_division_head_edit($matrix) && activities_approved_by_me($matrix)) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
         }
 
     }
@@ -77,6 +73,24 @@ if (!function_exists('user_session')) {
 
     }
 
+    if (!function_exists('can_approve_activity')) {
+
+        
+        function can_approve_activity($activity){
+          
+            if($activity->matrix->forward_workflow_id==null)
+                return true;
+
+            if(count($activity->activity_budget)==0)
+                return false;
+
+            if(!$activity->matrix->workflow_definition->allowed_funders)
+                return true;
+
+            return  in_array($activity->activity_budget[0]->fundcode->funder_id,json_decode($activity->matrix->workflow_definition->allowed_funders));
+        }
+    }
+
     if (!function_exists('done_approving_activty')) {
         /**
          *Check wether user approval activity
@@ -94,34 +108,43 @@ if (!function_exists('user_session')) {
 
     }
 
+    if (!function_exists('get_approvable_activities')) {
+        function get_approvable_activities($matrix){
+            $approvable_activities = collect();
+            foreach($matrix->activities as $activity) {
+                if (can_approve_activity($activity)) {
+                    $approvable_activities->push($activity);
+                }
+            }
+            return $approvable_activities;
+        }
+    }
+
     if (!function_exists('activities_approved_by_me')) {
         function activities_approved_by_me($matrix){
             $user = session('user', []);
             
-            // Get all unique activity_ids for this matrix
-            $unique_activities = ActivityApprovalTrail::where("matrix_id", $matrix->id)
-                ->where("staff_id", $user['staff_id'])
-                ->distinct()
-                ->pluck('activity_id');
+            // Get all activities that the user can approve (based on can_approve_activity logic)
+            $approvable_activities = get_approvable_activities($matrix);
+            $has_approved = false;
 
-            // If no activities exist, return false
-            if ($unique_activities->isEmpty()) {
-                return false;
-            }
+            // If no approvable activities exist, return false
+            if ($approvable_activities->isEmpty())
+                 $has_approved=false;
 
-            // For each unique activity, check if user has at least one 'passed' approval
-            foreach ($unique_activities as $activity_id) {
+            // For each approvable activity, check if user has at least one 'passed' approval
+            foreach ($approvable_activities as $activity) {
                 $has_approved = ActivityApprovalTrail::where("staff_id", $user['staff_id'])
                     ->where("matrix_id", $matrix->id)
-                    ->where("activity_id", $activity_id)
+                    ->where("activity_id", $activity->id)
                     ->where("action", "passed")
                     ->exists();
 
-                if (!$has_approved)
-                    return false;
+                if(!$has_approved)
+                break;
             }
 
-            return true;
+            return $has_approved;
         }
     }
 
