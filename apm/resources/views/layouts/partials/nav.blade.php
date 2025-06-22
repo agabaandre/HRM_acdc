@@ -4,11 +4,6 @@ $workflowMenuItems = [
 'route' => 'workflows.index',
 'icon' => 'fas fa-project-diagram',
 'title' => 'Workflows'
-],
-[
-'route' => 'approvals.index',
-'icon' => 'fas fa-check-circle',
-'title' => 'Approvals'
 ]
 ];
 
