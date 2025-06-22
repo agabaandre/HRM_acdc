@@ -106,8 +106,10 @@
                     <div class="row g-3" id="attachmentContainer">
                         <div class="col-md-4 attachment-block">
                             <label class="form-label">Document Type*</label>
-                            <input type="text" name="attachments[0][type]" class="form-control">
-                            <input type="file" name="attachments[0][file]" class="form-control mt-1">
+                            <input type="text" name="attachments[0][type]" class="form-control" required>
+                            <input type="file" name="attachments[0][file]" class="form-control mt-1 attachment-input" 
+                                   accept=".pdf,.jpg,.jpeg,.png,image/*" required>
+                            <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG</small>
                         </div>
                     </div>
                 </div>
@@ -136,6 +138,8 @@
 @push('scripts')
 <script>
 const staffData = @json($allStaffGroupedByDivision);
+const oldParticipants = @json(old('internal_participants', []));
+const oldTravel = @json(old('international_travel', []));
 
 $(document).ready(function () {
     // AJAX Form Submission
@@ -318,6 +322,12 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                     <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                     <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                     <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
+                    <td class="text-center">
+                        <div class="form-check d-flex justify-content-center">
+                            <input type="checkbox" name="international_travel[${id}]" class="form-check-input" value="1" checked>
+                            <label class="form-check-label ms-2">Yes</label>
+                        </div>
+                    </td>
                 </tr>
             `);
             tableBody.append(row);
@@ -441,6 +451,21 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
 
         appendToInternalParticipantsTable(selectedStaff);
     });
+
+    // Restore participants and their international travel state if form was reloaded
+    if (oldParticipants && oldParticipants.length > 0) {
+        $('#internal_participants').val(oldParticipants).trigger('change');
+        
+        // Restore international travel checkboxes after participants are loaded
+        setTimeout(() => {
+            oldParticipants.forEach(participantId => {
+                const checkbox = $(`input[name="international_travel[${participantId}]"]`);
+                if (checkbox.length && oldTravel && oldTravel[participantId]) {
+                    checkbox.prop('checked', true);
+                }
+            });
+        }, 100);
+    }
 });
 
 
@@ -491,7 +516,7 @@ $(document).ready(function () {
     participantsTableBody.empty();
 
     if (!selectedIds || selectedIds.length === 0) {
-        participantsTableBody.append('<tr><td colspan="4" class="text-muted text-center">No participants selected yet</td></tr>');
+        participantsTableBody.append('<tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>');
         return;
     }
 
@@ -503,6 +528,12 @@ $(document).ready(function () {
                 <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                 <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                 <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
+                <td class="text-center">
+                    <div class="form-check d-flex justify-content-center">
+                        <input type="checkbox" name="international_travel[${id}]" class="form-check-input" value="1" checked>
+                        <label class="form-check-label ms-2">Yes</label>
+                    </div>
+                </td>
             </tr>
         `);
     });
@@ -799,8 +830,8 @@ $('#addAttachment').on('click', function () {
             <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
             <input type="file" name="attachments[${attachmentIndex}][file]" 
                    class="form-control mt-1 attachment-input" 
-                   accept=".pdf, .jpg, .jpeg, .png, image/*" 
-                   required>
+                   accept=".pdf,.jpg,.jpeg,.png,image/*" required>
+            <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG</small>
         </div>`;
     $('#attachmentContainer').append(newField);
     attachmentIndex++;
@@ -817,13 +848,34 @@ $('#removeAttachment').on('click', function () {
 // Validate file extension on upload
 $(document).on('change', '.attachment-input', function () {
     const fileInput = this;
-    const fileName = fileInput.files[0]?.name || '';
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    const fileName = file.name;
+    const fileSize = file.size;
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
     const ext = fileName.split('.').pop().toLowerCase();
+    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
 
+    // Check file extension
     if (!allowedExtensions.includes(ext)) {
         show_notification("Only PDF, JPG, JPEG, or PNG files are allowed.", "warning");
         $(fileInput).val(''); // Clear invalid file
+        return;
     }
+    
+    // Check file size
+    if (fileSize > maxSize) {
+        show_notification("File size must be less than 10MB.", "warning");
+        $(fileInput).val(''); // Clear invalid file
+        return;
+    }
+    
+    // Show success message
+    show_notification(`File "${fileName}" selected successfully.`, "success");
 });
 
 
