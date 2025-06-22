@@ -41,7 +41,7 @@
                             <span class="badge bg-info ms-2">Current Year Only</span>
                         @endif
                     </label>
-                    <select name="year" id="year" class="form-select @error('year') is-invalid @enderror shadow-sm" required @if(!$allowQuarterControl) readonly disabled @endif>
+                    <select name="year" id="year" class="form-select @error('year') is-invalid @enderror shadow-sm" required @if(!$allowQuarterControl) readonly @endif>
                         @if($allowQuarterControl)
                             <option value="">Select Year</option>
                             @foreach($years as $year)
@@ -62,7 +62,7 @@
                             <span class="badge bg-info ms-2">Current Quarter Only</span>
                         @endif
                     </label>
-                    <select name="quarter" id="quarter" class="form-select @error('quarter') is-invalid @enderror shadow-sm" required @if(!$allowQuarterControl) readonly disabled @endif>
+                    <select name="quarter" id="quarter" class="form-select @error('quarter') is-invalid @enderror shadow-sm" required @if(!$allowQuarterControl) readonly @endif>
                         @if($allowQuarterControl)
                             <option value="">Select Quarter</option>
                             @foreach($quarters as $quarter)
