@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'staff_api' => [
+        'username' => env('STAFF_API_USERNAME'),
+        'password' => env('STAFF_API_PASSWORD'),
+    ],
+
 ];

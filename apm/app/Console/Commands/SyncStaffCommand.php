@@ -32,14 +32,24 @@ class SyncStaffCommand extends Command
         $this->info('Starting staff sync from Africa CDC API...');
 
         try {
-            // Fetch data from API
-            $response = Http::get('https://tools.africacdc.org/staff/share/get_current_staff/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
+            // Get API credentials from config
+            $username = config('services.staff_api.username');
+            $password = config('services.staff_api.password');
+
+            // Validate credentials
+            if (empty($username) || empty($password)) {
+                throw new Exception('STAFF_API_USERNAME and STAFF_API_PASSWORD must be set in .env file');
+            }
+
+            $response = Http::withBasicAuth($username, $password)
+                ->get('https://tools.africacdc.org/staff/share/get_current_staff/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
 
             if (!$response->successful()) {
                 throw new Exception('Failed to fetch data from API: ' . $response->status());
             }
 
             $staffData = $response->json();
+            //dd($staffData);
 
             if (!is_array($staffData)) {
                 throw new Exception('Invalid response format from API');
@@ -87,6 +97,7 @@ class SyncStaffCommand extends Command
                             'division_name' => $data['division_name'],
                             'division_id' => $data['division_id'],
                             'duty_station_id' => $data['duty_station_id'],
+                            'duty_station_name' => $data['duty_station_name'],
                             'status' => $data['status'],
                             'tel_1' => $data['tel_1'] ?? '',
                             'whatsapp' => $data['whatsapp'] ?? '',
@@ -95,6 +106,7 @@ class SyncStaffCommand extends Command
                             'physical_location' => $data['physical_location'] ?? '',
                         ]
                     );
+                   // dd($staff);
 
                     if ($staff->wasRecentlyCreated) {
                         $created++;

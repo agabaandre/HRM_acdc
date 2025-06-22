@@ -134,20 +134,24 @@ class ActivityController extends Controller
                     'participant_start' => 'required|array',
                     'participant_end' => 'required|array',
                     'participant_days' => 'required|array',
+                    'attachments.*.type' => 'required|string|max:255',
+                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
                 ]);
     
                 // Build internal_participants array with staff_id as key
                 $participantStarts = $request->input('participant_start', []);
                 $participantEnds = $request->input('participant_end', []);
                 $participantDays = $request->input('participant_days', []);
-    
+                $internationalTravel = $request->input('international_travel', []);
+
                 $internalParticipants = [];
-    
+
                 foreach ($participantStarts as $staffId => $startDate) {
                     $internalParticipants[$staffId] = [
                         'participant_start' => $startDate,
                         'participant_end' => $participantEnds[$staffId] ?? null,
                         'participant_days' => $participantDays[$staffId] ?? null,
+                        'international_travel' => isset($internationalTravel[$staffId]) ? 1 : 0,
                     ];
                 }
     
@@ -156,6 +160,43 @@ class ActivityController extends Controller
 
                 $budgetCodes = $request->input('budget_codes', []);
                 $budgetItems = $request->input('budget', []);
+                
+                // Handle file uploads for attachments
+                $attachments = [];
+                if ($request->hasFile('attachments')) {
+                    $uploadedFiles = $request->file('attachments');
+                    
+                    foreach ($uploadedFiles as $index => $fileData) {
+                        if (isset($fileData['file']) && $fileData['file']->isValid()) {
+                            $file = $fileData['file'];
+                            $type = $fileData['type'] ?? 'Document';
+                            
+                            // Validate file type
+                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+                            $extension = strtolower($file->getClientOriginalExtension());
+                            
+                            if (!in_array($extension, $allowedExtensions)) {
+                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.");
+                            }
+                            
+                            // Generate unique filename
+                            $filename = time() . '_' . uniqid() . '.' . $extension;
+                            
+                            // Store file in public/uploads/activities directory
+                            $path = $file->storeAs('uploads/activities', $filename, 'public');
+                            
+                            $attachments[] = [
+                                'type' => $type,
+                                'filename' => $filename,
+                                'original_name' => $file->getClientOriginalName(),
+                                'path' => $path,
+                                'size' => $file->getSize(),
+                                'mime_type' => $file->getMimeType(),
+                                'uploaded_at' => now()->toDateTimeString()
+                            ];
+                        }
+                    }
+                }
     
                 // Create the activity record
                 $activity = $matrix->activities()->create([
@@ -179,7 +220,7 @@ class ActivityController extends Controller
                     'internal_participants' => json_encode($internalParticipants),
                     'budget_id' => json_encode($budgetCodes),
                     'budget' => json_encode($budgetItems),
-                    'attachment' => json_encode($request->input('attachments', [])),
+                    'attachment' => json_encode($attachments),
                 ]);
 
                 if(count($internalParticipants)>0)
@@ -346,7 +387,57 @@ class ActivityController extends Controller
         $staff = Staff::active()->get();
         $locations = Location::all();
         $fundTypes = FundType::all();
-        $budgetCodes = FundCode::all();
+        $costItems = CostItem::all();
+        
+        // Get all staff grouped by division for external participants
+        $allStaffGroupedByDivision = Staff::active()
+            ->with('division')
+            ->get()
+            ->groupBy('division.name');
+
+        // Decode JSON fields
+        $locationIds = is_string($activity->location_id)
+            ? json_decode($activity->location_id, true)
+            : ($activity->location_id ?? []);
+
+        $budgetIds = is_string($activity->budget_id)
+            ? json_decode($activity->budget_id, true)
+            : ($activity->budget_id ?? []);
+
+        $budgetItems = is_string($activity->budget)
+            ? json_decode($activity->budget, true)
+            : ($activity->budget ?? []);
+
+        $attachments = is_string($activity->attachment)
+            ? json_decode($activity->attachment, true)
+            : ($activity->attachment ?? []);
+
+        // Decode internal participants (new format)
+        $rawParticipants = is_string($activity->internal_participants)
+            ? json_decode($activity->internal_participants, true)
+            : ($activity->internal_participants ?? []);
+
+        // Extract staff details and append date/days info
+        $internalParticipants = [];
+        if (!empty($rawParticipants)) {
+            $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))->get()->keyBy('staff_id');
+
+            foreach ($rawParticipants as $staffId => $participantData) {
+                if (isset($staffDetails[$staffId])) {
+                    $internalParticipants[] = [
+                        'staff' => $staffDetails[$staffId],
+                        'participant_start' => $participantData['participant_start'] ?? null,
+                        'participant_end' => $participantData['participant_end'] ?? null,
+                        'participant_days' => $participantData['participant_days'] ?? null,
+                        'international_travel' => $participantData['international_travel'] ?? 1,
+                    ];
+                }
+            }
+        }
+
+        // Fetch related data
+        $locations = Location::whereIn('id', $locationIds ?: [])->get();
+        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
 
         return view('activities.edit', [
             'matrix' => $matrix,
@@ -355,7 +446,11 @@ class ActivityController extends Controller
             'staff' => $staff,
             'locations' => $locations,
             'fundTypes' => $fundTypes,
-            'budgetCodes' => $budgetCodes,
+            'costItems' => $costItems,
+            'allStaffGroupedByDivision' => $allStaffGroupedByDivision,
+            'internalParticipants' => $internalParticipants,
+            'budgetItems' => $budgetItems,
+            'attachments' => $attachments,
             'title' => 'Edit Activity',
             'editing' => true
         ]);
@@ -364,58 +459,161 @@ class ActivityController extends Controller
     /**
      * Update the specified activity.
      */
-    public function update(Request $request, Matrix $matrix, Activity $activity): RedirectResponse
+    public function update(Request $request, Matrix $matrix, Activity $activity): RedirectResponse|JsonResponse
     {
         // Check if matrix is approved
         if ($matrix->overall_status === 'approved') {
+            $message = 'Cannot update activity. The matrix has been approved.';
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'msg' => $message
+                ], 422);
+            }
+            
             return redirect()
                 ->route('matrices.activities.show', [$matrix, $activity])
-                ->with('error', 'Cannot update activity. The parent matrix has been approved.');
+                ->with('error', $message);
         }
 
-        $validated = $request->validate([
-            'workplan_activity_code' => 'required|string|max:255',
-            'staff_id' => 'required|exists:staff,id',
-            'date_from' => 'required|date',
-            'date_to' => 'required|date|after_or_equal:date_from',
-            'location_id' => 'required|array',
-            'total_participants' => 'required|integer|min:1',
-            'internal_participants' => 'required|array',
-            'budget_id' => 'required|array',
-            'key_result_area' => 'required|string',
-            'request_type_id' => 'required|exists:request_types,id',
-            'activity_title' => 'required|string|max:255',
-            'background' => 'required|string',
-            'activity_request_remarks' => 'required|string',
-            'is_special_memo' => 'boolean',
-            'budget' => 'required|array',
-            'attachment' => 'nullable|array',
-            'save_as_draft' => 'sometimes|boolean',
-            'submit' => 'sometimes|boolean'
-        ]);
+        $userStaffId = session('user.auth_staff_id');
 
-        // Set status based on which button was clicked
-        if ($request->has('submit')) {
-            $validated['status'] = Activity::STATUS_SUBMITTED;
-        } elseif ($request->has('save_as_draft')) {
-            $validated['status'] = Activity::STATUS_DRAFT;
-        }
+        return DB::transaction(function () use ($request, $matrix, $activity, $userStaffId) {
+            try {
+                // Validate required fields
+                $validated = $request->validate([
+                    'activity_title' => 'required|string|max:255',
+                    'location_id' => 'required|array|min:1',
+                    'location_id.*' => 'exists:locations,id',
+                    'participant_start' => 'required|array',
+                    'participant_end' => 'required|array',
+                    'participant_days' => 'required|array',
+                    'attachments.*.type' => 'required|string|max:255',
+                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
+                ]);
 
-        $activity->update($validated);
+                // Build internal_participants array with staff_id as key
+                $participantStarts = $request->input('participant_start', []);
+                $participantEnds = $request->input('participant_end', []);
+                $participantDays = $request->input('participant_days', []);
+                $internationalTravel = $request->input('international_travel', []);
 
-        if($validated['budget'])
-            $this->storeBudget($validated['budget_id'],$validated['budget'],$activity);
+                $internalParticipants = [];
 
-        if($validated['internal_participants'])
-            $this->storeParticipantSchedules($validated['internal_participants'],$activity);
+                foreach ($participantStarts as $staffId => $startDate) {
+                    $internalParticipants[$staffId] = [
+                        'participant_start' => $startDate,
+                        'participant_end' => $participantEnds[$staffId] ?? null,
+                        'participant_days' => $participantDays[$staffId] ?? null,
+                        'international_travel' => isset($internationalTravel[$staffId]) ? 1 : 0,
+                    ];
+                }
 
-        $message = $request->has('submit')
-            ? 'Activity submitted successfully.'
-            : 'Activity updated successfully.';
+                $budgetCodes = $request->input('budget_codes', []);
+                $budgetItems = $request->input('budget', []);
+                
+                // Handle file uploads for attachments
+                $attachments = [];
+                if ($request->hasFile('attachments')) {
+                    $uploadedFiles = $request->file('attachments');
+                    
+                    foreach ($uploadedFiles as $index => $fileData) {
+                        if (isset($fileData['file']) && $fileData['file']->isValid()) {
+                            $file = $fileData['file'];
+                            $type = $fileData['type'] ?? 'Document';
+                            
+                            // Validate file type
+                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+                            $extension = strtolower($file->getClientOriginalExtension());
+                            
+                            if (!in_array($extension, $allowedExtensions)) {
+                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.");
+                            }
+                            
+                            // Generate unique filename
+                            $filename = time() . '_' . uniqid() . '.' . $extension;
+                            
+                            // Store file in public/uploads/activities directory
+                            $path = $file->storeAs('uploads/activities', $filename, 'public');
+                            
+                            $attachments[] = [
+                                'type' => $type,
+                                'filename' => $filename,
+                                'original_name' => $file->getClientOriginalName(),
+                                'path' => $path,
+                                'size' => $file->getSize(),
+                                'mime_type' => $file->getMimeType(),
+                                'uploaded_at' => now()->toDateTimeString()
+                            ];
+                        }
+                    }
+                }
 
-        return redirect()
-            ->route('matrices.activities.show', [$matrix, $activity])
-            ->with('success', $message);
+                // Update the activity record
+                $activity->update([
+                    'staff_id' => $userStaffId,
+                    'workplan_activity_code'=> $request->input('activity_code'),
+                    'responsible_person_id' => $request->input('responsible_person_id'),
+                    'date_from' => $request->input('date_from', now()->toDateString()),
+                    'date_to' => $request->input('date_to', now()->toDateString()),
+                    'total_participants' => (int) $request->input('total_participants', 1),
+                    'total_external_participants' => (int) $request->input('total_external_participants', 0),
+                    'key_result_area' => $request->input('key_result_link', '-'),
+                    'request_type_id' => (int) $request->input('request_type_id', 1),
+                    'activity_title' => $request->input('activity_title'),
+                    'background' => $request->input('background', ''),
+                    'activity_request_remarks' => $request->input('activity_request_remarks', ''),
+                    'fund_type_id' => $request->input('fund_type', 1),
+                    'location_id' => json_encode($request->input('location_id', [])),
+                    'internal_participants' => json_encode($internalParticipants),
+                    'budget_id' => json_encode($budgetCodes),
+                    'budget' => json_encode($budgetItems),
+                    'attachment' => json_encode($attachments),
+                ]);
+
+                if(count($internalParticipants)>0)
+                    $this->storeParticipantSchedules($internalParticipants,$activity);
+
+                if(count($budgetItems)>0)
+                    $this->storeBudget($budgetCodes,$budgetItems,$activity);
+
+                $successMessage = 'Activity updated successfully.';
+                $redirectUrl = route('matrices.activities.show', [$matrix, $activity]);
+                
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'msg' => $successMessage,
+                        'redirect_url' => $redirectUrl
+                    ]);
+                }
+
+                return redirect($redirectUrl)
+                    ->with([
+                        'msg' => $successMessage,
+                        'type' => 'success'
+                    ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Error updating activity', ['exception' => $e]);
+
+                $errorMessage = 'An error occurred while updating the activity. Please try again.';
+                
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'msg' => $errorMessage
+                    ], 500);
+                }
+
+                return redirect()->back()->withInput()->with([
+                    'msg' => $errorMessage,
+                    'type' => 'error'
+                ]);
+            }
+        });
     }
 
     /**
@@ -426,15 +624,34 @@ class ActivityController extends Controller
         // Check if matrix is approved
         if ($matrix->overall_status === 'approved') {
             return redirect()
-                ->route('matrices.activities.show', [$matrix, $activity])
+                ->route('matrices.show', $matrix)
                 ->with('error', 'Cannot delete activity. The parent matrix has been approved.');
         }
 
-        $activity->delete();
+        try {
+            // Delete uploaded files
+            $attachments = json_decode($activity->attachment, true) ?? [];
+            foreach ($attachments as $attachment) {
+                if (isset($attachment['path'])) {
+                    $filePath = storage_path('app/public/' . $attachment['path']);
+                    if (file_exists($filePath)) {
+                        unlink($filePath);
+                    }
+                }
+            }
 
-        return redirect()
-            ->route('matrices.activities.index', $matrix)
-            ->with('success', 'Activity deleted successfully.');
+            $activity->delete();
+
+            return redirect()
+                ->route('matrices.activities.index', $matrix)
+                ->with('success', 'Activity deleted successfully.');
+        } catch (\Exception $e) {
+            Log::error('Error deleting activity', ['exception' => $e]);
+            
+            return redirect()
+                ->route('matrices.activities.index', $matrix)
+                ->with('error', 'An error occurred while deleting the activity.');
+        }
     }
 
     private function storeBudget($budgetCodes,$budgetItems,$activity)
@@ -468,6 +685,8 @@ class ActivityController extends Controller
     private function storeParticipantSchedules($schedules,$activity)
     {
         try{
+            // Delete existing participant schedules for this activity
+            ParticipantSchedule::where('activity_id', $activity->id)->delete();
 
             foreach ($schedules as $participantId => $details) {
                 $participant = Staff::where('staff_id',$participantId)->first();
@@ -482,13 +701,13 @@ class ActivityController extends Controller
                     'participant_start' => $details['participant_start'],
                     'participant_end' => $details['participant_end'],
                     'participant_days' => $details['participant_days'],
+                    'international_travel' => $details['international_travel'] ?? 1,
                 ]);
             }
         }
         catch(Exception $exception){
             Log::error("Error ocurred saving particiapnt schedule ".$exception->getMessage());
         }
-
     }
 
     public function update_status(Request $request, Matrix $matrix, Activity $activity): RedirectResponse
