@@ -241,22 +241,34 @@ $(document).ready(function () {
     });
 
     $('#fund_type').change(function(event){
+        // Reset appended budget fields
+        $('#budgetGroupContainer').empty();
+
         let selectedText = $('#fund_type option:selected').text();
+        let selectedId = $('#fund_type').val();
 
-        if(selectedText.toLocaleLowerCase().indexOf("intramural")>-1){
-            $('.fund_type').removeClass('col-md-4');
-            $('.fund_type').addClass('col-md-2');
-            $('.activity_code').show();
-        }
-        else{
-            $('#activity_code').value=""
+        // Show for intramural or extramural, hide for external source (id=3)
+        if (
+            selectedText.toLocaleLowerCase().indexOf("intramural") > -1 ||
+            selectedText.toLocaleLowerCase().indexOf("extramural") > -1
+        ) {
+            if (selectedId == 3) {
+                // Hide for external source
+                $('#activity_code').val(""); // clear value
+                $('.activity_code').hide();
+                // Hide and disable budget codes, remove required
+                $('#budget_codes').val("").prop('disabled', true).prop('required', false).closest('.col-md-4').hide();
+            } else {
+                $('.activity_code').show();
+                // Show and enable budget codes, add required
+                $('#budget_codes').prop('disabled', false).prop('required', true).closest('.col-md-4').show();
+            }
+        } else {
+            $('#activity_code').val(""); // clear value
             $('.activity_code').hide();
-             $('.fund_type').removeClass('col-md-2');
-             $('.fund_type').ddClass('col-md-4');
+            // Hide and disable budget codes, remove required
+            $('#budget_codes').val("").prop('disabled', true).prop('required', false).closest('.col-md-4').hide();
         }
-
-        console.log(event);
-        console.log(selectedText);
     })
 
     function isValidActivityDates() {
@@ -637,15 +649,17 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         const label = $(this).text();
         const balance = $(this).data('balance');
         
-        // Extract the budget code from the label (format: "CODE | Funder | $Balance")
-        const codeMatch = label.match(/^([^|]+)/);
-        const budgetCode = codeMatch ? codeMatch[1].trim() : `Code ${codeId}`;
+        // Extract the budget code and funder from the label (format: "CODE | Funder | $Balance")
+        const labelParts = label.split('|');
+        const budgetCode = labelParts[0] ? labelParts[0].trim() : `Code ${codeId}`;
+        const funder = labelParts[1] ? labelParts[1].trim() : '';
 
         const cardHtml = `
             <div class="card mt-4">
                 <div class="card-header bg-light">
                     <h6 class="fw-semibold mb-0">
                         <span class="badge bg-primary me-2">${budgetCode}</span>
+                        <span class="badge bg-info me-2">${funder}</span>
                         <span class="float-end text-muted">
                             Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </span>
