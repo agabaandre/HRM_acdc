@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\ParticipantSchedule;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Http\JsonResponse;
 
 class ActivityController extends Controller
 {
@@ -101,13 +102,22 @@ class ActivityController extends Controller
         ]);
     }
 
-    public function store(Request $request, Matrix $matrix): RedirectResponse
+    public function store(Request $request, Matrix $matrix): RedirectResponse|JsonResponse
     {
         if ($matrix->overall_status === 'approved') {
+            $message = 'Cannot create new activity. The matrix has been approved.';
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'msg' => $message
+                ], 422);
+            }
+            
             return redirect()
                 ->route('matrices.show', $matrix)
                 ->with([
-                    'msg' => 'Cannot create new activity. The matrix has been approved.',
+                    'msg' => $message,
                     'type' => 'error'
                 ]);
         }
@@ -178,10 +188,20 @@ class ActivityController extends Controller
                 if(count($budgetItems)>0)
                 $this->storeBudget($budgetCodes,$budgetItems,$activity);
     
-                return redirect()
-                    ->route('matrices.activities.show', [$matrix, $activity])
+                $successMessage = 'Activity created successfully.';
+                $redirectUrl = route('matrices.activities.show', [$matrix, $activity]);
+                
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'msg' => $successMessage,
+                        'redirect_url' => $redirectUrl
+                    ]);
+                }
+    
+                return redirect($redirectUrl)
                     ->with([
-                        'msg' => 'Activity created successfully.',
+                        'msg' => $successMessage,
                         'type' => 'success'
                     ]);
     
@@ -189,8 +209,17 @@ class ActivityController extends Controller
                 DB::rollBack();
                 Log::error('Error creating activity', ['exception' => $e]);
     
+                $errorMessage = 'An error occurred while creating the activity. Please try again.';
+                
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'msg' => $errorMessage
+                    ], 500);
+                }
+    
                 return redirect()->back()->withInput()->with([
-                    'msg' => 'An error occurred while creating the activity. Please try again.',
+                    'msg' => $errorMessage,
                     'type' => 'error'
                 ]);
             }
