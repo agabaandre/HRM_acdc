@@ -8,21 +8,21 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class SyncStaffCommand extends Command
+class SyncDivisionsCommand extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'staff:sync';
+    protected $signature = 'divisions:sync';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Sync staff data from Africa CDC API';
+    protected $description = 'Sync Divisions data from Africa CDC API';
 
     /**
      * Execute the console command.
@@ -42,7 +42,7 @@ class SyncStaffCommand extends Command
             }
 
             $response = Http::withBasicAuth($username, $password)
-                ->get('https://tools.africacdc.org/staff/share/get_current_staff/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
+                ->get('https://tools.africacdc.org/staff/share/divisions/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
 
             if (!$response->successful()) {
                 throw new Exception('Failed to fetch data from API: ' . $response->status());

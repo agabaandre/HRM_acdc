@@ -37,6 +37,7 @@ class Staff extends Model
         'division_name',
         'division_id',
         'duty_station_id',
+        'duty_station_name',
         'status',
         'tel_1',
         'whatsapp',
