@@ -199,13 +199,6 @@
                         </select>
                     </div>
 
-                    <div class="col-md-4 activity_code" style="display: none;">
-                        <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
-                        </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" />
-                    </div>
-
                     <div class="col-md-4">
                         <label for="budget_codes" class="form-label fw-semibold">
                             <i class="fas fa-wallet me-1 text-success"></i> Budget Code(s) <span class="text-danger">*</span>
@@ -215,10 +208,18 @@
                         </select>
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
+
+                    <div class="col-md-4 activity_code" style="display: none;">
+                        <label for="activity_code" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code
+                        </label>
+                        <input name="activity_code" id="activity_code" class="form-control border-success" />
+                    </div>
                 </div>
                     <div class="alert alert-info">
                         Select budget codes above to add budget items
                     </div>
+                    <div id="budgetCards"></div>
                 </div>
 
 
@@ -317,26 +318,12 @@
         // Budget codes change handler
         $('#budget_codes').on('change', function() {
             const selected = $(this).find('option:selected');
-            const container = $('#budgetGroupContainer');
+            const container = $('#budgetCards');
             container.empty();
 
             if (selected.length === 0) {
-                container.html(`
-                    <h5 class="fw-bold text-success mb-3">
-                        <i class="fas fa-money-bill-wave me-2"></i> Budget Details
-                    </h5>
-                    <div class="alert alert-info">
-                        Select budget codes above to add budget items
-                    </div>
-                `);
                 return;
             }
-
-            container.html(`
-                <h5 class="fw-bold text-success mb-3">
-                    <i class="fas fa-money-bill-wave me-2"></i> Budget Details
-                </h5>
-            `);
 
             selected.each(function() {
                 const codeId = $(this).val();
@@ -348,7 +335,7 @@
                         <div class="card-header bg-light">
                             <h6 class="fw-semibold">
                                 Budget for: ${label}
-                                <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toFixed(2)}</span></span>
+                                <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                             </h6>
                         </div>
                         <div class="card-body">
@@ -439,9 +426,8 @@
             const $row = $(this).closest('tr');
             const quantity = parseFloat($row.find('.quantity').val()) || 0;
             const unitCost = parseFloat($row.find('.unit-cost').val()) || 0;
-            const total = (quantity * unitCost).toFixed(2);
-            
-            $row.find('.total').text(total);
+            const total = (quantity * unitCost);
+            $row.find('.total').text(total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             updateSubtotal($row.closest('.budget-card'));
             updateGrandTotal();
         });
@@ -449,19 +435,17 @@
         function updateSubtotal($card) {
             let subtotal = 0;
             $card.find('.budget-items tr').each(function() {
-                subtotal += parseFloat($(this).find('.total').text()) || 0;
+                subtotal += parseFloat($(this).find('.total').text().replace(/,/g, '')) || 0;
             });
-            
-            $card.find('.subtotal').text(subtotal.toFixed(2));
+            $card.find('.subtotal').text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         }
 
         function updateGrandTotal() {
             let grandTotal = 0;
             $('.budget-card').each(function() {
-                grandTotal += parseFloat($(this).find('.subtotal').text()) || 0;
+                grandTotal += parseFloat($(this).find('.subtotal').text().replace(/,/g, '')) || 0;
             });
-            
-            $('#grandBudgetTotal').text(grandTotal.toFixed(2));
+            $('#grandBudgetTotal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             $('#grandBudgetTotalInput').val(grandTotal.toFixed(2));
         }
 

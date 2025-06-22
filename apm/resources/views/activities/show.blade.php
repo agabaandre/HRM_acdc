@@ -86,9 +86,10 @@
                                 <tr>
                                     <td>#</td>
                                     <th>Name</th>
+                                    <th>Job Title</th>
                                     <th>Division</th>
-                                    <th>Start Date</th>
-                                    <th>End Date</th>
+                                    <th>Duty Station</th>
+                                  
                                     <th>Days</th>
                                 </tr>
                             </thead>
@@ -98,10 +99,10 @@
                                 @endphp
                                 @foreach($internalParticipants as $entry)
                                     <tr><td>{{$count}}</td>
-                                        <td>{{ $entry['staff']->name ?? 'N/A' }}</td>
-                                          <td>{{ $entry['staff']->division_name ?? 'N/A' }}</td>
-                                        <td>{{ $entry['participant_start'] ?? '-' }}</td>
-                                        <td>{{ $entry['participant_end'] ?? '-' }}</td>
+                                            <td>{{ $entry['staff']->name ?? 'N/A' }}</td>
+                                            <td>{{ $entry['staff']->job_name ?? 'N/A' }}</td>
+                                            <td>{{ $entry['staff']->division_name ?? 'N/A' }}</td>
+                                          <td>{{ $entry['staff']->duty_station_name ?? 'N/A' }}</td>
                                         <td>{{ $entry['participant_days'] ?? '-' }}</td>
                                     </tr>
                                     @php
