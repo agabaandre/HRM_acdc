@@ -109,4 +109,13 @@
     .modal.fade.show .modal-dialog.modal-bottom {
         transform: translateY(0);
     }
+     .select2-container .select2-selection--single{
+    box-sizing: border-box;
+    cursor: pointer;
+    display: block;
+    height: 35px !important;
+    user-select: none;
+    -webkit-user-select: none;
+    }
 </style>
+
