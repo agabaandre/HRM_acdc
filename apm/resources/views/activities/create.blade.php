@@ -124,7 +124,7 @@
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
                    
-                    <button type="submit" class="btn btn-success btn-lg px-5">
+                    <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
                         <i class="bx bx-check-circle me-1"></i> Save Activity
                     </button>
                 </div>
@@ -135,15 +135,106 @@
 
 @push('scripts')
 <script>
-
-
-  
 const staffData = @json($allStaffGroupedByDivision);
 
 $(document).ready(function () {
-
-  
-    
+    // AJAX Form Submission
+    $('#activityForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const form = $(this);
+        const submitBtn = $('#submitBtn');
+        const originalBtnText = submitBtn.html();
+        
+        // Disable submit button and show loading state
+        submitBtn.prop('disabled', true)
+            .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Saving...');
+        
+        // Create FormData object to handle file uploads
+        const formData = new FormData(this);
+        
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    show_notification(response.msg || 'Activity created successfully!', 'success');
+                    
+                    // Redirect to the activity show page after a short delay
+                    setTimeout(function() {
+                        window.location.href = response.redirect_url || '{{ route("matrices.show", $matrix) }}';
+                    }, 1500);
+                } else {
+                    show_notification(response.msg || 'An error occurred while creating the activity.', 'error');
+                    submitBtn.prop('disabled', false).html(originalBtnText);
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'An error occurred while creating the activity.';
+                
+                if (xhr.status === 422) {
+                    // Validation errors
+                    const errors = xhr.responseJSON.errors;
+                    if (errors) {
+                        // Clear previous error states
+                        $('.is-invalid').removeClass('is-invalid');
+                        $('.invalid-feedback').remove();
+                        
+                        // Display validation errors
+                        Object.keys(errors).forEach(function(field) {
+                            let fieldElement = $(`[name="${field}"]`);
+                            
+                            // Handle array fields like location_id[]
+                            if (!fieldElement.length && field.includes('[')) {
+                                const baseField = field.split('[')[0];
+                                fieldElement = $(`[name^="${baseField}["]`);
+                            }
+                            
+                            // Handle nested fields like budget[code][index][field]
+                            if (!fieldElement.length && field.includes('[')) {
+                                const parts = field.split('[');
+                                const baseField = parts[0];
+                                fieldElement = $(`[name*="${baseField}["]`);
+                            }
+                            
+                            if (fieldElement.length) {
+                                fieldElement.addClass('is-invalid');
+                                
+                                // Add error message below the field
+                                const errorDiv = $('<div class="invalid-feedback"></div>').text(errors[field][0]);
+                                fieldElement.after(errorDiv);
+                                
+                                // Scroll to first error field
+                                if (Object.keys(errors).indexOf(field) === 0) {
+                                    $('html, body').animate({
+                                        scrollTop: fieldElement.offset().top - 100
+                                    }, 500);
+                                }
+                            }
+                        });
+                        
+                        // Show first error message as notification
+                        const firstError = Object.values(errors)[0][0];
+                        show_notification(firstError, 'error');
+                    }
+                } else if (xhr.responseJSON && xhr.responseJSON.msg) {
+                    errorMessage = xhr.responseJSON.msg;
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Server error occurred. Please try again.';
+                } else if (xhr.status === 403) {
+                    errorMessage = 'You do not have permission to perform this action.';
+                } else if (xhr.status === 404) {
+                    errorMessage = 'The requested resource was not found.';
+                }
+                
+                show_notification(errorMessage, 'error');
+                submitBtn.prop('disabled', false).html(originalBtnText);
+            }
+        });
+    });
 
     $('#fund_type').change(function(event){
         let selectedText = $('#fund_type option:selected').text();
