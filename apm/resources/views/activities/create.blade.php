@@ -605,16 +605,19 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         const codeId = $(this).val();
         const label = $(this).text();
         const balance = $(this).data('balance');
+        
+        // Extract the budget code from the label (format: "CODE | Funder | $Balance")
+        const codeMatch = label.match(/^([^|]+)/);
+        const budgetCode = codeMatch ? codeMatch[1].trim() : `Code ${codeId}`;
 
         const cardHtml = `
             <div class="card mt-4">
                 <div class="card-header bg-light">
-                    <h6 class="fw-semibold">
+                    <h6 class="fw-semibold mb-0">
+                        <span class="badge bg-primary me-2">${budgetCode}</span>
                         <span class="float-end text-muted">
                             Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </span>
-
-                        
                     </h6>
                 </div>
                 <div class="card-body">
