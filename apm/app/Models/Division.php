@@ -26,14 +26,21 @@ class Division extends Model
      * @var array
      */
     protected $fillable = [
-        'name',
+        'id',
+        'division_name',
         'division_head',
         'focal_person',
         'admin_assistant',
         'finance_officer',
-        'is_external',
         'directorate_id',
-        'is_active',
+        'head_oic_id',
+        'head_oic_start_date',
+        'head_oic_end_date',
+        'director_id',
+        'director_oic_id',
+        'director_oic_start_date',
+        'director_oic_end_date',
+        'category',
     ];
 
 
