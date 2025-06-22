@@ -66,6 +66,7 @@
                         <th>Division</th>
                         <th>Focal Person</th>
                         <th>Key Result Areas</th>
+                        <th>Activities</th>
                         <th>Created At</th>
                         <th>Level</th>
                         <th>Status</th>
@@ -120,6 +121,41 @@
                                                     </ul>
                                                 @else
                                                     <p class="text-muted">No key result areas defined.</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @php
+                                    $activities = $matrix->activities;
+                                @endphp
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#activitiesModal{{ $matrix->id }}">
+                                    <i class="bx bx-list-ul me-1"></i> {{ $activities->count() }} Activity(ies)
+                                </button>
+                                <!-- Modal -->
+                                <div class="modal fade" id="activitiesModal{{ $matrix->id }}" tabindex="-1" aria-labelledby="activitiesModalLabel{{ $matrix->id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-md modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="activitiesModalLabel{{ $matrix->id }}">
+                                                    Activities - {{ $matrix->year }} {{ $matrix->quarter }}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                @if($activities->count())
+                                                    <ul class="list-group">
+                                                        @php $actCount = 1; @endphp
+                                                        @foreach($activities as $activity)
+                                                            <li class="list-group-item">
+                                                                <span class="fw-bold">{{ $actCount++ }}.</span> <i class="bx bx-chevron-right text-primary me-2"></i> {{ $activity->activity_title ?? 'Untitled Activity' }}
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    <p class="text-muted">No activities defined.</p>
                                                 @endif
                                             </div>
                                         </div>
