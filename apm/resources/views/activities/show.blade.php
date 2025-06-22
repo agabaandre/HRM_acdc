@@ -5,22 +5,24 @@
 @section('header', 'Activity Details')
 
 @section('header-actions')
-<div class="d-flex gap-1">
-    @if(still_with_creator($matrix))
-        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning">
-            <i class="bx bx-edit"></i> Edit Activity
-        </a>
-    @endif
-    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
-        <i class="bx bx-arrow-back"></i> Back to Matrix
-    </a>
-</div>
+
 @endsection
 
 
 
 @section('content')
 <div class="row">
+<div class="d-flex gap-1 mb-2" style="float: right;!important">
+    @if(still_with_creator($matrix))
+        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-sm btn-warning">
+            <i class="bx bx-edit"></i> Edit Activity
+        </a>
+    @endif
+    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bx bx-arrow-back"></i> Back to Matrix
+    </a>
+</div>
+
     <div class="col-md-12">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
@@ -86,8 +88,8 @@
                                 <tr>
                                     <td>#</td>
                                     <th>Name</th>
-                                    <th>Job Title</th>
                                     <th>Division</th>
+                                    <th>Job Title</th>
                                     <th>Duty Station</th>
                                   
                                     <th>Days</th>
@@ -100,8 +102,8 @@
                                 @foreach($internalParticipants as $entry)
                                     <tr><td>{{$count}}</td>
                                             <td>{{ $entry['staff']->name ?? 'N/A' }}</td>
+                                             <td>{{ $entry['staff']->division_name ?? 'N/A' }}</td>
                                             <td>{{ $entry['staff']->job_name ?? 'N/A' }}</td>
-                                            <td>{{ $entry['staff']->division_name ?? 'N/A' }}</td>
                                           <td>{{ $entry['staff']->duty_station_name ?? 'N/A' }}</td>
                                         <td>{{ $entry['participant_days'] ?? '-' }}</td>
                                     </tr>
