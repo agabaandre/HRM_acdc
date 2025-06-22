@@ -62,15 +62,13 @@ class NonTravelMemoController extends Controller
     }
 
     /** Persist new memo */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): \Illuminate\Http\RedirectResponse
     {
         $data = $request->validate([
             'staff_id'                     => 'required|exists:staff,id',
             'date_required'                => 'required|date',
             'location_id'                  => 'required|array|min:1',
             'location_id.*'                => 'exists:locations,id',
-            'fund_location'                => 'required|string|max:255',
-            'budget_code_id'               => 'required|exists:fund_codes,id',
             'non_travel_memo_category_id'  => 'required|exists:non_travel_memo_categories,id',
             'title'                        => 'required|string|max:255',
             'approval'                     => 'required|string',
@@ -79,14 +77,13 @@ class NonTravelMemoController extends Controller
             'other_information'            => 'nullable|string',
             'attachments'                  => 'nullable|array',
             'attachments.*'                => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
-            'items'                        => 'nullable|array',
-            'items.*.description'          => 'required_with:items|string',
-            'items.*.unit'                 => 'required_with:items|string',
-            'items.*.quantity'             => 'required_with:items|numeric|min:1',
-            'items.*.unit_price'           => 'required_with:items|numeric|min:0',
+            'budget_codes'                 => 'required|array|min:1',
+            'budget_codes.*'               => 'exists:fund_codes,id',
+            'budget'                       => 'required|array',
+            'budget.*'                     => 'array',
         ]);
 
-        // handle attachments
+        // Handle attachments
         $files = [];
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $f) {
@@ -94,16 +91,58 @@ class NonTravelMemoController extends Controller
                 $files[] = [
                     'name' => $f->getClientOriginalName(),
                     'path' => $path,
+                    'size' => $f->getSize(),
+                    'mime_type' => $f->getMimeType(),
+                    'uploaded_at' => now()->toDateTimeString(),
                 ];
             }
         }
-        $data['attachments'] = $files;
-        $data['items'] = $request->input('items', []);
 
-        NonTravelMemo::create($data + ['created_by' => Auth::id()]);
+        // Prepare JSON columns
+        $locationJson = json_encode($data['location_id']);
+        $budgetIdJson = json_encode($data['budget_codes']);
+        $budgetBreakdownJson = json_encode($data['budget']);
+        $attachmentsJson = json_encode($files);
 
+        // Save to DB
+        $memo = NonTravelMemo::create([
+            'forward_workflow_id' => (int)($request->input('forward_workflow_id', 1)),
+            'reverse_workflow_id' => (int)($request->input('reverse_workflow_id', 1)),
+            'workplan_activity_code' => $request->input('activity_code', ''),
+            'staff_id' => (int)$data['staff_id'],
+            'memo_date' => (string)$data['date_required'],
+            'location_id' => $locationJson,
+            'non_travel_memo_category_id' => (int)$data['non_travel_memo_category_id'],
+            'budget_id' => $budgetIdJson,
+            'activity_title' => $data['title'],
+            'background' => $data['background'],
+            'activity_request_remarks' => $data['approval'],
+            'justification' => $data['description'],
+            'budget_breakdown' => $budgetBreakdownJson,
+            'attachment' => $attachmentsJson,
+        ]);
+
+        // Deduct budget code balances using the helper
+        $budgetCodes = $data['budget_codes'];
+        $budgetItems = $data['budget'];
+        foreach ($budgetCodes as $codeId) {
+            $total = 0;
+            if (isset($budgetItems[$codeId]) && is_array($budgetItems[$codeId])) {
+                foreach ($budgetItems[$codeId] as $item) {
+                    // Support both array and object
+                    $qty = isset($item['quantity']) ? $item['quantity'] : (isset($item->quantity) ? $item->quantity : 1);
+                    $unitCost = isset($item['unit_cost']) ? $item['unit_cost'] : (isset($item->unit_cost) ? $item->unit_cost : 0);
+                    $total += $qty * $unitCost;
+                }
+            }
+            if ($total > 0) {
+                reduce_fund_code_balance($codeId, $total);
+            }
+        }
+
+        // Always return a valid redirect response
         return redirect()->route('non-travel.index')
-                         ->with('success', 'Request submitted successfully.');
+            ->with('success', 'Request submitted successfully.');
     }
 
     /** Show one memo */

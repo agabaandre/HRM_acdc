@@ -4,6 +4,7 @@ use App\Models\Approver;
 use App\Models\MatrixApprovalTrail;
 use App\Models\WorkflowDefinition;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 if (!function_exists('user_session')) {
     /**
@@ -238,4 +239,23 @@ if (!function_exists('user_session')) {
 
    
     
+}
+
+if (!function_exists('reduce_fund_code_balance')) {
+    /**
+     * Reduce the budget_balance in the fund_codes table by a given amount.
+     *
+     * @param int $fundCodeId
+     * @param float $amount
+     * @return bool
+     */
+    function reduce_fund_code_balance($fundCodeId, $amount)
+    {
+        if ($fundCodeId && $amount > 0) {
+            return \DB::table('fund_codes')
+                ->where('id', $fundCodeId)
+                ->decrement('budget_balance', $amount);
+        }
+        return false;
+    }
 }

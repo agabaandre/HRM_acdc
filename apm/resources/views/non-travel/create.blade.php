@@ -244,9 +244,9 @@
                     </div>
                     <div class="row g-3" id="attachmentContainer">
                         <div class="col-md-4 attachment-block">
-                            <label class="form-label">Document Type*</label>
-                            <input type="text" name="attachments[0][type]" class="form-control" required>
-                            <input type="file" name="attachments[0][file]" class="form-control mt-1" required>
+                            <label class="form-label">Document Type</label>
+                            <input type="text" name="attachments[0][type]" class="form-control">
+                            <input type="file" name="attachments[0][file]" class="form-control mt-1">
                         </div>
                     </div>
                 </div>
@@ -457,12 +457,11 @@
         $('#addAttachment').on('click', function() {
             const newField = `
                 <div class="col-md-4 attachment-block">
-                    <label class="form-label">Document Type*</label>
-                    <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
+                    <label class="form-label">Document Type</label>
+                    <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control">
                     <input type="file" name="attachments[${attachmentIndex}][file]" 
                            class="form-control mt-1 attachment-input" 
-                           accept=".pdf, .jpg, .jpeg, .png" 
-                           required>
+                           accept=".pdf, .jpg, .jpeg, .png">
                 </div>`;
             $('#attachmentContainer').append(newField);
             attachmentIndex++;

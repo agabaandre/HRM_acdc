@@ -241,9 +241,6 @@ $(document).ready(function () {
     });
 
     $('#fund_type').change(function(event){
-        // Reset appended budget fields
-        $('#budgetGroupContainer').empty();
-
         let selectedText = $('#fund_type option:selected').text();
         let selectedId = $('#fund_type').val();
 
@@ -649,17 +646,15 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         const label = $(this).text();
         const balance = $(this).data('balance');
         
-        // Extract the budget code and funder from the label (format: "CODE | Funder | $Balance")
-        const labelParts = label.split('|');
-        const budgetCode = labelParts[0] ? labelParts[0].trim() : `Code ${codeId}`;
-        const funder = labelParts[1] ? labelParts[1].trim() : '';
+        // Extract the budget code from the label (format: "CODE | Funder | $Balance")
+        const codeMatch = label.match(/^([^|]+)/);
+        const budgetCode = codeMatch ? codeMatch[1].trim() : `Code ${codeId}`;
 
         const cardHtml = `
             <div class="card mt-4">
                 <div class="card-header bg-light">
                     <h6 class="fw-semibold mb-0">
                         <span class="badge bg-primary me-2">${budgetCode}</span>
-                        <span class="badge bg-info me-2">${funder}</span>
                         <span class="float-end text-muted">
                             Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </span>
