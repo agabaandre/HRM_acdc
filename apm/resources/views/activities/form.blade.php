@@ -82,7 +82,7 @@
                         </option>
                     @endforeach
                 </select>
-                <small class="text-muted">You cannot select more than the total participants</small>
+            
             </div>
 
             <div class="col-md-4">
