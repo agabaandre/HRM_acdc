@@ -62,25 +62,31 @@ class SyncDirectoratesCommand extends Command
             // Process each directorate
             foreach ($directoratesData as $data) {
                 try {
-                    // Validate and sanitize data
                     $name = $data['name'] ?? null;
                     if (empty($name)) {
                         continue; // Skip if no name
                     }
                     $isActive = isset($data['is_active']) ? (bool)$data['is_active'] : true;
-
-                    // Try to find by name
-                    $directorate = Directorate::where('name', $name)->first();
+                    $id = $data['id'] ?? null;
 
                     $directorateData = [
                         'name' => $name,
                         'is_active' => $isActive,
                     ];
 
-                    if ($directorate) {
-                        $directorate->update($directorateData);
-                        $updated++;
+                    if ($id) {
+                        // Update or create by id
+                        $directorate = Directorate::updateOrCreate(
+                            ['id' => $id],
+                            $directorateData
+                        );
+                        if ($directorate->wasRecentlyCreated) {
+                            $created++;
+                        } else {
+                            $updated++;
+                        }
                     } else {
+                        // Create new if no id
                         Directorate::create($directorateData);
                         $created++;
                     }

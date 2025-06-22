@@ -166,8 +166,7 @@ public function visualise()
 
   public function divisions(){
 	if($this->api_login()){
-		$not_in = array(16,20);
-	$this->db->where_not_in("division_id",$not_in);
+
 	$result = $this->db->get("divisions")->result_array();
 	
 	
