@@ -488,6 +488,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     $.get('{{ route("budget-codes.by-fund-type") }}', {
         fund_type_id: fundTypeId,
         division_id: divisionId
+       
     }, function (data) {
         budgetCodesSelect.empty();
         if (data.length) {
@@ -632,17 +633,59 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 
     function updateAllTotals() {
         let grand = 0;
+        let hasExceededBudget = false;
+        
         $('.budget-body').each(function () {
             const code = $(this).data('code');
             let subtotal = 0;
             $(this).find('tr').each(function () {
                 subtotal += parseFloat($(this).find('.total').val()) || 0;
             });
-            $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            
+            // Get the budget balance for this code
+            const balanceElement = $(`#budget_codes option[value="${code}"]`);
+            const budgetBalance = parseFloat(balanceElement.data('balance')) || 0;
+            
+            // Check if subtotal exceeds budget balance
+            if (subtotal > budgetBalance) {
+                hasExceededBudget = true;
+                $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+                    .addClass('text-danger fw-bold');
+                
+                // Show warning message
+                const card = $(this).closest('.card');
+                let warningDiv = card.find('.budget-warning');
+                if (warningDiv.length === 0) {
+                    warningDiv = $(`<div class="alert alert-danger mt-2 budget-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Budget exceeded! Available: $${budgetBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>`);
+                    card.find('.card-body').append(warningDiv);
+                }
+            } else {
+                $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+                    .removeClass('text-danger fw-bold');
+                
+                // Remove warning if exists
+                const card = $(this).closest('.card');
+                card.find('.budget-warning').remove();
+            }
+            
             grand += subtotal;
         });
+        
         $('#grandBudgetTotal').text(grand.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         $('#grandBudgetTotalInput').val(grand.toFixed(2));
+        
+        // Update submit button state
+        const submitBtn = $('button[type="submit"]');
+        if (hasExceededBudget) {
+            submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
+                .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
+        } else {
+            submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
+                .html('<i class="bx bx-check-circle me-1"></i> Save Activity');
+        }
     }
 
     // Initial check

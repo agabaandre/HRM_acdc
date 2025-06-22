@@ -17,7 +17,10 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\ParticipantSchedule;
+use Illuminate\Support\Facades\Schema;
 
 class ActivityController extends Controller
 {
@@ -111,7 +114,7 @@ class ActivityController extends Controller
     
         $userStaffId = session('user.auth_staff_id');
     
-        return \DB::transaction(function () use ($request, $matrix, $userStaffId) {
+        return DB::transaction(function () use ($request, $matrix, $userStaffId) {
             try {
                 // Validate required fields
                 $validated = $request->validate([
@@ -146,9 +149,9 @@ class ActivityController extends Controller
     
                 // Create the activity record
                 $activity = $matrix->activities()->create([
-                    'staff_id' => $userStaffId,
+                    'staff_id' => $userStaffId, // Use staff_id directly
                     'workplan_activity_code'=> $request->input('activity_code'),
-                    'responsible_person_id' => $request->input('responsible_person_id', 1),
+                    'responsible_person_id' => $request->input('responsible_person_id'), // Use staff_id directly
                     'date_from' => $request->input('date_from', now()->toDateString()),
                     'date_to' => $request->input('date_to', now()->toDateString()),
                     'total_participants' => (int) $request->input('total_participants', 1),
@@ -183,8 +186,8 @@ class ActivityController extends Controller
                     ]);
     
             } catch (\Exception $e) {
-                \DB::rollBack();
-                \Log::error('Error creating activity', ['exception' => $e]);
+                DB::rollBack();
+                Log::error('Error creating activity', ['exception' => $e]);
     
                 return redirect()->back()->withInput()->with([
                     'msg' => 'An error occurred while creating the activity. Please try again.',
@@ -454,7 +457,7 @@ class ActivityController extends Controller
             }
         }
         catch(Exception $exception){
-            \Log::error("Error ocurred saving particiapnt schedule ".$exception->getMessage());
+            Log::error("Error ocurred saving particiapnt schedule ".$exception->getMessage());
         }
 
     }
