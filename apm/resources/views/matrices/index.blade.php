@@ -16,45 +16,69 @@
 //dd($matrices->toArray());
 @endphp
 
+
+
 @section('content')
-<div class="card shadow-sm">
-    <div class="card-header bg-light">
-        <div class="row g-2 align-items-center">
+<div class="card shadow-sm mb-4 border-0">
+    <div class="card-body py-3 px-4 bg-light rounded-3">
+        <div class="row g-3 align-items-end" id="matrixFilters" autocomplete="off">
             <div class="col-md-2">
-                <select class="form-select" id="yearFilter">
-                    <option value="">All Years</option>
-                    @foreach(range(date('Y'), date('Y') - 5) as $year)
-                        <option value="{{ $year }}">{{ $year }}</option>
-                    @endforeach
-                </select>
+                <label for="yearFilter" class="form-label fw-semibold mb-1"><i class="bx bx-calendar me-1 text-success"></i> Year</label>
+                <div class="input-group w-100">
+                    <span class="input-group-text bg-white"><i class="bx bx-calendar"></i></span>
+                    <select class="form-select" id="yearFilter">
+                        <option value="">All Years</option>
+                        @foreach(range(date('Y'), date('Y') - 5) as $year)
+                            <option value="{{ $year }}">{{ $year }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             <div class="col-md-2">
-                <select class="form-select" id="quarterFilter">
-                    <option value="">All Quarters</option>
-                    @foreach(['Q1', 'Q2', 'Q3', 'Q4'] as $quarter)
-                        <option value="{{ $quarter }}">{{ $quarter }}</option>
-                    @endforeach
-                </select>
+                <label for="quarterFilter" class="form-label fw-semibold mb-1"><i class="bx bx-time-five me-1 text-success"></i> Quarter</label>
+                <div class="input-group w-100">
+                    <span class="input-group-text bg-white"><i class="bx bx-time-five"></i></span>
+                    <select class="form-select" id="quarterFilter">
+                        <option value="">All Quarters</option>
+                        @foreach(['Q1', 'Q2', 'Q3', 'Q4'] as $quarter)
+                            <option value="{{ $quarter }}">{{ $quarter }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             <div class="col-md-3">
-                <select class="form-select select2" id="divisionFilter">
-                    <option value="">All Divisions</option>
-                    @foreach($divisions as $division)
-                        <option value="{{ $division->id }}">{{ $division->division_name }}</option>
-                    @endforeach
-                </select>
+                <label for="divisionFilter" class="form-label fw-semibold mb-1"><i class="bx bx-building me-1 text-success"></i> Division</label>
+                <div class="input-group select2-flex w-100">
+                   
+                    <select class="form-select select2" id="divisionFilter">
+                        <option value="">All Divisions</option>
+                        @foreach($divisions as $division)
+                            <option value="{{ $division->id }}">{{ $division->division_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
             <div class="col-md-3">
-                <select class="form-select select2" id="focalFilter">
-                    <option value="">All Focal Persons</option>
-                    @foreach($focalPersons as $person)
-                        <option value="{{ $person->staff_id }}">{{ $person->name }}</option>
-                    @endforeach
-                </select>
+                <label for="focalFilter" class="form-label fw-semibold mb-1"><i class="bx bx-user-pin me-1 text-success"></i> Focal Person</label>
+                <div class="input-group select2-flex w-100">
+                    <select class="form-select select2" id="focalFilter">
+                        <option value="">All Focal Persons</option>
+                        @foreach($focalPersons as $person)
+                            <option value="{{ $person->staff_id }}">{{ $person->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
+                    <i class="bx bx-search-alt-2 me-1"></i> Filter
+                </button>
             </div>
         </div>
     </div>
+</div>
 
+<div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -216,7 +240,7 @@
         $('.select2').select2({ width: '100%' });
 
         // Handle filter change
-        $('#yearFilter, #quarterFilter, #divisionFilter, #focalFilter').change(function () {
+        $('#applyFilters').on('click', function () {
             const url = new URL(window.location.href);
             ['year', 'quarter', 'division', 'focal_person'].forEach(id => {
                 const val = $('#' + id + 'Filter').val();
@@ -228,3 +252,4 @@
     });
 </script>
 @endpush
+
