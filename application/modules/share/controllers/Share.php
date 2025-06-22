@@ -166,20 +166,29 @@ public function visualise()
 
   public function divisions(){
 	if($this->api_login()){
-		$not_in = array(16,20,27);
+		$not_in = array(16,20);
 	$this->db->where_not_in("division_id",$not_in);
 	$result = $this->db->get("divisions")->result_array();
-	$divisons =array();
-	foreach ($result as $row){
-		$data['id']= $row["division_id"];
-		$data['name'] = $row["division_name"];
-		// $data['division_head']=$row["division_head"];
-		
-		$divisons[]=$data;
-	}
+	
+	
 
 	header('Content-Type: application/json');
-			echo json_encode($divisons);
+			echo json_encode($result);
+	}
+	else{
+		header('Content-Type: application/json');
+		echo json_encode(array('success'=> false,'error'=> 'Authentication Failed! Invalid Request'));
+	}
+}
+
+
+public function directorates(){
+	if($this->api_login()){
+	
+	$result = $this->db->get("directorates")->result_array();
+	
+	header('Content-Type: application/json');
+			echo json_encode($result);
 	}
 	else{
 		header('Content-Type: application/json');
