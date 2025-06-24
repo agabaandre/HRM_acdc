@@ -1,15 +1,13 @@
 <?php
 $objectives = [];
-
 if (!empty($ppa->midterm_objectives)) {
-    $objectives = json_decode((string) $ppa->midterm_objectives, true);
+    $objectives = json_decode($ppa->midterm_objectives, true);
 } elseif (!empty($ppa->objectives)) {
-    $objectives = json_decode((string) $ppa->objectives, true);
+    $objectives = json_decode($ppa->objectives, true);
 }
 
 if (!is_array($objectives)) $objectives = [];
 ?>
-
 
 <h4 class="mt-4">B. Review of Performance Objectives</h4>
 <p class="text-muted">Fill out the objectives, staff self-appraisal, and appraiser ratings. All objectives must total 100% weight.</p>
