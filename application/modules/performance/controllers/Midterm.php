@@ -75,7 +75,7 @@ class Midterm extends MX_Controller
     
         // Insert into approval trail only on submit
         if ($data['midterm_submit_action'] === 'submit') {
-            $this->db->insert('ppa_approval_trail', [
+            $this->db->insert('ppa_approval_trail_midterm', [
                 'entry_id'   => $entry_id,
                 'staff_id'   => $user_id,
                 'comments'   => $data['midterm_comments'] ?? '',
@@ -123,27 +123,16 @@ public function midterm_review($entry_id)
 }
 
 	
-	public function recent_ppa(){
+	public function recent_midterm(){
 		$data['module'] = $this->module;
-		$data['title'] = "My Current PPA - ". $this->session->userdata('user')->name;;
-		
+		$data['title'] = "My Current Midterm - ". $this->session->userdata('user')->name;
 		$staff_id = $this->session->userdata('user')->staff_id;
-
 		$performance_period = str_replace(' ','-',current_period());
-		
-		// Load paginated results (optional: add pagination logic here)
-		
-		$data['plans'] = $this->per_mdl->get_recent_ppas_for_user($staff_id, $performance_period);
 
-		//dd($data['plans']);
-	
-		// If using pagination links
-		$data['links'] = ''; // placeholder, update if using pagination
-	
-		render('staff_ppa', $data); // your blade/PHP view
+		$midterm = $this->midterm_mdl->get_recent_midterm_for_user($staff_id, $performance_period);
+		$data['midterm'] = $midterm;
 
-		
-
+		render('current_midterm', $data);
 	}
 
 
@@ -168,7 +157,7 @@ public function midterm_review($entry_id)
 
 	
 		// Log approval trail
-		$this->db->insert('ppa_approval_trail', [
+		$this->db->insert('ppa_approval_trail_midterm', [
 			'entry_id'   => $entry_id,
 			'staff_id'   => $staff_id,
 			'comments'   => $this->input->post('comments') ?? null,
@@ -351,33 +340,33 @@ public function midterm_review($entry_id)
     
     
 
-	public function my_ppas()
-{
-    $data['module'] = $this->module;
-    $data['title'] = "My Performance Plans";
-    
-    $staff_id = $this->session->userdata('user')->staff_id;
-    
-    // Load paginated results (optional: add pagination logic here)
-    $data['plans'] = $this->per_mdl->get_all_approved_ppas_for_user($staff_id);
+	public function my_midterms()
+	{
+	    $data['module'] = $this->module;
+	    $data['title'] = "My Mid Term Reviews";
+	    
+	    $staff_id = $this->session->userdata('user')->staff_id;
+	    
+	    // Get all approved midterm reviews for this staff
+	    $data['plans'] = $this->midterm_mdl->get_all_approved_midterms_for_user($staff_id);
 
-    // If using pagination links
-    $data['links'] = ''; // placeholder, update if using pagination
+	    // If using pagination links
+	    $data['links'] = ''; // placeholder, update if using pagination
 
-    render('staff_ppa', $data); // your blade/PHP view
-}
+	    render('staff_midterm_reviews', $data); // updated view for midterm reviews
+	}
 
 
 
 public function approved_by_me()
 {
     $data['module'] = $this->module;
-    $data['title'] = "PPAs I've Approved";
+    $data['title'] = "Midterms I've Approved";
 
     $supervisor_id = $this->session->userdata('user')->staff_id;
-    $data['plans'] = $this->per_mdl->get_approved_by_supervisor($supervisor_id);
+    $data['plans'] = $this->midterm_mdl->get_midterms_approved_by_supervisor($supervisor_id);
 
-    render('approved_by_me', $data);
+    render('approved_by_me_midterm', $data);
 }
 public function print_midterm($entry_id,$staff_id,$staff_contract_id,$approval_trail=FALSE)
     {

@@ -1005,6 +1005,140 @@ public function ppa_exists($entry_id){
 
 }
 
+public function get_recent_midterm_for_user($staff_id, $period)
+{
+    $sql = "
+        SELECT 
+            p.*, 
+            CONCAT(s.fname, ' ', s.lname) AS staff_name,
+            (
+                SELECT a.action 
+                FROM ppa_approval_trail_midterm a
+                WHERE a.entry_id = p.entry_id
+                ORDER BY a.id DESC LIMIT 1
+            ) AS last_action,
+            (
+                CASE
+                    WHEN p.midterm_draft_status = 1 THEN 'Draft'
+                    WHEN (
+                        SELECT a.action 
+                        FROM ppa_approval_trail_midterm a
+                        WHERE a.entry_id = p.entry_id
+                        ORDER BY a.id DESC LIMIT 1
+                    ) = 'Approved' THEN 'Approved'
+                    WHEN (
+                        SELECT a.action 
+                        FROM ppa_approval_trail_midterm a
+                        WHERE a.entry_id = p.entry_id
+                        ORDER BY a.id DESC LIMIT 1
+                    ) = 'Returned' THEN 'Returned'
+                    WHEN (
+                        SELECT a.action 
+                        FROM ppa_approval_trail_midterm a
+                        WHERE a.entry_id = p.entry_id
+                        ORDER BY a.id DESC LIMIT 1
+                    ) = 'Midterm Submitted' THEN 'Pending Supervisor'
+                    ELSE 'Pending'
+                END
+            ) AS midterm_status
+        FROM ppa_entries p
+        JOIN staff s ON s.staff_id = p.staff_id
+        WHERE p.staff_id = ? AND p.performance_period = ?
+        AND p.midterm_draft_status != 1
+        ORDER BY p.midterm_created_at DESC
+        LIMIT 1
+    ";
+    return $this->db->query($sql, [$staff_id, $period])->row_array();
+}
+
+public function get_all_approved_midterms_for_user($staff_id)
+{
+    $sql = "
+        SELECT 
+            p.*, 
+            CONCAT(s.fname, ' ', s.lname) AS staff_name,
+            (
+                SELECT a.action 
+                FROM ppa_approval_trail_midterm a
+                WHERE a.entry_id = p.entry_id
+                ORDER BY a.id DESC LIMIT 1
+            ) AS last_action,
+            (
+                CASE
+                    WHEN p.midterm_draft_status = 1 THEN 'Draft'
+                    WHEN (
+                        SELECT a.action 
+                        FROM ppa_approval_trail_midterm a
+                        WHERE a.entry_id = p.entry_id
+                        ORDER BY a.id DESC LIMIT 1
+                    ) = 'Approved' THEN 'Approved'
+                    WHEN (
+                        SELECT a.action 
+                        FROM ppa_approval_trail_midterm a
+                        WHERE a.entry_id = p.entry_id
+                        ORDER BY a.id DESC LIMIT 1
+                    ) = 'Returned' THEN 'Returned'
+                    WHEN (
+                        SELECT a.action 
+                        FROM ppa_approval_trail_midterm a
+                        WHERE a.entry_id = p.entry_id
+                        ORDER BY a.id DESC LIMIT 1
+                    ) = 'Midterm Submitted' THEN 'Pending Supervisor'
+                    ELSE 'Pending'
+                END
+            ) AS midterm_status
+        FROM ppa_entries p
+        JOIN staff s ON s.staff_id = p.staff_id
+        WHERE p.staff_id = ?
+        AND p.midterm_draft_status != 1
+        ORDER BY p.midterm_created_at DESC
+    ";
+    return $this->db->query($sql, [$staff_id])->result_array();
+}
+
+public function get_midterms_approved_by_supervisor($supervisor_id)
+{
+    $sql = "
+        SELECT 
+            p.*, 
+            CONCAT(s.fname, ' ', s.lname) AS staff_name,
+            a.created_at AS approval_date,
+            a.comments,
+            a.staff_id AS approver_id,
+            (
+                CASE
+                    WHEN p.midterm_draft_status = 1 THEN 'Draft'
+                    WHEN (
+                        SELECT a2.action 
+                        FROM ppa_approval_trail_midterm a2
+                        WHERE a2.entry_id = p.entry_id
+                        ORDER BY a2.id DESC LIMIT 1
+                    ) = 'Approved' THEN 'Approved'
+                    WHEN (
+                        SELECT a2.action 
+                        FROM ppa_approval_trail_midterm a2
+                        WHERE a2.entry_id = p.entry_id
+                        ORDER BY a2.id DESC LIMIT 1
+                    ) = 'Returned' THEN 'Returned'
+                    WHEN (
+                        SELECT a2.action 
+                        FROM ppa_approval_trail_midterm a2
+                        WHERE a2.entry_id = p.entry_id
+                        ORDER BY a2.id DESC LIMIT 1
+                    ) = 'Midterm Submitted' THEN 'Pending Supervisor'
+                    ELSE 'Pending'
+                END
+            ) AS midterm_status
+        FROM ppa_entries p
+        JOIN staff s ON s.staff_id = p.staff_id
+        JOIN ppa_approval_trail_midterm a ON a.entry_id = p.entry_id
+        WHERE a.action = 'Approved'
+          AND a.staff_id = ?
+        ORDER BY a.created_at DESC
+    ";
+    return $this->db->query($sql, [$supervisor_id])->result_array();
+}
+
 
 
 

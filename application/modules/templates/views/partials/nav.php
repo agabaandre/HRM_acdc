@@ -1,34 +1,34 @@
 <div class="nav-container primary-menu">
-			<div class="mobile-topbar-header">
-				<div>
-					<img src="<?php echo base_url()?>assets/images/au_emblem.png" class="logo-icon" alt="logo icon">
-				</div>
-				<div>
-					<h5 class="logo-text">Staff Portal</h5>
-				</div>
-				<div class="toggle-icon ms-auto"><i class='bx bx-arrow-to-left'></i>
-				</div>
-			</div>
-			<nav class="navbar navbar-expand-xl w-100">
-				<ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
+    <div class="mobile-topbar-header">
+        <div>
+            <img src="<?php echo base_url() ?>assets/images/au_emblem.png" class="logo-icon" alt="logo icon">
+        </div>
+        <div>
+            <h5 class="logo-text">Staff Portal</h5>
+        </div>
+        <div class="toggle-icon ms-auto"><i class='bx bx-arrow-to-left'></i>
+        </div>
+    </div>
+    <nav class="navbar navbar-expand-xl w-100">
+        <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
+            <li class="nav-item">
+                <a href="<?= base_url('home') ?>" class="nav-link <?= activelink('home', $this->uri->segment(1)) ?>">
+                    <div class="parent-icon"><i class="bx bx-home-circle"></i></div>
+                    <div class="menu-title">Home</div>
+                </a>
+            </li>
+            <!-- Dashboard -->
+            <?php if (in_array('76', $permissions)) : ?>
                 <li class="nav-item">
-                        <a href="<?= base_url('home') ?>" class="nav-link <?= activelink('home', $this->uri->segment(1)) ?>">
-                            <div class="parent-icon"><i class="bx bx-home-circle"></i></div>
-                            <div class="menu-title">Home</div>
-                        </a>
+                    <a href="<?= base_url('dashboard') ?>" class="nav-link <?= activelink('dashboard', $this->uri->segment(1)) ?>">
+                        <div class=""><i class="bx bx-category"></i></div>
+                        <div class="menu-title">Dashboard</div>
+                    </a>
                 </li>
-                <!-- Dashboard -->
-                <?php if (in_array('76', $permissions)) : ?>
-                    <li class="nav-item">
-                        <a href="<?= base_url('dashboard') ?>" class="nav-link <?= activelink('dashboard', $this->uri->segment(1)) ?>">
-                            <div class=""><i class="bx bx-category"></i></div>
-                            <div class="menu-title">Dashboard</div>
-                        </a>
-                    </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-                <!-- Staff Profile -->
-                <?php if (in_array('72', $permissions) || in_array('41', $permissions)) : ?>
+            <!-- Staff Profile -->
+            <?php if (in_array('72', $permissions) || in_array('41', $permissions)) : ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('staff', $this->uri->segment(1)) ?>" href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-user"></i></div>
@@ -37,7 +37,7 @@
                     <ul class="dropdown-menu">
                         <?php if (in_array('72', $permissions)) : ?>
                             <?php if (in_array('71', $permissions)) : ?>
-								<li><a class="dropdown-item" href="<?= base_url('staff/search') ?>"><i class="bx bx-right-arrow-alt"></i>Quick Search</a></li>
+                                <li><a class="dropdown-item" href="<?= base_url('staff/search') ?>"><i class="bx bx-right-arrow-alt"></i>Quick Search</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/new') ?>"><i class="bx bx-right-arrow-alt"></i>Add New Staff</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/all_staff') ?>"><i class="bx bx-right-arrow-alt"></i>All Staff</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/index') ?>"><i class="bx bx-right-arrow-alt"></i>Current Staff List</a></li>
@@ -52,10 +52,10 @@
                         <?php endif; ?>
                     </ul>
                 </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-                <!-- Attendance -->
-                <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('83', $permissions)) : ?>
+            <!-- Attendance -->
+            <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('83', $permissions)) : ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('attendance', $this->uri->segment(1)) ?>" href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-clock"></i></div>
@@ -68,10 +68,10 @@
                         <li><a class="dropdown-item" href="<?= base_url('attendance/time_sheet') ?>"><i class="bx bx-right-arrow-alt"></i>Time Sheet</a></li>
                     </ul>
                 </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-                <!-- Leave -->
-                <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('37', $permissions)) : ?>
+            <!-- Leave -->
+            <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('37', $permissions)) : ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('leave', $this->uri->segment(1)) ?>" href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-plane-departure"></i></div>
@@ -86,39 +86,59 @@
                         <?php endif; ?>
                     </ul>
                 </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-                <!-- Performance -->
-                <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('74', $permissions)) : ?>
+            <!-- Performance -->
+            <?php if ($this->session->userdata('user')->staff_id != 0 && in_array('74', $permissions)) : ?>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?= activelink('performance', $this->uri->segment(1)) ?>" href="<?php echo base_url()?>/performance/ppa_dashboard" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle <?= activelink('performance', $this->uri->segment(1)) ?>" href="<?php echo base_url() ?>/performance/ppa_dashboard" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-line-chart"></i></div>
                         <div class="menu-title">Performance</div>
                     </a>
                     <ul class="dropdown-menu">
-					   <?php if (in_array('38', $permissions) && !$ppa_exists) : ?>
+                        <?php if (in_array('38', $permissions) && !$ppa_exists) : ?>
                             <li><a class="dropdown-item" href="<?= base_url('performance') ?>"><i class="bx bx-right-arrow-alt"></i>Create PPA</a></li>
                         <?php endif; ?>
-
-						<?php if (in_array('82', $permissions)) : ?>
-                            <li><a class="dropdown-item" href="<?= base_url('performance/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>PPA Dashboard</a></li>
-                            <li><a class="dropdown-item" href="<?= base_url('performance/all_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>All PPAs Status</a></li>
-					    <?php endif; ?>
-
                         <?php if (in_array('38', $permissions) && $ppa_exists) : ?>
                             <li><a class="dropdown-item" href="<?= base_url("performance/recent_ppa/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current PPA</a></li>
+                        
+                        <?php
+                           // Show Mid Term menu link if today is within the mid_term period
+                           if (
+                               isset($ppa_settings->mid_term_start, $ppa_settings->mid_term_deadline) &&
+                               $today >= $ppa_settings->mid_term_start &&
+                               $today <= $ppa_settings->mid_term_deadline && $ppa_exists && $ppaIsapproved && !$midterm_exists
+                           ): ?>
+                              <li>
+                                  <a class="dropdown-item" href="<?= base_url("performance/midterm/midterm_review/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>">
+                                      <i class="fa fa-plus"></i> Create Midterm
+                                  </a>
+                              </li>
+                           <?php endif; ?>
+                        
                         <?php endif; ?>
+
+                        <?php if (in_array('38', $permissions) && $midterm_exists) : ?>
+                            <li><a class="dropdown-item" href="<?= base_url("performance/recent_ppa/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current Midterm</a></li>
+                     <?php endif; ?>
+                        
+                        <?php if (in_array('82', $permissions)) : ?>
+                            <li><a class="dropdown-item" href="<?= base_url('performance/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>PPA Dashboard</a></li>
+                            <li><a class="dropdown-item" href="<?= base_url('performance/all_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>All PPAs Status</a></li>
+                        <?php endif; ?>
+
+                 
                         <li><a class="dropdown-item" href="<?= base_url('performance/my_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>My PPAs</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= count($this->per_mdl->get_pending_ppa($this->session->userdata('user')->staff_id)) ?></span></a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('performance/pending_approval') ?>"><i class="bx bx-right-arrow-alt"></i>Pending Action <span class="badge bg-danger ms-1"><?= @$pendingcount;//count($this->per_mdl->get_pending_ppa($this->session->userdata('user')->staff_id)) ?></span></a></li>
                         <li><a class="dropdown-item" href="<?= base_url('performance/approved_by_me') ?>"><i class="bx bx-right-arrow-alt"></i>All Approved PPAs</a></li>
 
-                        
+
                     </ul>
                 </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-                <!-- Weekly Task Planner -->
-                <?php if (in_array('78', $permissions)) : ?>
+            <!-- Weekly Task Planner -->
+            <?php if (in_array('78', $permissions)) : ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('weektasks', $this->uri->segment(1)) ?>" href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-bar-chart"></i></div>
@@ -136,10 +156,10 @@
                         <?php endif; ?>
                     </ul>
                 </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-                <!-- Domain Controller -->
-                <?php if (in_array('77', $permissions)) : ?>
+            <!-- Domain Controller -->
+            <?php if (in_array('77', $permissions)) : ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-shield-alt"></i></div>
@@ -150,20 +170,20 @@
                         <li><a class="dropdown-item" href="<?= base_url('admanager/report') ?>"><i class="bx bx-right-arrow-alt"></i>Disabled Accounts</a></li>
                     </ul>
                 </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-                <!-- Settings -->
-                <?php if (in_array('15', $permissions)) : ?>
+            <!-- Settings -->
+            <?php if (in_array('15', $permissions)) : ?>
                 <li class="nav-item">
                     <a href="<?= base_url('settings') ?>" class="nav-link <?= activelink('settings', $this->uri->segment(1)) ?>">
                         <div class="parent-icon"><i class="fa fa-cog"></i></div>
                         <div class="menu-title">Settings</div>
                     </a>
                 </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-                <!-- Users -->
-                <?php if (in_array('17', $permissions)) : ?>
+            <!-- Users -->
+            <?php if (in_array('17', $permissions)) : ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= activelink('auth', $this->uri->segment(1), 'permissions') ?>" href="#" data-bs-toggle="dropdown">
                         <div class="parent-icon"><i class="fa fa-users"></i></div>
@@ -176,9 +196,9 @@
                         <li><a class="dropdown-item" href="<?= base_url('auth/logs') ?>"><i class="bx bx-right-arrow-alt"></i>Audit Logs</a></li>
                     </ul>
                 </li>
-                <?php endif; ?>
+            <?php endif; ?>
 
-            </ul>
-        </div>
-    </nav>
+        </ul>
+</div>
+</nav>
 </div>

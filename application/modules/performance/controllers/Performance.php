@@ -28,6 +28,7 @@ class Performance extends MX_Controller
 		
 		render('plan', $data);
 	}
+
     public function employee_ppa($performance_period,$staff_id){
         $ppa = $this->db->query("SELECT * FROM ppa_entries WHERE performance_period='$performance_period' and staff_id='$staff_id'")->row();
         //dd($ppa);
@@ -150,8 +151,8 @@ class Performance extends MX_Controller
 			$data['title'] = "Performance Plans Pending Action";
 			$staff_id = $this->session->userdata('user')->staff_id;
 			
-			$data['plans'] = $this->per_mdl->get_pending_ppa($staff_id);
-			//$data['pendingcount'] = count($data['plans']);
+			$data['approvals'] = $this->per_mdl->get_all_pending_approvals($staff_id);
+			$data['pendingcount'] = count($data['approvals']);
 			//dd($data);
 
 			render('pending_ppa', $data);
@@ -180,6 +181,8 @@ class Performance extends MX_Controller
 		
 
 	}
+
+
 
 
     

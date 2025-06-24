@@ -9,6 +9,7 @@
             <th>Name</th>
             <th>Submission Date</th>
             <th>Period</th>
+            <th>Type</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -16,35 +17,57 @@
         <tbody>
           <?php $i = 1;
 		      //dd($plans);
-          foreach ($plans as $plan): ?>
-            <tr data-status="<?= $plan['overall_status']; ?>">
+          foreach ($approvals as $plan): ?>
+            <tr data-status="<?= isset($plan['overall_status']) ? $plan['overall_status'] : 'Pending'; ?>">
               <td><?= $i++; ?></td>
               <td><?=$plan['staff_name'] ?></td>
-              <td><?= date('d M Y', strtotime($plan['created_at'])) ?></td>
+              <td>
+                <?php if (isset($plan['approval_type']) && $plan['approval_type'] === 'midterm' && !empty($plan['midterm_created_at'])): ?>
+                  <?= date('d M Y', strtotime($plan['midterm_created_at'])) ?>
+                <?php else: ?>
+                  <?= date('d M Y', strtotime($plan['created_at'])) ?>
+                <?php endif; ?>
+              </td>
               <td><?= str_replace('-',' ',$plan['performance_period']); ?></td>
-    
               <td>
-              <?php
-        
-                $staff_id = $plan['staff_id'];
-
-                if ($plan['overall_status'] == 'Pending First Supervisor') {
-                  $supervisor_id = $plan['supervisor_id'];
-                  echo '<span class="badge bg-primary fs-6">Pending First Supervisor: ' . staff_name($supervisor_id) . '</span>';
-                } elseif ($plan['overall_status'] == 'Pending Second Supervisor') {
-                  $supervisor_id2 = $plan['supervisor2_id'];
-                  echo '<span class="badge bg-primary fs-6">Pending Second Supervisor: ' . staff_name($supervisor2_id) . '</span>';
-                } else {
-                  echo '<span class="badge bg-success fs-6">' . $plan['overall_status'] . '</span>';
-                }
-              ?>
-    
-            
-            </td>
+                <?php if (isset($plan['approval_type']) && $plan['approval_type'] === 'midterm'): ?>
+                  <span class="badge bg-warning text-dark">Midterm</span>
+                <?php else: ?>
+                  <span class="badge bg-primary">PPA</span>
+                <?php endif; ?>
+              </td>
               <td>
-                <a href="<?php echo base_url()?>performance/view_ppa/<?=$plan['entry_id']; ?>/<?=$plan['staff_id']?>" class="btn btn-primary btn-sm" >
-                  <i class="fa fa-eye"></i> Preview
-				</a>
+                <?php
+                  $staff_id = $plan['staff_id'];
+                  $status = isset($plan['overall_status']) ? $plan['overall_status'] : 'Pending';
+                  $badgeClass = 'bg-secondary';
+                  $badgeText = $status;
+                  if ($status == 'Pending First Supervisor') {
+                    $badgeClass = 'bg-primary';
+                    $badgeText = 'Pending First Supervisor: ' . staff_name($plan['supervisor_id']);
+                  } elseif ($status == 'Pending Second Supervisor') {
+                    $badgeClass = 'bg-purple'; // Custom class, fallback to bg-info if not defined
+                    $badgeText = 'Pending Second Supervisor: ' . staff_name($plan['supervisor2_id']);
+                  } elseif (stripos($status, 'pending') !== false) {
+                    $badgeClass = 'bg-warning text-dark';
+                  } elseif (stripos($status, 'approved') !== false) {
+                    $badgeClass = 'bg-success';
+                  } elseif (stripos($status, 'returned') !== false) {
+                    $badgeClass = 'bg-danger';
+                  }
+                ?>
+                <span class="badge <?= $badgeClass ?> fs-6"> <?= $badgeText ?> </span>
+              </td>
+              <td>
+                <?php if (isset($plan['approval_type']) && $plan['approval_type'] === 'midterm'): ?>
+                  <a href="<?php echo base_url()?>performance/midterm/midterm_review/<?=$plan['entry_id']; ?>/<?=$plan['staff_id']?>" class="btn btn-warning btn-sm" >
+                    <i class="fa fa-eye"></i> Review Midterm
+                  </a>
+                <?php else: ?>
+                  <a href="<?php echo base_url()?>performance/view_ppa/<?=$plan['entry_id']; ?>/<?=$plan['staff_id']?>" class="btn btn-primary btn-sm" >
+                    <i class="fa fa-eye"></i> Preview PPA
+                  </a>
+                <?php endif; ?>
               </td>
             </tr>
           <?php endforeach; ?>

@@ -8,18 +8,37 @@ class Performance_mdl extends CI_Model
         parent::__construct();
     }
 
-	public function get_staff_plan_id($entry_id)
-	{
-		
-		if ($entry_id) {
-			$this->db->where('entry_id', $entry_id);
-            return $this->db->get('ppa_entries')->row();
-		}
-        else{
-            return FALSE;
+    public function isapproved($entry_id)
+    {
+        if (!empty($entry_id)) {
+            $this->db->where('entry_id', $entry_id);
+            $this->db->where('draft_status', 2);
+            return ($this->db->get('ppa_entries')->num_rows() > 0);
         }
-		
-	}
+        return FALSE;
+    }
+    
+    public function get_staff_plan_id($entry_id)
+    {
+        if (!empty($entry_id)) {
+            $this->db->where('entry_id', $entry_id);
+            return ($this->db->get('ppa_entries')->num_rows() > 0);
+        }
+        return FALSE;
+    }
+
+    public function ismidterm_available($entry_id)
+    {
+        if (!empty($entry_id)) {
+            $this->db->where('midterm_created_at IS NOT NULL', null, false);
+            $this->db->where('entry_id', $entry_id);
+            return ($this->db->get('ppa_entries')->num_rows() > 0);
+        }
+        return FALSE;
+    }
+    
+    
+    
 
     public function get_plan_by_entry_id($entry_id)
     {
@@ -938,6 +957,59 @@ public function get_staff_without_ppa($period = null, $division_id = null)
 
 public function ppa_exists($entry_id){
 
+}
+
+public function get_all_pending_approvals($staff_id)
+{
+    // Get pending PPA approvals
+    $pending_ppas = $this->get_pending_ppa($staff_id);
+    foreach ($pending_ppas as &$ppa) {
+        $ppa['approval_type'] = 'ppa';
+    }
+
+    // Get pending Midterm approvals
+    $sql = "SELECT 
+                p.*, 
+                CONCAT(s.fname, ' ', s.lname) AS staff_name,
+                'midterm' as approval_type
+            FROM ppa_entries p
+            JOIN staff s ON s.staff_id = p.staff_id
+            WHERE
+              (p.supervisor_id = ? OR p.supervisor2_id = ?)
+              AND p.midterm_draft_status = 0
+              AND (p.midterm_sign_off = 1 OR p.midterm_sign_off IS NULL)
+            ORDER BY p.created_at DESC";
+    $pending_midterms = $this->db->query($sql, [$staff_id, $staff_id])->result_array();
+
+    // Merge and return
+    return array_merge($pending_ppas, $pending_midterms);
+}
+
+public function get_pending_midterm($staff_id)
+{
+    $sql = "SELECT 
+                p.*, 
+                CONCAT(s.fname, ' ', s.lname) AS staff_name,
+                'midterm' as approval_type,
+                (
+                    SELECT a1.action 
+                    FROM ppa_approval_trail_midterm a1
+                    WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                    ORDER BY a1.id DESC LIMIT 1
+                ) AS supervisor1_action,
+                (
+                    SELECT a2.action 
+                    FROM ppa_approval_trail_midterm a2
+                    WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                    ORDER BY a2.id DESC LIMIT 1
+                ) AS supervisor2_action
+            FROM ppa_entries p
+            JOIN staff s ON s.staff_id = p.staff_id
+            WHERE (p.supervisor_id = ? OR p.supervisor2_id = ?)
+              AND p.midterm_draft_status = 0
+              -- Add more logic here if you want to filter by approval status
+            ORDER BY p.created_at DESC";
+    return $this->db->query($sql, [$staff_id, $staff_id])->result_array();
 }
 
 
