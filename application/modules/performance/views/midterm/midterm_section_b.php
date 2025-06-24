@@ -1,9 +1,9 @@
 <?php
 $objectives = [];
 if (!empty($ppa->midterm_objectives)) {
-    $objectives = json_decode($ppa->midterm_objectives, true);
+    $objectives = is_string($ppa->midterm_objectives) ? json_decode($ppa->midterm_objectives, true) : $ppa->midterm_objectives;
 } elseif (!empty($ppa->objectives)) {
-    $objectives = json_decode($ppa->objectives, true);
+    $objectives = is_string($ppa->objectives) ? json_decode($ppa->objectives, true) : $ppa->objectives;
 }
 
 if (!is_array($objectives)) $objectives = [];
@@ -22,7 +22,7 @@ if (!is_array($objectives)) $objectives = [];
         <th>Deliverables & KPIs</th>
         <th>Weight (%)</th>
         <th>Staff Self Appraisal</th>
-        <th>Appraiser’s Rating</th>
+        <th>Appraiser's Rating</th>
       </tr>
     </thead>
     <tbody id="objectives-table-body">
