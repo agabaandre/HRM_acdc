@@ -17,7 +17,7 @@ node_modules
 # /uploads/
 .env
 .env
-
+.sql
 compser.lock
 package-lock.json
 
