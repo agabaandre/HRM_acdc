@@ -71,15 +71,15 @@ if ($midterm_exists) {
         <td><?= $rowNum++ ?></td>
 
         <td>
-          <textarea name="objectives[<?= $i ?>][objective]" class="form-control" readonly <?= $midreadonly ?>><?= $val['objective'] ?></textarea>
+          <textarea name="objectives[<?= $i ?>][objective]" rows=5 class="form-control" readonly <?= $midreadonly ?>><?= $val['objective'] ?></textarea>
         </td>
 
         <td>
-          <input type="text" name="objectives[<?= $i ?>][timeline]" class="form-control" value="<?= $val['timeline'] ?>" readonly <?= $midreadonly ?>>
+          <input type="text" name="objectives[<?= $i ?>][timeline]" rows=5 class="form-control" value="<?= $val['timeline'] ?>" readonly <?= $midreadonly ?>>
         </td>
 
         <td>
-          <textarea name="objectives[<?= $i ?>][indicator]" class="form-control" readonly <?= $midreadonly ?>><?= $val['indicator'] ?></textarea>
+          <textarea name="objectives[<?= $i ?>][indicator]" rows=5 class="form-control" readonly <?= $midreadonly ?>><?= $val['indicator'] ?></textarea>
         </td>
 
         <td>
@@ -87,7 +87,7 @@ if ($midterm_exists) {
         </td>
 
         <td>
-          <textarea name="objectives[<?= $i ?>][self_appraisal]" class="form-control" <?= $midreadonly ?>><?= $val['self_appraisal'] ?? '' ?></textarea>
+          <textarea name="objectives[<?= $i ?>][self_appraisal]" rows=5 class="form-control" <?= $midreadonly ?>><?= $val['self_appraisal'] ?? '' ?></textarea>
         </td>
 
         <td>
