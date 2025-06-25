@@ -67,7 +67,7 @@ if (!isset($midppa) || empty($midppa)) {
         $midreadonly = 'readonly disabled';
     }
 }
-
+$midterm_exists = $this->per_mdl->ismidterm_available($ppa->entry_id);
 
 
 // ✅ FIXED: define before usage
@@ -116,7 +116,7 @@ if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 <?php echo form_close(); ?>
 
 <?php if ($showApprovalBtns === 'show' || in_array('83', $permissions)) {
-    $this->load->view('performance/partials/approval_buttons', compact('ppa', 'ppa_settings', 'session', 'approval_trail','midreadonly'));
+    $this->load->view('performance/partials/approval_buttons', compact('ppa', 'ppa_settings', 'session', 'approval_trail','midreadonly','midterm_exists'));
 } ?>
 
 <!-- Approval Trail -->
