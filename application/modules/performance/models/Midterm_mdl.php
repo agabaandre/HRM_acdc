@@ -479,28 +479,30 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
 
     switch ($type) {
         case 'total':
-            $this->db->select('staff_id, entry_id');
-            $this->db->from('ppa_entries');
-            if ($period) $this->db->where('performance_period', $period);
-            $this->db->where('draft_status !=', 1);
-            $this->db->where('midterm_draft_status !=', 1);
-            $this->db->where_in('staff_id', $staff_ids);
-            $ppa_entries = $this->db->get()->result();
+            // Staff who have submitted midterm reviews (not drafts)
+            $this->db->select('pe.staff_id, pe.entry_id');
+            $this->db->from('ppa_entries pe');
+            if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            $this->db->where('pe.midterm_draft_status !=', 1); // Midterm submitted
+            $this->db->where_in('pe.staff_id', $staff_ids);
+            $midterm_entries = $this->db->get()->result();
 
-            $ppa_map = [];
-            foreach ($ppa_entries as $row) {
-                $ppa_map[$row->staff_id] = $row->entry_id;
+            $midterm_map = [];
+            foreach ($midterm_entries as $row) {
+                $midterm_map[$row->staff_id] = $row->entry_id;
             }
 
-            return array_filter(array_map(function ($staff) use ($ppa_map) {
-                if (isset($ppa_map[$staff->staff_id])) {
-                    $staff->entry_id = $ppa_map[$staff->staff_id];
+            return array_filter(array_map(function ($staff) use ($midterm_map) {
+                if (isset($midterm_map[$staff->staff_id])) {
+                    $staff->entry_id = $midterm_map[$staff->staff_id];
                     return $staff;
                 }
                 return null;
             }, $active_staff));
 
         case 'approved':
+            // Staff whose midterm reviews have been approved
             $this->db->select('pe.staff_id, pe.entry_id');
             $this->db->from('ppa_entries pe');
             $this->db->join("(
@@ -530,13 +532,13 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             }, $active_staff));
 
         case 'with_pdp':
-            $this->db->select('staff_id, entry_id, required_skills');
-            $this->db->from('ppa_entries');
-            $this->db->where('training_recommended', 'Yes');
-            $this->db->where('draft_status !=', 1);
-            $this->db->where('midterm_draft_status !=', 1);
-            if ($period) $this->db->where('performance_period', $period);
-            $this->db->where_in('staff_id', $staff_ids);
+            // Staff who have training recommendations in their midterm review
+            $this->db->select('pe.staff_id, pe.entry_id, pe.midterm_recommended_skills');
+            $this->db->from('ppa_entries pe');
+            $this->db->where('pe.midterm_draft_status !=', 1); // Midterm submitted
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->where_in('pe.staff_id', $staff_ids);
             $pdp_entries = $this->db->get()->result();
 
             // Map skills
@@ -548,12 +550,14 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
 
             $pdp_map = [];
             foreach ($pdp_entries as $entry) {
-                $skill_ids = json_decode($entry->required_skills ?? '[]', true);
-                $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
-                $pdp_map[$entry->staff_id] = [
-                    'entry_id' => $entry->entry_id,
-                    'skills' => array_filter($skill_names)
-                ];
+                $skill_ids = json_decode($entry->midterm_recommended_skills ?? '[]', true);
+                if (!empty($skill_ids)) {
+                    $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
+                    $pdp_map[$entry->staff_id] = [
+                        'entry_id' => $entry->entry_id,
+                        'skills' => array_filter($skill_names)
+                    ];
+                }
             }
 
             return array_filter(array_map(function ($staff) use ($pdp_map) {
@@ -566,15 +570,28 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             }, $active_staff));
 
         case 'without_ppa':
-            $this->db->select('staff_id');
-            $this->db->from('ppa_entries');
-            if ($period) $this->db->where('performance_period', $period);
-            $this->db->where('draft_status !=', 1);
-            $this->db->where('midterm_draft_status !=', 1);
-            $this->db->where_in('staff_id', $staff_ids);
-            $ppa_ids = array_column($this->db->get()->result(), 'staff_id');
+            // Staff who have submitted PPAs but haven't submitted midterm reviews
+            $this->db->select('pe.staff_id');
+            $this->db->from('ppa_entries pe');
+            if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            $this->db->where_in('pe.staff_id', $staff_ids);
+            $ppa_submitted = $this->db->get()->result();
+            $ppa_submitted_ids = array_column($ppa_submitted, 'staff_id');
 
-            return array_filter($active_staff, fn($s) => !in_array($s->staff_id, $ppa_ids));
+            // Get staff who have submitted midterms
+            $this->db->select('pe.staff_id');
+            $this->db->from('ppa_entries pe');
+            if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            $this->db->where('pe.midterm_draft_status !=', 1); // Midterm submitted
+            $this->db->where_in('pe.staff_id', $staff_ids);
+            $midterm_submitted = $this->db->get()->result();
+            $midterm_submitted_ids = array_column($midterm_submitted, 'staff_id');
+
+            // Return staff who have PPAs but no midterms
+            $without_midterm_ids = array_diff($ppa_submitted_ids, $midterm_submitted_ids);
+            return array_filter($active_staff, fn($s) => in_array($s->staff_id, $without_midterm_ids));
 
         default:
             return [];
@@ -626,14 +643,14 @@ public function get_midterm_dashboard_data()
     $summary = $this->db->get()->row();
 
     // Submission trend for midterm
-    $this->db->select("DATE(midterm_updated_at) AS date, COUNT(entry_id) AS count");
-    $this->db->from("ppa_entries");
-    $this->db->where('draft_status !=', 1);
-    $this->db->where('midterm_draft_status !=', 1);
-    $this->db->where_in("staff_id", $staff_ids);
-    $this->db->where("performance_period", $period);
-    $this->db->group_by("DATE(midterm_updated_at)");
-    $this->db->order_by("DATE(midterm_updated_at)", "ASC");
+    $this->db->select("DATE(pe.midterm_updated_at) AS date, COUNT(pe.entry_id) AS count");
+    $this->db->from("ppa_entries pe");
+    $this->db->where('pe.draft_status !=', 1);
+    $this->db->where('pe.midterm_draft_status !=', 1);
+    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.performance_period", $period);
+    $this->db->group_by("DATE(pe.midterm_updated_at)");
+    $this->db->order_by("DATE(pe.midterm_updated_at)", "ASC");
     $trend = array_map(function ($r) {
         return ['date' => $r->date, 'count' => (int)$r->count];
     }, $this->db->get()->result());
@@ -688,26 +705,35 @@ public function get_midterm_dashboard_data()
     $by_contract = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
 
     // Staff with midterm
-    $this->db->select("staff_id")->from("ppa_entries");
-    $this->db->where_in("staff_id", $staff_ids);
-    $this->db->where("performance_period", $period);
-    $this->db->where("draft_status !=", 1);
-    $this->db->where("midterm_draft_status !=", 1);
+    $this->db->select("pe.staff_id")->from("ppa_entries pe");
+    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.performance_period", $period);
+    $this->db->where("pe.draft_status !=", 1);
+    $this->db->where("pe.midterm_draft_status !=", 1);
     $midterm_staff = array_column($this->db->get()->result(), 'staff_id');
 
     // Staff with PDP at midterm (if relevant)
-    $this->db->select("staff_id")->from("ppa_entries");
-    $this->db->where_in("staff_id", $staff_ids);
-    $this->db->where("training_recommended", "Yes");
-    $this->db->where("draft_status !=", 1);
-    $this->db->where("midterm_draft_status !=", 1);
-    $this->db->where("performance_period", $period);
+    $this->db->select("pe.staff_id")->from("ppa_entries pe");
+    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.training_recommended", "Yes");
+    $this->db->where("pe.draft_status !=", 1);
+    $this->db->where("pe.midterm_draft_status !=", 1);
+    $this->db->where("pe.performance_period", $period);
     $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
 
+    // Calculate staff without midterms (active staff with PPAs but without midterms)
+    $this->db->select("pe.staff_id");
+    $this->db->from("ppa_entries pe");
+    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.performance_period", $period);
+    $this->db->where("pe.draft_status !=", 1);
+    $this->db->where("pe.midterm_draft_status !=", 1);
+    $ppa_with_midterm = array_column($this->db->get()->result(), 'staff_id');
+    
     // Periods list (midterm)
-    $this->db->distinct()->select("performance_period")->from("ppa_entries");
-    if ($is_restricted) $this->db->where("staff_id", $staff_id);
-    $this->db->order_by("created_at", "DESC");
+    $this->db->distinct()->select("pe.performance_period")->from("ppa_entries pe");
+    if ($is_restricted) $this->db->where("pe.staff_id", $staff_id);
+    $this->db->order_by("pe.created_at", "DESC");
     $periods = array_column($this->db->get()->result(), 'performance_period');
     $current_period = $periods[0] ?? $period;
 
