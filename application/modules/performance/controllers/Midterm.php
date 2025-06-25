@@ -436,22 +436,22 @@ public function approved_by_me()
         $data['type'] = $type;
         $data['module'] = "performance";
         if($type== 'total'){
-        $data['title'] = 'Total PPAs Submitted';
+        $data['title'] = 'Total  Midterms Submitted';
         }
         else  if($type== 'approved'){
-        $data['title'] = 'Staff PPAs Approved';
+        $data['title'] = 'Staff Midterms Approved';
 
         }
         else  if($type== 'with_pdp'){
             $data['title'] = 'Staff with PDPs';
     
         } else if($type=='without_ppa'){
-            $data['title'] = 'Staff without PPAs';
+            $data['title'] = 'Staff without Midterms';
         }
         // You can reuse your model to fetch based on type
         $data['staff_list'] = $this->midterm_mdl->get_staff_by_type($type, $division_id, $period);
 
-        render('staff_list',$data);
+        render('midterm_staff_list',$data);
     }
     public function all_ppas()
 {
