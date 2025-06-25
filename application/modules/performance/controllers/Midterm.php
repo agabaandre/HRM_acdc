@@ -75,11 +75,17 @@ class Midterm extends MX_Controller
     
         // Insert into approval trail only on submit
         if ($data['midterm_submit_action'] === 'submit') {
+            if($data['staff_id']==$user_id){
+                $action='Submited';
+            }
+            else{
+                $action='Updated';
+            }
             $this->db->insert('ppa_approval_trail_midterm', [
                 'entry_id'   => $entry_id,
                 'staff_id'   => $user_id,
                 'comments'   => $data['midterm_comments'] ?? '',
-                'action'     => 'Midterm Submitted',
+                'action'     => $action,
                 'type'       => 'MID-TERM REVIEW',
                 'created_at' => date('Y-m-d H:i:s')
             ]);
@@ -117,7 +123,7 @@ public function midterm_review($entry_id)
         $data['midppa'] = $this->midterm_mdl->get_plan_by_entry_id($entry_id);
 	
 		// Get approval logs if any
-		$data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
+		$data['approval_trail'] = $this->midterm_mdl->get_approval_trail($entry_id);
 	
 		render('midterm', $data);
 }
