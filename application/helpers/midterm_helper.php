@@ -26,9 +26,9 @@ if (!function_exists('show_midterm_approval_action')) {
         }
 
         // Logic to show Approve buttons or print options
-        if ($isSupervisor1 && $ppa->midterm_draft_status == 0 && in_array($last_action, ['Midterm Submitted', 'Midterm Updated'])) {
+        if ($isSupervisor1 && $ppa->midterm_draft_status == 0 && in_array($last_action, ['Submitted', 'Updated'])) {
             return 'show';
-        } elseif ($isSupervisor2 && $supervisor1Approved && $ppa->midterm_draft_status == 0 && $last_action === 'Midterm Approved' && !$supervisor2Approved) {
+        } elseif ($isSupervisor2 && $supervisor1Approved && $ppa->midterm_draft_status == 0 && $last_action === 'Approved' && !$supervisor2Approved) {
             return 'show';
         } elseif (
             ($supervisor1Approved && is_null($ppa->supervisor2_id)) ||

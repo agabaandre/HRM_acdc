@@ -26,7 +26,7 @@ $isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) 
 <input type="hidden" name="action" id="approval_action" value="">
 
 <div class="text-center">
-  <?= dd($midterm_exists.' '.$isSupervisor)?>
+  
   <?php if (
     $midterm_exists &&
     ((int)@$ppa->midterm_draft_status !== 2) &&
