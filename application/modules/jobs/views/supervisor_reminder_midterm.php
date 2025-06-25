@@ -105,7 +105,7 @@
                     <td><?= $i++ ?></td>
                     <td><?= $row->staff_name ?></td>
                     <td>
-                      <a href="<?php echo $_ENV['PRODUCTION_URL'].'performance/view_Midterm/' . $row->entry_id . '/' . $row->staff_id; ?>" class="btn" style="padding: 6px 12px;">Review</a>
+                      <a href="<?php echo $_ENV['PRODUCTION_URL'].'performance/midterm/midterm_review/' . $row->entry_id . '/' . $row->staff_id; ?>" class="btn" style="padding: 6px 12px;">Review</a>
                     </td>
                   </tr>
                 <?php endforeach; ?>
