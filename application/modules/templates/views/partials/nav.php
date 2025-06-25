@@ -119,7 +119,7 @@
                         <?php endif; ?>
 
                         <?php if (in_array('38', $permissions) && $midterm_exists) : ?>
-                            <li><a class="dropdown-item" href="<?= base_url("performance/recent_ppa/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current Midterm</a></li>
+                            <li><a class="dropdown-item" href="<?= base_url("performance/midterm/recent_midterm/{$ppa_entryid}/" . $this->session->userdata('user')->staff_id) ?>"><i class="bx bx-right-arrow-alt"></i>My Current Midterm</a></li>
                      <?php endif; ?>
                         
                         <?php if (in_array('82', $permissions)) : ?>
