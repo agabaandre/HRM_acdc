@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>PPA Update Notification</title>
+  <title>Midterm Review Update Notification</title>
   <style type="text/css">
     body {
       margin: 0;
@@ -47,9 +47,9 @@
       margin-top: 20px;
     }
     .btn:hover {
-    background-color: #005844; /* optional darker shade */
-    color: #ffffff !important; /* ensure text remains visible */
-    text-decoration: none;
+      background-color: #005844;
+      color: #ffffff !important;
+      text-decoration: none;
     }
     .footer {
       text-align: center;
@@ -70,22 +70,25 @@
 
     <!-- Main Content -->
     <div class="content">
-      <h1>Your PPA Has Been Updated</h1>
+      <h1>Your Midterm Review Has Been Updated</h1>
 
       <p>Dear <strong><?= $name ?></strong>,</p>
 
       <p>
-        We would like to inform you that your submitted PPA for the period: 
+        We would like to inform you that your submitted <strong>Midterm Review</strong> for the period 
         <strong><?= str_replace('-', ' ', $period); ?></strong> has been <strong>updated</strong> by your supervisor <strong><?= $supervisor_name ?></strong>.
       </p>
 
       <p>
-        These updates may include feedback, changes in objectives, KPIs, timelines, and trainings.
+        These updates may include scores, performance ratings, supervisor comments, and new or revised training recommendations.
       </p>
 
+      <p>
+        Please review the updated midterm to stay informed about your progress and development plan.
+      </p>
 
       <p>
-        <a href="<?= site_url('performance/view_ppa/' . $entry_id . '/' . $staff_id); ?>" class="btn">View Updated PPA</a>
+        <a href="<?= site_url('performance/midterm/midterm_review/' . $entry_id); ?>/<?= $staff_id ?>" class="btn">View Updated Midterm</a>
       </p>
 
       <p>

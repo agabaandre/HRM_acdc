@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>PPA Update Saved Notification</title>
+  <title>Midterm Review Update Saved Notification</title>
   <style type="text/css">
     body {
       margin: 0;
@@ -44,9 +44,9 @@
       margin-top: 15px;
     }
     .btn:hover {
-    background-color: #005844; /* optional darker shade */
-    color: #ffffff !important; /* ensure text remains visible */
-    text-decoration: none;
+      background-color: #005844;
+      color: #ffffff !important;
+      text-decoration: none;
     }
     .footer {
       text-align: center;
@@ -65,16 +65,16 @@
 
     <!-- Main Content -->
     <div class="content">
-      <h1>Confirmation PPA Changes</h1>
+      <h1>Midterm Review Changes Saved</h1>
 
       <p>Dear <strong><?= $supervisor_name ?></strong>,</p>
 
       <p>
-        This is to confirm that the updates you made to the PPA of
+        This is to confirm that the updates you made to the <strong>Midterm Review</strong> of
         <strong><?= $name ?></strong>, for the period: <strong><?= str_replace('-', ' ', $period); ?></strong>, have been successfully saved.
       </p>
 
-      <a href="<?= site_url('performance/view_ppa/' . $entry_id . '/' . $staff_id); ?>" class="btn" style="color:#fff !important;">View Updated PPA</a>
+      <a href="<?= site_url('performance/midterm/midterm_review/' . $entry_id . '/' . $staff_id); ?>" class="btn" style="color:#fff !important;">View Updated Midterm</a>
 
       <p>
         Best regards,<br>

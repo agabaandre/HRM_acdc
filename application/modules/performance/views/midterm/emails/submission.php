@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>PPA Submission Confirmation</title>
+    <title>Midterm Submission Confirmation</title>
     <style type="text/css">
       body {
         margin: 0;
@@ -44,9 +44,9 @@
         margin-top: 15px;
       }
       .btn:hover {
-      background-color: #005844; /* optional darker shade */
-      color: #ffffff !important; /* ensure text remains visible */
-      text-decoration: none;
+        background-color: #005844;
+        color: #ffffff !important;
+        text-decoration: none;
       }
       .footer {
         text-align: center;
@@ -65,18 +65,17 @@
 
       <!-- Main Content -->
       <div class="content">
-        <h1>PPA Submission Confirmed</h1>
+        <h1>Midterm Review Submitted</h1>
         <p>Dear <?= $name ?>,</p>
         <p>
-          This is to confirm that you have successfully submitted your PPA form for the performance period:
-          <strong><?= str_replace('-',' ',$period); ?></strong>.
+          This is to confirm that you have successfully submitted your <strong>Midterm Review</strong> for the performance period:
+          <strong><?= str_replace('-', ' ', $period); ?></strong>.
         </p>
         <p>
-          Your PPA has been forwarded to your supervisor for review. You will be notified once any actions are taken on your submission.
+          Your midterm review has been forwarded to your supervisor(s) for feedback. You will be notified once any updates or actions are made.
         </p>
 
-        <a href="<?= site_url('performance/view_ppa/' . $entry_id); ?>/<?=$staff_id?>" class="btn" style="color:#fff !important;">View Submitted PPA</a>
-
+        <a href="<?= site_url('performance/midterm/midterm_review/' . $entry_id); ?>/<?= $staff_id ?>" class="btn" style="color:#fff !important;">View Submitted Midterm</a>
 
         <p>
           Best regards,<br>
