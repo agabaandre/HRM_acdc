@@ -610,7 +610,7 @@ public function get_midterm_dashboard_data()
     $is_restricted = ($user && isset($user->role) && $user->role == 17);
     $staff_id = $is_restricted ? $user->staff_id : null;
 
-    // Get active staff
+    // Get active staff - use same logic as PPA dashboard
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
         ->from('staff_contracts')
         ->group_by('staff_id')
@@ -620,8 +620,8 @@ public function get_midterm_dashboard_data()
     $this->db->from('staff s');
     $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-    $this->db->where_in('sc.status_id', [1, 2, 3]);
-    $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
+    $this->db->where_in('sc.status_id', [1, 2]); // Active & Due (same as PPA dashboard)
+    $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD (same as PPA dashboard)
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
     $staff_ids = array_column($this->db->get()->result(), 'staff_id');
@@ -796,7 +796,7 @@ public function get_midterm_dashboard_data()
         'training_categories' => $training_categories,
         'training_skills' => $training_skills,
         'staff_count' => count($staff_ids),
-        'staff_without_midterms' => count($this->get_staff_without_midterm()),
+        'staff_without_midterms' => count($this->get_staff_without_midterm($period, $division_id)),
         'staff_with_pdps' => count($pdp_staff),
         'periods' => $periods,
         'current_period' => $current_period,
@@ -1012,7 +1012,7 @@ public function get_staff_without_midterm($period = null, $division_id = null)
     $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
     $this->db->where_in('sc.status_id', [1, 2]); // Active or Due
-    $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
+    $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD (same as PPA dashboard)
     $this->db->where("TRIM(s.work_email) !=", '');
     $this->db->where("TRIM(s.work_email) !=", 'xx%');
 
