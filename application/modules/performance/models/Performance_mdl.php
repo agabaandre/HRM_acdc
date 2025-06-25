@@ -403,6 +403,7 @@ public function get_approved_by_supervisor($supervisor_id)
 
 public function get_staff_by_type($type, $division_id = null, $period = null)
 {
+    // Get latest contract for each staff
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
         ->from('staff_contracts')
         ->group_by('staff_id')
@@ -432,11 +433,12 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
 
     switch ($type) {
         case 'total':
-            $this->db->select('staff_id, entry_id');
-            $this->db->from('ppa_entries');
-            if ($period) $this->db->where('performance_period', $period);
-            $this->db->where('draft_status !=', 1); 
-            $this->db->where_in('staff_id', $staff_ids);
+            // Staff who have submitted PPAs (not drafts)
+            $this->db->select('pe.staff_id, pe.entry_id');
+            $this->db->from('ppa_entries pe');
+            if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            $this->db->where_in('pe.staff_id', $staff_ids);
             $ppa_entries = $this->db->get()->result();
 
             $ppa_map = [];
@@ -453,6 +455,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             }, $active_staff));
 
         case 'approved':
+            // Staff whose PPAs have been approved
             $this->db->select('pe.staff_id, pe.entry_id');
             $this->db->from('ppa_entries pe');
             $this->db->join("(
@@ -481,12 +484,13 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             }, $active_staff));
 
         case 'with_pdp':
-            $this->db->select('staff_id, entry_id, required_skills');
-            $this->db->from('ppa_entries');
-            $this->db->where('training_recommended', 'Yes');
-            $this->db->where('draft_status !=', 1);
-            if ($period) $this->db->where('performance_period', $period);
-            $this->db->where_in('staff_id', $staff_ids);
+            // Staff who have training recommendations in their PPA
+            $this->db->select('pe.staff_id, pe.entry_id, pe.required_skills');
+            $this->db->from('ppa_entries pe');
+            $this->db->where('pe.training_recommended', 'Yes');
+            $this->db->where('pe.draft_status !=', 1); // PPA submitted
+            if ($period) $this->db->where('pe.performance_period', $period);
+            $this->db->where_in('pe.staff_id', $staff_ids);
             $pdp_entries = $this->db->get()->result();
 
             // Map skills
@@ -499,11 +503,13 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $pdp_map = [];
             foreach ($pdp_entries as $entry) {
                 $skill_ids = json_decode($entry->required_skills ?? '[]', true);
-                $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
-                $pdp_map[$entry->staff_id] = [
-                    'entry_id' => $entry->entry_id,
-                    'skills' => array_filter($skill_names)
-                ];
+                if (!empty($skill_ids)) {
+                    $skill_names = array_map(fn($id) => $skills_map[$id] ?? '', $skill_ids);
+                    $pdp_map[$entry->staff_id] = [
+                        'entry_id' => $entry->entry_id,
+                        'skills' => array_filter($skill_names)
+                    ];
+                }
             }
 
             return array_filter(array_map(function ($staff) use ($pdp_map) {
@@ -516,15 +522,15 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             }, $active_staff));
 
         case 'without_ppa':
-            $this->db->select('staff_id');
-            $this->db->from('ppa_entries');
-            if ($period) $this->db->where('performance_period', $period);
-            $this->db->where('draft_status !=', 1);
-            
-            $this->db->where_in('staff_id', $staff_ids);
-            $ppa_ids = array_column($this->db->get()->result(), 'staff_id');
-
-            return array_filter($active_staff, fn($s) => !in_array($s->staff_id, $ppa_ids));
+            // Staff who haven't submitted PPAs (active staff without PPA submissions)
+            return array_filter($active_staff, function ($staff) use ($staff_ids, $period) {
+                $this->db->select('staff_id');
+                $this->db->from('ppa_entries');
+                if ($period) $this->db->where('performance_period', $period);
+                $this->db->where('draft_status !=', 1); // PPA submitted
+                $this->db->where('staff_id', $staff->staff_id);
+                return $this->db->count_all_results() == 0;
+            });
 
         default:
             return [];
@@ -543,7 +549,7 @@ public function get_dashboard_data()
     $is_restricted = ($user && isset($user->role) && $user->role == 17);
     $staff_id = $is_restricted ? $user->staff_id : null;
 
-    // Get active staff
+    // Get active staff - use same logic as get_staff_by_type
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
         ->from('staff_contracts')
         ->group_by('staff_id')
@@ -553,12 +559,11 @@ public function get_dashboard_data()
     $this->db->from('staff s');
     $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
     $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
-    $this->db->where_in('sc.status_id', [1, 2, 3]);
-    $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
+    $this->db->where_in('sc.status_id', [1, 2]); // Active & Due (same as get_staff_by_type)
+    $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD (same as get_staff_by_type)
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
     $staff_ids = array_column($this->db->get()->result(), 'staff_id');
-    //dd($staff_ids);
     if (empty($staff_ids)) return [];
 
     // Summary counts
@@ -576,13 +581,13 @@ public function get_dashboard_data()
     $summary = $this->db->get()->row();
 
     // Submission trend
-    $this->db->select("DATE(created_at) AS date, COUNT(entry_id) AS count");
-    $this->db->from("ppa_entries");
-    $this->db->where('draft_status !=', 1);
-    $this->db->where_in("staff_id", $staff_ids);
-    $this->db->where("performance_period", $period);
-    $this->db->group_by("DATE(created_at)");
-    $this->db->order_by("DATE(created_at)", "ASC");
+    $this->db->select("DATE(pe.created_at) AS date, COUNT(pe.entry_id) AS count");
+    $this->db->from("ppa_entries pe");
+    $this->db->where('pe.draft_status !=', 1);
+    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.performance_period", $period);
+    $this->db->group_by("DATE(pe.created_at)");
+    $this->db->order_by("DATE(pe.created_at)", "ASC");
     $trend = array_map(function ($r) {
         return ['date' => $r->date, 'count' => (int)$r->count];
     }, $this->db->get()->result());
@@ -629,30 +634,29 @@ public function get_dashboard_data()
     $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
     $this->db->where("pe.draft_status !=", 1);
-
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("ct.contract_type_id");
     $by_contract = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
 
     // Staff with PPA
-    $this->db->select("staff_id")->from("ppa_entries");
-    $this->db->where_in("staff_id", $staff_ids);
-    $this->db->where("performance_period", $period);
-    $this->db->where("draft_status !=", 1);
+    $this->db->select("pe.staff_id")->from("ppa_entries pe");
+    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.performance_period", $period);
+    $this->db->where("pe.draft_status !=", 1);
     $ppa_staff = array_column($this->db->get()->result(), 'staff_id');
 
     // Staff with PDP
-    $this->db->select("staff_id")->from("ppa_entries");
-    $this->db->where_in("staff_id", $staff_ids);
-    $this->db->where("training_recommended", "Yes");
-    $this->db->where("draft_status !=", 1);
-    $this->db->where("performance_period", $period);
+    $this->db->select("pe.staff_id")->from("ppa_entries pe");
+    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->where("pe.training_recommended", "Yes");
+    $this->db->where("pe.draft_status !=", 1);
+    $this->db->where("pe.performance_period", $period);
     $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
 
     // Periods list
-    $this->db->distinct()->select("performance_period")->from("ppa_entries");
-    if ($is_restricted) $this->db->where("staff_id", $staff_id);
-    $this->db->order_by("created_at", "DESC");
+    $this->db->distinct()->select("pe.performance_period")->from("ppa_entries pe");
+    if ($is_restricted) $this->db->where("pe.staff_id", $staff_id);
+    $this->db->order_by("pe.created_at", "DESC");
     $periods = array_column($this->db->get()->result(), 'performance_period');
     $current_period = $periods[0] ?? $period;
 
@@ -670,6 +674,7 @@ public function get_dashboard_data()
         $this->db->join("staff s", "s.staff_id = pe.staff_id", "left");
         $this->db->where_in("pe.staff_id", $staff_ids);
         $this->db->where("pe.performance_period", $period);
+        $this->db->where("pe.draft_status !=", 1);
         if ($min !== null) $this->db->where("TIMESTAMPDIFF(YEAR, s.date_of_birth, CURDATE()) >=", $min);
         if ($max !== null) $this->db->where("TIMESTAMPDIFF(YEAR, s.date_of_birth, CURDATE()) <=", $max);
         $count = $this->db->count_all_results();
