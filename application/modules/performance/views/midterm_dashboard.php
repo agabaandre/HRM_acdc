@@ -129,7 +129,7 @@
         { label: 'Midterm Reviews', icon: 'fa-file-alt', color: '#911C39', value: data.total, type: 'total' },
         { label: 'Approved Midterm Reviews', icon: 'fa-check-circle', color: '#119A48', value: data.approved, type: 'approved' },
         { label: 'Staff with PDPs', icon: 'fa-user-check', color: '#385CAD', value: data.staff_with_pdps, type: 'with_pdp' },
-        { label: 'Staff Without Midterm Review', icon: 'fa-user-times', color: '#C3A366', value: data.staff_without_Midterms, type: 'without_ppa' }
+        { label: 'Staff Without Midterm Review', icon: 'fa-user-times', color: '#C3A366', value: data.staff_without_midterms, type: 'without_ppa' }
       ];
 
       $('#summaryCards').html(cards.map(card => `
