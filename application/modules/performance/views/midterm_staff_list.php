@@ -41,7 +41,7 @@
                 <?php endif; ?>
                 <td class="text-center">
                   <?php if (!empty($staff->entry_id)): ?>
-                    <a href="<?= base_url('performance/view_ppa/' . $staff->entry_id . '/' . $staff->staff_id) ?>"
+                    <a href="<?= base_url('performance/midterm/midterm_review/' . $staff->entry_id . '/' . $staff->staff_id) ?>"
                        class="btn btn-sm btn-outline-primary" target="_blank">
                       <i class="fa fa-eye"></i> View Midterm
                     </a>
