@@ -124,6 +124,7 @@
                         
                         <?php if (in_array('82', $permissions)) : ?>
                             <li><a class="dropdown-item" href="<?= base_url('performance/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>PPA Dashboard</a></li>
+                            <li><a class="dropdown-item" href="<?= base_url('performance/midterm/ppa_dashboard') ?>"><i class="bx bx-right-arrow-alt"></i>Midterm Dashboard</a></li>
                             <li><a class="dropdown-item" href="<?= base_url('performance/all_ppas') ?>"><i class="bx bx-right-arrow-alt"></i>All PPAs Status</a></li>
                         <?php endif; ?>
 

@@ -371,14 +371,14 @@ class Performance extends MX_Controller
             $data['subject'] = "PPA Status Update " . date('Y-m-d H:i:s');
             $data['status'] = $data['status'] ?? 'Pending';
             $data['body'] = $this->load->view('emails/super_ppa_changes', $data, true);
-            $data['email_to'] = $staff_email . ';' . settings()->email;
+            $data['email_to'] = $supervisor_email . ';' . settings()->email;
     
             golobal_log_email(
                 $trigger_name,
                 $data['email_to'],
                 $data['body'],
                 $data['subject'],
-                $staff_id,
+                $supervisor_id,
                 date('Y-m-d'),
                 $dispatch,
                 $entry_log_id

@@ -1146,6 +1146,24 @@ if (!function_exists('days_to_ppa_deadline')) {
     }
 }
 
+if (!function_exists('days_to_midterm_deadline')) {
+    function days_to_midterm_deadline()
+    {
+        $CI = &get_instance();
+        $deadline_row = $CI->db->select('mid_term_deadline')->get('ppa_configs')->row();
+
+        if (!$deadline_row || empty($deadline_row->mid_term_deadline)) {
+            return null; // or return a default value if preferred
+        }
+
+        $deadline = new DateTime($deadline_row->mid_term_deadline);
+        $today = new DateTime();
+
+        // Returns signed difference in days: positive if future, negative if past
+        return (int) $today->diff($deadline)->format('%r%a');
+    }
+}
+
 function is_unit_lead($staff_id){
     $CI =& get_instance();
         $query = $CI->db

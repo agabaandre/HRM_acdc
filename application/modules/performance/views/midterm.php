@@ -71,7 +71,8 @@ if (!isset($midppa) || empty($midppa)) {
 
 
 // ✅ FIXED: define before usage
-$showApprovalBtns = show_midterm_approval_action(@$ppa, @$approval_trail, $session);
+$showApprovalBtns = show_midterm_approval_action(@$midppa, @$approval_trail, $session);
+//dd($showApprovalBtns);
 
 $selected_skills = is_string($ppa->required_skills ?? null) ? json_decode($ppa->required_skills, true) : ($ppa->required_skills ?? []);
 $objectives_raw = $ppa->objectives ?? [];
@@ -98,7 +99,7 @@ if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 <hr>
 
 <!-- SECTION C: APPRAISER'S COMMENTS -->
-<?php $this->load->view('performance/midterm/midterm_section_c', compact('ppa', 'readonly','midreadonly')); ?>
+<?php $this->load->view('performance/midterm/midterm_section_c', compact('ppa', 'readonly','midreadonly','isSupervisor')); ?>
 <hr>
 
 <!-- SECTION D: AU COMPETENCIES -->

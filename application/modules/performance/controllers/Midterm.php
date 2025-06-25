@@ -91,7 +91,9 @@ class Midterm extends MX_Controller
             ]);
     
             $save_data['type'] = 'midterm_submission';
+            $save_data['entry_id'] =$entry_id;
             $save_data['staff_id'] = $staff_id;
+            $save_data['supervisor_id'] = $data['supervisor_id'];
             $this->notify_ppa_status($save_data);
         }
     
@@ -114,7 +116,7 @@ public function midterm_review($entry_id)
 	
 		// Load dependencies
 		$data['module'] = $this->module;
-		$data['title'] = "Mid Term Review - " . staff_name($this->uri->segment(4));
+		$data['title'] = "Midterm Review - " . staff_name($this->uri->segment(4));
 		$data['skills'] = $this->db->get('training_skills')->result();
 	
 		// Get saved PPA form
@@ -175,8 +177,8 @@ public function midterm_review($entry_id)
 		// If returned, update the draft status
 		if ($action === 'return') {
 			$this->db->where('entry_id', $entry_id)->update('ppa_entries', [
-				'draft_status' => 1,
-				'updated_at'   => date('Y-m-d H:i:s')
+				'midterm_draft_status' => 1,
+				'midterm_updated_at'   => date('Y-m-d H:i:s')
 			]);
        
 
@@ -185,8 +187,8 @@ public function midterm_review($entry_id)
 		}
         else if ($action === 'approve') {
 			$this->db->where('entry_id', $entry_id)->update('ppa_entries', [
-				'draft_status' => 2,
-				'updated_at'   => date('Y-m-d H:i:s')
+				'midterm_draft_status' => 2,
+				'midterm_updated_at'   => date('Y-m-d H:i:s')
 			]);
 
             $log_message = "Approved PPA entry [{$entry_id}] for staff ID [{$staffno}] , [{$name}]";
@@ -216,6 +218,8 @@ public function midterm_review($entry_id)
     public function notify_ppa_status($data)
     {
         // This is the staff whose PPA it is (PPA owner)
+
+       // dd($data);
         $staff_id = $data['staff_id'];
         $entry_id = $data['entry_id'];
         $supervisor_id = $data['supervisor_id'];
@@ -237,7 +241,7 @@ public function midterm_review($entry_id)
         $data['ppa'] = $ppa;
     
         // Handle submission notifications
-        if ($data['type'] === 'submission') {
+        if ($data['type'] === 'midterm_submission') {
             $entry_log_id = md5($staff_id . '-MIDTERM-' . date('Y-m-d'));
             if($staff_id == $this->session->userdata('user')->staff_id){
                $subject = "Midterm Review Submission Confirmation " . date('Y-m-d H:i:s');
@@ -326,17 +330,17 @@ public function midterm_review($entry_id)
         // Handle status update notifications to staff
         if ($data['type'] === 'status_update') {
             $entry_log_id = md5($staff_id . '-MIDTERMST-' . date('Y-m-d'));
-            $data['subject'] = "PPA Status Update " . date('Y-m-d H:i:s');
+            $data['subject'] = "Midterm Status Update " . date('Y-m-d H:i:s');
             $data['status'] = $data['status'] ?? 'Pending';
-            $data['body'] = $this->load->view('emails/super_ppa_changes', $data, true);
-            $data['email_to'] = $staff_email . ';' . settings()->email;
+            $data['body'] = $this->load->view('midterm/emails/super_ppa_changes', $data, true);
+            $data['email_to'] =$supervisor_email . ';' . settings()->email;
     
             golobal_log_email(
                 $trigger_name,
                 $data['email_to'],
                 $data['body'],
                 $data['subject'],
-                $staff_id,
+                $supervisor_id,
                 date('Y-m-d'),
                 $dispatch,
                 $entry_log_id
@@ -374,54 +378,50 @@ public function approved_by_me()
 
     render('approved_by_me_midterm', $data);
 }
-public function print_midterm($entry_id,$staff_id,$staff_contract_id,$approval_trail=FALSE)
-    {
-        $this->load->model('performance_mdl', 'per_mdl');
 
-
-        $data['module'] = "performance";
-        $data['title'] = "Printable PPA";
-        $data['skills'] = $this->db->get('training_skills')->result();
-        $data['ppa'] = $this->per_mdl->get_plan_by_entry_id($entry_id);
-		//dd($data['ppa']);
-        $data['approval_trail'] = $this->per_mdl->get_approval_trail($entry_id);
-		$data['staff_id'] = $staff_id;
-
-        // Get contract and supervisor info
-        $data['contract'] = $this->ppa_contract($staff_contract_id);
-        $data['readonly'] = true;
-		$file_name= staff_name($staff_id).'_'.$data['ppa']->performance_period.'_PPA.pdf';
-
-        pdf_print_data($data, $file_name, 'P', 'performance/staff_ppa_print');
-    }
 
 
     
+        /**
+         * Show the Midterm Dashboard page.
+         */
         public function ppa_dashboard()
         {
             $data['module'] = "performance";
-            $data['title'] = "PPA Dashboard";
+            $data['title'] = "Midterm Dashboard";
+            // Get divisions list, cache for 2 minutes
             $data['divisions'] = cache_list('divisions', function () {
                 return $this->db->order_by('division_name')->get('divisions')->result();
             }, 120);
-            render('ppa_dashboard', $data);
+
+            render('midterm_dashboard', $data);
         }
+
+        /**
+         * Fetch data for the Midterm Dashboard (AJAX endpoint).
+         */
         public function fetch_ppa_dashboard_data()
         {
             $division_id = $this->input->get('division_id');
             $period = $this->input->get('period');
             $user = $this->session->userdata('user');
-        
+
+            // Restrict to staff if user is a staff member (role 17)
             $is_restricted = ($user && isset($user->role) && $user->role == 17);
             $staff_id = $is_restricted ? $user->staff_id : null;
-        
-            $cache_key = 'ppa_dashboard_' . ($division_id ?: 'all') . '_' . ($period ?: 'current') . ($staff_id ? "_staff_$staff_id" : '');
-        
+
+            $cache_key = 'midterm_dashboard_' . ($division_id ?: 'all') . '_' . ($period ?: 'current') . ($staff_id ? "_staff_$staff_id" : '');
+
+            // You can enable caching here if desired:
             // $data = cache_list($cache_key, function () use ($division_id, $period, $staff_id) {
-            //     return 
-            // }, 300); // Cache for 5 minutes
-            $data =  $this->per_mdl->get_dashboard_data($division_id, $period, $staff_id);
-        
+            //     return $this->midterm_mdl->get_dashboard_data($division_id, $period, $staff_id);
+            // }, 300);
+
+            // For now, always fetch fresh data
+            $data = $this->midterm_mdl->get_midterm_dashboard_data($division_id, $period, $staff_id);
+
+            // Output as JSON for the dashboard JS
+            header('Content-Type: application/json');
             echo json_encode($data);
         }
         
@@ -449,7 +449,7 @@ public function print_midterm($entry_id,$staff_id,$staff_contract_id,$approval_t
             $data['title'] = 'Staff without PPAs';
         }
         // You can reuse your model to fetch based on type
-        $data['staff_list'] = $this->per_mdl->get_staff_by_type($type, $division_id, $period);
+        $data['staff_list'] = $this->midterm_mdl->get_staff_by_type($type, $division_id, $period);
 
         render('staff_list',$data);
     }
@@ -509,7 +509,30 @@ public function ppa_contract($contract_id){
     return $data;
   }
 
-   
+  public function print_ppa($entry_id,$staff_id,$staff_contract_id,$approval_trail=FALSE)
+  {
+      $this->load->model('performance_mdl', 'per_mdl');
+
+
+      $data['module'] = "performance";
+      $data['title'] = "Printable PPA";
+      $data['skills'] = $this->db->get('training_skills')->result();
+    // Get saved PPA form
+	  $data['ppa'] = $this->per_mdl->get_plan_by_entry_id($entry_id);
+
+      $data['midppa'] = $this->midterm_mdl->get_plan_by_entry_id($entry_id);
+	
+		// Get approval logs if any
+	  $data['approval_trail'] = $this->midterm_mdl->get_approval_trail($entry_id);
+      $data['staff_id'] = $staff_id;
+
+      // Get contract and supervisor info
+      $data['contract'] = $this->ppa_contract($staff_contract_id);
+      $data['readonly'] = true;
+      $file_name= staff_name($staff_id).'_'.$data['ppa']->performance_period.'_Midterm.pdf';
+
+      pdf_print_data($data, $file_name, 'P', 'performance/staff_midterm_print');
+  }
 
  
     
