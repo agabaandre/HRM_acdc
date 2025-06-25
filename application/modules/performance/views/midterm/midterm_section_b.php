@@ -1,12 +1,43 @@
 <?php
 $objectives = [];
-if (!empty($ppa->midterm_objectives)) {
-    $objectives = is_string($ppa->midterm_objectives) ? json_decode($ppa->midterm_objectives, true) : $ppa->midterm_objectives;
-} elseif (!empty($ppa->objectives)) {
-    $objectives = is_string($ppa->objectives) ? json_decode($ppa->objectives, true) : $ppa->objectives;
+// dd($ppa->entry_id);
+@$ppaIsapproved = $this->per_mdl->isapproved($ppa->entry_id);
+//check if midterm exists
+
+$midterm_exists = $this->per_mdl->ismidterm_available($ppa->entry_id);
+
+//dd($midterm_exists);
+if ($midterm_exists) {
+  //dd($ppa->midterm_objectives);
+  if (is_string($ppa->midterm_objectives)) {
+    $objectives = json_decode($ppa->midterm_objectives, true);
+
+  } elseif (is_object($ppa->midterm_objectives)) {
+    // Already decoded as stdClass, convert to array
+    $objectives = json_decode(json_encode($ppa->midterm_objectives), true);
+
+  } else {
+    // Fallback for other types (e.g., already array or null)
+    $objectives = [];
+ }
+  
+   
+} else{
+ 
+    if (is_string($ppa->objectives)) {
+        $objectives = json_decode($ppa->objectives, true);
+
+    } elseif (is_object($ppa->objectives)) {
+        // Already decoded as stdClass, convert to array
+        $objectives = json_decode(json_encode($ppa->objectives), true);
+
+    } else {
+        // Fallback for other types (e.g., already array or null)
+        $objectives = [];
+    }
+
 }
 
-if (!is_array($objectives)) $objectives = [];
 ?>
 
 <h4 class="mt-4">B. Review of Performance Objectives</h4>
@@ -22,7 +53,7 @@ if (!is_array($objectives)) $objectives = [];
         <th>Deliverables & KPIs</th>
         <th>Weight (%)</th>
         <th>Staff Self Appraisal</th>
-        <th>Appraiser's Rating</th>
+        <th>Appraiser’s Rating</th>
       </tr>
     </thead>
     <tbody id="objectives-table-body">
