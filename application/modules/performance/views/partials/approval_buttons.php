@@ -2,14 +2,14 @@
 $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && in_array('83', $permissions));
 $isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) @$ppa->supervisor2_id]);
 
-$hasMidtermObjectives = false;
-if (!empty($ppa->midterm_objectives)) {
-  $decoded = is_string($ppa->midterm_objectives)
-    ? json_decode($ppa->midterm_objectives, true)
-    : (is_array($ppa->midterm_objectives) ? $ppa->midterm_objectives : []);
-  $hasMidtermObjectives = is_array($decoded) && count($decoded) > 0;
-}
-?>
+// $hasMidtermObjectives = false;
+// if (!empty($ppa->midterm_objectives)) {
+//   $decoded = is_string($ppa->midterm_objectives)
+//     ? json_decode($ppa->midterm_objectives, true)
+//     : (is_array($ppa->midterm_objectives) ? $ppa->midterm_objectives : []);
+//   $hasMidtermObjectives = is_array($decoded) && count($decoded) > 0;
+// }
+// ?>
 
 <?php echo form_open('performance/midterm/approve_ppa/' . $ppa->entry_id, [
   'method' => 'post',
@@ -27,7 +27,7 @@ if (!empty($ppa->midterm_objectives)) {
 
 <div class="text-center">
   <?php if (
-    $hasMidtermObjectives &&
+    $midterm_exists &&
     ((int)@$ppa->midterm_draft_status !== 2) &&
     $isSupervisor
   ): ?>
@@ -37,7 +37,7 @@ if (!empty($ppa->midterm_objectives)) {
     </button>
   <?php endif; ?>
 
-  <?php if ($hasMidtermObjectives && $status): ?>
+  <?php if ($midterm_exists && $status): ?>
     <button type="button" class="btn btn-danger px-5" data-bs-toggle="modal"
             data-bs-target="#confirmReturnModal_midterm_<?= $ppa->entry_id ?>">
       Return
