@@ -238,13 +238,13 @@ public function midterm_review($entry_id)
     
         // Handle submission notifications
         if ($data['type'] === 'submission') {
-            $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
+            $entry_log_id = md5($staff_id . '-MIDTERM-' . date('Y-m-d'));
             if($staff_id == $this->session->userdata('user')->staff_id){
-               $subject = "PPA Submission Confirmation " . date('Y-m-d H:i:s');
+               $subject = "Midterm Review Submission Confirmation " . date('Y-m-d H:i:s');
                $staff_data = array_merge($data, [
                 'subject' => $subject,
                 'email_to' => $staff_email . ';' . settings()->email,
-                'body' => $this->load->view('emails/submission', $data, true),
+                'body' => $this->load->view('midterm/emails/submission', $data, true),
             ]);
             golobal_log_email(
                 $trigger_name,
@@ -258,11 +258,11 @@ public function midterm_review($entry_id)
             );
             }
             else{
-             $subject ="PPA Details Update Notification " . date('Y-m-d H:i:s');
+             $subject ="Midterm Review Details Update Notification " . date('Y-m-d H:i:s');
              $staff_data = array_merge($data, [
                 'subject' => $subject,
                 'email_to' => $staff_email . ';' . settings()->email,
-                'body' => $this->load->view('emails/notify_changes', $data, true),
+                'body' => $this->load->view('midterm/emails/notify_changes', $data, true),
             ]);
 
             golobal_log_email(
@@ -285,9 +285,9 @@ public function midterm_review($entry_id)
             if($staff_id == $this->session->userdata('user')->staff_id){
             // 1. Notify supervisor
             $supervisor_data = array_merge($data, [
-                'subject' => "PPA Submission Notification " . date('Y-m-d H:i:s'),
+                'subject' => "Midterm Review Submission Notification " . date('Y-m-d H:i:s'),
                 'email_to' => $supervisor_email . ';' . settings()->email,
-                'body' => $this->load->view('emails/supervisor_ppa', $data, true),
+                'body' => $this->load->view('midterm/emails/supervisor_ppa', $data, true),
             ]);
     
             golobal_log_email(
@@ -304,9 +304,9 @@ public function midterm_review($entry_id)
         else{
              // 2. Notify supervisor on changes
              $supervisor_data = array_merge($data, [
-                'subject' => "PPA Details Update Notification " . date('Y-m-d H:i:s'),
+                'subject' => "Midterm Review Details Update Notification " . date('Y-m-d H:i:s'),
                 'email_to' => $supervisor_email . ';' . settings()->email,
-                'body' => $this->load->view('emails/supervisor_ppa', $data, true),
+                'body' => $this->load->view('midterm/emails/supervisor_ppa', $data, true),
             ]);
     
             golobal_log_email(
@@ -325,7 +325,7 @@ public function midterm_review($entry_id)
     
         // Handle status update notifications to staff
         if ($data['type'] === 'status_update') {
-            $entry_log_id = md5($staff_id . '-PPAST-' . date('Y-m-d'));
+            $entry_log_id = md5($staff_id . '-MIDTERMST-' . date('Y-m-d'));
             $data['subject'] = "PPA Status Update " . date('Y-m-d H:i:s');
             $data['status'] = $data['status'] ?? 'Pending';
             $data['body'] = $this->load->view('emails/super_ppa_changes', $data, true);
