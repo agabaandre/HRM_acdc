@@ -29,7 +29,7 @@ $ppa_entryid = md5($staff_id . '_' . str_replace(' ', '', $current_period));
 
         <?php if (in_array('38', $permissions) && $ppa_exists) : ?>
             <li class="nav-item" role="presentation">
-                <a class="nav-link <?php if ($this->uri->segment(3) == 'recent_midterm') echo 'active'; ?>" href="<?= base_url('performance/midterm/recent_midterm/' . $ppa_entryid . '/' . $this->session->userdata('user')->staff_id); ?>">
+                <a class="nav-link <?php if (($this->uri->segment(3) == 'recent_midterm')|| ($this->uri->segment(3) == 'midterm_review')) echo 'active'; ?>" href="<?= base_url('performance/midterm/recent_midterm/' . $ppa_entryid . '/' . $this->session->userdata('user')->staff_id); ?>">
                     <i class="bx bx-file"></i> Current Midterm
                 </a>
             </li>
