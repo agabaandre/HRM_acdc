@@ -449,6 +449,7 @@ public function get_approved_by_supervisor($supervisor_id)
 
 public function get_staff_by_type($type, $division_id = null, $period = null)
 {
+    // Get latest contract for each staff
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
         ->from('staff_contracts')
         ->group_by('staff_id')
@@ -481,7 +482,8 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->select('staff_id, entry_id');
             $this->db->from('ppa_entries');
             if ($period) $this->db->where('performance_period', $period);
-            $this->db->where('draft_status !=', 1); 
+            $this->db->where('draft_status !=', 1);
+            $this->db->where('midterm_draft_status !=', 1);
             $this->db->where_in('staff_id', $staff_ids);
             $ppa_entries = $this->db->get()->result();
 
@@ -503,12 +505,13 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->from('ppa_entries pe');
             $this->db->join("(
                 SELECT entry_id, MAX(id) AS max_id
-                FROM ppa_approval_trail
+                FROM ppa_approval_trail_midterm
                 GROUP BY entry_id
             ) latest", "latest.entry_id = pe.entry_id");
-            $this->db->join("ppa_approval_trail pat", "pat.id = latest.max_id");
+            $this->db->join("ppa_approval_trail_midterm pat", "pat.id = latest.max_id");
             $this->db->where('pat.action', 'Approved');
             $this->db->where('pe.draft_status !=', 1);
+            $this->db->where('pe.midterm_draft_status !=', 1);
             if ($period) $this->db->where('pe.performance_period', $period);
             $this->db->where_in('pe.staff_id', $staff_ids);
             $approved_entries = $this->db->get()->result();
@@ -531,6 +534,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->from('ppa_entries');
             $this->db->where('training_recommended', 'Yes');
             $this->db->where('draft_status !=', 1);
+            $this->db->where('midterm_draft_status !=', 1);
             if ($period) $this->db->where('performance_period', $period);
             $this->db->where_in('staff_id', $staff_ids);
             $pdp_entries = $this->db->get()->result();
@@ -566,7 +570,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->from('ppa_entries');
             if ($period) $this->db->where('performance_period', $period);
             $this->db->where('draft_status !=', 1);
-            
+            $this->db->where('midterm_draft_status !=', 1);
             $this->db->where_in('staff_id', $staff_ids);
             $ppa_ids = array_column($this->db->get()->result(), 'staff_id');
 
@@ -578,7 +582,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
 }
 
 
-public function get_dashboard_data()
+public function get_midterm_dashboard_data()
 {
     $division_id = $this->input->get('division_id');
     $period = $this->input->get('period');
@@ -604,43 +608,45 @@ public function get_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('s.staff_id', $staff_id);
     $staff_ids = array_column($this->db->get()->result(), 'staff_id');
-    //dd($staff_ids);
     if (empty($staff_ids)) return [];
 
-    // Summary counts
+    // Summary counts for midterm
     $this->db->select("
         COUNT(pe.entry_id) AS total,
         SUM(CASE WHEN latest.action = 'Approved' THEN 1 ELSE 0 END) AS approved,
         SUM(CASE WHEN latest.action = 'Submitted' THEN 1 ELSE 0 END) AS submitted", false);
     $this->db->from('ppa_entries pe');
-    $this->db->join("(SELECT pat1.* FROM ppa_approval_trail pat1
-        INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail GROUP BY entry_id) latest
+    $this->db->join("(SELECT pat1.* FROM ppa_approval_trail_midterm pat1
+        INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail_midterm GROUP BY entry_id) latest
         ON pat1.id = latest.max_id) latest", 'latest.entry_id = pe.entry_id', 'left');
     $this->db->where_in('pe.staff_id', $staff_ids);
     $this->db->where('pe.draft_status !=', 1);
     $this->db->where('pe.performance_period', $period);
+    $this->db->where('pe.midterm_draft_status !=', 1);
     $summary = $this->db->get()->row();
 
-    // Submission trend
-    $this->db->select("DATE(created_at) AS date, COUNT(entry_id) AS count");
+    // Submission trend for midterm
+    $this->db->select("DATE(midterm_updated_at) AS date, COUNT(entry_id) AS count");
     $this->db->from("ppa_entries");
     $this->db->where('draft_status !=', 1);
+    $this->db->where('midterm_draft_status !=', 1);
     $this->db->where_in("staff_id", $staff_ids);
     $this->db->where("performance_period", $period);
-    $this->db->group_by("DATE(created_at)");
-    $this->db->order_by("DATE(created_at)", "ASC");
+    $this->db->group_by("DATE(midterm_updated_at)");
+    $this->db->order_by("DATE(midterm_updated_at)", "ASC");
     $trend = array_map(function ($r) {
         return ['date' => $r->date, 'count' => (int)$r->count];
     }, $this->db->get()->result());
 
-    // Average approval time
-    $this->db->select("pe.created_at AS submitted_date, latest.created_at AS approved_date");
+    // Average approval time for midterm
+    $this->db->select("pe.midterm_updated_at AS submitted_date, latest.created_at AS approved_date");
     $this->db->from("ppa_entries pe");
-    $this->db->join("(SELECT pat1.* FROM ppa_approval_trail pat1
-        INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail WHERE action = 'Approved' GROUP BY entry_id) latest
+    $this->db->join("(SELECT pat1.* FROM ppa_approval_trail_midterm pat1
+        INNER JOIN (SELECT entry_id, MAX(id) AS max_id FROM ppa_approval_trail_midterm WHERE action = 'Approved' GROUP BY entry_id) latest
         ON pat1.id = latest.max_id) latest", "latest.entry_id = pe.entry_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
     $this->db->where("pe.draft_status !=", 1);
+    $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $approvals = $this->db->get()->result();
 
@@ -655,7 +661,7 @@ public function get_dashboard_data()
     }
     $avg_days = $count ? round($total_days / $count, 1) : 0;
 
-    // Division-wise PPA count
+    // Division-wise midterm count
     $this->db->select("d.division_name, COUNT(pe.entry_id) AS count");
     $this->db->from("ppa_entries pe");
     $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
@@ -663,11 +669,12 @@ public function get_dashboard_data()
     $this->db->join("divisions d", "d.division_id = sc.division_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
     $this->db->where("pe.draft_status !=", 1);
+    $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("sc.division_id");
     $divisions = array_map(fn($r) => ['name' => $r->division_name, 'y' => (int)$r->count], $this->db->get()->result());
 
-    // Contract types (based on latest contract only)
+    // Contract types (based on latest contract only) for midterm
     $this->db->select("ct.contract_type, COUNT(pe.entry_id) AS total");
     $this->db->from("ppa_entries pe");
     $this->db->join("staff_contracts sc", "sc.staff_id = pe.staff_id", "left");
@@ -675,34 +682,36 @@ public function get_dashboard_data()
     $this->db->join("contract_types ct", "ct.contract_type_id = sc.contract_type_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
     $this->db->where("pe.draft_status !=", 1);
-
+    $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("ct.contract_type_id");
     $by_contract = array_map(fn($r) => ['name' => $r->contract_type, 'y' => (int)$r->total], $this->db->get()->result());
 
-    // Staff with PPA
+    // Staff with midterm
     $this->db->select("staff_id")->from("ppa_entries");
     $this->db->where_in("staff_id", $staff_ids);
     $this->db->where("performance_period", $period);
     $this->db->where("draft_status !=", 1);
-    $ppa_staff = array_column($this->db->get()->result(), 'staff_id');
+    $this->db->where("midterm_draft_status !=", 1);
+    $midterm_staff = array_column($this->db->get()->result(), 'staff_id');
 
-    // Staff with PDP
+    // Staff with PDP at midterm (if relevant)
     $this->db->select("staff_id")->from("ppa_entries");
     $this->db->where_in("staff_id", $staff_ids);
     $this->db->where("training_recommended", "Yes");
     $this->db->where("draft_status !=", 1);
+    $this->db->where("midterm_draft_status !=", 1);
     $this->db->where("performance_period", $period);
     $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
 
-    // Periods list
+    // Periods list (midterm)
     $this->db->distinct()->select("performance_period")->from("ppa_entries");
     if ($is_restricted) $this->db->where("staff_id", $staff_id);
     $this->db->order_by("created_at", "DESC");
     $periods = array_column($this->db->get()->result(), 'performance_period');
     $current_period = $periods[0] ?? $period;
 
-    // Age groups
+    // Age groups for midterm
     $age_groups = [
         'Under 30' => [null, 29],
         '30 - 39' => [30, 39],
@@ -716,29 +725,33 @@ public function get_dashboard_data()
         $this->db->join("staff s", "s.staff_id = pe.staff_id", "left");
         $this->db->where_in("pe.staff_id", $staff_ids);
         $this->db->where("pe.performance_period", $period);
+        $this->db->where("pe.draft_status !=", 1);
+        $this->db->where("pe.midterm_draft_status !=", 1);
         if ($min !== null) $this->db->where("TIMESTAMPDIFF(YEAR, s.date_of_birth, CURDATE()) >=", $min);
         if ($max !== null) $this->db->where("TIMESTAMPDIFF(YEAR, s.date_of_birth, CURDATE()) <=", $max);
         $count = $this->db->count_all_results();
         $age_data[] = ['group' => $label, 'count' => $count];
     }
 
-    // Training categories
+    // Training categories for midterm
     $this->db->select("tc.category_name AS name, COUNT(*) AS y", false);
     $this->db->from("ppa_entries pe");
     $this->db->join("training_skills ts", "JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), '$')", "inner", false);
     $this->db->join("training_categories tc", "tc.id = ts.category_id", "left");
     $this->db->where_in("pe.staff_id", $staff_ids);
     $this->db->where("pe.draft_status !=", 1);
+    $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("ts.category_id");
     $training_categories = $this->db->get()->result();
 
-    // Top 10 training skills
+    // Top 10 training skills for midterm
     $this->db->select("ts.skill AS name, COUNT(*) AS y", false);
     $this->db->from("ppa_entries pe");
     $this->db->join("training_skills ts", "JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), '$')", "inner", false);
     $this->db->where_in("pe.staff_id", $staff_ids);
     $this->db->where("pe.draft_status !=", 1);
+    $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
     $this->db->group_by("ts.id");
     $this->db->order_by("y DESC");
@@ -757,7 +770,7 @@ public function get_dashboard_data()
         'training_categories' => $training_categories,
         'training_skills' => $training_skills,
         'staff_count' => count($staff_ids),
-        'staff_without_ppas' => count($staff_ids) - count($ppa_staff),
+        'staff_without_midterms' => count($this->get_staff_without_midterm()),
         'staff_with_pdps' => count($pdp_staff),
         'periods' => $periods,
         'current_period' => $current_period,
@@ -768,7 +781,7 @@ public function get_dashboard_data()
 
 
 
-public function get_supervisors_with_pending_ppas($period)
+public function get_supervisors_with_pending_midterms($period)
 {
     $sql = "
         SELECT 
@@ -781,9 +794,10 @@ public function get_supervisors_with_pending_ppas($period)
         JOIN ppa_entries p 
             ON s.staff_id = p.supervisor_id OR s.staff_id = p.supervisor2_id
         WHERE p.performance_period = ?
-        AND p.draft_status = 0
+        AND p.midterm_draft_status = 0
+        AND p.midterm_sign_off = 1
         AND p.entry_id NOT IN (
-            SELECT entry_id FROM ppa_approval_trail WHERE action = 'Approved'
+            SELECT entry_id FROM ppa_approval_trail_midterm WHERE action = 'Approved'
         )
         ORDER BY s.fname ASC
     ";
@@ -793,8 +807,9 @@ public function get_supervisors_with_pending_ppas($period)
 
 public function get_pending_by_supervisor_with_staff($supervisor_id)
 {
+    // Subquery: entries that have been approved in the midterm approval trail
     $subquery = $this->db->select('entry_id')
-        ->from('ppa_approval_trail')
+        ->from('ppa_approval_trail_midterm')
         ->where('action', 'Approved')
         ->get_compiled_select();
 
@@ -803,7 +818,7 @@ public function get_pending_by_supervisor_with_staff($supervisor_id)
         p.staff_id,
         CONCAT(s.title, ' ', s.fname, ' ', s.lname) AS staff_name,
         p.performance_period,
-        p.created_at
+        p.midterm_updated_at AS created_at
     ");
     $this->db->from('ppa_entries p');
     $this->db->join('staff s', 's.staff_id = p.staff_id', 'left');
@@ -811,9 +826,10 @@ public function get_pending_by_supervisor_with_staff($supervisor_id)
              ->where('p.supervisor_id', $supervisor_id)
              ->or_where('p.supervisor2_id', $supervisor_id)
              ->group_end();
-    $this->db->where('p.draft_status', 0);
+    $this->db->where('p.midterm_draft_status', 0);
+    $this->db->where('p.midterm_sign_off', 1);
     $this->db->where("p.entry_id NOT IN ($subquery)", null, false);
-    $this->db->order_by("p.created_at", "DESC");
+    $this->db->order_by("p.midterm_updated_at", "DESC");
 
     return $this->db->get()->result();
 }
@@ -945,7 +961,13 @@ public function count_ppas_filtered($filters)
     return count($this->get_all_ppas_filtered($filters, 0, 0));
 }
 
-public function get_staff_without_ppa($period = null, $division_id = null)
+/**
+ * Returns staff who have submitted a PPA for the given period but have NOT submitted a midterm.
+ * - Only considers staff with active contracts (status_id 1 or 2, not in excluded contract types).
+ * - Only considers PPA entries that are not drafts (draft_status != 1).
+ * - Returns staff details for those missing a midterm (midterm_draft_status is NULL or 1).
+ */
+public function get_staff_without_midterm($period = null, $division_id = null)
 {
     // STEP 1: Get latest contract for each staff
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
@@ -967,7 +989,6 @@ public function get_staff_without_ppa($period = null, $division_id = null)
     $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
     $this->db->where("TRIM(s.work_email) !=", '');
     $this->db->where("TRIM(s.work_email) !=", 'xx%');
-    // Excluded contract types
 
     if ($division_id) {
         $this->db->where('sc.division_id', $division_id);
@@ -979,25 +1000,43 @@ public function get_staff_without_ppa($period = null, $division_id = null)
 
     // STEP 2: Extract staff_ids from active staff
     $staff_ids = array_map('intval', array_column($active_staff, 'staff_id'));
+    if (empty($staff_ids)) return [];
 
-    // STEP 3: Get staff with submitted PPAs (excluding draft_status = 1)
-    $this->db->select('staff_id');
+    // STEP 3: Get staff who have submitted a PPA (not draft) for the period
+    $this->db->select('staff_id, entry_id');
     $this->db->from('ppa_entries');
     $this->db->where_in('staff_id', $staff_ids);
     $this->db->where('draft_status !=', 1); // exclude drafts
     if ($period) {
         $this->db->where('performance_period', $period);
     }
+    $ppa_entries = $this->db->get()->result_array();
 
-    $submitted_ids_raw = $this->db->get()->result_array();
-    $submitted_ids = array_map(fn($r) => (int)$r['staff_id'], $submitted_ids_raw);
+    // Map: staff_id => entry_id
+    $ppa_staff_map = [];
+    foreach ($ppa_entries as $row) {
+        $ppa_staff_map[(int)$row['staff_id']] = $row['entry_id'];
+    }
 
-    // DEBUGGING CHECKS
-    // dd($staff_ids, $submitted_ids);
+    if (empty($ppa_staff_map)) return [];
 
-    // STEP 4: Filter only staff without submissions
-    return array_values(array_filter($active_staff, function ($staff) use ($submitted_ids) {
-        return !in_array((int)$staff->staff_id, $submitted_ids, true);
+    // STEP 4: Get staff who have submitted a midterm (midterm_draft_status != 1) for the period
+    $this->db->select('staff_id');
+    $this->db->from('ppa_entries');
+    $this->db->where_in('staff_id', array_keys($ppa_staff_map));
+    if ($period) {
+        $this->db->where('performance_period', $period);
+    }
+    $this->db->where('midterm_draft_status !=', 1); // midterm submitted (not draft)
+    $midterm_submitted = $this->db->get()->result_array();
+    $midterm_submitted_ids = array_map(fn($r) => (int)$r['staff_id'], $midterm_submitted);
+
+    // STEP 5: Filter staff who have PPA but missing midterm (midterm_draft_status is NULL or 1)
+    $missing_midterm_ids = array_diff(array_keys($ppa_staff_map), $midterm_submitted_ids);
+
+    // Return staff details for those missing midterms
+    return array_values(array_filter($active_staff, function ($staff) use ($missing_midterm_ids) {
+        return in_array((int)$staff->staff_id, $missing_midterm_ids, true);
     }));
 }
 

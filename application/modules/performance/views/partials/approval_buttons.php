@@ -11,7 +11,7 @@ if (!empty($ppa->midterm_objectives)) {
 }
 ?>
 
-<?php echo form_open('performance/approve_midterm/' . $ppa->entry_id, [
+<?php echo form_open('performance/midterm/approve_ppa/' . $ppa->entry_id, [
   'method' => 'post',
   'id'     => 'approvalForm_midterm_' . $ppa->entry_id
 ]); ?>
@@ -23,7 +23,7 @@ if (!empty($ppa->midterm_objectives)) {
   </div>
 <?php endif; ?>
 
-<input type="hidden" name="action" id="approval_action_midterm" value="">
+<input type="hidden" name="action" id="approval_action" value="">
 
 <div class="text-center">
   <?php if (
@@ -32,7 +32,7 @@ if (!empty($ppa->midterm_objectives)) {
     $isSupervisor
   ): ?>
     <button type="submit" class="btn btn-success px-5 me-2"
-            onclick="document.getElementById('approval_action_midterm').value = 'approve';">
+            onclick="document.getElementById('approval_action').value = 'approve';">
       Approve
     </button>
   <?php endif; ?>
@@ -80,7 +80,7 @@ if (!empty($ppa->midterm_objectives)) {
 
 <script>
 function submitReturnAction(entryId) {
-  document.getElementById('approval_action_midterm').value = 'return';
+  document.getElementById('approval_action').value = 'return';
   document.getElementById('approvalForm_midterm_' + entryId).submit();
 }
 </script>

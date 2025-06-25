@@ -133,6 +133,6 @@ $autoload['language'] = array();
 |	$autoload['model'] = array('first_model' => 'first');
 */
 $autoload['model'] = array(
-    ['auth/auth_mdl' => 'auth_mdl', 'dashboard/dashboard_mdl'=>'dash_mdl', 'staff/staff_mdl' => 'staff_mdl', 'performance/performance_mdl' => 'per_mdl']
+    ['auth/auth_mdl' => 'auth_mdl', 'dashboard/dashboard_mdl'=>'dash_mdl', 'staff/staff_mdl' => 'staff_mdl', 'performance/performance_mdl' => 'per_mdl','performance/midterm_mdl' => 'midterm_mdl']
 
 );

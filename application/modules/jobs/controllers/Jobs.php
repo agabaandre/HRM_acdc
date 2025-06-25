@@ -9,6 +9,7 @@ class Jobs extends MX_Controller
     public function __construct()
     {
         parent::__construct();
+       // $this->load->model("midterm_mdl", 'midterm_mdl');
     }
  
    //render user accounts automatically
@@ -503,9 +504,46 @@ $days_remaining = days_to_ppa_deadline();
              date('Y-m-d'), $entry_log_id);
          }
      }
+ } 
+
+ //notify staff on midterms
+ public function notify_unsubmitted_midterms()
+ {
+     $current_period = str_replace(' ', '-', current_period());
+ 
+     $deadline = $this->db->select('mid_term_deadline')->get('ppa_configs')->row()->mid_term_deadline;
+   
+ 
+     //Only notify if deadline is in 15 days or less
+     $days_remaining = days_to_midterm_deadline();
+     //dd($days_remaining);
+
+     if ($days_remaining !== null && $days_remaining <= 40) {
+         $staff_list = $this->midterm_mdl->get_staff_without_midterm($current_period);
+
+       // dd(count($staff_list));
+ 
+         foreach ($staff_list as $staff) {
+             $data = [
+                 'name' => $staff->title . ' ' . $staff->fname . ' ' . $staff->lname,
+                 'period' => $current_period,
+                 'deadline' => $deadline,
+                 'type' => 'Midterm Reminder',
+                 'subject' => "Midterm Review Reminder: Submit your Midterm ($current_period)",
+                 'email_to' => $staff->work_email.';'.settings()->email,
+                 
+             ];
+ 
+             $data['body'] = $this->load->view('staff_reminder_midterm', $data, true);
+ 
+             $entry_log_id = md5($staff->staff_id . '-MIDTERMREM-' . date('Y-m-d'));
+             golobal_log_email('Staff Portal System', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),  date('Y-m-d'),
+             date('Y-m-d'), $entry_log_id);
+         }
+     }
  }
  
-
+//reminder for ppa approval
 public function notify_supervisors_pending_ppas()
 {
 
@@ -536,6 +574,55 @@ public function notify_supervisors_pending_ppas()
 
         // Log and send email
         $entry_log_id = md5($supervisor->supervisor_id . '-SUPPPAREM-' . date('Y-m-d'));
+        golobal_log_email(
+            'Staff Portal System',
+            $data['email_to'],
+            $data['body'],
+            $data['subject'],
+            $supervisor->supervisor_id,
+            date('Y-m-d'),
+            date('Y-m-d'),
+            $entry_log_id
+        );
+
+        $this->notify_unsubmitted_ppas();
+    }
+    $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
+    
+}
+
+//reminder for midterm approval
+public function notify_supervisors_pending_midterms()
+{
+
+
+    $current_period = str_replace(' ', '-', current_period());
+    $deadline = $this->db->get('ppa_configs')->row()->mid_term_deadline;
+
+    // Get supervisors with any pending PPA
+    $supervisors = $this->midterm_mdl->get_supervisors_with_pending_midterms($current_period);
+    
+
+    foreach ($supervisors as $supervisor) {
+        $pending_list = $this->midterm_mdl->get_pending_by_supervisor_with_staff($supervisor->supervisor_id);
+
+        if (empty($pending_list)) continue;
+
+        $data = [
+            'supervisor_name' => $supervisor->title . ' ' . $supervisor->fname . ' ' . $supervisor->lname,
+            'period'          => $current_period,
+            'deadline'        => $deadline,
+            'pending_list'    => $pending_list,
+            'subject'         => "Reminder: Pending Midterm Approvals for {$current_period}",
+            'email_to'        => $supervisor->work_email.';'.settings()->email
+            
+        ];
+
+        // Render email view
+        $data['body'] = $this->load->view('supervisor_reminder_midterm', $data,true);
+
+        // Log and send email
+        $entry_log_id = md5($supervisor->supervisor_id . '-SUPMIDREM-' . date('Y-m-d'));
         golobal_log_email(
             'Staff Portal System',
             $data['email_to'],

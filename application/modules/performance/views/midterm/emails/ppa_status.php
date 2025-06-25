@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>PPA Status Notification</title>
+    <title>Midterm Review Status Notification</title>
     <style type="text/css">
       body {
         margin: 0; 
@@ -49,9 +49,9 @@
         margin-top: 10px;
       }
       .btn:hover {
-      background-color: #005844; /* optional darker shade */
-      color: #ffffff !important; /* ensure text remains visible */
-      text-decoration: none;
+        background-color: #005844;
+        color: #ffffff !important;
+        text-decoration: none;
       }
       .audit-table {
         width: 100%; 
@@ -78,18 +78,19 @@
 
       <!-- Email Content -->
       <div class="content">
-        <h1>PPA Status Update</h1>
+        <h1>Midterm Review Status Update</h1>
         <p>Dear <?php echo $name; ?>,</p>
         <p>
-          This is to inform you that your Performance Planning and Appraisal (PPA) form for the period 
-          <strong><?php echo str_replace('-',' ',$period); ?></strong> is <strong><?php echo $status; ?></strong>. <?php if ($status=='Returned'){ echo "Make all the neccessary adjustments from the supervisor and resubmit";
-
+          This is to inform you that your <strong>Midterm Review</strong> for the performance period 
+          <strong><?php echo str_replace('-', ' ', $period); ?></strong> is currently marked as <strong><?php echo $status; ?></strong>.
+          <?php if ($status == 'Returned') {
+            echo " Please make the necessary adjustments based on your supervisor's feedback and resubmit.";
           } ?>
         </p>
 
-        <p>You can view your PPA form and monitor progress at any time through the HR portal.</p>
+        <p>You can view your Midterm Review and track updates through the HR portal at any time.</p>
 
-        <a href="<?php echo site_url().'performance/view_ppa/'.$entry_id.'/'.$staff_id?>" class="btn" style="color:#fff !important;">View My PPA</a>
+        <a href="<?php echo site_url('performance/midterm/midterm_review/' . $entry_id . '/' . $staff_id); ?>" class="btn" style="color:#fff !important;">View My Midterm Review</a>
 
         <!-- Audit Trail Section -->
         <?php if (!empty($approval_trail)): ?>
