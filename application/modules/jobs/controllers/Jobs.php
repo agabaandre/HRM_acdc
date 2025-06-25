@@ -314,7 +314,7 @@ public function cron_register(){
     {
         $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
         $today = date('Y-m-d');
-        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1' and subject like'PPA%' and email_to NOT LIKE 'xx%'")->result();
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1' and (subject like'PPA%' OR subject like 'Midterm%') and email_to NOT LIKE 'xx%'")->result();
         //dd($this->db->last_query());
 
         // Check if there are any messages to process
@@ -634,7 +634,7 @@ public function notify_supervisors_pending_midterms()
             $entry_log_id
         );
 
-        $this->notify_unsubmitted_ppas();
+        $this->notify_unsubmitted_midterms();
     }
     $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
     
