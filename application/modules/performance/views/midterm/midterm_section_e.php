@@ -58,9 +58,7 @@
 <!-- New Midterm PDP Entry Fields -->
 <div class="mb-3">
   <label class="form-label fw-semibold">1. Comments on progress made against employee’s PDP</label>
-  <textarea name="midterm_training_review" class="form-control" rows="4" <?= $midreadonly ?>>
-    <?= htmlspecialchars($ppa->midterm_training_review ?? '') ?>
-  </textarea>
+  <textarea name="midterm_training_review" class="form-control" rows="4" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_training_review ?? '') ?></textarea>
 </div>
 
 <?php
@@ -108,25 +106,19 @@ $isMidtermRecommended = !empty($mid_skills);
   <!-- 4. Contributions -->
   <div class="mb-3">
     <label class="form-label">4. How will the recommended training(s) contribute to the staff member’s development and the department’s work?</label>
-    <textarea name="midterm_training_contributions" class="form-control" rows="3" <?= $midreadonly ?>>
-      <?= $ppa->midterm_training_contributions ?? '' ?>
-    </textarea>
+    <textarea name="midterm_training_contributions" class="form-control" rows="3" <?= $midreadonly ?>><?= $ppa->midterm_training_contributions ?? '' ?></textarea>
   </div>
 
   <!-- 5.1 AUC L&D Courses -->
   <div class="mb-3">
     <label class="form-label">5.1 With reference to the AUC L&D Catalogue, list recommended course(s)</label>
-    <textarea name="midterm_recommended_trainings" class="form-control" rows="3" <?= $midreadonly ?>>
-      <?= htmlspecialchars($ppa->midterm_recommended_trainings ?? '') ?>
-    </textarea>
+    <textarea name="midterm_recommended_trainings" class="form-control" rows="3" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_recommended_trainings ?? '') ?></textarea>
   </div>
 
   <!-- 5.2 External Courses -->
   <div class="mb-3">
     <label class="form-label">5.2 Highly recommendable course(s) not listed in AUC L&D Catalogue</label>
-    <textarea name="midterm_recommended_trainings_details" class="form-control" rows="3" <?= $midreadonly ?>>
-      <?= htmlspecialchars($ppa->midterm_recommended_trainings_details ?? '') ?>
-    </textarea>
+    <textarea name="midterm_recommended_trainings_details" class="form-control" rows="3" <?= $midreadonly ?>><?= htmlspecialchars($ppa->midterm_recommended_trainings_details ?? '') ?></textarea>
   </div>
 </div>
 
