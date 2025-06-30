@@ -142,7 +142,7 @@ public function midterm_review($entry_id)
 		$performance_period = str_replace(' ','-',current_period());
 
 		$midterm = $this->midterm_mdl->get_recent_midterm_for_user($entry_id, $performance_period);
-        //dd($midterm);
+         //dd($midterm);
 		$data['midterm'] = $midterm;
 
 		render('current_midterm', $data);
