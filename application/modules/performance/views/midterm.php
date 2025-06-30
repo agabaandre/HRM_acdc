@@ -26,7 +26,7 @@ if (!isset($ppa) || empty($ppa)) {
     $isSubmitted = $status === 0;
     $isApproved = $status === 2;
     $isOwner = isset($ppa->staff_id) && $session->staff_id == $ppa->staff_id;
-    $isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) @$ppa->supervisor2_id]);
+    $isSupervisor = in_array($session->staff_id, [(int) @$ppa->midterm_supervisor_1, (int) @$ppa->midterm_supervisor_2]);
 
     if (
         ($isApproved) ||
@@ -54,8 +54,8 @@ if (!isset($midppa) || empty($midppa)) {
     $isSupervisor = in_array(
         (int) $session->staff_id,
         [
-            (int) @$midppa->supervisor_id,
-            (int) @$midppa->supervisor2_id
+            (int) @$midppa->midterm_supervisor_1,
+            (int) @$midppa->midterm_supervisor_2
         ]
     );
 

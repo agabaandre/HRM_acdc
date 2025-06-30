@@ -57,13 +57,17 @@ $midterm_exists = $this->per_mdl->ismidterm_available($ppa_entryid);
               <td>
                 <?php
                   $status = $midterm['midterm_status'] ?? 'Pending';
+                  //dd($midterm);
+
                   $badgeClass = 'bg-secondary';
                   if ($status == 'Draft') $badgeClass = 'bg-warning text-dark';
                   elseif ($status == 'Approved') $badgeClass = 'bg-success';
                   elseif ($status == 'Returned') $badgeClass = 'bg-danger';
-                  elseif ($status == 'Pending Supervisor') $badgeClass = 'bg-primary';
-                  echo '<span class="badge '.$badgeClass.' fs-6">'.$status.'</span>';
+                  elseif ($status == 'Pending') $badgeClass = 'bg-primary';
+                  echo '<span class="badge '.$badgeClass.'">Pending First Supervisor: '.  staff_name($midterm['midterm_supervisor_1']) .'</span>';
                 ?>
+
+                
               </td>
               <td>
                 <a href="<?= base_url()?>performance/midterm/midterm_review/<?=$midterm['entry_id']?>" class="btn btn-primary btn-sm">

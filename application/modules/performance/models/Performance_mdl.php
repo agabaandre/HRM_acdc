@@ -964,6 +964,8 @@ public function ppa_exists($entry_id){
 
 }
 
+// --- MIDTERM PENDING APPROVALS BASED ON MIDTERM SUPERVISORS ---
+
 public function get_all_pending_approvals($staff_id)
 {
     // Get pending PPA approvals
@@ -972,7 +974,7 @@ public function get_all_pending_approvals($staff_id)
         $ppa['approval_type'] = 'ppa';
     }
 
-    // Get pending Midterm approvals
+    // Get pending Midterm approvals based on midterm supervisors
     $sql = "SELECT 
                 p.*, 
                 CONCAT(s.fname, ' ', s.lname) AS staff_name,
@@ -980,7 +982,7 @@ public function get_all_pending_approvals($staff_id)
             FROM ppa_entries p
             JOIN staff s ON s.staff_id = p.staff_id
             WHERE
-              (p.supervisor_id = ? OR p.supervisor2_id = ?)
+              (p.midterm_supervisor_1 = ? OR p.midterm_supervisor_2 = ?)
               AND p.midterm_draft_status = 0
               AND (p.midterm_sign_off = 1 OR p.midterm_sign_off IS NULL)
             ORDER BY p.created_at DESC";
@@ -999,18 +1001,18 @@ public function get_pending_midterm($staff_id)
                 (
                     SELECT a1.action 
                     FROM ppa_approval_trail_midterm a1
-                    WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                    WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                     ORDER BY a1.id DESC LIMIT 1
                 ) AS supervisor1_action,
                 (
                     SELECT a2.action 
                     FROM ppa_approval_trail_midterm a2
-                    WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                    WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
                     ORDER BY a2.id DESC LIMIT 1
                 ) AS supervisor2_action
             FROM ppa_entries p
             JOIN staff s ON s.staff_id = p.staff_id
-            WHERE (p.supervisor_id = ? OR p.supervisor2_id = ?)
+            WHERE (p.midterm_1_supervisor_id = ? OR p.midterm_supervisor_2 = ?)
               AND p.midterm_draft_status = 0
               -- Add more logic here if you want to filter by approval status
             ORDER BY p.created_at DESC";
@@ -1020,4 +1022,3 @@ public function get_pending_midterm($staff_id)
 
 
 }
-

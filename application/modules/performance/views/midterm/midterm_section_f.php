@@ -14,7 +14,7 @@
 
         <?php
           $isOwner = @$ppa->staff_id == $session->staff_id;
-          $isSupervisor = in_array($session->staff_id, [@$ppa->supervisor_id, @$ppa->supervisor2_id]);
+          $isSupervisor = in_array($session->staff_id, [@$ppa->midterm_supervisor_1, @$ppa->midterm_supervisor_2]);
 
           $hasMidtermObjectives = false;
           if (!empty($ppa->midterm_objectives)) {

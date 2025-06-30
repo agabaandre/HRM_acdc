@@ -51,7 +51,6 @@ class Midterm extends MX_Controller
         // Prepare midterm save data
         $save_data = [
             'midterm_objectives'             => isset($data['objectives']) ? json_encode($data['objectives']) : null,
-            'midterm_supervisor_1'           => $data['supervisor_id'] ?? null,
             'midterm_competency'             => isset($data['midterm_competency']) ? json_encode($data['midterm_competency']) : null,
             'midterm_comments'               => $data['midterm_comments'] ?? null,
             'midterm_training_review'        => $data['midterm_training_review'] ?? null,
@@ -80,7 +79,7 @@ class Midterm extends MX_Controller
         // Insert into approval trail only on submit
         if ($data['midterm_submit_action'] === 'submit') {
             if($data['staff_id']==$user_id){
-                $action='Submitted';
+                $action='Submited';
             }
             else{
                 $action='Updated';
@@ -135,14 +134,13 @@ public function midterm_review($entry_id)
 }
 
 	
-	public function recent_midterm($entry_id){
+	public function recent_midterm(){
 		$data['module'] = $this->module;
 		$data['title'] = "My Current Midterm - ". $this->session->userdata('user')->name;
 		$staff_id = $this->session->userdata('user')->staff_id;
 		$performance_period = str_replace(' ','-',current_period());
 
-		$midterm = $this->midterm_mdl->get_recent_midterm_for_user($entry_id, $performance_period);
-        //dd($midterm);
+		$midterm = $this->midterm_mdl->get_recent_midterm_for_user($staff_id, $performance_period);
 		$data['midterm'] = $midterm;
 
 		render('current_midterm', $data);
@@ -227,7 +225,7 @@ public function midterm_review($entry_id)
        // dd($data);
         $staff_id = $data['staff_id'];
         $entry_id = $data['entry_id'];
-        $supervisor_id = $data['midterm_supervisor_1'];
+        $supervisor_id = $data['supervisor_id'];
         $data['supervisor_name'] = staff_name($supervisor_id);
         $trigger_id = $this->session->userdata('user')->staff_id;
         $trigger_name = staff_name($trigger_id);
