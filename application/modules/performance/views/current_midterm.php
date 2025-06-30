@@ -57,21 +57,40 @@ $midterm_exists = $this->per_mdl->ismidterm_available($ppa_entryid);
               <td>
                 <?php
                   $status = $midterm['midterm_status'] ?? 'Pending';
-                  //dd($midterm);
 
+                  // Determine badge class based on status
                   $badgeClass = 'bg-secondary';
-                  if ($status == 'Draft') $badgeClass = 'bg-warning text-dark';
-                  elseif ($status == 'Approved') $badgeClass = 'bg-success';
-                  elseif ($status == 'Returned') $badgeClass = 'bg-danger';
-                  elseif ($status == 'Pending') $badgeClass = 'bg-primary';
-                  echo '<span class="badge '.$badgeClass.'">Pending First Supervisor: '.  staff_name($midterm['midterm_supervisor_1']) .'</span>';
+                  if ($status == 'Draft') {
+                      $badgeClass = 'bg-warning text-dark';
+                  } elseif ($status == 'Approved') {
+                      $badgeClass = 'bg-success';
+                  } elseif ($status == 'Returned') {
+                      $badgeClass = 'bg-danger';
+                  } elseif ($status == 'Pending' || $status == 'Pending Supervisor') {
+                      $badgeClass = 'bg-primary';
+                  }
+
+                  // Display status text
+                  if ($status == 'Pending' || $status == 'Pending Supervisor') {
+                      // Show supervisor name only when pending
+                      $supervisor_name = !empty($midterm['midterm_supervisor_1']) ? staff_name($midterm['midterm_supervisor_1']) : '';
+                      echo '<span class="badge ' . $badgeClass . '">Pending First Supervisor' . ($supervisor_name ? ': ' . $supervisor_name : '') . '</span>';
+                  } elseif ($status == 'Draft') {
+                      echo '<span class="badge ' . $badgeClass . '">Draft</span>';
+                  } elseif ($status == 'Approved') {
+                      echo '<span class="badge ' . $badgeClass . '">Approved</span>';
+                  } elseif ($status == 'Returned') {
+                      echo '<span class="badge ' . $badgeClass . '">Returned</span>';
+                  } else {
+                      echo '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($status) . '</span>';
+                  }
                 ?>
 
                 
               </td>
               <td>
                 <a href="<?= base_url()?>performance/midterm/midterm_review/<?=$midterm['entry_id']?>" class="btn btn-primary btn-sm">
-                  <i class="fa fa-eye"></i> Review Midterm
+                  <i class="fa fa-eye"></i> View Midterm
                 </a>
               </td>
             </tr>

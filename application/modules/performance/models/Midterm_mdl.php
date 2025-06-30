@@ -1109,7 +1109,6 @@ public function get_recent_midterm_for_user($entry_id, $period)
         FROM ppa_entries p
         JOIN staff s ON s.staff_id = p.staff_id
         WHERE p.entry_id = ? AND p.performance_period = ?
-        AND p.midterm_draft_status != 1
         ORDER BY p.midterm_created_at DESC
         LIMIT 1
     ";
