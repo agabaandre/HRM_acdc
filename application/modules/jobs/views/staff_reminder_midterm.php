@@ -80,7 +80,7 @@
     <!-- Header -->
     <div class="header">
       <img src="https://khub.africacdc.org/storage/uploads/config/fcb24779b37db15ee15fd4a32eaab0ac.png" alt="Africa CDC Logo">
-      <h1>Midterm Performnace Submission Reminder</h1>
+      <h1>Midterm Performance Submission Reminder</h1>
     </div>
 
     <!-- Body Content -->
@@ -89,7 +89,7 @@
 
       <p>This is a kind reminder to submit your <strong>Midterm Review Performance </strong> form for the period <strong><?= htmlspecialchars($period) ?></strong>.</p>
 
-      <p>The extended deadline for submission is <strong><?= date('F d, Y', strtotime($deadline)) ?></strong>. Kindly ensure that your PPA is completed and submitted before this date.</p>
+      <p>The deadline for submission is <strong><?= date('F d, Y', strtotime($deadline)) ?></strong>. Kindly ensure that your PPA is completed and submitted before this date.</p>
 
       <p>You can access the PPA form by logging into the staff portal:</p>
 
@@ -97,7 +97,7 @@
         <a href="https://tools.africacdc.org/staff/performance" class="btn">Submit My PPA</a>
       </p>
 
-      <p>If you have already submitted your PPA, kindly ignore this reminder.</p>
+      <p>If you have already submitted your Midterm Review, kindly ignore this reminder.</p>
 
       <p>Thank you for your attention and commitment.</p>
 

@@ -500,7 +500,7 @@ $days_remaining = days_to_ppa_deadline();
              $data['body'] = $this->load->view('staff_reminder', $data, true);
  
              $entry_log_id = md5($staff->staff_id . '-PPAREM-' . date('Y-m-d'));
-             golobal_log_email('Staff Portal System', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),  date('Y-m-d'),
+             golobal_log_email('Staff Portal System', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),
              date('Y-m-d'), $entry_log_id);
          }
      }
@@ -521,6 +521,8 @@ $days_remaining = days_to_ppa_deadline();
      if ($days_remaining !== null && $days_remaining <= 40) {
          $staff_list = $this->midterm_mdl->get_staff_without_midterm($current_period);
 
+       //  dd($staff_list);
+
        // dd(count($staff_list));
  
          foreach ($staff_list as $staff) {
@@ -537,7 +539,7 @@ $days_remaining = days_to_ppa_deadline();
              $data['body'] = $this->load->view('staff_reminder_midterm', $data, true);
  
              $entry_log_id = md5($staff->staff_id . '-MIDTERMREM-' . date('Y-m-d'));
-             golobal_log_email('Staff Portal System', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),  date('Y-m-d'),
+             golobal_log_email('Staff Portal System', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),
              date('Y-m-d'), $entry_log_id);
          }
      }
@@ -650,7 +652,7 @@ public function update_latest_contracts_in_ppa()
         ->get_compiled_select();
 
     // Join latest contracts to staff
-    $this->db->select('s.staff_id, sc.staff_contract_id');
+    $this->db->select('s.staff_id, sc.staff_contract_id, sc.first_supervisor, sc.second_supervisor');
     $this->db->from('staff_contracts sc');
     $this->db->join('staff s', 'sc.staff_id = s.staff_id');
     $this->db->join("($subquery) latest_contracts", 
@@ -659,14 +661,89 @@ public function update_latest_contracts_in_ppa()
 
     $latest = $this->db->get()->result();
 
+    //dd($latest);
+
+    $updated_count = 0;
     foreach ($latest as $row) {
         $this->db->where('staff_id', $row->staff_id);
-        $this->db->update('ppa_entries', [
-            'staff_contract_id' => $row->staff_contract_id
+        $success = $this->db->update('ppa_entries', [
+            'staff_contract_id' => $row->staff_contract_id,
+            'midterm_supervisor_1' => $row->first_supervisor,
+            'midterm_supervisor_2' => $row->second_supervisor
         ]);
+        if ($success) {
+            $updated_count++;
+            $msg = "[UPDATE] staff_id: {$row->staff_id}, contract_id: {$row->staff_contract_id}, supervisor_1: {$row->supervisor_id}, supervisor_2: {$row->supervisor2_id}";
+            log_message('info', $msg);
+            if (php_sapi_name() === 'cli') {
+                echo $msg . PHP_EOL;
+            }
+        } else {
+            $msg = "[FAILED] staff_id: {$row->staff_id} update failed.";
+            log_message('error', $msg);
+            if (php_sapi_name() === 'cli') {
+                echo $msg . PHP_EOL;
+            }
+        }
     }
 
-    log_message('info', '[CRON] staff_contract_id in PPA entries updated from latest contracts.');
+    $summary = "[CRON] staff_contract_id and supervisors in PPA entries updated from latest contracts. Total updated: $updated_count";
+    log_message('info', $summary);
+    if (php_sapi_name() === 'cli') {
+        echo $summary . PHP_EOL;
+    }
+}
+
+public function update_midterm_supervisors()
+{
+    // Subquery to get latest contract ID per staff
+    $subquery = $this->db
+        ->select('staff_id, MAX(staff_contract_id) AS latest_contract_id', false)
+        ->from('staff_contracts')
+        ->group_by('staff_id')
+        ->get_compiled_select();
+
+    // Join latest contracts to staff
+    $this->db->select('s.staff_id, sc.staff_contract_id, sc.first_supervisor, sc.second_supervisor');
+    $this->db->from('staff_contracts sc');
+    $this->db->join('staff s', 'sc.staff_id = s.staff_id');
+    $this->db->join("($subquery) latest_contracts", 
+        'sc.staff_id = latest_contracts.staff_id AND sc.staff_contract_id = latest_contracts.latest_contract_id', 
+        'inner');
+
+    $latest = $this->db->get()->result();
+
+    //dd($latest);
+
+    $updated_count = 0;
+    foreach ($latest as $row) {
+        $this->db->where('staff_id', $row->staff_id);
+        $success = $this->db->update('ppa_entries', [
+            
+            'midterm_supervisor_1' => $row->first_supervisor,
+            'midterm_supervisor_2' => NULL
+        ]);
+        if ($success) {
+            $updated_count++;
+            $msg = "[UPDATE] staff_id: {$row->staff_id}, contract_id: {$row->staff_contract_id}, supervisor_1: {$row->supervisor_id}, supervisor_2: {$row->supervisor2_id}";
+            log_message('info', $msg);
+            if (php_sapi_name() === 'cli') {
+                echo $msg . PHP_EOL;
+            }
+        } else {
+            $msg = "[FAILED] staff_id: {$row->staff_id} update failed.";
+            log_message('error', $msg);
+            if (php_sapi_name() === 'cli') {
+                echo $msg . PHP_EOL;
+            }
+        }
+    }
+
+    $summary = "[CRON] staff_contract_id and supervisors in PPA entries updated from latest contracts. Total updated: $updated_count";
+    log_message('info', $summary);
+    if (php_sapi_name() === 'cli') {
+        echo $summary . PHP_EOL;
+    }
 }
 //midterm
 
@@ -688,7 +765,9 @@ public function add_midterm_fields_to_ppa_entries($drop = false)
         'midterm_sign_off'           => "TINYINT(1) DEFAULT 0",
         'midterm_draft_status'       => "TINYINT(1) DEFAULT 1",
         'midterm_created_at'         => "DATETIME DEFAULT NULL",
-        'midterm_updated_at'         => "DATETIME DEFAULT NULL"
+        'midterm_updated_at'         => "DATETIME DEFAULT NULL",
+        'midterm_supervisor_1'       => "INT DEFAULT NULL",
+        'midterm_supervisor_2'       => "INT DEFAULT NULL"
     ];
     
 

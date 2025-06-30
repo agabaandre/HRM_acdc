@@ -156,6 +156,8 @@ function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_da
         'next_dispatch' => $next
     );
 
+   // dd($data);
+
     // Build the field names and values for the query.
     $fields = array();
     $values = array();

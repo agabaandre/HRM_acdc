@@ -116,70 +116,70 @@ public function get_pending_ppa($staff_id)
             p.*, 
             CONCAT(s.fname, ' ', s.lname) AS staff_name,
 
-            -- Supervisor 1 last action
+            -- Midterm Supervisor 1 last action
             (
                 SELECT a1.action 
-                FROM ppa_approval_trail a1
-                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                FROM ppa_approval_trail_midterm a1
+                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                 ORDER BY a1.id DESC LIMIT 1
             ) AS supervisor1_action,
 
-            -- Supervisor 2 last action
+            -- Midterm Supervisor 2 last action
             (
                 SELECT a2.action 
-                FROM ppa_approval_trail a2
-                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                FROM ppa_approval_trail_midterm a2
+                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
                 ORDER BY a2.id DESC LIMIT 1
             ) AS supervisor2_action,
 
             -- Compute overall status
             CASE 
-                WHEN p.draft_status = 1 THEN 'Pending (Draft)'
-                WHEN p.supervisor2_id IS NULL AND
+                WHEN p.midterm_draft_status = 1 THEN 'Pending (Draft)'
+                WHEN p.midterm_supervisor_2 IS NULL AND
                     (
                         SELECT a1.action 
-                        FROM ppa_approval_trail a1 
-                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id 
+                        FROM ppa_approval_trail_midterm a1 
+                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1 
                         ORDER BY a1.id DESC LIMIT 1
                     ) = 'Approved'
                 THEN 'Approved'
 
-                WHEN p.supervisor2_id IS NOT NULL AND
+                WHEN p.midterm_supervisor_2 IS NOT NULL AND
                     (
                         SELECT a1.action 
-                        FROM ppa_approval_trail a1 
-                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id 
+                        FROM ppa_approval_trail_midterm a1 
+                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1 
                         ORDER BY a1.id DESC LIMIT 1
                     ) = 'Approved' AND
                     (
                         SELECT a2.action 
-                        FROM ppa_approval_trail a2 
-                        WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id 
+                        FROM ppa_approval_trail_midterm a2 
+                        WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2 
                         ORDER BY a2.id DESC LIMIT 1
                     ) = 'Approved'
                 THEN 'Approved'
 
                 WHEN (
                     SELECT a2.action 
-                    FROM ppa_approval_trail a2 
-                    WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id 
+                    FROM ppa_approval_trail_midterm a2 
+                    WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2 
                     ORDER BY a2.id DESC LIMIT 1
                 ) = 'Returned'
                 THEN 'Returned'
 
                 WHEN (
                     SELECT a1.action 
-                    FROM ppa_approval_trail a1 
-                    WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id 
+                    FROM ppa_approval_trail_midterm a1 
+                    WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1 
                     ORDER BY a1.id DESC LIMIT 1
                 ) = 'Returned'
                 THEN 'Returned'
 
-                WHEN p.supervisor2_id IS NOT NULL AND
+                WHEN p.midterm_supervisor_2 IS NOT NULL AND
                     (
                         SELECT a1.action 
-                        FROM ppa_approval_trail a1 
-                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id 
+                        FROM ppa_approval_trail_midterm a1 
+                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1 
                         ORDER BY a1.id DESC LIMIT 1
                     ) = 'Approved'
                 THEN 'Pending Second Supervisor'
@@ -189,53 +189,53 @@ public function get_pending_ppa($staff_id)
 
         FROM ppa_entries p
         JOIN staff s ON s.staff_id = p.staff_id
-        WHERE p.draft_status = 0
+        WHERE p.midterm_draft_status = 0
         AND (
-            -- First supervisor
+            -- First midterm supervisor
             (
-                p.supervisor_id = ? AND (
+                p.midterm_supervisor_1 = ? AND (
                     (
                         SELECT a1.action
-                        FROM ppa_approval_trail a1
-                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                        FROM ppa_approval_trail_midterm a1
+                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                         ORDER BY a1.id DESC LIMIT 1
                     ) IS NULL OR
                     (
                         SELECT a1.action
-                        FROM ppa_approval_trail a1
-                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                        FROM ppa_approval_trail_midterm a1
+                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                         ORDER BY a1.id DESC LIMIT 1
                     ) != 'Approved'
                 )
             )
             OR
-            -- Second supervisor (after first has approved)
+            -- Second midterm supervisor (after first has approved)
             (
-                p.supervisor2_id = ? AND (
+                p.midterm_supervisor_2 = ? AND (
                     (
                         SELECT a1.action
-                        FROM ppa_approval_trail a1
-                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                        FROM ppa_approval_trail_midterm a1
+                        WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                         ORDER BY a1.id DESC LIMIT 1
                     ) = 'Approved'
                     AND (
                         (
                             SELECT a2.action
-                            FROM ppa_approval_trail a2
-                            WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                            FROM ppa_approval_trail_midterm a2
+                            WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
                             ORDER BY a2.id DESC LIMIT 1
                         ) IS NULL OR
                         (
                             SELECT a2.action
-                            FROM ppa_approval_trail a2
-                            WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                            FROM ppa_approval_trail_midterm a2
+                            WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
                             ORDER BY a2.id DESC LIMIT 1
                         ) != 'Approved'
                     )
                 )
             )
         )
-        ORDER BY p.created_at DESC
+        ORDER BY p.midterm_created_at DESC
     ";
 
     return $this->db->query($sql, [$staff_id, $staff_id])->result_array();
@@ -273,19 +273,19 @@ public function get_all_approved_ppas_for_user($staff_id)
         CONCAT(s.fname, ' ', s.lname) AS staff_name,
         'Approved' AS overall_status,
         
-        -- Last action by Supervisor 1
+        -- Last action by Midterm Supervisor 1
         (
             SELECT a1.action 
-            FROM ppa_approval_trail a1
-            WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+            FROM ppa_approval_trail_midterm a1
+            WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
             ORDER BY a1.id DESC LIMIT 1
         ) AS supervisor1_action,
         
-        -- Last action by Supervisor 2
+        -- Last action by Midterm Supervisor 2
         (
             SELECT a2.action 
-            FROM ppa_approval_trail a2
-            WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+            FROM ppa_approval_trail_midterm a2
+            WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
             ORDER BY a2.id DESC LIMIT 1
         ) AS supervisor2_action
 
@@ -294,34 +294,34 @@ public function get_all_approved_ppas_for_user($staff_id)
     WHERE p.staff_id = ?
 
     AND (
-        -- Case 1: Only one supervisor and they approved
-        (p.supervisor2_id IS NULL AND
+        -- Case 1: Only one midterm supervisor and they approved
+        (p.midterm_supervisor_2 IS NULL AND
          (
             SELECT a1.action 
-            FROM ppa_approval_trail a1
-            WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+            FROM ppa_approval_trail_midterm a1
+            WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
             ORDER BY a1.id DESC LIMIT 1
          ) = 'Approved')
 
-        -- Case 2: Both supervisors and both approved
+        -- Case 2: Both midterm supervisors and both approved
         OR (
-            p.supervisor2_id IS NOT NULL AND
+            p.midterm_supervisor_2 IS NOT NULL AND
             (
                 SELECT a1.action 
-                FROM ppa_approval_trail a1
-                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                FROM ppa_approval_trail_midterm a1
+                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                 ORDER BY a1.id DESC LIMIT 1
             ) = 'Approved' AND
             (
                 SELECT a2.action 
-                FROM ppa_approval_trail a2
-                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                FROM ppa_approval_trail_midterm a2
+                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
                 ORDER BY a2.id DESC LIMIT 1
             ) = 'Approved'
         )
     )
 
-    ORDER BY p.created_at DESC
+    ORDER BY p.midterm_created_at DESC
     ";
 
     return $this->db->query($sql, [$staff_id])->result_array();
@@ -334,72 +334,72 @@ public function get_recent_ppas_for_user($staff_id, $period)
             p.*, 
             CONCAT(s.fname, ' ', s.lname) AS staff_name,
 
-            -- Last action by Supervisor 1
+            -- Last action by Midterm Supervisor 1
             (
                 SELECT a1.action 
-                FROM ppa_approval_trail a1
-                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                FROM ppa_approval_trail_midterm a1
+                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                 ORDER BY a1.id DESC LIMIT 1
             ) AS supervisor1_action,
             
-            -- Last action by Supervisor 2
+            -- Last action by Midterm Supervisor 2
             (
                 SELECT a2.action 
-                FROM ppa_approval_trail a2
-                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                FROM ppa_approval_trail_midterm a2
+                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
                 ORDER BY a2.id DESC LIMIT 1
             ) AS supervisor2_action,
             
             -- Final status decision with draft consideration
             CASE 
-                WHEN p.draft_status = 1 THEN 'Pending (Draft)'
+                WHEN p.midterm_draft_status = 1 THEN 'Pending (Draft)'
                 ELSE (
                     CASE
-                        WHEN p.supervisor2_id IS NULL AND
+                        WHEN p.midterm_supervisor_2 IS NULL AND
                             (
                                 SELECT a1.action 
-                                FROM ppa_approval_trail a1
-                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                                FROM ppa_approval_trail_midterm a1
+                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                                 ORDER BY a1.id DESC LIMIT 1
                             ) = 'Approved'
                         THEN 'Approved'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND
+                        WHEN p.midterm_supervisor_2 IS NOT NULL AND
                             (
                                 SELECT a1.action 
-                                FROM ppa_approval_trail a1
-                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                                FROM ppa_approval_trail_midterm a1
+                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                                 ORDER BY a1.id DESC LIMIT 1
                             ) = 'Approved' AND
                             (
                                 SELECT a2.action 
-                                FROM ppa_approval_trail a2
-                                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                                FROM ppa_approval_trail_midterm a2
+                                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
                                 ORDER BY a2.id DESC LIMIT 1
                             ) = 'Approved'
                         THEN 'Approved'
 
                         WHEN (
                                 SELECT a2.action 
-                                FROM ppa_approval_trail a2
-                                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.supervisor2_id
+                                FROM ppa_approval_trail_midterm a2
+                                WHERE a2.entry_id = p.entry_id AND a2.staff_id = p.midterm_supervisor_2
                                 ORDER BY a2.id DESC LIMIT 1
                             ) = 'Returned'
                         THEN 'Returned'
 
                         WHEN (
                                 SELECT a1.action 
-                                FROM ppa_approval_trail a1
-                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                                FROM ppa_approval_trail_midterm a1
+                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                                 ORDER BY a1.id DESC LIMIT 1
                             ) = 'Returned'
                         THEN 'Returned'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND
+                        WHEN p.midterm_supervisor_2 IS NOT NULL AND
                             (
                                 SELECT a1.action 
-                                FROM ppa_approval_trail a1
-                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.supervisor_id
+                                FROM ppa_approval_trail_midterm a1
+                                WHERE a1.entry_id = p.entry_id AND a1.staff_id = p.midterm_supervisor_1
                                 ORDER BY a1.id DESC LIMIT 1
                             ) = 'Approved'
                         THEN 'Pending Second Supervisor'
@@ -412,7 +412,7 @@ public function get_recent_ppas_for_user($staff_id, $period)
         FROM ppa_entries p
         JOIN staff s ON s.staff_id = p.staff_id
         WHERE p.staff_id = ? AND p.performance_period = ?
-        ORDER BY p.created_at DESC
+        ORDER BY p.midterm_created_at DESC
     ";
 
     return $this->db->query($sql, [$staff_id, $period])->result_array();
@@ -426,21 +426,21 @@ public function get_approved_by_supervisor($supervisor_id)
             p.entry_id,
             p.staff_id,
             p.performance_period,
-            p.created_at,
+            p.midterm_created_at AS created_at,
             CONCAT(st.fname, ' ', st.lname) AS staff_name,
             a.created_at AS approval_date,
             a.comments
 
         FROM ppa_entries p
         JOIN staff st ON st.staff_id = p.staff_id
-        JOIN ppa_approval_trail a ON a.id = (
+        JOIN ppa_approval_trail_midterm a ON a.id = (
             SELECT MAX(id) 
-            FROM ppa_approval_trail 
+            FROM ppa_approval_trail_midterm 
             WHERE entry_id = p.entry_id
             AND action = 'Approved'
         )
         WHERE 
-            (p.supervisor_id = ? OR p.supervisor2_id = ?)
+            (p.midterm_supervisor_1 = ? OR p.midterm_supervisor_2 = ?)
         ORDER BY a.created_at DESC
     ";
 
@@ -484,7 +484,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->from('ppa_entries pe');
             if ($period) $this->db->where('pe.performance_period', $period);
             $this->db->where('pe.draft_status !=', 1); // PPA submitted
-            $this->db->where('pe.midterm_draft_status !=', 1); // Midterm submitted
+            $this->db->where('pe.midterm_draft_status !=', 1); // Submitted
             $this->db->where_in('pe.staff_id', $staff_ids);
             $midterm_entries = $this->db->get()->result();
 
@@ -535,7 +535,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             // Staff who have training recommendations in their midterm review
             $this->db->select('pe.staff_id, pe.entry_id, pe.midterm_recommended_skills');
             $this->db->from('ppa_entries pe');
-            $this->db->where('pe.midterm_draft_status !=', 1); // Midterm submitted
+            $this->db->where('pe.midterm_draft_status !=', 1); // Submitted
             $this->db->where('pe.draft_status !=', 1); // PPA submitted
             if ($period) $this->db->where('pe.performance_period', $period);
             $this->db->where_in('pe.staff_id', $staff_ids);
@@ -584,7 +584,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
             $this->db->from('ppa_entries pe');
             if ($period) $this->db->where('pe.performance_period', $period);
             $this->db->where('pe.draft_status !=', 1); // PPA submitted
-            $this->db->where('pe.midterm_draft_status !=', 1); // Midterm submitted
+            $this->db->where('pe.midterm_draft_status !=', 1); // Submitted
             $this->db->where_in('pe.staff_id', $staff_ids);
             $midterm_submitted = $this->db->get()->result();
             $midterm_submitted_ids = array_column($midterm_submitted, 'staff_id');
@@ -818,7 +818,7 @@ public function get_supervisors_with_pending_midterms($period)
             s.work_email
         FROM staff s
         JOIN ppa_entries p 
-            ON s.staff_id = p.supervisor_id OR s.staff_id = p.supervisor2_id
+            ON s.staff_id = p.midterm_supervisor_1 OR s.staff_id = p.midterm_supervisor_2
         WHERE p.performance_period = ?
         AND p.midterm_draft_status = 0
         AND p.midterm_sign_off = 1
@@ -849,8 +849,8 @@ public function get_pending_by_supervisor_with_staff($supervisor_id)
     $this->db->from('ppa_entries p');
     $this->db->join('staff s', 's.staff_id = p.staff_id', 'left');
     $this->db->group_start()
-             ->where('p.supervisor_id', $supervisor_id)
-             ->or_where('p.supervisor2_id', $supervisor_id)
+             ->where('p.midterm_supervisor_1', $supervisor_id)
+             ->or_where('p.midterm_supervisor_2', $supervisor_id)
              ->group_end();
     $this->db->where('p.midterm_draft_status', 0);
     $this->db->where('p.midterm_sign_off', 1);
@@ -874,44 +874,44 @@ public function get_all_ppas_filtered($filters, $limit = 40, $offset = 0)
             CONCAT(s.fname, ' ', s.lname) AS staff_name,
 
             CASE 
-                WHEN p.draft_status = 1 THEN 'Draft'
+                WHEN p.midterm_draft_status = 1 THEN 'Draft'
                 ELSE (
                     CASE
-                        WHEN p.supervisor2_id IS NULL AND (
-                            SELECT action FROM ppa_approval_trail 
-                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
+                        WHEN p.midterm_supervisor_2 IS NULL AND (
+                            SELECT action FROM ppa_approval_trail_midterm 
+                            WHERE entry_id = p.entry_id AND staff_id = p.midterm_supervisor_1 
                             ORDER BY id DESC LIMIT 1
                         ) = 'Approved'
                         THEN 'Approved'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND (
-                            SELECT action FROM ppa_approval_trail 
-                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
+                        WHEN p.midterm_supervisor_2 IS NOT NULL AND (
+                            SELECT action FROM ppa_approval_trail_midterm 
+                            WHERE entry_id = p.entry_id AND staff_id = p.midterm_supervisor_1 
                             ORDER BY id DESC LIMIT 1
                         ) = 'Approved' AND (
-                            SELECT action FROM ppa_approval_trail 
-                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor2_id 
+                            SELECT action FROM ppa_approval_trail_midterm 
+                            WHERE entry_id = p.entry_id AND staff_id = p.midterm_supervisor_2 
                             ORDER BY id DESC LIMIT 1
                         ) = 'Approved'
                         THEN 'Approved'
 
                         WHEN (
-                            SELECT action FROM ppa_approval_trail 
-                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor2_id 
+                            SELECT action FROM ppa_approval_trail_midterm 
+                            WHERE entry_id = p.entry_id AND staff_id = p.midterm_supervisor_2 
                             ORDER BY id DESC LIMIT 1
                         ) = 'Returned'
                         THEN 'Returned'
 
                         WHEN (
-                            SELECT action FROM ppa_approval_trail 
-                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
+                            SELECT action FROM ppa_approval_trail_midterm 
+                            WHERE entry_id = p.entry_id AND staff_id = p.midterm_supervisor_1 
                             ORDER BY id DESC LIMIT 1
                         ) = 'Returned'
                         THEN 'Returned'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND (
-                            SELECT action FROM ppa_approval_trail 
-                            WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
+                        WHEN p.midterm_supervisor_2 IS NOT NULL AND (
+                            SELECT action FROM ppa_approval_trail_midterm 
+                            WHERE entry_id = p.entry_id AND staff_id = p.midterm_supervisor_1 
                             ORDER BY id DESC LIMIT 1
                         ) = 'Approved'
                         THEN 'Pending Second Supervisor'
@@ -950,12 +950,12 @@ public function get_all_ppas_filtered($filters, $limit = 40, $offset = 0)
     }
 
     if ($filters['draft_status'] !== '' && $filters['draft_status'] !== null) {
-        $sql .= " AND p.draft_status = ?";
+        $sql .= " AND p.midterm_draft_status = ?";
         $params[] = $filters['draft_status'];
     }
 
     if (!empty($filters['created_at'])) {
-        $sql .= " AND DATE(p.created_at) = ?";
+        $sql .= " AND DATE(p.midterm_created_at) = ?";
         $params[] = $filters['created_at'];
     }
 
@@ -964,7 +964,7 @@ public function get_all_ppas_filtered($filters, $limit = 40, $offset = 0)
         $params[] = $filters['division_id'];
     }
 
-    $sql .= " ORDER BY p.created_at DESC";
+    $sql .= " ORDER BY p.midterm_created_at DESC";
 
     if ($limit > 0) {
         $sql .= " LIMIT ? OFFSET ?";
@@ -1053,7 +1053,7 @@ public function get_staff_without_midterm($period = null, $division_id = null)
     if ($period) {
         $this->db->where('performance_period', $period);
     }
-    $this->db->where('midterm_draft_status !=', 1); // midterm submitted (not draft)
+    $this->db->where('midterm_draft_status !=', 1); // Submitted (not draft)
     $midterm_submitted = $this->db->get()->result_array();
     $midterm_submitted_ids = array_map(fn($r) => (int)$r['staff_id'], $midterm_submitted);
 
@@ -1070,7 +1070,7 @@ public function ppa_exists($entry_id){
 
 }
 
-public function get_recent_midterm_for_user($staff_id, $period)
+public function get_recent_midterm_for_user($entry_id, $period)
 {
     $sql = "
         SELECT 
@@ -1102,18 +1102,18 @@ public function get_recent_midterm_for_user($staff_id, $period)
                         FROM ppa_approval_trail_midterm a
                         WHERE a.entry_id = p.entry_id
                         ORDER BY a.id DESC LIMIT 1
-                    ) = 'Midterm Submitted' THEN 'Pending Supervisor'
+                    ) = 'Submitted' THEN 'Pending'
                     ELSE 'Pending'
                 END
             ) AS midterm_status
         FROM ppa_entries p
         JOIN staff s ON s.staff_id = p.staff_id
-        WHERE p.staff_id = ? AND p.performance_period = ?
+        WHERE p.entry_id = ? AND p.performance_period = ?
         AND p.midterm_draft_status != 1
         ORDER BY p.midterm_created_at DESC
         LIMIT 1
     ";
-    return $this->db->query($sql, [$staff_id, $period])->row_array();
+    return $this->db->query($sql, [$entry_id, $period])->row_array();
 }
 
 public function get_all_approved_midterms_for_user($staff_id)
@@ -1148,7 +1148,7 @@ public function get_all_approved_midterms_for_user($staff_id)
                         FROM ppa_approval_trail_midterm a
                         WHERE a.entry_id = p.entry_id
                         ORDER BY a.id DESC LIMIT 1
-                    ) = 'Midterm Submitted' THEN 'Pending Supervisor'
+                    ) = 'Submitted' THEN 'Pending Supervisor'
                     ELSE 'Pending'
                 END
             ) AS midterm_status
@@ -1190,7 +1190,7 @@ public function get_midterms_approved_by_supervisor($supervisor_id)
                         FROM ppa_approval_trail_midterm a2
                         WHERE a2.entry_id = p.entry_id
                         ORDER BY a2.id DESC LIMIT 1
-                    ) = 'Midterm Submitted' THEN 'Pending Supervisor'
+                    ) = 'Submitted' THEN 'Pending Supervisor'
                     ELSE 'Pending'
                 END
             ) AS midterm_status
