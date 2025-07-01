@@ -587,8 +587,9 @@ public function notify_supervisors_pending_ppas()
             $entry_log_id
         );
 
-        $this->notify_unsubmitted_ppas();
+       
     }
+    $this->notify_unsubmitted_ppas();
     $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
     
 }
@@ -636,8 +637,10 @@ public function notify_supervisors_pending_midterms()
             $entry_log_id
         );
 
-        $this->notify_unsubmitted_midterms();
+        
     }
+    $this->notify_unsubmitted_midterms();
+     
     $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
     
 }

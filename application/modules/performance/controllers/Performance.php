@@ -280,7 +280,7 @@ class Performance extends MX_Controller
     
         // Handle submission notifications
         if ($data['type'] === 'submission') {
-            $entry_log_id = md5($staff_id . '-PPAS-' . date('Y-m-d'));
+            $entry_log_id = md5($staff_id . '-STAFFPPACONF-' . date('Y-m-d'));
             if($staff_id == $this->session->userdata('user')->staff_id){
                $subject = "PPA Submission Confirmation " . date('Y-m-d H:i:s');
                $staff_data = array_merge($data, [
