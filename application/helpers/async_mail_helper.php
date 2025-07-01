@@ -125,7 +125,6 @@ if (!function_exists('push_email')) {
 }
 
 
-
 function logEmailStatus($status, $id, $next_run)
 {
         // Get the CodeIgniter instance
@@ -169,13 +168,22 @@ function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_da
         } else {
             $values[] = $ci->db->escape($value);
         }
-    }
+        }
+    delete_email_notification($entry_id);
 
     // Build the INSERT IGNORE SQL query.
     $sql = "INSERT IGNORE INTO email_notifications (`" . implode("`, `", $fields) . "`) VALUES (" . implode(", ", $values) . ")";
 
     return $ci->db->query($sql);
 }
+function delete_email_notification($id)
+        {
+            $ci =& get_instance();
+            $ci->db->where('entryid', $id);
+            $ci->db->delete('email_notifications');
+}
+
+
 
 
 }
