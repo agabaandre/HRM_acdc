@@ -597,14 +597,11 @@ public function notify_supervisors_pending_ppas()
 //reminder for midterm approval
 public function notify_supervisors_pending_midterms()
 {
-
-
     $current_period = str_replace(' ', '-', current_period());
     $deadline = $this->db->get('ppa_configs')->row()->mid_term_deadline;
 
-    // Get supervisors with any pending PPA
+    // Get supervisors with any pending Midterm
     $supervisors = $this->midterm_mdl->get_supervisors_with_pending_midterms($current_period);
-    
 
     foreach ($supervisors as $supervisor) {
         $pending_list = $this->midterm_mdl->get_pending_by_supervisor_with_staff($supervisor->supervisor_id);
@@ -618,31 +615,38 @@ public function notify_supervisors_pending_midterms()
             'pending_list'    => $pending_list,
             'subject'         => "Reminder: Pending Midterm Approvals for {$current_period}",
             'email_to'        => $supervisor->work_email.';'.settings()->email
-            
         ];
 
         // Render email view
-        $data['body'] = $this->load->view('supervisor_reminder_midterm', $data,true);
+        $data['body'] = $this->load->view('supervisor_reminder_midterm', $data, true);
 
-        // Log and send email
-        $entry_log_id = md5($supervisor->supervisor_id . '-SUPMIDREM-' . date('Y-m-d'));
-        golobal_log_email(
-            'Staff Portal System',
-            $data['email_to'],
-            $data['body'],
-            $data['subject'],
-            $supervisor->supervisor_id,
-            date('Y-m-d'),
-            date('Y-m-d'),
-            $entry_log_id
-        );
+        // Make entry_log_id unique per supervisor per period per day
+        $entry_log_id = md5($supervisor->supervisor_id . '-SUPMIDREM-' . $current_period . '-' . date('Y-m-d'));
 
-        
+        // Check if this email has already been logged today
+        $already_sent = $this->db->where('entry_id', $entry_log_id)
+                                 ->where('date', date('Y-m-d'))
+                                 ->get('email_notifications')
+                                 ->num_rows() > 0;
+
+        if (!$already_sent) {
+            golobal_log_email(
+                'Staff Portal System',
+                $data['email_to'],
+                $data['body'],
+                $data['subject'],
+                $supervisor->supervisor_id,
+                date('Y-m-d'),
+                date('Y-m-d'),
+                $entry_log_id
+            );
+        }
     }
+
+    // Now, call notify_unsubmitted_midterms() ONCE, outside the loop
     $this->notify_unsubmitted_midterms();
-     
+
     $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
-    
 }
 
 public function update_latest_contracts_in_ppa()
