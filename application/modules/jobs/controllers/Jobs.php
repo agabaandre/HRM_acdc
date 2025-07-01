@@ -510,22 +510,27 @@ $days_remaining = days_to_ppa_deadline();
  public function notify_unsubmitted_midterms()
  {
      $current_period = str_replace(' ', '-', current_period());
- 
      $deadline = $this->db->select('mid_term_deadline')->get('ppa_configs')->row()->mid_term_deadline;
-   
- 
-     //Only notify if deadline is in 15 days or less
+
+     // Only notify if deadline is in 40 days or less
      $days_remaining = days_to_midterm_deadline();
-     //dd($days_remaining);
 
      if ($days_remaining !== null && $days_remaining <= 40) {
          $staff_list = $this->midterm_mdl->get_staff_without_midterm($current_period);
 
-       //  dd($staff_list);
-
-       // dd(count($staff_list));
- 
          foreach ($staff_list as $staff) {
+             $entry_log_id = md5($staff->staff_id . '-empMIDTERMREM-' . date('Y-m-d'));
+
+             // Check if a notification for this staff and period has already been logged today using only entry_id
+             $exists = $this->db
+                 ->where('entry_id', $entry_log_id)
+                 ->count_all_results('email_notifications');
+
+             if ($exists > 0) {
+                 // Skip sending duplicate notification
+                 continue;
+             }
+
              $data = [
                  'name' => $staff->title . ' ' . $staff->fname . ' ' . $staff->lname,
                  'period' => $current_period,
@@ -533,18 +538,23 @@ $days_remaining = days_to_ppa_deadline();
                  'type' => 'Midterm Reminder',
                  'subject' => "Midterm Review Reminder: Submit your Midterm ($current_period)",
                  'email_to' => $staff->work_email.';'.settings()->email,
-                 
              ];
- 
+
              $data['body'] = $this->load->view('staff_reminder_midterm', $data, true);
- 
-             $entry_log_id = md5($staff->staff_id . '-MIDTERMREM-' . date('Y-m-d'));
-             golobal_log_email('Staff Portal System', $data['email_to'], $data['body'], $data['subject'], $staff->staff_id, date('Y-m-d'),
-             date('Y-m-d'), $entry_log_id);
+
+             golobal_log_email(
+                 'Staff Portal System',
+                 $data['email_to'],
+                 $data['body'],
+                 $data['subject'],
+                 $staff->staff_id,
+                 date('Y-m-d'),
+                 date('Y-m-d'),
+                 $entry_log_id
+             );
          }
      }
  }
- 
 //reminder for ppa approval
 public function notify_supervisors_pending_ppas()
 {
@@ -625,7 +635,6 @@ public function notify_supervisors_pending_midterms()
 
         // Check if this email has already been logged today
         $already_sent = $this->db->where('entry_id', $entry_log_id)
-                                 ->where('date', date('Y-m-d'))
                                  ->get('email_notifications')
                                  ->num_rows() > 0;
 
