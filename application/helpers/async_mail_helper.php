@@ -178,8 +178,8 @@ function golobal_log_email($trigger, $email, $message, $subject, $staff, $end_da
 }
 function delete_email_notification($id)
         {
-            $ci =& get_instance();
-            $ci->db->where('entryid', $id);
+            $ci =& get_instance(); 
+            $ci->db->where('entry_id', $id);
             $ci->db->delete('email_notifications');
 }
 

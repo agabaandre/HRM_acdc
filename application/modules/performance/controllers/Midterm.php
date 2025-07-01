@@ -247,7 +247,7 @@ public function midterm_review($entry_id)
     
         // Handle submission notifications
         if ($data['type'] === 'midterm_submission') {
-            $entry_log_id = md5($staff_id . '-MIDTERM-' . date('Y-m-d'));
+            $entry_log_id = md5($staff_id . '-MIDTERMSUBN-' . date('Y-m-d'));
             if($staff_id == $this->session->userdata('user')->staff_id){
                $subject = "Midterm Review Submission Confirmation " . date('Y-m-d H:i:s');
                $staff_data = array_merge($data, [
