@@ -53,7 +53,7 @@ if ($midterm_exists) {
         <th>Deliverables & KPIs</th>
         <th>Weight (%)</th>
         <th>Staff Self Appraisal</th>
-        <th>Appraiser’s Rating</th>
+        <th>Appraiser's Rating</th>
       </tr>
     </thead>
     <tbody id="objectives-table-body">
@@ -91,7 +91,7 @@ if ($midterm_exists) {
         </td>
 
         <td>
-          <select name="objectives[<?= $i ?>][appraiser_rating]" class="form-select" <?= $midreadonly ?>  <?php if($isSupervisor){echo 'required';}?>>
+          <select name="objectives[<?= $i ?>][appraiser_rating]" class="form-select objective-rating" <?= $midreadonly ?>  <?php if($isSupervisor){echo 'required';}?>>
             <option value="">-- Select --</option>
             <?php
               $ratings = [
@@ -112,3 +112,66 @@ if ($midterm_exists) {
     </tbody>
   </table>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Find the approval form (adjust selector if needed)
+  const approvalForm = document.querySelector('form[id^="approvalForm_midterm_"]');
+  if (!approvalForm) return;
+
+  approvalForm.addEventListener('submit', function(e) {
+    const actionInput = approvalForm.querySelector('input[name="action"]');
+    if (actionInput && actionInput.value === 'approve') {
+      // Find all appraiser_rating selects that are not disabled/readonly
+      const ratings = approvalForm.querySelectorAll('select.objective-rating:not([disabled]):not([readonly])');
+      let allFilled = true;
+      let summary = "<b>Please review the Appraiser's Ratings for all objectives before approval:</b><br><ul>";
+      let idx = 1;
+      ratings.forEach(function(select) {
+        const selectedOption = select.options[select.selectedIndex];
+        summary += "<li>Objective " + idx + ": " + (selectedOption.value ? selectedOption.text : "<span style='color:red'>[Not selected]</span>") + "</li>";
+        if (select.value === '') {
+          allFilled = false;
+        }
+        idx++;
+      });
+      summary += "</ul>";
+      if (!allFilled) {
+        e.preventDefault();
+        if (typeof show_notification === 'function') {
+          show_notification('Please fill in the Appraiser\'s Rating for all objectives before approval.', 'warning');
+        } else {
+          alert('Please fill in the Appraiser\'s Rating for all objectives before approval.');
+        }
+        return;
+      }
+      // Prompt supervisor to review/confirm using show_notification and a confirm dialog
+      if (typeof Lobibox !== 'undefined') {
+        e.preventDefault();
+        Lobibox.confirm({
+          msg: summary + '<br>Do you confirm these ratings, or do you want to make adjustments?',
+          title: 'Confirm Appraiser\'s Ratings',
+          callback: function($this, type) {
+            if (type === 'yes') {
+              approvalForm.submit();
+            } else {
+              if (typeof show_notification === 'function') {
+                show_notification('You can now adjust the ratings before approval.', 'info');
+              }
+            }
+          }
+        });
+      } else if (typeof show_notification === 'function') {
+        if (!confirm('Do you confirm these ratings, or do you want to make adjustments? Click Cancel to adjust.')) {
+          e.preventDefault();
+          show_notification('You can now adjust the ratings before approval.', 'info');
+        }
+      } else {
+        if (!confirm('Do you confirm these ratings, or do you want to make adjustments? Click Cancel to adjust.')) {
+          e.preventDefault();
+        }
+      }
+    }
+  });
+});
+</script>
