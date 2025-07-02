@@ -65,7 +65,7 @@ if (!empty($ppa->midterm_competency)) {
                          name="midterm_competency[<?= $key ?>]"
                          value="<?= $i ?>"
                          <?= $midreadonly ?>
-                         <?= ((string)$selected === (string)$i) ? 'checked' : '' ?>>
+                         <?= ((string)$selected === (string)$i) ? 'checked' : '' ?> required>
                   <label class="form-check-label"><?= $item['score_' . $i] ?></label>
                 </div>
               </td>

@@ -91,7 +91,7 @@ if ($midterm_exists) {
         </td>
 
         <td>
-          <select name="objectives[<?= $i ?>][appraiser_rating]" class="form-select" <?= $midreadonly ?>>
+          <select name="objectives[<?= $i ?>][appraiser_rating]" class="form-select" <?= $midreadonly ?>  <?php if($isSupervisor){echo 'required';}?>>
             <option value="">-- Select --</option>
             <?php
               $ratings = [
