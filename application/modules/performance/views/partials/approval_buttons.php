@@ -23,19 +23,16 @@ $isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) 
   </div>
 <?php endif; ?>
 
-<input type="hidden" name="action" id="approval_action" value="">
+<input type="hidden" name="action" id="approval_action_<?= $ppa->entry_id ?>" value="">
 
 <div class="text-center">
-  
   <?php if (
     $midterm_exists &&
     ((int)@$ppa->midterm_draft_status !== 2) &&
     $isSupervisor):
-
-
   ?>
     <button type="submit" class="btn btn-success px-5 me-2"
-            onclick="document.getElementById('approval_action').value = 'approve';">
+            onclick="document.getElementById('approval_action_<?= $ppa->entry_id ?>').value = 'approve';">
       Approve
     </button>
   <?php endif; ?>
@@ -73,7 +70,7 @@ $isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) 
         <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
           <i class="fas fa-times me-1"></i> Cancel
         </button>
-        <button type="button" class="btn btn-danger px-4" onclick="submitReturnAction('<?= $ppa->entry_id ?>')">
+        <button type="button" class="btn btn-danger px-4" onclick="submitReturnActionMidterm('<?= $ppa->entry_id ?>')">
           <i class="fas fa-reply me-1"></i> Yes, Return
         </button>
       </div>
@@ -82,8 +79,13 @@ $isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) 
 </div>
 
 <script>
-function submitReturnAction(entryId) {
-  document.getElementById('approval_action').value = 'return';
-  document.getElementById('approvalForm_midterm_' + entryId).submit();
+function submitReturnActionMidterm(entryId) {
+  // Use the correct, unique ID for the hidden input and form
+  var actionInput = document.getElementById('approval_action_' + entryId);
+  var form = document.getElementById('approvalForm_midterm_' + entryId);
+  if (actionInput && form) {
+    actionInput.value = 'return';
+    form.submit();
+  }
 }
 </script>
