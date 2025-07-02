@@ -314,57 +314,50 @@ public function cron_register(){
     {
         $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
         $today = date('Y-m-d');
-        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status!='1' and (subject like'PPA%' OR subject like '%Midterm%') and email_to NOT LIKE 'xx%'")->result();
-        //dd($this->db->last_query());
+        $messages = $this->db->query("SELECT * FROM email_notifications WHERE next_dispatch like '$today%' and status = '0' and (subject like'PPA%' OR subject like '%Midterm%') and email_to NOT LIKE 'xx%'")->result();
 
-        // Check if there are any messages to process
         $counter = 0;
         if (count($messages) > 0) {
             foreach ($messages as $message) {
+                // Try to lock this notification for sending
+                $this->db->query("UPDATE email_notifications SET status = '2' WHERE id = $message->id AND status = '0'");
+                if ($this->db->affected_rows() == 0) {
+                    // Another process already locked or sent this notification
+                    continue;
+                }
+
                 $body = $message->body;
                 $to = $message->email_to;
-                // $to ='kibiyed@africacd.org';
                 $subject = $message->subject;
                 $id = $message->id;
                 $next_run = $this->getNextRunDate($message->end_date);
                 $next_run = $next_run->format('Y-m-d');
-               // dd($next_run);
-                    $sending = push_email($to, $subject, $body, $id, $next_run);
-                    if ($sending) {
-                        echo "Message sent to " . $to . "\n";
-                        $today = date("Y-m-d");
 
-                        if ($today == $next_run) {
-                            $status = 1;
-                        } else {
-                            $status = 0;
-                        }
+                $sending = push_email($to, $subject, $body, $id, $next_run);
+                if ($sending) {
+                    echo "Message sent to " . $to . "\n";
+                    $today = date("Y-m-d");
 
+                    $status = ($today == $next_run) ? 1 : 0;
                     $this->db->query("UPDATE `email_notifications` SET `status` = '$status',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
                     $this->db->query("DELETE FROM email_notifications WHERE next_dispatch < DATE_SUB(NOW(), INTERVAL 1 WEEK) AND status = '1'");
-
-                    } else {
-                        echo "Failed to send message to " . $to . "\n";
+                } else {
+                    echo "Failed to send message to " . $to . "\n";
                     $this->db->query("UPDATE `email_notifications` SET `status` = '0',next_dispatch = '$next_run' WHERE `email_notifications`.`id` = $id");
+                }
 
+                if ($sending) {
+                    $counter++;
+                    // Delay 1 minute after each email
+                    sleep(10);
+                    // Delay 5 minutes after every 20 emails
+                    if ($counter % 20 == 0) {
+                        log_message('info', "Reached $counter emails. Pausing for 5 minutes.");
+                        sleep(30); // 5 minutes = 300 seconds
                     }
-
-                    if ($sending) {
-                        $counter++;
-                
-                        // Delay 1 minute after each email
-                        sleep(10);
-                
-                        // Delay 5 minutes after every 20 emails
-                        if ($counter % 20 == 0) {
-                            log_message('info', "Reached $counter emails. Pausing for 5 minutes.");
-                            sleep(30); // 5 minutes = 300 seconds
-                        }
-                    }
-                
-                } 
+                }
             }
-     else {
+        } else {
             echo "No messages to send.\n";
         }
     }
