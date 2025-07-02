@@ -95,7 +95,7 @@ if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 <hr>
 
 <!-- SECTION B: PERFORMANCE OBJECTIVES WITH APPRAISAL -->
-<?php $this->load->view('performance/midterm/midterm_section_b', compact('objectives', 'readonly','midreadonly')); ?>
+<?php $this->load->view('performance/midterm/midterm_section_b', compact('objectives', 'readonly','midreadonly','isSupervisor')); ?>
 <hr>
 
 <!-- SECTION C: APPRAISER'S COMMENTS -->
