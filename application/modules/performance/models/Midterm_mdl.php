@@ -712,14 +712,22 @@ public function get_midterm_dashboard_data()
     $this->db->where("pe.midterm_draft_status !=", 1);
     $midterm_staff = array_column($this->db->get()->result(), 'staff_id');
 
-    // Staff with PDP at midterm (if relevant)
-    $this->db->select("pe.staff_id")->from("ppa_entries pe");
+    // Staff with PDP at midterm (actual skills recommended)
+    $this->db->select("pe.staff_id, pe.midterm_recommended_skills")->from("ppa_entries pe");
     $this->db->where_in("pe.staff_id", $staff_ids);
-    $this->db->where("pe.training_recommended", "Yes");
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     $this->db->where("pe.performance_period", $period);
-    $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
+    $pdp_entries = $this->db->get()->result();
+
+    $pdp_staff = [];
+    foreach ($pdp_entries as $entry) {
+        $skills = json_decode($entry->midterm_recommended_skills ?? '[]', true);
+        if (!empty($skills)) {
+            $pdp_staff[] = $entry->staff_id;
+        }
+    }
+    $pdp_staff = array_unique($pdp_staff);
 
     // Calculate staff without midterms (active staff with PPAs but without midterms)
     $this->db->select("pe.staff_id");
