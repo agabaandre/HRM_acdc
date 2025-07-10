@@ -220,7 +220,7 @@
   <?php endif; ?>
   <div style="margin-top: 20px;">
   <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse; font-size: 10pt;">
-  <thead>
+   <thead>
     <tr style="background-color: #f2f2f2;">
       <th colspan="3" style="text-align: left; font-weight: bold;">
 	    E. Staff and Supervisor Sign Off
