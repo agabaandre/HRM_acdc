@@ -1025,6 +1025,20 @@ if (!function_exists('get_last_ppa_approval_action')) {
             ->row(); // returns latest action by that staff for that PPA
     }
 }
+
+if (!function_exists('get_last_ppa_approval_action_midterm')) {
+    function get_last_ppa_approval_action_midterm($entry_id, $staff_id)
+    {
+        $CI =& get_instance();
+        return $CI->db
+            ->where('entry_id', $entry_id)
+            ->where('staff_id', $staff_id)
+            ->order_by('id', 'DESC')
+            ->limit(1)
+            ->get('ppa_approval_trail_midterm')
+            ->row(); // returns latest action by that staff for that PPA
+    }
+}
 if (!function_exists('pa_settings')) {
     function ppa_settings()
     {
