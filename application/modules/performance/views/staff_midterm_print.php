@@ -258,6 +258,7 @@
   </table>
 
   <div style="margin-top: 20px;">
+    <div class="page-break"></div>
     <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse; font-size: 10pt;">
       <thead>
         <tr style="background-color: #f2f2f2;">
@@ -321,7 +322,7 @@
   <?php if ($this->uri->segment(7) == 1) { ?>
     <!-- Approval Trail -->
     <div class="page-break"></div>
-    <div class="section-title">E. Approval Trail</div>
+    <div class="section-title">F. Approval Trail</div>
     <table>
       <thead>
         <tr>
