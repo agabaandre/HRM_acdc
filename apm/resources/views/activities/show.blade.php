@@ -13,14 +13,15 @@
 @section('content')
 <div class="row">
 <div class="d-flex gap-1 mb-2" style="float: right;!important">
+    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bx bx-arrow-back"></i> Back to Matrix
+    </a>
+    
     @if(still_with_creator($matrix))
         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-sm btn-warning">
             <i class="bx bx-edit"></i> Edit Activity
         </a>
     @endif
-    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bx bx-arrow-back"></i> Back to Matrix
-    </a>
 </div>
 
     <div class="col-md-12">
