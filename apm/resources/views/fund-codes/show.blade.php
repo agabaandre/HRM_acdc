@@ -6,11 +6,15 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
+
+    <a href="{{ route('fund-codes.index') }}" class="btn btn-outline-secondary">
+        <i class="bx bx-arrow-back"></i> Back to List
+    </a>
     <a href="{{ route('fund-codes.edit', $fundCode) }}" class="btn btn-warning">
         <i class="bx bx-edit"></i> Edit
     </a>
-    <a href="{{ route('fund-codes.index') }}" class="btn btn-outline-secondary">
-        <i class="bx bx-arrow-back"></i> Back to List
+    <a href="{{ route('fund-codes.transactions', $fundCode) }}" class="btn btn-primary">
+        <i class="bx bx-history"></i> View Transactions
     </a>
 </div>
 @endsection

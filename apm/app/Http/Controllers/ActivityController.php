@@ -16,12 +16,11 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\ParticipantSchedule;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\JsonResponse;
+use App\Models\FundCodeTransaction;
 
 class ActivityController extends Controller
 {
@@ -666,20 +665,61 @@ class ActivityController extends Controller
                 $item = (Object) $item;
                 $total = ($item->unit_cost * $item->units) * $item->days;
 
-                ActivityBudget::create([
-                    'activity_id'=>$activity->id,
-                    'matrix_id'=>$activity->matrix_id,
-                    'fund_type_id'=>$fundCode,
-                    'fund_code'=>$fundCode,
-                    'cost'=>$item->cost,
-                    'description'=>$item->description,
-                    'unit_cost'=>$item->unit_cost,
-                    'units'=>$item->units,
-                    'days'=>$item->days,
-                    'total'=>$total
-                ]);
-            }
+                try{
+
+                    DB::beginTransaction();
+                    $activityBudget = ActivityBudget::create([
+                        'activity_id'=>$activity->id,
+                        'matrix_id'=>$activity->matrix_id,
+                        'fund_type_id'=>$fundCode,
+                        'fund_code'=>$fundCode,
+                        'cost'=>$item->cost,
+                        'description'=>$item->description,
+                        'unit_cost'=>$item->unit_cost,
+                        'units'=>$item->units,
+                        'days'=>$item->days,
+                        'total'=>$total
+                    ]);
+
+                    $this->store_fund_code_transaction($fundCode,$total,$activity,$activityBudget);
+                    DB::commit();
+
+                }
+                catch(Exception $e){
+                    DB::rollBack();
+                    Log::error('Error storing activity budget', ['exception' => $e]);
+                    return false;
+                }
+            } 
+            
         }
+    }
+
+    private function reduce_fund_code_balance($fundCode,$amount)
+    {
+        $fundCode->budget_balance = $fundCode->budget_balance - $amount;
+        $fundCode->save();
+    }
+
+    private function store_fund_code_transaction($fundCodeId,$amount,$activity,$activityBudget)
+    {
+        
+        $fundCode = FundCode::find($fundCodeId);
+
+        FundCodeTransaction::create([
+            'fund_code_id'=>$fundCodeId,
+            'amount'=>$amount,
+            'description'=>"Activity: ".$activity->activity_title." - Fund Code: ".$fundCode->code,
+            'activity_id'=>$activity->id,
+            'matrix_id'=>$activity->matrix_id,
+            'activity_budget_id'=>$activityBudget->id,
+            'balance_before'=>$fundCode->budget_balance,
+            'balance_after'=>$fundCode->budget_balance - $amount,
+            'is_reversal'=>false,
+            'created_by'=>user_session('staff_id'),
+        ]);
+
+        $this->reduce_fund_code_balance($fundCode,$amount);
     }
 
     private function storeParticipantSchedules($schedules,$activity)

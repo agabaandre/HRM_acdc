@@ -81,6 +81,7 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     // Resource Routes
     Route::resource('fund-types', App\Http\Controllers\FundTypeController::class);
     Route::resource('fund-codes', App\Http\Controllers\FundCodeController::class);
+    Route::get('fund-codes/{fundCode}/transactions', [App\Http\Controllers\FundCodeController::class, 'transactions'])->name('fund-codes.transactions');
     Route::resource('divisions', App\Http\Controllers\DivisionController::class);
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     Route::resource('staff', App\Http\Controllers\StaffController::class);
