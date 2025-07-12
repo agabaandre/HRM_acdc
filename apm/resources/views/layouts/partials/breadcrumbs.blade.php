@@ -92,7 +92,7 @@
                         </li>
                         @else
                         <li class="breadcrumb-item">
-                            <a href="{{ url($linkUrl) }}" title="{{$displayName}}">
+                            <a href="{{ url($url) }}" title="{{$displayName}}">
                                 {{  Str::limit($displayName,100) }}
                             </a>
                         </li>
