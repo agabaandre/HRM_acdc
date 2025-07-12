@@ -7,6 +7,7 @@ use App\Models\FundType;
 use App\Models\Division;
 use App\Models\Funder;
 use Illuminate\Http\Request;
+use App\Models\FundCodeTransaction;
 
 class FundCodeController extends Controller
 {
@@ -162,5 +163,11 @@ class FundCodeController extends Controller
 
         return redirect()->route('fund-codes.index')
             ->with('success', 'Fund Code deleted successfully.');
+    }
+
+    public function transactions(FundCode $fundCode)
+    {
+        $fundCodeTransactions = FundCodeTransaction::where('fund_code_id', $fundCode->id)->get();
+        return view('fund-codes.transactions', compact('fundCodeTransactions'));
     }
 }
