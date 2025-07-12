@@ -77,15 +77,15 @@
                     </div>
                 </div>
 
-<div class="row mt-3">
-    <div class="col-md-4 offset-md-8">
-        <label for="total_participants" class="form-label fw-semibold">
-            <i class="fas fa-users me-1 text-success"></i> Total Participants
-        </label>
-        <input type="text" id="total_participants_display" class="form-control bg-white border-success fw-bold" readonly value="0">
-        <input type="hidden" name="total_participants" id="total_participants" value="0">
-    </div>
-</div>
+                <div class="row mt-3">
+                    <div class="col-md-4 offset-md-8">
+                        <label for="total_participants" class="form-label fw-semibold">
+                            <i class="fas fa-users me-1 text-success"></i> Total Participants
+                        </label>
+                        <input type="text" id="total_participants_display" class="form-control bg-white border-success fw-bold" readonly value="0">
+                        <input type="hidden" name="total_participants" id="total_participants" value="0">
+                    </div>
+                </div>
 
 
 

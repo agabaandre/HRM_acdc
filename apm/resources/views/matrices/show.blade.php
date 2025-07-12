@@ -36,7 +36,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
-                            @if(!activities_approved_by_me($matrix) && get_approvable_activities($matrix)->count()>0)
+                            @if(!activities_approved_by_me($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
                                 <th>
                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                 </th>
@@ -56,7 +56,7 @@
                         @endphp
                         @forelse($activities as $activity)
                             <tr>
-                                @if(!activities_approved_by_me($matrix) &&  get_approvable_activities($matrix)->count()>0)
+                                @if(!activities_approved_by_me($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
                                <td>
                                     @if(can_approve_activity($activity) && !done_approving_activty($activity))
                                         <input type="checkbox" class="form-check-input activity-checkbox" value="{{ $activity->id }}" data-activity-title="{{ $activity->activity_title }}">
