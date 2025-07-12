@@ -103,15 +103,7 @@
                         <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
                         <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
                     </div>
-                    <div class="row g-3" id="attachmentContainer">
-                        <div class="col-md-4 attachment-block">
-                            <label class="form-label">Document Type*</label>
-                            <input type="text" name="attachments[0][type]" class="form-control" required>
-                            <input type="file" name="attachments[0][file]" class="form-control mt-1 attachment-input" 
-                                   accept=".pdf,.jpg,.jpeg,.png,image/*" required>
-                            <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG</small>
-                        </div>
-                    </div>
+                    <div class="row g-3" id="attachmentContainer"></div>
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
