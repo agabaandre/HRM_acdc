@@ -29,7 +29,7 @@
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
                 <small class="text-muted">Activity Ref: {{ $activity->activity_ref }}</small>
                 @if($activity->my_last_action)
-                    <p> You Action: <small class=" text-white rounded p-1 {{($activity->my_last_action->action=='passed')?'bg-success':'bg-danger'}}">{{strtoupper($activity->my_last_action->action)}}</small></p>
+                    <p> Your Action: <small class=" text-white rounded p-1 {{($activity->my_last_action->action=='passed')?'bg-success':'bg-danger'}}">{{strtoupper($activity->my_last_action->action)}}</small></p>
                 @endif
             </div>
             <div class="card-body">

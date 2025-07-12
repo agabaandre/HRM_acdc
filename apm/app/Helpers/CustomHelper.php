@@ -41,7 +41,7 @@ if (!function_exists('user_session')) {
          */
         function still_with_creator($matrix)
         {
-            return  ((can_division_head_edit($matrix) && activities_approved_by_me($matrix)) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
+            return  ((can_division_head_edit($matrix) && !activities_approved_by_me($matrix)) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
         }
 
     }
