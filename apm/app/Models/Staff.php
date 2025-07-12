@@ -126,6 +126,7 @@ class Staff extends Model
     {
         return $this->participant_schedules()
             ->where('is_home_division', 1)
+            ->where('international_travel', 1)
             ->get()
             ->groupBy(fn($s) =>  $s->quarter . '-' . $s->year)
             ->map(fn($group) => $group->sum('participant_days'))
@@ -136,6 +137,7 @@ class Staff extends Model
     {
         return $this->participant_schedules()
             ->where('is_home_division', 0)
+            ->where('international_travel', 1)
             ->get()
             ->groupBy(fn($s) =>  $s->quarter . '-' . $s->year)
             ->map(fn($group) => $group->sum('participant_days'))
