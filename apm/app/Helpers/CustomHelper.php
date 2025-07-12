@@ -39,9 +39,9 @@ if (!function_exists('user_session')) {
         /**
          * Get a value from session('user') using dot notation
          */
-        function still_with_creator($matrix)
+        function still_with_creator($matrix,$activity=null)
         {
-            return  (can_division_head_edit($matrix) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
+            return  (can_division_head_edit($matrix) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id,$activity?$activity->responsible_staff_id:null]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
         }
 
     }
