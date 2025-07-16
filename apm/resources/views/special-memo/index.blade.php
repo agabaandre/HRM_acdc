@@ -76,7 +76,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center" width="60">ID</th>
-                                    <th width="120">Memo Number</th>
+                                    {{-- <th width="120">Memo Number</th> --}}
                                     <th width="110">Date</th>
                                     <th>Subject</th>
                                     <th>Author</th>
@@ -89,21 +89,21 @@
                             <tbody>
                                 @forelse($specialMemos as $memo)
                                     <tr>
-                                        <td class="text-center">{{ $memo->id }}</td>
-                                        <td>
+                                         <td class="text-center">{{ $memo->id }}</td>
+                                       {{-- <td>
                                             <span class="fw-medium">{{ $memo->memo_number }}</span>
-                                        </td>
-                                        <td>{{ $memo->memo_date}}</td>
+                                        </td> --}}
+                                        <td>{{ $memo->formatted_dates }}</td>
                                         <td>
                                             <a href="{{ route('special-memo.show', $memo) }}" class="text-decoration-none fw-medium text-dark">
-                                                {{ Str::limit($memo->subject, 50) }}
+                                                {{ Str::limit($memo->activity_title, 50) }}
                                             </a>
                                         </td>
                                         @php 
                                       
                                         @endphp
-                                        <td>{{ $memo->staff->first_name }} {{ $memo->staff->last_name }}</td>
-                                        <td>{{ $memo->division->name }}</td>
+                                        <td>{{ optional($memo->staff)->fname ?? '-' }} {{ optional($memo->staff)->lname ?? '' }}</td>
+                                        <td>{{ optional($memo->division)->division_name ?? '-' }}</td>
                                         <td>
                                             @php
                                                 $priorityBadgeClass = [
@@ -166,6 +166,7 @@
                     <div class="d-flex justify-content-end mt-3">
                         {{ $specialMemos->appends(request()->except('page'))->links() }}
                     </div>
+
                 </div>
             </div>
         </div>
