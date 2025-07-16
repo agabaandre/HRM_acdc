@@ -120,7 +120,7 @@ public function midterm_review($entry_id)
 	
 		// Load dependencies
 		$data['module'] = $this->module;
-		$data['title'] = "Midterm Review - " . staff_name($this->uri->segment(4));
+		$data['title'] = "Midterm Review - " . staff_name($this->uri->segment(5));
 		$data['skills'] = $this->db->get('training_skills')->result();
 	
 		// Get saved PPA form
