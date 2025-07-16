@@ -3,266 +3,226 @@
 @section('title', 'View Special Memo')
 
 @section('content')
-<div class="container-fluid p-0">
-    <div class="row">
-        <div class="col-12">
+<div class="container-fluid px-0">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            
+            <!-- Main Content Cards -->
+            <div class="row g-4">
+                <div class="col-lg-8">
+
+                    <!-- Meta Info Panel -->
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-white py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 fw-bold text-primary">
-                        <i class="bx bx-file me-1"></i> Special Memo Details
+                <div class="card-header py-2 bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0" style="font-size:1rem;">
+                        <i class="bx bx-info-circle me-2 text-primary"></i>Special Memo Information
                     </h6>
-                    <div>
-                        <a href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-primary btn-sm me-2">
-                            <i class="bx bx-edit me-1"></i> Edit
-                        </a>
-                        <a href="{{ route('special-memo.index') }}" class="btn btn-outline-primary btn-sm">
-                            <i class="bx bx-arrow-back me-1"></i> Back to List
-                        </a>
+                </div>
+                <div class="card-body py-2 px-3">
+                    <div class="row g-3 align-items-center matrix-meta-row">
+                        <div class="col-md-3 matrix-meta-item">
+                            <i class="bx bx-user"></i>
+                            <span class="matrix-meta-label">Staff:</span>
+                            <span class="matrix-meta-value">{{ optional($specialMemo->staff)->first_name }} {{ optional($specialMemo->staff)->last_name }}</span>
+                        </div>
+                        <div class="col-md-9 matrix-meta-item">
+                            <i class="bx bx-building"></i>
+                            <span class="matrix-meta-label">Division:</span>
+                            <span class="matrix-meta-value">{{ optional($specialMemo->division)->division_name ?? '-' }}</span>
+                        </div>
+                        <div class="col-md-3 matrix-meta-item">
+                            <i class="bx bx-calendar"></i>
+                            <span class="matrix-meta-label">Date Range:</span>
+                            <span class="matrix-meta-value">{{ $specialMemo->formatted_dates ?: '-' }}</span>
+                        </div>
+                        <div class="col-md-3 matrix-meta-item">
+                            <i class="bx bx-check-circle"></i>
+                            <span class="matrix-meta-label">Status:</span>
+                            @php
+                                $statusBadgeClass = [
+                                    'draft' => 'bg-secondary',
+                                    'submitted' => 'bg-primary',
+                                    'approved' => 'bg-success',
+                                    'rejected' => 'bg-danger',
+                                ][$specialMemo->status] ?? 'bg-secondary';
+                            @endphp
+                            <span class="badge {{ $statusBadgeClass }}">{{ ucfirst($specialMemo->status) }}</span>
+                        </div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="row g-4">
-                        <!-- Left Column -->
-                        <div class="col-lg-8">
-                            <!-- Memo Information -->
-                            <div class="card border shadow-sm mb-4">
-                                <div class="card-header bg-light py-3">
-                                    <h6 class="m-0 fw-semibold">Memo Information</h6>
-                                </div>
-                                <div class="card-body p-4">
-                                    <div class="mb-4">
-                                        <h5 class="fw-bold mb-3">{{ $specialMemo->subject }}</h5>
-                                        <div class="d-flex flex-wrap mb-3 align-items-center">
-                                            <div class="me-4 mb-2">
-                                                <span class="text-muted small me-2">Memo Number:</span>
-                                                <span class="badge bg-light text-dark border">{{ $specialMemo->memo_number }}</span>
-                                            </div>
-                                            <div class="me-4 mb-2">
-                                                <span class="text-muted small me-2">Date:</span>
-                                                <span class="badge bg-light text-dark border">{{ $specialMemo->memo_date->format('d M, Y') }}</span>
-                                            </div>
-                                            <div class="me-4 mb-2">
-                                                <span class="text-muted small me-2">Priority:</span>
-                                                @php
-                                                    $priorityBadgeClass = [
-                                                        'low' => 'bg-light text-dark',
-                                                        'medium' => 'bg-info',
-                                                        'high' => 'bg-warning',
-                                                        'urgent' => 'bg-danger',
-                                                    ][$specialMemo->priority] ?? 'bg-secondary';
-                                                @endphp
-                                                <span class="badge {{ $priorityBadgeClass }}">
-                                                    {{ ucfirst($specialMemo->priority) }}
-                                                </span>
-                                            </div>
-                                            <div class="mb-2">
-                                                <span class="text-muted small me-2">Status:</span>
-                                                @php
-                                                    $statusBadgeClass = [
-                                                        'draft' => 'bg-secondary',
-                                                        'submitted' => 'bg-primary',
-                                                        'approved' => 'bg-success',
-                                                        'rejected' => 'bg-danger',
-                                                    ][$specialMemo->status] ?? 'bg-secondary';
-                                                @endphp
-                                                <span class="badge {{ $statusBadgeClass }}">
-                                                    {{ ucfirst($specialMemo->status) }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mb-4">
-                                        <h6 class="fw-semibold mb-2">Memo Content</h6>
-                                        <div class="bg-light p-3 rounded border">
-                                            {!! nl2br(e($specialMemo->body)) !!}
-                                        </div>
-                                    </div>
-                                </div>
+            </div>
+
+                    <div class="card matrix-card mb-4">
+                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-detail me-2"></i>Activity Details</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <span class="text-muted small">Activity Title</span>
+                                <h5 class="fw-bold mb-0">{{ $specialMemo->activity_title ?? '-' }}</h5>
                             </div>
-                            
-                            <!-- Recipients -->
-                            <div class="card border shadow-sm mb-4">
-                                <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 fw-semibold">Recipients</h6>
-                                    <span class="badge bg-primary">{{ count($specialMemo->recipients ?? []) }}</span>
-                                </div>
-                                <div class="card-body p-4">
-                                    @if(!empty($specialMemo->recipients) && count($specialMemo->recipients) > 0)
-                                        <div class="table-responsive">
-                                            <table class="table table-sm table-hover">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>#</th>
-                                                        <th>Name</th>
-                                                        <th>Division</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($specialMemo->recipients as $index => $recipientId)
-                                                        @php 
-                                                            $recipient = App\Models\Staff::find($recipientId);
-                                                        @endphp
-                                                        @if($recipient)
-                                                            <tr>
-                                                                <td>{{ $index + 1 }}</td>
-                                                                <td>{{ $recipient->first_name }} {{ $recipient->last_name }}</td>
-                                                                <td>{{ $recipient->division->name ?? 'N/A' }}</td>
-                                                            </tr>
-                                                        @endif
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    @else
-                                        <div class="alert alert-info mb-0">
-                                            <i class="bx bx-info-circle me-2"></i>
-                                            No recipients specified for this memo.
-                                        </div>
-                                    @endif
-                                </div>
+                            <div class="mb-3">
+                                <span class="text-muted small">Key Result Area</span>
+                                <div>{{ $specialMemo->key_result_area ?? '-' }}</div>
                             </div>
-                            
-                            <!-- Attachments -->
-                            <div class="card border shadow-sm">
-                                <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 fw-semibold">Attachments</h6>
-                                    <span class="badge bg-primary">{{ count($specialMemo->attachment ?? []) }}</span>
-                                </div>
-                                <div class="card-body p-4">
-                                    @if(!empty($specialMemo->attachment) && count($specialMemo->attachment) > 0)
-                                        <div class="list-group">
-                                            @foreach($specialMemo->attachment as $index => $attachment)
-                                                <a href="{{ asset('storage/' . ($attachment['path'] ?? '')) }}" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                                    <div>
-                                                        <i class="bx 
-                                                        @if(in_array(strtolower(pathinfo($attachment['name'] ?? '', PATHINFO_EXTENSION)), ['pdf']))
-                                                            bxs-file-pdf text-danger
-                                                        @elseif(in_array(strtolower(pathinfo($attachment['name'] ?? '', PATHINFO_EXTENSION)), ['doc', 'docx']))
-                                                            bxs-file-doc text-primary
-                                                        @elseif(in_array(strtolower(pathinfo($attachment['name'] ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']))
-                                                            bxs-file-image text-success
-                                                        @else
-                                                            bxs-file text-secondary
-                                                        @endif
-                                                        me-2"></i>
-                                                        {{ $attachment['name'] ?? 'File' }}
-                                                        <small class="text-muted">
-                                                            ({{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'Unknown size' }})
-                                                        </small>
-                                                    </div>
-                                                    <span class="badge bg-primary rounded-pill">
-                                                        <i class="bx bx-download"></i>
-                                                    </span>
-                                                </a>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        <div class="alert alert-info mb-0">
-                                            <i class="bx bx-info-circle me-2"></i>
-                                            No attachments for this memo.
-                                        </div>
-                                    @endif
-                                </div>
+                            <div class="mb-3">
+                                <span class="text-muted small">Background</span>
+                                <div class="bg-light rounded p-2 " style="white-space: pre-line;">{{ $specialMemo->background ?? '-' }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <span class="text-muted small">Justification</span>
+                                <div class="bg-light rounded p-2 " style="white-space: pre-line;">{{ $specialMemo->justification ?? '-' }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <span class="text-muted small">Supporting Reasons</span>
+                                <div class="bg-light rounded p-2 " style="white-space: pre-line;">{{ $specialMemo->supporting_reasons ?? '-' }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <span class="text-muted small">Remarks</span>
+                                <div class="bg-light rounded p-2" style="white-space: pre-line;">{{ $specialMemo->remarks ?? '-' }}</div>
                             </div>
                         </div>
-                        
-                        <!-- Right Column -->
-                        <div class="col-lg-4">
-                            <!-- Author Information -->
-                            <div class="card border shadow-sm mb-4">
-                                <div class="card-header bg-light py-3">
-                                    <h6 class="m-0 fw-semibold">Author Information</h6>
-                                </div>
-                                <div class="card-body p-4">
-                                    <div class="d-flex align-items-center mb-3">
-                                        <div class="avatar-sm me-3 bg-light rounded-circle d-flex align-items-center justify-content-center">
-                                            <i class="bx bx-user text-primary" style="font-size: 1.5rem;"></i>
-                                        </div>
-                                        <div>
-                                            <h6 class="fw-semibold mb-0">{{ $specialMemo->staff->first_name }} {{ $specialMemo->staff->last_name }}</h6>
-                                            <span class="text-muted small">{{ $specialMemo->staff->position ?? 'No Position' }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <div class="text-muted small mb-1">Email</div>
-                                        <div>{{ $specialMemo->staff->email ?? 'No Email' }}</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <div class="text-muted small mb-1">Phone</div>
-                                        <div>{{ $specialMemo->staff->phone ?? 'No Phone' }}</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-muted small mb-1">Division</div>
-                                        <div>{{ $specialMemo->division->name ?? 'No Division' }}</div>
-                                    </div>
+                    </div>
+                    <div class="card matrix-card mb-4">
+                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-group me-2"></i>Participants & Location</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <span class="text-muted small">Location(s)</span>
+                                <div><i class="bx bx-map me-1"></i>
+                                        {{ $specialMemo->locations ?? '-' }}
                                 </div>
                             </div>
-                            
-                            <!-- Workflow Information -->
-                            <div class="card border shadow-sm mb-4">
-                                <div class="card-header bg-light py-3">
-                                    <h6 class="m-0 fw-semibold">Workflow Information</h6>
-                                </div>
-                                <div class="card-body p-4">
-                                    <div class="mb-3">
-                                        <h6 class="fw-semibold small mb-2">Forward Workflow</h6>
-                                        <div class="bg-light p-2 rounded border mb-2">
-                                            {{ $specialMemo->forwardworkflow->workflow_name ?? 'Not Specified' }}
-                                        </div>
-                                        <div class="text-muted small">
-                                            This workflow is used for forwarding the memo to the next approver.
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h6 class="fw-semibold small mb-2">Reverse Workflow</h6>
-                                        <div class="bg-light p-2 rounded border mb-2">
-                                            {{ $specialMemo->reverseworkflow->workflow_name ?? 'Not Specified' }}
-                                        </div>
-                                        <div class="text-muted small">
-                                            This workflow is used when the memo needs to be returned to previous approvers.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Additional Details -->
-                            <div class="card border shadow-sm mb-4">
-                                <div class="card-header bg-light py-3">
-                                    <h6 class="m-0 fw-semibold">Additional Details</h6>
-                                </div>
-                                <div class="card-body p-4">
-                                    <div class="mb-3">
-                                        <div class="text-muted small mb-1">Created At</div>
-                                        <div>{{ $specialMemo->created_at->format('d M, Y h:i A') }}</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <div class="text-muted small mb-1">Last Updated</div>
-                                        <div>{{ $specialMemo->updated_at->format('d M, Y h:i A') }}</div>
-                                    </div>
-                                    @if($specialMemo->remarks)
-                                        <div>
-                                            <div class="text-muted small mb-1">Remarks</div>
-                                            <div class="bg-light p-2 rounded border">
-                                                {{ $specialMemo->remarks }}
-                                            </div>
-                                        </div>
+                            <div class="mb-3">
+                                <span class="text-muted small">Participants</span>
+                                <div><i class="bx bx-user me-1"></i> <strong>Total:</strong> {{ $specialMemo->total_participants ?? '-' }}</div>
+                                <div class="mt-1"><span class="badge bg-info">Internal</span> 
+                                    @if(is_array($specialMemo->internal_participants))
+                                        {{ count($specialMemo->internal_participants) }}
                                     @endif
                                 </div>
+                                <div class="mt-1"><span class="badge bg-secondary">External</span> {{ $specialMemo->total_external_participants ?? '-' }}</div>
                             </div>
-                            
-                            <!-- Action Buttons -->
-                            <div class="d-grid gap-2">
-                                <a href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-primary">
-                                    <i class="bx bx-edit me-1"></i> Edit Special Memo
-                                </a>
-                                <form action="{{ route('special-memo.destroy', $specialMemo) }}" method="POST" id="deleteMemoForm">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger w-100">
-                                        <i class="bx bx-trash me-1"></i> Delete Special Memo
-                                    </button>
-                                </form>
+                            <div class="mb-3">
+                                <span class="text-muted small">Internal Participants</span>
+                                @if(!empty($specialMemo->internal_participants))
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Staff</th>
+                                                    <th>Start</th>
+                                                    <th>End</th>
+                                                    <th>Days</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($specialMemo->internal_participants as $participant)
+                                                    <tr>
+                                                        <td>
+                                                            @if($participant['staff'])
+                                                                {{ $participant['staff']->fname }} {{ $participant['staff']->lname }}
+                                                            @else
+                                                                <span class="text-muted">Unknown</span>
+                                                            @endif
+                                                        </td>
+                                                        <td>{{ $participant['participant_start'] ?? '-' }}</td>
+                                                        <td>{{ $participant['participant_end'] ?? '-' }}</td>
+                                                        <td>{{ $participant['participant_days'] ?? '-' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <span class="text-muted">No internal participants</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card matrix-card mb-4">
+                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-comment-detail me-2"></i>Activity Request Remarks</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="bg-light rounded p-2 border" style="white-space: pre-line;">{{ $specialMemo->activity_request_remarks ?? '-' }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card matrix-card mb-4">
+                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-money me-2"></i>Budget</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            @if(is_array($specialMemo->budget) && count($specialMemo->budget))
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Item</th>
+                                                <th>Amount</th>
+                                                <th>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($specialMemo->budget as $key => $item)
+                                                <tr>
+                                                    <td>{{ $key }}</td>
+                                                    <td>
+                                                        @if(is_array($item) && isset($item['amount']))
+                                                            {{ number_format($item['amount'], 2) }}
+                                                        @elseif(is_numeric($item))
+                                                            {{ number_format($item, 2) }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if(is_array($item))
+                                                            <pre class="mb-0 small">{{ json_encode($item, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <span class="text-muted">No budget details</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="card matrix-card mb-4">
+                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-paperclip me-2"></i>Attachments</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            @if(is_array($specialMemo->attachment) && count($specialMemo->attachment) > 0)
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach($specialMemo->attachment as $attachment)
+                                        <a href="{{ asset('storage/' . ($attachment['path'] ?? '')) }}" target="_blank" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
+                                            <i class="bx bx-paperclip"></i> {{ $attachment['name'] ?? 'File' }}
+                                            <small class="text-muted">({{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'Unknown size' }})</small>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            @else
+                                <span class="text-muted">No attachments</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="card matrix-card mb-4">
+                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-cube me-2"></i>Other Details</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <span class="text-muted small">Request Type</span>
+                                <div>{{ optional($specialMemo->requestType)->name ?? '-' }}</div>
                             </div>
                         </div>
                     </div>
@@ -304,3 +264,47 @@
     });
 </script>
 @endpush
+
+<style>
+.matrix-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    font-size: 0.92rem;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+}
+.matrix-meta-item {
+    display: flex;
+    align-items: center;
+    min-width: 120px;
+    margin-bottom: 0;
+}
+.matrix-meta-item i {
+    font-size: 1rem;
+    margin-right: 0.3rem;
+    color: #007bff;
+}
+.matrix-meta-label {
+    color: #888;
+    font-size: 0.85em;
+    margin-right: 0.2em;
+}
+.matrix-meta-value {
+    font-weight: 500;
+}
+.matrix-card {
+    background: #fff;
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 24px rgba(17,154,72,0.08);
+    border: none;
+}
+.matrix-card .card-header {
+    border-radius: 1.25rem 1.25rem 0 0;
+    background: linear-gradient(90deg, #e9f7ef 0%, #fff 100%);
+    border-bottom: 1px solid #e9f7ef;
+}
+.matrix-card .card-body {
+    border-radius: 0 0 1.25rem 1.25rem;
+}
+</style>

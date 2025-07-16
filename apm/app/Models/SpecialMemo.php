@@ -53,6 +53,10 @@ class SpecialMemo extends Model
         'is_special_memo' => 'boolean',
     ];
 
+    protected $appends = [
+        'formatted_dates',
+    ];
+
     /**
      * Staff member who submitted the special memo.
      */
@@ -71,5 +75,88 @@ class SpecialMemo extends Model
     public function requestType(): BelongsTo
     {
         return $this->belongsTo(RequestType::class, 'request_type_id');
+    }
+
+    // --- Accessors & Utility ---
+
+    public function getFormattedDatesAttribute(): string
+    {
+        if ($this->date_from && $this->date_to) {
+            return \Carbon\Carbon::parse($this->date_from)->format('M j, Y') . ' - ' . \Carbon\Carbon::parse($this->date_to)->format('M j, Y');
+        }
+        return '';
+    }
+
+    public function getRecipientsAttribute($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
+    }
+
+    public function getAttachmentAttribute($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
+    }
+
+    public function getInternalParticipantsAttribute($value)
+    {
+       $data = $this->cleanJson($value);
+        
+        $result = [];
+        foreach ($data as $staffId => $participantDetails) {
+            $staff = \App\Models\Staff::find($staffId) ?: \App\Models\Staff::find((int)$staffId);
+            if ($staff) {
+                $result[] = [
+                    'staff' => $staff,
+                    'participant_start' => $participantDetails['participant_start'],
+                    'participant_end' => $participantDetails['participant_end'],
+                    'participant_days' => $participantDetails['participant_days']
+                ];
+            } else {
+                $result[] = [
+                    'staff' => null,
+                    'participant_start' => $participantDetails['participant_start'],
+                    'participant_end' => $participantDetails['participant_end'],
+                    'participant_days' => $participantDetails['participant_days']
+                ];
+            }
+        }
+        return $result;
+    }
+
+    private function cleanJson($value)
+    {
+         // Remove extra quotes if present
+         if (is_string($value) && strlen($value) > 2 && $value[0] === '"' && $value[strlen($value)-1] === '"') {
+            $value = substr($value, 1, -1);
+        }
+        // Unescape slashes
+        $value = stripslashes($value);
+        // First decode
+        $data = json_decode($value, true);
+        // If still a string, decode again (double-encoded)
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+        }
+        return $data;
+    }
+
+    public function getLocationsAttribute()
+    {
+        $data = $this->cleanJson($this->location_id);
+        return Location::whereIn('id', $data)->pluck('name')->implode(', ');
     }
 }

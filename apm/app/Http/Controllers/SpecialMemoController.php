@@ -23,7 +23,7 @@ class SpecialMemoController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = SpecialMemo::with(['staff'])->latest();
+        $query = SpecialMemo::with(['staff','division'])->latest();
 
      
     
@@ -107,6 +107,7 @@ class SpecialMemoController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $userStaffId = session('user.auth_staff_id');
+        $userDivisionId = session('user.division_id');
     
         $validated = $request->validate([
             'activity_title' => 'required|string|max:255',
@@ -133,6 +134,7 @@ class SpecialMemoController extends Controller
             SpecialMemo::create([
                 'is_special_memo' => 1,
                 'staff_id' => $userStaffId,
+                'division_id' => $userDivisionId,
                 'responsible_person_id' => $request->input('responsible_person_id', 1),
                 'date_from' => $request->input('date_from'),
                 'date_to' => $request->input('date_to'),
