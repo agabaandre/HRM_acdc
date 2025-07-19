@@ -340,10 +340,10 @@ $(document).ready(function () {
                 // Hide and disable budget codes, remove required
                 $('#budget_codes').val("").prop('disabled', true).prop('required', false).closest('.col-md-4').hide();
             } else {
-                $('.activity_code').show();
+            $('.activity_code').show();
                 // Show and enable budget codes, add required
                 $('#budget_codes').prop('disabled', false).prop('required', true).closest('.col-md-4').show();
-            }
+        }
         } else {
             $('#activity_code').val(""); // clear value
             $('.activity_code').hide();
@@ -836,8 +836,8 @@ $(document).ready(function () {
                 // Wait for budget codes to load, then restore existing selections
                 setTimeout(() => {
                     console.log('Restoring budget code selections...');
-                    Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
-                        // Select the budget code
+            Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
+                // Select the budget code
                         const option = $(`#budget_codes option[value="${codeId}"]`);
                         if (option.length) {
                             option.prop('selected', true);
@@ -846,39 +846,39 @@ $(document).ready(function () {
                             console.warn(`Budget code option not found: ${codeId}`);
                         }
                     });
-                    
-                    // Trigger budget codes change to create budget cards
-                    $('#budget_codes').trigger('change');
-                    
+                
+                // Trigger budget codes change to create budget cards
+                $('#budget_codes').trigger('change');
+                
                     // Restore budget items in the cards after they're created
-                    setTimeout(() => {
+                setTimeout(() => {
                         console.log('Restoring budget items in cards...');
                         Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
-                            const tbody = $(`.budget-body[data-code="${codeId}"]`);
+                    const tbody = $(`.budget-body[data-code="${codeId}"]`);
                             console.log(`Looking for tbody with data-code="${codeId}":`, tbody.length);
                             
-                            if (tbody.length && items.length > 0) {
-                                tbody.empty();
-                                items.forEach((item, index) => {
+                    if (tbody.length && items.length > 0) {
+                        tbody.empty();
+                        items.forEach((item, index) => {
                                     console.log(`Creating budget row for item:`, item);
-                                    const row = createBudgetRow(codeId, index);
-                                    tbody.append(row);
-                                    
-                                    // Set values
-                                    const newRow = tbody.find('tr').last();
-                                    newRow.find('select[name*="[cost]"]').val(item.cost).trigger('change');
-                                    newRow.find('input[name*="[unit_cost]"]').val(item.unit_cost);
-                                    newRow.find('input[name*="[units]"]').val(item.units);
-                                    newRow.find('input[name*="[days]"]').val(item.days);
-                                    newRow.find('input[name*="[description]"]').val(item.description);
-                                    
-                                    // Calculate total
-                                    const unitCost = parseFloat(item.unit_cost) || 0;
-                                    const units = parseFloat(item.units) || 0;
-                                    const days = parseFloat(item.days) || 0;
-                                    const total = (unitCost * units * days).toFixed(2);
-                                    newRow.find('.total').val(total);
-                                });
+                            const row = createBudgetRow(codeId, index);
+                            tbody.append(row);
+                            
+                            // Set values
+                            const newRow = tbody.find('tr').last();
+                            newRow.find('select[name*="[cost]"]').val(item.cost).trigger('change');
+                            newRow.find('input[name*="[unit_cost]"]').val(item.unit_cost);
+                            newRow.find('input[name*="[units]"]').val(item.units);
+                            newRow.find('input[name*="[days]"]').val(item.days);
+                            newRow.find('input[name*="[description]"]').val(item.description);
+                            
+                            // Calculate total
+                            const unitCost = parseFloat(item.unit_cost) || 0;
+                            const units = parseFloat(item.units) || 0;
+                            const days = parseFloat(item.days) || 0;
+                            const total = (unitCost * units * days).toFixed(2);
+                            newRow.find('.total').val(total);
+                        });
                                 
                                 // Initialize select2 for cost items
                                 tbody.find('.select-cost-item').select2({
@@ -886,15 +886,15 @@ $(document).ready(function () {
                                     width: '100%',
                                     placeholder: 'Select Cost Item',
                                     allowClear: true
-                                });
-                                
-                                updateAllTotals();
+                        });
+                        
+                        updateAllTotals();
                                 console.log(`Budget items restored for code ${codeId}`);
                             } else {
                                 console.warn(`Tbody not found or no items for code ${codeId}`);
-                            }
-                        });
-                    }, 500);
+                    }
+            });
+        }, 500);
                 }, 1500);
             } else {
                 console.log('No existing budget items found');

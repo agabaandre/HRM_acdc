@@ -6,13 +6,12 @@ use App\Models\Matrix;
 use Carbon\Carbon;
 use App\Mail\MatrixNotification;
 use App\Models\Notification;
-use Illuminate\Database\Eloquent\Model;
 
 if (!function_exists('get_matrix_notification_recipient')) {
     /**
      * Get the staff member who should be notified for matrix approval
      * 
-     * @param Modal $matrix
+     * @param Matrix $matrix
      * @return Staff|null
      */
     function get_matrix_notification_recipient($matrix)
@@ -69,11 +68,11 @@ if (!function_exists('send_matrix_notification')) {
      * Send a notification to the appropriate staff member for matrix approval
      * This will create a database notification and send an email
      * 
-     * @param Model $matrix
+     * @param Matrix $matrix
      * @param string $type The type of notification (e.g., 'matrix_approval', 'matrix_returned', etc.)
      * @return Notification|null
      */
-    function send_matrix_notification( $matrix, $type = 'matrix_approval')
+    function send_matrix_notification(Matrix $matrix, $type = 'matrix_approval')
     {
         $recipient = get_matrix_notification_recipient($matrix);
 
@@ -124,13 +123,13 @@ if (!function_exists('send_matrix_email_notification')) {
     /**
      * Send an email notification for matrix approval
      * 
-     * @param Model $model
+     * @param Matrix $matrix
      * @param string $type The type of notification
      * @return bool
      */
-    function send_matrix_email_notification($model, $type = 'matrix_approval')
+    function send_matrix_email_notification(Matrix $matrix, $type = 'matrix_approval')
     {
-         sendMatrixNotificationWithJob( $model, $type);
+         sendMatrixNotificationWithJob( $matrix, $type);
          return true;
     }
 }

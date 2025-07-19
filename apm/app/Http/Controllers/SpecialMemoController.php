@@ -13,6 +13,7 @@ use App\Models\Location;
 use App\Models\Staff;
 use App\Models\CostItem;
 use App\Models\SpecialMemo;
+use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +37,7 @@ class SpecialMemoController extends Controller
         }
 
         if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
+            $query->where('overall_status', $request->status);
         }
         //dd($query);
         $specialMemos = $query->paginate(10);
@@ -310,5 +311,69 @@ class SpecialMemoController extends Controller
         return redirect()
             ->back()
             ->with('error', 'Attachment not found.');
+    }
+
+    /**
+     * Submit special memo for approval.
+     */
+    public function submitForApproval(SpecialMemo $specialMemo): RedirectResponse
+    {
+        if ($specialMemo->overall_status !== 'draft') {
+            return redirect()->back()->with([
+                'msg' => 'Only draft special memos can be submitted for approval.',
+                'type' => 'error',
+            ]);
+        }
+
+        $specialMemo->submitForApproval();
+
+        return redirect()->route('special-memo.show', $specialMemo)->with([
+            'msg' => 'Special memo submitted for approval successfully.',
+            'type' => 'success',
+        ]);
+    }
+
+    /**
+     * Update approval status.
+     */
+    public function updateStatus(Request $request, SpecialMemo $specialMemo): RedirectResponse
+    {
+        $request->validate([
+            'action' => 'required|in:approved,rejected,returned',
+            'comment' => 'nullable|string|max:1000',
+        ]);
+
+        $approvalService = app(ApprovalService::class);
+        
+        if (!$approvalService->canTakeAction($specialMemo, user_session('staff_id'))) {
+            return redirect()->back()->with([
+                'msg' => 'You are not authorized to take this action.',
+                'type' => 'error',
+            ]);
+        }
+
+        $specialMemo->updateApprovalStatus($request->action, $request->comment);
+
+        $message = match($request->action) {
+            'approved' => 'Special memo approved successfully.',
+            'rejected' => 'Special memo rejected.',
+            'returned' => 'Special memo returned for revision.',
+            default => 'Status updated successfully.'
+        };
+
+        return redirect()->route('special-memo.show', $specialMemo)->with([
+            'msg' => $message,
+            'type' => 'success',
+        ]);
+    }
+
+    /**
+     * Show approval status page.
+     */
+    public function status(SpecialMemo $specialMemo): View
+    {
+        $specialMemo->load(['staff', 'division']);
+        
+        return view('special-memo.status', compact('specialMemo'));
     }
 }

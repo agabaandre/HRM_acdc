@@ -33,7 +33,8 @@
         "files": [
         "app/Helpers/CustomHelper.php",
         "app/Helpers/MailingHelper.php",
-        "app/Helpers/NotificationsHelper.php"
+        "app/Helpers/NotificationsHelper.php",
+        "app/Helpers/GenericApprovalHelper.php"
         ]
     },
     "autoload-dev": {

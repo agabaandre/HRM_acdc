@@ -29,7 +29,7 @@ class SendMatrixNotificationJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(Matrix $matrix, Staff $recipient, string $type, string $message)
+    public function __construct($matrix, Staff $recipient, string $type, string $message)
     {
         $this->matrix = $matrix;
         $this->recipient = $recipient;

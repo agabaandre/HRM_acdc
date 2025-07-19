@@ -53,9 +53,10 @@
                                 <select name="status" class="form-select form-select-sm">
                                     <option value="">All Statuses</option>
                                     <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                                    <option value="submitted" {{ request('status') == 'submitted' ? 'selected' : '' }}>Submitted</option>
+                                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                                     <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
                                     <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                                    <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
                                 </select>
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
@@ -83,7 +84,7 @@
                                     <th>Division</th>
                                     <th width="90">Priority</th>
                                     <th width="90">Status</th>
-                                    <th class="text-center" width="120">Actions</th>
+                                    <th class="text-center" width="150">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -121,13 +122,14 @@
                                             @php
                                                 $statusBadgeClass = [
                                                     'draft' => 'bg-secondary',
-                                                    'submitted' => 'bg-primary',
+                                                    'pending' => 'bg-warning',
                                                     'approved' => 'bg-success',
                                                     'rejected' => 'bg-danger',
-                                                ][$memo->status] ?? 'bg-secondary';
+                                                    'returned' => 'bg-info',
+                                                ][$memo->overall_status] ?? 'bg-secondary';
                                             @endphp
                                             <span class="badge {{ $statusBadgeClass }}">
-                                                {{ ucfirst($memo->status) }}
+                                                {{ ucfirst($memo->overall_status) }}
                                             </span>
                                         </td>
                                         <td class="text-center">
@@ -135,16 +137,25 @@
                                                 <a href="{{ route('special-memo.show', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="View Details">
                                                     <i class="bx bx-show"></i>
                                                 </a>
-                                                <a href="{{ route('special-memo.edit', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="Edit">
-                                                    <i class="bx bx-edit"></i>
-                                                </a>
-                                                <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline delete-form">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-icon btn-outline-danger" data-bs-toggle="tooltip" title="Delete">
-                                                        <i class="bx bx-trash"></i>
-                                                    </button>
-                                                </form>
+                                                @if($memo->overall_status === 'draft' && $memo->staff_id == user_session('staff_id'))
+                                                    <a href="{{ route('special-memo.edit', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="Edit">
+                                                        <i class="bx bx-edit"></i>
+                                                    </a>
+                                                @endif
+                                                @if(can_take_action_generic($memo))
+                                                    <a href="{{ route('special-memo.status', $memo) }}" class="btn btn-sm btn-icon btn-outline-success me-1" data-bs-toggle="tooltip" title="Approval Status">
+                                                        <i class="bx bx-check-circle"></i>
+                                                    </a>
+                                                @endif
+                                                @if($memo->overall_status === 'draft' && $memo->staff_id == user_session('staff_id'))
+                                                    <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline delete-form">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-sm btn-icon btn-outline-danger" data-bs-toggle="tooltip" title="Delete">
+                                                            <i class="bx bx-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>

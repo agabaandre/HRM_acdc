@@ -7,18 +7,19 @@ use App\Models\Matrix;
 use App\Models\Staff;
 use Illuminate\Support\Facades\View;
 use App\Jobs\SendMatrixNotificationJob;
+use Illuminate\Database\Eloquent\Model;
 
 
 /**
  * Send matrix notification email using custom PHPMailer but with the same view template
  * 
- * @param Matrix $matrix The matrix object
+ * @param Model $matrix The matrix object
  * @param Staff $recipient The recipient staff member
  * @param string $type The type of notification (e.g., 'matrix_approval', 'matrix_returned')
  * @param string $message The notification message
  * @return bool
  */
-function sendMatrixNotificationWithPHPMailer(Matrix $matrix, Staff $recipient, string $type, string $message)
+function sendMatrixNotificationWithPHPMailer( $matrix, Staff $recipient, string $type, string $message)
 {
     // Create an instance; passing `true` enables exceptions
     $mail = new PHPMailer(true);
@@ -80,11 +81,11 @@ function sendMatrixNotificationWithPHPMailer(Matrix $matrix, Staff $recipient, s
  * Send matrix notification with automatic recipient detection using custom PHPMailer
  * This function combines the logic from NotificationsHelper.php but uses PHPMailer
  * 
- * @param Matrix $matrix The matrix object
+ * @param Model $matrix The matrix object
  * @param string $type The type of notification
  * @return bool
  */
-function sendMatrixNotificationCustom(Matrix $matrix, string $type = 'matrix_approval')
+function sendMatrixNotificationCustom( $matrix, string $type = 'matrix_approval')
 {
     // Get the recipient using the existing helper function
     $recipient = get_matrix_notification_recipient($matrix);
@@ -135,13 +136,13 @@ function sendMatrixNotificationCustom(Matrix $matrix, string $type = 'matrix_app
 /**
  * Dispatch matrix notification job to send email in background
  * 
- * @param Matrix $matrix The matrix object
+ * @param Model $matrix The matrix object
  * @param Staff $recipient The recipient staff member
  * @param string $type The type of notification
  * @param string $message The notification message
  * @return void
  */
-function dispatchMatrixNotificationJob(Matrix $matrix, Staff $recipient, string $type, string $message)
+function dispatchMatrixNotificationJob( $matrix, Staff $recipient, string $type, string $message)
 {
     SendMatrixNotificationJob::dispatch($matrix, $recipient, $type, $message);
 }
@@ -150,14 +151,14 @@ function dispatchMatrixNotificationJob(Matrix $matrix, Staff $recipient, string 
  * Send matrix notification with automatic recipient detection using background job
  * This function combines the logic from NotificationsHelper.php but uses a job
  * 
- * @param Matrix $matrix The matrix object
+ * @param Model $matrix The matrix object
  * @param string $type The type of notification
  * @return bool
  */
-function sendMatrixNotificationWithJob(Matrix $matrix, string $type = 'matrix_approval')
+function sendMatrixNotificationWithJob( $model, string $type = 'matrix_approval')
 {
     // Get the recipient using the existing helper function
-    $recipient = get_matrix_notification_recipient($matrix);
+    $recipient = get_matrix_notification_recipient($model);
     
     if (!$recipient || !$recipient->work_email) {
         return false;
@@ -169,28 +170,28 @@ function sendMatrixNotificationWithJob(Matrix $matrix, string $type = 'matrix_ap
         case 'matrix_approval':
             $message = sprintf(
                 'Matrix #%d requires your approval. Created by %s %s.',
-                $matrix->id,
-                $matrix->staff->fname,
-                $matrix->staff->lname
+                $model->id,
+                $model->staff->fname,
+                $model->staff->lname
             );
             break;
         case 'matrix_returned':
             $message = sprintf(
                 'Matrix #%d has been returned for revision by %s %s.',
-                $matrix->id,
-                $matrix->staff->fname,
-                $matrix->staff->lname
+                $model->id,
+                $model->staff->fname,
+                $model->staff->lname
             );
             break;
         default:
             $message = sprintf(
                 'Matrix #%d requires your attention.',
-                $matrix->id
+                $model->id
             );
     }
 
     // Dispatch the job to send email in background
-    dispatchMatrixNotificationJob($matrix, $recipient, $type, $message);
+    dispatchMatrixNotificationJob($model, $recipient, $type, $message);
     
     return true;
 }

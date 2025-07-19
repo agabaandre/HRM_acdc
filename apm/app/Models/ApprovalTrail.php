@@ -1,0 +1,136 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+
+class ApprovalTrail extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'model_id',
+        'model_type',
+        'matrix_id', // For activities that are tied to matrices
+        'staff_id',
+        'oic_staff_id',
+        'action',
+        'remarks',
+        'approval_order',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'id' => 'integer',
+            'model_id' => 'integer',
+            'matrix_id' => 'integer',
+            'staff_id' => 'integer',
+            'oic_staff_id' => 'integer',
+            'approval_order' => 'integer',
+        ];
+    }
+
+    /**
+     * Get the model that owns the approval trail.
+     */
+    public function approvable(): MorphTo
+    {
+        return $this->morphTo('model');
+    }
+
+    /**
+     * Get the matrix that owns the approval trail (for activities).
+     */
+    public function matrix(): BelongsTo
+    {
+        return $this->belongsTo(Matrix::class);
+    }
+
+    /**
+     * Get the staff member who made the approval action.
+     */
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
+    }
+
+    /**
+     * Get the OIC staff member.
+     */
+    public function oicStaff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'oic_staff_id', 'staff_id');
+    }
+
+    /**
+     * Get the approver role for this approval.
+     */
+    public function approverRole(): BelongsTo
+    {
+        return $this->belongsTo(WorkflowDefinition::class, 'approval_order', 'approval_order');
+    }
+
+    /**
+     * Get the approver role name for this approval.
+     */
+    public function getApproverRoleNameAttribute()
+    {
+        $model = $this->approvable;
+        if (!$model) {
+            return 'Unknown';
+        }
+
+        $workflowDefinition = WorkflowDefinition::where('approval_order', $this->approval_order)
+            ->where('workflow_id', $model->forward_workflow_id)
+            ->first();
+
+        return $workflowDefinition ? $workflowDefinition->role : 'Focal Person';
+    }
+
+    /**
+     * Scope to get approvals for a specific model type.
+     */
+    public function scopeForModel($query, $modelType)
+    {
+        return $query->where('model_type', $modelType);
+    }
+
+    /**
+     * Scope to get approvals for a specific model instance.
+     */
+    public function scopeForModelInstance($query, $model)
+    {
+        return $query->where('model_type', get_class($model))
+                    ->where('model_id', $model->id);
+    }
+
+    /**
+     * Scope to get approvals by action.
+     */
+    public function scopeByAction($query, $action)
+    {
+        return $query->where('action', $action);
+    }
+
+    /**
+     * Scope to get approvals by staff member.
+     */
+    public function scopeByStaff($query, $staffId)
+    {
+        return $query->where('staff_id', $staffId);
+    }
+} 

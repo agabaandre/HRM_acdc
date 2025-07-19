@@ -1,7 +1,7 @@
 <?php
 use App\Models\ActivityApprovalTrail;
 use App\Models\Approver;
-use App\Models\ApprovalTrail;
+use App\Models\MatrixApprovalTrail;
 use App\Models\WorkflowDefinition;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -63,8 +63,7 @@ if (!function_exists('user_session')) {
         {
          
             $user = session('user', []);
-            $my_appoval =  ApprovalTrail::where('model_id',$matrix->id)
-            ->where('model_type', \App\Models\Matrix::class)
+            $my_appoval =  MatrixApprovalTrail::where('matrix_id',$matrix->id)
             ->where('action','approved')
             ->where('approval_order',$matrix->approval_level)
             ->where('staff_id',$user['staff_id'])->pluck('id');

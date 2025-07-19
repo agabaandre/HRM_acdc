@@ -69,13 +69,14 @@
 }
 </style>
 
+@if($resource->approvalTrails->count() > 0)
 <div class="card">
     <div class="card-header">
         <h5 class="card-title mb-0">Approval Trail</h5>
     </div>
     <div class="card-body">
         <ul class="timeline">
-            @forelse($matrix->approvalTrails as $trail)
+            @forelse($resource->approvalTrails as $trail)
                 <li class="timeline-item">
                     <div class="timeline-badge 
                         {{ strtolower($trail->action)}}">
@@ -94,7 +95,7 @@
                     </div>
                     <div class="timeline-title">
                         {{ $trail->staff->name ?? 'N/A' }} 
-                        <span class="text-muted">({{ $trail->approver_role->role ?? 'Focal Person' }})</span>
+                        <span class="text-muted">({{ $trail->approver_role_name }})</span>
                         <span class="badge bg-{{ strtolower($trail->action) === 'approved' ? 'success' : (strtolower($trail->action) === 'rejected' ? 'danger':'warning') }}">
                             {{ ucfirst($trail->action) }}
                         </span>
@@ -103,7 +104,7 @@
                         {{ Str::limit($trail->remarks,100) ?? 'No remarks' }} {{ (strlen($trail->remarks)>100)?'...':''}}
                         @if(strlen($trail->remarks)>100)
                             <a href="#trailDetail{{$trail->id}}" data-bs-toggle="modal">Read More</a>
-                            @include('matrices.partials.trail-detail-modal',['trail'=>$trail])
+                            @include('partials.trail-detail-modal',['trail'=>$trail])
                         @endif
                     </div>
                 </li>
@@ -116,3 +117,4 @@
         </ul>
     </div>
 </div>
+@endif 
