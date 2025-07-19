@@ -155,7 +155,7 @@ function dispatchMatrixNotificationJob( $matrix, Staff $recipient, string $type,
  * @param string $type The type of notification
  * @return bool
  */
-function sendMatrixNotificationWithJob( $model, string $type = 'matrix_approval')
+function sendMatrixNotificationWithJob( $model, string $type = 'approval')
 {
     // Get the recipient using the existing helper function
     $recipient = get_matrix_notification_recipient($model);
@@ -166,18 +166,21 @@ function sendMatrixNotificationWithJob( $model, string $type = 'matrix_approval'
 
     // Generate message based on type
     $message = '';
+    $resource = ucfirst(class_basename($model));
     switch($type) {
-        case 'matrix_approval':
+        case 'approval':
             $message = sprintf(
-                'Matrix #%d requires your approval. Created by %s %s.',
+                '%s #%d requires your approval. Created by %s %s.',
+                $resource,
                 $model->id,
                 $model->staff->fname,
                 $model->staff->lname
             );
             break;
-        case 'matrix_returned':
+        case 'returned':
             $message = sprintf(
-                'Matrix #%d has been returned for revision by %s %s.',
+                '%s #%d has been returned for revision by %s %s.',
+                $resource,
                 $model->id,
                 $model->staff->fname,
                 $model->staff->lname
@@ -185,7 +188,8 @@ function sendMatrixNotificationWithJob( $model, string $type = 'matrix_approval'
             break;
         default:
             $message = sprintf(
-                'Matrix #%d requires your attention.',
+                '%s #%d requires your attention.',
+                $resource,
                 $model->id
             );
     }

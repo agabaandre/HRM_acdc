@@ -128,7 +128,7 @@ if (!function_exists('send_matrix_email_notification')) {
      * @param string $type The type of notification
      * @return bool
      */
-    function send_matrix_email_notification($model, $type = 'matrix_approval')
+    function send_matrix_email_notification($model, $type = 'approval')
     {
          sendMatrixNotificationWithJob( $model, $type);
          return true;
