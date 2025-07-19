@@ -19,7 +19,7 @@ class SendMatrixNotificationJob implements ShouldQueue
 {
     use BusQueueable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $matrix;
+    public $model;
     public $recipient;
     public $type;
     public $message;
@@ -29,9 +29,9 @@ class SendMatrixNotificationJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($matrix, Staff $recipient, string $type, string $message)
+    public function __construct($model, Staff $recipient, string $type, string $message)
     {
-        $this->matrix = $matrix;
+        $this->model = $model;
         $this->recipient = $recipient;
         $this->type = $type;
         $this->message = $message;
@@ -46,7 +46,7 @@ class SendMatrixNotificationJob implements ShouldQueue
             // Create notification record first
             Notification::create([
                 'staff_id' => $this->recipient->staff_id,
-                'matrix_id' => $this->matrix->id,
+                'model_id' => $this->model->id,
                 'message' => $this->message,
                 'type' => $this->type,
                 'is_read' => false
@@ -55,15 +55,15 @@ class SendMatrixNotificationJob implements ShouldQueue
             // Send email using custom PHPMailer
             $this->sendMatrixNotificationWithPHPMailer();
             
-            Log::info('Matrix notification email sent successfully', [
-                'matrix_id' => $this->matrix->id,
+            Log::info('Resource notification email sent successfully', [
+                'model_id' => $this->model->id,
                 'recipient_id' => $this->recipient->staff_id,
                 'type' => $this->type
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to send matrix notification email in job', [
-                'matrix_id' => $this->matrix->id,
+            Log::error('Failed to send resource notification email in job', [
+                'model_id' => $this->model->id,
                 'recipient_id' => $this->recipient->staff_id,
                 'error' => $e->getMessage()
             ]);
@@ -100,23 +100,23 @@ class SendMatrixNotificationJob implements ShouldQueue
             $subject = '';
             $prefix  = env('MAIL_SUBJECT_PREFIX','Approval Management sytem').": ";
             switch($this->type) {
-                case 'matrix_approval':
-                    $subject = 'Matrix Approval Request';
+                case 'approval':
+                    $subject = 'Resource Approval Request';
                     break;
-                case 'matrix_returned':
-                    $subject = 'Matrix Returned for Revision';
+                case 'returned':
+                    $subject = 'Resource Returned for Revision';
                     break;
                 default:
-                    $subject = 'Matrix Notification';
+                    $subject = 'Resource Notification';
             }
 
             $mail->Subject = $prefix.$subject;
             // Render the same view template that MatrixNotification uses
             $htmlContent = View::make('emails.matrix-notification', [
-                'matrix' => $this->matrix,
+                'resource' => $this->model,
                 'recipient' => $this->recipient,
                 'message' => $this->message,
-                'type' => $this->type,
+                'type' => $this->type
             ])->render();
 
             // Content
@@ -143,7 +143,7 @@ class SendMatrixNotificationJob implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error('Matrix notification job failed permanently', [
-            'matrix_id' => $this->matrix->id,
+            'model_id' => $this->model->id,
             'recipient_id' => $this->recipient->staff_id,
             'type' => $this->type,
             'error' => $exception->getMessage()

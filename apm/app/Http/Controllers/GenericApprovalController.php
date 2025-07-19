@@ -182,7 +182,7 @@ class GenericApprovalController extends Controller
     protected function sendNotification(Model $model, string $action): void
     {
         $modelType = class_basename($model);
-        $notificationType = strtolower($modelType) . '_' . $action;
+        $notificationType = $action;
 
         // Get notification recipient
         $recipient = $this->approvalService->getNotificationRecipient($model);
@@ -191,17 +191,6 @@ class GenericApprovalController extends Controller
             // Send email notification
             if (function_exists('send_matrix_email_notification')) {
                 send_matrix_email_notification($model, $notificationType);
-            }
-
-            // Save notification to database
-            if (class_exists('App\Models\Notification')) {
-                \App\Models\Notification::create([
-                    'staff_id' => $recipient->staff_id,
-                    'title' => ucfirst($modelType) . ' ' . ucfirst($action),
-                    'message' => "A {$modelType} has been {$action} and requires your attention.",
-                    'type' => $notificationType,
-                    'read_at' => null,
-                ]);
             }
         }
     }

@@ -305,14 +305,14 @@ class MatrixController extends Controller
 
         // Update matrix
         $matrix->update($update_data);
-        send_matrix_email_notification($matrix, 'matrix_approval');
+        send_matrix_email_notification($matrix, 'approval');
     }
 
     public function request_approval( Matrix $matrix){
 
         $this->updateMatrix($matrix,(Object)['action'=>'approvals'],null);
         //notify and save notification
-        send_matrix_email_notification($matrix, 'matrix_approval');
+        send_matrix_email_notification($matrix, 'approval');
         
         return redirect()->route('matrices.index')->with([
             'msg' => 'Matrix updated successfully.',
@@ -346,7 +346,7 @@ class MatrixController extends Controller
             $matrix->approval_level = ($matrix->approval_level==1)?0:1;
             $matrix->overall_status ='returned';
             //notify and save notification
-            $notification_type = 'matrix_returned';
+            $notification_type = 'returned';
         }else{
             //move to next
             $next_approval_point = $this->get_next_approver($matrix);
@@ -359,12 +359,12 @@ class MatrixController extends Controller
             $matrix->overall_status = 'pending';
 
             //notify and save notification
-            $notification_type = 'matrix_approval';
+            $notification_type = 'approval';
            }
            else{
             //no more approval levels
             $matrix->overall_status = 'approved';
-            $notification_type = 'matrix_approved';
+            $notification_type = 'approved';
            }
         }
         

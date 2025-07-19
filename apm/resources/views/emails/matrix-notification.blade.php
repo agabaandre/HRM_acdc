@@ -72,11 +72,11 @@
     <div class="content">
       <h1>
         @if($type === 'matrix_approval')
-          Matrix Approval Request
+          Resource Approval Request
         @elseif($type === 'matrix_returned')
-          Matrix Returned for Revision
+          Resource Returned for Revision
         @else
-          Matrix Notification
+          Resource Notification
         @endif
       </h1>
 
@@ -84,15 +84,15 @@
 
       <p>{{ $message }}</p>
 
-      <p>Matrix Details:</p>
+      <p>Resource Details:</p>
       <ul>
-        <li>Matrix : #{{ $matrix->id }} - {{ $matrix->quarter }} {{ $matrix->year }}</li>
-        <li>Created by: {{ $matrix->staff->fname }} {{ $matrix->staff->lname }}</li>
-        <li>Division: {{ $matrix->division->name }}</li>
-        <li>Status: {{ ucfirst($matrix->overall_status) }}</li>
+        <li>Resource : #{{ $resource->id }} - {{ $resource->quarter ?? '' }} {{ $resource->year ?? '' }}</li>
+        <li>Created by: {{ $resource->staff->fname }} {{ $resource->staff->lname }}</li>
+        <li>Division: {{ $resource->division->name }}</li>
+        <li>Status: {{ ucfirst($resource->overall_status) }}</li>
       </ul>
 
-      <a href="{{ config('app.url') }}/matrices/{{ $matrix->id }}" class="btn">View Matrix</a>
+      <a href="{{ config('app.url') }}/matrices/{{ $resource->id }}" class="btn">View Matrix</a>
 
       <p style="margin-top: 20px;">
         Best regards,<br>
