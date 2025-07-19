@@ -829,7 +829,7 @@ $('#addAttachment').on('click', function () {
         <div class="col-md-4 attachment-block">
             <label class="form-label">Document Type*</label>
             <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
-            <input type="file" name="attachments[${attachmentIndex}][file]" 
+            <input type="file" name="attachments[]" 
                    class="form-control mt-1 attachment-input" 
                    accept=".pdf,.jpg,.jpeg,.png,image/*" required>
             <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG</small>

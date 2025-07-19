@@ -121,6 +121,51 @@
                     <strong>Remarks:</strong>
                     <p>{{ $activity->activity_request_remarks }}</p>
                 </div>
+
+                @if($attachments && count($attachments) > 0)
+                <div class="mb-3">
+                    <strong>Attachments:</strong>
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Document Type</th>
+                                    <th>File Name</th>
+                                    <th>Size</th>
+                                    <th>Uploaded</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($attachments as $index => $attachment)
+                                    <tr>
+                                        <td>{{ $index + 1 }}</td>
+                                        <td>{{ $attachment['type'] ?? 'Document' }}</td>
+                                        <td>{{ $attachment['original_name'] ?? 'Unknown' }}</td>
+                                        <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
+                                        <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-info preview-attachment" 
+                                                    data-file-url="{{ url('storage/'.$attachment['path']) }}" 
+                                                    data-file-name="{{ $attachment['original_name'] }}"
+                                                    data-file-type="{{ strtolower(pathinfo($attachment['original_name'], PATHINFO_EXTENSION)) }}">
+                                                <i class="bx bx-show"></i> Preview
+                                            </button>
+                                            <a href="{{ url('storage/'.$attachment['path']) }}" target="_blank" class="btn btn-sm btn-secondary">
+                                                <i class="bx bx-external-link"></i> Open
+                                            </a>
+                                            <a href="{{ url('storage/'.$attachment['path']) }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
+                                                <i class="bx bx-download"></i> Download
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
 
@@ -217,4 +262,206 @@
       
     </div> --}}
 </div>
+
+<!-- Attachment Preview Modal -->
+<div class="modal fade" id="attachmentPreviewModal" tabindex="-1" aria-labelledby="attachmentPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="attachmentPreviewModalLabel">
+                    <i class="bx bx-file me-2"></i>
+                    <span id="previewFileName">Document Preview</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="previewContainer" class="w-100 h-100">
+                    <!-- Preview content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bx bx-x me-1"></i> Close
+                </button>
+                <a href="#" id="downloadLink" class="btn btn-success" download>
+                    <i class="bx bx-download me-1"></i> Download
+                </a>
+                <a href="#" id="openLink" class="btn btn-primary" target="_blank">
+                    <i class="bx bx-external-link me-1"></i> Open in New Tab
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+
+@push('styles')
+<style>
+/* Attachment Preview Modal Styles */
+#attachmentPreviewModal .modal-dialog {
+    max-width: 90vw;
+    margin: 1.75rem auto;
+}
+
+#attachmentPreviewModal .modal-body {
+    min-height: 500px;
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+#previewContainer {
+    min-height: 500px;
+    max-height: 80vh;
+    overflow: auto;
+}
+
+/* Image preview styles */
+#previewContainer img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* PDF iframe styles */
+#previewContainer iframe {
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Text preview styles */
+#previewContainer pre {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    line-height: 1.5;
+}
+
+/* Loading animation */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #attachmentPreviewModal .modal-dialog {
+        max-width: 95vw;
+        margin: 0.5rem auto;
+    }
+    
+    #attachmentPreviewModal .modal-body {
+        min-height: 400px;
+        max-height: 70vh;
+    }
+    
+    #previewContainer {
+        min-height: 400px;
+        max-height: 70vh;
+    }
+}
+</style>
+@endpush
+
+@push('scripts')
+<script>
+$(document).ready(function() {
+    // Attachment preview functionality
+    $('.preview-attachment').on('click', function() {
+        const fileUrl = $(this).data('file-url');
+        const fileName = $(this).data('file-name');
+        const fileType = $(this).data('file-type');
+        
+        // Update modal title
+        $('#previewFileName').text(fileName);
+        
+        // Update action links
+        $('#downloadLink').attr('href', fileUrl).attr('download', fileName);
+        $('#openLink').attr('href', fileUrl);
+        
+        // Clear previous content
+        $('#previewContainer').empty();
+        
+        // Show loading
+        $('#previewContainer').html(`
+            <div class="d-flex justify-content-center align-items-center" style="height: 500px;">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading preview...</p>
+                </div>
+            </div>
+        `);
+        
+        // Show modal
+        $('#attachmentPreviewModal').modal('show');
+        
+        // Handle different file types
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileType)) {
+            // Image files
+            $('#previewContainer').html(`
+                <div class="text-center p-4">
+                    <img src="${fileUrl}" class="img-fluid" style="max-height: 600px;" alt="${fileName}">
+                </div>
+            `);
+        } else if (fileType === 'pdf') {
+            // PDF files
+            $('#previewContainer').html(`
+                <iframe src="${fileUrl}" 
+                        style="width: 100%; height: 600px; border: none;" 
+                        title="${fileName}">
+                    <p>Your browser does not support PDF preview. 
+                       <a href="${fileUrl}" target="_blank">Click here to view the PDF</a>
+                    </p>
+                </iframe>
+            `);
+        } else if (['txt', 'csv', 'json', 'xml', 'html', 'htm', 'css', 'js'].includes(fileType)) {
+            // Text files
+            $('#previewContainer').html(`
+                <div class="p-3">
+                    <pre class="bg-light p-3 rounded" style="max-height: 600px; overflow-y: auto; font-size: 12px;">
+                        <code id="textContent">Loading...</code>
+                    </pre>
+                </div>
+            `);
+            
+            // Load text content
+            $.get(fileUrl)
+                .done(function(content) {
+                    $('#textContent').text(content);
+                })
+                .fail(function() {
+                    $('#textContent').text('Unable to load file content. Please download the file to view it.');
+                });
+        } else {
+            // Unsupported file types
+            $('#previewContainer').html(`
+                <div class="text-center p-5">
+                    <div class="mb-3">
+                        <i class="bx bx-file bx-lg text-muted"></i>
+                    </div>
+                    <h5 class="text-muted">Preview Not Available</h5>
+                    <p class="text-muted">This file type (${fileType.toUpperCase()}) cannot be previewed in the browser.</p>
+                    <div class="mt-3">
+                        <a href="${fileUrl}" target="_blank" class="btn btn-primary me-2">
+                            <i class="bx bx-external-link me-1"></i> Open in New Tab
+                        </a>
+                        <a href="${fileUrl}" download="${fileName}" class="btn btn-success">
+                            <i class="bx bx-download me-1"></i> Download File
+                        </a>
+                    </div>
+                </div>
+            `);
+        }
+    });
+    
+    // Clean up iframe when modal is closed
+    $('#attachmentPreviewModal').on('hidden.bs.modal', function() {
+        $('#previewContainer').empty();
+    });
+});
+</script>
+@endpush
