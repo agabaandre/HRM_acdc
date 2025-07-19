@@ -75,7 +75,7 @@
     </div>
     <div class="card-body">
         <ul class="timeline">
-            @forelse($matrix->approvalTrails as $trail)
+            @forelse($matrix->matrixApprovalTrails as $trail)
                 <li class="timeline-item">
                     <div class="timeline-badge 
                         {{ strtolower($trail->action)}}">

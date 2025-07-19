@@ -41,12 +41,18 @@
                             @php
                                 $statusBadgeClass = [
                                     'draft' => 'bg-secondary',
-                                    'submitted' => 'bg-primary',
+                                    'pending' => 'bg-warning',
                                     'approved' => 'bg-success',
                                     'rejected' => 'bg-danger',
-                                ][$specialMemo->status] ?? 'bg-secondary';
+                                    'returned' => 'bg-info',
+                                ][$specialMemo->overall_status] ?? 'bg-secondary';
                             @endphp
-                            <span class="badge {{ $statusBadgeClass }}">{{ ucfirst($specialMemo->status) }}</span>
+                            <span class="badge {{ $statusBadgeClass }}">{{ ucfirst($specialMemo->overall_status) }}</span>
+                        </div>
+                        <div class="col-md-3 matrix-meta-item">
+                            <i class="bx bx-cube"></i>
+                            <span class="matrix-meta-label">Request Type:</span>
+                            <span class="matrix-meta-value">{{ optional($specialMemo->requestType)->name ?? '-' }}</span>
                         </div>
                     </div>
                 </div>
@@ -215,19 +221,66 @@
                             @endif
                         </div>
                     </div>
-                    <div class="card matrix-card mb-4">
-                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-cube me-2"></i>Other Details</h6>
-                        </div>
-                        <div class="card-body p-4">
-                            <div class="mb-3">
-                                <span class="text-muted small">Request Type</span>
-                                <div>{{ optional($specialMemo->requestType)->name ?? '-' }}</div>
+
+
+                    <!-- Approval Trail Section -->
+                    
+                            @if(isset($specialMemo->approvalTrails) && $specialMemo->approvalTrails->count() > 0)
+                                @include('partials.approval-trail', ['resource' => $specialMemo])
+                            @else
+                            <div class="card matrix-card mb-4">
+                                <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                                    <h6 class="m-0 fw-semibold text-success"><i class="bx bx-history me-2"></i>Approval Trail</h6>
+                                </div>
+                                <div class="card-body p-4">
+                                <div class="text-center text-muted py-4">
+                                    <i class="bx bx-time bx-lg mb-3"></i>
+                                    <p class="mb-0">No approval actions have been taken yet.</p>
+                                    @if($specialMemo->overall_status === 'draft')
+                                        <small>Submit this special memo for approval to start the approval trail.</small>
+                                    @endif
+                                </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                            @endif
+
+
+                    <!-- Approval Actions Section -->
+                    @if(function_exists('can_take_action_generic') && can_take_action_generic($specialMemo))
+                        <div class="card matrix-card mb-4">
+                            <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                                <h6 class="m-0 fw-semibold text-success"><i class="bx bx-check-circle me-2"></i>Approval Actions</h6>
+                            </div>
+                            <div class="card-body p-4">
+                                @include('partials.approval-actions', ['resource' => $specialMemo])
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Submit for Approval Section -->
+                    @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id'))
+                        <div class="card matrix-card mb-4">
+                            <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                                <h6 class="m-0 fw-semibold text-success"><i class="bx bx-send me-2"></i>Submit for Approval</h6>
+                            </div>
+                            <div class="card-body p-4">
+                                <p class="text-muted mb-3">Ready to submit this special memo for approval?</p>
+                                <form action="{{ route('special-memo.submit-for-approval', $specialMemo) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bx bx-send me-2"></i>Submit for Approval
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+
+
+
+
+
+
         </div>
     </div>
 </div>
