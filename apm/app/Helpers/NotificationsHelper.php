@@ -73,50 +73,48 @@ if (!function_exists('send_matrix_notification')) {
      * @param string $type The type of notification (e.g., 'matrix_approval', 'matrix_returned', etc.)
      * @return Notification|null
      */
-    function send_matrix_notification( $matrix, $type = 'matrix_approval')
+    function send_matrix_notification( $model, $type = 'approval')
     {
-        $recipient = get_matrix_notification_recipient($matrix);
+        $recipient = get_matrix_notification_recipient($model);
 
         if (!$recipient) {
             return null;
         }
 
-        // Generate appropriate message based on type
-        $message = '';
-        switch($type) {
-            case 'matrix_approval':
-                $message = sprintf(
-                    'Matrix #%d requires your approval. Created by %s %s.',
-                    $matrix->id,
-                    $matrix->staff->fname,
-                    $matrix->staff->lname
-                );
-                break;
-            case 'matrix_returned':
-                $message = sprintf(
-                    'Matrix #%d has been returned for revision by %s %s.',
-                    $matrix->id,
-                    $matrix->staff->fname,
-                    $matrix->staff->lname
-                );
-                break;
-            default:
-                $message = sprintf(
-                    'Matrix #%d requires your attention.',
-                    $matrix->id
-                );
-        }
+                // Generate message based on type
+            $message = '';
+            $resource = ucfirst(class_basename($model));
+            switch($type) {
+                case 'approval':
+                    $message = sprintf(
+                        '%s #%d requires your approval. Created by %s %s.',
+                        $resource,
+                        $model->id,
+                        $model->staff->fname,
+                        $model->staff->lname
+                    );
+                    break;
+                case 'returned':
+                    $message = sprintf(
+                        '%s #%d has been returned for revision by %s %s.',
+                        $resource,
+                        $model->id,
+                        $model->staff->fname,
+                        $model->staff->lname
+                    );
+                    break;
+                default:
+                    $message = sprintf(
+                        '%s #%d requires your attention.',
+                        $resource,
+                        $model->id
+                    );
+            }
 
-        // Create notification record
-        $notification = Notification::create([
-            'staff_id' => $recipient->staff_id,
-            'matrix_id' => $matrix->id,
-            'message' => $message,
-            'type' => $type,
-            'is_read' => false
-        ]);
+            // Dispatch the job to send email in background
+        dispatchMatrixNotificationJob($model, $recipient, $type, $message);
 
-        return $notification;
+        return true;
     }
 }
 
@@ -146,7 +144,7 @@ if (!function_exists('mark_matrix_notifications_read')) {
     function mark_matrix_notifications_read($staff_id, $matrix_id)
     {
         return Notification::where('staff_id', $staff_id)
-            ->where('matrix_id', $matrix_id)
+            ->where('model_id', $matrix_id)
             ->where('is_read', false)
             ->update([
                 'is_read' => true,
