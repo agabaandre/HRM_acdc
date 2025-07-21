@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use App\Models\Division;
+use App\Models\Workflow;
 
 class SpecialMemoController extends Controller
 {
@@ -26,8 +28,6 @@ class SpecialMemoController extends Controller
     {
         $query = SpecialMemo::with(['staff','division'])->latest();
 
-     
-    
         if ($request->has('staff_id') && $request->staff_id) {
             $query->where('staff_id', $request->staff_id);
         }
