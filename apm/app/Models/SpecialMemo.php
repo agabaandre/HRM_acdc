@@ -11,6 +11,11 @@ class SpecialMemo extends Model
 {
     use HasFactory, HasApprovalWorkflow;
 
+    const STATUS_DRAFT = 'draft';
+    const STATUS_SUBMITTED = 'submitted';
+    const STATUS_APPROVED = 'approved';
+    const STATUS_REJECTED = 'rejected';
+
     protected $table = 'special_memos'; // Uses the 'activities' table
 
     /**
