@@ -146,10 +146,10 @@ class SpecialMemoController extends Controller
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type', 1),
-                'status' => Activity::STATUS_DRAFT,
+                'status' => SpecialMemo::STATUS_DRAFT,
                 'forward_workflow_id' => 3,
                 'reverse_workflow_id' => null,
-    
+                'overall_status' => SpecialMemo::STATUS_DRAFT,
                 'total_participants' => (int) $request->input('total_participants', 0),
                 'total_external_participants' => (int) $request->input('total_external_participants', 0),
     
