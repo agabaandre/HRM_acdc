@@ -134,7 +134,7 @@ class ActivityController extends Controller
                     'participant_end' => 'required|array',
                     'participant_days' => 'required|array',
                     'attachments.*.type' => 'required|string|max:255',
-                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
+                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240', // 10MB max
                 ]);
     
                 // Build internal_participants array with staff_id as key
@@ -171,11 +171,11 @@ class ActivityController extends Controller
                             $type = $attachmentTypes[$index]['type'] ?? 'Document';
                             
                             // Validate file type
-                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
                             $extension = strtolower($file->getClientOriginalExtension());
                             
                             if (!in_array($extension, $allowedExtensions)) {
-                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.");
+                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
                             }
                             
                             // Generate unique filename
@@ -489,7 +489,7 @@ class ActivityController extends Controller
                     'participant_end' => 'required|array',
                     'participant_days' => 'required|array',
                     'attachments.*.type' => 'required|string|max:255',
-                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
+                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240', // 10MB max
                 ]);
 
                 // Build internal_participants array with staff_id as key
@@ -528,11 +528,11 @@ class ActivityController extends Controller
                             $type = $attachmentTypes[$index]['type'] ?? 'Document';
                             
                             // Validate file type
-                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
                             $extension = strtolower($file->getClientOriginalExtension());
                             
                             if (!in_array($extension, $allowedExtensions)) {
-                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.");
+                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
                             }
                             
                             // Generate unique filename

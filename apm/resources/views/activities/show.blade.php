@@ -139,6 +139,11 @@
                             </thead>
                             <tbody>
                                 @foreach($attachments as $index => $attachment)
+                                    @php
+                                        $ext = strtolower(pathinfo($attachment['original_name'], PATHINFO_EXTENSION));
+                                        $fileUrl = url('storage/'.$attachment['path']);
+                                        $isOffice = in_array($ext, ['ppt','pptx','xls','xlsx','doc','docx']);
+                                    @endphp
                                     <tr>
                                         <td>{{ $index + 1 }}</td>
                                         <td>{{ $attachment['type'] ?? 'Document' }}</td>
@@ -147,15 +152,12 @@
                                         <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-info preview-attachment" 
-                                                    data-file-url="{{ url('storage/'.$attachment['path']) }}" 
-                                                    data-file-name="{{ $attachment['original_name'] }}"
-                                                    data-file-type="{{ strtolower(pathinfo($attachment['original_name'], PATHINFO_EXTENSION)) }}">
+                                                data-file-url="{{ $fileUrl }}"
+                                                data-file-ext="{{ $ext }}"
+                                                data-file-office="{{ $isOffice ? '1' : '0' }}">
                                                 <i class="bx bx-show"></i> Preview
                                             </button>
-                                            <a href="{{ url('storage/'.$attachment['path']) }}" target="_blank" class="btn btn-sm btn-secondary">
-                                                <i class="bx bx-external-link"></i> Open
-                                            </a>
-                                            <a href="{{ url('storage/'.$attachment['path']) }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
+                                            <a href="{{ $fileUrl }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
                                                 <i class="bx bx-download"></i> Download
                                             </a>
                                         </td>
@@ -263,35 +265,19 @@
     </div> --}}
 </div>
 
-<!-- Attachment Preview Modal -->
-<div class="modal fade" id="attachmentPreviewModal" tabindex="-1" aria-labelledby="attachmentPreviewModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="attachmentPreviewModalLabel">
-                    <i class="bx bx-file me-2"></i>
-                    <span id="previewFileName">Document Preview</span>
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-0">
-                <div id="previewContainer" class="w-100 h-100">
-                    <!-- Preview content will be loaded here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bx bx-x me-1"></i> Close
-                </button>
-                <a href="#" id="downloadLink" class="btn btn-success" download>
-                    <i class="bx bx-download me-1"></i> Download
-                </a>
-                <a href="#" id="openLink" class="btn btn-primary" target="_blank">
-                    <i class="bx bx-external-link me-1"></i> Open in New Tab
-                </a>
-            </div>
-        </div>
+{{-- Modal for preview --}}
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">Attachment Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="previewModalBody" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+        <div class="text-center w-100">Loading preview...</div>
+      </div>
     </div>
+  </div>
 </div>
 
 @endsection
@@ -367,101 +353,25 @@
 
 @push('scripts')
 <script>
-$(document).ready(function() {
-    // Attachment preview functionality
-    $('.preview-attachment').on('click', function() {
-        const fileUrl = $(this).data('file-url');
-        const fileName = $(this).data('file-name');
-        const fileType = $(this).data('file-type');
-        
-        // Update modal title
-        $('#previewFileName').text(fileName);
-        
-        // Update action links
-        $('#downloadLink').attr('href', fileUrl).attr('download', fileName);
-        $('#openLink').attr('href', fileUrl);
-        
-        // Clear previous content
-        $('#previewContainer').empty();
-        
-        // Show loading
-        $('#previewContainer').html(`
-            <div class="d-flex justify-content-center align-items-center" style="height: 500px;">
-                <div class="text-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2">Loading preview...</p>
-                </div>
-            </div>
-        `);
-        
-        // Show modal
-        $('#attachmentPreviewModal').modal('show');
-        
-        // Handle different file types
-        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileType)) {
-            // Image files
-            $('#previewContainer').html(`
-                <div class="text-center p-4">
-                    <img src="${fileUrl}" class="img-fluid" style="max-height: 600px;" alt="${fileName}">
-                </div>
-            `);
-        } else if (fileType === 'pdf') {
-            // PDF files
-            $('#previewContainer').html(`
-                <iframe src="${fileUrl}" 
-                        style="width: 100%; height: 600px; border: none;" 
-                        title="${fileName}">
-                    <p>Your browser does not support PDF preview. 
-                       <a href="${fileUrl}" target="_blank">Click here to view the PDF</a>
-                    </p>
-                </iframe>
-            `);
-        } else if (['txt', 'csv', 'json', 'xml', 'html', 'htm', 'css', 'js'].includes(fileType)) {
-            // Text files
-            $('#previewContainer').html(`
-                <div class="p-3">
-                    <pre class="bg-light p-3 rounded" style="max-height: 600px; overflow-y: auto; font-size: 12px;">
-                        <code id="textContent">Loading...</code>
-                    </pre>
-                </div>
-            `);
-            
-            // Load text content
-            $.get(fileUrl)
-                .done(function(content) {
-                    $('#textContent').text(content);
-                })
-                .fail(function() {
-                    $('#textContent').text('Unable to load file content. Please download the file to view it.');
-                });
-        } else {
-            // Unsupported file types
-            $('#previewContainer').html(`
-                <div class="text-center p-5">
-                    <div class="mb-3">
-                        <i class="bx bx-file bx-lg text-muted"></i>
-                    </div>
-                    <h5 class="text-muted">Preview Not Available</h5>
-                    <p class="text-muted">This file type (${fileType.toUpperCase()}) cannot be previewed in the browser.</p>
-                    <div class="mt-3">
-                        <a href="${fileUrl}" target="_blank" class="btn btn-primary me-2">
-                            <i class="bx bx-external-link me-1"></i> Open in New Tab
-                        </a>
-                        <a href="${fileUrl}" download="${fileName}" class="btn btn-success">
-                            <i class="bx bx-download me-1"></i> Download File
-                        </a>
-                    </div>
-                </div>
-            `);
-        }
-    });
-    
-    // Clean up iframe when modal is closed
-    $('#attachmentPreviewModal').on('hidden.bs.modal', function() {
-        $('#previewContainer').empty();
-    });
+$(document).on('click', '.preview-attachment', function() {
+    var fileUrl = $(this).data('file-url');
+    var ext = $(this).data('file-ext');
+    var isOffice = $(this).data('file-office') == '1';
+    var modalBody = $('#previewModalBody');
+    var content = '';
+    if(['jpg','jpeg','png'].includes(ext)) {
+        content = '<img src="'+fileUrl+'" class="img-fluid" style="max-height:70vh;max-width:100%;margin:auto;display:block;">';
+    } else if(ext === 'pdf') {
+        content = '<iframe src="'+fileUrl+'#toolbar=1&navpanes=0&scrollbar=1" style="width:100%;height:70vh;border:none;"></iframe>';
+    } else if(isOffice) {
+        var gdocs = 'https://docs.google.com/viewer?url='+encodeURIComponent(fileUrl)+'&embedded=true';
+        content = '<iframe src="'+gdocs+'" style="width:100%;height:70vh;border:none;"></iframe>';
+    } else {
+        content = '<div class="alert alert-info">Preview not available. <a href="'+fileUrl+'" target="_blank">Download/Open file</a></div>';
+    }
+    modalBody.html(content);
+    var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
 });
 </script>
 @endpush
