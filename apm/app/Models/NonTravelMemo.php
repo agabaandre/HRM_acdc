@@ -20,6 +20,9 @@ class NonTravelMemo extends Model
     protected $fillable = [
         'forward_workflow_id',
         'reverse_workflow_id',
+        'overall_status',
+        'approval_level',
+        'next_approval_level',
         'workplan_activity_code',
         'staff_id',
         'memo_date',
@@ -32,8 +35,6 @@ class NonTravelMemo extends Model
         'justification',
         'budget_breakdown',
         'attachment',
-        'overall_status',
-        'approval_level',
     ];
 
     /**
@@ -47,6 +48,8 @@ class NonTravelMemo extends Model
             'id' => 'integer',
             'forward_workflow_id' => 'integer',
             'reverse_workflow_id' => 'integer',
+            'approval_level' => 'integer',
+            'next_approval_level' => 'integer',
             'staff_id' => 'integer',
             'memo_date' => 'date',
             'location_id' => 'array',
@@ -64,17 +67,17 @@ class NonTravelMemo extends Model
 
     public function nonTravelMemoCategory(): BelongsTo
     {
-        return $this->belongsTo(NonTravelMemoCategory::class);
+        return $this->belongsTo(NonTravelMemoCategory::class, 'non_travel_memo_category_id');
     }
 
     public function forwardWorkflow(): BelongsTo
     {
-        return $this->belongsTo(ForwardWorkflow::class);
+        return $this->belongsTo(\App\Models\Workflow::class, 'forward_workflow_id');
     }
 
     public function reverseWorkflow(): BelongsTo
     {
-        return $this->belongsTo(ReverseWorkflow::class);
+        return $this->belongsTo(\App\Models\Workflow::class, 'reverse_workflow_id');
     }
 
     public function serviceRequests(): HasMany
@@ -85,5 +88,10 @@ class NonTravelMemo extends Model
     public function serviceRequestApprovalTrails(): HasMany
     {
         return $this->hasMany(ServiceRequestApprovalTrail::class);
+    }
+
+    public function approvalTrails()
+    {
+        return $this->morphMany(\App\Models\ApprovalTrail::class, 'model', 'model_type', 'model_id');
     }
 }

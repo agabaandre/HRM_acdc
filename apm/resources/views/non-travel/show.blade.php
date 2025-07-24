@@ -17,37 +17,51 @@
 
 @section('content')
 <div class="row g-4">
+    <!-- Status Display -->
+    <div class="col-12 mb-3">
+        <div class="alert alert-info d-flex align-items-center" role="alert">
+            <i class="bx bx-info-circle me-2"></i>
+            <div>
+                <strong>Status:</strong> {{ ucfirst($nonTravel->overall_status ?? 'draft') }}
+            </div>
+        </div>
+    </div>
     <!-- Main Details Card -->
     <div class="col-md-8">
         <div class="card shadow-sm">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bx bx-detail me-2 text-primary"></i>Memo Details</h5>
-                <span class="badge bg-primary rounded-pill">{{ $nonTravel->nonTravelMemoCategory->name ?? 'N/A' }}</span>
             </div>
             <div class="card-body p-4">
-                <div class="row mb-4">
-                    <div class="col-md-12 mb-3">
-                        <h4 class="fw-bold text-primary">{{ $nonTravel->activity_title }}</h4>
-                        <p class="text-muted mb-0">
-                            <i class="bx bx-code-block me-1"></i> Activity Code: <strong>{{ $nonTravel->workplan_activity_code }}</strong>
-                        </p>
+                <!-- Meta Info Panel -->
+                <div class="mb-3">
+                    <span class="fw-semibold text-muted">Status:</span>
+                    <span class="badge bg-info text-dark">{{ ucfirst($nonTravel->overall_status ?? 'draft') }}</span>
+                </div>
+                <h3 class="fw-bold text-primary mb-3">{{ $nonTravel->activity_title }}</h3>
+                <div class="row g-3 align-items-center mb-2">
+                    <div class="col-md-4">
+                        <span class="fw-semibold text-muted">Category:</span>
+                        <span>{{ $nonTravel->nonTravelMemoCategory->name ?? 'N/A' }}</span>
                     </div>
-                    
-                    <div class="col-md-6 mb-3">
-                        <p class="mb-1 fw-semibold text-muted"><i class="bx bx-calendar me-1 text-primary"></i> Memo Date:</p>
-                        <p class="mb-0 fs-5">{{ $nonTravel->memo_date->format('F d, Y') }}</p>
+                    <div class="col-md-4">
+                        <span class="fw-semibold text-muted">Staff:</span>
+                        <span>{{ $nonTravel->staff->name ?? 'Unknown' }}</span>
                     </div>
-                    
-                    <div class="col-md-6 mb-3">
-                        <p class="mb-1 fw-semibold text-muted"><i class="bx bx-user me-1 text-primary"></i> Staff Member:</p>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar avatar-sm me-2 bg-light rounded-circle">
-                                <span class="avatar-text">{{ substr($nonTravel->staff->name ?? 'U', 0, 1) }}</span>
-                            </div>
-                            <p class="mb-0 fs-5">{{ $nonTravel->staff->name ?? 'Unknown' }}</p>
-                        </div>
+                    <div class="col-md-4">
+                        <span class="fw-semibold text-muted">Memo Date:</span>
+                        <span>{{ $nonTravel->memo_date ? $nonTravel->memo_date->format('F d, Y') : '-' }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="fw-semibold text-muted">Activity Code:</span>
+                        <span>{{ $nonTravel->workplan_activity_code }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="fw-semibold text-muted">Approval Level:</span>
+                        <span>{{ $nonTravel->approval_level ?? '-' }}</span>
                     </div>
                 </div>
+                <!-- End Meta Info Panel -->
                 
                 <div class="mb-4">
                     <div class="d-flex align-items-center mb-3">
@@ -101,24 +115,37 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $grandTotal = 0; @endphp
-                                @forelse($nonTravel->budget_breakdown as $index => $item)
-                                    @php 
-                                        $itemTotal = ($item['quantity'] ?? 1) * ($item['unit_price'] ?? 0);
-                                        $grandTotal += $itemTotal;
-                                    @endphp
-                                    <tr>
-                                        <td>{{ $index + 1 }}</td>
-                                        <td>
-                                            {{ $item['description'] ?? 'N/A' }}
-                                            @if(isset($item['notes']) && !empty($item['notes']))
-                                                <p class="text-muted small mb-0">{{ $item['notes'] }}</p>
-                                            @endif
-                                        </td>
-                                        <td class="text-center">{{ $item['quantity'] ?? 1 }}</td>
-                                        <td class="text-end">{{ number_format($item['unit_price'] ?? 0, 2) }}</td>
-                                        <td class="text-end fw-bold">{{ number_format($itemTotal, 2) }}</td>
-                                    </tr>
+                                @php 
+                                    $grandTotal = 0;
+                                    $budgetBreakdown = is_string($nonTravel->budget_breakdown) ? json_decode($nonTravel->budget_breakdown, true) : $nonTravel->budget_breakdown;
+                                    $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
+                                    
+                                    // Remove grand_total from the array if it exists
+                                    unset($budgetBreakdown['grand_total']);
+                                    
+                                    $rowIndex = 1;
+                                @endphp
+                                @forelse($budgetBreakdown as $codeId => $items)
+                                    @if(is_array($items))
+                                        @foreach($items as $item)
+                                            @php 
+                                                $itemTotal = ($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0);
+                                                $grandTotal += $itemTotal;
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $rowIndex++ }}</td>
+                                                <td>
+                                                    {{ $item['description'] ?? 'N/A' }}
+                                                    @if(isset($item['notes']) && !empty($item['notes']))
+                                                        <p class="text-muted small mb-0">{{ $item['notes'] }}</p>
+                                                    @endif
+                                                </td>
+                                                <td class="text-center">{{ $item['quantity'] ?? 1 }}</td>
+                                                <td class="text-end">{{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
+                                                <td class="text-end fw-bold">{{ number_format($itemTotal, 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    @endif
                                 @empty
                                     <tr>
                                         <td colspan="5" class="text-center py-3">No budget items found</td>
@@ -134,38 +161,57 @@
                         </table>
                     </div>
                 </div>
+
+                @if( can_take_action_generic($nonTravel))
+                    <div class="card mb-4">
+                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-check-circle me-2"></i>Approval Actions</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST" class="mb-2">
+                                @csrf
+                                <input type="hidden" name="action" value="approved">
+                                <button type="submit" class="btn btn-success w-100 mb-2">
+                                    <i class="bx bx-check me-1"></i> Approve
+                                </button>
+                            </form>
+                            <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST" class="mb-2">
+                                @csrf
+                                <input type="hidden" name="action" value="rejected">
+                                <button type="submit" class="btn btn-danger w-100 mb-2">
+                                    <i class="bx bx-x me-1"></i> Reject
+                                </button>
+                            </form>
+                            <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="action" value="returned">
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="bx bx-undo me-1"></i> Return for Revision
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
     
     <!-- Sidebar Info -->
     <div class="col-md-4">
-        <!-- Workflows Card -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="bx bx-git-branch me-2 text-primary"></i>Workflows</h5>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <p class="mb-1 fw-semibold text-muted"><i class="bx bx-git-branch me-1 text-primary"></i> Forward Workflow:</p>
-                    <p class="mb-0 fs-6">{{ $nonTravel->forwardworkflow->workflow_name ?? 'Not specified' }}</p>
-                </div>
-                <div>
-                    <p class="mb-1 fw-semibold text-muted"><i class="bx bx-git-repo-forked me-1 text-primary"></i> Reverse Workflow:</p>
-                    <p class="mb-0 fs-6">{{ $nonTravel->reverseworkflow->workflow_name ?? 'Not specified' }}</p>
-                </div>
-            </div>
-        </div>
-        
+
+
         <!-- Locations Card -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0"><i class="bx bx-map-pin me-2 text-primary"></i>Locations</h5>
             </div>
             <div class="card-body">
-                @if(!empty($nonTravel->location_id) && is_array($nonTravel->location_id))
+                @php
+                    $locations = is_array($nonTravel->location_id) ? $nonTravel->location_id : (is_string($nonTravel->location_id) ? json_decode($nonTravel->location_id, true) : []);
+                @endphp
+                @if(!empty($locations) && count($locations) > 0)
                     <div class="d-flex flex-wrap gap-2">
-                        @foreach($nonTravel->location_id as $locationId)
+                        @foreach($locations as $locationId)
                             @php
                                 $location = App\Models\Location::find($locationId);
                             @endphp
@@ -181,7 +227,6 @@
                 @endif
             </div>
         </div>
-        
         <!-- Budget Items Card -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
@@ -209,16 +254,18 @@
                 @endif
             </div>
         </div>
-        
         <!-- Attachments Card -->
-        @if(!empty($nonTravel->attachment) && count($nonTravel->attachment) > 0)
+        @php
+            $attachments = is_array($nonTravel->attachment) ? $nonTravel->attachment : (is_string($nonTravel->attachment) ? json_decode($nonTravel->attachment, true) : []);
+        @endphp
+        @if(!empty($attachments) && count($attachments) > 0)
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bx bx-paperclip me-2 text-primary"></i>Attachments</h5>
                 </div>
                 <div class="card-body">
                     <ul class="list-group">
-                        @foreach($nonTravel->attachment as $index => $attachment)
+                        @foreach($attachments as $index => $attachment)
                             <li class="list-group-item">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
@@ -238,6 +285,28 @@
                 </div>
             </div>
         @endif
+
+        
+    
+            <!-- Approval Trail Card (shared partial) -->
+            @include('partials.approval-trail', ['resource' => $nonTravel])
+                <!-- Submit for Approval Button (if with creator) -->
+                @if(function_exists('is_with_creator_generic') && is_with_creator_generic($nonTravel))
+                <div class="card mb-4">
+                    <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
+                        <h6 class="m-0 fw-semibold text-success"><i class="bx bx-send me-2"></i>Submit for Approval</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="text-muted mb-3">Ready to submit this non-travel memo for approval?</p>
+                        <form action="{{ route('non-travel.submit-for-approval', $nonTravel) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bx bx-send me-2"></i>Submit for Approval
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endif
     </div>
 </div>
 @endsection

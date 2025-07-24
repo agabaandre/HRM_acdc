@@ -139,4 +139,9 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
 
 });
 
+// Non-Travel Memo Approval Routes
+Route::post('non-travel/{nonTravel}/submit-for-approval', [App\Http\Controllers\NonTravelMemoController::class, 'submitForApproval'])->name('non-travel.submit-for-approval');
+Route::post('non-travel/{nonTravel}/update-status', [App\Http\Controllers\NonTravelMemoController::class, 'updateStatus'])->name('non-travel.update-status');
+Route::get('non-travel/{nonTravel}/status', [App\Http\Controllers\NonTravelMemoController::class, 'status'])->name('non-travel.status');
+
 
