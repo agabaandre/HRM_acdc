@@ -90,6 +90,7 @@ class ActivityController extends Controller
         return view('activities.create', [
             'matrix' => $matrix,
             'requestTypes' => $requestTypes,
+            'activity'=>(Object) [],
             'staff' => $staff,
             'allStaffGroupedByDivision' => $allStaff,
             'locations' => $locations,

@@ -54,17 +54,24 @@
                 <input type="text" name="date_to" id="date_to" class="form-control datepicker " value="{{ old('date_to', $activity->date_to ?? '') }}" required>
             </div>
             <div class="col-md-4">
-                <label for="location_id" class="form-label fw-semibold">
                     <i class="fas fa-map-marker-alt me-1 text-success"></i> Location/Venue <span class="text-danger">*</span>
                 </label>
                 <select name="location_id[]" id="location_id" class="form-select border-success" multiple required>
                     @foreach($locations as $location)
                         @php
+                           $isSelected = false;
+                          if($activity && isset($activity->location_id)):
                             $locationIds = is_string($activity->location_id ?? '') 
                                 ? json_decode($activity->location_id, true) 
                                 : ($activity->location_id ?? []);
                             $isSelected = in_array($location->id, old('location_id', $locationIds ?? []));
+                        endif;
                         @endphp
+                        @if($location->id == 1)
+                        <option value="{{ $location->id }}" {{ $isSelected ? 'selected' : '' }}>
+                            {{ $location->name }}
+                        </option>
+                        @endif
                         <option value="{{ $location->id }}" {{ $isSelected ? 'selected' : '' }}>
                             {{ $location->name }}
                         </option>
