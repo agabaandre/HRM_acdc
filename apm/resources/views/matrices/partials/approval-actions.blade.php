@@ -1,25 +1,13 @@
 
-<div class="dropdown">
-    <button class="btn btn-success dropdown-toggle w-100 text-white" type="button" id="approvalActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 0px;">
-        Take Action
-    </button>
-    @php
-     //dd(activities_approved_by_me($matrix));
-    @endphp
-    <ul class="dropdown-menu w-100" aria-labelledby="approvalActionsDropdown">
+<div class="d-flex gap-2">
     @if(!still_with_creator($matrix) && activities_approved_by_me($matrix))
-        <li>
-            <a class="dropdown-item" href="#confirmReview" data-bs-toggle="modal">
-                <i class="bx bx-check text-bold"></i> Approve
-            </a>
-        </li>
+        <button class="btn btn-success w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#confirmReview" style="border-radius: 0px;">
+            <i class="bx bx-check text-bold"></i> Approve
+        </button>
     @endif
-        <li>
-            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#recommendChangesModal">
-                <i class="bx bx-edit text-bold"></i> Not Approved
-            </a>
-        </li>
-    </ul>
+    <button class="btn btn-danger w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
+        <i class="bx bx-edit text-bold"></i> Not Approved
+    </button>
 </div>
         
         <!-- Recommend Changes Modal -->
