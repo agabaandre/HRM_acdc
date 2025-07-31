@@ -61,11 +61,14 @@ if (!empty($ppa->midterm_competency)) {
             <?php for ($i = 5; $i >= 1; $i--): ?>
               <td class="text-center">
                 <div class="form-check d-flex flex-column align-items-center">
-                  <input type="radio" class="form-check-input"
+                  <input type="radio" class="form-check-input competency-radio"
                          name="midterm_competency[<?= $key ?>]"
                          value="<?= $i ?>"
+                         data-category="<?= $catKey ?>"
+                         data-competency-id="<?= $item['id'] ?>"
                          <?= $midreadonly ?>
-                         <?= ((string)$selected === (string)$i) ? 'checked' : '' ?> required>
+                         <?= ((string)$selected === (string)$i) ? 'checked' : '' ?>
+                         <?= ($catKey !== 'leadership') ? 'required' : '' ?>>
                   <label class="form-check-label"><?= $item['score_' . $i] ?></label>
                 </div>
               </td>
