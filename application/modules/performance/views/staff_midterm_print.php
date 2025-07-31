@@ -316,7 +316,7 @@
               <?= date('M j, Y | H:i', strtotime($sup_signed_at)) ?> EAST
             </div>
             <div style="color: #aaa; font-size: 9px; font-family: monospace;">
-              ID: <?= strtoupper($sup_hash) ?>
+             SIGNATURE ID: <?= strtoupper($sup_hash) ?>
             </div>
           </div>
         </div>
@@ -357,7 +357,7 @@
               <?= date('M j, Y | H:i', strtotime($staff_signed_at)) ?> EAST
             </div>
             <div style="color: #aaa; font-size: 9px; font-family: monospace;">
-              ID: <?= strtoupper($staff_hash) ?>
+            SIGNATURE ID: <?= strtoupper($staff_hash) ?>
             </div>
           </div>
         </div>
