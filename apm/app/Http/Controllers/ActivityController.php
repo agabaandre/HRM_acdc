@@ -90,6 +90,7 @@ class ActivityController extends Controller
         return view('activities.create', [
             'matrix' => $matrix,
             'requestTypes' => $requestTypes,
+            'activity'=>(Object) [],
             'staff' => $staff,
             'allStaffGroupedByDivision' => $allStaff,
             'locations' => $locations,
@@ -134,7 +135,7 @@ class ActivityController extends Controller
                     'participant_end' => 'required|array',
                     'participant_days' => 'required|array',
                     'attachments.*.type' => 'required|string|max:255',
-                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
+                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240', // 10MB max
                 ]);
     
                 // Build internal_participants array with staff_id as key
@@ -164,18 +165,18 @@ class ActivityController extends Controller
                 $attachments = [];
                 if ($request->hasFile('attachments')) {
                     $uploadedFiles = $request->file('attachments');
+                    $attachmentTypes = $request->input('attachments', []);
                     
-                    foreach ($uploadedFiles as $index => $fileData) {
-                        if (isset($fileData['file']) && $fileData['file']->isValid()) {
-                            $file = $fileData['file'];
-                            $type = $fileData['type'] ?? 'Document';
+                    foreach ($uploadedFiles as $index => $file) {
+                        if ($file && $file->isValid()) {
+                            $type = $attachmentTypes[$index]['type'] ?? 'Document';
                             
                             // Validate file type
-                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
                             $extension = strtolower($file->getClientOriginalExtension());
                             
                             if (!in_array($extension, $allowedExtensions)) {
-                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.");
+                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
                             }
                             
                             // Generate unique filename
@@ -435,7 +436,7 @@ class ActivityController extends Controller
         }
 
         // Fetch related data
-        $locations = Location::whereIn('id', $locationIds ?: [])->get();
+        $selectedLocations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
 
         return view('activities.edit', [
@@ -489,7 +490,7 @@ class ActivityController extends Controller
                     'participant_end' => 'required|array',
                     'participant_days' => 'required|array',
                     'attachments.*.type' => 'required|string|max:255',
-                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
+                    'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240', // 10MB max
                 ]);
 
                 // Build internal_participants array with staff_id as key
@@ -514,20 +515,25 @@ class ActivityController extends Controller
                 
                 // Handle file uploads for attachments
                 $attachments = [];
+                $existingAttachments = is_string($activity->attachment) 
+                    ? json_decode($activity->attachment, true) 
+                    : ($activity->attachment ?? []);
+                
                 if ($request->hasFile('attachments')) {
                     $uploadedFiles = $request->file('attachments');
+                    $attachmentTypes = $request->input('attachments', []);
                     
-                    foreach ($uploadedFiles as $index => $fileData) {
-                        if (isset($fileData['file']) && $fileData['file']->isValid()) {
-                            $file = $fileData['file'];
-                            $type = $fileData['type'] ?? 'Document';
+                    foreach ($uploadedFiles as $index => $file) {
+                        if ($file && $file->isValid()) {
+                            // Get the type from the corresponding attachment type input
+                            $type = $attachmentTypes[$index]['type'] ?? 'Document';
                             
                             // Validate file type
-                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
                             $extension = strtolower($file->getClientOriginalExtension());
                             
                             if (!in_array($extension, $allowedExtensions)) {
-                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.");
+                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
                             }
                             
                             // Generate unique filename
@@ -545,8 +551,16 @@ class ActivityController extends Controller
                                 'mime_type' => $file->getMimeType(),
                                 'uploaded_at' => now()->toDateTimeString()
                             ];
+                        } else {
+                            // Keep existing attachment if no new file was uploaded
+                            if (isset($existingAttachments[$index])) {
+                                $attachments[] = $existingAttachments[$index];
+                            }
                         }
                     }
+                } else {
+                    // If no files were uploaded, keep all existing attachments
+                    $attachments = $existingAttachments;
                 }
 
                 // Update the activity record
@@ -574,8 +588,8 @@ class ActivityController extends Controller
                 if(count($internalParticipants)>0)
                     $this->storeParticipantSchedules($internalParticipants,$activity);
 
-                if(count($budgetItems)>0)
-                    $this->storeBudget($budgetCodes,$budgetItems,$activity);
+                // Always call storeBudget to handle both updates and deletions
+                $this->storeBudget($budgetCodes,$budgetItems,$activity);
 
                 $successMessage = 'Activity updated successfully.';
                 $redirectUrl = route('matrices.activities.show', [$matrix, $activity]);
@@ -655,43 +669,120 @@ class ActivityController extends Controller
 
     private function storeBudget($budgetCodes,$budgetItems,$activity)
     {
-        if(count($budgetItems)>0)
-         ActivityBudget::where('activity_id',$activity->id)->delete();
-
-        foreach($budgetCodes as $key=>$fundCode){
-            $items = $budgetItems[$fundCode];
-           
-            foreach($items as $item){
-                $item = (Object) $item;
-                $total = ($item->unit_cost * $item->units) * $item->days;
-
-                try{
-
-                    DB::beginTransaction();
-                    $activityBudget = ActivityBudget::create([
-                        'activity_id'=>$activity->id,
-                        'matrix_id'=>$activity->matrix_id,
-                        'fund_type_id'=>$fundCode,
-                        'fund_code'=>$fundCode,
-                        'cost'=>$item->cost,
-                        'description'=>$item->description,
-                        'unit_cost'=>$item->unit_cost,
-                        'units'=>$item->units,
-                        'days'=>$item->days,
-                        'total'=>$total
-                    ]);
-
-                    $this->store_fund_code_transaction($fundCode,$total,$activity,$activityBudget);
-                    DB::commit();
-
-                }
-                catch(Exception $e){
-                    DB::rollBack();
-                    Log::error('Error storing activity budget', ['exception' => $e]);
-                    return false;
-                }
-            } 
+        // Get existing budget records for this activity
+        $existingBudgets = ActivityBudget::where('activity_id', $activity->id)->get()->keyBy('id');
+        
+        if(count($budgetItems)>0) {
             
+            foreach($budgetCodes as $key=>$fundCode){
+                $items = $budgetItems[$fundCode];
+               
+                foreach($items as $index => $item){
+                    $item = (Object) $item;
+                    $total = ($item->unit_cost * $item->units) * $item->days;
+
+                    try{
+                        DB::beginTransaction();
+                        
+                        // Check if we have an existing budget record to update
+                        $existingBudget = $existingBudgets->first(function($budget) use ($fundCode, $item) {
+                            return $budget->fund_code == $fundCode && 
+                                   $budget->cost == $item->cost &&
+                                   $budget->description == $item->description;
+                        });
+                        
+                        if ($existingBudget) {
+                            // Update existing record
+                            $oldTotal = $existingBudget->total;
+                            $existingBudget->update([
+                                'unit_cost' => $item->unit_cost,
+                                'units' => $item->units,
+                                'days' => $item->days,
+                                'total' => $total
+                            ]);
+                            
+                            // Update the fund code transaction if total changed
+                            if ($oldTotal != $total) {
+                                $transaction = FundCodeTransaction::where('activity_budget_id', $existingBudget->id)->first();
+                                if ($transaction) {
+                                    $fundCode = FundCode::find($fundCode);
+                                    $difference = $total - $oldTotal;
+                                    
+                                    // Update transaction
+                                    $transaction->update([
+                                        'amount' => $total,
+                                        'balance_after' => $transaction->balance_before - $total
+                                    ]);
+                                    
+                                    // Update fund code balance
+                                    $fundCode->budget_balance = $fundCode->budget_balance - $difference;
+                                    $fundCode->save();
+                                }
+                            }
+                            
+                            $activityBudget = $existingBudget;
+                        } else {
+                            // Create new record
+                            $activityBudget = ActivityBudget::create([
+                                'activity_id'=>$activity->id,
+                                'matrix_id'=>$activity->matrix_id,
+                                'fund_type_id'=>$fundCode,
+                                'fund_code'=>$fundCode,
+                                'cost'=>$item->cost,
+                                'description'=>$item->description,
+                                'unit_cost'=>$item->unit_cost,
+                                'units'=>$item->units,
+                                'days'=>$item->days,
+                                'total'=>$total
+                            ]);
+
+                            $this->store_fund_code_transaction($fundCode,$total,$activity,$activityBudget);
+                        }
+                        
+                        DB::commit();
+
+                    }
+                    catch(Exception $e){
+                        DB::rollBack();
+                        Log::error('Error storing activity budget', ['exception' => $e]);
+                        return false;
+                    }
+                } 
+            }
+            
+            // Remove any existing budget records that are no longer in the updated data
+            $updatedBudgetIds = [];
+            foreach($budgetCodes as $fundCode){
+                $items = $budgetItems[$fundCode];
+                foreach($items as $item){
+                    $item = (Object) $item;
+                    $existingBudget = $existingBudgets->first(function($budget) use ($fundCode, $item) {
+                        return $budget->fund_code == $fundCode && 
+                               $budget->cost == $item->cost &&
+                               $budget->description == $item->description;
+                    });
+                    if ($existingBudget) {
+                        $updatedBudgetIds[] = $existingBudget->id;
+                    }
+                }
+            }
+            
+            // Delete budget records that are no longer needed
+            $budgetsToDelete = $existingBudgets->whereNotIn('id', $updatedBudgetIds);
+            foreach($budgetsToDelete as $budgetToDelete) {
+                // First delete related transactions
+                FundCodeTransaction::where('activity_budget_id', $budgetToDelete->id)->delete();
+                // Then delete the budget record
+                $budgetToDelete->delete();
+            }
+        } else {
+            // If no budget items, delete all existing budget records
+            foreach($existingBudgets as $budgetToDelete) {
+                // First delete related transactions
+                FundCodeTransaction::where('activity_budget_id', $budgetToDelete->id)->delete();
+                // Then delete the budget record
+                $budgetToDelete->delete();
+            }
         }
     }
 

@@ -5,10 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\HasApprovalWorkflow;
 
 class SpecialMemo extends Model
 {
-    use HasFactory;
+    use HasFactory, HasApprovalWorkflow;
+
+    const STATUS_DRAFT = 'draft';
+    const STATUS_SUBMITTED = 'submitted';
+    const STATUS_APPROVED = 'approved';
+    const STATUS_REJECTED = 'rejected';
 
     protected $table = 'special_memos'; // Uses the 'activities' table
 
@@ -35,6 +41,10 @@ class SpecialMemo extends Model
         'budget',
         'attachment',
         'status',
+        'overall_status',
+        'forward_workflow_id',
+        'approval_level',
+        'next_approval_level',
     ];
 
     /**
@@ -158,5 +168,13 @@ class SpecialMemo extends Model
     {
         $data = $this->cleanJson($this->location_id);
         return Location::whereIn('id', $data)->pluck('name')->implode(', ');
+    }
+
+    /**
+     * Get the approval trails for this special memo.
+     */
+    public function approvalTrails()
+    {
+        return $this->morphMany(ApprovalTrail::class, 'model', 'model_type', 'model_id');
     }
 }

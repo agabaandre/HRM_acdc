@@ -1,25 +1,11 @@
 
-<div class="dropdown">
-    <button class="btn btn-success dropdown-toggle w-100 text-white" type="button" id="approvalActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 0px;">
-        Take Action
+<div class="d-flex gap-2">
+    <button class="btn btn-success w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#confirmReview" style="border-radius: 0px;">
+        <i class="bx bx-check text-bold"></i> Pass
     </button>
-    <ul class="dropdown-menu w-100" aria-labelledby="approvalActionsDropdown">
-        <li>
-            <a class="dropdown-item" href="#confirmReview" data-bs-toggle="modal">
-                <i class="bx bx-check text-bold"></i> Pass
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#recommendChangesModal">
-                <i class="bx bx-edit text-bold"></i> Not Passed
-            </a>
-        </li>
-        {{-- <li>
-            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#notRequiredModal">
-                <i class="bx bx-x-circle text-bold"></i> Not Required
-            </a>
-        </li> --}}
-    </ul>
+    <button class="btn btn-danger w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
+        <i class="bx bx-edit text-bold"></i> Not Passed
+    </button>
 </div>
         
         <!-- Recommend Changes Modal -->
@@ -87,6 +73,10 @@
                             <div class="mb-3">
                                This confirms that you find this activity okay.
                                <input type="hidden" name="action" value="passed"/>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmReviewComment" class="form-label">Comments</label>
+                                <textarea class="form-control" id="confirmReviewComment" name="comment" rows="3" required></textarea>
                             </div>
                         </div>
                         <div class="modal-footer">

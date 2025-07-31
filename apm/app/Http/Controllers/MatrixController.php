@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Approver;
 use App\Models\Division;
-use App\Models\MatrixApprovalTrail;
+use App\Models\ApprovalTrail;
 use App\Models\WorkflowDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\View\View;
@@ -272,7 +272,7 @@ class MatrixController extends Controller
         $last_approval_order=$matrix->approval_level;
         $overall_status = $matrix->overall_status;
 
-        $last_approval_trail = MatrixApprovalTrail::where('matrix_id',$matrix->id)->whereNotIn('action',['approved','submitted'])->orderByDesc('id')->first();
+        $last_approval_trail = ApprovalTrail::where('model_id',$matrix->id)->where('model_type', Matrix::class)->whereNotIn('action',['approved','submitted'])->orderByDesc('id')->first();
 
         if($request->action == 'approvals'){
 
@@ -305,14 +305,14 @@ class MatrixController extends Controller
 
         // Update matrix
         $matrix->update($update_data);
-        send_matrix_email_notification($matrix, 'matrix_approval');
+        send_matrix_email_notification($matrix, 'approval');
     }
 
     public function request_approval( Matrix $matrix){
 
         $this->updateMatrix($matrix,(Object)['action'=>'approvals'],null);
         //notify and save notification
-        send_matrix_email_notification($matrix, 'matrix_approval');
+        send_matrix_email_notification($matrix, 'approval');
         
         return redirect()->route('matrices.index')->with([
             'msg' => 'Matrix updated successfully.',
@@ -346,7 +346,7 @@ class MatrixController extends Controller
             $matrix->approval_level = ($matrix->approval_level==1)?0:1;
             $matrix->overall_status ='returned';
             //notify and save notification
-            $notification_type = 'matrix_returned';
+            $notification_type = 'returned';
         }else{
             //move to next
             $next_approval_point = $this->get_next_approver($matrix);
@@ -359,12 +359,12 @@ class MatrixController extends Controller
             $matrix->overall_status = 'pending';
 
             //notify and save notification
-            $notification_type = 'matrix_approval';
+            $notification_type = 'approval';
            }
            else{
             //no more approval levels
             $matrix->overall_status = 'approved';
-            $notification_type = 'matrix_approved';
+            $notification_type = 'approved';
            }
         }
         
@@ -382,10 +382,12 @@ class MatrixController extends Controller
 
     private function saveMatrixTrail($matrix,$comment,$action){
 
-        $matrixTrail = new MatrixApprovalTrail();
+        $matrixTrail = new ApprovalTrail();
         $matrixTrail->remarks  = $comment;
         $matrixTrail->action   = $action;
-        $matrixTrail->matrix_id   = $matrix->id;
+        $matrixTrail->model_id   = $matrix->id;
+        $matrixTrail->model_type = Matrix::class;
+        $matrixTrail->matrix_id   = $matrix->id; // For backward compatibility
         $matrixTrail->approval_order   = $matrix->approval_level ?? 1;
         $matrixTrail->staff_id = user_session('staff_id');
         $matrixTrail->save();

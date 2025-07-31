@@ -6,12 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasApprovalWorkflow;
 use function React\Promise\Stream\first;
 use App\Models\Staff;
 
 class Matrix extends Model
 {
-    use HasFactory;
+    use HasFactory, HasApprovalWorkflow;
 
     /**
      * The attributes that are mass assignable.
@@ -140,7 +141,7 @@ class Matrix extends Model
     }
 
     public function matrixApprovalTrails(){
-        return $this->hasMany(MatrixApprovalTrail::class);
+        return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', Matrix::class);
     }
 
     public function getHasIntramuralAttribute(): bool
