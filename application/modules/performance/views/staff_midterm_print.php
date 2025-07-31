@@ -313,7 +313,7 @@
               <?= $supervisor->position ?? 'Supervisor' ?>
             </div>
             <div style="color: #888; font-size: 10px; margin-bottom: 5px;">
-              <?= date('M j, Y | H:i', strtotime($sup_signed_at)) ?> EAT
+              <?= date('M j, Y | H:i', strtotime($sup_signed_at)) ?> EAST
             </div>
             <div style="color: #aaa; font-size: 9px; font-family: monospace;">
               ID: <?= strtoupper($sup_hash) ?>
