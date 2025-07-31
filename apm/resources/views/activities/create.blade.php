@@ -821,7 +821,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 let attachmentIndex = 1;
 
 // Allowed extensions
-const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
 
 // Add new attachment block
 $('#addAttachment').on('click', function () {
@@ -829,10 +829,10 @@ $('#addAttachment').on('click', function () {
         <div class="col-md-4 attachment-block">
             <label class="form-label">Document Type*</label>
             <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
-            <input type="file" name="attachments[${attachmentIndex}][file]" 
+            <input type="file" name="attachments[]" 
                    class="form-control mt-1 attachment-input" 
-                   accept=".pdf,.jpg,.jpeg,.png,image/*" required>
-            <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG</small>
+                   accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" required>
+            <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX</small>
         </div>`;
     $('#attachmentContainer').append(newField);
     attachmentIndex++;
@@ -859,11 +859,11 @@ $(document).on('change', '.attachment-input', function () {
     const fileSize = file.size;
     const maxSize = 10 * 1024 * 1024; // 10MB in bytes
     const ext = fileName.split('.').pop().toLowerCase();
-    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
 
     // Check file extension
     if (!allowedExtensions.includes(ext)) {
-        show_notification("Only PDF, JPG, JPEG, or PNG files are allowed.", "warning");
+        show_notification("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.", "warning");
         $(fileInput).val(''); // Clear invalid file
         return;
     }

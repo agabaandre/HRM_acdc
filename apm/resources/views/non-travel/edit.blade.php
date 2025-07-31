@@ -21,6 +21,17 @@
             @method('PUT')
 
             <div class="row g-4 mb-4">
+                <div class="col-md-12">
+                    <div class="alert alert-info d-flex align-items-center" role="alert">
+                        <i class="bx bx-info-circle me-2"></i>
+                        <div>
+                            <strong>Status:</strong> {{ ucfirst($nonTravel->overall_status ?? 'draft') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <div class="form-group position-relative">
                         <label for="activity_title" class="form-label fw-semibold">
@@ -88,7 +99,7 @@
                                name="memo_date" 
                                id="memo_date" 
                                class="form-control form-control-lg @error('memo_date') is-invalid @enderror" 
-                               value="{{ old('memo_date', $nonTravel->memo_date->format('Y-m-d')) }}" 
+                               value="{{ old('memo_date', $nonTravel->memo_date ? $nonTravel->memo_date->format('Y-m-d') : '') }}" 
                                required>
                         @error('memo_date')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -220,15 +231,15 @@
                             <i class="bx bx-paperclip me-1 text-primary"></i>New Attachments
                         </label>
                         <input type="file" 
-                               name="attachment[]" 
+                               name="attachments[]" 
                                id="attachment" 
-                               class="form-control form-control-lg @error('attachment') is-invalid @enderror" 
+                               class="form-control form-control-lg @error('attachments') is-invalid @enderror" 
                                multiple>
                         <small class="text-muted mt-1 d-block">Allowed file types: PDF, DOC, DOCX, JPG, JPEG, PNG (max 10MB each)</small>
-                        @error('attachment')
+                        @error('attachments')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        @error('attachment.*')
+                        @error('attachments.*')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -334,8 +345,27 @@
                 </div>
                 
                 <div id="budget-items">
-                    @if(old('budget_breakdown', $nonTravel->budget_breakdown))
-                        @foreach(old('budget_breakdown', $nonTravel->budget_breakdown) as $index => $item)
+                    @php
+                        $budgetBreakdown = old('budget_breakdown', $nonTravel->budget_breakdown);
+                        if (is_string($budgetBreakdown)) {
+                            $budgetBreakdown = json_decode($budgetBreakdown, true);
+                        }
+                        $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
+                        
+                        // Flatten the nested structure for editing
+                        $flattenedBudget = [];
+                        $index = 0;
+                        foreach ($budgetBreakdown as $codeId => $items) {
+                            if (is_array($items) && $codeId !== 'grand_total') {
+                                foreach ($items as $item) {
+                                    $flattenedBudget[$index] = $item;
+                                    $index++;
+                                }
+                            }
+                        }
+                    @endphp
+                    @if(!empty($flattenedBudget))
+                        @foreach($flattenedBudget as $index => $item)
                             <div class="budget-item card border shadow-sm mb-3">
                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                     <h6 class="m-0 fw-semibold">Budget Item #{{ $index + 1 }}</h6>
@@ -407,13 +437,18 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between mt-4">
-                <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary px-4 btn-lg">
-                    <i class="bx bx-arrow-back me-1"></i> Cancel
-                </a>
-                <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
-                    <i class="bx bx-save me-2"></i> Update Memo
+            <div class="d-flex justify-content-end mt-4 gap-2">
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="bx bx-save me-1"></i> Update Memo
                 </button>
+                @if(($nonTravel->overall_status ?? 'draft') === 'draft')
+                    <form action="{{ route('non-travel.submit-for-approval', $nonTravel) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-success px-4">
+                            <i class="bx bx-send me-1"></i> Submit for Approval
+                        </button>
+                    </form>
+                @endif
             </div>
         </form>
     </div>
@@ -428,7 +463,7 @@
 <script type="text/javascript">
     $(document).ready(function() {
         // Get the initial budget item count
-        let budgetIndex = {{ count(old('budget_breakdown', $nonTravel->budget_breakdown ?? [])) }};
+                        let budgetIndex = {{ count($flattenedBudget ?? []) }};
         
         // Check if we need to add at least one budget item
         if (budgetIndex === 0) {

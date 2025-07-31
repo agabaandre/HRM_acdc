@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasApprovalWorkflow;
 use Illuminate\Support\Str;
 
 class Activity extends Model
 {
-    use HasFactory;
+    use HasFactory, HasApprovalWorkflow;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -120,7 +121,7 @@ class Activity extends Model
 
     public function activityApprovalTrails(): HasMany
     {
-        return $this->hasMany(ActivityApprovalTrail::class);
+        return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', Activity::class);
     }
 
     // JSON-BASED: location_id[] mapped to Location model

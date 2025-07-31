@@ -53,7 +53,7 @@
                                                     <input type="date" 
                                                            name="memo_date" 
                                                            class="form-control @error('memo_date') is-invalid @enderror"
-                                                           value="{{ old('memo_date', $specialMemo->memo_date->format('Y-m-d')) }}"
+                                                           value="{{ old('memo_date', $specialMemo->memo_date ? $specialMemo->memo_date->format('Y-m-d') : '') }}"
                                                            required>
                                                     @error('memo_date')
                                                         <div class="invalid-feedback">{{ $message }}</div>
