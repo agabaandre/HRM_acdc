@@ -259,65 +259,112 @@
 
   <div style="margin-top: 20px;">
     <div class="page-break"></div>
-    <table width="100%" border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse; font-size: 10pt;">
-      <thead>
-        <tr style="background-color: #f2f2f2;">
-          <th colspan="3" style="text-align: left; font-weight: bold;">
-            E. Staff and Supervisor Sign Off
-          </th>
-        </tr>
-      </thead>
-      <tr style="background-color: #f2f2f2; font-weight: bold;">
-        <td width="50%" style="text-align: center;">Supervisor</td>
-        <td width="50%" style="text-align: center;">Staff</td>
-
-      </tr>
+<table width="100%" border="1" cellspacing="0" cellpadding="10" style="border-collapse: collapse; font-size: 10pt;">
+  <thead>
+    <tr style="background-color: #f2f2f2;">
+      <th colspan="2" style="text-align: left; font-weight: bold;">
+        E. Staff and Supervisor Sign Off
+      </th>
+    </tr>
+  </thead>
+  <tr style="background-color: #f9f9f9; font-weight: bold;">
+    <td width="50%" style="text-align: center;">Supervisor</td>
+    <td width="50%" style="text-align: center;">Staff</td>
+  </tr>
+  <tr>
+    <td style="padding: 15px;">
+      I hereby confirm that I formally discussed the results of this review with the staff member.
+      The staff member was given feedback on the progress towards the completion of their performance objectives.
+      We discussed areas requiring performance improvement, where applicable.
+    </td>
+    <td style="padding: 15px;">
+      I hereby confirm that I formally discussed the results of this review with my supervisor.
+    </td>
+  </tr>
       <tr>
-        <td>
-          I hereby confirm that I formally discussed the results of this review with the staff member.
-          The staff member was given feedback on the progress towards the completion of their performance objectives
-          We discussed areas requiring performance improvement, where applicable.
+      <!-- Supervisor Signature -->
+      <td style="padding: 25px; text-align: center; vertical-align: top;">
+        <?php
+          $supervisor = staff_details($ppa->midterm_supervisor_1);
+          $sup_signed_at = get_last_ppa_approval_action_midterm($ppa->entry_id, $ppa->midterm_supervisor_1)->created_at ?? $ppa->created_at;
+          $sup_hash = substr(md5(sha1($ppa->midterm_supervisor_1 . $sup_signed_at)), 0, 15);
+        ?>
+            SIGNED BY
+          </div>
+          
+          <!-- Signature Area -->
+          <div style="margin-top: 25px; margin-bottom: 20px; padding:45px;">
+            <?php if (!empty($supervisor->signature)): ?>
+              <img src="<?= base_url('uploads/staff/signature/' . $supervisor->signature) ?>" 
+                   style="max-width: 180px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;  padding:45px;">
+            <?php else: ?>
+              <div style="border-bottom: 2px solid #ccc; width: 200px; height: 60px; margin: 0 auto; display: flex; align-items: center;  padding:45px; justify-content: center;">
+                <span style="color: #999; font-style: italic; font-size: 11px;"><?= $supervisor->work_email; ?></span>
+              </div>
+            <?php endif; ?>
+          </div>
+          
+          <!-- Signature Metadata -->
+          <div style="text-align: center; margin-top: 15px;">
+            <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
+              <?= $supervisor->fname . ' ' . $supervisor->lname ?>
+            </div>
+            <div style="color: #666; font-size: 11px; margin-bottom: 8px;">
+              <?= $supervisor->position ?? 'Supervisor' ?>
+            </div>
+            <div style="color: #888; font-size: 10px; margin-bottom: 5px;">
+              <?= date('M j, Y | H:i', strtotime($sup_signed_at)) ?> EAT
+            </div>
+            <div style="color: #aaa; font-size: 9px; font-family: monospace;">
+              ID: <?= strtoupper($sup_hash) ?>
+            </div>
+          </div>
+        </div>
+      </td>
 
-        </td>
-        <td>
-          I hereby confirm that I formally discussed the results of this review with my supervisor.
-        </td>
+      <!-- Staff Signature -->
+      <td style="padding: 25px; text-align: center; vertical-align: top;">
+        <?php
+          $staff = staff_details($ppa->staff_id);
+          $staff_signed_at = $ppa->midterm_created_at;
+          $staff_hash = substr(md5(sha1($ppa->staff_id . $staff_signed_at)), 0, 15);
+        ?>
 
-      </tr>
-      <tr>
-        <td>
-          <?php if (!empty(staff_details($ppa->midterm_supervisor_1)->signature)): ?>
-            <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->midterm_supervisor_1)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
-          <?php else: ?>
-            <p style="text-decoration:underline;"><?= staff_details($ppa->midterm_supervisor_1)->title . ' ' . staff_details($ppa->midterm_supervisor_1)->lname; ?></p><br>
-          <?php endif; ?>
+            SIGNED BY
+          </div>
+          
+          <!-- Signature Area -->
+          <div style="margin-top: 25px; margin-bottom: 20px; padding:45px;">
+            <?php if (!empty($staff->signature)): ?>
+              <img src="<?= base_url('uploads/staff/signature/' . $staff->signature) ?>" 
+                   style="max-width: 180px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
+            <?php else: ?>
+  
+                <span style="color: #999; font-style: italic; font-size: 11px;"><?= $staff->work_email; ?></span>
+              </div>
+            <?php endif; ?>
+          </div>
+          
+          <!-- Signature Metadata -->
+          <div style="text-align: center; margin-top: 15px;">
+            <div style="font-weight: bold; color: #333; font-size: 13px; margin-bottom: 5px;">
+              <?= $staff->fname . ' ' . $staff->lname ?>
+            </div>
+            <div style="color: #666; font-size: 11px;">
+              <?= 'Staff' ?>
+            </div>
+            <div style="color: #888; font-size: 10px; ">
+              <?= date('M j, Y | H:i', strtotime($staff_signed_at)) ?> EAST
+            </div>
+            <div style="color: #aaa; font-size: 9px; font-family: monospace;">
+              ID: <?= strtoupper($staff_hash) ?>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>
+</table>
 
-          <b>Supervisor Signature</b>
-        </td>
-        <td>
-          <?php if (!empty(staff_details($ppa->staff_id)->signature)): ?>
-            <img src="<?= base_url('uploads/staff/signature/' . staff_details($ppa->staff_id)->signature) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
-          <?php else: ?>
-            <p style="text-decoration:underline;"><?= staff_details($staff_id)->title . ' ' . staff_details($staff_id)->lname; ?></p><br>
-          <?php endif; ?>
-
-          <b> Staff Signature</b>
-        </td>
-
-      </tr>
-      <tr>
-        <td>
-          <?= date('d/m/Y', strtotime(get_last_ppa_approval_action_midterm($ppa->entry_id, $ppa->midterm_supervisor_1)->created_at) ?? $ppa->created_at) ?><br>
-          <b> Date</b>
-        </td>
-        <td>
-          <?= date('d/m/Y', strtotime($ppa->created_at)) ?><br>
-          <b> Date</b>
-        </td>
-
-      </tr>
-
-    </table>
   </div>
   <?php if ($this->uri->segment(7) == 1) { ?>
     <!-- Approval Trail -->
