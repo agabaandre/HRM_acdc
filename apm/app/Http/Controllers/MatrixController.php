@@ -22,6 +22,8 @@ class MatrixController extends Controller
      */
     public function index(Request $request): View
     {
+        //dd(isDivisionApprover());
+
         $query = Matrix::with([
             'division',
             'staff',
@@ -33,7 +35,7 @@ class MatrixController extends Controller
             }
         ]);
         
-        if (isDivisionApprover()) { // check approval is division specific 
+        if (isDivisionApprover() || !empty(user_session('division_id'))) { // check approval is division specific 
             $query->where('division_id',user_session('division_id'));
         }else{
             //check approval workflow
