@@ -115,13 +115,16 @@ if ($showApprovalBtns != 'show') echo $showApprovalBtns;
 
 <?php echo form_close(); ?>
 
+<!-- Temporary test button -->
+<button type="button" onclick="testNotification()" class="btn btn-warning btn-sm mb-3">Test Notification</button>
+
 <?php if ($showApprovalBtns == 'show' || in_array('83', $permissions)) {
     $this->load->view('performance/partials/approval_buttons', compact('ppa', 'ppa_settings', 'session', 'approval_trail','midreadonly','midterm_exists','permissions'));
 } ?>
 
 <!-- Approval Trail -->
 <?php $this->load->view('performance/partials/approval_trail', compact('ppa','session', 'approval_trail','midreadonly')); ?>
-
+<script src="<?php echo base_url() ?>assets/plugins/notifications/js/lobibox.min.js"></script>
 <script>
 function toggleTrainingSection(show) {
   const section = document.getElementById('training-section');
@@ -135,4 +138,92 @@ function submitReturnAction(entryId) {
     form.submit();
   }
 }
+</script>
+<script>
+  function show_notification(message, msgtype) {
+    Lobibox.notify(msgtype, {
+      pauseDelayOnHover: true,
+      continueDelayOnInactiveTab: false,
+      position: 'top right',
+      icon: 'bx bx-check-circle',
+      msg: message
+    });
+  }
+  
+  // Test notification function
+  function testNotification() {
+    show_notification('Test notification - this should appear!', 'error');
+  }
+</script>
+<script>
+$(document).ready(function() {
+  // Attach validation to the main form
+  $('#staff_ppa').on('submit', function(e) {
+    console.log('Form submission intercepted');
+    const errors = validateCompetencies();
+    console.log('Validation errors:', errors);
+    
+    if (errors.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Showing notification with errors');
+      show_notification(errors.join('<br>'), 'error');
+      return false;
+    }
+  });
+  
+  function validateCompetencies() {
+    const errors = [];
+    const competencyGroups = {};
+    
+    console.log('Starting competency validation');
+    console.log('Found competency radios:', $('.competency-radio').length);
+    
+    // Group radio buttons by competency
+    $('.competency-radio').each(function() {
+      const name = $(this).attr('name');
+      const category = $(this).data('category');
+      
+      console.log('Processing radio:', name, 'category:', category);
+      
+      if (!competencyGroups[name]) {
+        competencyGroups[name] = {
+          category: category,
+          checked: false,
+          competencyId: $(this).data('competency-id'),
+          competencyName: $(this).closest('tr').find('td:first strong').text().trim()
+        };
+      }
+      
+      if ($(this).is(':checked')) {
+        competencyGroups[name].checked = true;
+      }
+    });
+    
+    console.log('Competency groups:', competencyGroups);
+    
+    // Check each competency group
+    Object.keys(competencyGroups).forEach(function(name) {
+      const group = competencyGroups[name];
+      
+      // Only validate non-leadership competencies as required
+      if (group.category !== 'leadership' && !group.checked) {
+        errors.push(`Please rate Competency ${group.competencyId} (${getCategoryName(group.category)})`);
+      }
+    });
+    
+    console.log('Final errors:', errors);
+    return errors;
+  }
+  
+  function getCategoryName(category) {
+    const categoryNames = {
+      'values': 'AU Values',
+      'core': 'Core Competencies', 
+      'functional': 'Functional Competencies',
+      'leadership': 'Leadership Competencies'
+    };
+    return categoryNames[category] || category;
+  }
+});
 </script>
