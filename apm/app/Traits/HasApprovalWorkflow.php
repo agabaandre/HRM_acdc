@@ -190,7 +190,7 @@ trait HasApprovalWorkflow
         
         // For submission, use approval level 0, otherwise use the current approval level
         if ($action === 'submitted') {
-            $trail->approval_order = 1;
+            $trail->approval_order = 0;
         } else {
             $trail->approval_order = $approvalOrder ?? $this->approval_level ?? 1;
         }

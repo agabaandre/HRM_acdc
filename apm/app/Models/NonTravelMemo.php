@@ -37,6 +37,8 @@ class NonTravelMemo extends Model
         'attachment',
     ];
 
+    protected $appends = ['workflow_definition', 'current_actor'];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -62,7 +64,7 @@ class NonTravelMemo extends Model
 
     public function staff(): BelongsTo
     {
-        return $this->belongsTo(Staff::class);
+        return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
     }
 
     public function nonTravelMemoCategory(): BelongsTo
@@ -94,4 +96,67 @@ class NonTravelMemo extends Model
     {
         return $this->morphMany(\App\Models\ApprovalTrail::class, 'model', 'model_type', 'model_id');
     }
+
+    /**
+     * Get the workflow definition for the current approval level.
+     *
+     * @return \App\Models\WorkflowDefinition|null
+     */
+    public function getWorkflowDefinitionAttribute()
+    {
+        $definitions = WorkflowDefinition::where('approval_order', $this->approval_level)
+            ->where('workflow_id', $this->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->get();
+
+        if ($definitions->count() > 1 && $definitions[0]->category) {
+            $category = null;
+            if ($this->staff && $this->staff->division) {
+                $category = $this->staff->division->category;
+            }
+            return $definitions->where('category', $category)->first();
+        }
+
+        return ($definitions->count() > 0) ? $definitions[0] : WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)->where('approval_order', 1)->first();
+    }
+
+    /**
+     * Get the current actor (approver) for the current approval level.
+     *
+     * @return \App\Models\Staff|null
+     */
+    public function getCurrentActorAttribute()
+    {
+        if ($this->overall_status == 'approved') {
+            return null;
+        }
+
+        $role = $this->workflow_definition;
+        $staff_id = $this->staff_id;
+
+        if ($role) {
+            if ($role->is_division_specific) {
+                $division = null;
+                if ($this->staff && $this->staff->division) {
+                    $division = $this->staff->division;
+                }
+                if ($division && isset($division->{$role->division_reference_column})) {
+                    $staff_id = $division->{$role->division_reference_column};
+                }
+            } else {
+                $approver = Approver::select('staff_id')
+                    ->where('workflow_dfn_id', $role->id)
+                    ->first();
+                if ($approver) {
+                    $staff_id = $approver->staff_id;
+                }
+            }
+        }
+
+        return Staff::select('lname', 'fname', 'staff_id')
+            ->where('staff_id', $staff_id)
+            ->first();
+    }
+
+
 }

@@ -128,7 +128,8 @@ class Matrix extends Model
         if($role->is_division_specific)
          $staff_id =  $this->division->{$role->division_reference_column};
         else
-         $staff_id =Approver::select('staff_id')->where('workflow_dfn_id',$this->forward_workflow_id)->first()->staff_id;
+         $staff_id =Approver::select('staff_id')
+        ->where('workflow_dfn_id',$role->id)->first()->staff_id;
       }
        
       return Staff::select('lname','fname','staff_id')->where('staff_id',$staff_id)->first();

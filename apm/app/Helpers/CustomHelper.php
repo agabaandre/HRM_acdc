@@ -260,3 +260,26 @@ if (!function_exists('reduce_fund_code_balance')) {
         return false;
     }
 }
+
+if (!function_exists('isDivisionApprover')) {
+    /**
+     * Check if the current user is assigned as an approver for division-specific workflow definitions.
+     *
+     * @param int|null $staffId Optional staff ID, defaults to current user's staff ID
+     * @return bool
+     */
+    function isDivisionApprover(?int $staffId = null): bool
+    {
+        $userStaffId = $staffId ?? user_session('staff_id');
+        
+        if (!$userStaffId) {
+            return false;
+        }
+
+        return \App\Models\Approver::where('staff_id', $userStaffId)
+            ->whereHas('workflowDefinition', function($q) {
+                $q->where('is_division_specific', 1);
+            })
+            ->exists();
+    }
+}
