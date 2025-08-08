@@ -129,7 +129,13 @@
                                                 ][$memo->overall_status] ?? 'bg-secondary';
                                             @endphp
                                             <span class="badge {{ $statusBadgeClass }}">
+                                                @if($memo->is_draft)
+                                                    <i class="bx bx-edit me-1"></i>
+                                                @endif
                                                 {{ ucfirst($memo->overall_status) }}
+                                                @if($memo->is_draft)
+                                                    (Draft)
+                                                @endif
                                             </span>
                                         </td>
                                         <td class="text-center">
@@ -137,7 +143,7 @@
                                                 <a href="{{ route('special-memo.show', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="View Details">
                                                     <i class="bx bx-show"></i>
                                                 </a>
-                                                @if($memo->overall_status === 'draft' && $memo->staff_id == user_session('staff_id'))
+                                                @if($memo->is_draft && $memo->staff_id == user_session('staff_id'))
                                                     <a href="{{ route('special-memo.edit', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="Edit">
                                                         <i class="bx bx-edit"></i>
                                                     </a>
@@ -147,7 +153,7 @@
                                                         <i class="bx bx-check-circle"></i>
                                                     </a>
                                                 @endif
-                                                @if($memo->overall_status === 'draft' && $memo->staff_id == user_session('staff_id'))
+                                                @if($memo->is_draft && $memo->staff_id == user_session('staff_id'))
                                                     <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline delete-form">
                                                         @csrf
                                                         @method('DELETE')

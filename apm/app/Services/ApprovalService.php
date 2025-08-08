@@ -21,6 +21,11 @@ class ApprovalService
             return false;
         }
 
+        // Check if the model is still in draft status (using is_draft flag if available)
+        if (property_exists($model, 'is_draft') && $model->is_draft) {
+            return false;
+        }
+
         if ($model->isWithCreator() || !$model->forward_workflow_id) {
             return false;
         }

@@ -27,6 +27,9 @@ class SpecialMemoController extends Controller
     public function index(Request $request): View
     {
         $query = SpecialMemo::with(['staff','division'])->latest();
+        
+        // Get current user's staff ID
+        $currentStaffId = user_session('staff_id');
 
         if ($request->has('staff_id') && $request->staff_id) {
             $query->where('staff_id', $request->staff_id);
@@ -39,7 +42,13 @@ class SpecialMemoController extends Controller
         if ($request->has('status') && $request->status) {
             $query->where('overall_status', $request->status);
         }
-        //dd($query);
+        
+        // Hide draft memos from non-creators
+        $query->where(function($q) use ($currentStaffId) {
+            $q->where('is_draft', false)  // Show non-draft memos to everyone
+              ->orWhere('staff_id', $currentStaffId);  // Show all memos to their creator
+        });
+        
         $specialMemos = $query->paginate(10);
         $staff = Staff::active()->get();
     
@@ -132,8 +141,14 @@ class SpecialMemoController extends Controller
                 ];
             }
     
-            SpecialMemo::create([
+            // Determine status based on action
+            $action = $request->input('action', 'draft');
+            $status = ($action === 'submit') ? SpecialMemo::STATUS_SUBMITTED : SpecialMemo::STATUS_DRAFT;
+            $overallStatus = ($action === 'submit') ? SpecialMemo::STATUS_SUBMITTED : SpecialMemo::STATUS_DRAFT;
+
+            $specialMemo = SpecialMemo::create([
                 'is_special_memo' => 1,
+                'is_draft' => ($action === 'draft'),
                 'staff_id' => $userStaffId,
                 'division_id' => $userDivisionId,
                 'responsible_person_id' => $request->input('responsible_person_id', 1),
@@ -146,10 +161,10 @@ class SpecialMemoController extends Controller
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type', 1),
-                'status' => SpecialMemo::STATUS_DRAFT,
+                'status' => $status,
                 'forward_workflow_id' => 3,
                 'reverse_workflow_id' => null,
-                'overall_status' => SpecialMemo::STATUS_DRAFT,
+                'overall_status' => $overallStatus,
                 'total_participants' => (int) $request->input('total_participants', 0),
                 'total_external_participants' => (int) $request->input('total_external_participants', 0),
     
@@ -165,8 +180,12 @@ class SpecialMemoController extends Controller
     
             DB::commit();
     
+            $message = ($action === 'submit') 
+                ? 'Special Memo created and submitted for approval successfully.'
+                : 'Special Memo saved as draft successfully.';
+    
             return redirect()->route('special-memo.index')->with([
-                'msg' => 'Special Memo created successfully.',
+                'msg' => $message,
                 'type' => 'success',
             ]);
     
@@ -197,11 +216,48 @@ class SpecialMemoController extends Controller
      */
     public function edit(SpecialMemo $specialMemo): View
     {
-        $staff = Staff::active()->get();
-        $divisions = Division::all();
-        $workflows = Workflow::all();
-        
-        return view('special-memo.edit', compact('specialMemo', 'staff', 'divisions', 'workflows'));
+        ini_set('memory_limit', '1024M');
+        $division_id = user_session('division_id');
+      
+        // Request Types
+        $requestTypes = RequestType::all();
+    
+        // Staff only from current matrix division
+        $staff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
+            ->where('division_id', $division_id)
+            ->get();
+    
+        // All staff grouped by division for external participants
+        $allStaff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
+            ->where('division_id', '!=', $division_id)
+            ->get()
+            ->groupBy('division_name');
+    
+       // Cache locations
+        $locations = Cache::remember('locations', 60, function () {
+            return Location::all();
+        });
+
+    
+        // Fund and Cost items
+        $fundTypes = FundType::all();
+        $budgetCodes = FundCode::all();
+        $costItems = CostItem::all();
+    
+        return view('special-memo.edit', [
+            'specialMemo' => $specialMemo,
+            'requestTypes' => $requestTypes,
+            'staff' => $staff,
+            'allStaffGroupedByDivision' => $allStaff,
+            'locations' => $locations,
+            'fundTypes' => $fundTypes,
+            'budgetCodes' => $budgetCodes,
+            'costItems' => $costItems,
+            'title' => 'Edit Special Memo',
+            'editing' => true,
+        ]);
     }
 
     /**
@@ -210,47 +266,79 @@ class SpecialMemoController extends Controller
     public function update(Request $request, SpecialMemo $specialMemo): RedirectResponse
     {
         $validated = $request->validate([
-            'staff_id' => 'required|exists:staff,id',
-            'forward_workflow_id' => 'required|exists:workflows,id',
-            'reverse_workflow_id' => 'required|exists:workflows,id',
-            'memo_number' => 'required|string|unique:special_memos,memo_number,' . $specialMemo->id,
-            'memo_date' => 'required|date',
-            'subject' => 'required|string|max:255',
-            'body' => 'required|string',
-            'division_id' => 'required|exists:divisions,id',
-            'recipients' => 'sometimes|array',
-            'attachment' => 'nullable|array',
-            'attachment.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'status' => 'sometimes|in:draft,submitted,approved,rejected',
-            'remarks' => 'nullable|string',
+            'activity_title' => 'required|string|max:255',
+            'location_id' => 'required|array|min:1',
+            'location_id.*' => 'exists:locations,id',
+            'participant_start' => 'required|array',
+            'participant_end' => 'required|array',
+            'participant_days' => 'required|array',
         ]);
-        
-        // Handle attachments update
-        $existingAttachments = $specialMemo->attachment ?? [];
-        $attachments = $existingAttachments;
-        
-        // Process new attachments
-        if ($request->hasFile('attachment')) {
-            foreach ($request->file('attachment') as $file) {
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('special-memo-attachments', $filename, 'public');
-                $attachments[] = [
-                    'name' => $file->getClientOriginalName(),
-                    'path' => $path,
-                    'type' => $file->getClientMimeType(),
-                    'size' => $file->getSize(),
+    
+        try {
+            DB::beginTransaction();
+    
+            // Reformat internal participants
+            $internalParticipants = [];
+            foreach ($request->participant_start as $staffId => $start) {
+                $internalParticipants[$staffId] = [
+                    'participant_start' => $start,
+                    'participant_end' => $request->participant_end[$staffId] ?? null,
+                    'participant_days' => $request->participant_days[$staffId] ?? null,
                 ];
             }
+    
+            // Determine status based on action
+            $action = $request->input('action', 'draft');
+            $status = ($action === 'submit') ? SpecialMemo::STATUS_SUBMITTED : SpecialMemo::STATUS_DRAFT;
+            $overallStatus = ($action === 'submit') ? SpecialMemo::STATUS_SUBMITTED : SpecialMemo::STATUS_DRAFT;
+
+            $specialMemo->update([
+                'responsible_person_id' => $request->input('responsible_person_id', 1),
+                'date_from' => $request->input('date_from'),
+                'date_to' => $request->input('date_to'),
+                'activity_title' => $request->input('activity_title'),
+                'background' => $request->input('background', ''),
+                'justification' => $request->input('justification', ''),
+                'activity_request_remarks' => $request->input('activity_request_remarks', ''),
+                'key_result_area' => $request->input('key_result_link', '-'),
+                'request_type_id' => (int) $request->input('request_type_id', 1),
+                'fund_type_id' => (int) $request->input('fund_type', 1),
+                'is_draft' => ($action === 'draft'),
+                'status' => $status,
+                'overall_status' => $overallStatus,
+                'total_participants' => (int) $request->input('total_participants', 0),
+                'total_external_participants' => (int) $request->input('total_external_participants', 0),
+    
+                'location_id' => json_encode($request->input('location_id', [])),
+                'internal_participants' => json_encode($internalParticipants),
+    
+                'budget_id' => json_encode($request->input('budget_codes', [])),
+                'budget' => json_encode($request->input('budget', [])),
+                'attachment' => json_encode($request->input('attachments', [])),
+    
+                'supporting_reasons' => $request->input('supporting_reasons', null),
+            ]);
+    
+            DB::commit();
+    
+            $message = ($request->input('action') === 'submit') 
+                ? 'Special Memo updated and submitted for approval successfully.'
+                : 'Special Memo updated and saved as draft successfully.';
+    
+            return redirect()->route('special-memo.index')->with([
+                'msg' => $message,
+                'type' => 'success',
+            ]);
+    
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Log::error('Error updating special memo', ['exception' => $e]);
+    
+            return redirect()->back()->withInput()->with([
+                'msg' => 'An error occurred while updating the special memo. Please try again.',
+                'type' => 'error',
+            ]);
         }
-        
-        $validated['attachment'] = $attachments;
-        
-        $specialMemo->update($validated);
-        
-        return redirect()
-            ->route('special-memo.index')
-            ->with('success', 'Special memo updated successfully.');
     }
 
     /**
@@ -318,7 +406,7 @@ class SpecialMemoController extends Controller
      */
     public function submitForApproval(SpecialMemo $specialMemo): RedirectResponse
     {
-        if ($specialMemo->overall_status !== 'draft') {
+        if (!$specialMemo->is_draft) {
             return redirect()->back()->with([
                 'msg' => 'Only draft special memos can be submitted for approval.',
                 'type' => 'error',

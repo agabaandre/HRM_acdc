@@ -19,7 +19,7 @@
                     <a href="{{ route('special-memo.show', $specialMemo) }}" class="btn btn-outline-secondary">
                         <i class="bx bx-arrow-back me-1"></i>Back to Details
                     </a>
-                    @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id === user_session('staff_id'))
+                    @if($specialMemo->is_draft && $specialMemo->staff_id === user_session('staff_id'))
                         <form action="{{ route('special-memo.submit-for-approval', $specialMemo) }}" method="POST" class="d-inline">
                             @csrf
                             <button type="submit" class="btn btn-success">

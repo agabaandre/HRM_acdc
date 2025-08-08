@@ -110,6 +110,20 @@ trait HasApprovalWorkflow
     }
 
     /**
+     * Check if the model is in draft status using the is_draft flag.
+     */
+    public function isDraftStatus(): bool
+    {
+        // Check if the model has the is_draft property and it's true
+        if (property_exists($this, 'is_draft')) {
+            return $this->is_draft === true;
+        }
+        
+        // Fallback to overall_status check
+        return $this->overall_status === 'draft';
+    }
+
+    /**
      * Get the next approver in the workflow.
      */
     public function getNextApprover()
@@ -228,6 +242,12 @@ trait HasApprovalWorkflow
         $this->overall_status = 'pending';
         $this->approval_level = 1;
         $this->forward_workflow_id = 1;
+        
+        // Set is_draft to false when submitting for approval
+        if (property_exists($this, 'is_draft')) {
+            $this->is_draft = false;
+        }
+        
         $this->save();
 
         $this->saveApprovalTrail('Submitted for approval', 'submitted');
