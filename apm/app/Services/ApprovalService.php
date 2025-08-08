@@ -54,8 +54,8 @@ class ApprovalService
 
         if ($workflow_dfns->isEmpty()) {
             if ($current_approval_point && $current_approval_point->is_division_specific) {
-                if (method_exists($model, 'division') && $model->division) {
-                    $division = $model->division;
+                if (method_exists($model, 'division') && $model->division || $model->staff->division) {
+                    $division = $model->division ?? $model->staff->division;
                     if ($division && $division->{$current_approval_point->division_reference_column} == $userId) {
                         $division_specific_access = true;
                     }

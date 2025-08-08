@@ -33,7 +33,15 @@ class MatrixController extends Controller
             }
         ]);
         
-        $query->where('division_id',user_session('division_id'));
+        if (isDivisionApprover()) { // check approval is division specific 
+            $query->where('division_id',user_session('division_id'));
+        }else{
+            //check approval workflow
+            $approvers = Approver::where('staff_id',user_session('staff_id'))->get();
+            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
+            $workflow_dfns = WorkflowDefinition::whereIn('id',$approvers)->get();
+            $query->whereIn('approval_level',$workflow_dfns->pluck('approval_order')->toArray());
+        }
     
         if ($request->filled('year')) {
             $query->where('year', $request->year);

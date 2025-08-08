@@ -29,6 +29,13 @@ class NonTravelMemoController extends Controller
         // Base query with eager loads
         $query = NonTravelMemo::with(['staff', 'nonTravelMemoCategory']);
 
+        // Apply division filter only if user is not a division-specific approver
+        if (!isDivisionApprover()) {
+            $query->whereHas('staff', function($q) {
+                $q->where('division_id', user_session('division_id'));
+            });
+        }
+
         // Apply filters when present
         if ($request->filled('staff_id')) {
             $query->where('staff_id', $request->staff_id);
@@ -126,7 +133,7 @@ class NonTravelMemoController extends Controller
             'attachment' => $attachmentsJson,
             'forward_workflow_id' => 1,
             'approval_level' => 0,
-            'next_approval_level' => 2,
+            'next_approval_level' => 1,
             'overall_status' => 'draft',
         ]);
 
