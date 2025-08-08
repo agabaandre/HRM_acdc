@@ -142,7 +142,12 @@
                                 multiple
                                 required>
                             @foreach($locations as $location)
-                                <option value="{{ $location->id }}" {{ (old('location_id', $nonTravel->location_id) && in_array($location->id, old('location_id', $nonTravel->location_id))) ? 'selected' : '' }}>
+                                @php
+                                    $locationIds = is_array($nonTravel->location_id) ? $nonTravel->location_id : (is_string($nonTravel->location_id) ? json_decode($nonTravel->location_id, true) : []);
+                                    $oldLocationIds = old('location_id', $locationIds);
+                                    $isSelected = is_array($oldLocationIds) && in_array($location->id, $oldLocationIds);
+                                @endphp
+                                <option value="{{ $location->id }}" {{ $isSelected ? 'selected' : '' }}>
                                     {{ $location->location_name }}
                                 </option>
                             @endforeach
@@ -213,7 +218,12 @@
                                 multiple
                                 required>
                             @foreach($budgets as $budget)
-                                <option value="{{ $budget->id }}" {{ (old('budget_id', $nonTravel->budget_id) && in_array($budget->id, old('budget_id', $nonTravel->budget_id))) ? 'selected' : '' }}>
+                                @php
+                                    $budgetIds = is_array($nonTravel->budget_id) ? $nonTravel->budget_id : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
+                                    $oldBudgetIds = old('budget_id', $budgetIds);
+                                    $isSelected = is_array($oldBudgetIds) && in_array($budget->id, $oldBudgetIds);
+                                @endphp
+                                <option value="{{ $budget->id }}" {{ $isSelected ? 'selected' : '' }}>
                                     {{ $budget->description }} ({{ number_format($budget->amount, 2) }})
                                 </option>
                             @endforeach
@@ -247,7 +257,10 @@
             </div>
 
             <!-- Current Attachments Section -->
-            @if(!empty($nonTravel->attachment) && count($nonTravel->attachment) > 0)
+            @php
+                $attachments = is_array($nonTravel->attachment) ? $nonTravel->attachment : (is_string($nonTravel->attachment) ? json_decode($nonTravel->attachment, true) : []);
+            @endphp
+            @if(!empty($attachments) && count($attachments) > 0)
                 <div class="mb-4">
                     <h6 class="fw-semibold"><i class="bx bx-file me-1 text-primary"></i>Current Attachments</h6>
                     <div class="table-responsive">
@@ -261,7 +274,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($nonTravel->attachment as $index => $attachment)
+                                @foreach($attachments as $index => $attachment)
                                     <tr>
                                         <td>{{ $attachment['name'] ?? 'File #'.($index+1) }}</td>
                                         <td>{{ $attachment['type'] ?? 'Unknown' }}</td>
