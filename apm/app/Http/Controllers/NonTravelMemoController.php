@@ -16,6 +16,8 @@ use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use App\Services\ApprovalService;
+use App\Models\Approver;
+use App\Models\WorkflowDefinition;
 
 class NonTravelMemoController extends Controller
 {
@@ -30,10 +32,16 @@ class NonTravelMemoController extends Controller
         $query = NonTravelMemo::with(['staff', 'nonTravelMemoCategory']);
 
         // Apply division filter only if user is not a division-specific approver
-        if (!isDivisionApprover()) {
+        if (!isDivisionApprover() || !empty(user_session('division_id'))) {
             $query->whereHas('staff', function($q) {
                 $q->where('division_id', user_session('division_id'));
             });
+        }else{
+            //check approval workflow
+            $approvers = Approver::where('staff_id',user_session('staff_id'))->get();
+            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
+            $workflow_dfns = WorkflowDefinition::whereIn('id',$approvers)->get();
+            $query->whereIn('approval_level',$workflow_dfns->pluck('approval_order')->toArray());
         }
 
         // Apply filters when present
