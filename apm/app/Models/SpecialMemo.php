@@ -38,6 +38,7 @@ class SpecialMemo extends Model
         'activity_request_remarks',
         'justification',
         'is_special_memo',
+        'is_draft',
         'budget',
         'attachment',
         'status',
@@ -61,6 +62,7 @@ class SpecialMemo extends Model
         'budget' => 'array',
         'attachment' => 'array',
         'is_special_memo' => 'boolean',
+        'is_draft' => 'boolean',
     ];
 
     protected $appends = [

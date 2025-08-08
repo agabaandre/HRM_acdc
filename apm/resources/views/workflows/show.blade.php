@@ -72,8 +72,12 @@
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bx bx-list-check me-2 text-primary"></i>Workflow Definitions</h5>
                 <div>
+                    <a href="{{ route('workflows.approvers', $workflow->id) }}"
+                        class="btn btn-success btn-sm me-2">
+                        <i class="bx bx-user-check me-1"></i> Approvers
+                    </a>
                     <a href="{{ route('workflows.assign-staff', $workflow->id) }}"
-                        class="btn btn-info btn-sm">
+                        class="btn btn-info btn-sm me-2">
                         <i class="bx bx-user-plus me-1"></i> Assign Staff
                     </a>
                     <a href="{{ route('workflows.add-definition', $workflow->id) }}"

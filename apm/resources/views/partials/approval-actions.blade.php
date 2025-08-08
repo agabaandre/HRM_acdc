@@ -4,6 +4,7 @@
     $canTakeAction = can_take_action_generic($resource);
     $isWithCreator = is_with_creator_generic($resource);
     $isApproved = $resource->isApproved();
+    $isDraft = property_exists($resource, 'is_draft') ? $resource->is_draft : ($resource->overall_status === 'draft');
 @endphp
 
 @if($canTakeAction && !$isApproved)
@@ -79,7 +80,7 @@
     </div>
 @endif
 
-@if($isWithCreator && !$isApproved)
+@if($isWithCreator && !$isApproved && $isDraft)
     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#submitForApprovalModal">
         <i class="bx bx-save me-2"></i> Submit for Approval
     </button>

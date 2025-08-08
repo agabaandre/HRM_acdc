@@ -199,7 +199,7 @@
                         formData.append('workflow_dfn_id', definitionId);
 
                         try {
-                            const response = await fetch(`${baseUrl}bms/workflows/${workflowId}/ajax-store-staff`, {
+                            const response = await fetch(`{{ url('workflows/${workflowId}/store-staff') }}`, {
                                 method: 'POST',
                                 headers: {
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -261,8 +261,8 @@
                         const approverId = button.dataset.approverId;
 
                         try {
-                            const response = await fetch(buildApiUrl(`workflows/${workflowId}/ajax-remove-staff/${approverId}`), {
-                                method: 'DELETE',
+                            const response = await fetch(`{{ url('workflows/${workflowId}/remove-staff/${approverId}') }}`, {
+                                method: 'GET',
                                 headers: {
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                                     'Accept': 'application/json',

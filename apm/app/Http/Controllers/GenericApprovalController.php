@@ -89,6 +89,11 @@ class GenericApprovalController extends Controller
             return redirect()->back()->with('error', 'Only the creator can submit for approval.');
         }
 
+        // Check if the model is in draft status
+        if (property_exists($modelInstance, 'is_draft') && !$modelInstance->is_draft) {
+            return redirect()->back()->with('error', 'Only draft items can be submitted for approval.');
+        }
+
         // Submit for approval using the model's own method
         if (method_exists($modelInstance, 'submitForApproval')) {
             $modelInstance->submitForApproval();
@@ -97,6 +102,12 @@ class GenericApprovalController extends Controller
             $modelInstance->overall_status = 'pending';
             $modelInstance->approval_level = 1;
             $modelInstance->forward_workflow_id = 1;
+            
+            // Set is_draft to false if the property exists
+            if (property_exists($modelInstance, 'is_draft')) {
+                $modelInstance->is_draft = false;
+            }
+            
             $modelInstance->save();
             
             // Save approval trail

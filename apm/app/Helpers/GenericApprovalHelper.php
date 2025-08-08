@@ -21,6 +21,11 @@ if (!function_exists('can_take_action_generic')) {
             return false;
         }
 
+        // Check if the model is still in draft status (using is_draft flag if available)
+        if (property_exists($model, 'is_draft') && $model->is_draft) {
+            return false;
+        }
+
         if (is_with_creator_generic($model) || !$model->forward_workflow_id) {
             return false;
         }

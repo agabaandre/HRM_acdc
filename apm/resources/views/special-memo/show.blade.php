@@ -259,7 +259,7 @@
                     @endif
 
                     <!-- Submit for Approval Section -->
-                    @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id'))
+                    @if($specialMemo->is_draft && $specialMemo->staff_id == user_session('staff_id'))
                         <div class="card matrix-card mb-4">
                             <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
                                 <h6 class="m-0 fw-semibold text-success"><i class="bx bx-send me-2"></i>Submit for Approval</h6>
