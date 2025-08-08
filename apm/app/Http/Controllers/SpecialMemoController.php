@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use App\Models\Division;
-use App\Models\Workflow;
+use App\Models\Workflow;        
+use App\Models\Approver;
+use App\Models\WorkflowDefinition;
 
 class SpecialMemoController extends Controller
 {
@@ -41,6 +43,16 @@ class SpecialMemoController extends Controller
 
         if ($request->has('status') && $request->status) {
             $query->where('overall_status', $request->status);
+        }
+
+        if (isDivisionApprover() || !empty(user_session('division_id'))) { // check approval is division specific 
+            $query->where('division_id',user_session('division_id'));
+        }else{
+            //check approval workflow
+            $approvers = Approver::where('staff_id',user_session('staff_id'))->get();
+            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
+            $workflow_dfns = WorkflowDefinition::whereIn('id',$approvers)->get();
+            $query->whereIn('approval_level',$workflow_dfns->pluck('approval_order')->toArray());
         }
         
         // Hide draft memos from non-creators
