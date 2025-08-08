@@ -94,7 +94,7 @@
                     </div>
                     <div class="timeline-title">
                         {{ $trail->staff->name ?? 'N/A' }} 
-                        <span class="text-muted">({{ $trail->approver_role->role ?? 'Focal Person' }})</span>
+                        <span class="text-muted">({{ $trail->approver_role_name ?? 'Focal Person' }})</span>
                         <span class="badge bg-{{ strtolower($trail->action) === 'approved' ? 'success' : (strtolower($trail->action) === 'rejected' ? 'danger':'warning') }}">
                             {{ ucfirst($trail->action) }}
                         </span>
