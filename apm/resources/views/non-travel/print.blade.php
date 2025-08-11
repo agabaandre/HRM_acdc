@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Non-Travel Memo #{{ $nonTravel->id }}</title>
     <style>
-        @page { size: A4; margin: 18mm 14mm 26mm 14mm; }
-        body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; color: #111; font-size: 12px; padding-bottom: 24mm; }
+        @page { size: A4; margin: 8mm 14mm 8mm 14mm; }
+        body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; color: #111; font-size: 12px; padding-bottom: 28mm; }
         h1,h2,h3 { margin: 0 0 6px; }
         .title { text-align: center; margin-bottom: 12px; }
         .muted { color: #666; }
@@ -37,7 +37,7 @@
         /* Footer */
         .footer {
             position: fixed;
-            left: 0; right: 0; bottom: 10mm;
+            left: 0; right: 0; bottom: 8mm;
             font-size: 10px; color: #4d4d4d;
             text-align: center;
         }
@@ -46,7 +46,7 @@
 </head>
 <body>
     <div class="watermark">
-        <img src="{{ public_path('assets/images/AU_CDC_Logo-800.png') }}" alt="Watermark" style="width:70%; max-width:600px;">
+        <img src="{{ public_path('assets/images/au_emblem.png') }}" alt="Watermark" style="width:85%; max-width:none;">
     </div>
     <div class="paper-header" style="margin-bottom: 10px;">
         <table class="no-border" style="width:100%;">
@@ -83,7 +83,7 @@
             $width = $fontMetrics->get_text_width($text, $font, $size);
             $x = ($pdf->get_width() - $width) / 2;
             $y = $pdf->get_height() - 18; // near bottom
-            $pdf->page_text($x, $y, $text, $font, $size, array(0,0,0));
+            $pdf->page_text($x, $y, $text, $font, $size, array(0.3,0.3,0.3));
         }
     </script>
     <div class="section">
@@ -96,9 +96,7 @@
             </tr>
             <tr>
                 <td><strong>Date</strong></td>
-                <td>{{ \Illuminate\Support\Carbon::parse($nonTravel->memo_date ?? $nonTravel->created_at)->format('d M Y') }}</td>
-                <td><strong>Status</strong></td>
-                <td>{{ strtoupper($nonTravel->overall_status ?? 'N/A') }}</td>
+                <td colspan="3">{{ \Illuminate\Support\Carbon::parse($nonTravel->memo_date ?? $nonTravel->created_at)->format('d M Y') }}</td>
             </tr>
         </table>
     </div>
