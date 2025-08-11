@@ -172,6 +172,24 @@ class NonTravelMemoController extends Controller
     public function show(NonTravelMemo $nonTravel): View
     {
         $nonTravel->load(['staff', 'nonTravelMemoCategory']);
+        
+        // Decode JSON fields
+        $nonTravel->budget_breakdown = is_string($nonTravel->budget_breakdown) 
+            ? json_decode($nonTravel->budget_breakdown, true) 
+            : $nonTravel->budget_breakdown;
+
+        $nonTravel->location_id = is_string($nonTravel->location_id) 
+            ? json_decode($nonTravel->location_id, true) 
+            : $nonTravel->location_id;
+
+        $nonTravel->attachment = is_string($nonTravel->attachment) 
+            ? json_decode($nonTravel->attachment, true) 
+            : $nonTravel->attachment;
+
+        $nonTravel->budget_id = is_string($nonTravel->budget_id) 
+            ? json_decode($nonTravel->budget_id, true) 
+            : $nonTravel->budget_id;
+
         return view('non-travel.show', compact('nonTravel'));
     }
 
@@ -337,5 +355,57 @@ class NonTravelMemoController extends Controller
     {
         $nonTravel->load(['staff']);
         return view('non-travel.status', compact('nonTravel'));
+    }
+    
+    /**
+     * Generate a printable PDF for a Non-Travel Memo.
+     */
+    public function print(NonTravelMemo $nonTravel)
+    {
+        // Eager load needed relations
+        $nonTravel->load(['staff', 'nonTravelMemoCategory']);
+
+        // Decode JSON fields safely
+        $locationIds = is_string($nonTravel->location_id)
+            ? json_decode($nonTravel->location_id, true)
+            : ($nonTravel->location_id ?? []);
+
+        $budgetIds = is_string($nonTravel->budget_id)
+            ? json_decode($nonTravel->budget_id, true)
+            : ($nonTravel->budget_id ?? []);
+
+        $attachments = is_string($nonTravel->attachment)
+            ? json_decode($nonTravel->attachment, true)
+            : ($nonTravel->attachment ?? []);
+        $attachments = is_array($attachments) ? $attachments : [];
+
+        $breakdown = $nonTravel->budget_breakdown;
+        if (!is_array($breakdown)) {
+            $decoded = json_decode($breakdown, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+            $breakdown = is_array($decoded) ? $decoded : [];
+        }
+
+        // Fetch related collections
+        $locations = Location::whereIn('id', $locationIds ?: [])->get();
+        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
+
+        // Render HTML for PDF
+        $html = view('non-travel.print', [
+            'nonTravel' => $nonTravel,
+            'locations' => $locations,
+            'fundCodes' => $fundCodes,
+            'attachments' => $attachments,
+            'breakdown' => $breakdown,
+        ])->render();
+
+        // Use dompdf wrapper to generate and stream PDF
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadHTML($html)->setPaper('A4', 'portrait');
+
+        $filename = 'non_travel_memo_'.$nonTravel->id.'.pdf';
+        return $pdf->stream($filename);
     }
 }

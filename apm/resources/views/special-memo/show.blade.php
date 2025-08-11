@@ -17,6 +17,12 @@
                     <h6 class="mb-0" style="font-size:1rem;">
                         <i class="bx bx-info-circle me-2 text-primary"></i>Special Memo Information
                     </h6>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('special-memo.print', $specialMemo) }}" target="_blank" class="btn btn-primary btn-sm d-flex align-items-center gap-1">
+                            <i class="bx bx-printer"></i>
+                            <span>Print PDF</span>
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body py-2 px-3">
                     <div class="row g-3 align-items-center matrix-meta-row">
@@ -112,7 +118,15 @@
                             </div>
                             <div class="mb-3">
                                 <span class="text-muted small">Internal Participants</span>
-                                @if(!empty($specialMemo->internal_participants))
+                                @php
+                                    $internalParticipants = is_array($specialMemo->internal_participants)
+                                        ? $specialMemo->internal_participants
+                                        : (is_string($specialMemo->internal_participants)
+                                            ? json_decode($specialMemo->internal_participants, true)
+                                            : []);
+                                    $internalParticipants = is_array($internalParticipants) ? $internalParticipants : [];
+                                @endphp
+                                @if(!empty($internalParticipants))
                                     <div class="table-responsive">
                                         <table class="table table-bordered table-sm mb-0">
                                             <thead class="table-light">
@@ -124,7 +138,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach($specialMemo->internal_participants as $participant)
+                                                @foreach($internalParticipants as $participant)
                                                     <tr>
                                                         <td>
                                                             @if($participant['staff'])
@@ -207,9 +221,15 @@
                             <h6 class="m-0 fw-semibold text-success"><i class="bx bx-paperclip me-2"></i>Attachments</h6>
                         </div>
                         <div class="card-body p-4">
-                            @if(is_array($specialMemo->attachment) && count($specialMemo->attachment) > 0)
+                            @php
+                                $attachments = is_array($specialMemo->attachment)
+                                    ? $specialMemo->attachment
+                                    : (is_string($specialMemo->attachment) ? json_decode($specialMemo->attachment, true) : []);
+                                $attachments = is_array($attachments) ? $attachments : [];
+                            @endphp
+                            @if(!empty($attachments) && count($attachments) > 0)
                                 <div class="d-flex flex-wrap gap-2">
-                                    @foreach($specialMemo->attachment as $attachment)
+                                    @foreach($attachments as $attachment)
                                         <a href="{{ asset('storage/' . ($attachment['path'] ?? '')) }}" target="_blank" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
                                             <i class="bx bx-paperclip"></i> {{ $attachment['name'] ?? 'File' }}
                                             <small class="text-muted">({{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'Unknown size' }})</small>

@@ -111,6 +111,7 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     // Non-Travel Memo Routes
     Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);
     Route::delete('non-travel/{nonTravel}/remove-attachment', [App\Http\Controllers\NonTravelMemoController::class, 'removeAttachment'])->name('non-travel.remove-attachment');
+    Route::get('non-travel/{nonTravel}/print', [App\Http\Controllers\NonTravelMemoController::class, 'print'])->name('non-travel.print');
     
     // Request for ARF Routes
     Route::resource('request-arf', App\Http\Controllers\RequestARFController::class);
@@ -118,7 +119,8 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     
     // Special Memo Routes
     Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
-Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
+    Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
+    Route::get('special-memo/{specialMemo}/print', [App\Http\Controllers\SpecialMemoController::class, 'print'])->name('special-memo.print');
 
 // Special Memo Approval Routes
 Route::post('special-memo/{specialMemo}/submit-for-approval', [App\Http\Controllers\SpecialMemoController::class, 'submitForApproval'])->name('special-memo.submit-for-approval');

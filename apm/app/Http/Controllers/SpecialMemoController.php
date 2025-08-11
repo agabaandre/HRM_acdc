@@ -104,13 +104,13 @@ class SpecialMemoController extends Controller
             return Location::all();
         });
 
-    
         // Fund and Cost items
         $fundTypes = FundType::all();
         $budgetCodes = FundCode::all();
         $costItems = CostItem::all();
     
         return view('special-memo.create', [
+            'specialMemo' => null, // Pass null for new special memo
             'requestTypes' => $requestTypes,
             'staff' => $staff,
             'allStaffGroupedByDivision' => $allStaff,
@@ -257,6 +257,23 @@ class SpecialMemoController extends Controller
         $fundTypes = FundType::all();
         $budgetCodes = FundCode::all();
         $costItems = CostItem::all();
+
+        // dd($specialMemo->budget);
+
+        // Fix for potentially double-encoded or malformed JSON in budget
+        $budget = $specialMemo->budget;
+
+        if (!is_array($budget)) {
+            $decoded = json_decode($budget, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+            $budget = is_array($decoded) ? $decoded : [];
+        }
+
+        // Replace original budget on the model (optional, for view consistency)
+        $specialMemo->budget = $budget;
+
     
         return view('special-memo.edit', [
             'specialMemo' => $specialMemo,
@@ -475,5 +492,78 @@ class SpecialMemoController extends Controller
         $specialMemo->load(['staff', 'division']);
         
         return view('special-memo.status', compact('specialMemo'));
+    }
+
+    /**
+     * Generate a printable PDF for a Special Memo.
+     */
+    public function print(SpecialMemo $specialMemo)
+    {
+        // Eager load relations (exclude unknown relationships)
+        $specialMemo->load(['staff', 'division', 'requestType']);
+
+        // Decode JSON fields safely
+        $locationIds = is_string($specialMemo->location_id)
+            ? json_decode($specialMemo->location_id, true)
+            : ($specialMemo->location_id ?? []);
+
+        $budgetIds = is_string($specialMemo->budget_id)
+            ? json_decode($specialMemo->budget_id, true)
+            : ($specialMemo->budget_id ?? []);
+
+        $budgetItems = $specialMemo->budget;
+        if (!is_array($budgetItems)) {
+            $decoded = json_decode($budgetItems, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+            $budgetItems = is_array($decoded) ? $decoded : [];
+        }
+
+        $attachments = is_string($specialMemo->attachment)
+            ? json_decode($specialMemo->attachment, true)
+            : ($specialMemo->attachment ?? []);
+
+        $rawParticipants = is_string($specialMemo->internal_participants)
+            ? json_decode($specialMemo->internal_participants, true)
+            : ($specialMemo->internal_participants ?? []);
+
+        // Resolve participants to Staff models
+        $internalParticipants = [];
+        if (!empty($rawParticipants) && is_array($rawParticipants)) {
+            $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))
+                ->get()
+                ->keyBy('staff_id');
+
+            foreach ($rawParticipants as $staffId => $participantData) {
+                $internalParticipants[] = [
+                    'staff' => $staffDetails[$staffId] ?? null,
+                    'participant_start' => $participantData['participant_start'] ?? null,
+                    'participant_end' => $participantData['participant_end'] ?? null,
+                    'participant_days' => $participantData['participant_days'] ?? null,
+                ];
+            }
+        }
+
+        // Fetch related collections
+        $locations = Location::whereIn('id', $locationIds ?: [])->get();
+        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
+
+        // Render HTML for PDF
+        $html = view('special-memo.print', [
+            'specialMemo' => $specialMemo,
+            'locations' => $locations,
+            'fundCodes' => $fundCodes,
+            'internalParticipants' => $internalParticipants,
+            'budgetItems' => $budgetItems,
+            'attachments' => $attachments,
+        ])->render();
+
+        // Use dompdf wrapper (barryvdh/laravel-dompdf)
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadHTML($html)->setPaper('A4', 'portrait');
+
+        $filename = 'special_memo_'.$specialMemo->id.'.pdf';
+        return $pdf->stream($filename);
     }
 }
