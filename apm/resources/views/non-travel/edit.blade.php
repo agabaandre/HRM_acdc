@@ -79,7 +79,8 @@
                                 required>
                             <option value="">Select Staff Member</option>
                             @foreach($staff as $member)
-                                <option value="{{ $member->id }}" {{ old('staff_id', $nonTravel->staff_id) == $member->id ? 'selected' : '' }}>
+                                <option value="{{ $member->staff_id }}" 
+                                        {{ (int)old('staff_id', $nonTravel->staff_id) === $member->staff_id ? 'selected' : '' }}>
                                     {{ $member->name }}
                                 </option>
                             @endforeach
@@ -209,27 +210,22 @@
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <div class="form-group position-relative">
-                        <label for="budget_id" class="form-label fw-semibold">
-                            <i class="bx bx-money me-1 text-primary"></i>Budget Items <span class="text-danger">*</span>
+                        <label for="budget_codes" class="form-label fw-semibold">
+                            <i class="fas fa-wallet me-1 text-primary"></i> Budget Code(s) <span class="text-danger">*</span>
                         </label>
-                        <select name="budget_id[]" 
-                                id="budget_id" 
-                                class="form-select form-select-lg @error('budget_id') is-invalid @enderror" 
-                                multiple
-                                required>
+                        <select name="budget_codes[]" 
+                                id="budget_codes" 
+                                class="form-select form-select-lg @error('budget_codes') is-invalid @enderror" 
+                                multiple required>
                             @foreach($budgets as $budget)
-                                @php
-                                    $budgetIds = is_array($nonTravel->budget_id) ? $nonTravel->budget_id : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
-                                    $oldBudgetIds = old('budget_id', $budgetIds);
-                                    $isSelected = is_array($oldBudgetIds) && in_array($budget->id, $oldBudgetIds);
-                                @endphp
-                                <option value="{{ $budget->id }}" {{ $isSelected ? 'selected' : '' }}>
-                                    {{ $budget->description }} ({{ number_format($budget->amount, 2) }})
+                                <option value="{{ $budget['id'] }}" 
+                                        {{ in_array($budget['id'], old('budget_codes', $selectedBudgetCodes ?? [])) ? 'selected' : '' }}>
+                                    {{ $budget['code'] }} | {{ $budget['funder_name'] }} | ${{ number_format($budget['budget_balance'], 2) }}
                                 </option>
                             @endforeach
                         </select>
-                        <small class="text-muted mt-1 d-block">Hold Ctrl/Cmd to select multiple budget items</small>
-                        @error('budget_id')
+                        <small class="text-muted mt-1 d-block">Select up to 2 codes</small>
+                        @error('budget_codes')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>

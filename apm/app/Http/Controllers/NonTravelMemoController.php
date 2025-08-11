@@ -176,25 +176,41 @@ class NonTravelMemoController extends Controller
     }
 
     /** Show edit form */
-    public function edit(NonTravelMemo $nonTravel): View
+    public function edit(NonTravelMemo $nonTravel)
     {
-        ini_set('memory_limit', '1024M');
+        // Retrieve budgets with funder details
+        $budgets = FundCode::with('funder')
+            ->where('division_id', user_session('division_id'))
+            ->get()
+            ->map(function ($budget) {
+                return [
+                    'id' => $budget->id,
+                    'code' => $budget->code,
+                    'funder_name' => $budget->funder->name ?? 'No Funder',
+                    'budget_balance' => $budget->budget_balance,
+                ];
+            });
 
-        // Cache locations for 60 minutes to avoid reloading a large dataset
-        $locations = Cache::remember('non_travel_locations', 60 * 60, function () {
-            return Location::all();
-        });
-        $fundTypes = FundType::all();
+        // Decode selected budget codes
+        $selectedBudgetCodes = is_array($nonTravel->budget_id) 
+            ? $nonTravel->budget_id 
+            : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
 
-        return view('non-travel.edit', [
-            'nonTravel' => $nonTravel,
-            'categories' => NonTravelMemoCategory::all(),
-            'staff'  => Staff::active()->get(),
-            'locations'  => $locations,
-            'budgets'    => FundCode::all(),
-            'fundTypes' => $fundTypes,
-            'workflows' => \App\Models\Workflow::all()
-        ]);
+        // Retrieve other necessary data
+        $categories = NonTravelMemoCategory::all();
+        $locations = Location::all();
+        $workflows = WorkflowDefinition::all();
+        $staff = Staff::active()->get(); // Retrieve active staff members
+
+        return view('non-travel.edit', compact(
+            'nonTravel', 
+            'budgets', 
+            'selectedBudgetCodes', 
+            'categories', 
+            'locations', 
+            'workflows', 
+            'staff' // Pass staff to the view
+        ));
     }
 
     /** Update memo */
