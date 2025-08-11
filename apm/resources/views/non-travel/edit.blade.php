@@ -148,7 +148,7 @@
                                     $isSelected = is_array($oldLocationIds) && in_array($location->id, $oldLocationIds);
                                 @endphp
                                 <option value="{{ $location->id }}" {{ $isSelected ? 'selected' : '' }}>
-                                    {{ $location->location_name }}
+                                    {{ $location->name }}
                                 </option>
                             @endforeach
                         </select>
