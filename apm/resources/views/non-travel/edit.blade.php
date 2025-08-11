@@ -207,6 +207,12 @@
                 </div>
             </div>
 
+            @php
+                $selectedBudgetCodes = is_array($nonTravel->budget_id) 
+                    ? $nonTravel->budget_id 
+                    : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
+            @endphp
+
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <div class="form-group position-relative">
@@ -219,7 +225,7 @@
                                 multiple required>
                             @foreach($budgets as $budget)
                                 <option value="{{ $budget['id'] }}" 
-                                        {{ in_array($budget['id'], old('budget_codes', $selectedBudgetCodes ?? [])) ? 'selected' : '' }}>
+                                        {{ in_array($budget['id'], old('budget_codes', $selectedBudgetCodes)) ? 'selected' : '' }}>
                                     {{ $budget['code'] }} | {{ $budget['funder_name'] }} | ${{ number_format($budget['budget_balance'], 2) }}
                                 </option>
                             @endforeach
@@ -254,7 +260,10 @@
 
             <!-- Current Attachments Section -->
             @php
-                $attachments = is_array($nonTravel->attachment) ? $nonTravel->attachment : (is_string($nonTravel->attachment) ? json_decode($nonTravel->attachment, true) : []);
+                $attachments = is_array($nonTravel->attachment) 
+                    ? $nonTravel->attachment 
+                    : (is_string($nonTravel->attachment) ? json_decode($nonTravel->attachment, true) : []);
+                $attachments = is_array($attachments) ? $attachments : [];
             @endphp
             @if(!empty($attachments) && count($attachments) > 0)
                 <div class="mb-4">
@@ -353,88 +362,81 @@
                     <hr class="flex-grow-1 mx-3">
                 </div>
                 
+                @php
+                    $budgetBreakdown = old('budget_breakdown') ?: $nonTravel->budget_breakdown;
+                    if (is_string($budgetBreakdown)) {
+                        $budgetBreakdown = json_decode($budgetBreakdown, true);
+                    }
+                    $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
+                @endphp
+
                 <div id="budget-items">
-                    @php
-                        $budgetBreakdown = old('budget_breakdown', $nonTravel->budget_breakdown);
-                        if (is_string($budgetBreakdown)) {
-                            $budgetBreakdown = json_decode($budgetBreakdown, true);
-                        }
-                        $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
-                        
-                        // Flatten the nested structure for editing
-                        $flattenedBudget = [];
-                        $index = 0;
-                        foreach ($budgetBreakdown as $codeId => $items) {
-                            if (is_array($items) && $codeId !== 'grand_total') {
-                                foreach ($items as $item) {
-                                    $flattenedBudget[$index] = $item;
-                                    $index++;
-                                }
-                            }
-                        }
-                    @endphp
-                    @if(!empty($flattenedBudget))
-                        @foreach($flattenedBudget as $index => $item)
-                            <div class="budget-item card border shadow-sm mb-3">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="m-0 fw-semibold">Budget Item #{{ $index + 1 }}</h6>
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-budget-item">
-                                        <i class="bx bx-trash me-1"></i> Remove
-                                    </button>
-                                </div>
-                                <div class="card-body p-4">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold">Description</label>
-                                                <input type="text" 
-                                                       name="budget_breakdown[{{ $index }}][description]" 
-                                                       class="form-control" 
-                                                       value="{{ $item['description'] ?? '' }}" 
-                                                       required>
-                                            </div>
+                    @if(!empty($budgetBreakdown))
+                        @foreach($budgetBreakdown as $codeId => $items)
+                            @if($codeId !== 'grand_total' && is_array($items))
+                                @foreach($items as $index => $item)
+                                    <div class="budget-item card border shadow-sm mb-3">
+                                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                            <h6 class="m-0 fw-semibold">Budget Item #{{ $loop->parent->iteration }}.{{ $loop->iteration }}</h6>
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-budget-item">
+                                                <i class="bx bx-trash me-1"></i> Remove
+                                            </button>
                                         </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold">Quantity</label>
-                                                <input type="number" 
-                                                       name="budget_breakdown[{{ $index }}][quantity]" 
-                                                       class="form-control budget-quantity" 
-                                                       value="{{ $item['quantity'] ?? 1 }}" 
-                                                       min="1" 
-                                                       required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold">Unit Price</label>
-                                                <input type="number" 
-                                                       name="budget_breakdown[{{ $index }}][unit_price]" 
-                                                       class="form-control budget-unit-price" 
-                                                       value="{{ $item['unit_price'] ?? 0 }}" 
-                                                       min="0" 
-                                                       step="0.01" 
-                                                       required>
-                                            </div>
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="form-group">
-                                                <label class="form-label fw-semibold">Notes</label>
-                                                <textarea name="budget_breakdown[{{ $index }}][notes]" 
-                                                         class="form-control" 
-                                                         rows="2">{{ $item['notes'] ?? '' }}</textarea>
-                                            </div>
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="text-end">
-                                                <span class="fw-bold">
-                                                    Total: <span class="budget-item-total">{{ number_format(($item['quantity'] ?? 1) * ($item['unit_price'] ?? 0), 2) }}</span>
-                                                </span>
+                                        <div class="card-body p-4">
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <div class="form-group">
+                                                        <label class="form-label fw-semibold">Description</label>
+                                                        <input type="text" 
+                                                               name="budget_breakdown[{{ $codeId }}][{{ $index }}][description]" 
+                                                               class="form-control" 
+                                                               value="{{ $item['description'] ?? '' }}" 
+                                                               required>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label class="form-label fw-semibold">Quantity</label>
+                                                        <input type="number" 
+                                                               name="budget_breakdown[{{ $codeId }}][{{ $index }}][quantity]" 
+                                                               class="form-control budget-quantity" 
+                                                               value="{{ $item['quantity'] ?? 1 }}" 
+                                                               min="1" 
+                                                               required>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label class="form-label fw-semibold">Unit Cost</label>
+                                                        <input type="number" 
+                                                               name="budget_breakdown[{{ $codeId }}][{{ $index }}][unit_cost]" 
+                                                               class="form-control budget-unit-price" 
+                                                               value="{{ $item['unit_cost'] ?? 0 }}" 
+                                                               min="0" 
+                                                               step="0.01" 
+                                                               required>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-group">
+                                                        <label class="form-label fw-semibold">Notes</label>
+                                                        <textarea name="budget_breakdown[{{ $codeId }}][{{ $index }}][notes]" 
+                                                                 class="form-control" 
+                                                                 rows="2">{{ $item['notes'] ?? '' }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="text-end">
+                                                        <span class="fw-bold">
+                                                            Total: <span class="budget-item-total">{{ number_format(($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0), 2) }}</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
+                                @endforeach
+                            @endif
                         @endforeach
                     @endif
                 </div>

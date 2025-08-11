@@ -119,6 +119,10 @@
                         <i class="bx bx-edit"></i>
                         <span>Edit Memo</span>
                     </a>
+                    <a href="{{ route('non-travel.print', $nonTravel) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
+                        <i class="bx bx-printer"></i>
+                        <span>Print PDF</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -126,7 +130,25 @@
 
     <div class="container-fluid py-4">
     
+        @php
+            // Decode JSON fields if they are strings
+            $budgetBreakdown = is_string($nonTravel->budget_breakdown) 
+                ? json_decode($nonTravel->budget_breakdown, true) 
+                : $nonTravel->budget_breakdown;
 
+            $locationIds = is_string($nonTravel->location_id) 
+                ? json_decode($nonTravel->location_id, true) 
+                : $nonTravel->location_id;
+
+            $attachments = is_string($nonTravel->attachment) 
+                ? json_decode($nonTravel->attachment, true) 
+                : $nonTravel->attachment;
+
+            // Ensure variables are arrays
+            $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
+            $locationIds = is_array($locationIds) ? $locationIds : [];
+            $attachments = is_array($attachments) ? $attachments : [];
+        @endphp
 
         <div class="row">
             <div class="col-lg-8">
@@ -284,22 +306,20 @@
                                                 </td>
                                                 <td class="text-center fw-medium">{{ $item['quantity'] ?? 1 }}</td>
                                                 <td class="text-end">₱{{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
-                                                <td class="text-end fw-bold text-success">₱{{ number_format($itemTotal, 2) }}</td>
+                                                <td class="text-end">₱{{ number_format($itemTotal, 2) }}</td>
                                             </tr>
                                         @endforeach
                                     @endif
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">
-                                            <i class="bx bx-info-circle me-2"></i>No budget items found
-                                        </td>
+                                        <td colspan="5" class="text-center text-muted">No budget breakdown available.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
-                            <tfoot style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                            <tfoot>
                                 <tr>
-                                    <th colspan="4" class="text-end border-0 fs-5">Grand Total:</th>
-                                    <th class="text-end border-0 fs-4 text-success">₱{{ number_format($grandTotal, 2) }}</th>
+                                    <td colspan="4" class="text-end fw-bold">Grand Total</td>
+                                    <td class="text-end fw-bold">₱{{ number_format($grandTotal, 2) }}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -376,7 +396,7 @@
                                     @if($location)
                                         <div class="location-badge">
                                             <i class="bx bx-map text-primary"></i>
-                                            <span class="fw-medium">{{ $location->location_name }}</span>
+                                            <span class="fw-medium">{{ $location->name }}</span>
                                         </div>
                                     @endif
                                 @endforeach
@@ -390,6 +410,12 @@
                 </div>
 
                 <!-- Budget Items Card -->
+                @php
+                    $budgetIds = is_array($nonTravel->budget_id) 
+                        ? $nonTravel->budget_id 
+                        : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
+                @endphp
+
                 <div class="card sidebar-card border-0 mb-4">
                     <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
@@ -398,20 +424,20 @@
                         </h6>
                     </div>
                     <div class="card-body">
-                        @if(!empty($nonTravel->budget_id) && is_array($nonTravel->budget_id))
+                        @if(!empty($budgetIds))
                             <div class="d-flex flex-column gap-3">
-                                @foreach($nonTravel->budget_id as $budgetId)
+                                @foreach($budgetIds as $budgetId)
                                     @php
-                                        $budget = App\Models\Budget::find($budgetId);
+                                        $budget = App\Models\FundCode::find($budgetId);
                                     @endphp
                                     @if($budget)
                                         <div class="budget-item" style="background: #f0fdf4; border-color: #bbf7d0;">
                                             <div class="d-flex justify-content-between align-items-center w-100">
                                                 <div class="d-flex align-items-center gap-2">
                                                     <i class="bx bx-dollar-circle text-success"></i>
-                                                    <span class="fw-medium">{{ $budget->description }}</span>
+                                                    <span class="fw-medium">{{ $budget->code }} | {{ $budget->funder->name ?? 'No Funder' }}</span>
                                                 </div>
-                                                <span class="badge bg-success">₱{{ number_format($budget->amount, 2) }}</span>
+                                                <span class="badge bg-success">₱{{ number_format($budget->budget_balance, 2) }}</span>
                                             </div>
                                         </div>
                                     @endif
@@ -427,8 +453,12 @@
 
                 <!-- Attachments Card -->
                 @php
-                    $attachments = is_array($nonTravel->attachment) ? $nonTravel->attachment : (is_string($nonTravel->attachment) ? json_decode($nonTravel->attachment, true) : []);
+                    $attachments = is_array($nonTravel->attachment) 
+                        ? $nonTravel->attachment 
+                        : (is_string($nonTravel->attachment) ? json_decode($nonTravel->attachment, true) : []);
+                    $attachments = is_array($attachments) ? $attachments : [];
                 @endphp
+
                 @if(!empty($attachments) && count($attachments) > 0)
                     <div class="card sidebar-card border-0 mb-4">
                         <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);">

@@ -179,4 +179,27 @@ class SpecialMemo extends Model
     {
         return $this->morphMany(ApprovalTrail::class, 'model', 'model_type', 'model_id');
     }
+
+
+    /**
+     * Get the budget as an array.
+     */
+    public function getBudgetAttribute($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
 }
