@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Special Memo #{{ $specialMemo->id }}</title>
     <style>
-        @page { size: A4; margin: 18mm 14mm 26mm 14mm; }
-        body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; color: #111; font-size: 12px; padding-bottom: 24mm; }
+        @page { size: A4; margin: 8mm 14mm 8mm 14mm; }
+        body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; color: #111; font-size: 12px; padding-bottom: 28mm; }
         h1,h2,h3 { margin: 0 0 6px; }
         .title { text-align: center; margin-bottom: 12px; }
         .muted { color: #666; }
@@ -31,13 +31,16 @@
             top: 45%;
             left: 50%;
             transform: translate(-50%, -50%);
-            opacity: 0.06;
+            opacity: 0.04;
             text-align: center;
         }
         /* Footer */
+        .footer { color: #4d4d4d; }
+        .footer .line { border-top: 1px solid #999; }
+        /* Footer */
         .footer {
             position: fixed;
-            left: 0; right: 0; bottom: 10mm;
+            left: 0; right: 0; bottom: 8mm;
             font-size: 10px; color: #666;
             text-align: center;
         }
@@ -46,7 +49,7 @@
 </head>
 <body>
     <div class="watermark">
-        <img src="{{ public_path('assets/images/AU_CDC_Logo-800.png') }}" alt="Watermark" style="width:70%; max-width:600px;">
+        <img src="{{ public_path('assets/images/au_emblem.png') }}" alt="Watermark" style="width:85%; max-width:none;">
     </div>
     <div class="paper-header" style="margin-bottom: 10px;">
         <table class="no-border" style="width:100%;">
@@ -83,7 +86,7 @@
             $width = $fontMetrics->get_text_width($text, $font, $size);
             $x = ($pdf->get_width() - $width) / 2;
             $y = $pdf->get_height() - 18; // near bottom
-            $pdf->page_text($x, $y, $text, $font, $size, array(0,0,0));
+            $pdf->page_text($x, $y, $text, $font, $size, array(0.3,0.3,0.3));
         }
     </script>
     <div class="section">
@@ -102,9 +105,7 @@
             </tr>
             <tr>
                 <td><strong>Fund Type</strong></td>
-                <td>{{ $specialMemo->fund_type_name ?? $specialMemo->fund_type ?? 'N/A' }}</td>
-                <td><strong>Status</strong></td>
-                <td>{{ strtoupper($specialMemo->overall_status ?? 'N/A') }}</td>
+                <td colspan="3">{{ $specialMemo->fund_type_name ?? $specialMemo->fund_type ?? 'N/A' }}</td>
             </tr>
         </table>
     </div>
