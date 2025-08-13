@@ -654,7 +654,7 @@ public function get_dashboard_data()
     $pdp_staff = array_column($this->db->get()->result(), 'staff_id');
 
     // Periods list
-    $this->db->distinct()->select("pe.performance_period")->from("ppa_entries pe");
+    $this->db->distinct()->select("pe.performance_period,pe.created_at")->from("ppa_entries pe");
     if ($is_restricted) $this->db->where("pe.staff_id", $staff_id);
     $this->db->order_by("pe.created_at", "DESC");
     $periods = array_column($this->db->get()->result(), 'performance_period');
