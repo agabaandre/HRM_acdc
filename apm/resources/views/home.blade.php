@@ -9,7 +9,7 @@
   }
 
   .dashboard-title {
-    font-size: 1.8rem;
+    font-size: 0.8rem;
     color: #119A48;
     font-weight: bold;
     text-align: center;
@@ -17,13 +17,12 @@
   }
 
   .dashboard-card {
-    height: 300px;
-    padding: 1.5rem;
+    height: 280px;
+    padding: 1.2rem;
     transition: all 0.3s ease-in-out;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     border-radius: 1rem;
     background: white;
     border: 1px solid #ddd;
@@ -40,15 +39,19 @@
 
   .dashboard-card h6 {
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: #911C39;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .dashboard-card p {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #5F5F5F;
-    margin: 0;
+    margin: 0 0 0.8rem 0;
+    line-height: 1.3;
   }
 
   .dashboard-container .col-lg-3 {
@@ -56,27 +59,89 @@
   }
 
   .dashboard-icon {
-    width: 60px;
-    height: 60px;
+    width: 35px;
+    height: 35px;
     background-color: #f4f4f4;
     color: #C3A366;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 1rem auto 0;
-    font-size: 1.5rem;
+    font-size: 1rem;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
   }
 
   .pending-badge {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
   }
 
   .btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+    width: 100%;
+    text-align: left;
+  }
+
+  .menu-section {
+    margin-top: 0.8rem;
+  }
+
+  .menu-section h6 {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.4rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.2rem;
+  }
+
+  .menu-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .pending-action-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .pending-action-badge .bell-icon {
+    width: 40px;
+    height: 40px;
+    background-color: #ffc107;
+    color: #212529;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    position: relative;
+  }
+
+  .pending-action-badge .notification-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border: 2px solid white;
   }
 </style>
 
@@ -87,197 +152,244 @@
     
     {{-- Quarterly Travel Matrix --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card text-center">
-        <div>
-          <h6>
-            Quarterly Travel Matrix
-          
-          </h6>
-          <p>Plan and track quarterly travel for all staff.</p>
+      <div class="dashboard-card">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-calendar-alt"></i></div>
+          <h6>Quarterly Travel Matrix (QM)</h6>
         </div>
-        <div>
-          <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm mt-2">Open</a>
-          <div class="dashboard-icon mt-3"><i class="fas fa-calendar-alt"></i></div>
-        </div>
-        <div class="mt-2">
-          <strong>Pending Action:</strong>
-          <span class="badge bg-warning text-dark pending-badge">
-            {{ get_staff_unread_notifications_count() }}
-          </span>
-        </div>
-        <div class="mt-2">
-          <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm">
-            <i class="fas fa-list"></i> All QMs
-          </a>
+        <p>Plan and track quarterly travel for all staff.</p>
+        
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm">
+              <i class="fas fa-plus"></i> Open
+            </a>
+            <a href="{{ route('matrices.index') }}" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-tasks"></i> Activities
+            </a>
+            <a href="{{ route('matrices.index') }}" class="btn btn-outline-info btn-sm">
+              <i class="fas fa-list"></i> All QMs
+            </a>
+            <div class="pending-action-badge">
+              <div class="bell-icon"><i class="fas fa-bell"></i></div>
+              <span class="notification-count">
+                {{ get_staff_unread_notifications_count() }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     {{-- Non-Travel --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card text-center">
-        <div>
+      <div class="dashboard-card">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-walking"></i></div>
           <h6>Non-Travel</h6>
-          <p>Manage activities that are not related to travel logistics.</p>
         </div>
-        <div>
-          <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm mt-2">Open</a>
-          <div class="dashboard-icon mt-3"><i class="fas fa-walking"></i></div>
-        </div>
-        <div class="mt-2">
-          <strong>Pending Action:</strong>
-          <span class="badge bg-warning text-dark pending-badge">
-            {{ get_staff_pending_action_count('non-travel') }}
-          </span>
-        </div>
-        <div class="mt-2">
-          <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm">
-            <i class="fas fa-list"></i> All Non-Travel
-          </a>
+        <p>Manage activities that are not related to travel logistics.</p>
+        
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm">
+              <i class="fas fa-plus"></i> Open
+            </a>
+            <a href="{{ url('non-travel') }}" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-file-alt"></i> My Submitted (NT)
+            </a>
+            <a href="{{ url('non-travel') }}" class="btn btn-outline-info btn-sm">
+              <i class="fas fa-list"></i> All Non-Travel
+            </a>
+            <div class="pending-action-badge">
+              <div class="bell-icon"><i class="fas fa-bell"></i></div>
+              <span class="notification-count">
+                {{ get_staff_pending_action_count('non-travel') }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     {{-- Special Memo --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card text-center">
-        <div>
-          <h6>Special Memo</h6>
-          <p>Create and send special memos for specific activities.</p>
+      <div class="dashboard-card">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-envelope-open-text"></i></div>
+          <h6>Special Memo (SPM)</h6>
         </div>
-        <div>
-          <a href="{{ url('special-memo') }}" class="btn btn-success btn-sm mt-2">Open</a>
-          <div class="dashboard-icon mt-3"><i class="fas fa-envelope-open-text"></i></div>
-        </div>
-        <div class="mt-2">
-          <strong>Pending Action:</strong>
-          <span class="badge bg-warning text-dark pending-badge">
-            {{ get_staff_pending_action_count('special-memo') }}
-          </span>
-        </div>
-        <div class="mt-2">
-          <a href="{{ url('special-memo') }}" class="btn btn-success btn-sm">
-            <i class="fas fa-list-alt"></i> All Memos
-          </a>
+        <p>Create and send special memos for specific activities.</p>
+        
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="{{ url('special-memo') }}" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-file-alt"></i> My Submitted
+            </a>
+            <a href="{{ url('special-memo') }}" class="btn btn-outline-info btn-sm">
+              <i class="fas fa-list"></i> All SPMs
+            </a>
+            <div class="pending-action-badge">
+              <div class="bell-icon"><i class="fas fa-bell"></i></div>
+              <span class="notification-count">
+                {{ get_staff_pending_action_count('special-memo') }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     {{-- Request for Services --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card text-center">
-        <div>
-          <h6>Request for Services</h6>
-          <p>Submit requests for tickets, DSA, procurement, or imprest.</p>
+      <div class="dashboard-card">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-tools"></i></div>
+          <h6>Request for Services <br>(RQS)</h6>
         </div>
-        <div>
-          <a href="{{ url('service-requests') }}" class="btn btn-success btn-sm mt-2">Open</a>
-          <div class="dashboard-icon mt-3"><i class="fas fa-tools"></i></div>
-        </div>
-        <div class="mt-2">
-          <strong>Pending Action:</strong>
-          <span class="badge bg-warning text-dark pending-badge">
-            {{ get_staff_pending_action_count('service-requests') }}
-          </span>
-        </div>
-        <div class="mt-2">
-          <a href="{{ url('service-requests') }}" class="btn btn-success btn-sm">
-            <i class="fas fa-tasks"></i> All Requests
-          </a>
+        <p>Submit requests for tickets, DSA, procurement, or imprest.</p>
+        
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="{{ url('service-requests') }}" class="btn btn-success btn-sm">
+              <i class="fas fa-plus"></i> Open
+            </a>
+            <a href="{{ url('service-requests') }}" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-file-alt"></i> My Submitted RQS
+            </a>
+            <div class="pending-action-badge">
+              <div class="bell-icon"><i class="fas fa-bell"></i></div>
+              <span class="notification-count">
+                {{ get_staff_pending_action_count('service-requests') }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     {{-- Request for ARF --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card text-center">
-        <div>
+      <div class="dashboard-card">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-file-signature"></i></div>
           <h6>Request for ARF</h6>
-          <p>Submit your Activity Request Form for approvals.</p>
         </div>
-        <div>
-          <a href="{{ url('request-arf') }}" class="btn btn-success btn-sm mt-2">Open</a>
-          <div class="dashboard-icon mt-3"><i class="fas fa-file-signature"></i></div>
-        </div>
-        <div class="mt-2">
-          <strong>Pending Action:</strong>
-          <span class="badge bg-warning text-dark pending-badge">
-            {{ get_staff_pending_action_count('request-arf') }}
-          </span>
-        </div>
-        <div class="mt-2">
-          <a href="{{ url('request-arf') }}" class="btn btn-success btn-sm">
-            <i class="fas fa-file-signature"></i> All ARFs
-          </a>
+        <p>Submit your Activity Request Form for approvals.</p>
+        
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="{{ url('request-arf') }}" class="btn btn-success btn-sm">
+              <i class="fas fa-plus"></i> Open
+            </a>
+            <a href="{{ url('request-arf') }}" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-file-alt"></i> My Submitted
+            </a>
+            <a href="{{ url('request-arf') }}" class="btn btn-outline-info btn-sm">
+              <i class="fas fa-list"></i> All ARFs
+            </a>
+            <div class="pending-action-badge">
+              <div class="bell-icon"><i class="fas fa-bell"></i></div>
+              <span class="notification-count">
+                {{ get_staff_pending_action_count('request-arf') }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     {{-- Single Memo --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card text-center">
-        <div>
-          <h6>Single Memo</h6>
-          <p>View Submitted Single Memos.</p>
+      <div class="dashboard-card">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-file-alt"></i></div>
+          <h6>Single Memo (SM)</h6>
         </div>
-        <div>
-          <a href="#" class="btn btn-success btn-sm mt-2">My Single Memos</a>
-          <div class="dashboard-icon mt-3"><i class="fas fa-file-alt"></i></div>
-        </div>
-        <div class="mt-2">
-          <strong>Pending Action:</strong>
-          <span class="badge bg-warning text-dark pending-badge">
-            {{ get_staff_pending_action_count('single-memo') }}
-          </span>
-        </div>
-        <div class="mt-2">
-          <a href="#" class="btn btn-success btn-sm">
-            <i class="fas fa-file-alt"></i> All Single Memos
-          </a>
+        <p>View Submitted Single Memos.</p>
+        
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="#" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-file-alt"></i> My Submitted
+            </a>
+            <a href="#" class="btn btn-outline-info btn-sm">
+              <i class="fas fa-handshake"></i> Shared SMs
+            </a>
+            <a href="#" class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-list"></i> All Single Memos
+            </a>
+            <div class="pending-action-badge">
+              <div class="bell-icon"><i class="fas fa-bell"></i></div>
+              <span class="notification-count">
+                {{ get_staff_pending_action_count('single-memo') }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     {{-- Change Request --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card text-center">
-        <div>
-          <h6>Change Request</h6>
-          <p>View Submitted Change Requests.</p>
+      <div class="dashboard-card">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-edit"></i></div>
+          <h6>Change Request (CR)</h6>
         </div>
-        <div>
-          <a href="#" class="btn btn-success btn-sm mt-2">My Change Requests</a>
-          <div class="dashboard-icon mt-3"><i class="fas fa-edit"></i></div>
-        </div>
-        <div class="mt-2">
-          <strong>Pending Action:</strong>
-          <span class="badge bg-warning text-dark pending-badge">
-            {{ get_staff_pending_action_count('change-request') }}
-          </span>
-        </div>
-        <div class="mt-2">
-          <a href="#" class="btn btn-success btn-sm">
-            <i class="fas fa-edit"></i> All Change Requests
-          </a>
+        <p>View Submitted Change Requests.</p>
+        
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+            <a href="#" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-file-alt"></i> My Change Requests (CR)
+            </a>
+            <a href="#" class="btn btn-outline-info btn-sm">
+              <i class="fas fa-handshake"></i> Shared CR
+            </a>
+            <div class="pending-action-badge">
+              <div class="bell-icon"><i class="fas fa-bell"></i></div>
+              <span class="notification-count">
+                {{ get_staff_pending_action_count('change-request') }}
+              </span>
+            </div>
+            <a href="#" class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-list"></i> All CRs
+            </a>
+          </div>
         </div>
       </div>
     </div>
 
     {{-- Reports --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card text-center">
-        <div>
+      <div class="dashboard-card">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-chart-bar"></i></div>
           <h6>Reports</h6>
-          <p>View and download performance reports.</p>
         </div>
-        <div>
-          <a href="{{ url('reports') }}" class="btn btn-success btn-sm mt-2">Open</a>
-          <div class="dashboard-icon mt-3"><i class="fas fa-chart-bar"></i></div>
+        <p>View and download performance reports.</p>
+        
+        <div class="menu-section">
+          <h6>Quick Actions</h6>
+          <div class="menu-links">
+           
+            <a href="{{ url('reports') }}" class="btn btn-outline-info btn-sm">
+              <i class="fas fa-list"></i> All Reports
+            </a>
+          </div>
         </div>
-        <div class="mt-2">
-          <a href="{{ url('reports') }}" class="btn btn-success btn-sm">
-            <i class="fas fa-chart-bar"></i> All Reports
-          </a>
+        
+        <div class="pending-action-badge">
+          <div class="bell-icon"><i class="fas fa-bell"></i></div>
+          <span class="notification-count">0</span>
         </div>
       </div>
     </div>
