@@ -10,6 +10,18 @@ body {
   text-align: center;
 }
 
+.container {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.8)), url('<?= base_url() ?>assets/images/bg_login.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  border-radius: 1rem;
+  padding: 2rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
 .settings-card {
   height: 200px;
   padding: 1.5rem;
