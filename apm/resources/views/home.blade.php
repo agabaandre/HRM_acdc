@@ -9,11 +9,11 @@
   }
 
   .dashboard-title {
-    font-size: 0.8rem;
+    font-size: 1.5rem;
     color: #119A48;
     font-weight: bold;
     text-align: center;
-    margin: 2rem 0 1.5rem;
+    margin: 1rem  1rem;
   }
 
   .dashboard-card {
