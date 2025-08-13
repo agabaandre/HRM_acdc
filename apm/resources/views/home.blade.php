@@ -13,11 +13,11 @@
     color: #119A48;
     font-weight: bold;
     text-align: center;
-    margin: 1rem  1rem;
+    margin: 1rem 0 0.5rem;
   }
 
   .dashboard-card {
-    height: 280px;
+    height: 290px;
     padding: 1.2rem;
     transition: all 0.3s ease-in-out;
     font-size: 0.85rem;
@@ -41,7 +41,7 @@
     font-weight: 700;
     font-size: 1rem;
     color: #911C39;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.3rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -50,7 +50,7 @@
   .dashboard-card p {
     font-size: 0.8rem;
     color: #5F5F5F;
-    margin: 0 0 0.8rem 0;
+    margin: 0 0 0.6rem 0;
     line-height: 1.3;
   }
 
@@ -231,6 +231,9 @@
             </a>
             <a href="{{ url('special-memo') }}" class="btn btn-outline-info btn-sm">
               <i class="fas fa-list"></i> All SPMs
+            </a>
+            <a href="{{ url('special-memo') }}" class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-handshake"></i> Shared SPMs
             </a>
             <div class="pending-action-badge">
               <div class="bell-icon"><i class="fas fa-bell"></i></div>
