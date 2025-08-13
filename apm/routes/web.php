@@ -131,6 +131,9 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
     Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
 
+    // Reports
+    Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
+
     // Generic Approval Routes
     Route::post('/approve/{model}/{id}', [GenericApprovalController::class, 'updateStatus'])->name('generic.approve');
     Route::post('/submit-for-approval/{model}/{id}', [GenericApprovalController::class, 'submitForApproval'])->name('generic.submit');
