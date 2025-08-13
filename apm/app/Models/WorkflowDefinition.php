@@ -35,7 +35,17 @@ class WorkflowDefinition extends Model
      * @var array
      */
     protected $fillable = [
-        'role', 'workflow_id', 'approval_order', 'is_enabled'
+        'role', 'workflow_id', 'approval_order', 'is_enabled', 'is_division_specific'
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'is_enabled' => 'boolean',
+        'is_division_specific' => 'boolean',
     ];
 
     /**
