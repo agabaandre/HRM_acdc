@@ -13,6 +13,7 @@ use App\Models\Matrix;
 use App\Models\Location;
 use App\Models\Staff;
 use App\Models\FundCode;
+use Illuminate\Support\Facades\DB;
 // use Illuminate\Support\Facades\View as ViewFacade;
 
 class MatrixController extends Controller
@@ -35,20 +36,36 @@ class MatrixController extends Controller
             }
         ]);
 
-        /*
-        
-        if (isDivisionApprover() || !empty(user_session('division_id'))) { // check approval is division specific 
-            $query->where('division_id',user_session('division_id'));
-        }else{
-            //check approval workflow
-            $approvers = Approver::where('staff_id',user_session('staff_id'))->get();
-            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
-            $workflow_dfns = WorkflowDefinition::whereIn('id',$approvers)->get();
-            $query->whereIn('approval_level',$workflow_dfns->pluck('approval_order')->toArray());
-        }
 
-        */
-    
+        // Replace the complex whereHas query with proper division-specific and workflow logic
+        $userDivisionId = user_session('division_id');
+        $userStaffId    = user_session('staff_id');
+        
+        $query->where(function($q) use ($userDivisionId, $userStaffId) {
+            // Case 1: Division-specific approval - check if user's division matches matrix division
+            if ($userDivisionId) {
+                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
+                    $subQ->where('is_division_specific', 1)
+                          ->where('approval_order', \DB::raw('matrices.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+            
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
+                        $workflowQ->where('is_division_specific', 0)
+                                  ->where('approval_order', \DB::raw('matrices.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($userStaffId) {
+                                      $approverQ->where('staff_id', $userStaffId);
+                                  });
+                    });
+                });
+            }
+        });
+        
+        
         if ($request->filled('year')) {
             $query->where('year', $request->year);
         }

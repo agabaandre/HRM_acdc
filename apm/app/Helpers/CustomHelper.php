@@ -275,7 +275,7 @@ if (!function_exists('isDivisionApprover')) {
         if (!$userStaffId) {
             return false;
         }
-
+        
         return \App\Models\Approver::where('staff_id', $userStaffId)
             ->whereHas('workflowDefinition', function($q) {
                 $q->where('is_division_specific', 1);
