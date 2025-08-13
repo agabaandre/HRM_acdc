@@ -23,8 +23,6 @@ class MatrixController extends Controller
      */
     public function index(Request $request): View
     {
-        //dd(isDivisionApprover());
-
         $query = Matrix::with([
             'division',
             'staff',
@@ -46,9 +44,41 @@ class MatrixController extends Controller
             if ($userDivisionId) {
                 $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
                     $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
                           ->where('approval_order', \DB::raw('matrices.approval_level'));
                 })
                 ->where('division_id', $userDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId, $userDivisionId) {
+
+                    $divisionsTable = (new Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = matrices.division_id 
+                        WHERE wd.workflow_id = matrices.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = matrices.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=matrices.division_id AND d.id=?)
+                        )
+                    )", [$userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($userStaffId) {
+                        $subQ2->where('approval_level', $userStaffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
+                                $trailQ->where('staff_id', $userStaffId);
+                              });
+                    });
+                });
             }
             
             // Case 2: Non-division-specific approval - check workflow definition and approver
@@ -64,7 +94,8 @@ class MatrixController extends Controller
                 });
             }
         });
-        
+
+       
         
         if ($request->filled('year')) {
             $query->where('year', $request->year);
@@ -96,9 +127,20 @@ class MatrixController extends Controller
             });
             return $matrix;
         });
+
+        // Separate matrices into actionable and actioned lists
+        $actionableMatrices = $matrices->getCollection()->filter(function ($matrix) {
+            return in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
+        });
+
+        $actionedMatrices = $matrices->getCollection()->filter(function ($matrix) {
+            return !in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
+        });
     
         return view('matrices.index', [
             'matrices' => $matrices,
+            'actionableMatrices' => $actionableMatrices,
+            'actionedMatrices' => $actionedMatrices,
             'title' => user_session('division_name'),
             'module' => 'Quarterly Matrix',
             'divisions' => \App\Models\Division::all(),
