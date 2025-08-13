@@ -35,7 +35,8 @@
         "app/Helpers/CustomHelper.php",
         "app/Helpers/MailingHelper.php",
         "app/Helpers/NotificationsHelper.php",
-        "app/Helpers/GenericApprovalHelper.php"
+        "app/Helpers/GenericApprovalHelper.php",
+        "app/Helpers/home_helper.php"
         ]
     },
     "autoload-dev": {
