@@ -95,13 +95,13 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="actionable-tab" data-bs-toggle="tab" data-bs-target="#actionable" type="button" role="tab" aria-controls="actionable" aria-selected="true">
                         <i class="bx bx-time me-2"></i> Actionable Matrices 
-                        <span class="badge bg-warning text-dark ms-2">{{ $actionableMatrices->count() }}</span>
+                        <span class="badge bg-warning text-dark ms-2">{{ $filteredActionableMatrices->count() }}</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="actioned-tab" data-bs-toggle="tab" data-bs-target="#actioned" type="button" role="tab" aria-controls="actioned" aria-selected="false">
                         <i class="bx bx-check-double me-2"></i> Actioned Matrices 
-                        <span class="badge bg-success ms-2">{{ $actionedMatrices->count() }}</span>
+                        <span class="badge bg-success ms-2">{{ $filteredActionedMatrices->count() }}</span>
                     </button>
                 </li>
             </ul>
@@ -118,7 +118,7 @@
                             <small class="text-muted ms-3">Draft, Pending, or Returned - Requires your attention</small>
                         </div>
                         
-                        @if($actionableMatrices->count() > 0)
+                        @if($filteredActionableMatrices->count() > 0)
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-warning">
@@ -138,7 +138,7 @@
                                     </thead>
                                     <tbody>
                                         @php $count = 1; @endphp
-                                        @foreach($actionableMatrices as $matrix)
+                                        @foreach($filteredActionableMatrices as $matrix)
                                             @if(can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix))
                                                 <tr>
                                                     <td>{{ $count }}</td>
@@ -276,7 +276,7 @@
                             <small class="text-muted ms-3">Approved, Rejected, or Completed - No action required</small>
                         </div>
                         
-                        @if($actionedMatrices->count() > 0)
+                        @if($filteredActionedMatrices->count() > 0)
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-success">
@@ -296,7 +296,7 @@
                                     </thead>
                                     <tbody>
                                         @php $count = 1; @endphp
-                                        @foreach($actionedMatrices as $matrix)
+                                        @foreach($filteredActionedMatrices as $matrix)
                                             @if(can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix))
                                                 <tr>
                                                     <td>{{ $count }}</td>
