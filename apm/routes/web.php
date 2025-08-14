@@ -105,8 +105,18 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
 
     Route::post('/matrices/{matrix}/activities/{activity}/status', [ActivityController::class, 'update_status'])
     ->name('matrices.activities.status');
-    Route::post('/matrices/activities/batch/status', [ActivityController::class, 'batch_update_status'])
-    ->name('matrices.activities.batch.status');
+        Route::post('/matrices/activities/batch/status', [ActivityController::class, 'batch_update_status'])
+        ->name('matrices.activities.batch.status');
+
+    Route::get('/participant-schedules', [ActivityController::class, 'get_participant_schedules'])->name('participant-schedules');
+    
+    // User Schedule Route
+    Route::get('/my-activities', function() {
+        return view('activities.user-schedule');
+    })->name('activities.user-schedule');
+    
+    // AJAX route for user schedule data
+    Route::get('/my-activities/data', [ActivityController::class, 'get_participant_schedules'])->name('activities.user-schedule.data');
     
     // Non-Travel Memo Routes
     Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);

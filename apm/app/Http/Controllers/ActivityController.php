@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\ParticipantSchedule;
 use Illuminate\Http\JsonResponse;
 use App\Models\FundCodeTransaction;
+use Carbon\Carbon;
 
 class ActivityController extends Controller
 {
@@ -892,5 +893,49 @@ class ActivityController extends Controller
         return redirect()
         ->route('matrices.show', [$matrix])
         ->with('success', $message);
+    }
+
+    public function get_participant_schedules(Request $request){
+        $participant_schedules = ParticipantSchedule::with('activity','matrix')->where('participant_id', user_session('staff_id'))
+        //->where('participant_end', '>=', Carbon::now()->toDateString())
+        ->orderBy('participant_end', 'desc')
+        ->paginate(10);
+
+        // Transform the data while preserving pagination
+        $transformed_data = $participant_schedules->getCollection()->map(function($schedule){
+            return [
+                'id' => $schedule->id,
+                'title' => $schedule->activity->activity_title,
+                'start' => $schedule->participant_start,
+                'end' => $schedule->participant_end,
+                'division' => $schedule->matrix->division->division_name,
+                'days' => $schedule->participant_days,
+                'matrix' => $schedule->matrix->year.' '.$schedule->matrix->quarter,
+                'matrix_id' => $schedule->matrix->id,
+                'international_travel' => $schedule->international_travel,
+                'responsible_person' => $schedule->activity->focalPerson->fname.' '.$schedule->activity->focalPerson->lname,
+                'responsible_person_id' => $schedule->activity->responsible_person_id,
+                'is_completed' => Carbon::parse($schedule->participant_end)->isPast(),
+            ];
+        });
+
+        // Create response with pagination metadata
+        $response = [
+            'success' => true,
+            'data' => $transformed_data,
+            'pagination' => [
+                'current_page' => $participant_schedules->currentPage(),
+                'last_page' => $participant_schedules->lastPage(),
+                'per_page' => $participant_schedules->perPage(),
+                'total' => $participant_schedules->total(),
+                'from' => $participant_schedules->firstItem(),
+                'to' => $participant_schedules->lastItem(),
+                'has_more_pages' => $participant_schedules->hasMorePages(),
+                'next_page_url' => $participant_schedules->nextPageUrl(),
+                'prev_page_url' => $participant_schedules->previousPageUrl(),
+            ]
+        ];
+
+        return response()->json($response);
     }
 }
