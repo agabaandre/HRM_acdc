@@ -138,13 +138,17 @@ class MatrixController extends Controller
             return !in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
         });
 
+        $myDivisionMatrices = $matrices->getCollection()->filter(function ($matrix) {
+            return $matrix->division_id == user_session('division_id');
+        });
+
         // Filter matrices based on CustomHelper functions for accurate counts
         $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
-            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix) || $matrix->division_id == user_session('division_id');
+            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
         });
 
         $filteredActionedMatrices = $actionedMatrices->filter(function ($matrix) {
-            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix) || $matrix->division_id == user_session('division_id');
+            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
         });
     
         return view('matrices.index', [
@@ -153,6 +157,7 @@ class MatrixController extends Controller
             'actionedMatrices' => $actionedMatrices,
             'filteredActionableMatrices' => $filteredActionableMatrices,
             'filteredActionedMatrices' => $filteredActionedMatrices,
+            'myDivisionMatrices' => $myDivisionMatrices,
             'title' => user_session('division_name'),
             'module' => 'Quarterly Matrix',
             'divisions' => \App\Models\Division::all(),

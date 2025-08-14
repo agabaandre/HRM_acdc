@@ -140,26 +140,32 @@
                             <tbody>
                                 @foreach($attachments as $index => $attachment)
                                     @php
-                                        $ext = strtolower(pathinfo($attachment['original_name'], PATHINFO_EXTENSION));
-                                        $fileUrl = url('storage/'.$attachment['path']);
+                                        $originalName = $attachment['original_name'] ?? $attachment['filename'] ?? $attachment['name'] ?? 'Unknown';
+                                        $filePath = $attachment['path'] ?? $attachment['file_path'] ?? '';
+                                        $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
+                                        $fileUrl = $filePath ? url('storage/'.$filePath) : '#';
                                         $isOffice = in_array($ext, ['ppt','pptx','xls','xlsx','doc','docx']);
                                     @endphp
                                     <tr>
                                         <td>{{ $index + 1 }}</td>
                                         <td>{{ $attachment['type'] ?? 'Document' }}</td>
-                                        <td>{{ $attachment['original_name'] ?? 'Unknown' }}</td>
+                                        <td>{{ $originalName }}</td>
                                         <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
                                         <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
                                         <td>
+                                            @if($filePath)
                                             <button type="button" class="btn btn-sm btn-info preview-attachment" 
                                                 data-file-url="{{ $fileUrl }}"
                                                 data-file-ext="{{ $ext }}"
                                                 data-file-office="{{ $isOffice ? '1' : '0' }}">
                                                 <i class="bx bx-show"></i> Preview
                                             </button>
-                                            <a href="{{ $fileUrl }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
+                                            <a href="{{ $fileUrl }}" download="{{ $originalName }}" class="btn btn-sm btn-success">
                                                 <i class="bx bx-download"></i> Download
                                             </a>
+                                            @else
+                                            <span class="text-muted">File not available</span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
