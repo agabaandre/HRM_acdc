@@ -305,8 +305,8 @@
                                                     </div>
                                                 </td>
                                                 <td class="text-center fw-medium">{{ $item['quantity'] ?? 1 }}</td>
-                                                <td class="text-end">₱{{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
-                                                <td class="text-end">₱{{ number_format($itemTotal, 2) }}</td>
+                                                <td class="text-end">${{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
+                                                <td class="text-end">${{ number_format($itemTotal, 2) }}</td>
                                             </tr>
                                         @endforeach
                                     @endif
@@ -319,7 +319,7 @@
                             <tfoot>
                                 <tr>
                                     <td colspan="4" class="text-end fw-bold">Grand Total</td>
-                                    <td class="text-end fw-bold">₱{{ number_format($grandTotal, 2) }}</td>
+                                    <td class="text-end fw-bold">${{ number_format($grandTotal, 2) }}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -437,7 +437,7 @@
                                                     <i class="bx bx-dollar-circle text-success"></i>
                                                     <span class="fw-medium">{{ $budget->code }} | {{ $budget->funder->name ?? 'No Funder' }}</span>
                                                 </div>
-                                                <span class="badge bg-success">₱{{ number_format($budget->budget_balance, 2) }}</span>
+                                                <span class="badge bg-success">${{ number_format($budget->budget_balance, 2) }}</span>
                                             </div>
                                         </div>
                                     @endif
