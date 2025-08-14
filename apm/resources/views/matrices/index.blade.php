@@ -139,7 +139,6 @@
                                     <tbody>
                                         @php $count = 1; @endphp
                                         @foreach($filteredActionableMatrices as $matrix)
-                                            @if(can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix))
                                                 <tr>
                                                     <td>{{ $count }}</td>
                                                     <td>{{ $matrix->year }}</td>
@@ -252,7 +251,6 @@
                                                     </td>
                                                 </tr>
                                                 @php $count++; @endphp
-                                            @endif
                                         @endforeach
                                     </tbody>
                                 </table>
@@ -296,8 +294,7 @@
                                     </thead>
                                     <tbody>
                                         @php $count = 1; @endphp
-                                        @foreach($filteredActionedMatrices as $matrix)
-                                            @if(can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix))
+                                        @foreach($filteredActionedMatrices as $matrix)  
                                                 <tr>
                                                     <td>{{ $count }}</td>
                                                     <td>{{ $matrix->year }}</td>
@@ -410,7 +407,6 @@
                                                     </td>
                                                 </tr>
                                                 @php $count++; @endphp
-                                            @endif
                                         @endforeach
                                     </tbody>
                                 </table>
