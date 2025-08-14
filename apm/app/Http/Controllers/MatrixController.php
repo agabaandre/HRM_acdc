@@ -136,11 +136,22 @@ class MatrixController extends Controller
         $actionedMatrices = $matrices->getCollection()->filter(function ($matrix) {
             return !in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
         });
+
+        // Filter matrices based on CustomHelper functions for accurate counts
+        $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
+            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
+        });
+
+        $filteredActionedMatrices = $actionedMatrices->filter(function ($matrix) {
+            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
+        });
     
         return view('matrices.index', [
             'matrices' => $matrices,
             'actionableMatrices' => $actionableMatrices,
             'actionedMatrices' => $actionedMatrices,
+            'filteredActionableMatrices' => $filteredActionableMatrices,
+            'filteredActionedMatrices' => $filteredActionedMatrices,
             'title' => user_session('division_name'),
             'module' => 'Quarterly Matrix',
             'divisions' => \App\Models\Division::all(),
