@@ -915,6 +915,7 @@ class ActivityController extends Controller
                 'international_travel' => $schedule->international_travel,
                 'responsible_person' => $schedule->activity->focalPerson->fname.' '.$schedule->activity->focalPerson->lname,
                 'responsible_person_id' => $schedule->activity->responsible_person_id,
+                'is_completed' => Carbon::parse($schedule->participant_end)->isPast(),
             ];
         });
 
