@@ -35,14 +35,14 @@
                     </div>
                     <div class="col-md-3">
                         <div class="border-end">
-                            <h4 class="text-info mb-1" id="currentPage">-</h4>
-                            <small class="text-muted">Current Page</small>
+                            <h4 class="text-success mb-1" id="completedDays">-</h4>
+                            <small class="text-muted">Completed (in days)</small>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div>
-                            <h4 class="text-warning mb-1" id="totalPages">-</h4>
-                            <small class="text-muted">Total Pages</small>
+                            <h4 class="text-warning mb-1" id="upcomingCount">-</h4>
+                            <small class="text-muted">Upcoming</small>
                         </div>
                     </div>
                 </div>
@@ -83,6 +83,7 @@
                                     <th>Responsible Person</th>
                                     <th>Matrix Period</th>
                                     <th>Travel Type</th>
+                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -222,10 +223,17 @@ function updateOverviewStats(data, pagination) {
     totalActivities = pagination.total;
     totalDays = data.reduce((sum, item) => sum + (parseInt(item.days) || 0), 0);
     
+    // Calculate completed and upcoming activities
+    const completedActivities = data.filter(item => item.is_completed);
+    const upcomingActivities = data.filter(item => !item.is_completed);
+    
+    const completedDays = completedActivities.reduce((sum, item) => sum + (parseInt(item.days) || 0), 0);
+    const upcomingCount = upcomingActivities.length;
+    
     $('#totalActivities').text(totalActivities);
     $('#totalDays').text(totalDays);
-    $('#currentPage').text(pagination.current_page);
-    $('#totalPages').text(pagination.last_page);
+    $('#completedDays').text(completedDays);
+    $('#upcomingCount').text(upcomingCount);
     
     $('#showingFrom').text(pagination.from || 0);
     $('#showingTo').text(pagination.to || 0);
@@ -282,13 +290,19 @@ function populateScheduleTable(data) {
                         ${item.matrix}
                     </span>
                 </td>
-                                                                <td>
+                                                                                                                <td>
                                                     <span class="text-${item.international_travel ? 'warning' : 'info'} fw-bold">
                                                         <i class="bx bx-plane me-1"></i>
                                                         ${item.international_travel ? 'International' : 'Domestic'}
                                                     </span>
                                                 </td>
-                                                                <td>
+                                                <td>
+                                                    <span class="badge ${item.is_completed ? 'bg-success' : 'bg-warning'} text-white">
+                                                        <i class="bx ${item.is_completed ? 'bx-check-circle' : 'bx-time'} me-1"></i>
+                                                        ${item.is_completed ? 'Completed' : 'Upcoming'}
+                                                    </span>
+                                                </td>
+                                                <td>
                                                     <a href="{{ url('/')}}/matrices/${item.matrix_id}/activities/${item.id}" class="btn btn-outline-info btn-sm" title="View Details">
                                                         <i class="bx bx-show"></i>
                                                     </a>
