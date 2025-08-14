@@ -25,6 +25,7 @@ class NonTravelMemo extends Model
         'next_approval_level',
         'workplan_activity_code',
         'staff_id',
+        'division_id',
         'memo_date',
         'location_id',
         'non_travel_memo_category_id',
@@ -53,6 +54,7 @@ class NonTravelMemo extends Model
             'approval_level' => 'integer',
             'next_approval_level' => 'integer',
             'staff_id' => 'integer',
+            'division_id' => 'integer',
             'memo_date' => 'date',
             'location_id' => 'array',
             'non_travel_memo_category_id' => 'integer',
@@ -65,6 +67,11 @@ class NonTravelMemo extends Model
     public function staff(): BelongsTo
     {
         return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
+    }
+
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(Division::class, 'division_id');
     }
 
     public function nonTravelMemoCategory(): BelongsTo
@@ -111,8 +118,8 @@ class NonTravelMemo extends Model
 
         if ($definitions->count() > 1 && $definitions[0]->category) {
             $category = null;
-            if ($this->staff && $this->staff->division) {
-                $category = $this->staff->division->category;
+            if ($this->division) {
+                $category = $this->division->category;
             }
             return $definitions->where('category', $category)->first();
         }
@@ -136,12 +143,8 @@ class NonTravelMemo extends Model
 
         if ($role) {
             if ($role->is_division_specific) {
-                $division = null;
-                if ($this->staff && $this->staff->division) {
-                    $division = $this->staff->division;
-                }
-                if ($division && isset($division->{$role->division_reference_column})) {
-                    $staff_id = $division->{$role->division_reference_column};
+                if ($this->division && isset($this->division->{$role->division_reference_column})) {
+                    $staff_id = $this->division->{$role->division_reference_column};
                 }
             } else {
                 $approver = Approver::select('staff_id')
