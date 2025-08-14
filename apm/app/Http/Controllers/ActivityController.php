@@ -897,7 +897,8 @@ class ActivityController extends Controller
 
     public function get_participant_schedules(Request $request){
         $participant_schedules = ParticipantSchedule::with('activity','matrix')->where('participant_id', user_session('staff_id'))
-       ->where('participant_end', '>=', Carbon::now()->toDateString())
+        //->where('participant_end', '>=', Carbon::now()->toDateString())
+        ->orderBy('participant_end', 'desc')
         ->paginate(10);
 
         // Transform the data while preserving pagination
