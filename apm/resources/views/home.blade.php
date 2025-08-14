@@ -165,7 +165,7 @@
             <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            <a href="{{ route('matrices.index') }}" class="btn btn-outline-primary btn-sm">
+            <a href="{{ route('activities.user-schedule') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-tasks"></i> Activities
             </a>
             <a href="{{ route('matrices.index') }}" class="btn btn-outline-info btn-sm">
