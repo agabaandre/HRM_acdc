@@ -93,6 +93,8 @@ class MatrixController extends Controller
                     });
                 });
             }
+
+            $q->orWhere('division_id', $userDivisionId);
         });
 
        
@@ -115,7 +117,6 @@ class MatrixController extends Controller
     
         $matrices = $query->latest()->paginate(10);
 
-        //dd($matrices);
     
         $matrices->getCollection()->transform(function ($matrix) {
             $matrix->total_activities = $matrix->activities->count();
