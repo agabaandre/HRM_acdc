@@ -27,9 +27,10 @@ class NonTravelMemoController extends Controller
         // Cache lookup tables for 60 minutes
         $staff  = Cache::remember('non_travel_staff', 60 * 60, fn() => Staff::active()->get());
         $categories = Cache::remember('non_travel_categories', 60 * 60, fn() => NonTravelMemoCategory::all());
+        $divisions = Cache::remember('non_travel_divisions', 60 * 60, fn() => \App\Models\Division::all());
 
         // Base query with eager loads
-        $query = NonTravelMemo::with(['staff', 'nonTravelMemoCategory']);
+        $query = NonTravelMemo::with(['staff', 'division', 'nonTravelMemoCategory']);
 
         // Apply division filter only if user is not a division-specific approver
         if (!isDivisionApprover() || !empty(user_session('division_id'))) {
@@ -51,11 +52,14 @@ class NonTravelMemoController extends Controller
         if ($request->filled('category_id')) {
             $query->where('non_travel_memo_category_id', $request->category_id);
         }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
 
         // Paginate and preserve filters in the query string
         $nonTravelMemos = $query->latest()->paginate(10)->withQueryString();
 
-        return view('non-travel.index', compact('nonTravelMemos', 'staff', 'categories'));
+        return view('non-travel.index', compact('nonTravelMemos', 'staff', 'categories', 'divisions'));
     }
 
    public function create(): View
@@ -102,6 +106,7 @@ class NonTravelMemoController extends Controller
         ]);
 
         $data['staff_id'] = user_session('staff_id');
+        $data['division_id'] = user_session('division_id');
 
         // Handle attachments
         $files = [];
@@ -129,6 +134,7 @@ class NonTravelMemoController extends Controller
             'reverse_workflow_id' => (int)($request->input('reverse_workflow_id', 1)),
             'workplan_activity_code' => $request->input('activity_code', ''),
             'staff_id' => (int)$data['staff_id'],
+            'division_id' => (int)$data['division_id'],
             'memo_date' => (string)$data['date_required'],
             'location_id' => $locationJson,
             'non_travel_memo_category_id' => (int)$data['non_travel_memo_category_id'],

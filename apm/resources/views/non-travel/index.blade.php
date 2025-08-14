@@ -39,6 +39,15 @@
                         @endforeach
                     </select>
                     
+                    <select name="division_id" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                        <option value="">All Divisions</option>
+                        @foreach($divisions as $division)
+                            <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
+                                {{ $division->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    
                     <button type="submit" class="btn btn-sm btn-outline-primary">
                         <i class="bx bx-filter-alt"></i> Filter
                     </button>
@@ -59,6 +68,7 @@
                         <th class="fw-semibold">Title</th>
                         <th class="fw-semibold">Category</th>
                         <th class="fw-semibold">Staff</th>
+                        <th class="fw-semibold">Division</th>
                         <th class="fw-semibold">Date</th>
                         <th class="fw-semibold text-center">Actions</th>
                     </tr>
@@ -83,6 +93,12 @@
                                     </div>
                                     <span>{{ $memo->staff->name ?? 'Unknown' }}</span>
                                 </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    <i class="bx bx-building me-1"></i>
+                                    {{ $memo->division->name ?? 'N/A' }}
+                                </span>
                             </td>
                             <td>{{ $memo->memo_date->format('M d, Y') }}</td>
                             <td>
