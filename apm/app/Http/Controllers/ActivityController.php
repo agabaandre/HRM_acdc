@@ -897,7 +897,7 @@ class ActivityController extends Controller
 
     public function get_participant_schedules(Request $request){
         $participant_schedules = ParticipantSchedule::with('activity','matrix')->where('participant_id', user_session('staff_id'))
-       ->where('participant_start', '<=', Carbon::now()->toDateString())
+       ->where('participant_end', '>=', Carbon::now()->toDateString())
         ->paginate(10);
 
         // Transform the data while preserving pagination
@@ -912,6 +912,8 @@ class ActivityController extends Controller
                 'matrix' => $schedule->matrix->year.' '.$schedule->matrix->quarter,
                 'matrix_id' => $schedule->matrix->id,
                 'international_travel' => $schedule->international_travel,
+                'responsible_person' => $schedule->activity->focalPerson->fname.' '.$schedule->activity->focalPerson->lname,
+                'responsible_person_id' => $schedule->activity->responsible_person_id,
             ];
         });
 
