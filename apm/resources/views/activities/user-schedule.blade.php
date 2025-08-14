@@ -80,6 +80,7 @@
                                     <th>End Date</th>
                                     <th>Days</th>
                                     <th>Division</th>
+                                    <th>Responsible Person</th>
                                     <th>Matrix Period</th>
                                     <th>Travel Type</th>
                                     <th>Actions</th>
@@ -267,6 +268,12 @@ function populateScheduleTable(data) {
                     <span class="badge bg-secondary">
                         <i class="bx bx-building me-1"></i>
                         ${item.division}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">
+                        <i class="bx bx-user me-1"></i>
+                        ${item.responsible_person}
                     </span>
                 </td>
                 <td>
