@@ -65,6 +65,7 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light">
                     <tr>
+                        <th class="fw-semibold text-center" style="width: 60px;">No.</th>
                         <th class="fw-semibold">Title</th>
                         <th class="fw-semibold">Category</th>
                         <th class="fw-semibold">Staff</th>
@@ -75,7 +76,11 @@
                 </thead>
                 <tbody>
                     @forelse($nonTravelMemos as $memo)
+                 
                         <tr>
+                            <td class="text-center fw-bold text-muted">
+                                {{ ($nonTravelMemos->currentPage() - 1) * $nonTravelMemos->perPage() + $loop->iteration }}
+                            </td>
                             <td>
                                 <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
                                 <small class="text-muted">{{ $memo->workplan_activity_code }}</small>
@@ -88,16 +93,14 @@
                             </td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-sm me-2 bg-light rounded-circle">
-                                        <span class="avatar-text">{{ substr($memo->staff->name ?? 'U', 0, 1) }}</span>
-                                    </div>
+                                
                                     <span>{{ $memo->staff->name ?? 'Unknown' }}</span>
                                 </div>
                             </td>
                             <td>
                                 <span class="badge bg-secondary">
                                     <i class="bx bx-building me-1"></i>
-                                    {{ $memo->division->name ?? 'N/A' }}
+                                    {{ $memo->division->division_name ?? 'N/A' }}
                                 </span>
                             </td>
                             <td>{{ $memo->memo_date->format('M d, Y') }}</td>
@@ -161,7 +164,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center py-5">
+                            <td colspan="7" class="text-center py-5">
                                 <div class="text-muted">
                                     <i class="bx bx-file-blank fs-1 mb-3"></i>
                                     <p class="h5 text-muted">No non-travel memos found</p>

@@ -10,194 +10,126 @@
 @endsection
 
 @section('content')
-<div class="card shadow-sm border-0 mb-5">
-    <div class="card-header bg-white border-bottom">
-        <h5 class="mb-0 text-success">
-            <i class="fas fa-calendar-plus me-2"></i> Activity Details
-        </h5>
-    </div>
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="card-header bg-white border-bottom">
+            <h5 class="mb-0 text-success">
+                <i class="fas fa-calendar-plus me-2"></i> Activity Details
+            </h5>
+        </div>
 
-    <div class="card-body p-4">
-        <form action="{{ route('special-memo.update', $specialMemo) }}" method="POST" id="activityForm" enctype="multipart/form-data">
-            @csrf
-            @method('PUT')
-            
-            @includeIf('special-memo.form')
+        <div class="card-body p-4">
+            <form action="{{ route('special-memo.update', $specialMemo) }}" method="POST" id="activityForm" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
 
-            <div class="row g-4 mt-2">
-                <div class="col-md-4 fund_type">
-                    <label for="fund_type" class="form-label fw-semibold">
-                        <i class="fas fa-hand-holding-usd me-1 text-success"></i> Fund Type <span class="text-danger">*</span>
-                    </label>
-                    <select name="fund_type" id="fund_type" class="form-select border-success" required>
-                        <option value="">Select Fund Type</option>
-                        @foreach($fundTypes as $type)
-                            <option value="{{ $type->id }}" {{ old('fund_type', $specialMemo->fund_type_id) == $type->id ? 'selected' : '' }}>{{ ucfirst($type->name) }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                @includeIf('special-memo.form')
 
-                <div class="col-md-4 activity_code" style="display: none;">
-                    <label for="activity_code" class="form-label fw-semibold">
-                        <i class="fas fa-code me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
-                    </label>
-                    <input type="text" name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code') }}" placeholder="Enter Activity Code">
-                </div>
-
-                <div class="col-md-4">
-                    <label for="key_result_link" class="form-label fw-semibold">
-                        <i class="fas fa-link me-1 text-success"></i> Key Result Area Link <span class="text-danger">*</span>
-                    </label>
-                    <input type="text" name="key_result_link" id="key_result_link" class="form-control border-success" value="{{ old('key_result_link', $specialMemo->key_result_area) }}" placeholder="Enter Key Result Area Link" required>
-                </div>
-            </div>
-
-            <!-- Budget Section -->
-            <div class="card border-0 shadow-sm mb-5 mt-4">
-                <div class="card-header bg-white border-bottom">
-                    <h5 class="mb-0 text-success">
-                        <i class="fas fa-calculator me-2"></i> Budget Details
-                    </h5>
-                </div>
-                <div class="card-body p-4">
-                    <div id="budgetContainer">
-                        @foreach($budgetCodes as $code)
-                            <div class="budget-section mb-4">
-                                <h6 class="fw-bold text-success mb-3">
-                                    <i class="fas fa-tag me-2"></i>{{ $code->name }}
-                                </h6>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-sm">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Cost Item</th>
-                                                <th>Unit Cost</th>
-                                                <th>Units</th>
-                                                <th>Days</th>
-                                                <th>Total</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="budget-body" data-code="{{ $code->id }}">
-                                            @if(isset($specialMemo->budget[$code->id]) && is_array($specialMemo->budget[$code->id]))
-                                                @foreach($specialMemo->budget[$code->id] as $index => $item)
-                                                    <tr>
-                                                        <td>
-                                                            <select name="budget[{{ $code->id }}][{{ $index }}][cost_item_id]" class="form-select select-cost-item" required>
-                                                                <option value="">Select Cost Item</option>
-                                                                @foreach($costItems as $costItem)
-                                                                    <option value="{{ $costItem->id }}" {{ isset($item['cost_item_id']) && $item['cost_item_id'] == $costItem->id ? 'selected' : '' }}>
-                                                                        {{ $costItem->name }}
-                                                                    </option>
-                                                                @endforeach
-                                                            </select>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" name="budget[{{ $code->id }}][{{ $index }}][unit_cost]" class="form-control unit-cost" step="0.01" value="{{ $item['unit_cost'] ?? 0 }}" required>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" name="budget[{{ $code->id }}][{{ $index }}][units]" class="form-control units" value="{{ $item['units'] ?? 0 }}" required>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" name="budget[{{ $code->id }}][{{ $index }}][days]" class="form-control days" value="{{ $item['days'] ?? 0 }}" required>
-                                                        </td>
-                                                        <td>
-                                                            <input type="number" name="budget[{{ $code->id }}][{{ $index }}][total]" class="form-control total" step="0.01" value="{{ $item['total'] ?? 0 }}" readonly>
-                                                        </td>
-                                                        <td>
-                                                            <button type="button" class="btn btn-sm btn-outline-danger remove-row">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            @endif
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td colspan="4" class="text-end fw-bold">Subtotal:</td>
-                                                <td class="fw-bold subtotal" data-code="{{ $code->id }}">0.00</td>
-                                                <td>
-                                                    <button type="button" class="btn btn-sm btn-outline-success add-row" data-code="{{ $code->id }}">
-                                                        <i class="fas fa-plus"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                        @endforeach
+                <div class="row g-4 mt-2">
+                    <div class="col-md-4 fund_type">
+                        <label for="fund_type" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Fund Type <span class="text-danger">*</span>
+                        </label>
+                        <select name="fund_type" id="fund_type" class="form-select border-success" required >
+                            <option value="">Select Fund Type</option>
+                            @foreach($fundTypes as $type)
+                                <option value="{{ $type->id }}" {{ old('fund_type', $specialMemo->fund_type_id) == $type->id ? 'selected' : '' }}>{{ ucfirst($type->name) }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
-                    <div class="text-end">
-                        <h5 class="text-success">
-                            Total Budget: <span class="text-success fw-bold">$<span id="grandBudgetTotal">0.00</span></span>
-                        </h5>
-                        <input type="hidden" name="budget[grand_total]" id="grandBudgetTotalInput" value="0">
+                    <div class="col-md-2 activity_code" style="display: none;">
+                        <label for="activity_code" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
+                        </label>
+                        <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $specialMemo->activity_code ?? '') }}" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="budget_codes" class="form-label fw-semibold">
+                            <i class="fas fa-wallet me-1 text-success"></i> Budget Code(s) <span class="text-danger">*</span>
+                        </label>
+                        <select name="budget_codes[]" id="budget_codes" class="form-select border-success" multiple disabled>
+                            <option value="" selected disabled>Select a fund type first</option>
+                        </select>
+                        <small class="text-muted">Select up to 2 codes</small>
                     </div>
                 </div>
-            </div>
 
-            <!-- Attachments Section -->
-            <div class="card border-0 shadow-sm mb-5">
-                <div class="card-header bg-white border-bottom">
-                    <h5 class="mb-0 text-success">
+                <div class="row mt-3">
+                    <div class="col-md-4 offset-md-8">
+                        <label for="total_participants" class="form-label fw-semibold">
+                            <i class="fas fa-users me-1 text-success"></i> Total Participants
+                        </label>
+                        <input type="text" id="total_participants_display" class="form-control bg-white border-success fw-bold" readonly value="{{ $specialMemo->total_participants ?? 0 }}">
+                        <input type="hidden" name="total_participants" id="total_participants" value="{{ $specialMemo->total_participants ?? 0 }}">
+                    </div>
+                </div>
+
+                <div id="externalParticipantsWrapper"></div>
+
+                <div id="budgetGroupContainer" class="mt-4"></div>
+
+                <!-- Attachments Section -->
+                <div class="mt-5">
+                    <h5 class="fw-bold text-success mb-3">
                         <i class="fas fa-paperclip me-2"></i> Attachments
                     </h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row" id="attachmentContainer">
-                        @if(isset($specialMemo->attachment) && is_array($specialMemo->attachment))
-                            @foreach($specialMemo->attachment as $index => $attachment)
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
+                    </div>
+                    <div class="row g-3" id="attachmentContainer">
+                        @if(isset($specialMemo->attachments) && count($specialMemo->attachments) > 0)
+                            @foreach($specialMemo->attachments as $index => $attachment)
                                 <div class="col-md-4 attachment-block">
                                     <label class="form-label">Document Type*</label>
-                                    <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}" required>
-                                    <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1 attachment-input" accept=".pdf, .jpg, .jpeg, .png, image/*">
-                                    <small class="text-muted">Current: {{ $attachment['name'] ?? 'No file' }}</small>
+                                    <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment->type ?? '' }}" required>
+                                    <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1">
+                                    @if(isset($attachment->file_path))
+                                        <small class="text-muted">Current: {{ basename($attachment->file_path) }}</small>
+                                    @endif
                                 </div>
                             @endforeach
                         @else
                             <div class="col-md-4 attachment-block">
                                 <label class="form-label">Document Type*</label>
                                 <input type="text" name="attachments[0][type]" class="form-control" required>
-                                <input type="file" name="attachments[0][file]" class="form-control mt-1 attachment-input" accept=".pdf, .jpg, .jpeg, .png, image/*" required>
+                                <input type="file" name="attachments[0][file]" class="form-control mt-1">
                             </div>
                         @endif
                     </div>
+                </div>
 
-                    <div class="mt-3">
-                        <button type="button" id="addAttachment" class="btn btn-outline-success btn-sm">
-                            <i class="fas fa-plus me-1"></i> Add Attachment
-                        </button>
-                        <button type="button" id="removeAttachment" class="btn btn-outline-danger btn-sm">
-                            <i class="fas fa-minus me-1"></i> Remove Attachment
-                        </button>
+                <div class="d-flex justify-content-end mt-4">
+                    <div class="border p-4 rounded-3 shadow-sm bg-light">
+                        <h5 class="mb-0">
+                            <i class="fas fa-coins me-2 text-success"></i>
+                            Total Budget: <span class="text-success fw-bold">$<span id="grandBudgetTotal">0.00</span></span>
+                        </h5>
+                        <input type="hidden" name="budget[grand_total]" id="grandBudgetTotalInput" value="0">
                     </div>
                 </div>
-            </div>
 
-            <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
-                <button type="submit" name="action" value="draft" class="btn btn-secondary btn-lg px-5">
-                    <i class="bx bx-save me-1"></i> Save as Draft
-                </button>
-
-                <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
-                    <i class="bx bx-send me-1"></i> Submit for Approval
-                </button>
-            </div>
-        </form>
+                <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
+                    <button type="submit" name="action" value="draft" class="btn btn-secondary btn-lg px-5">
+                        <i class="bx bx-save me-1"></i> Save as Draft
+                    </button>
+                    
+                    <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
+                        <i class="bx bx-send me-1"></i> Submit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 @endsection
 
 @push('scripts')
 <script>
-  
-const staffData = @json($allStaffGroupedByDivision);
+const staffData = @json($allStaffGroupedByDivision ?? []);
 
 $(document).ready(function () {
-
+    // Initialize fund type change handler
     $('#fund_type').change(function(event){
         let selectedText = $('#fund_type option:selected').text();
 
@@ -207,12 +139,12 @@ $(document).ready(function () {
             $('.activity_code').show();
         }
         else{
-            $('#activity_code').value=""
+            $('#activity_code').val("");
             $('.activity_code').hide();
-             $('.fund_type').removeClass('col-md-2');
-             $('.fund_type').addClass('col-md-4');
+            $('.fund_type').removeClass('col-md-2');
+            $('.fund_type').addClass('col-md-4');
         }
-    })
+    });
 
     function isValidActivityDates() {
         return $('#date_from').val() && $('#date_to').val();
@@ -331,84 +263,30 @@ $(document).ready(function () {
         staffSelect.empty().append('<option value="">Select Staff</option>');
         
         if (selectedDivision && staffData[selectedDivision]) {
-            console.log(staffData[selectedDivision]);
             staffData[selectedDivision].forEach(staff => {
                 staffSelect.append(`<option value="${staff.staff_id}">${staff.fname} ${staff.lname}</option>`);
             });
         }
     });
 
-    // Budget functionality
-    function createBudgetRow(codeId, index) {
-        return `<tr>
-            <td>
-                <select name="budget[${codeId}][${index}][cost_item_id]" class="form-select select-cost-item" required>
-                    <option value="">Select Cost Item</option>
-                    @foreach($costItems as $costItem)
-                        <option value="{{ $costItem->id }}">{{ $costItem->name }}</option>
-                    @endforeach
-                </select>
-            </td>
-            <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" value="0" required></td>
-            <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" value="0" required></td>
-            <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" value="0" required></td>
-            <td><input type="number" name="budget[${codeId}][${index}][total]" class="form-control total" step="0.01" value="0" readonly></td>
-            <td><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="fas fa-trash"></i></button></td>
-        </tr>`;
+    // Initialize existing participants table if data exists
+    if ($('#internal_participants').val() && $('#internal_participants').val().length > 0) {
+        const selectedIds = $('#internal_participants').val();
+        const staffList = selectedIds.map(id => {
+            return {
+                id: id,
+                name: $(`#internal_participants option[value="${id}"]`).text()
+            };
+        });
+        appendToInternalParticipantsTable(staffList);
+        updateTotalParticipants();
     }
 
-    $(document).on('click', '.add-row', function () {
-        const codeId = $(this).data('code');
-        const tbody = $(`.budget-body[data-code="${codeId}"]`);
-        const index = tbody.find('tr').length;
-        const newRow = $(createBudgetRow(codeId, index));
-
-        tbody.append(newRow);
-
-        // Initialize select2 on the new cost item select
-        newRow.find('.select-cost-item').select2({
-            theme: 'bootstrap4',
-            width: '100%',
-            placeholder: 'Select Cost Item',
-            allowClear: true
-        });
-    });
-
-    $(document).on('click', '.remove-row', function () {
-        $(this).closest('tr').remove();
-        updateAllTotals();
-    });
-
-    $(document).on('input', '.unit-cost, .units, .days', function () {
-        const row = $(this).closest('tr');
-        const unitCost = parseFloat(row.find('.unit-cost').val()) || 0;
-        const units = parseFloat(row.find('.units').val()) || 0;
-        const days = parseFloat(row.find('.days').val()) || 0;
-        const total = (unitCost * units * days).toFixed(2);
-        row.find('.total').val(total);
-        updateAllTotals();
-    });
-
-    function updateAllTotals() {
-        let grand = 0;
-        $('.budget-body').each(function () {
-            const code = $(this).data('code');
-            let subtotal = 0;
-            $(this).find('tr').each(function () {
-                subtotal += parseFloat($(this).find('.total').val()) || 0;
-            });
-            $(`.subtotal[data-code="${code}"]`).text(subtotal.toFixed(2));
-            grand += subtotal;
-        });
-        $('#grandBudgetTotal').text(grand.toFixed(2));
-        $('#grandBudgetTotalInput').val(grand.toFixed(2));
-    }
-
-    // Initial check
-    toggleParticipantSelection();
+    // Initialize total participants display
+    updateTotalParticipants();
 });
 
-let attachmentIndex = 1;
+let attachmentIndex = {{ isset($specialMemo->attachments) ? count($specialMemo->attachments) : 1 }};
 
 // Allowed extensions
 const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
@@ -443,11 +321,9 @@ $(document).on('change', '.attachment-input', function () {
     const ext = fileName.split('.').pop().toLowerCase();
 
     if (!allowedExtensions.includes(ext)) {
-        show_notification("Only PDF, JPG, JPEG, or PNG files are allowed.", "warning");
+        alert("Only PDF, JPG, JPEG, or PNG files are allowed.");
         $(fileInput).val(''); // Clear invalid file
     }
 });
-
 </script>
-
 @endpush
