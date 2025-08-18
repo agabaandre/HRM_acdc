@@ -142,7 +142,7 @@ class Matrix extends Model
     }
 
     public function matrixApprovalTrails(){
-        return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', Matrix::class);
+        return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', 'App\Models\Matrix');
     }
 
     public function getHasIntramuralAttribute(): bool

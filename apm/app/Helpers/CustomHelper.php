@@ -283,3 +283,13 @@ if (!function_exists('isDivisionApprover')) {
             ->exists();
     }
 }
+
+
+function getFullSql($query) {
+    $sql = $query->toSql();
+    foreach ($query->getBindings() as $binding) {
+        $value = is_numeric($binding) ? $binding : "'{$binding}'";
+        $sql = preg_replace('/\?/', $value, $sql, 1);
+    }
+    return $sql;
+}
