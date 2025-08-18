@@ -154,7 +154,7 @@ class MatrixController extends Controller
             return can_take_action($matrix)  || still_with_creator($matrix);
         });
 
-        $filteredActionedMatrices = $actionedMatrices->filter(function ($matrix) {
+        $filteredActionedMatrices = $matrices->filter(function ($matrix) {
             return done_approving($matrix) ;
         });
 
