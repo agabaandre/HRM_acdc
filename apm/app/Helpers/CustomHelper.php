@@ -216,6 +216,8 @@ if (!function_exists('user_session')) {
                 ->orderBy('approval_order')
                 ->get();
 
+                dd($next_definition->toArray());
+
                 if ($next_definition->count() > 1) {
 
                     //if any of next_definition has fund_type, then do the if below
