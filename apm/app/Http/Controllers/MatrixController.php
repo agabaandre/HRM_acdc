@@ -149,7 +149,7 @@ class MatrixController extends Controller
 
         // Filter matrices based on CustomHelper functions for accurate counts
         $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
-           // dd(can_take_action($matrix));
+             dd(can_take_action($matrix));
             return can_take_action($matrix)  || still_with_creator($matrix);
         });
 
