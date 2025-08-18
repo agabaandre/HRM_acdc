@@ -154,7 +154,7 @@ class MatrixController extends Controller
             return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
         });
 
-        dd($actionableMatrices->toArray());
+        dd($filteredActionableMatrices->toArray());
 
     
         return view('matrices.index', [
