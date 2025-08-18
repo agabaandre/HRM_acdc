@@ -119,7 +119,7 @@ class MatrixController extends Controller
 
         $matrices = $query->latest()->paginate(10);
 
-        dd($matrices->toArray());
+        //dd($matrices->toArray());
 
         
        
@@ -157,6 +157,7 @@ class MatrixController extends Controller
         });
 
         $filteredActionedMatrices = $matrices->filter(function ($matrix) {
+            dd(done_approving($matrix));
             return done_approving($matrix) ;
         });
 
