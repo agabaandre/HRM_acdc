@@ -63,10 +63,10 @@ if (!function_exists('user_session')) {
         {
          
             $user = session('user', []);
-            $my_appoval =  ApprovalTrail::where('model_id',$matrix->id)
-            ->where('model_type', '\App\Models\\'.ucfirst(class_basename($matrix)))
+            $my_appoval =  ApprovalTrail::where('model_id',"=",$matrix->id)
+            ->where('model_type', "="  , '\App\Models\\'.ucfirst(class_basename($matrix)))
             ->where('action','approved')
-            ->where('approval_order',$matrix->approval_level)
+           // ->where('approval_order',$matrix->approval_level)
             ->where('staff_id',$user['staff_id'])->pluck('id');
             
 
