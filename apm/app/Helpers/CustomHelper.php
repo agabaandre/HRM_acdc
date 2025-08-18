@@ -218,14 +218,31 @@ if (!function_exists('user_session')) {
 
                 if ($next_definition->count() > 1) {
 
-                    if ($matrix->has_extramural && $matrix->approval_level !== $current_approval_point->first()->approval_order) {
-                        $current_approval_point =  $next_definition->where('fund_type', 2);
-                    } 
-                    else 
-                        $current_approval_point = $next_definition->where('fund_type', 1);
+                    //if any of next_definition has fund_type, then do the if below
+                    $has_fund_type = $next_definition->whereNotNull('fund_type')->count() > 0;
+                    
+                    if ($has_fund_type) {
+                        if ($matrix->has_extramural && $matrix->approval_level !== $current_approval_point->approval_order) {
+                            $current_approval_point = $next_definition->where('fund_type', 2)->first();
+                        } else {
+                            $current_approval_point = $next_definition->where('fund_type', 1)->first();
+                        }
+                    }else{
+
+                        $has_category = $next_definition->whereNotNull('category')->count() > 0;
+
+                        if($has_category){
+                            $current_approval_point = $next_definition->where('category', $matrix->division->category)->first();
+                        }else{
+                            $current_approval_point = $next_definition->first();
+                        }
+
+                    }
                 }
 
-                $is_at_my_approval_level = ($current_approval_point)?($current_approval_point->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level =  $current_approval_point->approval_order):false;
+                $is_at_my_approval_level = ($current_approval_point) ? 
+                    ($current_approval_point->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level == $current_approval_point->approval_order) : 
+                    false;
             }      
 
            /**TODO

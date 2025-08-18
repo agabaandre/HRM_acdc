@@ -35,7 +35,7 @@ class WorkflowDefinition extends Model
      * @var array
      */
     protected $fillable = [
-        'role', 'workflow_id', 'approval_order', 'is_enabled', 'is_division_specific'
+        'role', 'workflow_id', 'approval_order', 'is_enabled', 'is_division_specific', 'fund_type'
     ];
 
     /**
