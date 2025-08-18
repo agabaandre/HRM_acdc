@@ -191,6 +191,9 @@ if (!function_exists('user_session')) {
             $division_specific_access=false;
             $is_at_my_approval_level =false;
 
+            
+            dd($workflow_dfns->toArray());
+
           
            //if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
@@ -216,7 +219,6 @@ if (!function_exists('user_session')) {
                 ->orderBy('approval_order')
                 ->get();
 
-                dd($next_definition->toArray());
 
                 if ($next_definition->count() > 1) {
 
