@@ -119,6 +119,8 @@ class MatrixController extends Controller
 
         $matrices = $query->latest()->paginate(10);
 
+        dd($matrices->toArray());
+
        
         $matrices->getCollection()->transform(function ($matrix) {
             $matrix->total_activities = $matrix->activities->count();
