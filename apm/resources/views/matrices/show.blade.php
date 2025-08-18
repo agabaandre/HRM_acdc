@@ -93,7 +93,7 @@
                                 <td>
                                     @if(can_approve_activity($activity))
                                     <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }}">
-                                        {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : ucfirst($activity->status) ) }}
+                                        {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : 'Pending' ) }}
                                     </span>
                                     @else
                                     <span class="badge bg-success">No Action Required</span>
