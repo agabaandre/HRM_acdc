@@ -145,7 +145,7 @@ class MatrixController extends Controller
             return $matrix->division_id == user_session('division_id');
         });
 
-        //dd($actionableMatrices->toArray());
+        dd($actionedMatrices->toArray());
 
         // Filter matrices based on CustomHelper functions for accurate counts
         $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
