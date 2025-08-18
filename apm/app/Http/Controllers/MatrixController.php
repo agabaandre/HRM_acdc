@@ -132,20 +132,21 @@ class MatrixController extends Controller
             return $matrix;
         });
 
+        
+       
         // Separate matrices into actionable and actioned lists
         $actionableMatrices = $matrices->getCollection()->filter(function ($matrix) {
             return in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
         });
 
         $actionedMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return !in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
+            return in_array($matrix->overall_status, ['draft', 'pending', 'returned','approved']);
         });
 
         $myDivisionMatrices = $matrices->getCollection()->filter(function ($matrix) {
             return $matrix->division_id == user_session('division_id');
         });
 
-        dd($actionedMatrices->toArray());
 
         // Filter matrices based on CustomHelper functions for accurate counts
         $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
@@ -154,10 +155,10 @@ class MatrixController extends Controller
         });
 
         $filteredActionedMatrices = $actionedMatrices->filter(function ($matrix) {
-            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
+            return done_approving($matrix) ;
         });
 
-        //dd($filteredActionableMatrices->toArray());
+      //  dd($filteredActionedMatrices->toArray());
 
     
         return view('matrices.index', [
