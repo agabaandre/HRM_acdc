@@ -137,7 +137,7 @@ class MatrixController extends Controller
         });
 
         $actionedMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return !in_array($matrix->overall_status, ['draft', 'pending', 'returned','approved']);
+            return !in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
         });
 
         $myDivisionMatrices = $matrices->getCollection()->filter(function ($matrix) {
