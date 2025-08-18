@@ -174,35 +174,29 @@ if (!function_exists('user_session')) {
 
             //Check that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
             $current_approval_point = WorkflowDefinition::where('approval_order', $matrix->approval_level)
-            ->where('workflow_id',$matrix->forward_workflow_id)
-            ->first();
+            ->where('workflow_id',$matrix->forward_workflow_id);
 
             $workflow_dfns = Approver::where('staff_id',"=", $user['staff_id'])
-            ->where('workflow_dfn_id',"=", $current_approval_point->id)
+            ->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
             ->orWhere(function ($query) use ($today, $user,$current_approval_point) {
-                    $query ->where('workflow_dfn_id',"=", $current_approval_point->id)
+                    $query ->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
                     ->where('oic_staff_id', "=", $user['staff_id'])
                     ->where('end_date', '>=', $today);
                 })
-            ->orderBy('id','desc');
-            //->pluck('workflow_dfn_id');
-
-            
-            dd(getFullSql($workflow_dfns));
+            ->orderBy('id','desc')
+            ->pluck('workflow_dfn_id');
 
            
-
-          
             $division_specific_access=false;
             $is_at_my_approval_level =false;
 
             
-           
-          
            //if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
 
                 $division_specific_access = false;
+
+                $current_approval_point = $current_approval_point->first();
                 
                 if ($current_approval_point && $current_approval_point->is_division_specific) {
                     $division = $matrix->division;
@@ -216,6 +210,8 @@ if (!function_exists('user_session')) {
                 //how to check approval levels against approver in approvers table???
                 
             }else{
+
+                $current_approval_point = $current_approval_point->where('approval_order',$workflow_dfns[0])->first();
 
                 $next_definition = WorkflowDefinition::whereIn('workflow_id', $workflow_dfns->toArray())
                 ->where('approval_order',(int) $matrix->approval_level)
