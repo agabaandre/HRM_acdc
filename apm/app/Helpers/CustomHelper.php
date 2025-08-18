@@ -188,7 +188,7 @@ if (!function_exists('user_session')) {
             ->pluck('workflow_dfn_id');
 
             
-            dd($workflow_dfns->toArray());
+            dd($user);
 
            
 
