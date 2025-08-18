@@ -75,7 +75,7 @@ class MatrixController extends Controller
                     ->orWhere(function($subQ2) use ($userStaffId) {
                         $subQ2->where('approval_level', $userStaffId)
                               ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
-                                $trailQ->where('staff_id', $userStaffId);
+                                $trailQ->where('staff_id', '=',$userStaffId);
                               });
                     });
                 });
@@ -85,7 +85,7 @@ class MatrixController extends Controller
             if ($userStaffId) {
                 $q->orWhere(function($subQ) use ($userStaffId) {
                     $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
-                        $workflowQ->where('is_division_specific', 0)
+                        $workflowQ->where('is_division_specific','=', 0)
                                   ->where('approval_order', \DB::raw('matrices.approval_level'))
                                   ->whereHas('approvers', function($approverQ) use ($userStaffId) {
                                       $approverQ->where('staff_id', $userStaffId);
@@ -114,10 +114,12 @@ class MatrixController extends Controller
         if ($request->filled('division')) {
             $query->where('id', $request->division);
         }
-    
+
+       //  dd(getFullSql($query));
+
         $matrices = $query->latest()->paginate(10);
 
-    
+       
         $matrices->getCollection()->transform(function ($matrix) {
             $matrix->total_activities = $matrix->activities->count();
             $matrix->total_participants = $matrix->activities->sum('total_participants');
@@ -135,7 +137,7 @@ class MatrixController extends Controller
         });
 
         $actionedMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return !in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
+            return !in_array($matrix->overall_status, ['draft', 'pending', 'returned','approved']);
         });
 
         $myDivisionMatrices = $matrices->getCollection()->filter(function ($matrix) {

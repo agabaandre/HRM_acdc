@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\Log;
 use App\Models\ParticipantSchedule;
 use Illuminate\Http\JsonResponse;
 use App\Models\FundCodeTransaction;
+use App\Models\Approver;
+use App\Models\WorkflowDefinition;
+use App\Services\ApprovalService;
 use Carbon\Carbon;
 
 class ActivityController extends Controller
@@ -222,6 +225,9 @@ class ActivityController extends Controller
                     'budget_id' => json_encode($budgetCodes),
                     'budget' => json_encode($budgetItems),
                     'attachment' => json_encode($attachments),
+                    'is_single_memo' => $request->input('is_single_memo', 0),
+                    'approval_level' => 1,
+                    'overall_status' =>\App\Models\Activity::STATUS_DRAFT,
                 ]);
 
                 if(count($internalParticipants)>0)
@@ -937,5 +943,130 @@ class ActivityController extends Controller
         ];
 
         return response()->json($response);
+    }
+
+    /**
+     * Display a listing of single memos (activities with is_single_memo = true).
+     */
+    public function singlememos(Request $request): View
+    {
+        $query = Activity::with(['staff', 'matrix.division'])
+            ->where('is_single_memo', true)
+            ->latest();
+        
+        // Get current user's staff ID
+        $currentStaffId = user_session('staff_id');
+
+        if ($request->has('staff_id') && $request->staff_id) {
+            $query->where('staff_id', $request->staff_id);
+        }
+    
+        if ($request->has('division_id') && $request->division_id) {
+            $query->where('division_id', $request->division_id);
+        }
+
+        if ($request->has('status') && $request->status) {
+            $query->where('overall_status', $request->status);
+        }
+
+        // Check if user is division approver or has specific approval workflow
+        if (isDivisionApprover() || !empty(user_session('division_id'))) {
+            $query->where('division_id', user_session('division_id'));
+        } else {
+            // Check approval workflow
+            $approvers = Approver::where('staff_id', user_session('staff_id'))->get();
+            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
+            $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
+            $query->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
+        }
+        
+        // Hide draft memos from non-creators
+        $query->where(function($q) use ($currentStaffId) {
+            $q->where('overall_status', '!=', 'draft')
+              ->orWhere('staff_id', $currentStaffId);
+        });
+        
+        $singleMemos = $query->paginate(10);
+        $staff = Staff::active()->get();
+    
+        // Get distinct divisions from staff table
+        $divisions = Staff::select('division_id', 'division_name')
+            ->whereNotNull('division_id')
+            ->distinct()
+            ->orderBy('division_name')
+            ->get();
+    
+        return view('activities.single-memos.index', compact('singleMemos', 'staff', 'divisions'));
+    }
+
+    /**
+     * Submit single memo for approval.
+     */
+    public function submitSingleMemoForApproval(Activity $activity): RedirectResponse
+    {
+        if ($activity->overall_status !== 'draft') {
+            return redirect()->back()->with([
+                'msg' => 'Only draft single memos can be submitted for approval.',
+                'type' => 'error',
+            ]);
+        }
+
+        if ($activity->staff_id !== user_session('staff_id')) {
+            return redirect()->back()->with([
+                'msg' => 'Only the creator can submit this memo for approval.',
+                'type' => 'error',
+            ]);
+        }
+
+        $activity->submitForApproval();
+
+        return redirect()->route('activities.single-memos.show', $activity)->with([
+            'msg' => 'Single memo submitted for approval successfully.',
+            'type' => 'success',
+        ]);
+    }
+
+    /**
+     * Update approval status for single memo.
+     */
+    public function updateSingleMemoStatus(Request $request, Activity $activity): RedirectResponse
+    {
+        $request->validate([
+            'action' => 'required|in:approved,rejected,returned',
+            'comment' => 'nullable|string|max:1000',
+        ]);
+
+        $approvalService = app(ApprovalService::class);
+        
+        if (!$approvalService->canTakeAction($activity, user_session('staff_id'))) {
+            return redirect()->back()->with([
+                'msg' => 'You are not authorized to take this action.',
+                'type' => 'error',
+            ]);
+        }
+
+        $activity->updateApprovalStatus($request->action, $request->comment);
+
+        $message = match($request->action) {
+            'approved' => 'Single memo approved successfully.',
+            'rejected' => 'Single memo rejected.',
+            'returned' => 'Single memo returned for revision.',
+            default => 'Status updated successfully.'
+        };
+
+        return redirect()->route('activities.single-memos.show', $activity)->with([
+            'msg' => $message,
+            'type' => 'success',
+        ]);
+    }
+
+    /**
+     * Show approval status page for single memo.
+     */
+    public function showSingleMemoStatus(Activity $activity): View
+    {
+        $activity->load(['staff', 'matrix.division']);
+        
+        return view('activities.single-memos.status', compact('activity'));
     }
 }
