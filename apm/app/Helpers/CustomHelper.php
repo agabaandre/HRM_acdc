@@ -197,6 +197,9 @@ if (!function_exists('user_session')) {
                 $division_specific_access = false;
 
                 $current_approval_point = $current_approval_point->first();
+
+                if(!$current_approval_point)
+                 return false;
                 
                 if ($current_approval_point && $current_approval_point->is_division_specific) {
                     $division = $matrix->division;
