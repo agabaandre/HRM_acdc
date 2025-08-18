@@ -184,8 +184,8 @@ if (!function_exists('user_session')) {
                     ->where('oic_staff_id', "=", $user['staff_id'])
                     ->where('end_date', '>=', $today);
                 })
-            ->orderBy('id','desc')
-            ->pluck('workflow_dfn_id');
+            ->orderBy('id','desc');
+            //->pluck('workflow_dfn_id');
 
             
             dd(getFullSql($workflow_dfns));
