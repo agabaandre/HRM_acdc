@@ -140,11 +140,6 @@ class MatrixController extends Controller
         $actionableMatrices = $matrices->getCollection()->filter(function ($matrix) {
             return in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
         });
-
-        $actionedMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return in_array($matrix->overall_status, ['draft', 'pending', 'returned','approved']);
-        });
-
         $myDivisionMatrices = $matrices->getCollection()->filter(function ($matrix) {
             return $matrix->division_id == user_session('division_id');
         });
@@ -157,7 +152,6 @@ class MatrixController extends Controller
         });
 
         $filteredActionedMatrices = $matrices->filter(function ($matrix) {
-            dd(done_approving($matrix));
             return done_approving($matrix) ;
         });
 
@@ -167,7 +161,7 @@ class MatrixController extends Controller
         return view('matrices.index', [
             'matrices' => $matrices,
             'actionableMatrices' => $actionableMatrices,
-            'actionedMatrices' => $actionedMatrices,
+            'actionedMatrices' => $filteredActionedMatrices,
             'filteredActionableMatrices' => $filteredActionableMatrices,
             'filteredActionedMatrices' => $filteredActionedMatrices,
             'myDivisionMatrices' => $myDivisionMatrices,
