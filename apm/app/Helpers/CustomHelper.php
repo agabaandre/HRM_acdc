@@ -177,18 +177,18 @@ if (!function_exists('user_session')) {
             ->where('workflow_id',$matrix->forward_workflow_id)
             ->first();
 
-            $workflow_dfns = Approver::where('staff_id', $user['staff_id'])
-            ->where('workflow_dfn_id', $current_approval_point->id)
+            $workflow_dfns = Approver::where('staff_id',"=", $user['staff_id'])
+            ->where('workflow_dfn_id',"=", $current_approval_point->id)
             ->orWhere(function ($query) use ($today, $user,$current_approval_point) {
-                    $query ->where('workflow_dfn_id',$current_approval_point->id)
-                    ->where('oic_staff_id', $user['staff_id'])
+                    $query ->where('workflow_dfn_id',"=", $current_approval_point->id)
+                    ->where('oic_staff_id', "=", $user['staff_id'])
                     ->where('end_date', '>=', $today);
                 })
             ->orderBy('id','desc')
             ->pluck('workflow_dfn_id');
 
             
-            dd($user);
+            dd(getFullSql($workflow_dfns));
 
            
 
