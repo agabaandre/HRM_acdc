@@ -176,6 +176,9 @@ if (!function_exists('user_session')) {
             $current_approval_point = WorkflowDefinition::where('approval_order', $matrix->approval_level)
             ->where('workflow_id',$matrix->forward_workflow_id)
             ->first();
+
+            dd($current_approval_point->toArray());
+
            
             $workflow_dfns = Approver::where('staff_id', $user['staff_id'])
             ->where('workflow_dfn_id', $current_approval_point->id)
@@ -192,8 +195,7 @@ if (!function_exists('user_session')) {
             $is_at_my_approval_level =false;
 
             
-            dd($workflow_dfns->toArray());
-
+           
           
            //if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
