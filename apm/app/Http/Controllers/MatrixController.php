@@ -119,8 +119,7 @@ class MatrixController extends Controller
 
         $matrices = $query->latest()->paginate(10);
 
-        dd($matrices->toArray());
-
+        
        
         $matrices->getCollection()->transform(function ($matrix) {
             $matrix->total_activities = $matrix->activities->count();
@@ -154,6 +153,9 @@ class MatrixController extends Controller
         $filteredActionedMatrices = $actionedMatrices->filter(function ($matrix) {
             return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
         });
+
+        dd($filteredActionableMatrices->toArray());
+
     
         return view('matrices.index', [
             'matrices' => $matrices,
