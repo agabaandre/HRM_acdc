@@ -177,7 +177,7 @@ if (!function_exists('user_session')) {
             ->where('workflow_id',$matrix->forward_workflow_id)
             ->first();
 
-            dd($current_approval_point->toArray());
+            //dd($current_approval_point->toArray());
 
            
             $workflow_dfns = Approver::where('staff_id', $user['staff_id'])
