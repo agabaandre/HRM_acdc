@@ -102,13 +102,13 @@
                 @endif
                 <li class="nav-item" role="presentation">
                     <button class="nav-link {{ $myDivisionMatrices->count() == 0 ? 'active' : '' }}" id="actionable-tab" data-bs-toggle="tab" data-bs-target="#actionable" type="button" role="tab" aria-controls="actionable" aria-selected="{{ $myDivisionMatrices->count() == 0 ? 'true' : 'false' }}">
-                        <i class="bx bx-time me-2"></i> Actionable Matrices 
+                        <i class="bx bx-time me-2"></i> Pending Approval
                         <span class="badge bg-warning text-dark ms-2">{{ $filteredActionableMatrices->count() }}</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="actioned-tab" data-bs-toggle="tab" data-bs-target="#actioned" type="button" role="tab" aria-controls="actioned" aria-selected="false">
-                        <i class="bx bx-check-double me-2"></i> Actioned Matrices 
+                        <i class="bx bx-check-double me-2"></i> Approved Matrices 
                         <span class="badge bg-success ms-2">{{ $filteredActionedMatrices->count() }}</span>
                     </button>
                 </li>
