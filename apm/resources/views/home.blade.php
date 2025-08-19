@@ -151,6 +151,12 @@
   <div class="row justify-content-center dashboard-container">
     
     {{-- Quarterly Travel Matrix --}}
+    @php
+      $pendingMatrixCount = get_staff_unread_notifications_count();
+      $pendingNonTravelCount = get_staff_pending_action_count('non-travel');
+      $pendingSpecialMemoCount = get_staff_pending_action_count('special-memo');
+    @endphp
+
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
@@ -167,10 +173,9 @@
             </a>
             <a href="{{ route('activities.user-schedule') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              @php $pendingCount = get_staff_unread_notifications_count(); @endphp
-              @if($pendingCount > 0)
+              @if($pendingMatrixCount > 0)
                 <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
-                  {{ $pendingCount }}
+                  {{ $pendingMatrixCount }}
                 </span>
               @endif
               <span class="ms-2 bell-icon" style="position:static;">
@@ -186,20 +191,21 @@
           </div>
         </div>
         {{-- Pending action badge in card corner --}}
-        @if($pendingCount > 0)
+        @if($pendingMatrixCount > 0)
         <div class="pending-action-badge">
           <div class="bell-icon"><i class="fas fa-bell"></i></div>
           <span class="notification-count">
-            {{ $pendingCount }}
+            {{ $pendingMatrixCount }}
           </span>
         </div>
         @endif
       </div>
     </div>
 
+
     {{-- Non-Travel --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card">
+      <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
           <div class="dashboard-icon me-2"><i class="fas fa-walking"></i></div>
           <h6>Non-Travel</h6>
@@ -212,26 +218,39 @@
             <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
+            <a href="{{ url('non-travel') }}" class="btn btn-outline-primary btn-sm position-relative">
+              <i class="fas fa-file-alt"></i> Pending Approval
+              @if($pendingNonTravelCount > 0)
+                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
+                  {{ $pendingNonTravelCount }}
+                </span>
+              @endif
+              <span class="ms-2 bell-icon" style="position:static;">
+                <i class="fas fa-bell"></i>
+              </span>
+            </a>
             <a href="{{ url('non-travel') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Submitted (NT)
             </a>
             <a href="{{ url('non-travel') }}" class="btn btn-outline-info btn-sm">
               <i class="fas fa-list"></i> All Non-Travel
             </a>
-            <div class="pending-action-badge">
-              <div class="bell-icon"><i class="fas fa-bell"></i></div>
-              <span class="notification-count">
-                {{ get_staff_pending_action_count('non-travel') }}
-              </span>
-            </div>
           </div>
         </div>
+        @if($pendingNonTravelCount > 0)
+        <div class="pending-action-badge">
+          <div class="bell-icon"><i class="fas fa-bell"></i></div>
+          <span class="notification-count">
+            {{ $pendingNonTravelCount }}
+          </span>
+        </div>
+        @endif
       </div>
     </div>
 
     {{-- Special Memo --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card">
+      <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
           <div class="dashboard-icon me-2"><i class="fas fa-envelope-open-text"></i></div>
           <h6>Special Memo (SPM)</h6>
@@ -241,26 +260,36 @@
         <div class="menu-section">
           <h6>Quick Actions</h6>
           <div class="menu-links">
+            <a href="{{ url('special-memo') }}" class="btn btn-outline-primary btn-sm position-relative">
+              <i class="fas fa-file-alt"></i> Pending Approval
+              @if($pendingSpecialMemoCount > 0)
+                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
+                  {{ $pendingSpecialMemoCount }}
+                </span>
+              @endif
+              <span class="ms-2 bell-icon" style="position:static;">
+                <i class="fas fa-bell"></i>
+              </span>
+            </a>
             <a href="{{ url('special-memo') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Submitted
             </a>
             <a href="{{ url('special-memo') }}" class="btn btn-outline-info btn-sm">
               <i class="fas fa-list"></i> All SPMs
             </a>
-            <a href="{{ url('special-memo') }}" class="btn btn-outline-secondary btn-sm">
-              <i class="fas fa-handshake"></i> Shared SPMs
-            </a>
-            <div class="pending-action-badge">
-              <div class="bell-icon"><i class="fas fa-bell"></i></div>
-              <span class="notification-count">
-                {{ get_staff_pending_action_count('special-memo') }}
-              </span>
-            </div>
           </div>
         </div>
+        @if($pendingSpecialMemoCount > 0)
+        <div class="pending-action-badge">
+          <div class="bell-icon"><i class="fas fa-bell"></i></div>
+          <span class="notification-count">
+            {{ $pendingSpecialMemoCount }}
+          </span>
+        </div>
+        @endif
       </div>
     </div>
-
+  
     {{-- Request for Services --}}
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card">
