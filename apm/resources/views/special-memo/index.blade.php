@@ -38,17 +38,7 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label fw-semibold small mb-1">Priority</label>
-                                <select name="priority" class="form-select form-select-sm">
-                                    <option value="">All Priorities</option>
-                                    <option value="low" {{ request('priority') == 'low' ? 'selected' : '' }}>Low</option>
-                                    <option value="medium" {{ request('priority') == 'medium' ? 'selected' : '' }}>Medium</option>
-                                    <option value="high" {{ request('priority') == 'high' ? 'selected' : '' }}>High</option>
-                                    <option value="urgent" {{ request('priority') == 'urgent' ? 'selected' : '' }}>Urgent</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold small mb-1">Status</label>
                                 <select name="status" class="form-select form-select-sm">
                                     <option value="">All Statuses</option>
@@ -82,7 +72,6 @@
                                     <th>Subject</th>
                                     <th>Author</th>
                                     <th>Division</th>
-                                    <th width="90">Priority</th>
                                     <th width="90">Status</th>
                                     <th class="text-center" width="150">Actions</th>
                                 </tr>
@@ -107,19 +96,6 @@
                                         <td>{{ optional($memo->division)->division_name ?? '-' }}</td>
                                         <td>
                                             @php
-                                                $priorityBadgeClass = [
-                                                    'low' => 'bg-light text-dark',
-                                                    'medium' => 'bg-info',
-                                                    'high' => 'bg-warning',
-                                                    'urgent' => 'bg-danger',
-                                                ][$memo->priority] ?? 'bg-secondary';
-                                            @endphp
-                                            <span class="badge {{ $priorityBadgeClass }}">
-                                                {{ ucfirst($memo->priority) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            @php
                                                 $statusBadgeClass = [
                                                     'draft' => 'bg-secondary',
                                                     'pending' => 'bg-warning',
@@ -129,21 +105,39 @@
                                                 ][$memo->overall_status] ?? 'bg-secondary';
                                             @endphp
                                             <span class="badge {{ $statusBadgeClass }}">
-                                                @if($memo->is_draft)
+                                                @if($memo->overall_status === 'draft')
                                                     <i class="bx bx-edit me-1"></i>
                                                 @endif
                                                 {{ ucfirst($memo->overall_status) }}
-                                                @if($memo->is_draft)
+                                                @if($memo->overall_status === 'draft')
                                                     (Draft)
                                                 @endif
                                             </span>
+                                            @if($memo->overall_status === 'pending')
+                                                <br><small class="text-muted">Level {{ $memo->approval_level ?? 0 }}</small>
+                                                @if($memo->workflow_definition)
+                                                    <br><small class="text-muted">{{ $memo->workflow_definition->role ?? 'Role' }}</small>
+                                                @endif
+                                                @if($memo->current_actor)
+                                                    <br><small class="text-muted">Supervisor: {{ $memo->current_actor->fname . ' ' . $memo->current_actor->lname }}</small>
+                                                @endif
+                                            @elseif($memo->overall_status === 'draft')
+                                                <br><small class="text-muted">Ready to submit</small>
+                                            @elseif($memo->overall_status === 'returned')
+                                                <br><small class="text-muted">Needs revision</small>
+                                            @endif
                                         </td>
                                         <td class="text-center">
                                             <div class="d-inline-flex">
                                                 <a href="{{ route('special-memo.show', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="View Details">
                                                     <i class="bx bx-show"></i>
                                                 </a>
-                                                @if($memo->is_draft && $memo->staff_id == user_session('staff_id'))
+                                                @if($memo->overall_status === 'approved')
+                                                    <a href="{{ route('special-memo.print', $memo) }}" target="_blank" class="btn btn-sm btn-icon btn-outline-success me-1" data-bs-toggle="tooltip" title="Print PDF">
+                                                        <i class="bx bx-printer"></i>
+                                                    </a>
+                                                @endif
+                                                @if($memo->overall_status === 'draft' && $memo->staff_id == user_session('staff_id'))
                                                     <a href="{{ route('special-memo.edit', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="Edit">
                                                         <i class="bx bx-edit"></i>
                                                     </a>
@@ -153,7 +147,7 @@
                                                         <i class="bx bx-check-circle"></i>
                                                     </a>
                                                 @endif
-                                                @if($memo->is_draft && $memo->staff_id == user_session('staff_id'))
+                                                @if($memo->overall_status === 'draft' && $memo->staff_id == user_session('staff_id'))
                                                     <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline delete-form">
                                                         @csrf
                                                         @method('DELETE')
