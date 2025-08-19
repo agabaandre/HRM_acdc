@@ -69,12 +69,8 @@ if (!function_exists('get_pending_matrices_count')) {
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0)
             ->where(function($query) use ($staffId) {
-                // Check if user is an approver for the current workflow level
-                $query->whereHas('workflowDefinition.approvers', function($q) use ($staffId) {
-                    $q->where('staff_id', $staffId);
-                })
-                // Or check if user is division-specific approver
-                ->orWhereHas('division', function($q) use ($staffId) {
+                // Check if user is division-specific approver for the current level
+                $query->whereHas('division', function($q) use ($staffId) {
                     $q->where('division_head', $staffId)
                       ->orWhere('focal_person', $staffId)
                       ->orWhere('admin_assistant', $staffId)
@@ -144,21 +140,10 @@ if (!function_exists('get_pending_service_requests_count')) {
      */
     function get_pending_service_requests_count(int $staffId): int
     {
+        // For now, just return count of pending service requests
+        // TODO: Implement proper approval logic when ServiceRequest approval system is added
         return ServiceRequest::where('approval_status', 'pending')
             ->where('workflow_id', '!=', null)
-            ->where(function($query) use ($staffId) {
-                // Check if user is an approver for the current workflow level
-                $query->whereHas('workflowDefinition.approvers', function($q) use ($staffId) {
-                    $q->where('staff_id', $staffId);
-                })
-                // Or check if user is division-specific approver
-                ->orWhereHas('division', function($q) use ($staffId) {
-                    $q->where('division_head', $staffId)
-                      ->orWhere('focal_person', $staffId)
-                      ->orWhere('admin_assistant', $staffId)
-                      ->orWhere('finance_officer', $staffId);
-                });
-            })
             ->count();
     }
 }
@@ -172,22 +157,10 @@ if (!function_exists('get_pending_request_arf_count')) {
      */
     function get_pending_request_arf_count(int $staffId): int
     {
-        return RequestARF::where('overall_status', 'pending')
+        // For now, just return count of pending ARF requests
+        // TODO: Implement proper approval logic when RequestARF approval system is added
+        return RequestARF::where('status', 'submitted')
             ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0)
-            ->where(function($query) use ($staffId) {
-                // Check if user is an approver for the current workflow level
-                $query->whereHas('workflowDefinition.approvers', function($q) use ($staffId) {
-                    $q->where('staff_id', $staffId);
-                })
-                // Or check if user is division-specific approver
-                ->orWhereHas('division', function($q) use ($staffId) {
-                    $q->where('division_head', $staffId)
-                      ->orWhere('focal_person', $staffId)
-                      ->orWhere('admin_assistant', $staffId)
-                      ->orWhere('finance_officer', $staffId);
-                });
-            })
             ->count();
     }
 }

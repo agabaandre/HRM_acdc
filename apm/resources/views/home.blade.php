@@ -202,6 +202,12 @@
       </div>
     </div>
 
+    {{-- Non-Travel Memo --}}
+    <div class="col-lg-3 col-md-6">
+      <div class="dashboard-card position-relative">
+        <div class="d-flex align-items-center mb-2">
+          <div class="dashboard-icon me-2"><i class="fas fa-file-alt"></i></div>
+          <h6>Non-Travel Memo (NT)</h6>
         </div>
         <p>Manage activities that are not related to travel logistics.</p>
         
