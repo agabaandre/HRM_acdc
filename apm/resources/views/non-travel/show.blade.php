@@ -811,7 +811,7 @@
                 @include('partials.approval-trail', ['resource' => $nonTravel])
 
                 <!-- Submit for Approval -->
-                @if($nonTravel->overall_status === 'pending' && $nonTravel->staff_id == user_session('staff_id'))
+                @if($nonTravel->overall_status === 'draft' && $nonTravel->staff_id == user_session('staff_id'))
                     <div class="card sidebar-card border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
