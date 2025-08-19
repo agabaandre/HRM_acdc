@@ -4,6 +4,7 @@ if (!function_exists('show_midterm_approval_action')) {
     { 
        //dd($approval_trail);
         $staff_id = $current_user->staff_id ?? null;
+        //dd($ppa);
         $isSupervisor1 = isset($ppa->midterm_supervisor_1) && $ppa->midterm_supervisor_1 == $staff_id;
         $isSupervisor2 = isset($ppa->midterm_supervisor_2) && $ppa->midterm_supervisor_2 == $staff_id;
 
