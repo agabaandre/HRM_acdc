@@ -612,24 +612,28 @@
                 @endif
 
                 <!-- Enhanced Approval Actions -->
-                <!-- Debug Information -->
+                @if(config('app.debug'))
+                <!-- Debug Information - Only visible when APP_DEBUG=true -->
                 <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
                     <div class="card-header bg-transparent border-0 py-3">
                         <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
                             <i class="bx bx-bug"></i>
-                            Debug Information
+                            Debug Information (APP_DEBUG=true)
                         </h6>
                     </div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
+                                <h6 class="text-warning mb-3">Basic Information</h6>
                                 <p><strong>Current User ID:</strong> {{ user_session('staff_id') }}</p>
                                 <p><strong>Memo Staff ID:</strong> {{ $specialMemo->staff_id }}</p>
                                 <p><strong>Overall Status:</strong> {{ $specialMemo->overall_status }}</p>
                                 <p><strong>Approval Level:</strong> {{ $specialMemo->approval_level }}</p>
                                 <p><strong>Forward Workflow ID:</strong> {{ $specialMemo->forward_workflow_id }}</p>
+                                <p><strong>Is Draft:</strong> {{ $specialMemo->is_draft ? 'YES' : 'NO' }}</p>
                             </div>
                             <div class="col-md-6">
+                                <h6 class="text-warning mb-3">Approval Status</h6>
                                 <p><strong>Can Take Action:</strong> {{ can_take_action_generic($specialMemo) ? 'YES' : 'NO' }}</p>
                                 <p><strong>Is With Creator:</strong> {{ is_with_creator_generic($specialMemo) ? 'YES' : 'NO' }}</p>
                                 <p><strong>Done Approving:</strong> {{ done_approving_generic($specialMemo) ? 'YES' : 'NO' }}</p>
@@ -640,7 +644,7 @@
                             </div>
                         </div>
                         
-                        <!-- Simple Function Test -->
+                        <!-- Function Availability Test -->
                         <hr class="my-3">
                         <div class="row">
                             <div class="col-12">
@@ -675,8 +679,67 @@
                                 <p><strong>Is Returned:</strong> {{ $isReturned ? 'YES' : 'NO' }}</p>
                             </div>
                         </div>
+
+                        <!-- Submit for Approval Button Logic -->
+                        <hr class="my-3">
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="text-warning">Submit Button Logic:</h6>
+                                <p><strong>Button Should Show:</strong> {{ ($isDraft && $isCreator) ? 'YES' : 'NO' }}</p>
+                                <p><strong>Reason:</strong> 
+                                    @if($isDraft && $isCreator)
+                                        Memo is draft AND user is creator
+                                    @elseif(!$isDraft)
+                                        Memo is not draft (status: {{ $specialMemo->overall_status }})
+                                    @elseif(!$isCreator)
+                                        User is not creator (User: {{ $currentUserId }}, Creator: {{ $specialMemo->staff_id }})
+                                    @else
+                                        Unknown condition
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Workflow Definition Details -->
+                        @if($specialMemo->workflow_definition)
+                        <hr class="my-3">
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="text-warning">Workflow Definition Details:</h6>
+                                <p><strong>Definition ID:</strong> {{ $specialMemo->workflow_definition->id }}</p>
+                                <p><strong>Workflow ID:</strong> {{ $specialMemo->workflow_definition->workflow_id }}</p>
+                                <p><strong>Approval Order:</strong> {{ $specialMemo->workflow_definition->approval_order }}</p>
+                                <p><strong>Role:</strong> {{ $specialMemo->workflow_definition->role }}</p>
+                                <p><strong>Is Division Specific:</strong> {{ $specialMemo->workflow_definition->is_division_specific ? 'YES' : 'NO' }}</p>
+                                @if($specialMemo->workflow_definition->is_division_specific)
+                                    <p><strong>Division Reference Column:</strong> {{ $specialMemo->workflow_definition->division_reference_column }}</p>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
+
+                        <!-- Current Actor Details -->
+                        @if($specialMemo->current_actor)
+                        <hr class="my-3">
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="text-warning">Current Actor Details:</h6>
+                                <p><strong>Actor ID:</strong> {{ $specialMemo->current_actor->staff_id }}</p>
+                                <p><strong>Name:</strong> {{ $specialMemo->current_actor->fname }} {{ $specialMemo->current_actor->lname }}</p>
+                            </div>
+                        </div>
+                        @else
+                        <hr class="my-3">
+                        <div class="row">
+                            <div class="col-12">
+                                <h6 class="text-warning">Current Actor Details:</h6>
+                                <p><strong>Current Actor:</strong> NULL (No approver assigned)</p>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
+                @endif
 
                 @if(can_take_action_generic($specialMemo))
                     <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
