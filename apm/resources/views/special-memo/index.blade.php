@@ -2,226 +2,231 @@
 
 @section('title', 'Special Memos')
 
+@section('header', 'Special Memos')
+
+@section('header-actions')
+<div class="d-flex gap-2">
+    <a href="{{ route('special-memo.create') }}" class="btn btn-success shadow-sm">
+        <i class="bx bx-plus-circle me-1"></i> Create New Memo
+    </a>
+</div>
+@endsection
+
 @section('content')
-<div class="container-fluid p-0">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-white py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 fw-bold text-primary">Special Memos</h6>
-                    <a href="{{ route('special-memo.create') }}" class="btn btn-primary btn-sm px-3">
-                        <i class="bx bx-plus-circle me-1"></i> New Special Memo
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h5 class="mb-0"><i class="bx bx-list-ul me-2 text-primary"></i>All Special Memos</h5>
+            </div>
+            <div class="col-md-6">
+                <form action="{{ route('special-memo.index') }}" method="GET" class="d-flex gap-2 justify-content-end">
+                    <select name="staff_id" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                        <option value="">All Staff</option>
+                        @foreach($staff as $member)
+                            <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
+                                {{ $member->fname }} {{ $member->lname }}
+                            </option>
+                        @endforeach
+                    </select>
+                    
+                    <select name="division_id" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                        <option value="">All Divisions</option>
+                        @foreach($divisions as $division)
+                            <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
+                                {{ $division->division_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    
+                    <select name="status" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                        <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
+                    </select>
+                    
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                        <i class="bx bx-filter-alt"></i> Filter
+                    </button>
+                    
+                    <a href="{{ route('special-memo.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bx bx-reset"></i> Reset
                     </a>
-                </div>
-                <div class="card-body">
-                    <div class="mb-4">
-                        <form action="{{ route('special-memo.index') }}" method="GET" class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold small mb-1">Staff</label>
-                                <select name="staff_id" class="form-select form-select-sm">
-                                    <option value="">All Staff</option>
-                                    @foreach($staff as $s)
-                                        <option value="{{ $s->id }}" {{ request('staff_id') == $s->id ? 'selected' : '' }}>
-                                            {{ $s->first_name }} {{ $s->last_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold small mb-1">Division</label>
-                                <select name="division_id" class="form-select form-select-sm">
-                                    <option value="">All Divisions</option>
-                                    @foreach($divisions as $division)
-                                        <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
-                                            {{ $division->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold small mb-1">Status</label>
-                                <select name="status" class="form-select form-select-sm">
-                                    <option value="">All Statuses</option>
-                                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                                    <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                    <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <div class="d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="bx bx-filter-alt me-1"></i> Filter
-                                    </button>
-                                    <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary btn-sm">
-                                        <i class="bx bx-reset me-1"></i> Reset
-                                    </a>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-center" width="60">ID</th>
-                                    {{-- <th width="120">Memo Number</th> --}}
-                                    <th width="110">Date</th>
-                                    <th>Subject</th>
-                                    <th>Author</th>
-                                    <th>Division</th>
-                                    <th width="90">Status</th>
-                                    <th class="text-center" width="150">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($specialMemos as $memo)
-                                    <tr>
-                                         <td class="text-center">{{ $memo->id }}</td>
-                                       {{-- <td>
-                                            <span class="fw-medium">{{ $memo->memo_number }}</span>
-                                        </td> --}}
-                                        <td>{{ $memo->formatted_dates }}</td>
-                                        <td>
-                                            <a href="{{ route('special-memo.show', $memo) }}" class="text-decoration-none fw-medium text-dark">
-                                                {{ Str::limit($memo->activity_title, 50) }}
-                                            </a>
-                                        </td>
-                                        @php 
-                                      
-                                        @endphp
-                                        <td>{{ optional($memo->staff)->fname ?? '-' }} {{ optional($memo->staff)->lname ?? '' }}</td>
-                                        <td>{{ optional($memo->division)->division_name ?? '-' }}</td>
-                                        <td>
-                                            @php
-                                                $statusBadgeClass = [
-                                                    'draft' => 'bg-secondary',
-                                                    'pending' => 'bg-warning',
-                                                    'approved' => 'bg-success',
-                                                    'rejected' => 'bg-danger',
-                                                    'returned' => 'bg-info',
-                                                ][$memo->overall_status] ?? 'bg-secondary';
-                                            @endphp
-                                            <span class="badge {{ $statusBadgeClass }}">
-                                                @if($memo->overall_status === 'draft')
-                                                    <i class="bx bx-edit me-1"></i>
-                                                @endif
-                                                {{ ucfirst($memo->overall_status) }}
-                                                @if($memo->overall_status === 'draft')
-                                                    (Draft)
-                                                @endif
-                                            </span>
-                                            @if($memo->overall_status === 'pending')
-                                                <br><small class="text-muted">Level {{ $memo->approval_level ?? 0 }}</small>
-                                                @if($memo->workflow_definition)
-                                                    <br><small class="text-muted">{{ $memo->workflow_definition->role ?? 'Role' }}</small>
-                                                @endif
-                                                @if($memo->current_actor)
-                                                    <br><small class="text-muted">Supervisor: {{ $memo->current_actor->fname . ' ' . $memo->current_actor->lname }}</small>
-                                                @endif
-                                            @elseif($memo->overall_status === 'draft')
-                                                <br><small class="text-muted">Ready to submit</small>
-                                            @elseif($memo->overall_status === 'returned')
-                                                <br><small class="text-muted">Needs revision</small>
-                                            @endif
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="d-inline-flex">
-                                                <a href="{{ route('special-memo.show', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="View Details">
-                                                    <i class="bx bx-show"></i>
-                                                </a>
-                                                @if($memo->overall_status === 'approved')
-                                                    <a href="{{ route('special-memo.print', $memo) }}" target="_blank" class="btn btn-sm btn-icon btn-outline-success me-1" data-bs-toggle="tooltip" title="Print PDF">
-                                                        <i class="bx bx-printer"></i>
-                                                    </a>
-                                                @endif
-                                                @if($memo->overall_status === 'draft' && $memo->staff_id == user_session('staff_id'))
-                                                    <a href="{{ route('special-memo.edit', $memo) }}" class="btn btn-sm btn-icon btn-outline-primary me-1" data-bs-toggle="tooltip" title="Edit">
-                                                        <i class="bx bx-edit"></i>
-                                                    </a>
-                                                @endif
-                                                @if(can_take_action_generic($memo))
-                                                    <a href="{{ route('special-memo.status', $memo) }}" class="btn btn-sm btn-icon btn-outline-success me-1" data-bs-toggle="tooltip" title="Approval Status">
-                                                        <i class="bx bx-check-circle"></i>
-                                                    </a>
-                                                @endif
-                                                @if($memo->overall_status === 'draft' && $memo->staff_id == user_session('staff_id'))
-                                                    <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline delete-form">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm btn-icon btn-outline-danger" data-bs-toggle="tooltip" title="Delete">
-                                                            <i class="bx bx-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="9" class="text-center py-4">
-                                            <div class="d-flex flex-column align-items-center">
-                                                <i class="bx bx-file-find text-secondary mb-2" style="font-size: 2rem;"></i>
-                                                <h6 class="text-muted mb-1">No special memos found</h6>
-                                                <p class="text-muted small">Try adjusting your search or create a new special memo</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="d-flex justify-content-end mt-3">
-                        {{ $specialMemos->appends(request()->except('page'))->links() }}
-                    </div>
-
-                </div>
+                </form>
             </div>
         </div>
     </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="fw-semibold text-center" style="width: 60px;">No.</th>
+                        <th class="fw-semibold">Title</th>
+                        <th class="fw-semibold">Request Type</th>
+                        <th class="fw-semibold">Responsible Staff</th>
+                        <th class="fw-semibold">Division</th>
+                        <th class="fw-semibold">Date</th>
+                        <th class="fw-semibold text-center">Status</th>
+                        <th class="fw-semibold text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($specialMemos as $memo)
+                        <tr>
+                            <td class="text-center fw-bold text-muted">
+                                {{ ($specialMemos->currentPage() - 1) * $specialMemos->perPage() + $loop->iteration }}
+                            </td>
+                            <td>
+                                <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                                <small class="text-muted">{{ $memo->workplan_activity_code ?? 'No Code' }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info text-dark">
+                                    <i class="bx bx-category me-1"></i>
+                                    {{ $memo->requestType->name ?? 'N/A' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span>{{ $memo->staff->fname ?? 'Unknown' }} {{ $memo->staff->lname ?? '' }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    <i class="bx bx-building me-1"></i>
+                                    {{ $memo->division->division_name ?? 'N/A' }}
+                                </span>
+                            </td>
+                            <td>{{ $memo->date_from ? $memo->date_from->format('M d, Y') : 'N/A' }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-{{ $memo->overall_status === 'approved' ? 'success' : ($memo->overall_status === 'pending' ? 'warning' : ($memo->overall_status === 'rejected' ? 'danger' : 'secondary')) }}">
+                                    {{ ucfirst($memo->overall_status ?? 'draft') }}
+                                </span>
+                                @if($memo->overall_status === 'pending')
+                                    <br><small class="text-muted">Level {{ $memo->approval_level ?? 0 }}</small>
+                                    @if($memo->workflow_definition)
+                                        <br><small class="text-muted">{{ $memo->workflow_definition->role ?? 'Role' }}</small>
+                                    @endif
+                                    @if($memo->current_actor)
+                                        <br><small class="text-muted">Supervisor: {{ $memo->current_actor->fname . ' ' . $memo->current_actor->lname }}</small>
+                                    @endif
+                                @elseif($memo->overall_status === 'draft')
+                                    <br><small class="text-muted">Ready to submit</small>
+                                @elseif($memo->overall_status === 'returned')
+                                    <br><small class="text-muted">Needs revision</small>
+                                @endif
+                            </td>
+                            <td>
+                                <div class="d-flex justify-content-center gap-1">
+                                    <a href="{{ route('special-memo.show', $memo) }}" 
+                                       class="btn btn-sm btn-info"
+                                       data-bs-toggle="tooltip"
+                                       title="View Details">
+                                        <i class="bx bx-show-alt"></i>
+                                    </a>
+                                    @if($memo->overall_status === 'approved')
+                                        <a href="{{ route('special-memo.print', $memo) }}" 
+                                           target="_blank"
+                                           class="btn btn-sm btn-success"
+                                           data-bs-toggle="tooltip"
+                                           title="Print PDF">
+                                            <i class="bx bx-printer"></i>
+                                        </a>
+                                    @endif
+                                    @if($memo->overall_status === 'pending')
+                                        <a href="{{ route('special-memo.status', $memo) }}" 
+                                           class="btn btn-sm btn-outline-info"
+                                           data-bs-toggle="tooltip"
+                                           title="View Approval Status">
+                                            <i class="bx bx-info-circle"></i>
+                                        </a>
+                                    @endif
+                                    @if($memo->overall_status === 'draft' || $memo->overall_status === 'returned')
+                                        <a href="{{ route('special-memo.edit', $memo) }}"
+                                           class="btn btn-sm btn-warning"
+                                           data-bs-toggle="tooltip"
+                                           title="Edit Memo">
+                                            <i class="bx bx-edit"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal{{ $memo->id }}"
+                                                data-bs-toggle="tooltip"
+                                                title="Delete Memo">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                    @endif
+                                </div>
+
+                                <!-- Delete Modal -->
+                                <div class="modal fade" id="deleteModal{{ $memo->id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title"><i class="bx bx-trash me-1"></i> Delete Special Memo</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="alert alert-warning mb-3">
+                                                    <i class="bx bx-error me-1"></i> Are you sure you want to delete this memo? This action cannot be undone.
+                                                </div>
+                                                <div class="card border">
+                                                    <div class="card-body p-3">
+                                                        <p class="mb-1"><strong><i class="bx bx-heading me-1 text-primary"></i> Title:</strong> {{ $memo->activity_title }}</p>
+                                                        <p class="mb-0"><strong><i class="bx bx-calendar me-1 text-primary"></i> Date:</strong> {{ $memo->date_from ? $memo->date_from->format('Y-m-d') : 'N/A' }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="bx bx-trash me-1"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="bx bx-file-blank fs-1 mb-3"></i>
+                                    <p class="h5 text-muted">No special memos found</p>
+                                    <p class="small mt-2 text-muted">Click the "Create New Memo" button to create your first memo</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="card-footer bg-white">
+        <div class="d-flex justify-content-end">
+            {{ $specialMemos->links() }}
+        </div>
+    </div>
 </div>
-@endsection
 
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Initialize Select2
-        $('.form-select').select2({
-            width: '100%',
-            dropdownAutoWidth: true,
-        });
-        
         // Initialize tooltips
         $('[data-bs-toggle="tooltip"]').tooltip();
-        
-        // Setup delete confirmation
-        $('.delete-form').on('submit', function(e) {
-            e.preventDefault();
-            const form = this;
-            
-            Swal.fire({
-                title: 'Are you sure?',
-                text: "This will permanently delete this special memo.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: '<i class="bx bx-trash me-1"></i> Yes, delete it!',
-                cancelButtonText: '<i class="bx bx-x me-1"></i> Cancel',
-                reverseButtons: true,
-                customClass: {
-                    confirmButton: 'btn btn-danger',
-                    cancelButton: 'btn btn-secondary'
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        });
     });
 </script>
 @endpush
+@endsection

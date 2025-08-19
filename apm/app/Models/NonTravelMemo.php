@@ -36,6 +36,7 @@ class NonTravelMemo extends Model
         'justification',
         'budget_breakdown',
         'attachment',
+        'is_draft',
     ];
 
     protected $appends = ['workflow_definition', 'current_actor'];
@@ -61,6 +62,7 @@ class NonTravelMemo extends Model
             'budget_id' => 'array',
             'budget_breakdown' => 'array',
             'attachment' => 'array',
+            'is_draft' => 'boolean',
         ];
     }
 

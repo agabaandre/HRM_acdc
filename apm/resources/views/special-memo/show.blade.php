@@ -974,7 +974,7 @@
                 @include('partials.approval-trail', ['resource' => $specialMemo])
 
                 <!-- Submit for Approval -->
-                @if(function_exists('is_with_creator_generic') && is_with_creator_generic($specialMemo))
+                @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id'))
                     <div class="card sidebar-card border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
