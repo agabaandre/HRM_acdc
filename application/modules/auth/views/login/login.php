@@ -61,7 +61,7 @@
          <div class="logo col-md-12" style="text-align:center;">
          <img src="<?php echo base_url(); ?>assets/images/AU_CDC_Logo-800.png" width="200">
          </div>
-           <h1 class="h3 mb-3 font-weight-normal" style="text-align: center">Staff Tracker Sign in</h1>
+           <h1 class="h3 mb-3 font-weight-normal" style="text-align: center">Africa CDC Central Business Platform Sign in</h1>
         
 
             <?php 

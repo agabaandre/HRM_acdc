@@ -17,7 +17,7 @@
   }
 
   .dashboard-card {
-    height: 290px;
+    height: 310px;
     padding: 1.2rem;
     transition: all 0.3s ease-in-out;
     font-size: 0.85rem;
@@ -152,7 +152,7 @@
     
     {{-- Quarterly Travel Matrix --}}
     <div class="col-lg-3 col-md-6">
-      <div class="dashboard-card">
+      <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
           <div class="dashboard-icon me-2"><i class="fas fa-calendar-alt"></i></div>
           <h6>Quarterly Travel Matrix (QM)</h6>
@@ -165,20 +165,35 @@
             <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
+            <a href="{{ route('activities.user-schedule') }}" class="btn btn-outline-primary btn-sm position-relative">
+              <i class="fas fa-tasks"></i> Pending Approval
+              @php $pendingCount = get_staff_unread_notifications_count(); @endphp
+              @if($pendingCount > 0)
+                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
+                  {{ $pendingCount }}
+                </span>
+              @endif
+              <span class="ms-2 bell-icon" style="position:static;">
+                <i class="fas fa-bell"></i>
+              </span>
+            </a>
             <a href="{{ route('activities.user-schedule') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-tasks"></i> Activities
             </a>
             <a href="{{ route('matrices.index') }}" class="btn btn-outline-info btn-sm">
               <i class="fas fa-list"></i> All QMs
             </a>
-            <div class="pending-action-badge">
-              <div class="bell-icon"><i class="fas fa-bell"></i></div>
-              <span class="notification-count">
-                {{ get_staff_unread_notifications_count() }}
-              </span>
-            </div>
           </div>
         </div>
+        {{-- Pending action badge in card corner --}}
+        @if($pendingCount > 0)
+        <div class="pending-action-badge">
+          <div class="bell-icon"><i class="fas fa-bell"></i></div>
+          <span class="notification-count">
+            {{ $pendingCount }}
+          </span>
+        </div>
+        @endif
       </div>
     </div>
 
