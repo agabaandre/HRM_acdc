@@ -6,9 +6,9 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-   @if($matrix->division_id == user_session()['division_id'] && $matrix->overall_status=='draft')
+   @if($matrix->division_id == user_session()['division_id'] )
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
-            <i class="bx bx-plus-circle me-1"></i> Add Activity
+            <i class="bx bx-plus-circle me-1"></i> {{ $matrix->overall_status=='draft' ? 'Add Activity' : 'Add Single Memo' }}
         </a>
     @endif
      @if(still_with_creator($matrix))
@@ -93,7 +93,7 @@
                                 <td>
                                     @if(can_approve_activity($activity))
                                     <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }}">
-                                        {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : ucfirst($activity->status) ) }}
+                                        {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : 'Pending' ) }}
                                     </span>
                                     @else
                                     <span class="badge bg-success">No Action Required</span>

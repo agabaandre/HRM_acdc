@@ -1,7 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Add Activity')
-@section('header', "Add Activity - {{$matrix->quarter}} {{$matrix->year}}")
+@php
+    $title = $matrix->overall_status=='draft' ? ' Activity' : ' Single Memo';
+    $is_single_memo = $matrix->overall_status=='draft' ? false : true;
+@endphp
+
+@section('title', $title)
+@section('header', "Add " . $title . " - {{$matrix->quarter}} {{$matrix->year}}")
 
 
 
@@ -15,7 +20,7 @@
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
             <h5 class="mb-0 text-success">
-                <i class="fas fa-calendar-plus me-2"></i> Activity Details
+                <i class="fas fa-calendar-plus me-2"></i> {{ $title }} Details
             </h5>
         </div>
 
@@ -23,7 +28,9 @@
             <form action="{{ route('matrices.activities.store', $matrix) }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf
 
-                @includeIf('activities.form')
+                @includeIf('activities.form', ['title' => $title])
+
+                <input type="hidden" name="is_single_memo" value="{{ $is_single_memo }}">
 
                 <div class="row g-4 mt-2">
                     <div class="col-md-4 fund_type">
@@ -119,7 +126,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
                    
                     <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
-                        <i class="bx bx-check-circle me-1"></i> Save Activity
+                        <i class="bx bx-check-circle me-1"></i> Save {{ $title }}
                     </button>
                 </div>
             </form>

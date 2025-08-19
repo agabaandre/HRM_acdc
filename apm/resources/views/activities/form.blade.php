@@ -4,7 +4,7 @@
         <div class="row g-4">
         <div class="col-md-6">
                 <label for="activity_title" class="form-label fw-semibold">
-                    <i class="fas fa-pen-nib me-1 text-success"></i> Activity Title <span class="text-danger">*</span>
+                    <i class="fas fa-pen-nib me-1 text-success"></i> {{ $title ?? 'Activity' }} Title <span class="text-danger">*</span>
                 </label>
                 <input type="text" name="activity_title" id="activity_title" class="form-control " value="{{ old('activity_title', $activity->activity_title ?? '') }}" required>
             </div>
