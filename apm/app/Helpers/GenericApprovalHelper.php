@@ -26,7 +26,12 @@ if (!function_exists('can_take_action_generic')) {
             return false;
         }
 
-        if (is_with_creator_generic($model) || !$model->forward_workflow_id) {
+        // Check if user is the creator and has no special approval authority
+        $isCreator = is_with_creator_generic($model);
+        $hasNoWorkflow = !$model->forward_workflow_id;
+        
+        // If user is creator with no workflow, they can't approve
+        if ($isCreator && $hasNoWorkflow) {
             return false;
         }
 
@@ -120,8 +125,13 @@ if (!function_exists('can_take_action_generic')) {
                  $model->approval_level == $current_approval_point->approval_order) : false;
         }
 
-        $canTakeAction = (($is_at_my_approval_level || is_with_creator_generic($model) || $division_specific_access) && 
-                $model->overall_status !== 'approved');
+        // Allow approval if:
+        // 1. User is at the correct approval level, OR
+        // 2. User has division-specific access (even if they are the creator), OR
+        // 3. User is not the creator but has workflow access
+        $canTakeAction = (($is_at_my_approval_level || $division_specific_access || 
+                          (!$isCreator && $workflow_dfns->isNotEmpty())) && 
+                          $model->overall_status !== 'approved');
 
         // Debug: Log the final decision
         if (config('app.debug')) {
@@ -129,8 +139,9 @@ if (!function_exists('can_take_action_generic')) {
                 'model_id' => $model->id,
                 'user_id' => $userId,
                 'is_at_my_approval_level' => $is_at_my_approval_level,
-                'is_with_creator' => is_with_creator_generic($model),
+                'is_with_creator' => $isCreator,
                 'division_specific_access' => $division_specific_access,
+                'has_workflow_access' => $workflow_dfns->isNotEmpty(),
                 'overall_status' => $model->overall_status,
                 'can_take_action' => $canTakeAction
             ]);

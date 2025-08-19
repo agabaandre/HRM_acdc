@@ -64,8 +64,23 @@ if (!function_exists('get_pending_matrices_count')) {
      */
     function get_pending_matrices_count(int $staffId): int
     {
-        return Matrix::where('overall_status', '!=', 'approved')
-            ->where('overall_status', '!=', 'draft')
+        // Count matrices that are pending and the current user can approve
+        return Matrix::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0)
+            ->where(function($query) use ($staffId) {
+                // Check if user is an approver for the current workflow level
+                $query->whereHas('workflowDefinition.approvers', function($q) use ($staffId) {
+                    $q->where('staff_id', $staffId);
+                })
+                // Or check if user is division-specific approver
+                ->orWhereHas('division', function($q) use ($staffId) {
+                    $q->where('division_head', $staffId)
+                      ->orWhere('focal_person', $staffId)
+                      ->orWhere('admin_assistant', $staffId)
+                      ->orWhere('finance_officer', $staffId);
+                });
+            })
             ->count();
     }
 }
@@ -79,9 +94,19 @@ if (!function_exists('get_pending_non_travel_memo_count')) {
      */
     function get_pending_non_travel_memo_count(int $staffId): int
     {
-        // This should be implemented based on your NonTravelMemo model structure
-        // For now, returning 0 as placeholder
-        return 0;
+        return NonTravelMemo::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0)
+            ->where(function($query) use ($staffId) {
+                // Check if user is division-specific approver for the current level
+                $query->whereHas('division', function($q) use ($staffId) {
+                    $q->where('division_head', $staffId)
+                      ->orWhere('focal_person', $staffId)
+                      ->orWhere('admin_assistant', $staffId)
+                      ->orWhere('finance_officer', $staffId);
+                });
+            })
+            ->count();
     }
 }
 
@@ -94,9 +119,19 @@ if (!function_exists('get_pending_special_memo_count')) {
      */
     function get_pending_special_memo_count(int $staffId): int
     {
-        // This should be implemented based on your SpecialMemo model structure
-        // For now, returning 0 as placeholder
-        return 0;
+        return SpecialMemo::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0)
+            ->where(function($query) use ($staffId) {
+                // Check if user is division-specific approver for the current level
+                $query->whereHas('division', function($q) use ($staffId) {
+                    $q->where('division_head', $staffId)
+                      ->orWhere('focal_person', $staffId)
+                      ->orWhere('admin_assistant', $staffId)
+                      ->orWhere('finance_officer', $staffId);
+                });
+            })
+            ->count();
     }
 }
 
@@ -109,9 +144,22 @@ if (!function_exists('get_pending_service_requests_count')) {
      */
     function get_pending_service_requests_count(int $staffId): int
     {
-        // This should be implemented based on your ServiceRequest model structure
-        // For now, returning 0 as placeholder
-        return 0;
+        return ServiceRequest::where('approval_status', 'pending')
+            ->where('workflow_id', '!=', null)
+            ->where(function($query) use ($staffId) {
+                // Check if user is an approver for the current workflow level
+                $query->whereHas('workflowDefinition.approvers', function($q) use ($staffId) {
+                    $q->where('staff_id', $staffId);
+                })
+                // Or check if user is division-specific approver
+                ->orWhereHas('division', function($q) use ($staffId) {
+                    $q->where('division_head', $staffId)
+                      ->orWhere('focal_person', $staffId)
+                      ->orWhere('admin_assistant', $staffId)
+                      ->orWhere('finance_officer', $staffId);
+                });
+            })
+            ->count();
     }
 }
 
@@ -124,9 +172,23 @@ if (!function_exists('get_pending_request_arf_count')) {
      */
     function get_pending_request_arf_count(int $staffId): int
     {
-        // This should be implemented based on your RequestARF model structure
-        // For now, returning 0 as placeholder
-        return 0;
+        return RequestARF::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0)
+            ->where(function($query) use ($staffId) {
+                // Check if user is an approver for the current workflow level
+                $query->whereHas('workflowDefinition.approvers', function($q) use ($staffId) {
+                    $q->where('staff_id', $staffId);
+                })
+                // Or check if user is division-specific approver
+                ->orWhereHas('division', function($q) use ($staffId) {
+                    $q->where('division_head', $staffId)
+                      ->orWhere('focal_person', $staffId)
+                      ->orWhere('admin_assistant', $staffId)
+                      ->orWhere('finance_officer', $staffId);
+                });
+            })
+            ->count();
     }
 }
 
@@ -139,9 +201,25 @@ if (!function_exists('get_pending_single_memo_count')) {
      */
     function get_pending_single_memo_count(int $staffId): int
     {
-        // This should be implemented based on your SingleMemo model structure
-        // For now, returning 0 as placeholder
-        return 0;
+        // Single memos are activities, so check activity approval trails
+        return DB::table('activities')
+            ->join('approval_trails', function($join) {
+                $join->on('activities.id', '=', 'approval_trails.model_id')
+                     ->where('approval_trails.model_type', 'App\\Models\\Activity');
+            })
+            ->where('activities.overall_status', 'pending')
+            ->where('activities.forward_workflow_id', '!=', null)
+            ->where('activities.approval_level', '>', 0)
+            ->where('approval_trails.staff_id', '!=', $staffId) // Not approved by current user
+            ->whereNotExists(function($query) use ($staffId) {
+                $query->select(DB::raw(1))
+                      ->from('approval_trails as at2')
+                      ->whereRaw('at2.model_id = activities.id')
+                      ->where('at2.model_type', 'App\\Models\\Activity')
+                      ->where('at2.staff_id', $staffId)
+                      ->where('at2.action', 'approved');
+            })
+            ->count();
     }
 }
 
@@ -154,8 +232,8 @@ if (!function_exists('get_pending_change_request_count')) {
      */
     function get_pending_change_request_count(int $staffId): int
     {
-        // This should be implemented based on your ChangeRequest model structure
-        // For now, returning 0 as placeholder
+        // Change requests are typically activities with specific request types
+        // For now, return 0 as this needs to be implemented based on your change request structure
         return 0;
     }
 }
