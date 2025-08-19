@@ -124,7 +124,9 @@
                                         <br><small class="text-muted">{{ $memo->workflow_definition->role ?? 'Role' }}</small>
                                     @endif
                                     @if($memo->current_actor)
-                                        <br><small class="text-muted">Supervisor: {{ $memo->current_actor->fname . ' ' . $memo->current_actor->lname }}</small>
+                                        <br><small class="text-muted text-primary fw-semibold">Approver: {{ $memo->current_actor->fname . ' ' . $memo->current_actor->lname }}</small>
+                                    @else
+                                        <br><small class="text-muted text-warning">Approver: Not assigned</small>
                                     @endif
                                 @elseif($memo->overall_status === 'draft')
                                     <br><small class="text-muted">Ready to submit</small>

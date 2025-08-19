@@ -149,8 +149,13 @@ class NonTravelMemo extends Model
                     $staff_id = $this->division->{$role->division_reference_column};
                 }
             } else {
+                // Get the first active approver for this workflow definition
                 $approver = Approver::select('staff_id')
                     ->where('workflow_dfn_id', $role->id)
+                    ->where(function($query) {
+                        $query->whereNull('end_date')
+                              ->orWhere('end_date', '>=', now());
+                    })
                     ->first();
                 if ($approver) {
                     $staff_id = $approver->staff_id;
