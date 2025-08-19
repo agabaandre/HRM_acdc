@@ -75,7 +75,7 @@ class MatrixController extends Controller
                     ->orWhere(function($subQ2) use ($userStaffId) {
                         $subQ2->where('approval_level', $userStaffId)
                               ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
-                                $trailQ->where('staff_id', $userStaffId);
+                                $trailQ->where('staff_id', '=',$userStaffId);
                               });
                     });
                 });
@@ -85,7 +85,7 @@ class MatrixController extends Controller
             if ($userStaffId) {
                 $q->orWhere(function($subQ) use ($userStaffId) {
                     $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
-                        $workflowQ->where('is_division_specific', 0)
+                        $workflowQ->where('is_division_specific','=', 0)
                                   ->where('approval_order', \DB::raw('matrices.approval_level'))
                                   ->whereHas('approvers', function($approverQ) use ($userStaffId) {
                                       $approverQ->where('staff_id', $userStaffId);
@@ -114,10 +114,15 @@ class MatrixController extends Controller
         if ($request->filled('division')) {
             $query->where('id', $request->division);
         }
-    
+
+       //  dd(getFullSql($query));
+
         $matrices = $query->latest()->paginate(10);
 
-    
+        //dd($matrices->toArray());
+
+        
+       
         $matrices->getCollection()->transform(function ($matrix) {
             $matrix->total_activities = $matrix->activities->count();
             $matrix->total_participants = $matrix->activities->sum('total_participants');
@@ -129,32 +134,34 @@ class MatrixController extends Controller
             return $matrix;
         });
 
+        
+       
         // Separate matrices into actionable and actioned lists
         $actionableMatrices = $matrices->getCollection()->filter(function ($matrix) {
             return in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
         });
-
-        $actionedMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return !in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
-        });
-
         $myDivisionMatrices = $matrices->getCollection()->filter(function ($matrix) {
             return $matrix->division_id == user_session('division_id');
         });
 
+
         // Filter matrices based on CustomHelper functions for accurate counts
         $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
-            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
+             //dd(can_take_action($matrix));
+            return can_take_action($matrix)  || still_with_creator($matrix);
         });
 
-        $filteredActionedMatrices = $actionedMatrices->filter(function ($matrix) {
-            return can_take_action($matrix) || done_approving($matrix) || still_with_creator($matrix);
+        $filteredActionedMatrices = $matrices->filter(function ($matrix) {
+            return done_approving($matrix) ;
         });
+
+      //  dd($filteredActionedMatrices->toArray());
+
     
         return view('matrices.index', [
             'matrices' => $matrices,
             'actionableMatrices' => $actionableMatrices,
-            'actionedMatrices' => $actionedMatrices,
+            'actionedMatrices' => $filteredActionedMatrices,
             'filteredActionableMatrices' => $filteredActionableMatrices,
             'filteredActionedMatrices' => $filteredActionedMatrices,
             'myDivisionMatrices' => $myDivisionMatrices,

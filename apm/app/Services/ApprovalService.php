@@ -30,8 +30,13 @@ class ApprovalService
             return false;
         }
 
+   
+
         $today = Carbon::today();
-        $current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
+
+        $user = user_session();
+
+             /*$current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
             ->where('workflow_id', $model->forward_workflow_id)
             ->first();
 
@@ -83,7 +88,89 @@ class ApprovalService
         }
 
         return (($is_at_my_approval_level || $model->isWithCreator() || $division_specific_access) && 
-                $model->overall_status !== 'approved');
+                $model->overall_status !== 'approved');*/
+
+                
+//Check that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
+$current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
+->where('workflow_id',$model->forward_workflow_id);
+
+$workflow_dfns = Approver::where('staff_id',"=", $user['staff_id'])
+->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
+->orWhere(function ($query) use ($today, $user,$current_approval_point) {
+        $query ->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
+        ->where('oic_staff_id', "=", $user['staff_id'])
+        ->where('end_date', '>=', $today);
+    })
+->orderBy('id','desc')
+->pluck('workflow_dfn_id');
+
+
+$division_specific_access=false;
+$is_at_my_approval_level =false;
+
+
+//if user is not defined in the approver table, $workflow_dfns will be empty
+if ($workflow_dfns->isEmpty()) {
+
+    $division_specific_access = false;
+
+    $current_approval_point = $current_approval_point->first();
+
+    if(!$current_approval_point)
+     return false;
+    
+    if ($current_approval_point && $current_approval_point->is_division_specific) {
+        $division = $model->division;
+      
+        //staff holds current approval role in division
+        if ($division && $division->{$current_approval_point->division_reference_column} == user_session()['staff_id']) {
+            $division_specific_access = true;
+        }
+    }
+
+    //how to check approval levels against approver in approvers table???
+    
+}else{
+
+    $current_approval_point = $current_approval_point->where('approval_order',$workflow_dfns[0])->first();
+
+    $next_definition = WorkflowDefinition::whereIn('workflow_id', $workflow_dfns->toArray())
+    ->where('approval_order',(int) $model->approval_level)
+    ->where('is_enabled',1)
+    ->orderBy('approval_order')
+    ->get();
+
+
+    if ($next_definition->count() > 1) {
+
+        //if any of next_definition has fund_type, then do the if below
+        $has_fund_type = $next_definition->whereNotNull('fund_type')->count() > 0;
+        
+        if ($has_fund_type) {
+            if ($model->has_extramural && $model->approval_level !== $current_approval_point->approval_order) {
+                $current_approval_point = $next_definition->where('fund_type', 2)->first();
+            } else {
+                $current_approval_point = $next_definition->where('fund_type', 1)->first();
+            }
+        }else{
+
+            $has_category = $next_definition->whereNotNull('category')->count() > 0;
+
+            if($has_category){
+                $current_approval_point = $next_definition->where('category', $model->division->category)->first();
+            }else{
+                $current_approval_point = $next_definition->first();
+            }
+
+        }
+    }
+
+    $is_at_my_approval_level = ($current_approval_point) ? 
+        ($current_approval_point->workflow_id === $model->forward_workflow_id && $model->approval_level == $current_approval_point->approval_order) : 
+        false;
+  }      
+   return ( ($is_at_my_approval_level || $model->isWithCreator() || $division_specific_access) && $model->overall_status !== 'approved');
     }
 
     /**
