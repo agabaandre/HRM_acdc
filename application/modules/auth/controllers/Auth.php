@@ -244,13 +244,19 @@ public function impersonate($user_id)
         show_error('You are not authorized to impersonate users.', 403);
     }
 
+    // Prevent impersonating yourself
+    if ($current_user->user_id == $user_id) {
+        $this->session->set_flashdata('error', 'You cannot impersonate yourself.');
+        redirect('dashboard');
+    }
+
     // Store current session as "original user"
     $this->session->set_userdata('original_user', $current_user);
+    $this->session->set_userdata('impersonation_start', time());
 
     // Fetch the user to impersonate
     $user = $this->auth_mdl->find_user($user_id);
 
-    //dd($user);
     if (empty($user)) {
         $this->session->set_flashdata('error', 'User not found.');
         redirect('dashboard');
@@ -265,19 +271,19 @@ public function impersonate($user_id)
     unset($merged['password']);
     $merged['permissions'] = $this->auth_mdl->user_permissions($merged['role']);
     $merged['is_admin'] = false;
+    $merged['is_impersonated'] = true; // Flag to indicate impersonation
 
     $this->session->set_userdata('user', (object)$merged);
-    $this->session->mark_as_temp('user', 300); // optional: set lifespan for session if needed
+    $this->session->mark_as_temp('user', 300); // 5 minutes lifespan
     session_write_close(); // force session save
-    redirect('dashboard');
-    $msg = [
-      'msg' => 'You are now impersonating ' . $user->surname . '.',
-      'type' => 'success'
-     ];
-    Modules::run('utility/setFlash', $msg);
-    $log_message = "User Impersonated ".$user. "," .$user->auth_staff_id. "Successfully using the Impersonate Feature";
-        log_user_action($log_message);
-  
+
+    // Log the impersonation action
+    $log_message = "Admin " . $current_user->name . " (ID: " . $current_user->user_id . ") is now impersonating " . $user->name . " (ID: " . $user->user_id . ")";
+    log_user_action($log_message);
+
+    // Set success message
+    $this->session->set_flashdata('success', 'You are now impersonating ' . $user->name . '. Click "Revert to Admin" to return to your account.');
+
     redirect('dashboard');
 }
 
@@ -289,6 +295,7 @@ public function revert()
     if ($original) {
         $this->session->set_userdata('user', $original);
         $this->session->unset_userdata('original_user');
+        $this->session->unset_userdata('impersonation_start'); // Clear impersonation start time
 
         $msg = [
             'msg' => 'You have returned to your admin session.',
