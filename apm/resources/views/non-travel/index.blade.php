@@ -48,6 +48,15 @@
                         @endforeach
                     </select>
                     
+                    <select name="status" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                        <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
+                    </select>
+                    
                     <button type="submit" class="btn btn-sm btn-outline-primary">
                         <i class="bx bx-filter-alt"></i> Filter
                     </button>
@@ -68,9 +77,10 @@
                         <th class="fw-semibold text-center" style="width: 60px;">No.</th>
                         <th class="fw-semibold">Title</th>
                         <th class="fw-semibold">Category</th>
-                        <th class="fw-semibold">Staff</th>
+                        <th class="fw-semibold">Responsible Staff</th>
                         <th class="fw-semibold">Division</th>
                         <th class="fw-semibold">Date</th>
+                        <th class="fw-semibold text-center">Status</th>
                         <th class="fw-semibold text-center">Actions</th>
                     </tr>
                 </thead>
@@ -104,6 +114,24 @@
                                 </span>
                             </td>
                             <td>{{ $memo->memo_date->format('M d, Y') }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-{{ $memo->overall_status === 'approved' ? 'success' : ($memo->overall_status === 'pending' ? 'warning' : ($memo->overall_status === 'rejected' ? 'danger' : 'secondary')) }}">
+                                    {{ ucfirst($memo->overall_status ?? 'draft') }}
+                                </span>
+                                @if($memo->overall_status === 'pending')
+                                    <br><small class="text-muted">Level {{ $memo->approval_level ?? 0 }}</small>
+                                    @if($memo->workflow_definition)
+                                        <br><small class="text-muted">{{ $memo->workflow_definition->role ?? 'Role' }}</small>
+                                    @endif
+                                    @if($memo->current_actor)
+                                        <br><small class="text-muted">Supervisor: {{ $memo->current_actor->fname . ' ' . $memo->current_actor->lname }}</small>
+                                    @endif
+                                @elseif($memo->overall_status === 'draft')
+                                    <br><small class="text-muted">Ready to submit</small>
+                                @elseif($memo->overall_status === 'returned')
+                                    <br><small class="text-muted">Needs revision</small>
+                                @endif
+                            </td>
                             <td>
                                 <div class="d-flex justify-content-center gap-1">
                                     <a href="{{ route('non-travel.show', $memo) }}" 
@@ -112,20 +140,39 @@
                                        title="View Details">
                                         <i class="bx bx-show-alt"></i>
                                     </a>
-                                    <a href="{{ route('non-travel.edit', $memo) }}"
-                                       class="btn btn-sm btn-warning"
-                                       data-bs-toggle="tooltip"
-                                       title="Edit Memo">
-                                        <i class="bx bx-edit"></i>
-                                    </a>
-                                    <button type="button" 
-                                            class="btn btn-sm btn-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteModal{{ $memo->id }}"
-                                            data-bs-toggle="tooltip"
-                                            title="Delete Memo">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
+                                    @if($memo->overall_status === 'approved')
+                                        <a href="{{ route('non-travel.print', $memo) }}" 
+                                           target="_blank"
+                                           class="btn btn-sm btn-success"
+                                           data-bs-toggle="tooltip"
+                                           title="Print PDF">
+                                            <i class="bx bx-printer"></i>
+                                        </a>
+                                    @endif
+                                    @if($memo->overall_status === 'pending')
+                                        <a href="{{ route('non-travel.status', $memo) }}" 
+                                           class="btn btn-sm btn-outline-info"
+                                           data-bs-toggle="tooltip"
+                                           title="View Approval Status">
+                                            <i class="bx bx-info-circle"></i>
+                                        </a>
+                                    @endif
+                                    @if($memo->overall_status === 'draft' || $memo->overall_status === 'returned')
+                                        <a href="{{ route('non-travel.edit', $memo) }}"
+                                           class="btn btn-sm btn-warning"
+                                           data-bs-toggle="tooltip"
+                                           title="Edit Memo">
+                                            <i class="bx bx-edit"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal{{ $memo->id }}"
+                                                data-bs-toggle="tooltip"
+                                                title="Delete Memo">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                    @endif
                                 </div>
 
                                 <!-- Delete Modal -->
@@ -164,7 +211,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5">
+                            <td colspan="8" class="text-center py-5">
                                 <div class="text-muted">
                                     <i class="bx bx-file-blank fs-1 mb-3"></i>
                                     <p class="h5 text-muted">No non-travel memos found</p>

@@ -97,6 +97,77 @@
         font-weight: 600;
         font-size: 0.875rem;
     }
+
+    /* Summary table styles */
+    .summary-table {
+        background: white;
+        border-radius: 0.75rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .summary-table .table {
+        margin-bottom: 0;
+    }
+    
+    .summary-table .table th {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border: none;
+        font-weight: 600;
+        color: #374151;
+        padding: 1rem;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .summary-table .table td {
+        border: none;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem;
+        vertical-align: middle;
+    }
+    
+    .summary-table .table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .summary-table .table tr:hover {
+        background-color: #f9fafb;
+    }
+    
+    .field-label {
+        font-weight: 600;
+        color: #374151;
+        min-width: 150px;
+    }
+    
+    .field-value {
+        color: #1f2937;
+        font-weight: 500;
+    }
+    
+    .field-value.null {
+        color: #9ca3af;
+        font-style: italic;
+    }
+    
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .status-draft { background: #f3f4f6; color: #6b7280; }
+    .status-pending { background: #fef3c7; color: #d97706; }
+    .status-approved { background: #d1fae5; color: #059669; }
+    .status-rejected { background: #fee2e2; color: #dc2626; }
+    .status-returned { background: #dbeafe; color: #2563eb; }
 </style>
 @endsection
 
@@ -119,10 +190,16 @@
                         <i class="bx bx-edit"></i>
                         <span>Edit Memo</span>
                     </a>
-                    <a href="{{ route('non-travel.print', $nonTravel) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
-                        <i class="bx bx-printer"></i>
-                        <span>Print PDF</span>
+                    <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-info d-flex align-items-center gap-2">
+                        <i class="bx bx-info-circle"></i>
+                        <span>Approval Status</span>
                     </a>
+                    @if($nonTravel->overall_status === 'approved')
+                        <a href="{{ route('non-travel.print', $nonTravel) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
+                            <i class="bx bx-printer"></i>
+                            <span>Print PDF</span>
+                        </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -148,7 +225,221 @@
             $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
             $locationIds = is_array($locationIds) ? $locationIds : [];
             $attachments = is_array($attachments) ? $attachments : [];
+
+            // Calculate total budget
+            $totalBudget = 0;
+            if (!empty($budgetBreakdown)) {
+                foreach ($budgetBreakdown as $codeId => $items) {
+                    if (is_array($items)) {
+                        foreach ($items as $item) {
+                            $totalBudget += ($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0);
+                        }
+                    }
+                }
+            }
+
+            // Get locations
+            $locations = [];
+            if (!empty($locationIds)) {
+                $locations = \App\Models\Location::whereIn('id', $locationIds)->get();
+            }
+
+            // Get budget codes
+            $budgetCodes = [];
+            if (!empty($nonTravel->budget_id)) {
+                $budgetIds = is_array($nonTravel->budget_id) ? $nonTravel->budget_id : json_decode($nonTravel->budget_id, true);
+                if (is_array($budgetIds)) {
+                    $budgetCodes = \App\Models\FundCode::with('funder')->whereIn('id', $budgetIds)->get();
+                }
+            }
         @endphp
+
+        <!-- Summary Table -->
+        <div class="summary-table mb-4">
+            <div class="card-header bg-light border-0 py-3">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bx bx-table me-2 text-primary"></i>Memo Summary
+                </h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <tbody>
+                        <!-- Basic Information -->
+                        <tr>
+                            <td class="field-label">Memo ID</td>
+                            <td class="field-value">#{{ $nonTravel->id }}</td>
+                            <td class="field-label">Status</td>
+                            <td class="field-value">
+                                <span class="badge bg-{{ $nonTravel->overall_status === 'approved' ? 'success' : ($nonTravel->overall_status === 'pending' ? 'warning' : ($nonTravel->overall_status === 'rejected' ? 'danger' : 'secondary')) }} fs-6">
+                                    {{ ucfirst($nonTravel->overall_status ?? 'draft') }}
+                                </span>
+                                @if($nonTravel->overall_status === 'pending')
+                                    <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-sm btn-outline-info ms-2">
+                                        <i class="bx bx-info-circle me-1"></i>View Status
+                                    </a>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Activity Title</td>
+                            <td class="field-value" colspan="3">{{ $nonTravel->activity_title ?? 'Not specified' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Requestor</td>
+                            <td class="field-value">
+                                {{ $nonTravel->staff ? ($nonTravel->staff->fname . ' ' . $nonTravel->staff->lname) : 'Not assigned' }}
+                            </td>
+                            <td class="field-label">Division</td>
+                            <td class="field-value">
+                                {{ $nonTravel->division ? $nonTravel->division->division_name : 'Not assigned' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Memo Date</td>
+                            <td class="field-value">
+                                {{ $nonTravel->memo_date ? \Carbon\Carbon::parse($nonTravel->memo_date)->format('M d, Y') : 'Not set' }}
+                            </td>
+                            <td class="field-label">Category</td>
+                            <td class="field-value">
+                                {{ $nonTravel->nonTravelMemoCategory ? $nonTravel->nonTravelMemoCategory->name : 'Not categorized' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Activity Code</td>
+                            <td class="field-value">
+                                {{ $nonTravel->workplan_activity_code ?? 'Not specified' }}
+                            </td>
+                            <td class="field-label">Created Date</td>
+                            <td class="field-value">
+                                {{ $nonTravel->created_at ? $nonTravel->created_at->format('M d, Y H:i') : 'Not available' }}
+                            </td>
+                        </tr>
+                        
+                        <!-- Locations -->
+                        <tr>
+                            <td class="field-label">Locations</td>
+                            <td class="field-value" colspan="3">
+                                @if($locations->count() > 0)
+                                    @foreach($locations as $location)
+                                        <span class="badge bg-primary me-1">{{ $location->name }}</span>
+                                    @endforeach
+                                @else
+                                    <span class="text-muted">No locations specified</span>
+                                @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Budget Information -->
+                        <tr>
+                            <td class="field-label">Budget Codes</td>
+                            <td class="field-value" colspan="3">
+                                @if($budgetCodes->count() > 0)
+                                    @foreach($budgetCodes as $budget)
+                                        <span class="badge bg-success me-1">
+                                            {{ $budget->code }} 
+                                            @if($budget->funder)
+                                                ({{ $budget->funder->name }})
+                                            @endif
+                                        </span>
+                                    @endforeach
+                                @else
+                                    <span class="text-muted">No budget codes specified</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Total Budget</td>
+                            <td class="field-value fw-bold text-success">${{ number_format($totalBudget, 2) }}</td>
+                            <td class="field-label">Budget Items</td>
+                            <td class="field-value">
+                                @php
+                                    $itemCount = 0;
+                                    if (!empty($budgetBreakdown)) {
+                                        foreach ($budgetBreakdown as $codeId => $items) {
+                                            if (is_array($items)) {
+                                                $itemCount += count($items);
+                                            }
+                                        }
+                                    }
+                                @endphp
+                                {{ $itemCount }} item(s)
+                            </td>
+                        </tr>
+                        
+                        <!-- Approval Information -->
+                        <tr>
+                            <td class="field-label">Approval Level</td>
+                            <td class="field-value">
+                                <span class="badge bg-primary">{{ $nonTravel->approval_level ?? 0 }}</span>
+                                @if($nonTravel->workflow_definition)
+                                    <br><small class="text-muted">{{ $nonTravel->workflow_definition->role ?? 'Role not specified' }}</small>
+                                @endif
+                            </td>
+                            <td class="field-label">Current Approver</td>
+                            <td class="field-value">
+                                @if($nonTravel->current_actor)
+                                    {{ $nonTravel->current_actor->fname . ' ' . $nonTravel->current_actor->lname }}
+                                    @if($nonTravel->workflow_definition && $nonTravel->workflow_definition->is_division_specific)
+                                        <br><small class="text-muted">Division Specific</small>
+                                    @endif
+                                @else
+                                    <span class="text-muted">No approver assigned</span>
+                                @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Attachments -->
+                        <tr>
+                            <td class="field-label">Attachments</td>
+                            <td class="field-value" colspan="3">
+                                @if(!empty($attachments) && count($attachments) > 0)
+                                    {{ count($attachments) }} file(s) attached
+                                @else
+                                    <span class="text-muted">No attachments</span>
+                                @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Workflow Information -->
+                        <tr>
+                            <td class="field-label">Workflow</td>
+                            <td class="field-value">
+                                @if($nonTravel->forward_workflow_id)
+                                    <span class="badge bg-info">{{ $nonTravel->forwardWorkflow->workflow_name ?? 'Workflow #' . $nonTravel->forward_workflow_id }}</span>
+                                @else
+                                    <span class="text-muted">No workflow assigned</span>
+                                @endif
+                            </td>
+                            <td class="field-label">Workflow Role</td>
+                            <td class="field-value">
+                                @if($nonTravel->workflow_definition)
+                                    <span class="badge bg-secondary">{{ $nonTravel->workflow_definition->role ?? 'Not specified' }}</span>
+                                    @if($nonTravel->workflow_definition->is_division_specific)
+                                        <br><small class="text-muted">Division Specific</small>
+                                    @endif
+                                @else
+                                    <span class="text-muted">No role assigned</span>
+                                @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Last Updated -->
+                        <tr>
+                            <td class="field-label">Last Updated</td>
+                            <td class="field-value">
+                                {{ $nonTravel->updated_at ? $nonTravel->updated_at->format('M d, Y H:i') : 'Not available' }}
+                            </td>
+                            <td class="field-label">Status</td>
+                            <td class="field-value">
+                                <span class="badge bg-{{ $nonTravel->overall_status === 'approved' ? 'success' : ($nonTravel->overall_status === 'pending' ? 'warning' : ($nonTravel->overall_status === 'rejected' ? 'danger' : 'secondary')) }}">
+                                    {{ ucfirst($nonTravel->overall_status ?? 'draft') }}
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
         <div class="row">
             <div class="col-lg-8">
@@ -174,7 +465,7 @@
                             <div class="memo-meta-item">
                                 <i class="bx bx-category"></i>
                                 <span class="memo-meta-label">Category:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->nonTravelMemoCategory ? $nonTravel->nonTravelMemoCategory->category_name : 'Not categorized' }}</span>
+                                <span class="memo-meta-value">{{ $nonTravel->nonTravelMemoCategory ? $nonTravel->nonTravelMemoCategory->name : 'Not categorized' }}</span>
                             </div>
                             <div class="memo-meta-item">
                                 <i class="bx bx-code-alt"></i>
@@ -332,42 +623,45 @@
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
                                 <i class="bx bx-check-circle"></i>
-                                Approval Actions
+                                Approval Actions - Level {{ $nonTravel->approval_level ?? 0 }}
                             </h6>
                         </div>
                         <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="action" value="approved">
-                                        <button type="submit" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
-                                            <i class="bx bx-check"></i>
-                                            Approve
-                                        </button>
-                                    </form>
-                                </div>
-                                <div class="col-md-4">
-                                    <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="action" value="rejected">
-                                        <button type="submit" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
-                                            <i class="bx bx-x"></i>
-                                            Reject
-                                        </button>
-                                    </form>
-                                </div>
-                                <div class="col-md-4">
-                                    <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="action" value="returned">
-                                        <button type="submit" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
-                                            <i class="bx bx-undo"></i>
-                                            Return
-                                        </button>
-                                    </form>
-                                </div>
+                            <div class="alert alert-info mb-3">
+                                <i class="bx bx-info-circle me-2"></i>
+                                <strong>Current Level:</strong> {{ $nonTravel->approval_level ?? 0 }}
+                                @if($nonTravel->workflow_definition)
+                                    - <strong>Role:</strong> {{ $nonTravel->workflow_definition->role ?? 'Not specified' }}
+                                @endif
                             </div>
+                            
+                            <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST" id="approvalForm">
+                                @csrf
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="comment" class="form-label">Comments (Optional)</label>
+                                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-grid gap-2">
+                                            <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-check"></i>
+                                                Approve
+                                            </button>
+                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-undo"></i>
+                                                Return for Revision
+                                            </button>
+                                            <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-x"></i>
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 @endif
@@ -384,21 +678,13 @@
                         </h6>
                     </div>
                     <div class="card-body">
-                        @php
-                            $locations = is_array($nonTravel->location_id) ? $nonTravel->location_id : (is_string($nonTravel->location_id) ? json_decode($nonTravel->location_id, true) : []);
-                        @endphp
-                        @if(!empty($locations) && count($locations) > 0)
+                        @if($locations->count() > 0)
                             <div class="d-flex flex-column gap-2">
-                                @foreach($locations as $locationId)
-                                    @php
-                                        $location = App\Models\Location::find($locationId);
-                                    @endphp
-                                    @if($location)
-                                        <div class="location-badge">
-                                            <i class="bx bx-map text-primary"></i>
-                                            <span class="fw-medium">{{ $location->name }}</span>
-                                        </div>
-                                    @endif
+                                @foreach($locations as $location)
+                                    <div class="location-badge">
+                                        <i class="bx bx-map text-primary"></i>
+                                        <span class="fw-medium">{{ $location->name }}</span>
+                                    </div>
                                 @endforeach
                             </div>
                         @else
@@ -410,12 +696,6 @@
                 </div>
 
                 <!-- Budget Items Card -->
-                @php
-                    $budgetIds = is_array($nonTravel->budget_id) 
-                        ? $nonTravel->budget_id 
-                        : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
-                @endphp
-
                 <div class="card sidebar-card border-0 mb-4">
                     <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
@@ -424,23 +704,18 @@
                         </h6>
                     </div>
                     <div class="card-body">
-                        @if(!empty($budgetIds))
+                        @if($budgetCodes->count() > 0)
                             <div class="d-flex flex-column gap-3">
-                                @foreach($budgetIds as $budgetId)
-                                    @php
-                                        $budget = App\Models\FundCode::find($budgetId);
-                                    @endphp
-                                    @if($budget)
-                                        <div class="budget-item" style="background: #f0fdf4; border-color: #bbf7d0;">
-                                            <div class="d-flex justify-content-between align-items-center w-100">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <i class="bx bx-dollar-circle text-success"></i>
-                                                    <span class="fw-medium">{{ $budget->code }} | {{ $budget->funder->name ?? 'No Funder' }}</span>
-                                                </div>
-                                                <span class="badge bg-success">${{ number_format($budget->budget_balance, 2) }}</span>
+                                @foreach($budgetCodes as $budget)
+                                    <div class="budget-item" style="background: #f0fdf4; border-color: #bbf7d0;">
+                                        <div class="d-flex justify-content-between align-items-center w-100">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bx bx-dollar-circle text-success"></i>
+                                                <span class="fw-medium">{{ $budget->code }} | {{ $budget->funder->name ?? 'No Funder' }}</span>
                                             </div>
+                                            <span class="badge bg-success">${{ number_format($budget->budget_balance, 2) }}</span>
                                         </div>
-                                    @endif
+                                    </div>
                                 @endforeach
                             </div>
                         @else
@@ -452,13 +727,6 @@
                 </div>
 
                 <!-- Attachments Card -->
-                @php
-                    $attachments = is_array($nonTravel->attachment) 
-                        ? $nonTravel->attachment 
-                        : (is_string($nonTravel->attachment) ? json_decode($nonTravel->attachment, true) : []);
-                    $attachments = is_array($attachments) ? $attachments : [];
-                @endphp
-
                 @if(!empty($attachments) && count($attachments) > 0)
                     <div class="card sidebar-card border-0 mb-4">
                         <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);">
@@ -494,6 +762,51 @@
                     </div>
                 @endif
 
+                <!-- Quick Approval Status -->
+                <div class="card sidebar-card border-0 mb-4">
+                    <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);">
+                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                            <i class="bx bx-trending-up text-info"></i>
+                            Approval Progress
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted small">Current Level</span>
+                                <span class="badge bg-primary fs-6">{{ $nonTravel->approval_level ?? 0 }}</span>
+                            </div>
+                            @if($nonTravel->workflow_definition)
+                                <div class="mb-2">
+                                    <small class="text-muted">Role:</small><br>
+                                    <strong>{{ $nonTravel->workflow_definition->role ?? 'Not specified' }}</strong>
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">Division Specific:</small><br>
+                                    <span class="badge bg-{{ $nonTravel->workflow_definition->is_division_specific ? 'info' : 'secondary' }}">
+                                        {{ $nonTravel->workflow_definition->is_division_specific ? 'Yes' : 'No' }}
+                                    </span>
+                                </div>
+                            @endif
+                            @if($nonTravel->current_actor)
+                                <div class="mb-2">
+                                    <small class="text-muted">Current Supervisor:</small><br>
+                                    <strong class="text-primary">{{ $nonTravel->current_actor->fname . ' ' . $nonTravel->current_actor->lname }}</strong>
+                                    @if($nonTravel->current_actor->job_name)
+                                        <br><small class="text-muted">{{ $nonTravel->current_actor->job_name }}</small>
+                                    @endif
+                                    @if($nonTravel->current_actor->division_name)
+                                        <br><small class="text-muted">{{ $nonTravel->current_actor->division_name }}</small>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                        <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-outline-info btn-sm w-100">
+                            <i class="bx bx-info-circle me-1"></i>View Full Status
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Approval Trail -->
                 @include('partials.approval-trail', ['resource' => $nonTravel])
 
@@ -515,6 +828,12 @@
                                     Submit for Approval
                                 </button>
                             </form>
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <small class="text-muted">
+                                    <i class="bx bx-info-circle me-1"></i>
+                                    <strong>Note:</strong> Once submitted, you won't be able to edit this memo until it's returned for revision.
+                                </small>
+                            </div>
                         </div>
                     </div>
                 @endif

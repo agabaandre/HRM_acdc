@@ -55,6 +55,9 @@ class NonTravelMemoController extends Controller
         if ($request->filled('division_id')) {
             $query->where('division_id', $request->division_id);
         }
+        if ($request->filled('status')) {
+            $query->where('overall_status', $request->status);
+        }
 
         // Paginate and preserve filters in the query string
         $nonTravelMemos = $query->latest()->paginate(10)->withQueryString();
@@ -322,7 +325,7 @@ class NonTravelMemoController extends Controller
     }
 
     /**
-     * Update approval status.
+     * Update approval status using generic approval system.
      */
     public function updateStatus(Request $request, NonTravelMemo $nonTravel): RedirectResponse
     {
@@ -331,27 +334,9 @@ class NonTravelMemoController extends Controller
             'comment' => 'nullable|string|max:1000',
         ]);
 
-        $approvalService = app(ApprovalService::class);
-        if (!$approvalService->canTakeAction($nonTravel, user_session('staff_id'))) {
-            return redirect()->back()->with([
-                'msg' => 'You are not authorized to take this action.',
-                'type' => 'error',
-            ]);
-        }
-
-        $nonTravel->updateApprovalStatus($request->action, $request->comment);
-
-        $message = match($request->action) {
-            'approved' => 'Non-travel memo approved successfully.',
-            'rejected' => 'Non-travel memo rejected.',
-            'returned' => 'Non-travel memo returned for revision.',
-            default => 'Status updated successfully.'
-        };
-
-        return redirect()->route('non-travel.show', $nonTravel)->with([
-            'msg' => $message,
-            'type' => 'success',
-        ]);
+        // Use the generic approval system
+        $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
+        return $genericController->updateStatus($request, 'NonTravelMemo', $nonTravel->id);
     }
 
     /**
@@ -359,8 +344,61 @@ class NonTravelMemoController extends Controller
      */
     public function status(NonTravelMemo $nonTravel): View
     {
-        $nonTravel->load(['staff']);
-        return view('non-travel.status', compact('nonTravel'));
+        $nonTravel->load(['staff', 'division', 'forwardWorkflow']);
+        
+        // Get approval level information
+        $approvalLevels = $this->getApprovalLevels($nonTravel);
+        
+        return view('non-travel.status', compact('nonTravel', 'approvalLevels'));
+    }
+
+    /**
+     * Get detailed approval level information for the memo.
+     */
+    private function getApprovalLevels(NonTravelMemo $nonTravel): array
+    {
+        if (!$nonTravel->forward_workflow_id) {
+            return [];
+        }
+
+        $levels = \App\Models\WorkflowDefinition::where('workflow_id', $nonTravel->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'asc')
+            ->get();
+
+        $approvalLevels = [];
+        foreach ($levels as $level) {
+            $isCurrentLevel = $level->approval_order == $nonTravel->approval_level;
+            $isCompleted = $nonTravel->approval_level > $level->approval_order;
+            $isPending = $nonTravel->approval_level == $level->approval_order && $nonTravel->overall_status === 'pending';
+            
+            $approver = null;
+            if ($level->is_division_specific && $nonTravel->division) {
+                $staffId = $nonTravel->division->{$level->division_reference_column} ?? null;
+                if ($staffId) {
+                    $approver = \App\Models\Staff::where('staff_id', $staffId)->first();
+                }
+            } else {
+                $approverRecord = \App\Models\Approver::where('workflow_dfn_id', $level->id)->first();
+                if ($approverRecord) {
+                    $approver = \App\Models\Staff::where('staff_id', $approverRecord->staff_id)->first();
+                }
+            }
+
+            $approvalLevels[] = [
+                'order' => $level->approval_order,
+                'role' => $level->role,
+                'approver' => $approver,
+                'is_current' => $isCurrentLevel,
+                'is_completed' => $isCompleted,
+                'is_pending' => $isPending,
+                'is_division_specific' => $level->is_division_specific,
+                'division_reference' => $level->division_reference_column,
+                'category' => $level->category,
+            ];
+        }
+
+        return $approvalLevels;
     }
     
     /**

@@ -57,7 +57,7 @@ class SpecialMemoController extends Controller
         
         // Hide draft memos from non-creators
         $query->where(function($q) use ($currentStaffId) {
-            $q->where('is_draft', false)  // Show non-draft memos to everyone
+            $q->where('overall_status', '!=', 'draft')  // Show non-draft memos to everyone
               ->orWhere('staff_id', $currentStaffId);  // Show all memos to their creator
         });
         
@@ -435,14 +435,27 @@ class SpecialMemoController extends Controller
      */
     public function submitForApproval(SpecialMemo $specialMemo): RedirectResponse
     {
-        if (!$specialMemo->is_draft) {
+        if ($specialMemo->overall_status !== 'draft') {
             return redirect()->back()->with([
                 'msg' => 'Only draft special memos can be submitted for approval.',
                 'type' => 'error',
             ]);
         }
 
-        $specialMemo->submitForApproval();
+        // Update the memo status directly
+        $specialMemo->overall_status = 'pending';
+        $specialMemo->approval_level = 1;
+        $specialMemo->forward_workflow_id = 1;
+        
+        // Set is_draft to false when submitting for approval
+        if (property_exists($specialMemo, 'is_draft')) {
+            $specialMemo->is_draft = false;
+        }
+        
+        $specialMemo->save();
+
+        // Save approval trail
+        $specialMemo->saveApprovalTrail('Submitted for approval', 'submitted');
 
         return redirect()->route('special-memo.show', $specialMemo)->with([
             'msg' => 'Special memo submitted for approval successfully.',
@@ -451,7 +464,7 @@ class SpecialMemoController extends Controller
     }
 
     /**
-     * Update approval status.
+     * Update approval status using generic approval system.
      */
     public function updateStatus(Request $request, SpecialMemo $specialMemo): RedirectResponse
     {
@@ -460,28 +473,9 @@ class SpecialMemoController extends Controller
             'comment' => 'nullable|string|max:1000',
         ]);
 
-        $approvalService = app(ApprovalService::class);
-        
-        if (!$approvalService->canTakeAction($specialMemo, user_session('staff_id'))) {
-            return redirect()->back()->with([
-                'msg' => 'You are not authorized to take this action.',
-                'type' => 'error',
-            ]);
-        }
-
-        $specialMemo->updateApprovalStatus($request->action, $request->comment);
-
-        $message = match($request->action) {
-            'approved' => 'Special memo approved successfully.',
-            'rejected' => 'Special memo rejected.',
-            'returned' => 'Special memo returned for revision.',
-            default => 'Status updated successfully.'
-        };
-
-        return redirect()->route('special-memo.show', $specialMemo)->with([
-            'msg' => $message,
-            'type' => 'success',
-        ]);
+        // Use the generic approval system
+        $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
+        return $genericController->updateStatus($request, 'SpecialMemo', $specialMemo->id);
     }
 
     /**
@@ -489,9 +483,61 @@ class SpecialMemoController extends Controller
      */
     public function status(SpecialMemo $specialMemo): View
     {
-        $specialMemo->load(['staff', 'division']);
+        $specialMemo->load(['staff', 'division', 'forwardWorkflow']);
         
-        return view('special-memo.status', compact('specialMemo'));
+        // Get approval level information
+        $approvalLevels = $this->getApprovalLevels($specialMemo);
+        
+        return view('special-memo.status', compact('specialMemo', 'approvalLevels'));
+    }
+
+    /**
+     * Get detailed approval level information for the memo.
+     */
+    private function getApprovalLevels(SpecialMemo $specialMemo): array
+    {
+        if (!$specialMemo->forward_workflow_id) {
+            return [];
+        }
+
+        $levels = \App\Models\WorkflowDefinition::where('workflow_id', $specialMemo->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'asc')
+            ->get();
+
+        $approvalLevels = [];
+        foreach ($levels as $level) {
+            $isCurrentLevel = $level->approval_order == $specialMemo->approval_level;
+            $isCompleted = $specialMemo->approval_level > $level->approval_order;
+            $isPending = $specialMemo->approval_level == $level->approval_order && $specialMemo->overall_status === 'pending';
+            
+            $approver = null;
+            if ($level->is_division_specific && $specialMemo->division) {
+                $staffId = $specialMemo->division->{$level->division_reference_column} ?? null;
+                if ($staffId) {
+                    $approver = \App\Models\Staff::where('staff_id', $staffId)->first();
+                }
+            } else {
+                $approverRecord = \App\Models\Approver::where('workflow_dfn_id', $level->id)->first();
+                if ($approverRecord) {
+                    $approver = \App\Models\Staff::where('staff_id', $approverRecord->staff_id)->first();
+                }
+            }
+
+            $approvalLevels[] = [
+                'order' => $level->approval_order,
+                'role' => $level->role,
+                'approver' => $approver,
+                'is_current' => $isCurrentLevel,
+                'is_completed' => $isCompleted,
+                'is_pending' => $isPending,
+                'is_division_specific' => $level->is_division_specific,
+                'division_reference' => $level->division_reference_column,
+                'category' => $level->category,
+            ];
+        }
+
+        return $approvalLevels;
     }
 
     /**
