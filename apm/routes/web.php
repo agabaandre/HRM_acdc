@@ -95,17 +95,18 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::resource('non-travel-categories', App\Http\Controllers\NonTravelMemoCategoryController::class);
     
     // Add matrices and activities resources inside the middleware group
-    Route::resource('matrices', MatrixController::class);
+    // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
+    Route::get('/matrices/pending-approvals', [MatrixController::class, 'pendingApprovals'])->name('matrices.pending-approvals');
     Route::get('/matrices/request_approval/{matrix}', [MatrixController::class, 'request_approval'])->name('matrices.request_approval');
-    Route::post('/matrices/{matrix}/status', [MatrixController::class, 'update_status'])
-    ->name('matrices.status');
+    Route::post('/matrices/{matrix}/status', [MatrixController::class, 'update_status'])->name('matrices.status');
     
-
+    Route::resource('matrices', MatrixController::class);
+    
     Route::resource('matrices.activities', ActivityController::class);
 
     Route::post('/matrices/{matrix}/activities/{activity}/status', [ActivityController::class, 'update_status'])
-    ->name('matrices.activities.status');
-        Route::post('/matrices/activities/batch/status', [ActivityController::class, 'batch_update_status'])
+        ->name('matrices.activities.status');
+    Route::post('/matrices/activities/batch/status', [ActivityController::class, 'batch_update_status'])
         ->name('matrices.activities.batch.status');
 
     Route::get('/participant-schedules', [ActivityController::class, 'get_participant_schedules'])->name('participant-schedules');

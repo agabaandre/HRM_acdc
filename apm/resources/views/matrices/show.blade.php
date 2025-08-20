@@ -2,6 +2,92 @@
 
 @section('title', 'View Matrix')
 
+@section('styles')
+<style>
+    .avatar-sm {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        transition: background-color 0.2s ease;
+    }
+    
+    .badge.rounded-pill {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .card-footer .row > div {
+        padding: 0.5rem;
+    }
+    
+    .card-footer .d-flex {
+        min-height: 60px;
+    }
+    
+    .table-responsive {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .table th {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .table td {
+        vertical-align: middle;
+    }
+    
+    .text-muted {
+        color: #6c757d !important;
+    }
+    
+    .fw-semibold {
+        font-weight: 600 !important;
+    }
+    
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 0.5rem;
+    }
+    
+    .shadow-sm {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    }
+    
+    .card {
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
+    
+    .badge.rounded-pill {
+        font-weight: 500;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+    
+    .bg-light {
+        background-color: #f8f9fa !important;
+    }
+</style>
+@endsection
+
 @section('header', 'Matrix Details')
 
 @section('header-actions')
@@ -27,9 +113,14 @@
 @include('matrices.partials.matrix-metadata')
    
 <div class="col-md-12">
-    <div class="card shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bx bx-calendar-event me-2 text-primary"></i>Activities</h5>
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="bx bx-calendar-event me-2 text-primary"></i>Activities
+            </h5>
+            <small class="text-muted d-block mt-1">
+                {{ $matrix->activities->count() }} activities in this matrix
+            </small>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -37,17 +128,17 @@
                     <thead class="bg-light">
                         <tr>
                             @if(!activities_approved_by_me($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
-                                <th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">
                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                 </th>
                             @endif
-                            <th>#</th>
-                            <th>Title</th>
-                            <th>Date Range</th>
-                            <th>Participants</th>
-                            <th>Budget (USD)</th>
-                            <th>Status</th>
-                            <th class="text-center">Actions</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">#</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold">Title</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold">Date Range</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Participants</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Budget (USD)</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Status</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -57,19 +148,23 @@
                         @forelse($activities as $activity)
                             <tr>
                                 @if(!activities_approved_by_me($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
-                               <td>
+                               <td class="px-3 py-3">
                                     @if(can_approve_activity($activity) && !done_approving_activty($activity))
                                         <input type="checkbox" class="form-check-input activity-checkbox" value="{{ $activity->id }}" data-activity-title="{{ $activity->activity_title }}">
                                     @endif
                                 </td>
                                 @endif
-                               <th>{{$count}}</th>
-                                <td class="text-wrap" style="max-width: 350px;">
+                               <td class="px-3 py-3">
+                                    <span class="badge bg-secondary rounded-pill">{{ $count }}</span>
+                               </td>
+                                <td class="px-3 py-3 text-wrap" style="max-width: 350px;">
                                     {{ $activity->activity_title }}
                                 </td>
-                                <td>{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }} - {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</td>
-                                <td>{{ $activity->total_participants }}</td>
-                             <td>
+                                <td class="px-3 py-3">{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }} - {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</td>
+                                <td class="px-3 py-3 text-center">
+                                    <span class="badge bg-info rounded-pill">{{ $activity->total_participants }}</span>
+                                </td>
+                             <td class="px-3 py-3 text-center">
                                 @php
                                     $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
                                     $totalBudget = 0;
@@ -87,19 +182,19 @@
                                         }
                                     }
                                 @endphp
-                                {{ number_format($totalBudget, 2) }} USD
+                                <span class="fw-bold text-success">{{ number_format($totalBudget, 2) }} USD</span>
                             </td>
 
-                                <td>
+                                <td class="px-3 py-3 text-center">
                                     @if(can_approve_activity($activity))
-                                    <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }}">
+                                    <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }} rounded-pill">
                                         {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : 'Pending' ) }}
                                     </span>
                                     @else
-                                    <span class="badge bg-success">No Action Required</span>
+                                    <span class="badge bg-success rounded-pill">No Action Required</span>
                                     @endif
                                 </td>
-                                <td class="text-center">
+                                <td class="px-3 py-3 text-center">
                                     <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" class="btn btn-outline-primary btn-sm">
                                         <i class="bx bx-show"></i>
                                     </a>
@@ -110,7 +205,11 @@
                         @endphp
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-4">No activities found for this matrix.</td>
+                                <td colspan="8" class="text-center py-5">
+                                    <i class="bx bx-calendar-x fs-1 text-muted mb-3 d-block"></i>
+                                    <div class="text-muted">No activities found for this matrix.</div>
+                                    <small class="text-muted">Activities will appear here once they are added.</small>
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -118,63 +217,81 @@
             </div>
 
             <!-- Approve Selected Activities Button -->
-            <div class="p-3 border-top" id="approveSelectedSection" style="display: none;">
+            <div class="p-4 border-top bg-light" id="approveSelectedSection" style="display: none;">
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="text-muted" id="selectedCount">0 activities selected</span>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-success" id="approveSelectedBtn" data-bs-toggle="modal" data-bs-target="#approveSelectedModal">
+                    <div class="d-flex align-items-center">
+                        <i class="bx bx-check-circle text-success me-2 fs-4"></i>
+                        <span class="text-muted fw-semibold" id="selectedCount">0 activities selected</span>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <button type="button" class="btn btn-success btn-lg shadow-sm" id="approveSelectedBtn" data-bs-toggle="modal" data-bs-target="#approveSelectedModal">
                             <i class="bx bx-check me-2"></i> Pass Selected Activities
                         </button>
-                        <button type="button" class="btn btn-danger" id="rejectSelectedBtn" data-bs-toggle="modal" data-bs-target="#rejectSelectedModal">
+                        <button type="button" class="btn btn-danger btn-lg shadow-sm" id="rejectSelectedBtn" data-bs-toggle="modal" data-bs-target="#rejectSelectedModal">
                             <i class="bx bx-x me-2"></i> Reject Activities
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div class="p-3">
-                {{ $activities->withQueryString()->links() }}
+            <div class="p-4 bg-light border-top">
+                <div class="d-flex justify-content-center">
+                    {{ $activities->withQueryString()->links() }}
+                </div>
             </div>
 
         </div>
     </div>
 </div>
 
-<div class="row">
+<!-- Division Schedule and Approval Trail Section -->
+<div class="row mt-4">
+    <div class="col-lg-9">
+        @if(count($matrix->division_staff) > 0)
+            @include('matrices.partials.participants-schedule')
+        @else
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center py-5">
+                    <i class="bx bx-calendar-x fs-1 text-muted mb-3"></i>
+                    <h5 class="text-muted">No Division Schedule Available</h5>
+                    <p class="text-muted mb-0">Staff schedules for {{ $matrix->quarter }} {{ $matrix->year }} will appear here once they are added.</p>
+                </div>
+            </div>
+        @endif
+    </div>
 
-@php
-//dd($matrix->division_staff->toArray());
-@endphp
-
-<div class="col-lg-8">
-@if(count($matrix->division_schedule)>0)
- @include('matrices.partials.participants-schedule')
-@endif
+    <div class="col-lg-3">
+        @if(count($matrix->matrixApprovalTrails) > 0)
+            @include('matrices.partials.approval-trail')
+        @else
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center py-5">
+                    <i class="bx bx-history fs-1 text-muted mb-3"></i>
+                    <h5 class="text-muted">No Approval History</h5>
+                    <p class="text-muted mb-0">Approval trail will appear here once actions are taken on this matrix.</p>
+                </div>
+            </div>
+        @endif
+    </div>
 </div>
 
-<div class="col-lg-4">
-@if(count($matrix->matrixApprovalTrails)>0)
-    @include('matrices.partials.approval-trail')
-@endif
-</div>
-</div>
+<!-- Action Buttons Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-end gap-3">
+            @if(can_take_action($matrix))
+                <div class="d-flex align-items-center">
+                    @include('matrices.partials.approval-actions', ['matrix' => $matrix])
+                </div>
+            @endif
 
-<div class="row">
-
-@if(can_take_action($matrix))
-<div class="col-md-4 mb-2 px-2 ms-auto">
-    @include('matrices.partials.approval-actions', ['matrix' => $matrix])
-</div>
-@endif
-
-@if(($matrix->activities->count()>0 && still_with_creator($matrix)))
- <div class="col-md-4 mb-2 px-2 ms-auto">
-    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
-        <i class="bx bx-save me-2"></i> Submit Matrix
-    </button>
- </div>
- @endif
-
+            @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
+                <button type="button" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
+                    <i class="bx bx-save me-2"></i> Submit Matrix for Approval
+                </button>
+            @endif
+        </div>
+    </div>
 </div>
 
 <!-- Submit Matrix Confirmation Modal -->

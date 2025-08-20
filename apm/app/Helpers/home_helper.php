@@ -14,6 +14,7 @@ use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
+use App\Models\Division;
 use Illuminate\Support\Facades\DB;
 
 
@@ -64,20 +65,79 @@ if (!function_exists('get_pending_matrices_count')) {
      */
     function get_pending_matrices_count(int $staffId): int
     {
-        // Count matrices that are pending and the current user can approve
-        return Matrix::where('overall_status', 'pending')
+        $userDivisionId = user_session('division_id');
+        
+        // Use the same logic as the pendingApprovals method for consistency
+        $query = Matrix::where('overall_status', 'pending')
             ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0)
-            ->where(function($query) use ($staffId) {
-                // Check if user is division-specific approver for the current level
-                $query->whereHas('division', function($q) use ($staffId) {
-                    $q->where('division_head', $staffId)
-                      ->orWhere('focal_person', $staffId)
-                      ->orWhere('admin_assistant', $staffId)
-                      ->orWhere('finance_officer', $staffId);
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($query) use ($userDivisionId, $staffId) {
+            // Case 1: Division-specific approval - check if user's division matches matrix division
+            if ($userDivisionId) {
+                $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
+            if ($staffId) {
+                $query->orWhere(function($subQ) use ($staffId, $userDivisionId) {
+                    $divisionsTable = (new Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = matrices.division_id 
+                        WHERE wd.workflow_id = matrices.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = matrices.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=matrices.division_id AND d.id=?)
+                        )
+                    )", [$staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($staffId) {
+                        $subQ2->where('approval_level', $staffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($staffId) {
+                                $trailQ->where('staff_id', '=',$staffId);
+                              });
+                    });
                 });
-            })
-            ->count();
+            }
+            
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($staffId) {
+                $query->orWhere(function($subQ) use ($staffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($staffId) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($staffId) {
+                                      $approverQ->where('staff_id', $staffId);
+                                  });
+                    });
+                });
+            }
+
+            $query->orWhere('division_id', $userDivisionId);
+        });
+
+        // Get the matrices and apply the same filtering as pendingApprovals method
+        $matrices = $query->get();
+        
+        // Apply the same additional filtering as pendingApprovals method for consistency
+        $filteredMatrices = $matrices->filter(function ($matrix) {
+            return can_take_action($matrix);
+        });
+        
+        return $filteredMatrices->count();
     }
 }
 

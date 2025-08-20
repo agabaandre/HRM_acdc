@@ -229,7 +229,8 @@ class Matrix extends Model
     }
 
     public function getDivisionStaffAttribute(){
-        $division_id = user_session()['division_id'];
+        // Use the matrix's division_id instead of the logged-in user's division_id
+        $division_id = $this->division_id;
         //Get staff with with the division days in this quater and year
         return Staff::where('division_id', $division_id)
         ->withSum([

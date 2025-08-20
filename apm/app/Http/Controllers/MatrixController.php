@@ -155,6 +155,21 @@ class MatrixController extends Controller
             return done_approving($matrix) ;
         });
 
+        // Get all matrices for users with permission ID 87
+        $allMatrices = collect();
+        if (in_array(87, user_session('permissions', []))) {
+            $allMatrices = Matrix::with([
+                'division',
+                'staff',
+                'focalPerson',
+                'forwardWorkflow',
+                'activities' => function ($q) {
+                    $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                      ->whereNotNull('matrix_id');
+                }
+            ])->latest()->get();
+        }
+
       //  dd($filteredActionedMatrices->toArray());
 
     
@@ -165,6 +180,7 @@ class MatrixController extends Controller
             'filteredActionableMatrices' => $filteredActionableMatrices,
             'filteredActionedMatrices' => $filteredActionedMatrices,
             'myDivisionMatrices' => $myDivisionMatrices,
+            'allMatrices' => $allMatrices,
             'title' => user_session('division_name'),
             'module' => 'Quarterly Matrix',
             'divisions' => \App\Models\Division::all(),
@@ -591,5 +607,137 @@ class MatrixController extends Controller
        
         return  $definition;
 
+    }
+
+    /**
+     * Display pending approvals for the current user.
+     */
+    public function pendingApprovals(Request $request): View
+    {
+        $userStaffId = user_session('staff_id');
+
+        // Check if we have valid session data
+        if (!$userStaffId) {
+            return view('matrices.pending-approvals', [
+                'pendingMatrices' => collect(),
+                'approvedByMe' => collect(),
+                'divisions' => collect(),
+                'focalPersons' => collect(),
+                'error' => 'No session data found. Please log in again.'
+            ]);
+        }
+
+        // Copy the working logic from index method for pending approvals
+        $query = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow',
+            'activities' => function ($q) {
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                  ->whereNotNull('matrix_id');
+            }
+        ]);
+
+        // Only show pending matrices (not draft)
+        $query->where('overall_status', 'pending')
+              ->where('forward_workflow_id', '!=', null)
+              ->where('approval_level', '>', 0);
+
+        // Apply the same filtering logic as index method
+        $userDivisionId = user_session('division_id');
+        
+        $query->where(function($q) use ($userDivisionId, $userStaffId) {
+            // Case 1: Division-specific approval - check if user's division matches matrix division
+            if ($userDivisionId) {
+                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId, $userDivisionId) {
+                    $divisionsTable = (new Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = matrices.division_id 
+                        WHERE wd.workflow_id = matrices.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = matrices.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=matrices.division_id AND d.id=?)
+                        )
+                    )", [$userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($userStaffId) {
+                        $subQ2->where('approval_level', $userStaffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
+                                $trailQ->where('staff_id', '=',$userStaffId);
+                              });
+                    });
+                });
+            }
+            
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($userStaffId) {
+                                      $approverQ->where('staff_id', $userStaffId);
+                                  });
+                    });
+                });
+            }
+
+            $q->orWhere('division_id', $userDivisionId);
+        });
+
+        $pendingMatrices = $query->get();
+
+        // Apply the same additional filtering as index method for consistency
+        $pendingMatrices = $pendingMatrices->filter(function ($matrix) {
+            return can_take_action($matrix);
+        });
+
+        // Get matrices approved by current user
+        $approvedByMe = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow'
+        ])->whereHas('approvalTrails', function($q) use ($userStaffId) {
+            $q->where('staff_id', $userStaffId)
+              ->whereIn('action', ['approved', 'rejected', 'returned']);
+        })->get();
+
+        // Get divisions for filter
+        $divisions = Division::orderBy('division_name')->get();
+        
+        // Get focal persons for filter - focal person info is stored in divisions table
+        $focalPersons = Staff::whereIn('staff_id', function($query) {
+            $query->select('focal_person')
+                  ->from('divisions')
+                  ->whereNotNull('focal_person');
+        })->orderBy('fname')
+          ->get();
+
+        return view('matrices.pending-approvals', compact(
+            'pendingMatrices',
+            'approvedByMe',
+            'divisions',
+            'focalPersons'
+        ));
     }
 }

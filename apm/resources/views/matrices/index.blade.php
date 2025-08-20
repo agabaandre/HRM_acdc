@@ -100,18 +100,14 @@
                         </button>
                     </li>
                 @endif
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link {{ $myDivisionMatrices->count() == 0 ? 'active' : '' }}" id="actionable-tab" data-bs-toggle="tab" data-bs-target="#actionable" type="button" role="tab" aria-controls="actionable" aria-selected="{{ $myDivisionMatrices->count() == 0 ? 'true' : 'false' }}">
-                        <i class="bx bx-time me-2"></i> Pending Approval
-                        <span class="badge bg-warning text-dark ms-2">{{ $filteredActionableMatrices->count() }}</span>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="actioned-tab" data-bs-toggle="tab" data-bs-target="#actioned" type="button" role="tab" aria-controls="actioned" aria-selected="false">
-                        <i class="bx bx-check-double me-2"></i> Approved Matrices 
-                        <span class="badge bg-success ms-2">{{ $filteredActionedMatrices->count() }}</span>
-                    </button>
-                </li>
+                @if(in_array(87, user_session('permissions', [])))
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {{ $myDivisionMatrices->count() == 0 ? 'active' : '' }}" id="allMatrices-tab" data-bs-toggle="tab" data-bs-target="#allMatrices" type="button" role="tab" aria-controls="allMatrices" aria-selected="{{ $myDivisionMatrices->count() == 0 ? 'true' : 'false' }}">
+                            <i class="bx bx-grid me-2"></i> All Matrices
+                            <span class="badge bg-primary text-white ms-2">{{ $allMatrices->count() ?? 0 }}</span>
+                        </button>
+                    </li>
+                @endif
             </ul>
 
             <!-- Tab Content -->
@@ -139,7 +135,6 @@
                                             <th>Focal Person</th>       
                                             <th>Key Result Areas</th>
                                             <th>Activities</th>
-                                            <th>Created At</th>
                                             <th>Level</th>
                                             <th>Status</th>
                                             <th class="text-center">Actions</th>    
@@ -236,7 +231,7 @@
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td>{{ $matrix->created_at->format('Y-m-d H:i') }}</td>
+                    
                                                 <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : ($matrix->workflow_definition ? $matrix->workflow_definition->role : 'Focal Person') }}
                                                     <small
                                                         class="text-muted">{{ $matrix->current_actor ? '(' . $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname . ')' : '' }}</small>
@@ -274,20 +269,21 @@
                 </div>
                 @endif
 
-                <!-- Actionable Matrices Tab -->
-                <div class="tab-pane fade {{ $myDivisionMatrices->count() == 0 ? 'show active' : '' }}" id="actionable" role="tabpanel" aria-labelledby="actionable-tab">
+                                <!-- All Matrices Tab -->
+                @if(in_array(87, user_session('permissions', [])))
+                <div class="tab-pane fade {{ $myDivisionMatrices->count() == 0 ? 'show active' : '' }}" id="allMatrices" role="tabpanel" aria-labelledby="allMatrices-tab">
                     <div class="p-3">
                         <div class="d-flex align-items-center mb-3">
-                            <h6 class="mb-0 text-warning fw-bold">
-                                <i class="bx bx-time me-2"></i> Actionable Matrices
+                            <h6 class="mb-0 text-primary fw-bold">
+                                <i class="bx bx-grid me-2"></i> All Matrices
                             </h6>
-                            <small class="text-muted ms-3">Pending approval or action required</small>
+                            <small class="text-muted ms-3">All matrices in the system</small>
                         </div>
                         
-                        @if($filteredActionableMatrices->count() > 0)
+                        @if($allMatrices->count() > 0)
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
-                                    <thead class="table-warning">
+                                    <thead class="table-primary">
                                         <tr>
                                             <th>#</th>
                                             <th>Year</th>
@@ -296,7 +292,6 @@
                                             <th>Focal Person</th>
                                             <th>Key Result Areas</th>
                                             <th>Activities</th>
-                                            <th>Created At</th>
                                             <th>Level</th>
                                             <th>Status</th>
                                             <th class="text-center">Actions</th>
@@ -304,7 +299,7 @@
                                     </thead>
                                     <tbody>
                                         @php $count = 1; @endphp
-                                        @foreach($filteredActionableMatrices as $matrix)
+                                        @foreach($allMatrices as $matrix)
                                                 <tr>
                                                     <td>{{ $count }}</td>
                                                     <td>{{ $matrix->year }}</td>
@@ -380,7 +375,7 @@
                                                                                 @foreach ($activities as $activity)
                                                                                     <li class="list-group-item">
                                                                                         <span class="fw-bold">{{ $actCount++ }}.</span> <i
-                                                                                            class="bx bx-chevron-right text-primary me-2"></i>
+                                                                            class="bx bx-chevron-right text-primary me-2"></i>
                                                                                         {{ $activity->activity_title ?? 'Untitled Activity' }}
                                                                                     </li>
                                                                                 @endforeach
@@ -393,163 +388,7 @@
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td>{{ $matrix->created_at->format('Y-m-d H:i') }}</td>
-                                                    <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : ($matrix->workflow_definition ? $matrix->workflow_definition->role : 'Focal Person') }}
-                                                        <small
-                                                            class="text-muted">{{ $matrix->current_actor ? '(' . $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname . ')' : '' }}</small>
-                                                    </td>
-                                                    <td> <span
-                                                            class="p-1 rounded {{ config('approval_states')[$matrix->overall_status] }}">{{ strtoupper($matrix->overall_status) }}</span>
-                                                    </td>
-                                                    <td class="text-left">
-                                                        <div class="btn-group">
-                                                            <a href="{{ route('matrices.show', $matrix) }}"
-                                                                class="btn btn-sm btn-outline-info" title="View">
-                                                                <i class="bx bx-show"></i>
-                                                            </a>
-                                                            @if (still_with_creator($matrix))
-                                                                <a href="{{ route('matrices.edit', $matrix) }}"
-                                                                    class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                    <i class="bx bx-edit"></i>
-                                                                </a>
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                @php $count++; @endphp
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-check-circle fs-1 text-success opacity-50"></i>
-                                <p class="mb-0">No actionable matrices found. All caught up!</p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Actioned Matrices Tab -->
-                <div class="tab-pane fade" id="actioned" role="tabpanel" aria-labelledby="actioned-tab">
-                    <div class="p-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <h6 class="mb-0 text-success fw-bold">
-                                <i class="bx bx-check-double me-2"></i> Actioned Matrices
-                            </h6>
-                            <small class="text-muted ms-3">Approved, Rejected, or Completed - No action required</small>
-                        </div>
-                        
-                        @if($filteredActionedMatrices->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-success">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Year</th>
-                                            <th>Quarter</th>
-                                            <th>Division</th>
-                                            <th>Focal Person</th>
-                                            <th>Key Result Areas</th>
-                                            <th>Activities</th>
-                                            <th>Created At</th>
-                                            <th>Level</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($filteredActionedMatrices as $matrix)  
-                                                <tr>
-                                                    <td>{{ $count }}</td>
-                                                    <td>{{ $matrix->year }}</td>
-                                                    <td>{{ $matrix->quarter }}</td>
-                                                    <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
-                                                    <td>{{ $matrix->focalPerson->name ?? 'N/A' }}</td>
-                                                    <td>
-                                                        @php
-                                                            $kras = is_string($matrix->key_result_area)
-                                                                ? json_decode($matrix->key_result_area, true)
-                                                                : $matrix->key_result_area;
-                                                        @endphp
-                                                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal"
-                                                            data-bs-target="#kraModal{{ $matrix->id }}">
-                                                            <i class="bx bx-list-check me-1"></i> {{ is_array($kras) ? count($kras) : 0 }}
-                                                            Area(s)
-                                                        </button>
-
-                                                        <!-- Modal -->
-                                                        <div class="modal fade" id="kraModal{{ $matrix->id }}" tabindex="-1"
-                                                            aria-labelledby="kraModalLabel{{ $matrix->id }}" aria-hidden="true">
-                                                            <div class="modal-dialog modal-md modal-dialog-centered">
-                                                                <div class="modal-content">
-                                                                    <div class="modal-header">
-                                                                        <h5 class="modal-title" id="kraModalLabel{{ $matrix->id }}">
-                                                                            Key Result Areas - {{ $matrix->year }} {{ $matrix->quarter }}
-                                                                        </h5>
-                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                                            aria-label="Close"></button>
-                                                                    </div>
-                                                                    <div class="modal-body">
-                                                                        @if (is_array($kras) && count($kras))
-                                                                            <ul class="list-group">
-                                                                                @foreach ($kras as $kra)
-                                                                                    <li class="list-group-item">
-                                                                                        <i class="bx bx-check-circle text-success me-2"></i>
-                                                                                        {{ $kra['description'] ?? '' }}
-                                                                                    </li>
-                                                                                @endforeach
-                                                                            </ul>
-                                                                        @else
-                                                                            <p class="text-muted">No key result areas defined.</p>
-                                                                        @endif
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        @php
-                                                            $activities = $matrix->activities;
-                                                        @endphp
-                                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-                                                            data-bs-target="#activitiesModal{{ $matrix->id }}">
-                                                            <i class="bx bx-list-ul me-1"></i> {{ $activities->count() }} Activity(ies)
-                                                        </button>
-                                                        <!-- Modal -->
-                                                        <div class="modal fade" id="activitiesModal{{ $matrix->id }}" tabindex="-1"
-                                                            aria-labelledby="activitiesModalLabel{{ $matrix->id }}" aria-hidden="true">
-                                                            <div class="modal-dialog modal-md modal-dialog-centered">
-                                                                <div class="modal-content">
-                                                                    <div class="modal-header">
-                                                                        <h5 class="modal-title" id="activitiesModalLabel{{ $matrix->id }}">
-                                                                            Activities - {{ $matrix->year }} {{ $matrix->quarter }}
-                                                                        </h5>
-                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                                            aria-label="Close"></button>
-                                                                    </div>
-                                                                    <div class="modal-body">
-                                                                        @if ($activities->count())
-                                                                            <ul class="list-group">
-                                                                                @php $actCount = 1; @endphp
-                                                                                @foreach ($activities as $activity)
-                                                                                    <li class="list-group-item">
-                                                                                        <span class="fw-bold">{{ $actCount++ }}.</span> <i
-                                                                                            class="bx bx-chevron-right text-primary me-2"></i>
-                                                                                        {{ $activity->activity_title ?? 'Untitled Activity' }}
-                                                                                    </li>
-                                                                                @endforeach
-                                                                            </ul>
-                                                                        @else
-                                                                            <p class="text-muted">No activities defined.</p>
-                                                                        @endif
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>{{ $matrix->created_at->format('Y-m-d H:i') }}</td>
+                                                
                                                     <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : ($matrix->workflow_definition ? $matrix->workflow_definition->role : 'Focal Person') }}
                                                         <small
                                                             class="text-muted">{{ $matrix->current_actor ? '(' . $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname . ')' : '' }}</small>
@@ -580,11 +419,12 @@
                         @else
                             <div class="text-center py-4 text-muted">
                                 <i class="bx bx-calendar-x fs-1 opacity-50"></i>
-                                <p class="mb-0">No actioned matrices found.</p>
+                                <p class="mb-0">No matrices found in the system.</p>
                             </div>
                         @endif
                     </div>
                 </div>
+                @endif
             </div>
         </div>
     </div>

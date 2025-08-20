@@ -56,7 +56,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
                  id="search" 
                  name="search" 
                  placeholder="Search by name, email, or staff ID">
-        </div>
+            </div>
         <div class="col-md-3">
           <label for="group_id" class="form-label fw-bold">Filter by Group</label>
           <select class="form-select" id="group_id" name="group_id">
@@ -183,8 +183,8 @@ $usergroups = Modules::run("permissions/getUserGroups");
           <h6 class="mb-0 fw-bold">
             <i class="fa fa-lightbulb me-2"></i>Export Features
           </h6>
-        </div>
-        <div class="card-body">
+      </div>
+      <div class="card-body">
           <ul class="list-unstyled mb-0">
             <li class="mb-2">
               <i class="fa fa-file-csv text-success me-2"></i>
@@ -817,9 +817,9 @@ $(document).ready(function() {
                   <div class="d-flex gap-1">
                     ${user.staff_id ? `<span class="badge bg-secondary text-white badge-sm"><i class="fa fa-id-card me-1"></i>Staff: ${user.staff_id}</span>` : ''}
                     ${user.SAPNO ? `<span class="badge bg-dark text-white badge-sm"><i class="fa fa-barcode me-1"></i>SAP: ${user.SAPNO}</span>` : ''}
-                  </div>
-                </div>
-              </div>
+      </div>
+    </div>
+  </div>
             </div>
           </td>
           <td class="px-3 py-2">
@@ -1176,17 +1176,17 @@ $(document).ready(function() {
       
       $.ajax({
         url: '<?= base_url("auth/blockUser") ?>',
-        method: 'POST',
+      method: 'POST',
         data: { 
           user_id: userId,
           '<?php echo $this->security->get_csrf_token_name(); ?>': csrfToken
         },
-        dataType: 'json',
+      dataType: 'json',
         success: function(response) {
           showNotification(response.message || 'User blocked successfully', 'success');
           // Close the modal
           closeModal('blockUserModal');
-          setTimeout(function() {
+        setTimeout(function() {
             loadUsers(currentPage);
           }, 1500);
         },
@@ -1411,7 +1411,7 @@ $(document).ready(function() {
   // Handle user update form submission
   $('#updateUserForm').submit(function(e) {
     e.preventDefault();
-    
+
     var formData = new FormData(this);
     var submitBtn = $(this).find('button[type="submit"]');
     var originalText = submitBtn.html();
