@@ -16,6 +16,9 @@ $selectedGroup = $this->session->flashdata('group');
           <p class="text-muted mb-0">Manage user groups and their permissions</p>
         </div>
         <div class="d-flex gap-2">
+          <a href="<?php echo base_url('permissions/userpermissions'); ?>" class="btn text-white" style="background: #1aad5a; border-color: #1aad5a;">
+            <i class="fa fa-user-shield me-1"></i>User Permissions
+          </a>
           <button class="btn text-white" data-bs-toggle="modal" data-bs-target="#newgrp" style="background: #119A48; border-color: #119A48;">
             <i class="fa fa-plus me-1"></i>Create Group
           </button>

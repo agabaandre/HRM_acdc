@@ -192,8 +192,7 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="<?= base_url('auth/users') ?>"><i class="bx bx-right-arrow-alt"></i>Manage Users</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('permissions') ?>"><i class="bx bx-right-arrow-alt"></i>Group Permissions</a></li>
-                        <li><a class="dropdown-item" href="<?= base_url('permissions/user') ?>"><i class="bx bx-right-arrow-alt"></i>User Permissions</a></li>
+                        <li><a class="dropdown-item" href="<?= base_url('permissions') ?>"><i class="bx bx-right-arrow-alt"></i>Access Permissions</a></li>
                         <li><a class="dropdown-item" href="<?= base_url('auth/logs') ?>"><i class="bx bx-right-arrow-alt"></i>Audit Logs</a></li>
                     </ul>
                 </li>
