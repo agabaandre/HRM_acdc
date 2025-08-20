@@ -423,9 +423,9 @@
                                 <i class="bx bx-calendar-alt"></i>
                                 <span class="memo-meta-label">Date Range:</span>
                                 <span class="memo-meta-value">{{ $specialMemo->formatted_dates ?? 'Not set' }}</span>
-                            </div>
+                </div>
                             <div class="memo-meta-item">
-                                <i class="bx bx-user"></i>
+                            <i class="bx bx-user"></i>
                                 <span class="memo-meta-label">Requestor:</span>
                                 <span class="memo-meta-value">{{ $specialMemo->staff ? ($specialMemo->staff->fname . ' ' . $specialMemo->staff->lname) : 'Not assigned' }}</span>
                             </div>
@@ -451,13 +451,13 @@
                                     <div class="memo-meta-item">
                                         <i class="bx bx-badge-check"></i>
                                         <span class="memo-meta-value">{{ $specialMemo->workflow_definition ? $specialMemo->workflow_definition->role : 'Not Assigned' }}</span>
-                                    </div>
+                        </div>
                                     <div class="memo-meta-item">
                                         <i class="bx bx-user"></i>
                                         <span class="memo-meta-value">{{ $specialMemo->current_actor ? ($specialMemo->current_actor->fname . ' ' . $specialMemo->current_actor->lname) : 'No Approver Assigned' }}</span>
-                                    </div>
-                                </div>
-                            </div>
+                        </div>
+                        </div>
+                        </div>
                         @endif
                     </div>
                 </div>
@@ -472,8 +472,8 @@
                     </div>
                     <div class="card-body">
                         <h5 class="mb-0 fw-bold text-dark">{{ $specialMemo->activity_title ?? 'No title provided' }}</h5>
-                    </div>
                 </div>
+            </div>
 
                 <!-- Content Sections -->
                 <div class="mb-5">
@@ -533,7 +533,7 @@
                             </div>
                             <div class="card-body">
                                 <p class="mb-0 lh-lg text-dark">{!! nl2br(e($specialMemo->remarks)) !!}</p>
-                            </div>
+                    </div>
                         </div>
                     @endif
 
@@ -545,13 +545,13 @@
                                     <i class="bx bx-message-detail text-success"></i>
                                     Activity Request Remarks
                                 </h6>
-                            </div>
+                                </div>
                             <div class="card-body">
                                 <p class="mb-0 lh-lg text-dark">{!! nl2br(e($specialMemo->activity_request_remarks)) !!}</p>
                             </div>
                         </div>
-                    @endif
-                </div>
+                                    @endif
+                                </div>
 
                 <hr class="my-5">
 
@@ -561,9 +561,9 @@
                         <div class="d-flex align-items-center gap-2 mb-4">
                             <i class="bx bx-money text-success fs-4"></i>
                             <h4 class="mb-0 fw-bold">Budget Breakdown</h4>
-                        </div>
+                            </div>
 
-                        <div class="table-responsive">
+                                    <div class="table-responsive">
                             <table class="table table-hover border rounded-3 overflow-hidden">
                                 <thead style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
                                     <tr>
@@ -572,9 +572,9 @@
                                         <th class="border-0 fw-bold text-center">Quantity</th>
                                         <th class="border-0 fw-bold text-end">Unit Price</th>
                                         <th class="border-0 fw-bold text-end">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
                                     @php
                                         $grandTotal = 0;
                                         $rowIndex = 1;
@@ -591,23 +591,23 @@
                                                     <p class="mb-1 fw-medium">{{ $item['description'] ?? 'N/A' }}</p>
                                                     @if(isset($item['notes']) && !empty($item['notes']))
                                                         <small class="text-muted">{{ $item['notes'] }}</small>
-                                                    @endif
+                                                            @endif
                                                 </div>
-                                            </td>
+                                                        </td>
                                             <td class="text-center fw-medium">{{ $item['quantity'] ?? 1 }}</td>
                                             <td class="text-end">${{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
                                             <td class="text-end">${{ number_format($itemTotal, 2) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
                                 <tfoot>
                                     <tr>
                                         <td colspan="4" class="text-end fw-bold">Grand Total</td>
                                         <td class="text-end fw-bold">${{ number_format($grandTotal, 2) }}</td>
                                     </tr>
                                 </tfoot>
-                            </table>
-                        </div>
+                                        </table>
+                                    </div>
                     </div>
                 @endif
 
@@ -693,7 +693,7 @@
                                         Memo is not draft (status: {{ $specialMemo->overall_status }})
                                     @elseif(!$isCreator)
                                         User is not creator (User: {{ $currentUserId }}, Creator: {{ $specialMemo->staff_id }})
-                                    @else
+                                @else
                                         Unknown condition
                                     @endif
                                 </p>
@@ -726,7 +726,7 @@
                                 <h6 class="text-warning">Current Actor Details:</h6>
                                 <p><strong>Actor ID:</strong> {{ $specialMemo->current_actor->staff_id }}</p>
                                 <p><strong>Name:</strong> {{ $specialMemo->current_actor->fname }} {{ $specialMemo->current_actor->lname }}</p>
-                            </div>
+                    </div>
                         </div>
                         @else
                         <hr class="my-3">
@@ -755,7 +755,7 @@
                                 <strong>Current Level:</strong> {{ $specialMemo->approval_level ?? 0 }}
                                 @if($specialMemo->workflow_definition)
                                     - <strong>Role:</strong> {{ $specialMemo->workflow_definition->role ?? 'Not specified' }}
-                                @endif
+                                                        @endif
                             </div>
                             
                             <form action="{{ route('special-memo.update-status', $specialMemo) }}" method="POST" id="approvalForm">
@@ -922,9 +922,9 @@
                             <p class="text-muted mb-0 text-center py-3">
                                 <i class="bx bx-info-circle me-2"></i>No locations specified
                             </p>
-                        @endif
-                    </div>
-                </div>
+                                    @endif
+                                </div>
+                                </div>
 
                 <!-- Participants Card -->
                 <div class="card sidebar-card border-0 mb-4">
@@ -981,12 +981,12 @@
                                                 <span>Download</span>
                                             </a>
                                         </div>
-                                    </div>
+                            </div>
                                 @endforeach
                             </div>
+                            </div>
                         </div>
-                    </div>
-                @endif
+                    @endif
 
                 <!-- Quick Approval Status -->
                 <div class="card sidebar-card border-0 mb-4">
@@ -1046,23 +1046,23 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="text-muted mb-3">Ready to submit this special memo for approval?</p>
+                                <p class="text-muted mb-3">Ready to submit this special memo for approval?</p>
                             <form action="{{ route('special-memo.submit-for-approval', $specialMemo) }}" method="POST">
-                                @csrf
+                                    @csrf
                                 <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
                                     <i class="bx bx-send"></i>
                                     Submit for Approval
-                                </button>
-                            </form>
+                                    </button>
+                                </form>
                             <div class="mt-3 p-3 bg-light rounded">
                                 <small class="text-muted">
                                     <i class="bx bx-info-circle me-1"></i>
                                     <strong>Note:</strong> Once submitted, you won't be able to edit this memo until it's returned for revision.
                                 </small>
                             </div>
+                            </div>
                         </div>
-                    </div>
-                @endif
+                    @endif
             </div>
         </div>
     </div>

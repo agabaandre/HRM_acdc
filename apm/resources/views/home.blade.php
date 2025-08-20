@@ -152,7 +152,7 @@
     
     {{-- Quarterly Travel Matrix --}}
     @php
-      $pendingMatrixCount = get_staff_unread_notifications_count();
+      $pendingMatrixCount = get_staff_pending_action_count('matrices');
       $pendingNonTravelCount = get_staff_pending_action_count('non-travel');
       $pendingSpecialMemoCount = get_staff_pending_action_count('special-memo');
     @endphp
@@ -171,17 +171,12 @@
             <a href="{{ route('matrices.index') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            <a href="{{ route('activities.user-schedule') }}" class="btn btn-outline-primary btn-sm position-relative">
+            @if(get_staff_pending_action_count('matrices') > 0)
+            <a href="{{ route('matrices.pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              @if($pendingMatrixCount > 0)
-                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
-                  {{ $pendingMatrixCount }}
-                </span>
-              @endif
-              <span class="ms-2 bell-icon" style="position:static;">
-                <i class="fas fa-bell"></i>
-              </span>
+              <span class="alert-count" id="matrix-pending-count">{{ get_staff_pending_action_count('matrices') }}</span>
             </a>
+            @endif
             <a href="{{ route('activities.user-schedule') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-tasks"></i> Activities
             </a>
@@ -190,15 +185,7 @@
             </a>
           </div>
         </div>
-        {{-- Pending action badge in card corner --}}
-        @if($pendingMatrixCount > 0)
-        <div class="pending-action-badge">
-          <div class="bell-icon"><i class="fas fa-bell"></i></div>
-          <span class="notification-count">
-            {{ $pendingMatrixCount }}
-          </span>
-        </div>
-        @endif
+
       </div>
     </div>
 
@@ -217,17 +204,13 @@
             <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
+            
+            @if(get_staff_pending_action_count('non-travel') > 0)
             <a href="{{ url('non-travel') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              @if(get_staff_pending_action_count('non-travel') > 0)
-                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
-                  {{ get_staff_pending_action_count('non-travel') }}
-                </span>
-              @endif
-              <span class="ms-2 bell-icon" style="position:static;">
-                <i class="fas fa-bell"></i>
-              </span>
+              <span class="alert-count" id="non-travel-pending-count">{{ get_staff_pending_action_count('non-travel') }}</span>
             </a>
+            @endif
             <a href="{{ url('non-travel') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Submitted (NT)
             </a>
@@ -236,15 +219,7 @@
             </a>
           </div>
         </div>
-        {{-- Pending action badge in card corner --}}
-        @if(get_staff_pending_action_count('non-travel') > 0)
-        <div class="pending-action-badge">
-          <div class="bell-icon"><i class="fas fa-bell"></i></div>
-          <span class="notification-count">
-            {{ get_staff_pending_action_count('non-travel') }}
-          </span>
-        </div>
-        @endif
+
       </div>
     </div>
 
@@ -263,17 +238,12 @@
             <a href="{{ url('special-memo') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
+            @if(get_staff_pending_action_count('special-memo') > 0)
             <a href="{{ url('special-memo') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              @if(get_staff_pending_action_count('special-memo') > 0)
-                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
-                  {{ get_staff_pending_action_count('special-memo') }}
-                </span>
-              @endif
-              <span class="ms-2 bell-icon" style="position:static;">
-                <i class="fas fa-bell"></i>
-              </span>
+              <span class="alert-count" id="special-memo-pending-count">{{ get_staff_pending_action_count('special-memo') }}</span>
             </a>
+            @endif
             <a href="{{ url('special-memo') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Submitted
             </a>
@@ -285,15 +255,7 @@
             </a>
           </div>
         </div>
-        {{-- Pending action badge in card corner --}}
-        @if(get_staff_pending_action_count('special-memo') > 0)
-        <div class="pending-action-badge">
-          <div class="bell-icon"><i class="fas fa-bell"></i></div>
-          <span class="notification-count">
-            {{ get_staff_pending_action_count('special-memo') }}
-          </span>
-        </div>
-        @endif
+
       </div>
     </div>
 
@@ -312,31 +274,18 @@
             <a href="{{ url('service-requests') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
+            @if(get_staff_pending_action_count('service-requests') > 0)
             <a href="{{ url('service-requests') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              @if(get_staff_pending_action_count('service-requests') > 0)
-                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
-                  {{ get_staff_pending_action_count('service-requests') }}
-                </span>
-              @endif
-              <span class="ms-2 bell-icon" style="position:static;">
-                <i class="fas fa-bell"></i>
-              </span>
+              <span class="alert-count" id="service-requests-pending-count">{{ get_staff_pending_action_count('service-requests') }}</span>
             </a>
+            @endif
             <a href="{{ url('service-requests') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Submitted RQS
             </a>
           </div>
         </div>
-        {{-- Pending action badge in card corner --}}
-        @if(get_staff_pending_action_count('service-requests') > 0)
-        <div class="pending-action-badge">
-          <div class="bell-icon"><i class="fas fa-bell"></i></div>
-          <span class="notification-count">
-            {{ get_staff_pending_action_count('service-requests') }}
-          </span>
-        </div>
-        @endif
+
       </div>
     </div>
 
@@ -355,17 +304,12 @@
             <a href="{{ url('request-arf') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
+            @if(get_staff_pending_action_count('request-arf') > 0)
             <a href="{{ url('request-arf') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              @if(get_staff_pending_action_count('request-arf') > 0)
-                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
-                  {{ get_staff_pending_action_count('request-arf') }}
-                </span>
-              @endif
-              <span class="ms-2 bell-icon" style="position:static;">
-                <i class="fas fa-bell"></i>
-              </span>
+              <span class="alert-count" id="arf-pending-count">{{ get_staff_pending_action_count('request-arf') }}</span>
             </a>
+            @endif
             <a href="{{ url('request-arf') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Submitted
             </a>
@@ -374,17 +318,10 @@
             </a>
           </div>
         </div>
-        {{-- Pending action badge in card corner --}}
-        @if(get_staff_pending_action_count('request-arf') > 0)
-        <div class="pending-action-badge">
-          <div class="bell-icon"><i class="fas fa-bell"></i></div>
-          <span class="notification-count">
-            {{ get_staff_pending_action_count('request-arf') }}
-          </span>
-        </div>
-        @endif
+
       </div>
     </div>
+
 
     {{-- Single Memo --}}
     <div class="col-lg-3 col-md-6">
@@ -401,17 +338,12 @@
             <a href="{{ route('activities.single-memos.index') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
+            @if(get_staff_pending_action_count('single-memo') > 0)
             <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              @if(get_staff_pending_action_count('single-memo') > 0)
-                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
-                  {{ get_staff_pending_action_count('single-memo') }}
-                </span>
-              @endif
-              <span class="ms-2 bell-icon" style="position:static;">
-                <i class="fas fa-bell"></i>
-              </span>
+              <span class="alert-count" id="single-memo-pending-count">{{ get_staff_pending_action_count('single-memo') }}</span>
             </a>
+            @endif
             <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Submitted
             </a>
@@ -423,15 +355,7 @@
             </a>
           </div>
         </div>
-        {{-- Pending action badge in card corner --}}
-        @if(get_staff_pending_action_count('single-memo') > 0)
-        <div class="pending-action-badge">
-          <div class="bell-icon"><i class="fas fa-bell"></i></div>
-          <span class="notification-count">
-            {{ get_staff_pending_action_count('single-memo') }}
-          </span>
-        </div>
-        @endif
+
       </div>
     </div>
 
@@ -450,17 +374,12 @@
             <a href="#" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
+            @if(get_staff_pending_action_count('change-request') > 0)
             <a href="#" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
-              @if(get_staff_pending_action_count('change-request') > 0)
-                <span class="notification-count" style="position:absolute; top:-8px; right:-8px;">
-                  {{ get_staff_pending_action_count('change-request') }}
-                </span>
-              @endif
-              <span class="ms-2 bell-icon" style="position:static;">
-                <i class="fas fa-bell"></i>
-              </span>
+              <span class="alert-count" id="change-request-pending-count">{{ get_staff_pending_action_count('change-request') }}</span>
             </a>
+            @endif
             <a href="#" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Change Requests (CR)
             </a>
@@ -472,15 +391,7 @@
             </a>
           </div>
         </div>
-        {{-- Pending action badge in card corner --}}
-        @if(get_staff_pending_action_count('change-request') > 0)
-        <div class="pending-action-badge">
-          <div class="bell-icon"><i class="fas fa-bell"></i></div>
-          <span class="notification-count">
-            {{ get_staff_pending_action_count('change-request') }}
-          </span>
-        </div>
-        @endif
+
       </div>
     </div>
 

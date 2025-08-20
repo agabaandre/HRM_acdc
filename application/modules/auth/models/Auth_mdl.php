@@ -511,16 +511,36 @@ return $qry->num_rows();
 		return false;
 	}
 
-	public function user_permissions($role)
+	/**
+	 * Get all permissions for a user, including group and custom user permissions.
+	 * @param int $role Group/role id
+	 * @param int|false $user_id Optional user id for custom permissions
+	 * @return array List of permission ids
+	 */
+	public function user_permissions($role, $user_id = false)
 	{
-		 $this->db->select('permission_id');
-		 $this->db->where("group_id", $role);
-		$query = $this->db->get('group_permissions')->result();
-
 		$perms = array();
-		foreach ($query as $perm) {
-			array_push($perms, $perm->permission_id);
+
+		// Get group permissions
+		$this->db->select('permission_id');
+		$this->db->where("group_id", $role);
+		$group_query = $this->db->get('group_permissions')->result();
+		foreach ($group_query as $perm) {
+			$perms[] = $perm->permission_id;
 		}
+
+		// Get custom user permissions if user_id is provided
+		if ($user_id) {
+			$this->db->select('permission_id');
+			$this->db->where('user_id', $user_id);
+			$user_perms_query = $this->db->get('user_permissions')->result();
+			foreach ($user_perms_query as $perm) {
+				$perms[] = $perm->permission_id;
+			}
+		}
+
+		// Remove duplicates and reindex
+		$perms = array_values(array_unique($perms));
 		return $perms;
 	}
 

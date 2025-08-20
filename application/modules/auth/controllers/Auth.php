@@ -171,7 +171,7 @@ private function handle_login($user_data, $email) {
   $users = array_merge((array)$user_data, (array)$contract);
   unset($users['password']);
 
-  $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+  $users['permissions'] = $this->auth_mdl->user_permissions($users['role'],$users['user_id']);
   $users['is_admin'] = false;
 
   $this->session->set_userdata('user', (object)$users);
@@ -224,7 +224,7 @@ public function cred_login()
 
     if ($auth && !empty($data['users'])) {
         unset($users['password']);
-        $users['permissions'] = $this->auth_mdl->user_permissions($users['role']);
+        $users['permissions'] = $this->auth_mdl->user_permissions($users['role'],$users['user_id']);
         $users['is_admin'] = false;
         $_SESSION['user'] = (object)$users;
         $log_message = "User Logged in Successfully using Email and Password";
@@ -269,7 +269,7 @@ public function impersonate($user_id)
     $merged = array_merge($user_array, $contract_array);
 
     unset($merged['password']);
-    $merged['permissions'] = $this->auth_mdl->user_permissions($merged['role']);
+    $merged['permissions'] = $this->auth_mdl->user_permissions($merged['role'],$merged['user_id']);
     $merged['is_admin'] = false;
     $merged['is_impersonated'] = true; // Flag to indicate impersonation
 

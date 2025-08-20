@@ -98,6 +98,26 @@
         left: 0;
         right: 0;
         margin: 0 auto;
+    }
+
+    /* Alert count styling for pending approval badges */
+    .alert-count {
+        display: inline-block;
+        background-color: #dc3545;
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        line-height: 20px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: bold;
+        margin-left: auto;
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
         max-height: 90vh;
         transition: transform 0.3s ease-out;
     }
