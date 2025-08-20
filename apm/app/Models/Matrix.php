@@ -36,6 +36,75 @@ class Matrix extends Model
     protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor','division_schedule','division_staff',"intramural_budget","extramural_budget"];
 
     /**
+     * The validation rules for creating/updating a matrix.
+     *
+     * @var array
+     */
+    public static $rules = [
+        'division_id' => 'required|exists:divisions,id',
+        'year' => 'required|integer|min:2020|max:2030',
+        'quarter' => 'required|in:Q1,Q2,Q3,Q4',
+        'key_result_area' => 'required|array',
+        'focal_person_id' => 'required|exists:staff,staff_id',
+    ];
+
+    /**
+     * Check if a matrix already exists for the given division, year, and quarter.
+     *
+     * @param int $divisionId
+     * @param int $year
+     * @param string $quarter
+     * @param int|null $excludeId
+     * @return bool
+     */
+    public static function existsForDivisionYearQuarter($divisionId, $year, $quarter, $excludeId = null)
+    {
+        $query = static::where('division_id', $divisionId)
+                       ->where('year', $year)
+                       ->where('quarter', $quarter);
+        
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+        
+        return $query->exists();
+    }
+
+    /**
+     * Get existing matrices for a division to show what's already created.
+     *
+     * @param int $divisionId
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public static function getExistingMatricesForDivision($divisionId)
+    {
+        return static::where('division_id', $divisionId)
+                    ->orderBy('year', 'desc')
+                    ->orderBy('quarter', 'desc')
+                    ->get(['id', 'year', 'quarter', 'overall_status', 'created_at']);
+    }
+
+    /**
+     * Get the next available quarter for a division in a given year.
+     *
+     * @param int $divisionId
+     * @param int $year
+     * @return string|null
+     */
+    public static function getNextAvailableQuarter($divisionId, $year)
+    {
+        $existingQuarters = static::where('division_id', $divisionId)
+                                 ->where('year', $year)
+                                 ->pluck('quarter')
+                                 ->toArray();
+        
+        $allQuarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        $availableQuarters = array_diff($allQuarters, $existingQuarters);
+        
+        return !empty($availableQuarters) ? reset($availableQuarters) : null;
+    }
+
+    /**
      * Get the casts for the model.
      *
      * @return array

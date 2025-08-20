@@ -29,6 +29,12 @@
         </a>
     </div>
     <div class="card-body px-5 py-5">
+        @php
+            $userDivisionId = user_session('division_id');
+            $existingMatricesForUser = $existingMatrices[$userDivisionId] ?? collect();
+            $nextAvailableQuarter = $nextAvailableQuarters[$userDivisionId] ?? null;
+        @endphp
+
         <form action="{{ route('matrices.store') }}" method="POST" id="matrixForm">
             @csrf
            
@@ -137,6 +143,122 @@
 <script>
     $(document).ready(function () {
         let areaIndex = {{ old('key_result_area') ? count(old('key_result_area')) : 1 }};
+        
+        // Get existing matrices data for validation
+        const existingMatrices = @json($existingMatricesForUser->pluck('quarter', 'year')->toArray());
+        const userDivisionId = {{ $userDivisionId }};
+        
+        // Function to check if matrix already exists
+        function checkMatrixExists(year, quarter) {
+            if (existingMatrices[year] && existingMatrices[year].includes(quarter)) {
+                return true;
+            }
+            return false;
+        }
+        
+        // Function to show warning for duplicate matrix
+        function showDuplicateWarning(year, quarter) {
+            const warningHtml = `
+                <div class="alert alert-warning border-0 shadow-sm mb-4" id="duplicateWarning">
+                    <div class="d-flex align-items-center">
+                        <i class="bx bx-error-circle me-3 text-warning" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <h6 class="mb-2 fw-bold text-warning">Matrix Already Exists!</h6>
+                            <p class="mb-0">A matrix for <strong>${year} ${quarter}</strong> already exists for your division. 
+                            You cannot create duplicate matrices for the same division, year, and quarter combination.</p>
+                        </div>
+                    </div>
+                </div>`;
+            
+            // Remove existing warning if any
+            $('#duplicateWarning').remove();
+            
+            // Insert warning before the form
+            $('#matrixForm').before(warningHtml);
+            
+            // Disable submit button
+            $('#matrixForm button[type="submit"]').prop('disabled', true);
+        }
+        
+        // Function to hide warning and enable submit
+        function hideDuplicateWarning() {
+            $('#duplicateWarning').remove();
+            $('#matrixForm button[type="submit"]').prop('disabled', false);
+        }
+        
+        // Check for duplicates when year or quarter changes
+        $('#year, #quarter').change(function() {
+            const year = $('#year').val();
+            const quarter = $('#quarter').val();
+            
+            if (year && quarter) {
+                if (checkMatrixExists(year, quarter)) {
+                    showDuplicateWarning(year, quarter);
+                } else {
+                    hideDuplicateWarning();
+                }
+            }
+        });
+        
+        // Check on page load if values are pre-selected
+        if ($('#year').val() && $('#quarter').val()) {
+            const year = $('#year').val();
+            const quarter = $('#quarter').val();
+            if (checkMatrixExists(year, quarter)) {
+                showDuplicateWarning(year, quarter);
+            }
+        }
+        
+        // Form submission handler
+        $('#matrixForm').submit(function(e) {
+            const year = $('#year').val();
+            const quarter = $('#quarter').val();
+            
+            if (year && quarter && checkMatrixExists(year, quarter)) {
+                e.preventDefault();
+                showDuplicateWarning(year, quarter);
+                
+                // Scroll to warning
+                $('html, body').animate({
+                    scrollTop: $('#duplicateWarning').offset().top - 100
+                }, 500);
+                
+                return false;
+            }
+        });
+        
+        // Handle "Use This Quarter" button click
+        $('#useNextQuarter').click(function() {
+            const nextQuarter = '{{ $nextAvailableQuarter }}';
+            if (nextQuarter) {
+                $('#quarter').val(nextQuarter).trigger('change');
+                
+                // Show success message
+                const successHtml = `
+                    <div class="alert alert-success border-0 shadow-sm mb-4" id="quarterSelected">
+                        <div class="d-flex align-items-center">
+                            <i class="bx bx-check-circle me-3 text-success" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-success">Quarter Selected!</h6>
+                                <p class="mb-0">Successfully selected <strong>${nextQuarter}</strong> for your new matrix.</p>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                // Remove existing success message if any
+                $('#quarterSelected').remove();
+                
+                // Insert success message before the form
+                $('#matrixForm').before(successHtml);
+                
+                // Auto-hide after 3 seconds
+                setTimeout(function() {
+                    $('#quarterSelected').fadeOut(500, function() {
+                        $(this).remove();
+                    });
+                }, 3000);
+            }
+        });
 
         $('#addArea').click(function () {
             const newArea = `

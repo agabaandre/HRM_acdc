@@ -187,11 +187,19 @@ class MatrixController extends Controller
     
         $staffByDivision = [];
         $divisionFocalPersons = [];
+        $existingMatrices = [];
+        $nextAvailableQuarters = [];
     
         foreach ($divisions as $division) {
             $divisionStaff = Staff::active()->where('division_id', $division->id)->get();
             $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
             $divisionFocalPersons[$division->id] = $division->focal_person;
+            
+            // Get existing matrices for this division
+            $existingMatrices[$division->id] = Matrix::getExistingMatricesForDivision($division->id);
+            
+            // Get next available quarter for current year
+            $nextAvailableQuarters[$division->id] = Matrix::getNextAvailableQuarter($division->id, date('Y'));
         }
     
         // Save division name in session for breadcrumb use
@@ -207,45 +215,60 @@ class MatrixController extends Controller
             'focalPersons' => $focalPersons,
             'staffByDivision' => $staffByDivision,
             'divisionFocalPersons' => $divisionFocalPersons,
+            'existingMatrices' => $existingMatrices,
+            'nextAvailableQuarters' => $nextAvailableQuarters,
         ]);
     }
     public function store(Request $request)
-{
-    $isAdmin = session('user.user_role') == 10;
-    $userDivisionId = session('user.division_id');
-    $userStaffId = session('user.auth_staff_id');
+    {
+        $isAdmin = session('user.user_role') == 10;
+        $userDivisionId = session('user.division_id');
+        $userStaffId = session('user.auth_staff_id');
 
-    // Validate form input
-    $validated = $request->validate([
-        'year' => 'required|integer',
-        'quarter' => 'required|in:Q1,Q2,Q3,Q4',
-        'key_result_area.*.description' => 'required|string',
-    ]);
+        // Validate form input
+        $validated = $request->validate([
+            'year' => 'required|integer|min:2020|max:2030',
+            'quarter' => 'required|in:Q1,Q2,Q3,Q4',
+            'key_result_area.*.description' => 'required|string',
+        ]);
 
-    // Restrict input for non-admins
-    if (! $isAdmin) {
-        $validated['division_id'] = $userDivisionId;
-        $validated['focal_person_id'] = $userStaffId;
+        // Restrict input for non-admins
+        if (! $isAdmin) {
+            $validated['division_id'] = $userDivisionId;
+            $validated['focal_person_id'] = $userStaffId;
+        } else {
+            // For admins, validate division_id and focal_person_id
+            $validated['division_id'] = $request->input('division_id');
+            $validated['focal_person_id'] = $request->input('focal_person_id');
+        }
+
+        // Check if a matrix already exists for this division, year, and quarter
+        if (Matrix::existsForDivisionYearQuarter($validated['division_id'], $validated['year'], $validated['quarter'])) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors([
+                    'quarter' => 'A matrix already exists for ' . $validated['division_id'] . ' in ' . $validated['year'] . ' ' . $validated['quarter'] . '. Only one matrix per division per quarter is allowed.'
+                ]);
+        }
+
+        // Store the matrix
+        $matrix = Matrix::create([
+            'division_id' => $validated['division_id'],
+            'focal_person_id' => $validated['focal_person_id'],
+            'year' => $validated['year'],
+            'quarter' => $validated['quarter'],
+            'key_result_area' => json_encode($validated['key_result_area']),
+            'staff_id' => user_session('staff_id'),
+            'forward_workflow_id' => null,
+            'overall_status' => 'draft'
+        ]);
+
+        return redirect()->route('matrices.index')
+                         ->with([
+                             'msg' => 'Matrix created successfully.',
+                             'type' => 'success'
+                         ]);
     }
-
-    // Store the matrix
-   $matrix = Matrix::create([
-        'division_id' => $validated['division_id'],
-        'focal_person_id' => $validated['focal_person_id'],
-        'year' => $validated['year'],
-        'quarter' => $validated['quarter'],
-        'key_result_area' => json_encode($validated['key_result_area']),
-        'staff_id' => user_session('staff_id'),
-        'forward_workflow_id' => null, // You had this twice. Only one is needed.
-        'overall_status'=>'draft'
-    ]);
-
-    return redirect()->route('matrices.index')
-                     ->with([
-                         'msg' => 'Matrix created successfully.',
-                         'type' => 'success'
-                     ]);
-}
     
 
     /**
@@ -337,7 +360,7 @@ class MatrixController extends Controller
     
         // Validate basic fields
         $validated = $request->validate([
-            'year' => 'required|integer',
+            'year' => 'required|integer|min:2020|max:2030',
             'quarter' => 'required|in:Q1,Q2,Q3,Q4',
             'key_result_area' => 'required|array',
             'key_result_area.*.description' => 'required|string',
@@ -352,6 +375,15 @@ class MatrixController extends Controller
         } else {
             $validated['division_id'] = $userDivisionId;
             $validated['focal_person_id'] = $userStaffId;
+        }
+
+        // Check if a matrix already exists for this division, year, and quarter (excluding current matrix)
+        if (Matrix::existsForDivisionYearQuarter($validated['division_id'], $validated['year'], $validated['quarter'], $matrix->id)) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors([
+                    'quarter' => 'A matrix already exists for this division in ' . $validated['year'] . ' ' . $validated['quarter'] . '. Only one matrix per division per quarter is allowed.'
+                ]);
         }
 
         $this->updateMatrix($matrix,$request,$validated);

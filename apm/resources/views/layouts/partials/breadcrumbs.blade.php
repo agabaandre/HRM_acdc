@@ -15,6 +15,47 @@
                         @php
                         $segments = request()->segments();
                         $url = '';
+                        
+                        // Helper function to get the correct division name for display
+                        // This ensures intelligent division display based on context:
+                        // - For matrix details/preview: Always show matrix division name
+                        // - For approval workflows: Always show matrix division name  
+                        // - For other contexts: Show matrix division only if it belongs to user's division
+                        $getDisplayDivisionName = function($matrix = null, $context = 'default') {
+                            $userDivisionId = user_session('division_id');
+                            $userDivisionName = user_session('division_name');
+                            
+                            // Safety check - ensure we have user session data
+                            if (!$userDivisionId || !$userDivisionName) {
+                                return null;
+                            }
+                            
+                            if ($matrix && $matrix->division) {
+                                // For matrix details/preview/approval, always show matrix division name
+                                if ($context === 'matrix_details' || $context === 'matrix_approval') {
+                                    return $matrix->division->division_name;
+                                }
+                                
+                                // For other contexts, show matrix division only if it belongs to user's division
+                                if ($matrix->division_id == $userDivisionId) {
+                                    return $matrix->division->division_name;
+                                }
+                            }
+                            
+                            // Otherwise, show user's division name
+                            return $userDivisionName;
+                        };
+                        
+                        // Helper function to detect if we're in an approval context
+                        $isApprovalContext = function() use ($segments) {
+                            $approvalKeywords = ['approve', 'approval', 'status', 'trail', 'workflow', 'pending', 'review', 'decision', 'action'];
+                            foreach ($segments as $segment) {
+                                if (in_array(strtolower($segment), $approvalKeywords)) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        };
                         @endphp
 
                         @foreach($segments as $key => $segment)
@@ -27,45 +68,56 @@
 
                         // Handle special case: matrice or matrices
                         if (in_array($segmentLower, ['matrice', 'matrices'])) {
-                        $displayName = 'Quarterly Matrix';
-                        
-
-                        // Attach division if available
-                        //dd($matrix)
-                        if (!empty($matrix)) {
-                        $displayName .= ' - ' . $matrix->division->division_name;
-                        } elseif (user_session('division_name')) {
-                        $displayName .= ' - ' . user_session('division_name');
-                        }
+                            $displayName = 'Quarterly Matrix';
+                            
+                            // Only add division name if this is the main matrices page (not a specific matrix)
+                            // Division will be shown in the numeric segment for specific matrices
+                            if (!isset($matrix)) {
+                                $divisionName = $getDisplayDivisionName(null);
+                                if ($divisionName) {
+                                    $displayName .= ' - ' . $divisionName;
+                                }
+                            }
                         }
 
                         // Handle numeric segments
                         elseif (is_numeric($segment)) {
-                        if ($previousSegment === 'matrices' && isset($matrix)) {
-                        $displayName = $matrix->year . ' ' . $matrix->quarter??'';
-                        } elseif ($previousSegment === 'activities' && isset($activity)) {
-                        $displayName = $activity->activity_title ?? 'Activity #' . $segment;
-                        } elseif ($previousSegment === 'staff' && isset($staff)) {
-                        $displayName = $staff->full_name ?? 'Staff #' . $segment;
-                        } else {
-                        $displayName = 'Details';
-                        }
+                            if ($previousSegment === 'matrices' && isset($matrix)) {
+                                $displayName = $matrix->year . ' ' . ($matrix->quarter ?? '');
+                                
+                                // Determine context for division display
+                                $context = $isApprovalContext() ? 'matrix_approval' : 'matrix_details';
+                                
+                                // Add division info for specific matrices - always show matrix division for details/approval
+                                $divisionName = $getDisplayDivisionName($matrix, $context);
+                                if ($divisionName) {
+                                    $displayName .= ' - ' . $divisionName;
+                                }
+                            } elseif ($previousSegment === 'activities' && isset($activity)) {
+                                $displayName = $activity->activity_title ?? 'Activity #' . $segment;
+                                
+                                // If we're viewing matrix activities, add matrix division context
+                                if (isset($matrix) && $matrix->division) {
+                                    $displayName .= ' - ' . $matrix->division->division_name;
+                                }
+                            } elseif ($previousSegment === 'staff' && isset($staff)) {
+                                $displayName = $staff->full_name ?? 'Staff #' . $segment;
+                            } else {
+                                $displayName = 'Details';
+                            }
                         }
 
                         // Handle create/edit actions
                         elseif (in_array($segmentLower, ['create', 'edit'])) {
-                        $displayName = ucfirst($segment);
+                            $displayName = ucfirst($segment);
 
-                        // Check if previous was matrices
-                        if (in_array(strtolower($previousSegment), ['matrice', 'matrices'])) {
-                        if (isset($matrix) && $matrix->division) {
-                        $displayName = 'Quarterly Matrix - ' . $matrix->division->divsion_name;
-                        } elseif (user_session('division_name')) {
-                        $displayName = 'Quarterly Matrix - ' . session('division_name');
-                        }
-                        }
+                            // Check if previous was matrices
+                            if (in_array(strtolower($previousSegment), ['matrice', 'matrices'])) {
+                                // For create/edit actions, show the action without division (division shown in previous segment)
+                                $displayName = ucfirst($segment);
+                            }
 
-                        $url = ''; // avoid link on action
+                            $url = ''; // avoid link on action
                         }
 
                         // Handle resource names
@@ -80,6 +132,27 @@
                         } elseif (Str::endsWith($displayName, 's')) {
                         $displayName = substr($displayName, 0, -1);
                         }
+
+                        }
+                        
+                        // Handle approval-related segments
+                        if (in_array($segmentLower, ['approve', 'approval', 'status', 'trail'])) {
+                            $displayName = ucwords(str_replace('-', ' ', $segmentLower));
+                            
+                            // If we're in an approval context and have a matrix, show matrix division
+                            if (isset($matrix) && $matrix->division) {
+                                $displayName .= ' - ' . $matrix->division->division_name;
+                            }
+                        }
+                        
+                        // Special handling for matrix approval contexts
+                        if (in_array($segmentLower, ['approval-trail', 'approval-trails', 'approval_trail', 'approval_trails'])) {
+                            $displayName = 'Approval Trail';
+                            
+                            // Always show matrix division in approval trail context
+                            if (isset($matrix) && $matrix->division) {
+                                $displayName .= ' - ' . $matrix->division->division_name;
+                            }
                         }
                         }
                         @endphp
