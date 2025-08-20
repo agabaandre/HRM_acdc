@@ -110,12 +110,31 @@
                             <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret"
                                 href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 
+                                @php
+                                    $userName = trim(session('user.name', ''));
+                                    $nameParts = preg_split('/\s+/', $userName, 2);
+                                    $firstName = $nameParts[0] ?? '';
+                                    $lastName = $nameParts[1] ?? '';
+                                    // Define a set of professional color classes
+                                    $avatarColors = [
+                                        'bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-danger', 'bg-secondary'
+                                    ];
+                                    // Pick color based on first letter of first name
+                                    $colorIndex = (ord(strtoupper($firstName[0] ?? 'A')) - 65) % count($avatarColors);
+                                    $avatarColor = $avatarColors[$colorIndex];
+                                @endphp
                                 @if(session('user.photo'))
                                     <img src="{{ session('user.base_url', '') }}uploads/staff/{{ session('user.photo') }}"
                                         class="user-img" alt="user avatar">
                                 @else
-                                    <div class="user-avatar bg-primary text-white">
-                                        {{ substr(session('user.name', ''), 0, 1) }}
+                                    <div class="user-avatar {{ $avatarColor }} text-white d-flex align-items-center justify-content-center" style="font-weight:600; font-size:1.1rem; width:40px; height:40px; border-radius:50%;">
+                                        @if($firstName && $lastName)
+                                            <span>{{ strtoupper(substr($firstName,0,1)) }}{{ strtoupper(substr($lastName,0,1)) }}</span>
+                                        @elseif($firstName)
+                                            <span>{{ strtoupper(substr($firstName,0,2)) }}</span>
+                                        @else
+                                            <span>U</span>
+                                        @endif
                                     </div>
                                 @endif
 
