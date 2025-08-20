@@ -198,9 +198,7 @@ class Permissions extends MX_Controller
 		if (empty($data['permissions'])) {
 			$data['permissions'] = array();
 		}
-   // dd($data);
-		
-		Modules::run('templates/main', $data);
+   	render('group_details', $data);
 	}
 	
 	public function updateGroup()

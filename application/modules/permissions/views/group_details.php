@@ -1,9 +1,4 @@
 <?php
-//dd($data);
-$group = $data['group'];
-$users = $data['users'];
-$userCount = $data['userCount'];
-$permissions = $data['permissions'];
 ?>
 
 <div class="container-fluid py-4">
@@ -13,7 +8,7 @@ $permissions = $data['permissions'];
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h2 class="h3 mb-0 fw-bold text-dark">
-            <i class="fa fa-users me-2" style="color: #119A48;"></i>Group Details: <?php echo ucwords($group->group_name); ?>
+            <i class="fa fa-users me-2" style="color: #119A48;"></i>Group Details: <?php echo ucwords($group->group_name ?? 'Unknown Group'); ?>
           </h2>
           <p class="text-muted mb-0">View group information, permissions, and members</p>
         </div>
@@ -107,8 +102,8 @@ $permissions = $data['permissions'];
                             <?php endif; ?>
                           </div>
                           <div>
-                            <h6 class="mb-1 fw-bold"><?php echo htmlspecialchars($user->name); ?></h6>
-                            <small class="text-muted">User ID: <?php echo $user->user_id; ?></small>
+                            <h6 class="mb-1 fw-bold"><?php echo htmlspecialchars($user->name ?? 'Unknown User'); ?></h6>
+                            <small class="text-muted">User ID: <?php echo $user->user_id ?? 'N/A'; ?></small>
                             <?php if (!empty($user->auth_staff_id)): ?>
                               <br><small class="text-muted">Staff ID: <?php echo $user->auth_staff_id; ?></small>
                             <?php endif; ?>
@@ -247,7 +242,7 @@ $permissions = $data['permissions'];
     <div class="modal-content">
       <div class="modal-header text-white" style="background: #119A48;">
         <h5 class="modal-title">
-          <i class="fa fa-edit me-2"></i>Edit Group: <?php echo ucwords($group->group_name); ?>
+          <i class="fa fa-edit me-2"></i>Edit Group: <?php echo ucwords($group->group_name ?? 'Unknown Group'); ?>
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
@@ -260,7 +255,7 @@ $permissions = $data['permissions'];
                    class="form-control form-control-lg" 
                    name="group_name" 
                    id="edit_group_name"
-                   value="<?php echo htmlspecialchars($group->group_name); ?>"
+                   value="<?php echo htmlspecialchars($group->group_name ?? ''); ?>"
                    required>
           </div>
         </div>
@@ -321,7 +316,7 @@ $permissions = $data['permissions'];
         <div class="row">
           <div class="col-md-6">
             <h6 class="fw-bold text-primary">Group Details</h6>
-            <p><strong>Name:</strong> <?php echo ucwords($group->group_name); ?></p>
+            <p><strong>Name:</strong> <?php echo ucwords($group->group_name ?? 'Unknown Group'); ?></p>
             <p><strong>ID:</strong> <?php echo $group->id; ?></p>
             <p><strong>Members:</strong> <?php echo $userCount; ?> users</p>
             <p><strong>Permissions:</strong> <?php echo count($permissions); ?> total</p>

@@ -117,6 +117,8 @@
               <!-- Hidden Fields -->
               <input type="hidden" name="user_id" value="<?php echo $user->user_id; ?>">
               <input type="hidden" name="status" id="statusField<?php echo $user->user_id; ?>" value="<?php echo $user->status; ?>">
+              <!-- CSRF Token -->
+              <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
               
               <!-- Status Messages -->
               <div class="alert alert-info d-none" id="statusMessage<?php echo $user->user_id; ?>">

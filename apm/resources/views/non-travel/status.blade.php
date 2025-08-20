@@ -63,7 +63,7 @@
                                 <strong class="text-muted">Current Workflow:</strong> 
                                 <span class="fw-bold">{{ $nonTravel->forwardWorkflow->workflow_name ?? 'Not assigned' }}</span>
                             </div>
-                            <div class="mb-3">
+                    <div class="mb-3">
                                 <strong class="text-muted">Created:</strong> 
                                 <span class="fw-bold">{{ $nonTravel->created_at ? $nonTravel->created_at->format('M d, Y H:i') : 'Not available' }}</span>
                             </div>
@@ -102,7 +102,7 @@
                                     </div>
                                 @endif
                                 @if($nonTravel->workflow_definition)
-                                    <div class="mb-3">
+                    <div class="mb-3">
                                         <strong class="text-muted">Approval Role:</strong> 
                                         <span class="badge bg-info">{{ $nonTravel->workflow_definition->role ?? 'Not specified' }}</span>
                                     </div>

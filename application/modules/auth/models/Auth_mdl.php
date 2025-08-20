@@ -54,6 +54,9 @@ class Auth_mdl extends CI_Model
 	
 		// Join the user_groups table
 		$this->db->join('user_groups', 'user_groups.id = user.role');
+		
+		// Group by user to prevent duplicates
+		$this->db->group_by('user.user_id');
 	
 		// Add limit and offset
 		$this->db->limit( $start,$limit);
@@ -62,8 +65,84 @@ class Auth_mdl extends CI_Model
 		$qry = $this->db->get();
 		return $qry->result();
 	}
+	
+	public function getAllFiltered($filters = [], $limit = false, $start = false)
+	{
+		$this->db->select('staff.*, user.*, user_groups.*, divisions.division_name, jobs.job_name'); // Select required columns
+		$this->db->from('staff'); // Set the main table
+	
+		// Add search conditions
+		if (!empty($filters['search'])) {
+			$this->db->group_start(); // Start a group for OR conditions
+			$this->db->like("staff.work_email", $filters['search'], "both");
+			$this->db->or_like("staff.fname", $filters['search'], "both");
+			$this->db->or_like("staff.lname", $filters['search'], "both");
+			$this->db->or_like("staff.staff_id", $filters['search'], "both");
+			$this->db->group_end(); // End the group
+		}
+		
+		// Filter by group
+		if (!empty($filters['group_id'])) {
+			$this->db->where('user.role', $filters['group_id']);
+		}
+		
+		// Filter by status
+		if (isset($filters['status']) && $filters['status'] !== '') {
+			log_message('debug', 'Applying status filter: ' . $filters['status']);
+			$this->db->where('user.status', $filters['status']);
+		}
+	
+		// Join the staff table with user table
+		$this->db->join('user', 'user.auth_staff_id = staff.staff_id');
+	
+		// Join the user_groups table
+		$this->db->join('user_groups', 'user_groups.id = user.role');
+		
+		// Join staff_contracts table first (needed for division and job info)
+		// Use subquery to get the latest/active contract to prevent duplicates
+		$this->db->join("(SELECT staff_id, division_id, job_id FROM staff_contracts WHERE status_id IN (1,2,7) ORDER BY staff_contract_id DESC) as latest_contract", 'latest_contract.staff_id = staff.staff_id', 'left');
+		
+		// Join divisions table through latest contract
+		$this->db->join('divisions', 'divisions.division_id = latest_contract.division_id', 'left');
+		
+		// Join jobs table through latest contract
+		$this->db->join('jobs', 'jobs.job_id = latest_contract.job_id', 'left');
+		
+		// Group by user to prevent duplicates
+		$this->db->group_by('user.user_id');
+		
+		// Order by name
+		$this->db->order_by('staff.fname', 'ASC');
+		$this->db->order_by('staff.lname', 'ASC');
+		
+		// Apply pagination if provided
+		if ($limit !== false) {
+			$this->db->limit($limit, $start);
+		}
+	
+		// Execute the query
+		$qry = $this->db->get();
+		
+		// Debug: Log the SQL query
+		log_message('debug', 'SQL Query: ' . $this->db->last_query());
+		
+		$result = $qry->result();
+		
+		// Debug: Check for duplicates
+		$userIds = array();
+		foreach ($result as $user) {
+			$userIds[] = $user->user_id;
+		}
+		$uniqueIds = array_unique($userIds);
+		if (count($userIds) !== count($uniqueIds)) {
+			log_message('warning', 'Duplicate users detected in getAllFiltered: ' . count($userIds) . ' total, ' . count($uniqueIds) . ' unique');
+		}
+		
+		return $result;
+	}
 	public function count_Users($key)
 {
+    $this->db->select('COUNT(DISTINCT user.user_id) as total');
     $this->db->from('staff'); // Set the main table
 
     // Add search conditions
@@ -75,13 +154,66 @@ class Auth_mdl extends CI_Model
         $this->db->group_end(); // End the group
     }
 
-    // Join the staff table with a unique alias (staff1)
+    // Join the staff table with user table
 	$this->db->join('user', 'user.auth_staff_id = staff.staff_id');
 
     // Execute the query
     $qry = $this->db->get();
-    return $qry->num_rows();
+    $result = $qry->row();
+    return $result ? $result->total : 0;
 }
+
+	public function countFilteredUsers($filters = [])
+	{
+		$this->db->select('COUNT(DISTINCT user.user_id) as total');
+		$this->db->from('staff'); // Set the main table
+	
+		// Add search conditions
+		if (!empty($filters['search'])) {
+			$this->db->group_start(); // Start a group for OR conditions
+			$this->db->like("staff.work_email", $filters['search'], "both");
+			$this->db->or_like("staff.fname", $filters['search'], "both");
+			$this->db->or_like("staff.lname", $filters['search'], "both");
+			$this->db->or_like("staff.staff_id", $filters['search'], "both");
+			$this->db->group_end(); // End the group
+		}
+		
+		// Filter by group
+		if (!empty($filters['group_id'])) {
+			$this->db->where('user.role', $filters['group_id']);
+		}
+		
+		// Filter by status
+		if (isset($filters['status']) && $filters['status'] !== '') {
+			log_message('debug', 'Applying status filter in countFilteredUsers: ' . $filters['status']);
+			$this->db->where('user.status', $filters['status']);
+		}
+	
+		// Join the staff table with user table
+		$this->db->join('user', 'user.auth_staff_id = staff.staff_id');
+	
+		// Join the user_groups table
+		$this->db->join('user_groups', 'user_groups.id = user.role');
+		
+		// Join staff_contracts table first (needed for division and job info)
+		// Use subquery to get the latest/active contract to prevent duplicates
+		$this->db->join("(SELECT staff_id, division_id, job_id FROM staff_contracts WHERE status_id IN (1,2,7) ORDER BY staff_contract_id DESC) as latest_contract", 'latest_contract.staff_id = staff.staff_id', 'left');
+		
+		// Join divisions table through latest contract
+		$this->db->join('divisions', 'divisions.division_id = latest_contract.division_id', 'left');
+		
+		// Join jobs table through latest contract
+		$this->db->join('jobs', 'jobs.job_id = latest_contract.job_id', 'left');
+		
+		// Execute the query
+		$qry = $this->db->get();
+		
+		// Debug: Log the SQL query
+		log_message('debug', 'Count SQL Query: ' . $this->db->last_query());
+		
+		$result = $qry->row();
+		return $result ? $result->total : 0;
+	}
 
     public function get_logs($key = array(), $limit = 10, $offset = 0) {
         // Retrieve filter values with defaults
