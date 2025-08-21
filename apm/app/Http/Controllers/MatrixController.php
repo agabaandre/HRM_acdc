@@ -14,6 +14,7 @@ use App\Models\Location;
 use App\Models\Staff;
 use App\Models\FundCode;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redirect;
 // use Illuminate\Support\Facades\View as ViewFacade;
 
 class MatrixController extends Controller
@@ -45,7 +46,7 @@ class MatrixController extends Controller
                 $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
                     $subQ->where('is_division_specific', 1)
                     ->whereNull('division_reference_column')
-                          ->where('approval_order', \DB::raw('matrices.approval_level'));
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'));
                 })
                 ->where('division_id', $userDivisionId);
             }
@@ -86,7 +87,7 @@ class MatrixController extends Controller
                 $q->orWhere(function($subQ) use ($userStaffId) {
                     $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
                         $workflowQ->where('is_division_specific','=', 0)
-                                  ->where('approval_order', \DB::raw('matrices.approval_level'))
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'))
                                   ->whereHas('approvers', function($approverQ) use ($userStaffId) {
                                       $approverQ->where('staff_id', $userStaffId);
                                   });
@@ -117,7 +118,7 @@ class MatrixController extends Controller
 
        //  dd(getFullSql($query));
 
-        $matrices = $query->latest()->paginate(10);
+        $matrices = $query->latest()->paginate(20);
 
         //dd($matrices->toArray());
 
@@ -167,7 +168,7 @@ class MatrixController extends Controller
                     $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
                       ->whereNotNull('matrix_id');
                 }
-            ])->latest()->get();
+            ])->latest()->paginate(20);
         }
 
       //  dd($filteredActionedMatrices->toArray());
@@ -260,7 +261,7 @@ class MatrixController extends Controller
 
         // Check if a matrix already exists for this division, year, and quarter
         if (Matrix::existsForDivisionYearQuarter($validated['division_id'], $validated['year'], $validated['quarter'])) {
-            return redirect()->back()
+            return Redirect::back()
                 ->withInput()
                 ->withErrors([
                     'quarter' => 'A matrix already exists for ' . $validated['division_id'] . ' in ' . $validated['year'] . ' ' . $validated['quarter'] . '. Only one matrix per division per quarter is allowed.'
@@ -279,7 +280,7 @@ class MatrixController extends Controller
             'overall_status' => 'draft'
         ]);
 
-        return redirect()->route('matrices.index')
+        return Redirect::route('matrices.index')
                          ->with([
                              'msg' => 'Matrix created successfully.',
                              'type' => 'success'
@@ -704,12 +705,13 @@ class MatrixController extends Controller
             $q->orWhere('division_id', $userDivisionId);
         });
 
-        $pendingMatrices = $query->get();
+        $pendingMatrices = $query->paginate(20);
 
         // Apply the same additional filtering as index method for consistency
-        $pendingMatrices = $pendingMatrices->filter(function ($matrix) {
-            return can_take_action($matrix);
+        $pendingMatrices->getCollection()->transform(function ($matrix) {
+            return can_take_action($matrix) ? $matrix : null;
         });
+        $pendingMatrices->setCollection($pendingMatrices->getCollection()->filter());
 
         // Get matrices approved by current user
         $approvedByMe = Matrix::with([
@@ -720,7 +722,7 @@ class MatrixController extends Controller
         ])->whereHas('approvalTrails', function($q) use ($userStaffId) {
             $q->where('staff_id', $userStaffId)
               ->whereIn('action', ['approved', 'rejected', 'returned']);
-        })->get();
+        })->paginate(20);
 
         // Get divisions for filter
         $divisions = Division::orderBy('division_name')->get();
@@ -739,5 +741,396 @@ class MatrixController extends Controller
             'divisions',
             'focalPersons'
         ));
+    }
+
+    /**
+     * Show the approval status page for a matrix.
+     */
+    public function status(Matrix $matrix): View
+    {
+        $matrix->load(['staff', 'division', 'forwardWorkflow', 'approvalTrails.staff']);
+        
+        // Get approval level information
+        $approvalLevels = $this->getApprovalLevels($matrix);
+        
+        return view('matrices.status', compact('matrix', 'approvalLevels'));
+    }
+
+    /**
+     * Get detailed approval level information for the matrix.
+     */
+    private function getApprovalLevels(Matrix $matrix): array
+    {
+        if (!$matrix->forward_workflow_id) {
+            return [];
+        }
+
+        $levels = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'asc')
+            ->get();
+
+        $approvalLevels = [];
+        foreach ($levels as $level) {
+            $isCurrentLevel = $level->approval_order == $matrix->approval_level;
+            $isCompleted = $matrix->approval_level > $level->approval_order;
+            $isPending = $matrix->approval_level == $level->approval_order && $matrix->overall_status === 'pending';
+            
+            $approver = null;
+            if ($level->is_division_specific && $matrix->division) {
+                $staffId = $matrix->division->{$level->division_reference_column} ?? null;
+                if ($staffId) {
+                    $approver = \App\Models\Staff::where('staff_id', $staffId)->first();
+                }
+            } else {
+                $approverRecord = \App\Models\Approver::where('workflow_dfn_id', $level->id)->first();
+                if ($approverRecord) {
+                    $approver = \App\Models\Staff::where('staff_id', $approverRecord->staff_id)->first();
+                }
+            }
+
+            $approvalLevels[] = [
+                'order' => $level->approval_order,
+                'role' => $level->role,
+                'approver' => $approver,
+                'is_current' => $isCurrentLevel,
+                'is_completed' => $isCompleted,
+                'is_pending' => $isPending,
+                'is_division_specific' => $level->is_division_specific,
+                'division_reference' => $level->division_reference_column,
+                'category' => $level->category,
+            ];
+        }
+
+        return $approvalLevels;
+    }
+
+    /**
+     * Export matrices to CSV
+     */
+    public function exportCsv(Request $request)
+    {
+        $query = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow'
+        ]);
+
+        // Apply filters if provided
+        if ($request->filled('year')) {
+            $query->where('year', $request->year);
+        }
+    
+        if ($request->filled('quarter')) {
+            $query->where('quarter', $request->quarter);
+        }
+    
+        if ($request->filled('focal_person')) {
+            $query->where('focal_person_id', $request->focal_person);
+        }
+    
+        if ($request->filled('division')) {
+            $query->where('division_id', $request->division);
+        }
+
+        $matrices = $query->latest()->get();
+
+        $filename = 'matrices_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($matrices) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Title', 'Year', 'Quarter', 'Division', 'Focal Person', 
+                'Status', 'Approval Level', 'Created Date', 'Updated Date'
+            ]);
+
+            // CSV Data
+            foreach ($matrices as $matrix) {
+                fputcsv($file, [
+                    $matrix->id,
+                    $matrix->title ?? 'N/A',
+                    $matrix->year,
+                    $matrix->quarter,
+                    $matrix->division ? $matrix->division->division_name : 'N/A',
+                    $matrix->focalPerson ? ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 'N/A',
+                    $matrix->overall_status ?? 'N/A',
+                    $matrix->approval_level ?? 'N/A',
+                    $matrix->created_at ? $matrix->created_at->format('Y-m-d') : 'N/A',
+                    $matrix->updated_at ? $matrix->updated_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export division matrices to CSV
+     */
+    public function exportDivisionCsv(Request $request)
+    {
+        $userDivisionId = user_session('division_id');
+        
+        $query = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow'
+        ])->where('division_id', $userDivisionId);
+
+        // Apply filters if provided
+        if ($request->filled('year')) {
+            $query->where('year', $request->year);
+        }
+    
+        if ($request->filled('quarter')) {
+            $query->where('quarter', $request->quarter);
+        }
+    
+        if ($request->filled('focal_person')) {
+            $query->where('focal_person_id', $request->focal_person);
+        }
+
+        $matrices = $query->latest()->get();
+
+        $filename = 'division_matrices_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($matrices) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Title', 'Year', 'Quarter', 'Division', 'Focal Person', 
+                'Status', 'Approval Level', 'Created Date', 'Updated Date'
+            ]);
+
+            // CSV Data
+            foreach ($matrices as $matrix) {
+                fputcsv($file, [
+                    $matrix->id,
+                    $matrix->title ?? 'N/A',
+                    $matrix->year,
+                    $matrix->quarter,
+                    $matrix->division ? $matrix->division->division_name : 'N/A',
+                    $matrix->focalPerson ? ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 'N/A',
+                    $matrix->overall_status ?? 'N/A',
+                    $matrix->approval_level ?? 'N/A',
+                    $matrix->created_at ? $matrix->created_at->format('Y-m-d') : 'N/A',
+                    $matrix->updated_at ? $matrix->updated_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export pending approvals to CSV
+     */
+    public function exportPendingApprovalsCsv(Request $request)
+    {
+        $userStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
+
+        $query = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow'
+        ])->where('overall_status', 'pending')
+          ->where('forward_workflow_id', '!=', null)
+          ->where('approval_level', '>', 0);
+
+        // Apply the same filtering logic as pendingApprovals method
+        $query->where(function($q) use ($userDivisionId, $userStaffId) {
+            if ($userDivisionId) {
+                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId, $userDivisionId) {
+                    $divisionsTable = (new Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = matrices.division_id 
+                        WHERE wd.workflow_id = matrices.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = matrices.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=matrices.division_id AND d.id=?)
+                        )
+                    )", [$userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($userStaffId) {
+                        $subQ2->where('approval_level', $userStaffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
+                                $trailQ->where('staff_id', '=',$userStaffId);
+                              });
+                    });
+                });
+            }
+            
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($userStaffId) {
+                                      $approverQ->where('staff_id', $userStaffId);
+                                  });
+                    });
+                });
+            }
+
+            $q->orWhere('division_id', $userDivisionId);
+        });
+
+        $matrices = $query->get();
+
+        // Apply the same additional filtering
+        $matrices = $matrices->filter(function ($matrix) {
+            return can_take_action($matrix);
+        });
+
+        $filename = 'pending_approvals_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($matrices) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Title', 'Year', 'Quarter', 'Division', 'Focal Person', 
+                'Status', 'Approval Level', 'Current Approver', 'Created Date'
+            ]);
+
+            // CSV Data
+            foreach ($matrices as $matrix) {
+                fputcsv($file, [
+                    $matrix->id,
+                    $matrix->title ?? 'N/A',
+                    $matrix->year,
+                    $matrix->quarter,
+                    $matrix->division ? $matrix->division->division_name : 'N/A',
+                    $matrix->focalPerson ? ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 'N/A',
+                    $matrix->overall_status ?? 'N/A',
+                    $matrix->approval_level ?? 'N/A',
+                    $matrix->current_actor ? ($matrix->current_actor->fname . ' ' . $matrix->current_actor->lname) : 'N/A',
+                    $matrix->created_at ? $matrix->created_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export approved by me matrices to CSV
+     */
+    public function exportApprovedByMeCsv(Request $request)
+    {
+        $userStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
+
+        $query = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow',
+            'approvalTrails'
+        ])->whereHas('approvalTrails', function($q) use ($userStaffId) {
+            $q->where('staff_id', $userStaffId);
+        });
+
+        // Apply filters if provided
+        if ($request->filled('year')) {
+            $query->where('year', $request->year);
+        }
+    
+        if ($request->filled('quarter')) {
+            $query->where('quarter', $request->quarter);
+        }
+    
+        if ($request->filled('focal_person')) {
+            $query->where('focal_person_id', $request->focal_person);
+        }
+    
+        if ($request->filled('division')) {
+            $query->where('division_id', $request->division);
+        }
+
+        $matrices = $query->latest()->get();
+
+        $filename = 'approved_by_me_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($matrices, $userStaffId) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Title', 'Year', 'Quarter', 'Division', 'Focal Person', 
+                'Status', 'Your Action', 'Action Date', 'Created Date'
+            ]);
+
+            // CSV Data
+            foreach ($matrices as $matrix) {
+                $myApproval = $matrix->approvalTrails->where('staff_id', $userStaffId)->first();
+                fputcsv($file, [
+                    $matrix->id,
+                    $matrix->title ?? 'N/A',
+                    $matrix->year,
+                    $matrix->quarter,
+                    $matrix->division ? $matrix->division->division_name : 'N/A',
+                    $matrix->focalPerson ? ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 'N/A',
+                    $matrix->overall_status ?? 'N/A',
+                    $myApproval ? ucfirst($myApproval->action ?? 'Unknown') : 'N/A',
+                    $myApproval && $myApproval->created_at ? $myApproval->created_at->format('Y-m-d H:i') : 'N/A',
+                    $matrix->created_at ? $matrix->created_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
