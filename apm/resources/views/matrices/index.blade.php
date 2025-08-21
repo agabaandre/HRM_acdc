@@ -116,11 +116,18 @@
                 @if($myDivisionMatrices->count() > 0)
                 <div class="tab-pane fade show active" id="myDivision" role="tabpanel" aria-labelledby="myDivision-tab">
                     <div class="p-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <h6 class="mb-0 text-success fw-bold">
-                                <i class="bx bx-home me-2"></i> My Division Matrices
-                            </h6>
-                            <small class="text-muted ms-3">All Matrices in your division</small>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <h6 class="mb-0 text-success fw-bold">
+                                    <i class="bx bx-home me-2"></i> My Division Matrices
+                                </h6>
+                                <small class="text-muted">All Matrices in your division</small>
+                            </div>
+                            <div>
+                                <a href="{{ route('matrices.export.division-csv') }}" class="btn btn-outline-success btn-sm">
+                                    <i class="bx bx-download me-1"></i> Export to CSV
+                                </a>
+                            </div>
                         </div>
                         
                         @if($myDivisionMatrices->count() > 0)
@@ -259,6 +266,13 @@
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            <!-- Pagination -->
+                            @if($myDivisionMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $myDivisionMatrices->hasPages())
+                                <div class="d-flex justify-content-center mt-3">
+                                    {{ $myDivisionMatrices->appends(request()->query())->links() }}
+                                </div>
+                            @endif
                         @else
                             <div class="text-center py-4 text-muted">
                                 <i class="bx bx-check-circle fs-1 text-success opacity-50"></i>
@@ -273,11 +287,18 @@
                 @if(in_array(87, user_session('permissions', [])))
                 <div class="tab-pane fade {{ $myDivisionMatrices->count() == 0 ? 'show active' : '' }}" id="allMatrices" role="tabpanel" aria-labelledby="allMatrices-tab">
                     <div class="p-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <h6 class="mb-0 text-primary fw-bold">
-                                <i class="bx bx-grid me-2"></i> All Matrices
-                            </h6>
-                            <small class="text-muted ms-3">All matrices in the system</small>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <h6 class="mb-0 text-primary fw-bold">
+                                    <i class="bx bx-grid me-2"></i> All Matrices
+                                </h6>
+                                <small class="text-muted">All matrices in the system</small>
+                            </div>
+                            <div>
+                                <a href="{{ route('matrices.export.csv') }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bx bx-download me-1"></i> Export to CSV
+                                </a>
+                            </div>
                         </div>
                         
                         @if($allMatrices->count() > 0)
@@ -416,6 +437,13 @@
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            <!-- Pagination -->
+                            @if($allMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMatrices->hasPages())
+                                <div class="d-flex justify-content-center mt-3">
+                                    {{ $allMatrices->appends(request()->query())->links() }}
+                                </div>
+                            @endif
                         @else
                             <div class="text-center py-4 text-muted">
                                 <i class="bx bx-calendar-x fs-1 opacity-50"></i>

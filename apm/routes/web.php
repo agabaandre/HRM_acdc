@@ -99,6 +99,13 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::get('/matrices/pending-approvals', [MatrixController::class, 'pendingApprovals'])->name('matrices.pending-approvals');
     Route::get('/matrices/request_approval/{matrix}', [MatrixController::class, 'request_approval'])->name('matrices.request_approval');
     Route::post('/matrices/{matrix}/status', [MatrixController::class, 'update_status'])->name('matrices.status');
+    Route::get('/matrices/{matrix}/status', [MatrixController::class, 'status'])->name('matrices.view-status');
+    
+    // CSV Export Routes
+    Route::get('/matrices/export/csv', [MatrixController::class, 'exportCsv'])->name('matrices.export.csv');
+    Route::get('/matrices/export/division-csv', [MatrixController::class, 'exportDivisionCsv'])->name('matrices.export.division-csv');
+    Route::get('/matrices/export/pending-approvals-csv', [MatrixController::class, 'exportPendingApprovalsCsv'])->name('matrices.export.pending-approvals-csv');
+    Route::get('/matrices/export/approved-by-me-csv', [MatrixController::class, 'exportApprovedByMeCsv'])->name('matrices.export.approved-by-me-csv');
     
     Route::resource('matrices', MatrixController::class);
     

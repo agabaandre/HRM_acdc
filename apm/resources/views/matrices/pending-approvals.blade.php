@@ -128,11 +128,18 @@
                 <!-- Pending Approval Tab -->
                 <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
                     <div class="p-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <h6 class="mb-0 text-warning fw-bold">
-                                <i class="bx bx-time me-2"></i> Pending Approval
-                            </h6>
-                            <small class="text-muted ms-3">Matrices currently at YOUR approval level (not in draft mode)</small>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <h6 class="mb-0 text-warning fw-bold">
+                                    <i class="bx bx-time me-2"></i> Pending Approval
+                                </h6>
+                                <small class="text-muted">Matrices currently at YOUR approval level (not in draft mode)</small>
+                            </div>
+                            <div>
+                                <a href="{{ route('matrices.export.pending-approvals-csv') }}" class="btn btn-outline-warning btn-sm">
+                                    <i class="bx bx-download me-1"></i> Export to CSV
+                                </a>
+                            </div>
                         </div>
                         
                         @if($pendingMatrices->count() > 0)
@@ -275,6 +282,13 @@
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            <!-- Pagination -->
+                            @if($pendingMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $pendingMatrices->hasPages())
+                                <div class="d-flex justify-content-center mt-3">
+                                    {{ $pendingMatrices->appends(request()->query())->links() }}
+                                </div>
+                            @endif
                         @else
                             <div class="text-center py-5">
                                 <i class="bx bx-check-circle text-success" style="font-size: 4rem;"></i>
@@ -293,11 +307,18 @@
                 <!-- Approved by Me Tab -->
                 <div class="tab-pane fade" id="approved" role="tabpanel" aria-labelledby="approved-tab">
                     <div class="p-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <h6 class="mb-0 text-success fw-bold">
-                                <i class="bx bx-check-double me-2"></i> Approved by Me
-                            </h6>
-                            <small class="text-muted ms-3">Matrices you have approved or acted upon</small>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <h6 class="mb-0 text-success fw-bold">
+                                    <i class="bx bx-check-double me-2"></i> Approved by Me
+                                </h6>
+                                <small class="text-muted">Matrices you have approved or acted upon</small>
+                            </div>
+                            <div>
+                                <a href="{{ route('matrices.export.approved-by-me-csv') }}" class="btn btn-outline-success btn-sm">
+                                    <i class="bx bx-download me-1"></i> Export to CSV
+                                </a>
+                            </div>
                         </div>
                         
                         @if($approvedByMe->count() > 0)
@@ -450,6 +471,13 @@
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            <!-- Pagination -->
+                            @if($approvedByMe instanceof \Illuminate\Pagination\LengthAwarePaginator && $approvedByMe->hasPages())
+                                <div class="d-flex justify-content-center mt-3">
+                                    {{ $approvedByMe->appends(request()->query())->links() }}
+                                </div>
+                            @endif
                         @else
                             <div class="text-center py-5">
                                 <i class="bx bx-info-circle text-info" style="font-size: 4rem;"></i>
