@@ -177,12 +177,6 @@
               <span class="alert-count" id="matrix-pending-count">{{ get_staff_pending_action_count('matrices') }}</span>
             </a>
             @endif
-            <a href="{{ route('activities.user-schedule') }}" class="btn btn-outline-primary btn-sm">
-              <i class="fas fa-tasks"></i> Activities
-            </a>
-            <a href="{{ route('matrices.index') }}" class="btn btn-outline-info btn-sm">
-              <i class="fas fa-list"></i> All QMs
-            </a>
           </div>
         </div>
 

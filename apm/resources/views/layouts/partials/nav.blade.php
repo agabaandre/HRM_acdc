@@ -80,6 +80,14 @@ $settingsMenuItems = [
                 </a>
             </li>
 
+            <!-- Activities -->
+            <li class="nav-item">
+                <a href="{{ route('activities.index') }}" class="nav-link {{ Request::is('activities*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-tasks"></i></div>
+                    <div class="menu-title">Matrix Activities</div>
+                </a>
+            </li>
+
          
 
             <!-- Memos Menu -->

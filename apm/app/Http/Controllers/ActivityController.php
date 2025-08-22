@@ -1069,4 +1069,88 @@ class ActivityController extends Controller
         
         return view('activities.single-memos.status', compact('activity'));
     }
+
+    /**
+     * Display the main activities page with three tabs.
+     */
+    public function activitiesIndex(Request $request): View
+    {
+        $userStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
+        
+        // Get next quarter as default
+        $currentYear = now()->year;
+        $currentQuarter = now()->quarter;
+        $nextQuarter = $currentQuarter == 4 ? 1 : $currentQuarter + 1;
+        $nextYear = $currentQuarter == 4 ? $currentYear + 1 : $currentYear;
+        
+        $selectedYear = $request->get('year', $nextYear);
+        $selectedQuarter = $request->get('quarter', 'Q' . $nextQuarter);
+        $selectedDivisionId = $request->get('division_id', '');
+        
+        // Base query for activities
+        $baseQuery = Activity::with([
+            'matrix.division',
+            'responsiblePerson',
+            'staff'
+        ])->whereHas('matrix', function($query) use ($selectedYear, $selectedQuarter) {
+            $query->where('year', $selectedYear)
+                  ->where('quarter', $selectedQuarter);
+        });
+        
+        // Tab 1: All Activities (visible to users with permission 87)
+        $allActivities = collect();
+        if (in_array(87, user_session('permissions', []))) {
+            $allActivitiesQuery = clone $baseQuery;
+            
+            if ($selectedDivisionId) {
+                $allActivitiesQuery->whereHas('matrix', function($query) use ($selectedDivisionId) {
+                    $query->where('division_id', $selectedDivisionId);
+                });
+            }
+            
+            $allActivities = $allActivitiesQuery->latest()->paginate(20);
+        }
+        
+        // Tab 2: My Division Activities
+        $myDivisionActivities = collect();
+        if ($userDivisionId) {
+            $myDivisionQuery = clone $baseQuery;
+            $myDivisionQuery->whereHas('matrix', function($query) use ($userDivisionId) {
+                $query->where('division_id', $userDivisionId);
+            });
+            $myDivisionActivities = $myDivisionQuery->latest()->paginate(20);
+        }
+        
+        // Tab 3: Shared Activities (activities I'm added to in other divisions)
+        $sharedActivities = collect();
+        if ($userStaffId) {
+            $sharedQuery = clone $baseQuery;
+            $sharedQuery->where('staff_id', $userStaffId)
+                       ->whereHas('matrix', function($query) use ($userDivisionId) {
+                           $query->where('division_id', '!=', $userDivisionId);
+                       });
+            $sharedActivities = $sharedQuery->latest()->paginate(20);
+        }
+        
+        // Get divisions for filter
+        $divisions = \App\Models\Division::orderBy('division_name')->get();
+        
+        // Get years and quarters for filter
+        $years = range($currentYear - 2, $currentYear + 2);
+        $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        
+        return view('activities.index', compact(
+            'allActivities',
+            'myDivisionActivities', 
+            'sharedActivities',
+            'divisions',
+            'years',
+            'quarters',
+            'selectedYear',
+            'selectedQuarter',
+            'selectedDivisionId',
+            'userDivisionId'
+        ));
+    }
 }

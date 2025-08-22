@@ -179,4 +179,7 @@ Route::post('non-travel/{nonTravel}/submit-for-approval', [App\Http\Controllers\
 Route::post('non-travel/{nonTravel}/update-status', [App\Http\Controllers\NonTravelMemoController::class, 'updateStatus'])->name('non-travel.update-status');
 Route::get('non-travel/{nonTravel}/status', [App\Http\Controllers\NonTravelMemoController::class, 'status'])->name('non-travel.status');
 
+// Activities Routes
+Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index');
+
 

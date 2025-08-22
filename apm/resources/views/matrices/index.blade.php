@@ -283,7 +283,7 @@
                 </div>
                 @endif
 
-                                <!-- All Matrices Tab -->
+                <!-- All Matrices Tab -->
                 @if(in_array(87, user_session('permissions', [])))
                 <div class="tab-pane fade {{ $myDivisionMatrices->count() == 0 ? 'show active' : '' }}" id="allMatrices" role="tabpanel" aria-labelledby="allMatrices-tab">
                     <div class="p-3">

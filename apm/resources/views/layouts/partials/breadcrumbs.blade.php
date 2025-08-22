@@ -17,10 +17,7 @@
                         $url = '';
                         
                         // Helper function to get the correct division name for display
-                        // This ensures intelligent division display based on context:
-                        // - For matrix details/preview: Always show matrix division name
-                        // - For approval workflows: Always show matrix division name  
-                        // - For other contexts: Show matrix division only if it belongs to user's division
+                        // This ensures intelligent division display based on context
                         $getDisplayDivisionName = function($matrix = null, $context = 'default') {
                             $userDivisionId = user_session('division_id');
                             $userDivisionName = user_session('division_name');
@@ -44,17 +41,6 @@
                             
                             // Otherwise, show user's division name
                             return $userDivisionName;
-                        };
-                        
-                        // Helper function to detect if we're in an approval context
-                        $isApprovalContext = function() use ($segments) {
-                            $approvalKeywords = ['approve', 'approval', 'status', 'trail', 'workflow', 'pending', 'review', 'decision', 'action'];
-                            foreach ($segments as $segment) {
-                                if (in_array(strtolower($segment), $approvalKeywords)) {
-                                    return true;
-                                }
-                            }
-                            return false;
                         };
                         @endphp
 
@@ -85,21 +71,13 @@
                             if ($previousSegment === 'matrices' && isset($matrix)) {
                                 $displayName = $matrix->year . ' ' . ($matrix->quarter ?? '');
                                 
-                                // Determine context for division display
-                                $context = $isApprovalContext() ? 'matrix_approval' : 'matrix_details';
-                                
-                                // Add division info for specific matrices - always show matrix division for details/approval
-                                $divisionName = $getDisplayDivisionName($matrix, $context);
+                                // Add division info for specific matrices - always show matrix division for details
+                                $divisionName = $getDisplayDivisionName($matrix, 'matrix_details');
                                 if ($divisionName) {
                                     $displayName .= ' - ' . $divisionName;
                                 }
                             } elseif ($previousSegment === 'activities' && isset($activity)) {
                                 $displayName = $activity->activity_title ?? 'Activity #' . $segment;
-                                
-                                // If we're viewing matrix activities, add matrix division context
-                                if (isset($matrix) && $matrix->division) {
-                                    $displayName .= ' - ' . $matrix->division->division_name;
-                                }
                             } elseif ($previousSegment === 'staff' && isset($staff)) {
                                 $displayName = $staff->full_name ?? 'Staff #' . $segment;
                             } else {
@@ -132,27 +110,6 @@
                         } elseif (Str::endsWith($displayName, 's')) {
                         $displayName = substr($displayName, 0, -1);
                         }
-
-                        }
-                        
-                        // Handle approval-related segments
-                        if (in_array($segmentLower, ['approve', 'approval', 'status', 'trail'])) {
-                            $displayName = ucwords(str_replace('-', ' ', $segmentLower));
-                            
-                            // If we're in an approval context and have a matrix, show matrix division
-                            if (isset($matrix) && $matrix->division) {
-                                $displayName .= ' - ' . $matrix->division->division_name;
-                            }
-                        }
-                        
-                        // Special handling for matrix approval contexts
-                        if (in_array($segmentLower, ['approval-trail', 'approval-trails', 'approval_trail', 'approval_trails'])) {
-                            $displayName = 'Approval Trail';
-                            
-                            // Always show matrix division in approval trail context
-                            if (isset($matrix) && $matrix->division) {
-                                $displayName .= ' - ' . $matrix->division->division_name;
-                            }
                         }
                         }
                         @endphp

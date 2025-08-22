@@ -9,11 +9,15 @@
 @section('content')
 @php
     $isAdmin = user_session('user_role') == 10;
-    $userDivisionId = user_session('division_id');
+    $userDivisionId = user_session('division_id') ?? 0;
     $defaultFocal = old('focal_person_id', user_session('focal_person'));
-    $currentYear = date('Y');
+    // Use the values passed from controller instead of calculating here
+    $currentYear = $currentYear ?? date('Y');
     $currentMonth = date('n');
-    $currentQuarter = 'Q' . ceil($currentMonth / 3);
+    $currentQuarter = $currentQuarter ?? 'Q' . ceil($currentMonth / 3);
+    $nextQuarter = $nextQuarter ?? null;
+    $nextYear = $nextYear ?? $currentYear;
+    
     // Control for quarter/year selection
     // Set ALLOW_QUARTER_CONTROL in .env to true to allow all quarters/years
     $allowQuarterControl = env('ALLOW_QUARTER_CONTROL', false);
@@ -30,7 +34,7 @@
     </div>
     <div class="card-body px-5 py-5">
         @php
-            $userDivisionId = user_session('division_id');
+            $userDivisionId = user_session('division_id') ?? 0;
             $existingMatricesForUser = $existingMatrices[$userDivisionId] ?? collect();
             $nextAvailableQuarter = $nextAvailableQuarters[$userDivisionId] ?? null;
         @endphp
@@ -38,25 +42,58 @@
         <form action="{{ route('matrices.store') }}" method="POST" id="matrixForm">
             @csrf
            
+            <!-- Information Panel for One Quarter Ahead -->
+            <div class="alert alert-info border-0 shadow-sm mb-4">
+                <div class="d-flex align-items-start">
+                    <i class="bx bx-info-circle me-3 text-info" style="font-size: 1.5rem; margin-top: 0.2rem;"></i>
+                    <div>
+                        <h6 class="mb-2 fw-bold text-info">Matrix Creation Guidelines</h6>
+                        <p class="mb-2">You can create a matrix for:</p>
+                        <ul class="mb-0 ps-3">
+                            <li><strong>Current Quarter:</strong> {{ $currentQuarter ?? 'Q1' }} {{ $currentYear ?? date('Y') }}</li>
+                            @if(isset($nextQuarter) && $nextQuarter)
+                                <li><strong>Next Quarter:</strong> {{ $nextQuarter }} {{ $nextYear > ($currentYear ?? date('Y')) ? $nextYear : ($currentYear ?? date('Y')) }}</li>
+                            @endif
+                        </ul>
+                        @if(isset($nextQuarter) && $nextQuarter)
+                            <small class="text-muted mt-2 d-block">
+                                <i class="bx bx-lightbulb me-1"></i>
+                                Planning ahead? Create your matrix for {{ $nextQuarter }} to get an early start on next quarter's activities.
+                            </small>
+                        @endif
+                    </div>
+                </div>
+            </div>
+         
+      
          
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <label for="year" class="form-label fw-semibold">
                         Year <span class="text-danger">*</span>
                         @if(!$allowQuarterControl)
-                            <span class="badge bg-info ms-2">Current Year Only</span>
+                            <span class="badge bg-info ms-2">Current or Next Year</span>
                         @endif
                     </label>
                     <select name="year" id="year" class="form-select @error('year') is-invalid @enderror shadow-sm" required @if(!$allowQuarterControl) readonly @endif>
                         @if($allowQuarterControl)
                             <option value="">Select Year</option>
                             @foreach($years as $year)
-                                <option value="{{ $year }}" {{ old('year', $currentYear) == $year ? 'selected' : '' }}>{{ $year }}</option>
+                                <option value="{{ $year }}" {{ old('year', $currentYear ?? date('Y')) == $year ? 'selected' : '' }}>{{ $year }}</option>
                             @endforeach
                         @else
-                            <option value="{{ $currentYear }}" selected>{{ $currentYear }}</option>
+                            <option value="{{ $currentYear ?? date('Y') }}" selected>{{ $currentYear ?? date('Y') }} (Current Year)</option>
+                            @if(isset($nextYear) && $nextYear > ($currentYear ?? date('Y')))
+                                <option value="{{ $nextYear }}">{{ $nextYear }} (Next Year)</option>
+                            @endif
                         @endif
                     </select>
+                    @if(!$allowQuarterControl && isset($nextQuarter) && $nextQuarter && $nextYear > ($currentYear ?? date('Y')))
+                        <small class="form-text text-muted">
+                            <i class="bx bx-lightbulb me-1"></i>
+                            Next quarter ({{ $nextQuarter }}) will be in {{ $nextYear }}
+                        </small>
+                    @endif
                     @error('year')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -65,24 +102,52 @@
                     <label for="quarter" class="form-label fw-semibold">
                         Quarter <span class="text-danger">*</span>
                         @if(!$allowQuarterControl)
-                            <span class="badge bg-info ms-2">Current Quarter Only</span>
+                            <span class="badge bg-info ms-2">Current or Next Quarter</span>
                         @endif
                     </label>
                     <select name="quarter" id="quarter" class="form-select @error('quarter') is-invalid @enderror shadow-sm" required @if(!$allowQuarterControl) readonly @endif>
                         @if($allowQuarterControl)
                             <option value="">Select Quarter</option>
                             @foreach($quarters as $quarter)
-                                <option value="{{ $quarter }}" {{ old('quarter', $currentQuarter) == $quarter ? 'selected' : '' }}>{{ $quarter }}</option>
+                                <option value="{{ $quarter }}" {{ old('quarter', $currentQuarter ?? 'Q1') == $quarter ? 'selected' : '' }}>{{ $quarter }}</option>
                             @endforeach
                         @else
-                            <option value="{{ $currentQuarter }}" selected>{{ $currentQuarter }}</option>
+                            <option value="{{ $currentQuarter ?? 'Q1' }}" selected>{{ $currentQuarter ?? 'Q1' }} (Current Quarter)</option>
+                            @if(isset($nextQuarter) && $nextQuarter)
+                                <option value="{{ $nextQuarter }}">{{ $nextQuarter }} (Next Quarter)</option>
+                            @endif
                         @endif
                     </select>
+                    @if(!$allowQuarterControl && isset($nextQuarter) && $nextQuarter)
+                        <small class="form-text text-muted">
+                            <i class="bx bx-lightbulb me-1"></i>
+                            You can create a matrix for the current quarter ({{ $currentQuarter ?? 'Q1' }}) or the next quarter ({{ $nextQuarter }}{{ $nextYear > ($currentYear ?? date('Y')) ? ' ' . $nextYear : '' }})
+                        </small>
+                    @endif
                     @error('quarter')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
             </div>
+        
+         
+            <!-- Quick Actions -->
+            @if(isset($nextAvailableQuarter) && $nextAvailableQuarter && !$allowQuarterControl)
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="d-flex align-items-center">
+                        <button type="button" id="useNextQuarter" class="btn btn-outline-info btn-sm me-3">
+                            <i class="bx bx-fast-forward me-1"></i> Use Next Available Quarter ({{ $nextAvailableQuarter }})
+                        </button>
+                        <small class="text-muted">
+                            <i class="bx bx-info-circle me-1"></i>
+                            Click to automatically select the next available quarter for your division
+                        </small>
+                    </div>
+                </div>
+            </div>
+            @endif
+         
             <div class="mb-4">
                 <button type="button" id="addArea" class="btn btn-md btn-outline-success btn-lg rounded-pill shadow-sm mb-3">
                     <i class="bx bx-plus-circle text-success me-1"></i> Add Key Result Area
@@ -145,8 +210,8 @@
         let areaIndex = {{ old('key_result_area') ? count(old('key_result_area')) : 1 }};
         
         // Get existing matrices data for validation
-        const existingMatrices = @json($existingMatricesForUser->pluck('quarter', 'year')->toArray());
-        const userDivisionId = {{ $userDivisionId }};
+        const existingMatrices = @json($existingMatricesForUser ? $existingMatricesForUser->pluck('quarter', 'year')->toArray() : []);
+        const userDivisionId = {{ $userDivisionId ?? 0 }};
         
         // Function to check if matrix already exists
         function checkMatrixExists(year, quarter) {
@@ -191,6 +256,17 @@
             const year = $('#year').val();
             const quarter = $('#quarter').val();
             
+            // Auto-update year when quarter changes (especially Q4 to Q1)
+            if (quarter && !year) {
+                if (quarter === 'Q1' && '{{ $currentQuarter }}' === 'Q4') {
+                    // If selecting Q1 and current quarter is Q4, set year to next year
+                    $('#year').val('{{ $nextYear }}').trigger('change');
+                } else {
+                    // Otherwise set to current year
+                    $('#year').val('{{ $currentYear }}').trigger('change');
+                }
+            }
+            
             if (year && quarter) {
                 if (checkMatrixExists(year, quarter)) {
                     showDuplicateWarning(year, quarter);
@@ -227,11 +303,18 @@
             }
         });
         
-        // Handle "Use This Quarter" button click
+        // Handle "Use Next Quarter" button click
         $('#useNextQuarter').click(function() {
-            const nextQuarter = '{{ $nextAvailableQuarter }}';
-            if (nextQuarter) {
+            const nextQuarter = '{{ $nextAvailableQuarter ?? "" }}';
+            if (nextQuarter && nextQuarter !== '') {
                 $('#quarter').val(nextQuarter).trigger('change');
+                
+                // Auto-set the year if needed
+                if (nextQuarter === 'Q1' && '{{ $currentQuarter }}' === 'Q4') {
+                    $('#year').val('{{ $nextYear }}').trigger('change');
+                } else {
+                    $('#year').val('{{ $currentYear }}').trigger('change');
+                }
                 
                 // Show success message
                 const successHtml = `
@@ -240,7 +323,7 @@
                             <i class="bx bx-check-circle me-3 text-success" style="font-size: 1.5rem;"></i>
                             <div>
                                 <h6 class="mb-0 fw-bold text-success">Quarter Selected!</h6>
-                                <p class="mb-0">Successfully selected <strong>${nextQuarter}</strong> for your new matrix.</p>
+                                <p class="mb-0">Successfully selected <strong>${nextQuarter} ${nextQuarter === 'Q1' && '{{ $currentQuarter }}' === 'Q4' ? '{{ $nextYear }}' : '{{ $currentYear }}'}</strong> for your new matrix.</p>
                             </div>
                         </div>
                     </div>`;
