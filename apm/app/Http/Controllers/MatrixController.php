@@ -171,7 +171,7 @@ class MatrixController extends Controller
             ])->latest()->paginate(20);
         }
 
-      //  dd($filteredActionedMatrices->toArray());
+        //  dd($filteredActionedMatrices->toArray());
 
     
         return view('matrices.index', [
@@ -201,6 +201,43 @@ class MatrixController extends Controller
         $focalPersons = $staff;
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
+        
+        // Calculate current and next quarter/year for one quarter ahead functionality
+        $currentYear = date('Y');
+        $currentMonth = date('n');
+        $currentQuarter = 'Q' . ceil($currentMonth / 3);
+        
+        // Calculate next quarter and year
+        $nextQuarter = '';
+        $nextYear = $currentYear;
+        
+        switch ($currentQuarter) {
+            case 'Q1':
+                $nextQuarter = 'Q2';
+                break;
+            case 'Q2':
+                $nextQuarter = 'Q3';
+                break;
+            case 'Q3':
+                $nextQuarter = 'Q4';
+                break;
+            case 'Q4':
+                $nextQuarter = 'Q1';
+                $nextYear = $currentYear + 1;
+                break;
+        }
+        
+        // Create quarters array with current and next quarter
+        $availableQuarters = [$currentQuarter];
+        if ($nextQuarter) {
+            $availableQuarters[] = $nextQuarter;
+        }
+        
+        // Add next year to years array if not already present
+        if (!in_array($nextYear, $years)) {
+            $years[] = $nextYear;
+            sort($years);
+        }
     
         $staffByDivision = [];
         $divisionFocalPersons = [];
@@ -227,13 +264,17 @@ class MatrixController extends Controller
             'title' => user_session('division_name'),
             'module' => 'Quarterly Matrix',
             'staff' => $staff,
-            'quarters' => $quarters,
+            'quarters' => $availableQuarters, // Only show current and next quarter
             'years' => $years,
             'focalPersons' => $focalPersons,
             'staffByDivision' => $staffByDivision,
             'divisionFocalPersons' => $divisionFocalPersons,
             'existingMatrices' => $existingMatrices,
             'nextAvailableQuarters' => $nextAvailableQuarters,
+            'currentQuarter' => $currentQuarter,
+            'nextQuarter' => $nextQuarter,
+            'currentYear' => $currentYear,
+            'nextYear' => $nextYear,
         ]);
     }
     public function store(Request $request)
