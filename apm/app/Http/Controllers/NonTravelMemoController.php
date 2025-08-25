@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Cache;
 use App\Services\ApprovalService;
 use App\Models\Approver;
 use App\Models\WorkflowDefinition;
+use App\Models\FundCodeTransaction;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 
 class NonTravelMemoController extends Controller
 {
@@ -188,21 +191,59 @@ class NonTravelMemoController extends Controller
             'is_draft' => $isDraft,
         ]);
 
-        // Deduct budget code balances using the helper
-        $budgetCodes = $data['budget_codes'];
-        $budgetItems = $data['budget'];
-        foreach ($budgetCodes as $codeId) {
-            $total = 0;
-            if (isset($budgetItems[$codeId]) && is_array($budgetItems[$codeId])) {
-                foreach ($budgetItems[$codeId] as $item) {
-                    // Support both array and object
-                    $qty = isset($item['quantity']) ? $item['quantity'] : (isset($item->quantity) ? $item->quantity : 1);
-                    $unitCost = isset($item['unit_cost']) ? $item['unit_cost'] : (isset($item->unit_cost) ? $item->unit_cost : 0);
-                    $total += $qty * $unitCost;
+        // Process fund code balance reductions and create transaction records
+        if (!$isDraft && !empty($data['budget_codes']) && !empty($data['budget'])) {
+            $budgetCodes = $data['budget_codes'];
+            $budgetItems = $data['budget'];
+            
+            foreach ($budgetCodes as $codeId) {
+                $total = 0;
+                if (isset($budgetItems[$codeId]) && is_array($budgetItems[$codeId])) {
+                    foreach ($budgetItems[$codeId] as $item) {
+                        // Support both array and object
+                        $qty = isset($item['quantity']) ? $item['quantity'] : (isset($item->quantity) ? $item->quantity : 1);
+                        $unitCost = isset($item['unit_cost']) ? $item['unit_cost'] : (isset($item->unit_cost) ? $item->unit_cost : 0);
+                        $total += $qty * $unitCost;
+                    }
                 }
-            }
-            if ($total > 0) {
-                reduce_fund_code_balance($codeId, $total);
+                
+                if ($total > 0) {
+                    // Get current balance before reduction
+                    $fundCode = FundCode::find($codeId);
+                    if ($fundCode) {
+                        $balanceBefore = floatval($fundCode->budget_balance ?? 0);
+                        $balanceAfter = $balanceBefore - $total;
+                        
+                        // Reduce fund code balance using the helper
+                        reduce_fund_code_balance($codeId, $total);
+                        
+                        // Create transaction record for audit trail
+                        FundCodeTransaction::create([
+                            'fund_code_id' => $codeId,
+                            'amount' => $total,
+                            'description' => "Non-Travel Memo: {$data['title']} - Budget allocation",
+                            'activity_id' => null, // Non-travel memo doesn't have activity_id
+                            'matrix_id' => $memo->id,
+                            'activity_budget_id' => null,
+                            'balance_before' => $balanceBefore,
+                            'balance_after' => $balanceAfter,
+                            'is_reversal' => false,
+                            'created_by' => user_session('staff_id'),
+                        ]);
+                        
+                        // Log the balance change
+                        Log::info('Fund code balance reduced for non-travel memo', [
+                            'fund_code_id' => $codeId,
+                            'fund_code' => $fundCode->code,
+                            'non_travel_memo_id' => $memo->id,
+                            'amount_reduced' => $total,
+                            'balance_before' => $balanceBefore,
+                            'balance_after' => $balanceAfter,
+                            'staff_id' => user_session('staff_id'),
+                            'activity_title' => $data['title']
+                        ]);
+                    }
+                }
             }
         }
 
@@ -668,5 +709,139 @@ class NonTravelMemoController extends Controller
 
         $filename = 'non_travel_memo_'.$nonTravel->id.'.pdf';
         return $pdf->stream($filename);
+    }
+
+    /**
+     * Export my submitted memos to CSV
+     */
+    public function exportMySubmittedCsv(Request $request)
+    {
+        $currentStaffId = user_session('staff_id');
+        
+        $query = NonTravelMemo::with([
+            'staff', 
+            'division', 
+            'nonTravelMemoCategory'
+        ])->where('staff_id', $currentStaffId);
+
+        // Apply filters
+        if ($request->filled('category_id')) {
+            $query->where('non_travel_memo_category_id', $request->category_id);
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('overall_status', $request->status);
+        }
+
+        $memos = $query->latest()->get();
+
+        $filename = 'my_submitted_non_travel_memos_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($memos) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Activity Title', 'Activity Code', 'Category', 'Division', 
+                'Memo Date', 'Status', 'Approval Level', 'Created Date', 'Updated Date'
+            ]);
+
+            // CSV Data
+            foreach ($memos as $memo) {
+                fputcsv($file, [
+                    $memo->id,
+                    $memo->activity_title ?? 'N/A',
+                    $memo->workplan_activity_code ?? 'N/A',
+                    $memo->nonTravelMemoCategory ? $memo->nonTravelMemoCategory->name : 'N/A',
+                    $memo->division ? $memo->division->division_name : 'N/A',
+                    $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('Y-m-d') : 'N/A',
+                    $memo->overall_status ?? 'N/A',
+                    $memo->approval_level ?? 'N/A',
+                    $memo->created_at ? $memo->created_at->format('Y-m-d') : 'N/A',
+                    $memo->updated_at ? $memo->updated_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export all non-travel memos to CSV (for users with permission 87)
+     */
+    public function exportAllCsv(Request $request)
+    {
+        if (!in_array(87, user_session('permissions', []))) {
+            abort(403, 'Unauthorized access');
+        }
+
+        $query = NonTravelMemo::with([
+            'staff', 
+            'division', 
+            'nonTravelMemoCategory'
+        ]);
+
+        // Apply filters
+        if ($request->filled('staff_id')) {
+            $query->where('staff_id', $request->staff_id);
+        }
+        if ($request->filled('category_id')) {
+            $query->where('non_travel_memo_category_id', $request->category_id);
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('overall_status', $request->status);
+        }
+
+        $memos = $query->latest()->get();
+
+        $filename = 'all_non_travel_memos_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($memos) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Activity Title', 'Activity Code', 'Category', 'Division', 
+                'Staff', 'Memo Date', 'Status', 'Approval Level', 'Created Date', 'Updated Date'
+            ]);
+
+            // CSV Data
+            foreach ($memos as $memo) {
+                fputcsv($file, [
+                    $memo->id,
+                    $memo->activity_title ?? 'N/A',
+                    $memo->workplan_activity_code ?? 'N/A',
+                    $memo->nonTravelMemoCategory ? $memo->nonTravelMemoCategory->name : 'N/A',
+                    $memo->division ? $memo->division->division_name : 'N/A',
+                    $memo->staff ? ($memo->staff->fname . ' ' . $memo->staff->lname) : 'N/A',
+                    $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('Y-m-d') : 'N/A',
+                    $memo->overall_status ?? 'N/A',
+                    $memo->approval_level ?? 'N/A',
+                    $memo->created_at ? $memo->created_at->format('Y-m-d') : 'N/A',
+                    $memo->updated_at ? $memo->updated_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

@@ -28,10 +28,13 @@
                     <small class="text-muted">Showing special memos at your current approval level</small>
                 </div>
                 <div class="text-end">
-                    <div class="badge bg-warning fs-6">
+                    <div class="badge bg-warning fs-6 me-3">
                         <i class="bx bx-time me-1"></i>
                         {{ $pendingMemos->count() }} Pending
                     </div>
+                    <a href="{{ route('special-memo.export.all', ['status' => 'pending']) }}" class="btn btn-outline-warning btn-sm">
+                        <i class="bx bx-download me-1"></i> Export to Excel
+                    </a>
                 </div>
             </div>
 

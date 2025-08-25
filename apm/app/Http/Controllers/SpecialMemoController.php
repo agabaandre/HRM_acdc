@@ -23,6 +23,8 @@ use App\Models\Division;
 use App\Models\Workflow;        
 use App\Models\Approver;
 use App\Models\WorkflowDefinition;
+use App\Models\FundCodeTransaction;
+use Illuminate\Support\Facades\Log;
 
 class SpecialMemoController extends Controller
 {
@@ -214,6 +216,61 @@ class SpecialMemoController extends Controller
     
                 'supporting_reasons' => $request->input('supporting_reasons', null),
             ]);
+
+            // Process fund code balance reductions and create transaction records
+            if (!$isDraft && !empty($request->input('budget_codes')) && !empty($request->input('budget'))) {
+                $budgetCodes = $request->input('budget_codes');
+                $budgetItems = $request->input('budget');
+                
+                foreach ($budgetCodes as $codeId) {
+                    if (isset($budgetItems[$codeId]) && is_array($budgetItems[$codeId])) {
+                        $total = 0;
+                        foreach ($budgetItems[$codeId] as $item) {
+                            $qty = isset($item['units']) ? floatval($item['units']) : 1;
+                            $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
+                            $total += $qty * $unitCost;
+                        }
+                        
+                        if ($total > 0) {
+                            // Get current balance before reduction
+                            $fundCode = FundCode::find($codeId);
+                            if ($fundCode) {
+                                $balanceBefore = floatval($fundCode->budget_balance ?? 0);
+                                $balanceAfter = $balanceBefore - $total;
+                                
+                                // Reduce fund code balance
+                                $fundCode->decrement('budget_balance', $total);
+                                
+                                // Create transaction record for audit trail
+                                FundCodeTransaction::create([
+                                    'fund_code_id' => $codeId,
+                                    'amount' => $total,
+                                    'description' => "Special Memo: {$request->input('activity_title')} - Budget allocation",
+                                    'activity_id' => null, // Special memo doesn't have activity_id
+                                    'matrix_id' => $specialMemo->id,
+                                    'activity_budget_id' => null,
+                                    'balance_before' => $balanceBefore,
+                                    'balance_after' => $balanceAfter,
+                                    'is_reversal' => false,
+                                    'created_by' => $userStaffId,
+                                ]);
+                                
+                                // Log the balance change
+                                \Log::info('Fund code balance reduced for special memo', [
+                                    'fund_code_id' => $codeId,
+                                    'fund_code' => $fundCode->code,
+                                    'special_memo_id' => $specialMemo->id,
+                                    'amount_reduced' => $total,
+                                    'balance_before' => $balanceBefore,
+                                    'balance_after' => $balanceAfter,
+                                    'staff_id' => $userStaffId,
+                                    'activity_title' => $request->input('activity_title')
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
     
             DB::commit();
     
@@ -822,5 +879,139 @@ class SpecialMemoController extends Controller
 
         $filename = 'special_memo_'.$specialMemo->id.'.pdf';
         return $pdf->stream($filename);
+    }
+
+    /**
+     * Export my submitted special memos to CSV
+     */
+    public function exportMySubmittedCsv(Request $request)
+    {
+        $currentStaffId = user_session('staff_id');
+        
+        $query = SpecialMemo::with([
+            'staff', 
+            'division', 
+            'requestType'
+        ])->where('staff_id', $currentStaffId);
+
+        // Apply filters
+        if ($request->filled('request_type_id')) {
+            $query->where('request_type_id', $request->request_type_id);
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('overall_status', $request->status);
+        }
+
+        $memos = $query->latest()->get();
+
+        $filename = 'my_submitted_special_memos_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($memos) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Activity Title', 'Key Result Area', 'Request Type', 'Division', 
+                'Date Range', 'Total Participants', 'Status', 'Created Date', 'Updated Date'
+            ]);
+
+            // CSV Data
+            foreach ($memos as $memo) {
+                fputcsv($file, [
+                    $memo->id,
+                    $memo->activity_title ?? 'N/A',
+                    $memo->key_result_area ?? 'N/A',
+                    $memo->requestType ? $memo->requestType->name : 'N/A',
+                    $memo->division ? $memo->division->division_name : 'N/A',
+                    $memo->formatted_dates ?? 'N/A',
+                    $memo->total_participants ?? 'N/A',
+                    $memo->overall_status ?? 'N/A',
+                    $memo->created_at ? $memo->created_at->format('Y-m-d') : 'N/A',
+                    $memo->updated_at ? $memo->updated_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export all special memos to CSV (for users with permission 87)
+     */
+    public function exportAllCsv(Request $request)
+    {
+        if (!in_array(87, user_session('permissions', []))) {
+            abort(403, 'Unauthorized access');
+        }
+
+        $query = SpecialMemo::with([
+            'staff', 
+            'division', 
+            'requestType'
+        ]);
+
+        // Apply filters
+        if ($request->filled('staff_id')) {
+            $query->where('staff_id', $request->staff_id);
+        }
+        if ($request->filled('request_type_id')) {
+            $query->where('request_type_id', $request->request_type_id);
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('overall_status', $request->status);
+        }
+
+        $memos = $query->latest()->get();
+
+        $filename = 'all_special_memos_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($memos) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Activity Title', 'Key Result Area', 'Request Type', 'Division', 
+                'Staff', 'Date Range', 'Total Participants', 'Status', 'Created Date', 'Updated Date'
+            ]);
+
+            // CSV Data
+            foreach ($memos as $memo) {
+                fputcsv($file, [
+                    $memo->id,
+                    $memo->activity_title ?? 'N/A',
+                    $memo->key_result_area ?? 'N/A',
+                    $memo->requestType ? $memo->requestType->name : 'N/A',
+                    $memo->division ? $memo->division->division_name : 'N/A',
+                    $memo->staff ? ($memo->staff->first_name . ' ' . $memo->staff->last_name) : 'N/A',
+                    $memo->formatted_dates ?? 'N/A',
+                    $memo->total_participants ?? 'N/A',
+                    $memo->overall_status ?? 'N/A',
+                    $memo->created_at ? $memo->created_at->format('Y-m-d') : 'N/A',
+                    $memo->updated_at ? $memo->updated_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

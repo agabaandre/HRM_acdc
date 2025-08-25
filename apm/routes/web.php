@@ -64,6 +64,17 @@ Route::middleware([CheckSessionMiddleware::class])->group(function () {
     Route::get('workflows/{workflow}/assign-staff', [WorkflowController::class, 'assignStaff'])->name('workflows.assign-staff');
     Route::post('workflows/{workflow}/assign-staff', [WorkflowController::class, 'storeStaff'])->name('workflows.store-assigned-staff');
     Route::post('workflows/{workflow}/store-staff', [WorkflowController::class, 'ajaxStoreStaff'])->name('workflows.ajax-store-staff');
+    
+    // Debug route for testing workflow store-staff
+    Route::post('workflows/{workflow}/store-staff-debug', function(Request $request, $workflow) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Debug endpoint reached',
+            'request_data' => $request->all(),
+            'workflow_id' => $workflow,
+            'headers' => $request->headers->all()
+        ]);
+    })->name('workflows.ajax-store-staff-debug');
     Route::get('workflows/{workflow}/remove-staff/{approverId}', [WorkflowController::class, 'ajaxRemoveStaff'])->name('workflows.ajax-remove-staff');
   
     // Memo Management Routes
@@ -140,11 +151,21 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::get('non-travel/pending-approvals', [App\Http\Controllers\NonTravelMemoController::class, 'pendingApprovals'])->name('non-travel.pending-approvals');
     Route::delete('non-travel/{nonTravel}/remove-attachment', [App\Http\Controllers\NonTravelMemoController::class, 'removeAttachment'])->name('non-travel.remove-attachment');
     Route::get('non-travel/{nonTravel}/print', [App\Http\Controllers\NonTravelMemoController::class, 'print'])->name('non-travel.print');
+    
+    // Non-Travel Memo Export Routes
+    Route::get('non-travel/export/my-submitted', [App\Http\Controllers\NonTravelMemoController::class, 'exportMySubmittedCsv'])->name('non-travel.export.my-submitted');
+    Route::get('non-travel/export/all', [App\Http\Controllers\NonTravelMemoController::class, 'exportAllCsv'])->name('non-travel.export.all');
+    
     Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);
     
     // Special Memo Routes
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
     Route::get('special-memo/pending-approvals', [App\Http\Controllers\SpecialMemoController::class, 'pendingApprovals'])->name('special-memo.pending-approvals');
+    
+    // Special Memo Export Routes
+    Route::get('special-memo/export/my-submitted', [App\Http\Controllers\SpecialMemoController::class, 'exportMySubmittedCsv'])->name('special-memo.export.my-submitted');
+    Route::get('special-memo/export/all', [App\Http\Controllers\SpecialMemoController::class, 'exportAllCsv'])->name('special-memo.export.all');
+    
     Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
     
     // Request for ARF Routes

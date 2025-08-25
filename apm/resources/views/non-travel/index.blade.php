@@ -131,6 +131,11 @@
                             </h6>
                             <small class="text-muted">All non-travel memos you have submitted</small>
                         </div>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('non-travel.export.my-submitted', request()->query()) }}" class="btn btn-outline-success btn-sm">
+                                <i class="bx bx-download me-1"></i> Export to Excel
+                            </a>
+                        </div>
                     </div>
                     
                     @if($mySubmittedMemos && $mySubmittedMemos->count() > 0)
@@ -253,8 +258,13 @@
                                     <i class="bx bx-grid me-2"></i> All Non-Travel Memos
                                 </h6>
                                 <small class="text-muted">All non-travel memos in the system</small>
-                                    </div>
-                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('non-travel.export.all', request()->query()) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bx bx-download me-1"></i> Export to Excel
+                                </a>
+                            </div>
+                        </div>
                         
                         @if($allMemos && $allMemos->count() > 0)
                             <div class="table-responsive">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Workflow;
 use App\Models\WorkflowDefinition;
+use Illuminate\Support\Facades\Log;
 use App\Models\Staff;
 use App\Models\Approver;
 use Illuminate\Http\Request;
@@ -300,7 +301,7 @@ class WorkflowController extends Controller
     {
         $workflowDefinitions = $workflow->workflowDefinitions()
             ->orderBy('approval_order')
-            ->with(['approvers.staff'])
+            ->with(['approvers.staff', 'approvers.oicStaff'])
             ->get();
 
         $availableStaff = Staff::where('status', 'active')
@@ -357,13 +358,37 @@ class WorkflowController extends Controller
     public function ajaxStoreStaff(Request $request, Workflow $workflow)
     {
         try {
+            // Log the incoming request data for debugging
+            \Log::info('Workflow store-staff request data:', $request->all());
+            
             $validated = $request->validate([
                 'workflow_dfn_id' => 'required|exists:workflow_definition,id',
                 'staff_id' => 'required|exists:staff,staff_id',
                 'oic_staff_id' => 'nullable|exists:staff,staff_id',
-                'start_date' => 'required|date',
+                'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after:start_date',
             ]);
+
+            // Additional validation: start_date and end_date are required if OIC is selected
+            if ($validated['oic_staff_id'] && (!$validated['start_date'] || !$validated['end_date'])) {
+                throw new \Illuminate\Validation\ValidationException(
+                    validator([], []),
+                    response()->json([
+                        'success' => false,
+                        'message' => 'Start date and end date are required when OIC is selected',
+                        'errors' => [
+                            'start_date' => ['Start date is required when OIC is selected'],
+                            'end_date' => ['End date is required when OIC is selected']
+                        ]
+                    ], 422)
+                );
+            }
+
+            \Log::info('Validation passed, creating approver with data:', $validated);
+
+            // Delete existing approvers for this workflow definition (replace logic)
+            Approver::where('workflow_dfn_id', $validated['workflow_dfn_id'])->delete();
+            \Log::info('Deleted existing approvers for workflow definition ID: ' . $validated['workflow_dfn_id']);
 
             $approver = Approver::create([
                 'workflow_dfn_id' => $validated['workflow_dfn_id'],
@@ -375,15 +400,34 @@ class WorkflowController extends Controller
 
             $approver->load(['staff', 'oicStaff']);
 
+            \Log::info('Approver created successfully:', $approver->toArray());
+
             return response()->json([
                 'success' => true,
                 'message' => 'Staff assigned successfully',
                 'approver' => $approver
             ]);
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed:', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Exception in ajaxStoreStaff:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred: ' . $e->getMessage()
             ], 422);
         }
     }

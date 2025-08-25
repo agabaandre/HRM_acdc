@@ -133,7 +133,12 @@
                                 <i class="bx bx-file-alt me-2"></i> My Submitted Special Memos
                             </h6>
                             <small class="text-muted">All special memos you have submitted</small>
-                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('special-memo.export.my-submitted', request()->query()) }}" class="btn btn-outline-success btn-sm">
+                                <i class="bx bx-download me-1"></i> Export to Excel
+                            </a>
+                        </div>
                     </div>
 
                     @if($mySubmittedMemos && $mySubmittedMemos->count() > 0)
@@ -256,6 +261,11 @@
                                     <i class="bx bx-grid me-2"></i> All Special Memos
                                 </h6>
                                 <small class="text-muted">All special memos in the system</small>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('special-memo.export.all', request()->query()) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bx bx-download me-1"></i> Export to Excel
+                                </a>
                             </div>
                         </div>
                         
