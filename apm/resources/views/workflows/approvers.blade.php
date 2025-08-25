@@ -34,14 +34,7 @@
             </div>
         @endif
 
-        <!-- Test Button for Debugging -->
-        <div class="alert alert-info">
-            <strong>Debug Info:</strong> 
-            <button type="button" class="btn btn-sm btn-warning" id="testAjax">
-                <i class="bx bx-test-tube me-1"></i>Test AJAX
-            </button>
-            <span class="ms-2">Check console for debugging information</span>
-        </div>
+
 
         <!-- Workflow Summary -->
         <div class="row mb-4">
@@ -146,7 +139,6 @@
                                         <th>Start Date</th>
                                         <th>End Date</th>
                                         <th>Status</th>
-                                        <th class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -205,28 +197,7 @@
                                                     <span class="badge bg-danger">Expired</span>
                                                 @endif
                                             </td>
-                                            <td class="text-center">
-                                                <div class="btn-group" role="group">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary edit-approver" 
-                                                            data-bs-toggle="tooltip" title="View Details"
-                                                            data-workflow-id="{{ $workflow->id }}"
-                                                            data-approver-id="{{ $approver->id }}">
-                                                        <i class="bx bx-show"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-warning edit-approver" 
-                                                            data-bs-toggle="tooltip" title="Edit Assignment"
-                                                            data-workflow-id="{{ $workflow->id }}"
-                                                            data-approver-id="{{ $approver->id }}">
-                                                        <i class="bx bx-edit"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-danger remove-approver"
-                                                            data-approver-id="{{ $approver->id }}"
-                                                            data-workflow-id="{{ $workflow->id }}"
-                                                            data-bs-toggle="tooltip" title="Remove Approver">
-                                                        <i class="bx bx-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
+
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -258,78 +229,7 @@
     </div>
 </div>
 
-<!-- Edit Approver Modal -->
-<div class="modal fade" id="editApproverModal" tabindex="-1" aria-labelledby="editApproverModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editApproverModalLabel">
-                    <i class="bx bx-edit me-2 text-primary"></i>Edit Approver Assignment
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="editApproverForm">
-                <div class="modal-body">
-                    <input type="hidden" id="edit_approver_id" name="approver_id">
-                    <input type="hidden" id="edit_workflow_id" name="workflow_id">
-                    
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="edit_staff_id" class="form-label fw-semibold">
-                                <i class="bx bx-user me-1 text-primary"></i>Primary Approver:
-                            </label>
-                            <select name="staff_id" id="edit_staff_id" class="form-select" required>
-                                <option value="">Select Staff</option>
-                                @foreach($availableStaff as $staff)
-                                    <option value="{{ $staff->staff_id }}">
-                                        {{ $staff->fname }} {{ $staff->lname }} ({{ $staff->division_name }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="edit_oic_staff_id" class="form-label fw-semibold">
-                                <i class="bx bx-user-voice me-1 text-primary"></i>OIC (Optional):
-                            </label>
-                            <select name="oic_staff_id" id="edit_oic_staff_id" class="form-select">
-                                <option value="">Select OIC (Optional)</option>
-                                @foreach($availableStaff as $staff)
-                                    <option value="{{ $staff->staff_id }}">
-                                        {{ $staff->fname }} {{ $staff->lname }} ({{ $staff->division_name }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="edit_start_date" class="form-label fw-semibold">
-                                <i class="bx bx-calendar-plus me-1 text-primary"></i>Start Date:
-                            </label>
-                            <input type="date" name="start_date" id="edit_start_date" class="form-control" required>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="edit_end_date" class="form-label fw-semibold">
-                                <i class="bx bx-calendar-minus me-1 text-primary"></i>End Date:
-                            </label>
-                            <input type="date" name="end_date" id="edit_end_date" class="form-control">
-                            <small class="text-muted">Leave empty for no end date</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bx bx-x me-1"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bx bx-save me-1"></i>Update Assignment
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+
 
 <!-- Bulk Assignment Modal -->
 <div class="modal fade" id="bulkAssignmentModal" tabindex="-1" aria-labelledby="bulkAssignmentModalLabel" aria-hidden="true">
@@ -431,37 +331,10 @@
     </div>
 </div>
 
-<!-- Confirmation Modal -->
-<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmModalLabel">
-                    <i class="bx bx-exclamation-triangle me-2 text-warning"></i>Confirm Action
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Content will be dynamically inserted -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bx bx-x me-1"></i>Cancel
-                </button>
-                <button type="button" class="btn btn-danger btn-confirm">
-                    <i class="bx bx-trash me-1"></i>Confirm
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 @push('scripts')
 <script>
-    // Version: {{ time() }} - Force cache refresh
-    console.log('Script loaded at:', new Date().toISOString());
-    console.log('Script version:', {{ time() }});
-    
     function buildApiUrl(path) {
         return `${window.location.origin}/${path}`;
     }
@@ -475,212 +348,6 @@
 
         // Get session from laravel
         const baseUrl = @json(session('base_url', ''));
-
-        // Debug Bootstrap availability
-        console.log('Bootstrap available:', typeof bootstrap !== 'undefined');
-        console.log('Bootstrap Modal available:', typeof bootstrap?.Modal !== 'undefined');
-        console.log('Modal element exists:', $('#confirmModal').length > 0);
-
-        // Test button detection
-        console.log('Found remove buttons:', $('.remove-approver').length);
-        console.log('Found edit buttons:', $('.edit-approver').length);
-        console.log('Base URL:', baseUrl);
-        console.log('Window location origin:', window.location.origin);
-        console.log('Full URL test:', `${baseUrl}bms/workflows/1/remove-staff/1`);
-        console.log('CSRF Token:', $('meta[name="csrf-token"]').attr('content'));
-
-        // Test if buttons have the correct data attributes
-        $('.remove-approver').each(function(index) {
-            const button = $(this);
-            console.log(`Remove button ${index}:`, {
-                workflowId: button.data('workflow-id'),
-                approverId: button.data('approver-id'),
-                classes: button.attr('class')
-            });
-        });
-
-        // Handle approver removal
-        $(document).on('click', '.remove-approver', function() {
-            const button = $(this);
-            const workflowId = button.data('workflow-id');
-            const approverId = button.data('approver-id');
-
-            console.log('Removing approver:', { workflowId, approverId, baseUrl });
-            console.log('Modal element exists:', $('#confirmModal').length > 0);
-
-            // Show confirmation modal using Bootstrap 5 syntax
-            const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
-            $('#confirmModal .modal-body').html(`
-                <div class="text-center">
-                    <i class="bx bx-trash text-danger fs-1 mb-3"></i>
-                    <h5>Remove Approver</h5>
-                    <p>Are you sure you want to remove this approver? This action cannot be undone.</p>
-                </div>
-            `);
-            
-            // Store button reference for later use
-            $('#confirmModal').data('button', button);
-            
-            // Show the modal
-            try {
-                confirmModal.show();
-                console.log('Modal show called');
-            } catch (error) {
-                console.error('Modal show error:', error);
-                // Fallback to browser confirm
-                if (confirm('Are you sure you want to remove this approver? This action cannot be undone.')) {
-                    // Proceed with removal
-                    proceedWithRemoval(button, workflowId, approverId);
-                }
-            }
-        });
-
-        // Function to proceed with removal (used by both modal and fallback)
-        function proceedWithRemoval(button, workflowId, approverId) {
-            const url = `${baseUrl}bms/workflows/${workflowId}/remove-staff/${approverId}`;
-            const csrfToken = $('meta[name="csrf-token"]').attr('content');
-            
-            console.log('Making removal request:', {
-                url: url,
-                type: 'GET',
-                csrfToken: csrfToken ? 'Present' : 'Missing',
-                workflowId: workflowId,
-                approverId: approverId,
-                timestamp: new Date().getTime() // Cache busting
-            });
-            
-            // Force POST method and add cache busting
-            $.ajax({
-                url: url + '?_=' + new Date().getTime(),
-                type: 'GET',
-                method: 'GET', // Explicitly set method
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Cache-Control': 'no-cache'
-                },
-                success: function(response) {
-                    console.log('Remove response:', response);
-                    if (response.success) {
-                        // Close modal if it's open
-                        const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
-                        if (confirmModal) {
-                            confirmModal.hide();
-                        }
-                        
-                        // Remove the row
-                        button.closest('tr').fadeOut(300, function() {
-                            $(this).remove();
-                        });
-                        
-                        // Show success message
-                        showAlert('Approver removed successfully', 'success');
-                    } else {
-                        const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
-                        if (confirmModal) {
-                            confirmModal.hide();
-                        }
-                        showAlert(response.message || 'Error removing approver', 'danger');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Remove error:', { 
-                        xhr: xhr, 
-                        status: status, 
-                        error: error,
-                        responseText: xhr.responseText,
-                        statusCode: xhr.status,
-                        url: url,
-                        method: 'POST'
-                    });
-                    const confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
-                    if (confirmModal) {
-                        confirmModal.hide();
-                    }
-                    showAlert('An error occurred while removing the approver', 'danger');
-                }
-            });
-        }
-
-        // Handle confirmation modal confirm button
-        $('#confirmModal .btn-confirm').on('click', function() {
-            const button = $('#confirmModal').data('button');
-            const workflowId = button.data('workflow-id');
-            const approverId = button.data('approver-id');
-            
-            proceedWithRemoval(button, workflowId, approverId);
-        });
-
-        // Handle edit approver button clicks
-        $(document).on('click', '.edit-approver', function() {
-            const button = $(this);
-            const row = button.closest('tr');
-            const workflowId = button.data('workflow-id');
-            const approverId = button.data('approver-id');
-            
-            // Get current values from the row data attributes
-            const staffId = row.attr('data-staff-id');
-            const oicStaffId = row.attr('data-oic-staff-id') || '';
-            const startDate = row.attr('data-start-date');
-            const endDate = row.attr('data-end-date') || '';
-            
-            console.log('Editing approver:', { workflowId, approverId, staffId, oicStaffId, startDate, endDate });
-            
-            // Populate the modal
-            $('#edit_approver_id').val(approverId);
-            $('#edit_workflow_id').val(workflowId);
-            $('#edit_staff_id').val(staffId);
-            $('#edit_oic_staff_id').val(oicStaffId);
-            $('#edit_start_date').val(startDate);
-            $('#edit_end_date').val(endDate);
-            
-            // Show the modal
-            const editModal = new bootstrap.Modal(document.getElementById('editApproverModal'));
-            editModal.show();
-        });
-
-        // Handle edit form submission
-        $('#editApproverForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            const form = $(this);
-            const approverId = $('#edit_approver_id').val();
-            const workflowId = $('#edit_workflow_id').val();
-            const formData = new FormData(this);
-            
-            $.ajax({
-                url: `${baseUrl}bms/workflows/${workflowId}/approvers/${approverId}`,
-                type: 'PUT',
-                data: formData,
-                processData: false,
-                contentType: false,
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Close modal
-                        const editModal = bootstrap.Modal.getInstance(document.getElementById('editApproverModal'));
-                        if (editModal) {
-                            editModal.hide();
-                        }
-                        
-                        // Show success message
-                        showAlert('Approver assignment updated successfully', 'success');
-                        
-                        // Reload page to reflect changes
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    } else {
-                        showAlert(response.message || 'Error updating approver', 'danger');
-                    }
-                },
-                error: function(xhr) {
-                    const response = xhr.responseJSON;
-                    showAlert(response?.message || 'An error occurred while updating the approver', 'danger');
-                }
-            });
-        });
 
         // Initialize bulk assignment modal
         $('#bulkAssignmentModal').on('show.bs.modal', function() {

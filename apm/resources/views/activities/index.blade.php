@@ -38,8 +38,8 @@
                                 <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>
                                     {{ $quarter }}
                                 </option>
-                            @endforeach
-                        </select>
+                        @endforeach
+                    </select>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -53,7 +53,7 @@
                                     {{ $division->division_name }}
                                 </option>
                             @endforeach
-                        </select>
+                    </select>
                     </div>
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
@@ -71,7 +71,7 @@
     </div>
 
     <div class="card shadow-sm">
-        <div class="card-body p-0">
+    <div class="card-body p-0">
             <!-- Bootstrap Tabs Navigation -->
             <ul class="nav nav-tabs nav-fill" id="activitiesTabs" role="tablist">
                 @if(in_array(87, user_session('permissions', [])))
@@ -200,12 +200,12 @@
                                 <i class="bx bx-task fs-1 text-primary opacity-50"></i>
                                 <p class="mb-0">No activities found.</p>
                                 <small>Activities will appear here once they are created in matrices.</small>
-                            </div>
-                        @endif
+            </div>
+        @endif
                     </div>
-                </div>
-                @endif
-
+            </div>
+        @endif
+        
                 <!-- My Division Activities Tab -->
                 <div class="tab-pane fade {{ !in_array(87, user_session('permissions', [])) ? 'show active' : '' }}" id="my-division" role="tabpanel" aria-labelledby="my-division-tab">
                     <div class="p-3">
@@ -219,20 +219,20 @@
                         </div>
                         
                         @if($myDivisionActivities && $myDivisionActivities->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
                                     <thead class="table-success">
                                         <tr>
                                             <th>#</th>
                                             <th>Activity Title</th>
                                             <th>Matrix</th>
                                             <th>Responsible Person</th>
-                                            <th>Date Range</th>
-                                            <th>Status</th>
+                        <th>Date Range</th>
+                        <th>Status</th>
                                             <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                    </tr>
+                </thead>
+                <tbody>
                                         @php $actCount = 1; @endphp
                                         @foreach($myDivisionActivities as $activity)
                                             <tr>
@@ -242,50 +242,50 @@
                                                     @if($activity->is_single_memo)
                                                         <span class="badge bg-warning text-dark ms-2">Single Memo</span>
                                                     @endif
-                                                </td>
-                                                <td>
+                            </td>
+                            <td>
                                                     <a href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
                                                         {{ $activity->matrix->year }} {{ $activity->matrix->quarter }}
                                                     </a>
-                                                </td>
-                                                <td>
+                            </td>
+                            <td>
                                                     @if($activity->responsiblePerson)
                                                         {{ $activity->responsiblePerson->fname }} {{ $activity->responsiblePerson->lname }}
                                                     @else
                                                         <span class="text-muted">Not assigned</span>
                                                     @endif
-                                                </td>
-                                                <td>
+                            </td>
+                            <td>
                                                     @if($activity->date_from && $activity->date_to)
                                                         {{ \Carbon\Carbon::parse($activity->date_from)->format('M d') }} - 
                                                         {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}
-                                                    @else
+                                @else
                                                         <span class="text-muted">Dates not set</span>
-                                                    @endif
-                                                </td>
-                                                <td>
+                                @endif
+                            </td>
+                            <td>
                                                     <span class="badge {{ $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
                                                         {{ strtoupper($activity->overall_status ?? 'draft') }}
                                                     </span>
-                                                </td>
+                            </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
                                                         <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
-                                                        </a>
+                                        <i class="bx bx-show"></i>
+                                    </a>
                                                         @if($activity->matrix->overall_status !== 'approved')
                                                             <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
-                                                            </a>
+                                            <i class="bx bx-edit"></i>
+                                        </a>
                                                         @endif
                                                         @if($activity->overall_status === 'approved' && $activity->matrix->overall_status === 'approved')
                                                             <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
                                                                class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
                                                                 <i class="bx bx-printer"></i>
                                                             </a>
-                                                        @endif
+                                    @endif
                                                     </div>
                                                 </td>
                                             </tr>
@@ -305,10 +305,10 @@
                                 <i class="bx bx-home fs-1 text-success opacity-50"></i>
                                 <p class="mb-0">No activities found in your division.</p>
                                 <small>Activities will appear here once they are created in your division matrices.</small>
-                            </div>
+                                            </div>
                         @endif
-                    </div>
-                </div>
+                                            </div>
+                                        </div>
 
                 <!-- Shared Activities Tab -->
                 <div class="tab-pane fade" id="shared-activities" role="tabpanel" aria-labelledby="shared-activities-tab">
@@ -319,8 +319,8 @@
                                     <i class="bx bx-share me-2"></i> Shared Activities
                                 </h6>
                                 <small class="text-muted">Activities you're added to in other divisions for {{ $selectedQuarter }} {{ $selectedYear }}</small>
-                            </div>
-                        </div>
+                                    </div>
+                                </div>
                         
                         @if($sharedActivities && $sharedActivities->count() > 0)
                             <div class="table-responsive">
@@ -334,7 +334,7 @@
                                             <th>Date Range</th>
                                             <th>Status</th>
                                             <th class="text-center">Actions</th>
-                                        </tr>
+                        </tr>
                                     </thead>
                                     <tbody>
                                         @php $actCount = 1; @endphp
@@ -378,32 +378,32 @@
                                                                 <i class="bx bx-printer"></i>
                                                             </a>
                                                         @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                </div>
+                            </td>
+                        </tr>
                                         @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                </tbody>
+            </table>
+        </div>
                             
                             <!-- Pagination -->
                             @if($sharedActivities instanceof \Illuminate\Pagination\LengthAwarePaginator && $sharedActivities->hasPages())
                                 <div class="d-flex justify-content-center mt-3">
                                     {{ $sharedActivities->appends(request()->query())->links() }}
-                                </div>
+    </div>
                             @endif
                         @else
                             <div class="text-center py-4 text-muted">
                                 <i class="bx bx-share fs-1 text-info opacity-50"></i>
                                 <p class="mb-0">No shared activities found.</p>
                                 <small>Activities you're added to in other divisions will appear here.</small>
-                            </div>
-                        @endif
+        </div>
+    @endif
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -419,6 +419,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('division_id').addEventListener('change', function() {
         this.form.submit();
     });
-});
+    });
 </script>
 @endsection

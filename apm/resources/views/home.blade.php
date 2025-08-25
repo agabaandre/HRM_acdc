@@ -195,22 +195,16 @@
         <div class="menu-section">
           <h6>Quick Actions</h6>
           <div class="menu-links">
-            <a href="{{ url('non-travel') }}" class="btn btn-success btn-sm">
+            <a href="{{ route('non-travel.index') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
             
             @if(get_staff_pending_action_count('non-travel') > 0)
-            <a href="{{ url('non-travel') }}" class="btn btn-outline-primary btn-sm position-relative">
+            <a href="{{ route('non-travel.pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="non-travel-pending-count">{{ get_staff_pending_action_count('non-travel') }}</span>
             </a>
             @endif
-            <a href="{{ url('non-travel') }}" class="btn btn-outline-primary btn-sm">
-              <i class="fas fa-file-alt"></i> My Submitted (NT)
-            </a>
-            <a href="{{ url('non-travel') }}" class="btn btn-outline-info btn-sm">
-              <i class="fas fa-list"></i> All Non-Travel
-            </a>
           </div>
         </div>
 
@@ -233,20 +227,12 @@
               <i class="fas fa-plus"></i> Open
             </a>
             @if(get_staff_pending_action_count('special-memo') > 0)
-            <a href="{{ url('special-memo') }}" class="btn btn-outline-primary btn-sm position-relative">
+            <a href="{{ route('special-memo.pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="special-memo-pending-count">{{ get_staff_pending_action_count('special-memo') }}</span>
             </a>
             @endif
-            <a href="{{ url('special-memo') }}" class="btn btn-outline-primary btn-sm">
-              <i class="fas fa-file-alt"></i> My Submitted
-            </a>
-            <a href="{{ url('special-memo') }}" class="btn btn-outline-info btn-sm">
-              <i class="fas fa-list"></i> All SPMs
-            </a>
-            <a href="{{ url('special-memo') }}" class="btn btn-outline-secondary btn-sm">
-              <i class="fas fa-handshake"></i> Shared SPMs
-            </a>
+           
           </div>
         </div>
 

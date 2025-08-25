@@ -29,40 +29,68 @@ class NonTravelMemoController extends Controller
         $categories = Cache::remember('non_travel_categories', 60 * 60, fn() => NonTravelMemoCategory::all());
         $divisions = Cache::remember('non_travel_divisions', 60 * 60, fn() => \App\Models\Division::all());
 
-        // Base query with eager loads
-        $query = NonTravelMemo::with(['staff', 'division', 'nonTravelMemoCategory']);
+        // Get current user's staff ID
+        $currentStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
 
-        // Apply division filter only if user is not a division-specific approver
-        if (!isDivisionApprover() || !empty(user_session('division_id'))) {
-            $query->whereHas('staff', function($q) {
-                $q->where('division_id', user_session('division_id'));
-            });
-        }else{
-            //check approval workflow
-            $approvers = Approver::where('staff_id',user_session('staff_id'))->get();
-            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
-            $workflow_dfns = WorkflowDefinition::whereIn('id',$approvers)->get();
-            $query->whereIn('approval_level',$workflow_dfns->pluck('approval_order')->toArray());
-        }
+        // Tab 1: My Submitted Memos (memos created by current user)
+        $mySubmittedQuery = NonTravelMemo::with([
+            'staff', 
+            'division', 
+            'nonTravelMemoCategory', 
+            'forwardWorkflow.workflowDefinitions.approvers.staff'
+        ])
+            ->where('staff_id', $currentStaffId);
 
-        // Apply filters when present
-        if ($request->filled('staff_id')) {
-            $query->where('staff_id', $request->staff_id);
-        }
+        // Apply filters to my submitted memos
         if ($request->filled('category_id')) {
-            $query->where('non_travel_memo_category_id', $request->category_id);
+            $mySubmittedQuery->where('non_travel_memo_category_id', $request->category_id);
         }
         if ($request->filled('division_id')) {
-            $query->where('division_id', $request->division_id);
+            $mySubmittedQuery->where('division_id', $request->division_id);
         }
         if ($request->filled('status')) {
-            $query->where('overall_status', $request->status);
+            $mySubmittedQuery->where('overall_status', $request->status);
         }
 
-        // Paginate and preserve filters in the query string
-        $nonTravelMemos = $query->latest()->paginate(10)->withQueryString();
+        $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
 
-        return view('non-travel.index', compact('nonTravelMemos', 'staff', 'categories', 'divisions'));
+        // Tab 2: All Non-Travel Memos (visible to users with permission 87)
+        $allMemos = collect();
+        if (in_array(87, user_session('permissions', []))) {
+            $allMemosQuery = NonTravelMemo::with([
+                'staff', 
+                'division', 
+                'nonTravelMemoCategory', 
+                'forwardWorkflow.workflowDefinitions.approvers.staff'
+            ]);
+
+            // Apply filters to all memos
+            if ($request->filled('staff_id')) {
+                $allMemosQuery->where('staff_id', $request->staff_id);
+            }
+            if ($request->filled('category_id')) {
+                $allMemosQuery->where('non_travel_memo_category_id', $request->category_id);
+            }
+            if ($request->filled('division_id')) {
+                $allMemosQuery->where('division_id', $request->division_id);
+            }
+            if ($request->filled('status')) {
+                $allMemosQuery->where('overall_status', $request->status);
+            }
+
+            $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
+        }
+
+        return view('non-travel.index', compact(
+            'mySubmittedMemos', 
+            'allMemos', 
+            'staff', 
+            'categories', 
+            'divisions',
+            'currentStaffId',
+            'userDivisionId'
+        ));
     }
 
    public function create(): View
@@ -132,6 +160,11 @@ class NonTravelMemoController extends Controller
         $budgetBreakdownJson = json_encode($data['budget']);
         $attachmentsJson = json_encode($files);
 
+        // Determine status based on action
+        $action = $request->input('action', 'draft');
+        $isDraft = ($action === 'draft');
+        $overallStatus = $isDraft ? 'draft' : 'pending';
+
         // Save to DB
         $memo = NonTravelMemo::create([
             'reverse_workflow_id' => (int)($request->input('reverse_workflow_id', 1)),
@@ -148,10 +181,11 @@ class NonTravelMemoController extends Controller
             'justification' => $data['description'],
             'budget_breakdown' => $budgetBreakdownJson,
             'attachment' => $attachmentsJson,
-            'forward_workflow_id' => 1,
-            'approval_level' => 0,
-            'next_approval_level' => 1,
-            'overall_status' => 'draft',
+            'forward_workflow_id' => $isDraft ? null : 1,
+            'approval_level' => $isDraft ? 0 : 1,
+            'next_approval_level' => $isDraft ? null : 2,
+            'overall_status' => $overallStatus,
+            'is_draft' => $isDraft,
         ]);
 
         // Deduct budget code balances using the helper
@@ -172,9 +206,13 @@ class NonTravelMemoController extends Controller
             }
         }
 
-        // Always return a valid redirect response
+        // Return appropriate message based on action
+        $message = $isDraft 
+            ? 'Non-travel memo saved as draft successfully.'
+            : 'Non-travel memo submitted for approval successfully.';
+            
         return redirect()->route('non-travel.index')
-            ->with('success', 'Request submitted successfully.');
+            ->with('success', $message);
     }
 
     /** Show one memo */
@@ -350,6 +388,185 @@ class NonTravelMemoController extends Controller
         $approvalLevels = $this->getApprovalLevels($nonTravel);
         
         return view('non-travel.status', compact('nonTravel', 'approvalLevels'));
+    }
+
+    public function pendingApprovals(Request $request): View
+    {
+        $userStaffId = user_session('staff_id');
+
+        // Check if we have valid session data
+        if (!$userStaffId) {
+            return view('non-travel.pending-approvals', [
+                'pendingMemos' => collect(),
+                'approvedByMe' => collect(),
+                'divisions' => collect(),
+                'categories' => collect(),
+                'error' => 'No session data found. Please log in again.'
+            ]);
+        }
+
+        // Use the exact same logic as the home helper for consistency
+        $userDivisionId = user_session('division_id');
+        
+        $pendingQuery = NonTravelMemo::with([
+            'staff',
+            'division',
+            'nonTravelMemoCategory',
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
+            'forwardWorkflow.workflowDefinitions'
+        ])
+        ->where('overall_status', 'pending')
+        ->where('forward_workflow_id', '!=', null)
+        ->where('approval_level', '>', 0);
+
+        $pendingQuery->where(function($q) use ($userDivisionId, $userStaffId) {
+            // Case 1: Division-specific approval - check if user's division matches memo division
+            if ($userDivisionId) {
+                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('non_travel_memos.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId, $userDivisionId) {
+                    $divisionsTable = (new \App\Models\Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = non_travel_memos.division_id 
+                        WHERE wd.workflow_id = non_travel_memos.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = non_travel_memos.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=non_travel_memos.division_id AND d.id=?)
+                        )
+                    )", [$userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($userStaffId) {
+                        $subQ2->where('approval_level', $userStaffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
+                                $trailQ->where('staff_id', '=',$userStaffId);
+                              });
+                    });
+                });
+            }
+            
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('non_travel_memos.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($userStaffId) {
+                                      $approverQ->where('staff_id', $userStaffId);
+                                  });
+                    });
+                });
+            }
+
+            $q->orWhere('division_id', $userDivisionId);
+        });
+
+        // Get the memos and apply the same filtering as the home helper
+        $memos = $pendingQuery->get();
+        
+        // Apply the same additional filtering as the home helper for consistency
+        $filteredMemos = $memos->filter(function ($memo) {
+            return can_take_action_generic($memo);
+        });
+        
+        // Create a paginator from the filtered collection
+        $currentPage = request()->get('page', 1);
+        $perPage = 20;
+        $currentPageItems = $filteredMemos->forPage($currentPage, $perPage);
+        
+        $pendingMemos = new \Illuminate\Pagination\LengthAwarePaginator(
+            $currentPageItems,
+            $filteredMemos->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url()]
+        );
+
+        // Get memos approved by current user
+        $approvedByMeQuery = NonTravelMemo::with([
+            'staff',
+            'division',
+            'nonTravelMemoCategory',
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
+            'forwardWorkflow.workflowDefinitions'
+        ])
+        ->whereHas('approvalTrails', function($q) use ($userStaffId) {
+            $q->where('staff_id', $userStaffId)
+              ->where('action', 'approved');
+        })
+        ->orderBy('updated_at', 'desc');
+
+        $approvedByMe = $approvedByMeQuery->paginate(20);
+
+        // Get data for filters
+        $divisions = \App\Models\Division::orderBy('division_name')->get();
+        $categories = \App\Models\NonTravelMemoCategory::orderBy('name')->get();
+
+        // Helper function to get workflow information for a memo
+        $getWorkflowInfo = function($memo) {
+            $approvalLevel = $memo->approval_level ?? 'N/A';
+            $workflowRole = 'N/A';
+            $actorName = 'N/A';
+            
+            if ($memo->forwardWorkflow && $memo->forwardWorkflow->workflowDefinitions) {
+                $currentDefinition = $memo->forwardWorkflow->workflowDefinitions
+                    ->where('approval_order', $memo->approval_level)
+                    ->where('is_enabled', 1)
+                    ->first();
+                    
+                if ($currentDefinition) {
+                    $workflowRole = $currentDefinition->role ?? 'N/A';
+                    
+                    // Get actor name
+                    if ($currentDefinition->is_division_specific && $memo->division) {
+                        $staffId = $memo->division->{$currentDefinition->division_reference_column} ?? null;
+                        if ($staffId) {
+                            $actor = \App\Models\Staff::where('staff_id', $staffId)->first();
+                            if ($actor) {
+                                $actorName = $actor->fname . ' ' . $actor->lname;
+                            }
+                        }
+                    } else {
+                        $approver = \App\Models\Approver::where('workflow_dfn_id', $currentDefinition->id)->first();
+                        if ($approver) {
+                            $actor = \App\Models\Staff::where('staff_id', $approver->staff_id)->first();
+                            if ($actor) {
+                                $actorName = $actor->fname . ' ' . $actor->lname;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return [
+                'approvalLevel' => $approvalLevel,
+                'workflowRole' => $workflowRole,
+                'actorName' => $actorName
+            ];
+        };
+
+        return view('non-travel.pending-approvals', compact(
+            'pendingMemos',
+            'approvedByMe',
+            'divisions',
+            'categories',
+            'getWorkflowInfo'
+        ));
     }
 
     /**

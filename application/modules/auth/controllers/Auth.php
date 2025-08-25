@@ -279,8 +279,8 @@ public function impersonate($user_id)
 
     // Log the impersonation action
     $log_message = "Admin " . $current_user->name . " (ID: " . $current_user->user_id . ") is now impersonating " . $user->name . " (ID: " . $user->user_id . ")";
-    log_user_action($log_message);
-
+        log_user_action($log_message);
+  
     // Set success message
     $this->session->set_flashdata('success', 'You are now impersonating ' . $user->name . '. Click "Revert to Admin" to return to your account.');
 
@@ -441,13 +441,13 @@ public function revert()
           
           // Get paginated users
           $users = $this->auth_mdl->getAllFiltered($filters, $pageSize, $start);
-          $usergroups = Modules::run("permissions/getUserGroups");
+      $usergroups = Modules::run("permissions/getUserGroups");
           
           // Set proper JSON content type header
           header('Content-Type: application/json; charset=utf-8');
-          
-          echo json_encode([
-              'users' => $users,
+  
+      echo json_encode([
+          'users' => $users,
               'usergroups' => $usergroups,
               'totalUsers' => $totalUsers,
               'currentPage' => $page,
@@ -629,7 +629,7 @@ public function revert()
     
     $postdata = $this->input->post();
     
-    $res = $this->auth_mdl->updateUser($postdata);
+      $res = $this->auth_mdl->updateUser($postdata);
     echo json_encode(['message' => $res]);
     //no photo
   }

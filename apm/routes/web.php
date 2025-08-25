@@ -136,16 +136,21 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');
     
     // Non-Travel Memo Routes
-    Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);
+    // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
+    Route::get('non-travel/pending-approvals', [App\Http\Controllers\NonTravelMemoController::class, 'pendingApprovals'])->name('non-travel.pending-approvals');
     Route::delete('non-travel/{nonTravel}/remove-attachment', [App\Http\Controllers\NonTravelMemoController::class, 'removeAttachment'])->name('non-travel.remove-attachment');
     Route::get('non-travel/{nonTravel}/print', [App\Http\Controllers\NonTravelMemoController::class, 'print'])->name('non-travel.print');
+    Route::resource('non-travel', App\Http\Controllers\NonTravelMemoController::class);
+    
+    // Special Memo Routes
+    // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
+    Route::get('special-memo/pending-approvals', [App\Http\Controllers\SpecialMemoController::class, 'pendingApprovals'])->name('special-memo.pending-approvals');
+    Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
     
     // Request for ARF Routes
     Route::resource('request-arf', App\Http\Controllers\RequestARFController::class);
     Route::delete('request-arf/{requestARF}/remove-attachment', [App\Http\Controllers\RequestARFController::class, 'removeAttachment'])->name('request-arf.remove-attachment');
     
-    // Special Memo Routes
-    Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
     Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
     Route::get('special-memo/{specialMemo}/print', [App\Http\Controllers\SpecialMemoController::class, 'print'])->name('special-memo.print');
 
