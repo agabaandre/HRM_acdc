@@ -54,6 +54,39 @@
         gap: 0.5rem;
     }
     
+    .budget-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .budget-table td {
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+    
+    .budget-total-row {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        font-weight: 700;
+    }
+    
+    .fund-code-header {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 0.5rem;
+    }
+    
+    .fund-code-header h6 {
+        color: #0369a1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .fund-code-header .small {
+        color: #64748b;
+    }
+    
     .attachment-item {
         background: #faf5ff;
         border: 1px solid #e9d5ff;
@@ -212,8 +245,13 @@
         @php
             // Decode JSON fields if they are strings
             $budget = is_string($specialMemo->budget) 
-                ? json_decode($specialMemo->budget, true) 
+                ? json_decode(stripslashes($specialMemo->budget), true) 
                 : $specialMemo->budget;
+            
+            // Handle double-encoded JSON (sometimes happens with form submissions)
+            if (is_string($budget) && !is_array($budget)) {
+                $budget = json_decode($budget, true);
+            }
 
             $attachments = is_string($specialMemo->attachment) 
                 ? json_decode($specialMemo->attachment, true) 
@@ -228,16 +266,51 @@
             $attachments = is_array($attachments) ? $attachments : [];
             $internalParticipants = is_array($internalParticipants) ? $internalParticipants : [];
 
-            // Calculate total budget
+            // Parse budget structure and organize by fund codes
+            $budgetByFundCode = [];
             $totalBudget = 0;
+            
             if (!empty($budget)) {
                 foreach ($budget as $key => $item) {
-                    if (is_array($item) && isset($item['amount'])) {
-                        $totalBudget += $item['amount'];
+                    if ($key === 'grand_total') {
+                        $totalBudget = floatval($item);
+                    } elseif (is_array($item)) {
+                        // Handle array of budget items (like "29" => [{...}])
+                        $fundCodeId = $key;
+                        $budgetByFundCode[$fundCodeId] = $item;
                     } elseif (is_numeric($item)) {
-                        $totalBudget += $item;
+                        $totalBudget += floatval($item);
                     }
                 }
+            }
+            
+            // Fetch fund code details for display
+            $fundCodes = [];
+            if (!empty($budgetByFundCode)) {
+                $fundCodeIds = array_keys($budgetByFundCode);
+                $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+            }
+            
+            // If no grand_total found, calculate from items
+            if ($totalBudget == 0 && !empty($budgetByFundCode)) {
+                foreach ($budgetByFundCode as $fundCodeId => $items) {
+                    foreach ($items as $item) {
+                        if (isset($item['unit_cost']) && isset($item['units'])) {
+                            $totalBudget += floatval($item['unit_cost']) * floatval($item['units']);
+                        }
+                    }
+                }
+            }
+            
+            // Debug logging
+            if (config('app.debug')) {
+                \Log::info('Budget parsing debug:', [
+                    'raw_budget' => $specialMemo->budget,
+                    'parsed_budget' => $budget,
+                    'budget_by_fund_code' => $budgetByFundCode,
+                    'fund_codes' => $fundCodes,
+                    'total_budget' => $totalBudget
+                ]);
             }
         @endphp
 
@@ -335,9 +408,27 @@
                         <tr>
                             <td class="field-label">Total Budget</td>
                             <td class="field-value fw-bold text-success">${{ number_format($totalBudget, 2) }}</td>
-                            <td class="field-label">Budget Items</td>
+                            <td class="field-label">Fund Codes</td>
                             <td class="field-value">
-                                {{ count($budget) }} item(s)
+                                @if(!empty($budgetByFundCode))
+                                    @foreach($budgetByFundCode as $fundCodeId => $items)
+                                        @php
+                                            $fundCode = $fundCodes[$fundCodeId] ?? null;
+                                        @endphp
+                                        <div class="mb-1">
+                                            @if($fundCode)
+                                                <span class="badge bg-primary me-1">{{ $fundCode->code }}</span>
+                                                @if($fundCode->fundType)
+                                                    <small class="text-muted">({{ $fundCode->fundType->name ?? 'N/A' }})</small>
+                                                @endif
+                                            @else
+                                                <span class="badge bg-secondary me-1">ID: {{ $fundCodeId }}</span>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <span class="text-muted">No budget codes</span>
+                                @endif
                             </td>
                         </tr>
                         
@@ -564,52 +655,132 @@
                         </div>
                     </div>
                 @endif
-            </div>
 
-            <div class="col-lg-4">
-                <!-- Budget Card -->
-                <div class="card sidebar-card border-0 mb-4">
+                <!-- Budget Information -->
+                <div class="card content-section bg-blue border-0 mb-4">
                     <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                        <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
                             <i class="bx bx-money"></i>
                             Budget Information
                         </h6>
                     </div>
                     <div class="card-body">
                         @if(!empty($budget))
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="text-muted small">Total Budget</span>
-                                    <span class="fw-bold text-success fs-5">${{ number_format($totalBudget, 2) }}</span>
-                                </div>
-                            </div>
+                          
                             
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Item</th>
-                                            <th>Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($budget as $key => $item)
-                                            <tr>
-                                                <td>{{ $key }}</td>
-                                                <td class="text-end">
-                                                    @if(is_array($item) && isset($item['amount']))
-                                                        ${{ number_format($item['amount'], 2) }}
-                                                    @elseif(is_numeric($item))
-                                                        ${{ number_format($item, 2) }}
+                          
+                            
+                            @if(!empty($budgetByFundCode))
+                                @foreach($budgetByFundCode as $fundCodeId => $items)
+                                    @php
+                                        $fundCode = $fundCodes[$fundCodeId] ?? null;
+                                        $fundCodeTotal = 0;
+                                        foreach ($items as $item) {
+                                            if (isset($item['unit_cost']) && isset($item['units'])) {
+                                                $fundCodeTotal += floatval($item['unit_cost']) * floatval($item['units']);
+                                            }
+                                        }
+                                    @endphp
+                                    
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3 p-3 fund-code-header">
+                                            <div>
+                                                <h6 class="mb-1 fw-bold text-primary">
+                                                    @if($fundCode)
+                                                        Fund Code: {{ $fundCode->code }}
+                                                     
                                                     @else
-                                                        -
+                                                        Fund Code ID: {{ $fundCodeId }}
                                                     @endif
-                                                </td>
+                                                </h6>
+                                                @if($fundCode)
+                                                    <div class="small text-muted">
+                                                        @if($fundCode->fundType)
+                                                            <span class="me-3">Type: {{ $fundCode->fundType->name ?? 'N/A' }}</span>
+                                                        @endif
+                                                        @if($fundCode->funder)
+                                                            <span>Funder: {{ $fundCode->funder->name ?? 'N/A' }}</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="fw-bold text-success fs-6">${{ number_format($fundCodeTotal, 2) }}</span>
+                                                <small class="text-muted d-block">Fund Total</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-sm mb-0 budget-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Cost Item</th>
+                                                        <th>Description</th>
+                                                        <th>Unit Cost</th>
+                                                        <th>Units</th>
+                                                        <th>Days</th>
+                                                        <th>Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($items as $item)
+                                                        @php
+                                                            $itemTotal = 0;
+                                                            if (isset($item['unit_cost']) && isset($item['units'])) {
+                                                                $itemTotal = floatval($item['unit_cost']) * floatval($item['units']);
+                                                            }
+                                                        @endphp
+                                                        <tr>
+                                                            <td>{{ $item['cost'] ?? 'N/A' }}</td>
+                                                            <td>{{ $item['description'] ?? 'N/A' }}</td>
+                                                            <td class="text-end">${{ number_format(floatval($item['unit_cost'] ?? 0), 2) }}</td>
+                                                            <td class="text-end">{{ $item['units'] ?? 'N/A' }}</td>
+                                                            <td class="text-end">{{ $item['days'] ?? 'N/A' }}</td>
+                                                            <td class="text-end fw-bold">${{ number_format($itemTotal, 2) }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                
+                                <!-- Grand Total Row -->
+                                <div class="mt-4 p-3 budget-total-row rounded">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 fw-bold">Grand Total (All Fund Codes)</h6>
+                                        <span class="fw-bold fs-5">${{ number_format($totalBudget, 2) }}</span>
+                                    </div>
+                                </div>
+                            @else
+                                <!-- Fallback: Show budget as key-value pairs if structure is different -->
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Budget Item</th>
+                                                <th>Value</th>
                                             </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($budget as $key => $value)
+                                                @if($key !== 'grand_total')
+                                                    <tr>
+                                                        <td>{{ $key }}</td>
+                                                        <td>
+                                                            @if(is_array($value))
+                                                                <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
+                                                            @else
+                                                                {{ $value }}
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endif
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
                         @else
                             <div class="text-center text-muted py-4">
                                 <i class="bx bx-money bx-lg mb-3"></i>
@@ -618,6 +789,9 @@
                         @endif
                     </div>
                 </div>
+            </div>
+
+            <div class="col-lg-4">
 
                 <!-- Attachments Card -->
                 <div class="card sidebar-card border-0 mb-4">

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Interoffice Memorandum — Infrastructure Inspection & ICT Installations</title>
+<style>
+  :root{
+    --au-green:#119A48;
+    --au-red:#911C39;
+    --au-gold:#C3A366;
+    --text:#222;
+    --muted:#5F5F5F;
+    --line:#CFCFCF;
+  }
+  html,body{ margin:0; padding:0; color:var(--text); font:14px/1.5 "Times New Roman", Georgia, serif; background:#fff; }
+  .page{ width:210mm; min-height:297mm; margin:0 auto; padding:20mm 18mm; box-sizing:border-box; position:relative; }
+  .header{ border-bottom:3px solid var(--au-green); padding-bottom:10px; margin-bottom:18px; }
+  .brandline{ display:flex; align-items:center; gap:12px; }
+  .brand-badge{ width:56px; height:56px; border-radius:50%; border:2px solid var(--au-green); display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--au-green);}
+  .org{ font-weight:700; text-transform:uppercase; }
+  .strap{ color:var(--muted); font-style:italic; }
+  .addr{ font-size:12px; margin-top:6px; }
+  .title{ text-align:center; margin:20px 0 16px; letter-spacing:.8px; font-weight:700; }
+  .title .rule{ height:3px; background:linear-gradient(90deg,var(--au-green),var(--au-gold),var(--au-red)); width:100%; margin-top:8px; }
+  .meta{ display:grid; grid-template-columns:140px 1fr; gap:6px 14px; border:1px solid var(--line); padding:12px; border-radius:8px; background:#fafafa; margin-bottom:16px; }
+  .meta .label{ font-weight:700; }
+  .section{ margin:12px 0; }
+  .section h4{ margin:0 0 6px; font-size:14px; }
+  .list{ margin:.2rem 0 .6rem 1.2rem; }
+  .sublist{ margin:.2rem 0 .6rem 1.2rem; list-style:"• "; }
+  .panel{ border:1px solid #bbb; border-radius:8px; margin:16px 0; }
+  .panel .panel-hd{ background:#f5f7f6; padding:10px 12px; font-weight:700; display:flex; justify-content:space-between; }
+  .kv{ display:grid; grid-template-columns:240px 1fr; border-top:1px solid #e7e7e7; }
+  .kv > div{ padding:9px 12px; }
+  .kv .k{ font-weight:700; background:#fcfcfc; border-right:1px solid #eee; }
+  .sig-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:14px 0; }
+  .sig-box{ border:2px dashed #888; border-radius:10px; padding:12px; min-height:120px; position:relative; }
+  .sig-cap{ position:absolute; top:-10px; left:12px; background:#fff; padding:0 8px; font-size:12px; font-weight:700; }
+  .sig-line{ margin-top:58px; border-top:1.8px solid #000; }
+  .sig-rows{ display:grid; grid-template-columns:70px 1fr; gap:4px 8px; margin-top:8px; font-size:12px; }
+  .sig-rows .lbl{ font-weight:700; }
+  .sig-note{ font-size:11px; margin-top:4px; }
+  table{ border-collapse:collapse; width:100%; margin:8px 0 10px; font-size:13px; }
+  th,td{ border:1px solid #d9d9d9; padding:8px 10px; }
+  th{ background:#f3f6f4; }
+  tfoot td{ font-weight:700; }
+  .footer{ position:absolute; bottom:14mm; left:18mm; right:18mm; font-size:11px; display:flex; justify-content:space-between; }
+  .watermark{ position:absolute; top:45%; left:50%; transform:translate(-50%,-50%) rotate(-18deg); font-size:46px; color:rgba(17,154,72,0.06); font-weight:900; }
+  @page{ size:A4; margin:14mm 12mm 18mm; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="watermark">Safeguarding Africa’s Health</div>
+  <header class="header">
+    <div class="brandline">
+      <div class="brand-badge">AU</div>
+      <div>
+        <div class="org">Continental Health & Safety Commission</div>
+        <div class="strap">Safeguarding Our Future</div>
+        <div class="addr">Headquarters, Main Avenue, Addis Ababa · Tel: +251 111234567 · Email: info@chsc.org</div>
+      </div>
+    </div>
+  </header>
+  <div class="title">
+    <div style="font-size:18px;">INTEROFFICE MEMORANDUM</div>
+    <div class="rule"></div>
+  </div>
+
+  <section class="meta">
+    <div class="label">To:</div><div class="value"><strong>Mr. Samuel Okello</strong>, Executive Director</div>
+    <div class="label">File No.:</div><div class="value">CHSC/OPS/IM-2025/07</div>
+    <div class="label">Through:</div><div class="value"><strong>Ms. Anita Mensah</strong>, Chief of Staff</div>
+    <div class="label">Date:</div><div class="value">17 April 2025</div>
+    <div class="label">Through:</div><div class="value"><strong>Dr. Fatou Diallo</strong>, Deputy Director General</div>
+    <div class="label">From:</div><div class="value"><strong>Dr. John Mwangi</strong>, Head of Emergency Operations</div>
+    <div class="label">Subject:</div><div class="value"><strong>Request for Regional Infrastructure Inspection and ICT Installations</strong></div>
+  </section>
+
+  <section class="section">
+    <p>
+      This memo seeks approval to conduct inspections and installations of ICT equipment and accessories
+      for <strong>18 Regional Emergency Centers</strong>. Previous assessments revealed gaps in infrastructure requiring urgent action.
+    </p>
+  </section>
+
+  <section class="section">
+    <h4>Scope</h4>
+    <ol class="list">
+      <li><strong>Office Tools:</strong> Printers, scanners, projectors.</li>
+      <li><strong>ICT Hardware:</strong> Laptops, servers, biometric devices.</li>
+      <li><strong>Networking:</strong> Routers, switches, cabling.</li>
+      <li><strong>Security:</strong> Cameras, fire equipment, backup systems.</li>
+      <li><strong>Furniture:</strong> Desks, chairs, storage.</li>
+    </ol>
+  </section>
+
+  <section class="section">
+    <h4>Inspection Checklist</h4>
+    <ul class="sublist">
+      <li>Verify delivery condition of equipment.</li>
+      <li>Conduct site readiness assessments.</li>
+      <li>Perform functionality tests.</li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <h4>Budget Summary</h4>
+    <p>Estimated cost: <strong>USD 178,450</strong> from budget code <strong>OPS042530MB</strong>.</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-hd">
+      <div>Approval Summary</div>
+      <div style="font-size:12px; color:var(--muted);">Currency: USD</div>
+    </div>
+    <div class="kv">
+      <div class="k">Date</div><div class="v">17/04/2025</div>
+      <div class="k">Purpose</div><div class="v">Infrastructure Inspection and ICT Installations</div>
+      <div class="k">Department</div><div class="v">CHSC/OPS</div>
+      <div class="k">Fund Center</div><div class="v">OPS042530MB</div>
+    </div>
+    <div class="sig-grid">
+      <div class="sig-box">
+        <div class="sig-cap">Prepared by</div>
+        <div class="sig-line"></div>
+        <div class="sig-rows">
+          <div class="lbl">Name</div><div>Dr. John Mwangi</div>
+          <div class="lbl">Title</div><div>Head of Emergency Operations</div>
+          <div class="lbl">Date</div><div>__/__/____</div>
+        </div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-cap">Endorsed by</div>
+        <div class="sig-line"></div>
+        <div class="sig-rows">
+          <div class="lbl">Name</div><div>Ms. Anita Mensah</div>
+          <div class="lbl">Title</div><div>Chief of Staff</div>
+          <div class="lbl">Date</div><div>__/__/____</div>
+        </div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-cap">Approved by</div>
+        <div class="sig-line"></div>
+        <div class="sig-rows">
+          <div class="lbl">Name</div><div>Mr. Samuel Okello</div>
+          <div class="lbl">Title</div><div>Executive Director</div>
+          <div class="lbl">Date</div><div>__/__/____</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div>Interoffice Memorandum — Infrastructure Inspection</div>
+    <div>Page 1</div>
+  </footer>
+</div>
+</body>
+</html>
+

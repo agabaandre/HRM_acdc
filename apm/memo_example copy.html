@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Interoffice Memorandum — PHEOC Infrastructure Inspection & ICT Installations</title>
+<style>
+  /* ---------- Base / Brand ---------- */
+  :root{
+    --au-green:#119A48;         /* AU green */
+    --au-red:#911C39;           /* AU red */
+    --au-gold:#C3A366;          /* AU accent gold */
+    --text:#222;
+    --muted:#5F5F5F;
+    --line:#CFCFCF;
+  }
+  html,body{ margin:0; padding:0; color:var(--text); font:14px/1.5 "Times New Roman", Georgia, "DejaVu Serif", serif; background:#fff; }
+  .page{
+    width: 210mm;               /* A4 width */
+    min-height: 297mm;          /* A4 height */
+    margin: 0 auto;
+    padding: 20mm 18mm 18mm;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  /* ---------- Header ---------- */
+  .header{
+    border-bottom:3px solid var(--au-green);
+    padding-bottom:10px;
+    margin-bottom:18px;
+  }
+  .brandline{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  .brand-badge{
+    width:56px; height:56px; border-radius:50%;
+    border:2px solid var(--au-green);
+    box-shadow:0 0 0 3px rgba(17,154,72,0.12) inset;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; color:var(--au-green);
+  }
+  .org{
+    font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+  }
+  .strap{ color:var(--muted); font-style:italic; }
+  .addr{ color:#333; font-size:12px; margin-top:6px; }
+
+  /* ---------- Title ---------- */
+  .title{
+    text-align:center; margin:20px 0 16px;
+    letter-spacing:.8px; font-weight:700;
+  }
+  .title .rule{
+    height:3px; background:linear-gradient(90deg,var(--au-green),var(--au-gold),var(--au-red));
+    width:100%; margin:8px auto 0;
+  }
+
+  /* ---------- Meta grid (To/From/File/Through/Date/Subject) ---------- */
+  .meta{
+    display:grid; grid-template-columns: 140px 1fr; gap:6px 14px;
+    border:1px solid var(--line); padding:12px; border-radius:8px; background:#fafafa; margin-bottom:16px;
+  }
+  .meta .label{ font-weight:700; }
+  .meta .value{ }
+
+  /* ---------- Body ---------- */
+  .section{ margin:12px 0; }
+  .section h4{ margin:0 0 6px; color:#000; font-size:14px; }
+  .list { margin:.2rem 0 .6rem 1.2rem; }
+  .list li { margin:.2rem 0; }
+  .sublist{ margin:.2rem 0 .6rem 1.2rem; list-style: "•  "; }
+
+  /* ---------- Approval / Finance Block ---------- */
+  .break{ page-break-before:always; }
+  .panel{
+    border:1px solid #bbb; border-radius:8px; overflow:hidden; margin:16px 0;
+  }
+  .panel .panel-hd{
+    background:#f5f7f6; border-bottom:1px solid #ddd; padding:10px 12px; font-weight:700;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .kv{
+    display:grid; grid-template-columns: 240px 1fr; border-top:1px solid #e7e7e7;
+  }
+  .kv > div{ padding:9px 12px; }
+  .kv .k{ font-weight:700; background: #fcfcfc; border-right:1px solid #eee; }
+  .kv .v{ }
+
+  /* ---------- Signature Boxes (DocuSign-like) ---------- */
+  .sig-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin:14px 0 6px;
+  }
+  .sig-box{
+    border:2px dashed #888; border-radius:10px; padding:12px; position:relative; min-height:120px; background:#fff;
+    box-shadow:0 1px 0 rgba(0,0,0,.03) inset;
+  }
+  .sig-cap{
+    position:absolute; top:-10px; left:12px; background:#fff; padding:0 8px; font-size:12px; color:#333; font-weight:700;
+  }
+  .sig-line{
+    margin-top:58px; border-top:1.8px solid #000; height:0;
+  }
+  .sig-rows{
+    display:grid; grid-template-columns: 70px 1fr; gap:4px 8px; margin-top:8px; font-size:12px;
+  }
+  .sig-rows .lbl{ color:#000; font-weight:700; }
+  .sig-note{ font-size:11px; color:#444; margin-top:4px; }
+
+  /* ---------- Tables for Budget ---------- */
+  table{ border-collapse:collapse; width:100%; margin:8px 0 10px; font-size:13px; }
+  th, td{ border:1px solid #d9d9d9; padding:8px 10px; vertical-align:top; }
+  th{ background:#f3f6f4; text-align:left; }
+  tfoot td{ font-weight:700; }
+
+  /* ---------- Footer ---------- */
+  .footer{
+    position:absolute; bottom:14mm; left:18mm; right:18mm; font-size:11px; color:#555; display:flex; justify-content:space-between; gap:10px;
+  }
+  .watermark{
+    position:absolute; top:45%; left:50%; transform:translate(-50%,-50%) rotate(-18deg);
+    font-size:46px; color:rgba(17,154,72,0.06); font-weight:900; pointer-events:none; white-space:nowrap;
+  }
+
+  /* ---------- Print ---------- */
+  @page{ size:A4; margin:14mm 12mm 18mm; }
+  @media print{
+    .page{ padding:0; }
+    .footer{ position:fixed; bottom:10mm; left:12mm; right:12mm; }
+    a[href]:after{ content:""; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="watermark">Safeguarding Africa’s Health</div>
+
+    <header class="header">
+      <div class="brandline">
+        <div class="brand-badge">AU</div>
+        <div>
+          <div class="org">Africa Centres for Disease Control and Prevention (Africa CDC)</div>
+          <div class="strap">Safeguarding Africa’s Health</div>
+          <div class="addr">
+            Africa CDC Headquarters, Ring Road, 16/17, Haile Garment Lafto Square, Nifas Silk-Lafto Sub City, P.O. Box: 200050 Addis Ababa ·
+            Tel: +251 (0) 112175100 / 75200 · Email: registry@africacdc.org
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="title">
+      <div style="font-size:18px;">INTEROFFICE MEMORANDUM</div>
+      <div class="rule"></div>
+    </div>
+
+    <!-- Meta -->
+    <section class="meta">
+      <div class="label">To:</div>
+      <div class="value"><strong>H.E Dr. Jean Kaseya</strong>, Director General, Africa CDC</div>
+
+      <div class="label">File No.:</div>
+      <div class="value">AU/CDC/DMA/IM</div>
+
+      <div class="label">Through:</div>
+      <div class="value"><strong>Dr Bilguissou Balde</strong>, Chief of Staff & Head of Executive Office, Africa CDC</div>
+
+      <div class="label">Date:</div>
+      <div class="value">12 March 2025</div>
+
+      <div class="label">Through:</div>
+      <div class="value">
+        <strong>Dr. Raji Tajudeen</strong>, Ag. Deputy Director General, Africa CDC<br/>
+        <strong>Dr Ngashi Ngongo</strong>, Incident Manager mpox and Marburg, Africa CDC
+      </div>
+
+      <div class="label">From:</div>
+      <div class="value"><strong>Dr Wessam Mankoula</strong>, Ag Head of Emergency Preparedness and Response Division, Africa CDC</div>
+
+      <div class="label">Subject:</div>
+      <div class="value"><strong>Request for PHEOC Infrastructure Inspection and Installation of ICT Equipment and Accessories</strong></div>
+    </section>
+
+    <!-- Body -->
+    <section class="section">
+      <p>
+        Reference is made to the approval of <em>AU/CDC/EPR/IM/5439.23 Supply, Delivery and Installation of ICT Equipment and Accessories</em>
+        identified in the earlier memorandum dated <strong>14 September 2023</strong>. The purpose of this memo is to request approval for conducting
+        inspections and installations of critical ICT equipment and accessories for the <strong>23 Public Health Emergency Operations Centers (PHEOCs)</strong>.
+      </p>
+      <p>
+        PHEOCs play a vital role in managing public health emergencies, serving as hubs for resource coordination, communication, and collaboration with
+        key stakeholders. The earlier assessment of these PHEOCs revealed several infrastructure gaps requiring urgent attention.
+      </p>
+    </section>
+
+    <section class="section">
+      <h4>Scope aligned with AfDB-funded PHEOC capacity strengthening</h4>
+      <ol class="list">
+        <li><strong>Office Equipment:</strong> Printers, scanners, whiteboards, and other administrative essentials.</li>
+        <li><strong>ICT Infrastructure:</strong> Servers, laptops, smartboards, TVs, biometric systems, and networking accessories.</li>
+        <li><strong>Networking Solutions:</strong> Routers, docking stations, AVS voltage monitors, and related equipment.</li>
+        <li><strong>Safety and Security:</strong> Cameras, fire extinguishers, access controls, and power backup systems.</li>
+        <li><strong>Furniture:</strong> Workstations, ergonomic chairs, executive desks, and shelves.</li>
+        <li><strong>Software:</strong> Antivirus licenses and office productivity tools.</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h4>Inspection Checklist</h4>
+      <ol class="list">
+        <li><strong>Pre-Inspection of Equipment</strong>
+          <ul class="sublist">
+            <li>Verify that all equipment is received in good condition.</li>
+            <li>Check for any visible damage upon unpacking; ensure that packaging seals are intact.</li>
+          </ul>
+        </li>
+        <li><strong>On-Site Testing</strong>
+          <ul class="sublist">
+            <li>Conduct electrical checks to confirm there are no frayed cables or wiring issues.</li>
+            <li>Test functionality of each piece of equipment.</li>
+          </ul>
+        </li>
+        <li><strong>Foundation Checks</strong>
+          <ul class="sublist">
+            <li>Ensure that the installation site has adequate ventilation, power, and space.</li>
+            <li>Confirm that environmental conditions are suitable for the equipment.</li>
+          </ul>
+        </li>
+        <li><strong>Technicians</strong>
+          <ul class="sublist">
+            <li>Schedule qualified technicians for installation based on their availability.</li>
+            <li>Optimize routes to minimize travel time to the installation site.</li>
+          </ul>
+        </li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h4>Installation Timeline</h4>
+      <ul class="sublist">
+        <li><strong>Initial Inspection:</strong> first week of March 2025.</li>
+      </ul>
+      <p>
+        We kindly request approval to:
+      </p>
+      <ol class="list">
+        <li>Conduct inspections of PHEOC infrastructure to finalize requirements.</li>
+        <li>Proceed with the installation of the approved ICT equipment and accessories.</li>
+        <li>Engage local service providers for site-specific installations.</li>
+      </ol>
+      <p>
+        The cost estimate to cover this activity is <strong>USD 205,270</strong>, approved by the AfDB for the PHEOC project from budget code
+        <strong>CDC0603015MB</strong>.
+      </p>
+      <p><em>Submitted for your consideration and approval.</em></p>
+      <p><strong>Attachments:</strong> 1) Cost breakdown  2) Fund availability</p>
+    </section>
+
+    <!-- Approval & Finance Summary -->
+    <section class="panel break">
+      <div class="panel-hd">
+        <div>Payment / Approval Summary</div>
+        <div style="color:var(--muted); font-size:12px;">Currency: <strong>USD</strong></div>
+      </div>
+
+      <div class="kv">
+        <div class="k">Date</div>
+        <div class="v">12.03.2025</div>
+
+        <div class="k">Payee/Staff (Vendors)</div>
+        <div class="v">—</div>
+
+        <div class="k">Purpose of Payment</div>
+        <div class="v"><strong>Request for PHEOC Infrastructure Inspection and Installation of ICT Equipment and Accessories</strong></div>
+
+        <div class="k">Department Name (Cost Center)</div>
+        <div class="v">AU/CDC/DMA</div>
+
+        <div class="k">Project/Program (Fund Center)</div>
+        <div class="v">CDC0603015MB</div>
+
+        <div class="k">Fund (Member State or Partner/Donor)</div>
+        <div class="v">PBCOVADB01</div>
+
+        <div class="k">Budget / Balance (Certified by SFO)</div>
+        <div class="v">
+          <div><strong>Estimated Cost:</strong> 205,270 US$</div>
+          <div><strong>Date (SFO Certification):</strong> 12/03/2025</div>
+        </div>
+      </div>
+
+      <!-- Signature Boxes -->
+      <div class="sig-grid">
+        <div class="sig-box">
+          <div class="sig-cap">Signed (Prepared by)</div>
+          <!-- Optional: Drop an image of a handwritten signature centered above the line -->
+          <div class="sig-line"></div>
+          <div class="sig-rows">
+            <div class="lbl">Name</div><div>Dr Wessam Mankoula</div>
+            <div class="lbl">Title</div><div>Ag Head of Emergency Preparedness and Response Division, Africa CDC</div>
+            <div class="lbl">Date</div><div>____/____/______</div>
+          </div>
+          <div class="sig-note">Signature must be inside the box. Black ink recommended.</div>
+        </div>
+
+        <div class="sig-box">
+          <div class="sig-cap">Endorsed by</div>
+          <div class="sig-line"></div>
+          <div class="sig-rows">
+            <div class="lbl">Name</div><div>Adedayo Akinwale&nbsp;Charles</div>
+            <div class="lbl">Title</div><div>OIC Director of Finance, Africa CDC</div>
+            <div class="lbl">Date</div><div>____/____/______</div>
+          </div>
+          <div class="sig-note">Signature must be inside the box. Black ink recommended.</div>
+        </div>
+
+        <div class="sig-box">
+          <div class="sig-cap">Approved by</div>
+          <div class="sig-line"></div>
+          <div class="sig-rows">
+            <div class="lbl">Name</div><div>Dr. Raji Tajudeen</div>
+            <div class="lbl">Title</div><div>Ag. Deputy Director General, Africa CDC</div>
+            <div class="lbl">Date</div><div>____/____/______</div>
+          </div>
+          <div class="sig-note">Signature must be inside the box. Black ink recommended.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Budget Details -->
+    <section class="section">
+      <h4>Cost Breakdown (Summary)</h4>
+
+      <table>
+        <thead>
+          <tr>
+            <th colspan="4">Africa CDC staff estimated budget for 23 MS and 2 Tanzania sites</th>
+          </tr>
+          <tr>
+            <th>Item</th><th>Total flight ticket</th><th>Total DSA</th><th>Total visa</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Technical Team (23 MS + 2 Tanzania sites)</td>
+            <td>27,600</td><td>62,682</td><td>2,400</td>
+          </tr>
+          <tr>
+            <td>Stores and Procurement team</td>
+            <td>53,600</td><td>42,388</td><td>4,600</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td style="text-align:right;"><strong>Total</strong></td>
+            <td><strong>81,200</strong></td>
+            <td><strong>105,070</strong></td>
+            <td><strong>7,000</strong></td>
+          </tr>
+          <tr>
+            <td colspan="4"><strong>Subtotal (Africa CDC staff estimated budget):</strong> 193,270</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <table>
+        <thead>
+          <tr><th colspan="4">Other items estimated budget</th></tr>
+          <tr><th>Item</th><th>Unit estimate</th><th>Number/Days</th><th>Total</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ground Transportation (2 Sites)</td>
+            <td>500</td><td>2 sites × 2 days</td><td>2,000</td>
+          </tr>
+          <tr>
+            <td>Stipend (MS Technical Person for 23 MS + 2 Tanzania sites)</td>
+            <td>40</td><td>25 × 10</td><td>10,000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr><td colspan="3" style="text-align:right;"><strong>Total</strong></td><td><strong>12,000</strong></td></tr>
+        </tfoot>
+      </table>
+
+      <table>
+        <tbody>
+          <tr>
+            <td style="width:60%;"><strong>Total "Inspection, Verification and Installation"</strong></td>
+            <td style="width:40%;"><strong>205,270</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="footer">
+      <div>Interoffice Memorandum — PHEOC Infrastructure Inspection & ICT Installations</div>
+      <div>Page <span class="pageno"></span></div>
+    </footer>
+  </div>
+
+<script>
+  // Page numbering for print (best-effort for browsers that support it)
+  (function(){
+    const el = document.querySelector('.pageno');
+    if(!el) return;
+    // Browsers won't know total pages before print; keep simple index text.
+    el.textContent = '1';
+  })();
+</script>
+</body>
+</html>
