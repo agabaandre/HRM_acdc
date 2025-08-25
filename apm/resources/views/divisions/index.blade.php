@@ -44,7 +44,6 @@
                         <th>Name</th>
                         <th>Division Head</th>
                         <th>Focal Person</th>
-                        <th>Status</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -55,13 +54,7 @@
                             <td>{{ $division->division_name }}</td>
                             <td>{{ $division->divisionHead ? $division->divisionHead->fname . ' ' . $division->divisionHead->lname : 'N/A' }}</td>
                             <td>{{ $division->focalPerson ? $division->focalPerson->fname . ' ' . $division->focalPerson->lname : 'N/A' }}</td>
-                            <td>
-                                @if($division->is_active)
-                                    <span class="badge bg-success">Active</span>
-                                @else
-                                    <span class="badge bg-danger">Inactive</span>
-                                @endif
-                            </td>
+                          
                             <td class="text-end">
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('divisions.show', $division->id) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">

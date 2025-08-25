@@ -26,9 +26,7 @@
                 <label for="background" class="form-label fw-semibold">
                     <i class="fas fa-align-left me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                 </label>
-                <textarea name="background" id="background" class="form-control" rows="3" required>
-                    {{ old('background', $specialMemo->background ?? '') }}
-                </textarea>
+                <textarea name="background" id="background" class="form-control" rows="3" required>{{ old('background', $specialMemo->background ?? '') }}</textarea>
             </div>
             <div class="col-md-6">
                 <label for="responsible_person_id" class="form-label fw-semibold">
@@ -102,17 +100,13 @@
                 <label for="activity_request_remarks" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
                 </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>
-                    {{ old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '') }}
-                </textarea>
+                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '') }}</textarea>
             </div>
             <div class="col-md-12">
                 <label for="justification" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i> Supporting Reasons for the Special Memo <span class="text-danger">*</span>
                 </label>
-                <textarea name="justification" id="justification" class="form-control" rows="3" required>
-                    {{ old('justification', $specialMemo->justification ?? '') }}
-                </textarea>
+                <textarea name="justification" id="justification" class="form-control" rows="3" required>{{ old('justification', $specialMemo->justification ?? '') }}</textarea>
             </div>
             <div class="mt-5">
                 <h6 class="fw-bold text-success mb-3"><i class="fas fa-user-plus me-2"></i> Add Participants from Other Divisions</h6>

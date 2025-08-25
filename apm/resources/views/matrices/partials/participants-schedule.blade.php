@@ -49,19 +49,19 @@
                                 @endif
                             </td>
                             <td class="px-3 py-3 text-center">
-                                <span class="badge bg-success rounded-pill">{{ $division_days }}</span>
+                                <span class="fw-semibold text-success">{{ $division_days }}</span>
                             </td>
                             <td class="px-3 py-3 text-center">
-                                <span class="badge bg-info rounded-pill">{{ $other_days }}</span>
+                                <span class="fw-semibold text-info">{{ $other_days }}</span>
                             </td>
                             <td class="px-3 py-3 text-center">
                                 @if($isOverLimit)
-                                    <span class="badge bg-danger rounded-pill fw-bold">
+                                    <span class="fw-bold text-danger">
                                         <i class="bx bx-exclamation-triangle me-1"></i>{{ $total_days }}
                                     </span>
                                     <small class="d-block text-danger mt-1">Over limit</small>
                                 @else
-                                    <span class="badge bg-primary rounded-pill fw-bold">{{ $total_days }}</span>
+                                    <span class="fw-bold text-primary">{{ $total_days }}</span>
                                 @endif
                             </td>
                         </tr>

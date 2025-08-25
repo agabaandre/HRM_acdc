@@ -11,145 +11,317 @@
 @endsection
 
 @section('content')
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="bx bx-user-plus me-2 text-primary"></i>{{ $workflow->workflow_name }}</h5>
-            <div class="text-muted small mt-1">
-                <i class="bx bx-info-circle me-1"></i>Assign staff to workflow approval steps
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-body py-3 px-4 bg-light rounded-3">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
+                <h4 class="mb-0 text-success fw-bold">
+                    <i class="bx bx-user-plus me-2 text-success"></i>{{ $workflow->workflow_name }}
+                </h4>
+                <div class="text-muted small">
+                    <i class="bx bx-info-circle me-1"></i>Assign staff to workflow approval steps
+                </div>
             </div>
-        </div>
         <div class="card-body p-4">
             <div id="alert-container"></div>
+            
+            <!-- Information about hidden levels -->
+            <div class="alert alert-info border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left: 4px solid #2196f3 !important;">
+                <div class="d-flex align-items-start">
+                    <i class="bx bx-info-circle me-3 fs-3 text-info"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-2 fw-semibold text-info">
+                            <i class="bx bx-shield-check me-1"></i>Note: Some Approval Levels Are Hidden
+                        </h6>
+                        <p class="mb-2 small text-muted">
+                            The following approval levels are automatically managed and cannot be manually assigned:
+                        </p>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-secondary me-2">Level 1</span>
+                                    <span class="small fw-semibold">HOD (Division Head)</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-secondary me-2">Level 2</span>
+                                    <span class="small fw-semibold">Director</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-secondary me-2">Level 5</span>
+                                    <span class="small fw-semibold">Finance Officer</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mb-0 small text-muted mt-2">
+                            <i class="bx bx-info-circle me-1"></i>These roles are managed at the division level and automatically assigned based on division structure.
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             @foreach($workflowDefinitions as $definition)
-                <div class="card border shadow-sm mb-4">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="bx bx-check-shield me-2 text-primary"></i>{{ $definition->role }}</h6>
+                @php
+                    // Check if this is a division-managed level
+                    $divisionManagedLevels = [1, 2, 5]; // HOD, Director, Finance Officer
+                    $isDivisionManaged = in_array($definition->approval_order, $divisionManagedLevels);
+                @endphp
+                <div class="card border-0 shadow-sm mb-4 workflow-level-card {{ $isDivisionManaged ? 'border-warning division-managed-card' : '' }}">
+                    <div class="card-header {{ $isDivisionManaged ? 'bg-warning bg-opacity-10 border-warning' : 'bg-white border-bottom' }}">
+                        <h6 class="mb-0 {{ $isDivisionManaged ? 'text-warning' : 'text-success' }} fw-semibold">
+                            <i class="bx {{ $isDivisionManaged ? 'bx-shield-x' : 'bx-check-shield' }} me-2 {{ $isDivisionManaged ? 'text-warning' : 'text-success' }}"></i>
+                            {{ $definition->role }}
+                            @if($isDivisionManaged)
+                                <span class="badge bg-warning text-dark ms-2">Auto-Managed</span>
+                            @endif
+                        </h6>
                         <div class="text-muted small mt-1">
-                            <i class="bx bx-sort me-1"></i>Approval Order: {{ $definition->approval_order }}
+                            <i class="bx bx-sort me-1 {{ $isDivisionManaged ? 'text-warning' : 'text-success' }}"></i>Approval Order: {{ $definition->approval_order }}
                         </div>
                     </div>
                     <div class="card-body p-4">
-                        <div class="existing-approvers mb-4">
-                            <h6 class="fw-semibold mb-3"><i class="bx bx-user-check me-1 text-primary"></i>Current Approvers</h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Staff Name</th>
-                                        <th>OIC</th>
-                                        <th>Start Date</th>
-                                        <th>End Date</th>
-                                        <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                                <tbody id="approvers-list-{{ $definition->id }}">
-                                                    @foreach($definition->approvers as $approver)
-                                                        <tr data-approver-id="{{ $approver->id }}">
-                                                            <td>{{ optional($approver->staff)->fname }}
-                                                                {{ optional($approver->staff)->lname }}</td>
-                                                            <td>
-                                                                @if($approver->oic_staff_id)
-                                                                    {{ optional($approver->oicStaff)->fname }}
-                                                                    {{ optional($approver->oicStaff)->lname }}
-                                                                @endif
-                                                            </td>
-                                                            <td>{{ $approver->start_date }}</td>
-                                                            <td>{{ $approver->end_date }}</td>
-                                                            <td>
-                                                                <button type="button" class="btn btn-sm btn-outline-danger remove-approver"
-                                                                    data-approver-id="{{ $approver->id }}"
-                                                                    data-workflow-id="{{ $workflow->id }}">
-                                                                    <i class="bx bx-trash me-1"></i>Remove
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                        <div class="new-assignment">
-                            <h6 class="fw-semibold mb-3"><i class="bx bx-user-plus me-1 text-primary"></i>Add New Approver</h6>
-                                        <form class="assignment-form" data-workflow-id="{{ $workflow->id }}"
-                                            data-definition-id="{{ $definition->id }}">
-                                            @csrf
-                                <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <div class="form-group position-relative">
-                                            <label for="staff-{{ $definition->id }}" class="form-label fw-semibold"><i class="bx bx-user me-1 text-primary"></i>Staff:</label>
-                                            <select name="staff_id" id="staff-{{ $definition->id }}"
-                                                class="form-select form-select-lg select2" required>
-                                                <option value="">Select Staff</option>
-                                                @foreach($availableStaff as $staff)
-                                                    <option value="{{ $staff->staff_id }}">
-                                                        {{ $staff->fname }} {{ $staff->lname }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            <small class="text-muted mt-1 d-block">Primary approver</small>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-3">
-                                        <div class="form-group position-relative">
-                                            <label for="oic-{{ $definition->id }}" class="form-label fw-semibold"><i class="bx bx-user-voice me-1 text-primary"></i>OIC (Optional):</label>
-                                            <select name="oic_staff_id" id="oic-{{ $definition->id }}"
-                                                class="form-select form-select-lg select2">
-                                                <option value="">Select OIC (Optional)</option>
-                                                @foreach($availableStaff as $staff)
-                                                    <option value="{{ $staff->staff_id }}">
-                                                        {{ $staff->fname }} {{ $staff->lname }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            <small class="text-muted mt-1 d-block">Officer in charge (stand-in)</small>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-2">
-                                        <div class="form-group position-relative">
-                                            <label for="start-date-{{ $definition->id }}" class="form-label fw-semibold"><i class="bx bx-calendar-plus me-1 text-primary"></i>Start Date:</label>
-                                            <input type="date" name="start_date"
-                                                id="start-date-{{ $definition->id }}" class="form-control form-control-lg"
-                                                required>
-                                            <small class="text-muted mt-1 d-block">Assignment start date</small>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-2">
-                                        <div class="form-group position-relative">
-                                            <label for="end-date-{{ $definition->id }}" class="form-label fw-semibold"><i class="bx bx-calendar-minus me-1 text-primary"></i>End Date:</label>
-                                            <input type="date" name="end_date"
-                                                id="end-date-{{ $definition->id }}" class="form-control form-control-lg">
-                                            <small class="text-muted mt-1 d-block">Assignment end date (optional)</small>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-2 d-flex align-items-end">
-                                        <div class="mb-3">
-                                            <button type="submit" class="btn btn-primary btn-lg">
-                                                <i class="bx bx-plus-circle me-1"></i>Add Approver
-                                            </button>
+                        @if($isDivisionManaged)
+                            <!-- Division-managed level - show info only -->
+                            <div class="alert alert-warning border-0 mb-0">
+                                <div class="d-flex align-items-start">
+                                    <i class="bx bx-info-circle me-3 fs-4 text-warning"></i>
+                                    <div>
+                                        <h6 class="mb-2 fw-semibold text-warning">Automatically Managed</h6>
+                                        <p class="mb-2 small text-muted">
+                                            This approval level is automatically managed by the division structure. 
+                                            Staff assignments are determined by the division's organizational chart.
+                                        </p>
+                                        <div class="row g-2">
+                                            @if($definition->approval_order == 1)
+                                                <div class="col-md-6">
+                                                    <span class="badge bg-secondary me-2">Division Head</span>
+                                                    <span class="small">Assigned from divisions table</span>
+                                                </div>
+                                            @elseif($definition->approval_order == 2)
+                                                <div class="col-md-6">
+                                                    <span class="badge bg-secondary me-2">Director</span>
+                                                    <span class="small">Assigned from divisions table</span>
+                                                </div>
+                                            @elseif($definition->approval_order == 5)
+                                                <div class="col-md-6">
+                                                    <span class="badge bg-secondary me-2">Finance Officer</span>
+                                                    <span class="small">Assigned from divisions table</span>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
-                            </form>
-                        </div>
+                            </div>
+                        @else
+                            <!-- Regular level - show approvers and form -->
+                            <div class="existing-approvers mb-4">
+                                <h6 class="fw-semibold mb-3 text-success">
+                                    <i class="bx bx-user-check me-1 text-success"></i>Current Approvers
+                                </h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Staff Name</th>
+                                            <th>OIC</th>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                                    <tbody id="approvers-list-{{ $definition->id }}">
+                                                        @foreach($definition->approvers as $approver)
+                                                            <tr data-approver-id="{{ $approver->id }}">
+                                                                <td>{{ optional($approver->staff)->fname }}
+                                                                    {{ optional($approver->staff)->lname }}</td>
+                                                                <td>
+                                                                    @if($approver->oic_staff_id)
+                                                                        {{ optional($approver->oicStaff)->fname }}
+                                                                        {{ optional($approver->oicStaff)->lname }}
+                                                                    @endif
+                                                                </td>
+                                                                <td>{{ $approver->start_date }}</td>
+                                                                <td>{{ $approver->end_date }}</td>
+                                                                <td>
+                                                                    <button type="button" class="btn btn-sm btn-outline-danger remove-approver"
+                                                                        data-approver-id="{{ $approver->id }}"
+                                                                        data-workflow-id="{{ $workflow->id }}">
+                                                                        <i class="bx bx-trash me-1"></i>Remove
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                        @endif
+
+                        @if(!$isDivisionManaged)
+                            <div class="new-assignment">
+                                <h6 class="fw-semibold mb-3 text-success">
+                                    <i class="bx bx-user-plus me-1 text-success"></i>Add New Approver
+                                </h6>
+                                <form class="assignment-form" data-workflow-id="{{ $workflow->id }}"
+                                    data-definition-id="{{ $definition->id }}">
+                                    @csrf
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <div class="form-group position-relative">
+                                                <label for="staff-{{ $definition->id }}" class="form-label fw-semibold">
+                                                    <i class="bx bx-user me-1 text-success"></i>Staff:
+                                                </label>
+                                                <select name="staff_id" id="staff-{{ $definition->id }}"
+                                                    class="form-select select2 border-success" required>
+                                                    <option value="">Select Staff</option>
+                                                    @foreach($availableStaff as $staff)
+                                                        <option value="{{ $staff->staff_id }}">
+                                                            {{ $staff->fname }} {{ $staff->lname }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="text-muted mt-1 d-block">Primary approver</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <div class="form-group position-relative">
+                                                <label for="oic-{{ $definition->id }}" class="form-label fw-semibold">
+                                                    <i class="bx bx-user-voice me-1 text-success"></i>OIC (Optional):
+                                                </label>
+                                                <select name="oic_staff_id" id="oic-{{ $definition->id }}"
+                                                    class="form-select select2 border-success">
+                                                    <option value="">Select OIC (Optional)</option>
+                                                    @foreach($availableStaff as $staff)
+                                                        <option value="{{ $staff->staff_id }}">
+                                                            {{ $staff->fname }} {{ $staff->lname }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="text-muted mt-1 d-block">Officer in charge (stand-in)</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-2">
+                                            <div class="form-group position-relative">
+                                                <label for="start-date-{{ $definition->id }}" class="form-label fw-semibold">
+                                                    <i class="bx bx-calendar-plus me-1 text-success"></i>Start Date:
+                                                </label>
+                                                <input type="text" name="start_date"
+                                                    id="start-date-{{ $definition->id }}" class="form-control datepicker border-success"
+                                                    placeholder="Select start date">
+                                                <small class="text-muted mt-1 d-block">Assignment start date</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-2">
+                                            <div class="form-group position-relative">
+                                                <label for="end-date-{{ $definition->id }}" class="form-label fw-semibold">
+                                                    <i class="bx bx-calendar-minus me-1 text-success"></i>End Date:
+                                                </label>
+                                                <input type="text" name="end_date"
+                                                    id="end-date-{{ $definition->id }}" class="form-control datepicker border-success"
+                                                    placeholder="Select end date">
+                                                <small class="text-muted mt-1 d-block">Assignment end date (optional)</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-2 d-flex align-items-end">
+                                            <div class="mb-3">
+                                                <button type="submit" class="btn btn-success">
+                                                    <i class="bx bx-plus-circle me-1"></i>Add Approver
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        @endif
                     </div>
                 </div>
             @endforeach
         </div>
     </div>
 
-    @push('scripts')
+    @push('css')
         <!-- Select2 CSS -->
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
         <!-- Select2 Bootstrap 4 Theme -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
+        
+        <style>
+            /* Prevent nav menu flickering */
+            .navbar {
+                position: fixed !important;
+                top: 0;
+                width: 100%;
+                z-index: 1030;
+            }
+            
+            /* Ensure content doesn't jump */
+            body {
+                padding-top: 70px;
+            }
+            
+            /* Custom styling for datepicker to match theme */
+            .flatpickr-calendar {
+                border: 1px solid #28a745;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+            }
+            .flatpickr-day.selected {
+                background: #28a745;
+                border-color: #28a745;
+            }
+            .flatpickr-day.selected:hover {
+                background: #218838;
+                border-color: #218838;
+            }
+            .flatpickr-current-month {
+                color: #28a745;
+            }
+            .flatpickr-monthDropdown-months {
+                color: #28a745;
+            }
+            
+            /* Additional form styling */
+            .form-control:focus {
+                border-color: #28a745;
+                box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+            }
+            .form-select:focus {
+                border-color: #28a745;
+                box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+            }
+            .btn-success:hover {
+                background-color: #218838;
+                border-color: #218838;
+            }
+            .card {
+                transition: all 0.3s ease;
+            }
+            .card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            }
+            
+            /* Workflow level styling */
+            .workflow-level-card {
+                min-height: 200px;
+            }
+            
+            .division-managed-card {
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            }
+        </style>
+    @endpush
+    
+    @push('scripts')
         <!-- Select2 JS -->
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        
         <script>
             function buildApiUrl(path) {
                 return `${window.location.origin}/${path}`;
@@ -170,8 +342,37 @@
                 $('.select2-container--bootstrap4 .select2-selection--single').css('height', 'calc(1.5em + 1rem + 2px)');
                 $('.select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered').css('line-height', 'calc(1.5em + 1rem)');
 
+                // Initialize datepickers
+                $('.datepicker').flatpickr({
+                    dateFormat: 'Y-m-d',
+                    allowInput: true,
+                    clickOpens: true,
+                    placeholder: 'Select date'
+                });
+
                 // Get session from laravel
                 const baseUrl = @json(session('base_url', ''));
+
+                // Handle OIC selection to show/hide date fields
+                $('select[name="oic_staff_id"]').on('change', function() {
+                    const definitionId = $(this).closest('form').data('definition-id');
+                    const startDateField = $(`#start-date-${definitionId}`);
+                    const endDateField = $(`#end-date-${definitionId}`);
+                    
+                    if ($(this).val()) {
+                        // OIC is selected, make date fields required
+                        startDateField.prop('required', true);
+                        endDateField.prop('required', true);
+                        startDateField.closest('.form-group').find('label').append(' <span class="text-danger">*</span>');
+                        endDateField.closest('.form-group').find('label').append(' <span class="text-danger">*</span>');
+                    } else {
+                        // No OIC selected, make date fields optional
+                        startDateField.prop('required', false);
+                        endDateField.prop('required', false);
+                        startDateField.closest('.form-group').find('label').find('.text-danger').remove();
+                        endDateField.closest('.form-group').find('label').find('.text-danger').remove();
+                    }
+                });
 
                 // Helper function to show alerts
                 function showAlert(message, type = 'success') {
@@ -195,6 +396,17 @@
 
                         const workflowId = this.dataset.workflowId;
                         const definitionId = this.dataset.definitionId;
+                        
+                        // Validate form based on OIC selection
+                        const oicStaffId = this.querySelector('select[name="oic_staff_id"]').value;
+                        const startDate = this.querySelector('input[name="start_date"]').value;
+                        const endDate = this.querySelector('input[name="end_date"]').value;
+                        
+                        if (oicStaffId && (!startDate || !endDate)) {
+                            showAlert('Start date and end date are required when OIC is selected', 'danger');
+                            return;
+                        }
+                        
                         const formData = new FormData(this);
                         formData.append('workflow_dfn_id', definitionId);
 
@@ -216,6 +428,9 @@
                                     
                                 // Reset Select2 instances
                                 $(form).find('select.select2').val('').trigger('change');
+                                
+                                // Reset datepicker instances
+                                $(form).find('.datepicker').val('');
 
                                 // Add new row to the approvers list
                                 const approversList = document.getElementById(`approvers-list-${definitionId}`);
@@ -227,17 +442,15 @@
                                 <td>${result.approver.start_date}</td>
                                 <td>${result.approver.end_date || ''}</td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-danger remove-approver"
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-approver"
                                             data-approver-id="${result.approver.id}"
                                             data-workflow-id="${workflowId}">
-                                        Remove
+                                        <i class="bx bx-trash me-1"></i>Remove
                                     </button>
                                 </td>
                             `;
                                 approversList.appendChild(newRow);
 
-                                // Reset form
-                                this.reset();
                                 showAlert('Staff assigned successfully');
                             } else {
                                 showAlert(result.message, 'danger');

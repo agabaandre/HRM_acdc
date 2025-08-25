@@ -28,50 +28,73 @@ class SpecialMemoController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = SpecialMemo::with(['staff','division'])->latest();
-        
+        // Cache lookup tables for 60 minutes
+        $staff = Cache::remember('special_memo_staff', 60 * 60, fn() => Staff::active()->get());
+        $divisions = Cache::remember('special_memo_divisions', 60 * 60, fn() => \App\Models\Division::all());
+        $requestTypes = Cache::remember('special_memo_request_types', 60 * 60, fn() => RequestType::all());
+
         // Get current user's staff ID
         $currentStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
 
-        if ($request->has('staff_id') && $request->staff_id) {
-            $query->where('staff_id', $request->staff_id);
+        // Tab 1: My Submitted Special Memos (memos created by current user)
+        $mySubmittedQuery = SpecialMemo::with([
+            'staff', 
+            'division', 
+            'requestType', 
+            'forwardWorkflow.workflowDefinitions.approvers.staff'
+        ])
+            ->where('staff_id', $currentStaffId);
+
+        // Apply filters to my submitted memos
+        if ($request->filled('request_type_id')) {
+            $mySubmittedQuery->where('request_type_id', $request->request_type_id);
         }
-    
-        if ($request->has('division_id') && $request->division_id) {
-            $query->where('division_id', $request->division_id);
+        if ($request->filled('division_id')) {
+            $mySubmittedQuery->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $mySubmittedQuery->where('overall_status', $request->status);
         }
 
-        if ($request->has('status') && $request->status) {
-            $query->where('overall_status', $request->status);
+        $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
+
+        // Tab 2: All Special Memos (visible to users with permission 87)
+        $allMemos = collect();
+        if (in_array(87, user_session('permissions', []))) {
+            $allMemosQuery = SpecialMemo::with([
+                'staff', 
+                'division', 
+                'requestType', 
+                'forwardWorkflow.workflowDefinitions.approvers.staff'
+            ]);
+
+            // Apply filters to all memos
+            if ($request->filled('staff_id')) {
+                $allMemosQuery->where('staff_id', $request->staff_id);
+            }
+            if ($request->filled('request_type_id')) {
+                $allMemosQuery->where('request_type_id', $request->request_type_id);
+            }
+            if ($request->filled('division_id')) {
+                $allMemosQuery->where('division_id', $request->division_id);
+            }
+            if ($request->filled('status')) {
+                $allMemosQuery->where('overall_status', $request->status);
+            }
+
+            $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
         }
 
-        if (isDivisionApprover() || !empty(user_session('division_id'))) { // check approval is division specific 
-            $query->where('division_id',user_session('division_id'));
-        }else{
-            //check approval workflow
-            $approvers = Approver::where('staff_id',user_session('staff_id'))->get();
-            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
-            $workflow_dfns = WorkflowDefinition::whereIn('id',$approvers)->get();
-            $query->whereIn('approval_level',$workflow_dfns->pluck('approval_order')->toArray());
-        }
-        
-        // Hide draft memos from non-creators
-        $query->where(function($q) use ($currentStaffId) {
-            $q->where('overall_status', '!=', 'draft')  // Show non-draft memos to everyone
-              ->orWhere('staff_id', $currentStaffId);  // Show all memos to their creator
-        });
-        
-        $specialMemos = $query->paginate(10);
-        $staff = Staff::active()->get();
-    
-        // Get distinct divisions from staff table
-        $divisions = Staff::select('division_id', 'division_name')
-            ->whereNotNull('division_id')
-            ->distinct()
-            ->orderBy('division_name')
-            ->get();
-    
-        return view('special-memo.index', compact('specialMemos', 'staff', 'divisions'));
+        return view('special-memo.index', compact(
+            'mySubmittedMemos', 
+            'allMemos', 
+            'staff', 
+            'requestTypes', 
+            'divisions',
+            'currentStaffId',
+            'userDivisionId'
+        ));
     }
     
 
@@ -155,12 +178,12 @@ class SpecialMemoController extends Controller
     
             // Determine status based on action
             $action = $request->input('action', 'draft');
-            $status = ($action === 'submit') ? SpecialMemo::STATUS_SUBMITTED : SpecialMemo::STATUS_DRAFT;
-            $overallStatus = ($action === 'submit') ? SpecialMemo::STATUS_SUBMITTED : SpecialMemo::STATUS_DRAFT;
+            $isDraft = ($action === 'draft');
+            $overallStatus = $isDraft ? 'draft' : 'pending';
 
             $specialMemo = SpecialMemo::create([
                 'is_special_memo' => 1,
-                'is_draft' => ($action === 'draft'),
+                'is_draft' => $isDraft,
                 'staff_id' => $userStaffId,
                 'division_id' => $userDivisionId,
                 'responsible_person_id' => $request->input('responsible_person_id', 1),
@@ -173,10 +196,12 @@ class SpecialMemoController extends Controller
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type', 1),
-                'status' => $status,
-                'forward_workflow_id' => 3,
-                'reverse_workflow_id' => null,
+                'status' => $overallStatus,
+                'forward_workflow_id' => $isDraft ? null : 1, // Set workflow ID only when submitting
+                'reverse_workflow_id' => $isDraft ? null : 1,
                 'overall_status' => $overallStatus,
+                'approval_level' => $isDraft ? 0 : 1, // Set approval level only when submitting
+                'next_approval_level' => $isDraft ? null : 2, // Set next level only when submitting
                 'total_participants' => (int) $request->input('total_participants', 0),
                 'total_external_participants' => (int) $request->input('total_external_participants', 0),
     
@@ -218,7 +243,7 @@ class SpecialMemoController extends Controller
      */
     public function show(SpecialMemo $specialMemo): View
     {
-        $specialMemo->load(['staff', 'division']);
+        $specialMemo->load(['staff', 'division', 'staff.division']);
         
         return view('special-memo.show', compact('specialMemo'));
     }
@@ -318,10 +343,10 @@ class SpecialMemoController extends Controller
     
             // Determine status based on action
             $action = $request->input('action', 'draft');
-            $status = ($action === 'submit') ? SpecialMemo::STATUS_SUBMITTED : SpecialMemo::STATUS_DRAFT;
-            $overallStatus = ($action === 'submit') ? SpecialMemo::STATUS_SUBMITTED : SpecialMemo::STATUS_DRAFT;
+            $isDraft = ($action === 'draft');
+            $overallStatus = $isDraft ? 'draft' : 'pending';
 
-            $specialMemo->update([
+            $updateData = [
                 'responsible_person_id' => $request->input('responsible_person_id', 1),
                 'date_from' => $request->input('date_from'),
                 'date_to' => $request->input('date_to'),
@@ -332,8 +357,8 @@ class SpecialMemoController extends Controller
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type', 1),
-                'is_draft' => ($action === 'draft'),
-                'status' => $status,
+                'is_draft' => $isDraft,
+                'status' => $overallStatus,
                 'overall_status' => $overallStatus,
                 'total_participants' => (int) $request->input('total_participants', 0),
                 'total_external_participants' => (int) $request->input('total_external_participants', 0),
@@ -346,7 +371,20 @@ class SpecialMemoController extends Controller
                 'attachment' => json_encode($request->input('attachments', [])),
     
                 'supporting_reasons' => $request->input('supporting_reasons', null),
-            ]);
+            ];
+
+            // Add workflow fields only when submitting for approval
+            if (!$isDraft) {
+                $updateData['forward_workflow_id'] = 1;
+                $updateData['approval_level'] = 1;
+                $updateData['next_approval_level'] = 2;
+            } else {
+                $updateData['forward_workflow_id'] = null;
+                $updateData['approval_level'] = 0;
+                $updateData['next_approval_level'] = null;
+            }
+
+            $specialMemo->update($updateData);
     
             DB::commit();
     
@@ -446,11 +484,8 @@ class SpecialMemoController extends Controller
         $specialMemo->overall_status = 'pending';
         $specialMemo->approval_level = 1;
         $specialMemo->forward_workflow_id = 1;
-        
-        // Set is_draft to false when submitting for approval
-        if (property_exists($specialMemo, 'is_draft')) {
-            $specialMemo->is_draft = false;
-        }
+        $specialMemo->next_approval_level = 2;
+        $specialMemo->is_draft = 0; // Set is_draft to 0 (false) when submitting for approval
         
         $specialMemo->save();
 
@@ -538,6 +573,182 @@ class SpecialMemoController extends Controller
         }
 
         return $approvalLevels;
+    }
+
+    /**
+     * Show pending approvals and approved by me for special memos
+     */
+    public function pendingApprovals(Request $request): View
+    {
+        $userStaffId = user_session('staff_id');
+
+        // Check if we have valid session data
+        if (!$userStaffId) {
+            return view('special-memo.pending-approvals', [
+                'pendingMemos' => collect(),
+                'approvedByMe' => collect(),
+                'divisions' => collect(),
+                'requestTypes' => collect(),
+                'error' => 'No session data found. Please log in again.'
+            ]);
+        }
+
+        // Use the exact same logic as the home helper for consistency
+        $userDivisionId = user_session('division_id');
+        
+        $pendingQuery = SpecialMemo::with([
+            'staff',
+            'division',
+            'requestType',
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
+            'forwardWorkflow.workflowDefinitions'
+        ])
+        ->where('overall_status', 'pending')
+        ->where('forward_workflow_id', '!=', null)
+        ->where('approval_level', '>', 0);
+
+        $pendingQuery->where(function($q) use ($userDivisionId, $userStaffId) {
+            // Case 1: Division-specific approval - check if user's division matches memo division
+            if ($userDivisionId) {
+                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('special_memos.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId, $userDivisionId) {
+                    $divisionsTable = (new \App\Models\Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = special_memos.division_id 
+                        WHERE wd.workflow_id = special_memos.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = special_memos.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=special_memos.division_id AND d.id=?)
+                        )
+                    )", [$userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($userStaffId) {
+                        $subQ2->where('approval_level', $userStaffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
+                                $trailQ->where('staff_id', '=',$userStaffId);
+                              });
+                    });
+                });
+            }
+            
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($userStaffId) {
+                $q->orWhere(function($subQ) use ($userStaffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('special_memos.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($userStaffId) {
+                                      $approverQ->where('staff_id', $userStaffId);
+                                  });
+                    });
+                });
+            }
+
+            $q->orWhere('division_id', $userDivisionId);
+        });
+
+        // Get the memos and apply the same filtering as the home helper
+        $memos = $pendingQuery->get();
+        
+        // Apply the same additional filtering as the home helper for consistency
+        $filteredMemos = $memos->filter(function ($memo) {
+            return can_take_action_generic($memo);
+        });
+        
+        // Manually paginate the filtered collection
+        $currentPage = \Illuminate\Pagination\Paginator::resolveCurrentPage();
+        $perPage = 20;
+        $currentPageItems = $filteredMemos->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        
+        $pendingMemos = new \Illuminate\Pagination\LengthAwarePaginator($currentPageItems, $filteredMemos->count(), $perPage, $currentPage, ['path' => request()->url()]);
+
+        // Get memos approved by current user
+        $approvedByMeQuery = SpecialMemo::with([
+            'staff',
+            'division',
+            'requestType',
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
+            'forwardWorkflow.workflowDefinitions'
+        ])
+        ->whereHas('approvalTrails', function($q) use ($userStaffId) {
+            $q->where('staff_id', $userStaffId)
+              ->where('action', 'approved');
+        })
+        ->orderBy('updated_at', 'desc');
+
+        $approvedByMe = $approvedByMeQuery->paginate(20);
+
+        // Get data for filters
+        $divisions = \App\Models\Division::orderBy('division_name')->get();
+        $requestTypes = \App\Models\RequestType::orderBy('name')->get();
+
+        // Helper function to get workflow information for a memo
+        $getWorkflowInfo = function($memo) {
+            $approvalLevel = $memo->approval_level ?? 'N/A';
+            $workflowRole = 'N/A';
+            $actorName = 'N/A';
+            
+            if ($memo->forwardWorkflow && $memo->forwardWorkflow->workflowDefinitions) {
+                $currentDefinition = $memo->forwardWorkflow->workflowDefinitions
+                    ->where('approval_order', $memo->approval_level)
+                    ->where('is_enabled', 1)
+                    ->first();
+                    
+                if ($currentDefinition) {
+                    $workflowRole = $currentDefinition->role ?? 'N/A';
+                    
+                    // Get actor name
+                    if ($currentDefinition->is_division_specific && $memo->division) {
+                        $staffId = $memo->division->{$currentDefinition->division_reference_column} ?? null;
+                        if ($staffId) {
+                            $actor = \App\Models\Staff::where('staff_id', $staffId)->first();
+                            if ($actor) {
+                                $actorName = $actor->fname . ' ' . $actor->lname;
+                            }
+                        }
+                    } else {
+                        $approver = \App\Models\Approver::where('workflow_dfn_id', $currentDefinition->id)->first();
+                        if ($approver) {
+                            $actor = \App\Models\Staff::where('staff_id', $approver->staff_id)->first();
+                            if ($actor) {
+                                $actorName = $actor->fname . ' ' . $actor->lname;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return [
+                'approvalLevel' => $approvalLevel,
+                'workflowRole' => $workflowRole,
+                'actorName' => $actorName
+            ];
+        };
+
+        return view('special-memo.pending-approvals', compact(
+            'pendingMemos',
+            'approvedByMe',
+            'divisions',
+            'requestTypes',
+            'getWorkflowInfo'
+        ));
     }
 
     /**
