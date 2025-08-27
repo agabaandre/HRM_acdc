@@ -322,7 +322,7 @@ if (!function_exists('get_pending_request_arf_count')) {
     {
         // For now, just return count of pending ARF requests
         // TODO: Implement proper approval logic when RequestARF approval system is added
-        return RequestARF::where('status', 'submitted')
+        return RequestARF::where('overall_status', 'submitted')
             ->where('forward_workflow_id', '!=', null)
             ->count();
     }
