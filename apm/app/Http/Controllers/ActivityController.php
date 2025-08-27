@@ -66,8 +66,13 @@ class ActivityController extends Controller
         // Request Types
         $requestTypes = RequestType::all();
     
-        // Staff only from current matrix division
+        // All staff in the system for responsible person (with job details)
         $staff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
+            ->get();
+    
+        // Staff only from current matrix division for internal participants
+        $divisionStaff =  Staff::active()
             ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
             ->where('division_id', $matrix->division_id)
             ->get();
@@ -96,6 +101,7 @@ class ActivityController extends Controller
             'requestTypes' => $requestTypes,
             'activity'=>(Object) [],
             'staff' => $staff,
+            'divisionStaff' => $divisionStaff,
             'allStaffGroupedByDivision' => $allStaff,
             'locations' => $locations,
             'fundTypes' => $fundTypes,
@@ -141,6 +147,55 @@ class ActivityController extends Controller
                     'attachments.*.type' => 'required|string|max:255',
                     'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240', // 10MB max
                 ]);
+
+                // Validate total participants and budget
+                $totalParticipants = (int) $request->input('total_participants', 0);
+                if ($totalParticipants <= 0) {
+                    $errorMessage = 'Cannot create activity with zero or negative total participants.';
+                    
+                    if ($request->ajax()) {
+                        return response()->json([
+                            'success' => false,
+                            'msg' => $errorMessage
+                        ], 422);
+                    }
+                    
+                    return redirect()->back()->withInput()->with([
+                        'msg' => $errorMessage,
+                        'type' => 'error'
+                    ]);
+                }
+
+                // Calculate total budget from budget items
+                $totalBudget = 0;
+                $budgetItems = $request->input('budget', []);
+                if (!empty($budgetItems)) {
+                    foreach ($budgetItems as $codeId => $items) {
+                        if (is_array($items)) {
+                            foreach ($items as $item) {
+                                $qty = isset($item['units']) ? floatval($item['units']) : 1;
+                                $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
+                                $totalBudget += $qty * $unitCost;
+                            }
+                        }
+                    }
+                }
+
+                if ($totalBudget <= 0) {
+                    $errorMessage = 'Cannot create activity with zero or negative total budget.';
+                    
+                    if ($request->ajax()) {
+                        return response()->json([
+                            'success' => false,
+                            'msg' => $errorMessage
+                        ], 422);
+                    }
+                    
+                    return redirect()->back()->withInput()->with([
+                        'msg' => $errorMessage,
+                        'type' => 'error'
+                    ]);
+                }
     
                 // Build internal_participants array with staff_id as key
                 $participantStarts = $request->input('participant_start', []);
@@ -243,7 +298,16 @@ class ActivityController extends Controller
                     return response()->json([
                         'success' => true,
                         'msg' => $successMessage,
-                        'redirect_url' => $redirectUrl
+                        'redirect_url' => $redirectUrl,
+                        'activity' => [
+                            'id' => $activity->id,
+                            'title' => $activity->activity_title,
+                            'date_from' => $activity->date_from,
+                            'date_to' => $activity->date_to,
+                            'total_participants' => $activity->total_participants,
+                            'status' => $activity->overall_status,
+                            'request_type' => $activity->requestType->name ?? 'N/A'
+                        ]
                     ]);
                 }
     
@@ -391,7 +455,17 @@ class ActivityController extends Controller
         $matrix->load('division');
 
         $requestTypes = RequestType::all();
-        $staff = Staff::active()->get();
+        // All staff in the system for responsible person (with job details)
+        $staff = Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
+            ->get();
+        
+        // Staff only from current matrix division for internal participants
+        $divisionStaff = Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
+            ->where('division_id', $matrix->division_id)
+            ->get();
+        
         $locations = Location::all();
         $fundTypes = FundType::all();
         $costItems = CostItem::all();
@@ -451,6 +525,7 @@ class ActivityController extends Controller
             'activity' => $activity,
             'requestTypes' => $requestTypes,
             'staff' => $staff,
+            'divisionStaff' => $divisionStaff,
             'locations' => $locations,
             'fundTypes' => $fundTypes,
             'costItems' => $costItems,

@@ -88,9 +88,36 @@ class SpecialMemoController extends Controller
             $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
         }
 
+        // Tab 3: Shared Special Memos (memos where current user is added as participant but not creator)
+        $sharedMemosQuery = SpecialMemo::with([
+            'staff', 
+            'division', 
+            'requestType', 
+            'forwardWorkflow.workflowDefinitions.approvers.staff'
+        ])
+            ->where('staff_id', '!=', $currentStaffId) // Not created by current user
+            ->whereJsonContains('internal_participants', $currentStaffId); // But current user is a participant
+
+        // Apply filters to shared memos
+        if ($request->filled('request_type_id')) {
+            $sharedMemosQuery->where('request_type_id', $request->request_type_id);
+        }
+        if ($request->filled('division_id')) {
+            $sharedMemosQuery->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $sharedMemosQuery->where('overall_status', $request->status);
+        }
+        if ($request->filled('staff_id')) {
+            $sharedMemosQuery->where('staff_id', $request->staff_id);
+        }
+
+        $sharedMemos = $sharedMemosQuery->latest()->paginate(20)->withQueryString();
+
         return view('special-memo.index', compact(
             'mySubmittedMemos', 
             'allMemos', 
+            'sharedMemos',
             'staff', 
             'requestTypes', 
             'divisions',
@@ -111,8 +138,13 @@ class SpecialMemoController extends Controller
         // Request Types
         $requestTypes = RequestType::all();
     
-        // Staff only from current matrix division
+        // All staff in the system for responsible person (with job details)
         $staff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
+            ->get();
+    
+        // Staff only from current division for internal participants
+        $divisionStaff =  Staff::active()
             ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
             ->where('division_id', $division_id)
             ->get();
@@ -138,6 +170,7 @@ class SpecialMemoController extends Controller
             'specialMemo' => null, // Pass null for new special memo
             'requestTypes' => $requestTypes,
             'staff' => $staff,
+            'divisionStaff' => $divisionStaff,
             'allStaffGroupedByDivision' => $allStaff,
             'locations' => $locations,
             'fundTypes' => $fundTypes,
@@ -151,7 +184,7 @@ class SpecialMemoController extends Controller
     /**
      * Store a newly created special memo.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $userStaffId = session('user.auth_staff_id');
         $userDivisionId = session('user.division_id');
@@ -164,6 +197,55 @@ class SpecialMemoController extends Controller
             'participant_end' => 'required|array',
             'participant_days' => 'required|array',
         ]);
+
+        // Validate total participants and budget
+        $totalParticipants = (int) $request->input('total_participants', 0);
+        if ($totalParticipants <= 0) {
+            $errorMessage = 'Cannot create special memo with zero or negative total participants.';
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage
+                ], 422);
+            }
+            
+            return redirect()->back()->withInput()->with([
+                'msg' => $errorMessage,
+                'type' => 'error'
+            ]);
+        }
+
+        // Calculate total budget from budget items
+        $totalBudget = 0;
+        $budgetItems = $request->input('budget', []);
+        if (!empty($budgetItems)) {
+            foreach ($budgetItems as $codeId => $items) {
+                if (is_array($items)) {
+                    foreach ($items as $item) {
+                        $qty = isset($item['units']) ? floatval($item['units']) : 1;
+                        $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
+                        $totalBudget += $qty * $unitCost;
+                    }
+                }
+            }
+        }
+
+        if ($totalBudget <= 0) {
+            $errorMessage = 'Cannot create special memo with zero or negative total budget.';
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage
+                ], 422);
+            }
+            
+            return redirect()->back()->withInput()->with([
+                'msg' => $errorMessage,
+                'type' => 'error'
+            ]);
+        }
     
         try {
             DB::beginTransaction();
@@ -198,12 +280,11 @@ class SpecialMemoController extends Controller
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type', 1),
-                'status' => $overallStatus,
                 'forward_workflow_id' => $isDraft ? null : 1, // Set workflow ID only when submitting
                 'reverse_workflow_id' => $isDraft ? null : 1,
                 'overall_status' => $overallStatus,
                 'approval_level' => $isDraft ? 0 : 1, // Set approval level only when submitting
-                'next_approval_level' => $isDraft ? null : 2, // Set next level only when submitting
+                'next_approval_level' => $isDraft ? 1 : 2, // Set next level only when submitting
                 'total_participants' => (int) $request->input('total_participants', 0),
                 'total_external_participants' => (int) $request->input('total_external_participants', 0),
     
@@ -241,19 +322,10 @@ class SpecialMemoController extends Controller
                                 // Reduce fund code balance
                                 $fundCode->decrement('budget_balance', $total);
                                 
-                                // Create transaction record for audit trail
-                                FundCodeTransaction::create([
-                                    'fund_code_id' => $codeId,
-                                    'amount' => $total,
-                                    'description' => "Special Memo: {$request->input('activity_title')} - Budget allocation",
-                                    'activity_id' => null, // Special memo doesn't have activity_id
-                                    'matrix_id' => $specialMemo->id,
-                                    'activity_budget_id' => null,
-                                    'balance_before' => $balanceBefore,
-                                    'balance_after' => $balanceAfter,
-                                    'is_reversal' => false,
-                                    'created_by' => $userStaffId,
-                                ]);
+                                // For special memos, we'll just log the balance change
+                                // FundCodeTransaction requires activity_id, matrix_id, and activity_budget_id
+                                // which special memos don't have, so we'll skip creating the transaction record
+                                // and just log the balance change
                                 
                                 // Log the balance change
                                 \Log::info('Fund code balance reduced for special memo', [
@@ -277,6 +349,24 @@ class SpecialMemoController extends Controller
             $message = ($action === 'submit') 
                 ? 'Special Memo created and submitted for approval successfully.'
                 : 'Special Memo saved as draft successfully.';
+            
+            // If it's an AJAX request, return JSON response
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'memo' => [
+                        'id' => $specialMemo->id,
+                        'title' => $specialMemo->activity_title,
+                        'request_type' => $specialMemo->requestType->name ?? 'N/A',
+                        'status' => $specialMemo->overall_status,
+                        'date_from' => $specialMemo->date_from,
+                        'date_to' => $specialMemo->date_to,
+                        'total_budget' => $this->calculateTotalBudget($request->input('budget', [])),
+                        'preview_url' => route('special-memo.show', $specialMemo->id)
+                    ]
+                ]);
+            }
     
             return redirect()->route('special-memo.index')->with([
                 'msg' => $message,
@@ -293,7 +383,24 @@ class SpecialMemoController extends Controller
             ]);
         }
     }
-    
+
+    /**
+     * Calculate total budget from budget array
+     */
+    private function calculateTotalBudget(array $budget): float
+    {
+        $total = 0;
+        foreach ($budget as $codeId => $items) {
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    $qty = isset($item['units']) ? floatval($item['units']) : 1;
+                    $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
+                    $total += $qty * $unitCost;
+                }
+            }
+        }
+        return $total;
+    }
 
     /**
      * Display the specified special memo.
@@ -316,8 +423,13 @@ class SpecialMemoController extends Controller
         // Request Types
         $requestTypes = RequestType::all();
     
-        // Staff only from current matrix division
+        // All staff in the system for responsible person (with job details)
         $staff =  Staff::active()
+            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
+            ->get();
+    
+        // Staff only from current division for internal participants
+        $divisionStaff =  Staff::active()
             ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
             ->where('division_id', $division_id)
             ->get();
@@ -361,6 +473,7 @@ class SpecialMemoController extends Controller
             'specialMemo' => $specialMemo,
             'requestTypes' => $requestTypes,
             'staff' => $staff,
+            'divisionStaff' => $divisionStaff,
             'allStaffGroupedByDivision' => $allStaff,
             'locations' => $locations,
             'fundTypes' => $fundTypes,
@@ -384,6 +497,41 @@ class SpecialMemoController extends Controller
             'participant_end' => 'required|array',
             'participant_days' => 'required|array',
         ]);
+
+        // Validate total participants and budget
+        $totalParticipants = (int) $request->input('total_participants', 0);
+        if ($totalParticipants <= 0) {
+            $errorMessage = 'Cannot update special memo with zero or negative total participants.';
+            
+            return redirect()->back()->withInput()->with([
+                'msg' => $errorMessage,
+                'type' => 'error'
+            ]);
+        }
+
+        // Calculate total budget from budget items
+        $totalBudget = 0;
+        $budgetItems = $request->input('budget', []);
+        if (!empty($budgetItems)) {
+            foreach ($budgetItems as $codeId => $items) {
+                if (is_array($items)) {
+                    foreach ($items as $item) {
+                        $qty = isset($item['units']) ? floatval($item['units']) : 1;
+                        $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
+                        $totalBudget += $qty * $unitCost;
+                    }
+                }
+            }
+        }
+
+        if ($totalBudget <= 0) {
+            $errorMessage = 'Cannot update special memo with zero or negative total budget.';
+            
+            return redirect()->back()->withInput()->with([
+                'msg' => $errorMessage,
+                'type' => 'error'
+            ]);
+        }
     
         try {
             DB::beginTransaction();
@@ -438,7 +586,7 @@ class SpecialMemoController extends Controller
             } else {
                 $updateData['forward_workflow_id'] = null;
                 $updateData['approval_level'] = 0;
-                $updateData['next_approval_level'] = null;
+                $updateData['next_approval_level'] = 1;
             }
 
             $specialMemo->update($updateData);
@@ -904,6 +1052,9 @@ class SpecialMemoController extends Controller
         if ($request->filled('status')) {
             $query->where('overall_status', $request->status);
         }
+        if ($request->filled('staff_id')) {
+            $query->where('staff_id', $request->staff_id);
+        }
 
         $memos = $query->latest()->get();
 
@@ -1001,6 +1152,73 @@ class SpecialMemoController extends Controller
                     $memo->requestType ? $memo->requestType->name : 'N/A',
                     $memo->division ? $memo->division->division_name : 'N/A',
                     $memo->staff ? ($memo->staff->first_name . ' ' . $memo->staff->last_name) : 'N/A',
+                    $memo->formatted_dates ?? 'N/A',
+                    $memo->total_participants ?? 'N/A',
+                    $memo->overall_status ?? 'N/A',
+                    $memo->created_at ? $memo->created_at->format('Y-m-d') : 'N/A',
+                    $memo->updated_at ? $memo->updated_at->format('Y-m-d') : 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export shared special memos to CSV (memos where current user is participant but not creator)
+     */
+    public function exportSharedCsv(Request $request)
+    {
+        $currentStaffId = user_session('staff_id');
+        
+        $query = SpecialMemo::with([
+            'staff', 
+            'division', 
+            'requestType'
+        ])
+            ->where('staff_id', '!=', $currentStaffId) // Not created by current user
+            ->whereJsonContains('internal_participants', $currentStaffId); // But current user is a participant
+
+        // Apply filters
+        if ($request->filled('request_type_id')) {
+            $query->where('request_type_id', $request->request_type_id);
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('overall_status', $request->status);
+        }
+
+        $memos = $query->latest()->get();
+
+        $filename = 'shared_special_memos_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($memos) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Headers
+            fputcsv($file, [
+                'ID', 'Activity Title', 'Key Result Area', 'Request Type', 'Division', 
+                'Created By', 'Date Range', 'Total Participants', 'Status', 'Created Date', 'Updated Date'
+            ]);
+
+            // CSV Data
+            foreach ($memos as $memo) {
+                fputcsv($file, [
+                    $memo->id,
+                    $memo->activity_title ?? 'N/A',
+                    $memo->key_result_area ?? 'N/A',
+                    $memo->requestType ? $memo->requestType->name : 'N/A',
+                    $memo->division ? $memo->division->division_name : 'N/A',
+                    $memo->staff ? ($memo->staff->fname . ' ' . $memo->staff->lname) : 'N/A',
                     $memo->formatted_dates ?? 'N/A',
                     $memo->total_participants ?? 'N/A',
                     $memo->overall_status ?? 'N/A',

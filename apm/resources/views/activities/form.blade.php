@@ -35,7 +35,9 @@
                 <select name="responsible_person_id" id="responsible_person_id" class="form-select select2 " required>
                     <option value="">Select</option>
                     @foreach($staff as $member)
-                    <option value="{{ $member->staff_id }}" {{ old('responsible_person_id', $activity->responsible_person_id ?? '') == $member->staff_id ? 'selected' : '' }}>{{ $member->name }}</option>
+                    <option value="{{ $member->staff_id }}" {{ old('responsible_person_id', $activity->responsible_person_id ?? '') == $member->staff_id ? 'selected' : '' }}>
+                        {{ $member->fname }} {{ $member->lname }} - {{ $member->job_name ?? 'N/A' }} ({{ $member->duty_station_name ?? 'N/A' }})
+                    </option>
                     @endforeach
                 </select>
             </div>
@@ -89,7 +91,7 @@
                     <i class="fas fa-user-friends me-1 text-success"></i> Select Internal Participants <span class="text-danger">*</span>
                 </label>
                 <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple required>
-                    @foreach($staff as $member)
+                    @foreach($divisionStaff as $member)
                         @php
                             $participantIds = [];
                             if (isset($activity->internal_participants)) {
@@ -101,7 +103,7 @@
                             $isSelected = in_array($member->staff_id, old('internal_participants', $participantIds));
                         @endphp
                         <option value="{{ $member->staff_id }}" {{ $isSelected ? 'selected' : '' }}>
-                            {{ $member->name }}
+                            {{ $member->fname }} {{ $member->lname }}
                         </option>
                     @endforeach
                 </select>

@@ -164,7 +164,8 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     
     // Special Memo Export Routes
     Route::get('special-memo/export/my-submitted', [App\Http\Controllers\SpecialMemoController::class, 'exportMySubmittedCsv'])->name('special-memo.export.my-submitted');
-    Route::get('special-memo/export/all', [App\Http\Controllers\SpecialMemoController::class, 'exportAllCsv'])->name('special-memo.export.all');
+Route::get('special-memo/export/all', [App\Http\Controllers\SpecialMemoController::class, 'exportAllCsv'])->name('special-memo.export.all');
+Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoController::class, 'exportSharedCsv'])->name('special-memo.export.shared');
     
     Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
     

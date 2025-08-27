@@ -8,6 +8,8 @@ use App\Models\Approver;
 use App\Models\Staff;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ApprovalService
 {
@@ -16,6 +18,20 @@ class ApprovalService
      */
     public function canTakeAction(Model $model, int $userId): bool
     {
+        // Debug: Log the canTakeAction check
+        if (request()->has('debug_approval')) {
+            Log::info('ApprovalService canTakeAction called', [
+                'method' => 'canTakeAction',
+                'model_id' => $model->id,
+                'model_class' => get_class($model),
+                'forward_workflow_id' => $model->forward_workflow_id,
+                'overall_status' => $model->overall_status,
+                'approval_level' => $model->approval_level,
+                'user_id' => $userId,
+                'request_data' => request()->all()
+            ]);
+        }
+
         if (empty($userId) || $this->hasUserApproved($model, $userId) || 
             in_array($model->overall_status, ['approved', 'draft', 'returned'])) {
             return false;
@@ -158,7 +174,7 @@ if ($workflow_dfns->isEmpty()) {
             $has_category = $next_definition->whereNotNull('category')->count() > 0;
 
             if($has_category){
-                $current_approval_point = $next_definition->where('category', $model->division->category)->first();
+                $current_approval_point = $next_definition->where('category', (string)$model->division->category)->first();
             }else{
                 $current_approval_point = $next_definition->first();
             }
@@ -321,21 +337,44 @@ if ($workflow_dfns->isEmpty()) {
             }
         }
 
-        $nextStepIncrement = 1;
+        // Get all enabled workflow definitions for this workflow, ordered by approval_order
+        $allDefinitions = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'asc')
+            ->get();
 
-        // Skip Directorate from HOD if no directorate
-        if ($model->forward_workflow_id > 0 && $current_definition->approval_order == 1) {
-            if (method_exists($model, 'division') && $model->division && !$model->division->director_id) {
-                $nextStepIncrement = 2;
-            }
+        // Find the current definition index
+        $currentIndex = $allDefinitions->search(function($def) use ($model) {
+            return $def->approval_order == $model->approval_level;
+        });
+
+        if ($currentIndex === false) {
+            return null;
         }
 
-        $next_approval_order = $model->approval_level + $nextStepIncrement;
+        // Find the next definition, considering all approval conditions
+        $nextDefinition = null;
+        $nextIndex = $currentIndex + 1;
 
-        return WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
-            ->where('is_enabled', 1)
-            ->where('approval_order', $next_approval_order)
-            ->first();
+        while ($nextIndex < $allDefinitions->count()) {
+            $candidateDefinition = $allDefinitions[$nextIndex];
+            
+            // Check if this level should be automatically skipped
+            if ($this->shouldSkipApprovalLevel($model, $candidateDefinition)) {
+                $nextIndex++;
+                continue;
+            }
+
+            // Check if this level has approvers assigned or is division-specific
+            if ($this->hasApproversForLevel($candidateDefinition, $model)) {
+                $nextDefinition = $candidateDefinition;
+                break;
+            }
+
+            $nextIndex++;
+        }
+
+        return $nextDefinition;
     }
 
     /**
@@ -355,5 +394,105 @@ if ($workflow_dfns->isEmpty()) {
     public function isWithCreator(Model $model): bool
     {
         return $model->forward_workflow_id === null || $model->approval_level === 0;
+    }
+
+    /**
+     * Check if an approval level should be automatically skipped.
+     */
+    private function shouldSkipApprovalLevel(Model $model, $definition): bool
+    {
+        // Skip Director level (approval_order = 2) if division has no director
+        if ($definition->approval_order == 2) {
+            if (method_exists($model, 'division') && $model->division) {
+                return empty($model->division->director_id);
+            }
+        }
+
+        // Add more automatic skipping rules here as needed
+        return false;
+    }
+
+    /**
+     * Check if an approval level has approvers assigned or is division-specific.
+     * This method handles complex approval routing conditions.
+     */
+    private function hasApproversForLevel($definition, Model $model): bool
+    {
+        // Check if there are approvers assigned to this workflow definition
+        $hasApprovers = Approver::where('workflow_dfn_id', $definition->id)->exists();
+
+        // If no approvers assigned, check if it's division-specific
+        if (!$hasApprovers && $definition->is_division_specific) {
+            return true; // Division-specific levels don't need explicit approvers
+        }
+
+        // If still no approvers, check if this level has complex routing conditions
+        if (!$hasApprovers) {
+            // Check if this level has fund type routing
+            if ($definition->fund_type) {
+                // Fund type levels need to be evaluated based on model's fund type
+                return $this->matchesFundTypeRouting($definition, $model);
+            }
+
+            // Check if this level has category routing
+            if ($definition->category) {
+                // Category levels need to be evaluated based on division category
+                if (method_exists($model, 'division') && $model->division) {
+                    return (string)$model->division->category == (string)$definition->category;
+                }
+            }
+
+            // Check if this level triggers category check
+            if ($definition->triggers_category_check) {
+                // These levels have special routing logic
+                return true;
+            }
+        }
+
+        return $hasApprovers;
+    }
+
+    /**
+     * Check if a workflow definition matches the model's fund type routing.
+     */
+    private function matchesFundTypeRouting($definition, Model $model): bool
+    {
+        // Get the model's fund type from budget codes
+        $modelFundType = $this->getModelFundType($model);
+        
+        if ($modelFundType === null) {
+            // If we can't determine fund type, allow the level
+            return true;
+        }
+
+        // Check if the definition's fund type matches the model's fund type
+        return (int)$definition->fund_type == (int)$modelFundType;
+    }
+
+    /**
+     * Get the fund type from the model's budget codes.
+     */
+    private function getModelFundType(Model $model): ?int
+    {
+        // Check if the model has budget_id property
+        if (!property_exists($model, 'budget_id') || empty($model->budget_id)) {
+            return null;
+        }
+
+        try {
+            // Decode budget codes
+            $budgetCodes = json_decode($model->budget_id, true);
+            if (!is_array($budgetCodes) || empty($budgetCodes)) {
+                return null;
+            }
+
+            // Get the first budget code's fund type
+            $firstCodeId = $budgetCodes[0];
+            $fundCode = DB::table('fund_codes')->where('id', $firstCodeId)->first();
+            
+            return $fundCode ? $fundCode->fund_type_id : null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 } 

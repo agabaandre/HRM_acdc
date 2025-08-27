@@ -150,7 +150,6 @@
                                                 <td>{{ $count++ }}</td>
                                                 <td>
                                                     <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                                    <small class="text-muted">{{ $memo->workplan_activity_code ?? 'No Code' }}</small>
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-info text-dark">
@@ -281,7 +280,6 @@
                                                 <td>{{ $count++ }}</td>
                                                 <td>
                                                     <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                                    <small class="text-muted">{{ $memo->workplan_activity_code ?? 'No Code' }}</small>
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-info text-dark">

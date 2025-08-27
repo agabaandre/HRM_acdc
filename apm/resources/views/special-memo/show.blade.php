@@ -850,17 +850,52 @@
                     </div>
                 @endif
 
-                <!-- Approval Actions Section -->
-                @if(function_exists('can_take_action_generic') && can_take_action_generic($specialMemo))
-                    <div class="card sidebar-card border-0 mb-4">
+                <!-- Enhanced Approval Actions -->
+                @if(can_take_action_generic($specialMemo))
+                    <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
                                 <i class="bx bx-check-circle"></i>
-                                Approval Actions
+                                Approval Actions - Level {{ $specialMemo->approval_level ?? 0 }}
                             </h6>
                         </div>
                         <div class="card-body">
-                            @include('partials.approval-actions', ['resource' => $specialMemo])
+                            <div class="alert alert-info mb-3">
+                                <i class="bx bx-info-circle me-2"></i>
+                                <strong>Current Level:</strong> {{ $specialMemo->approval_level ?? 0 }}
+                                @if($specialMemo->workflow_definition)
+                                    - <strong>Role:</strong> {{ $specialMemo->workflow_definition->role ?? 'Not specified' }}
+                                @endif
+                            </div>
+                            
+                            <form action="{{ route('special-memo.update-status', $specialMemo) }}" method="POST" id="approvalForm">
+                                @csrf
+                                <input type="hidden" name="debug_approval" value="1">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="comment" class="form-label">Comments (Optional)</label>
+                                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-grid gap-2">
+                                            <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-check"></i>
+                                                Approve
+                                            </button>
+                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-undo"></i>
+                                                Return
+                                            </button>
+                                            <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-x"></i>
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 @endif

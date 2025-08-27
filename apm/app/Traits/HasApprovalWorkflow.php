@@ -132,49 +132,9 @@ trait HasApprovalWorkflow
             return null;
         }
 
-        $current_definition = WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)
-            ->where('is_enabled', 1)
-            ->where('approval_order', $this->approval_level)
-            ->first();
-
-        if (!$current_definition) {
-            return null;
-        }
-
-        // Check if we need to trigger category check
-        $go_to_category_check = false;
-        if (method_exists($this, 'division') && $this->division) {
-            $go_to_category_check = (!$this->has_extramural && !$this->has_intramural && 
-                ($this->approval_level != null && $current_definition->approval_order > $this->approval_level));
-        }
-
-        if (($current_definition && $current_definition->triggers_category_check) || $go_to_category_check) {
-            if (method_exists($this, 'division') && $this->division) {
-                $category_definition = WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)
-                    ->where('is_enabled', 1)
-                    ->where('category', $this->division->category)
-                    ->orderBy('approval_order', 'asc')
-                    ->first();
-
-                return $category_definition;
-            }
-        }
-
-        $nextStepIncrement = 1;
-
-        // Skip Directorate from HOD if no directorate
-        if ($this->forward_workflow_id > 0 && $current_definition->approval_order == 1) {
-            if (method_exists($this, 'division') && $this->division && !$this->division->director_id) {
-                $nextStepIncrement = 2;
-            }
-        }
-
-        $next_approval_order = $this->approval_level + $nextStepIncrement;
-
-        return WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)
-            ->where('is_enabled', 1)
-            ->where('approval_order', $next_approval_order)
-            ->first();
+        // Use the ApprovalService for consistent logic
+        $approvalService = app(\App\Services\ApprovalService::class);
+        return $approvalService->getNextApprover($this);
     }
 
     /**

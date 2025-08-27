@@ -186,10 +186,13 @@
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
                     </a>
-                    <a href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning d-flex align-items-center gap-2">
-                        <i class="bx bx-edit"></i>
-                        <span>Edit Memo</span>
-                    </a>
+
+                    @if($nonTravel->overall_status === 'draft' && $nonTravel->staff_id == user_session('staff_id'))
+                        <a href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning d-flex align-items-center gap-2">
+                            <i class="bx bx-edit"></i>
+                            <span>Edit Memo</span>
+                        </a>
+                    @endif
                     <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-info d-flex align-items-center gap-2">
                         <i class="bx bx-info-circle"></i>
                         <span>Approval Status</span>
@@ -637,6 +640,7 @@
                             
                             <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST" id="approvalForm">
                                 @csrf
+                                <input type="hidden" name="debug_approval" value="1">
                                 <div class="row">
                                     <div class="col-md-8">
                                         <div class="mb-3">
@@ -652,11 +656,11 @@
                                             </button>
                                             <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-undo"></i>
-                                                Return for Revision
+                                                Return
                                             </button>
                                             <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-x"></i>
-                                                Reject
+                                                Cancel
                                             </button>
                                         </div>
                                     </div>

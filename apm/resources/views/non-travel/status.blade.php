@@ -234,6 +234,7 @@
                         
                         <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST">
                             @csrf
+                            <input type="hidden" name="debug_approval" value="1">
                             <div class="row">
                                 <div class="col-md-8">
                                     <div class="mb-3">
@@ -247,10 +248,10 @@
                                             <i class="bx bx-check me-1"></i> Approve
                                         </button>
                                         <button type="submit" name="action" value="returned" class="btn btn-warning">
-                                            <i class="bx bx-undo me-1"></i> Return for Revision
+                                            <i class="bx bx-undo me-1"></i> Return
                                         </button>
                                         <button type="submit" name="action" value="rejected" class="btn btn-danger">
-                                            <i class="bx bx-x me-1"></i> Reject
+                                            <i class="bx bx-x me-1"></i> Cancel
                                         </button>
                                     </div>
                                 </div>

@@ -37,7 +37,7 @@
                     @foreach($staff as $member)
                         <option value="{{ $member->staff_id }}" 
                                 {{ old('responsible_person_id', $specialMemo->responsible_person_id ?? '') == $member->staff_id ? 'selected' : '' }}>
-                            {{ $member->name }}
+                            {{ $member->fname }} {{ $member->lname }} - {{ $member->job_name ?? 'N/A' }} ({{ $member->duty_station_name ?? 'N/A' }})
                         </option>
                     @endforeach
                 </select>
@@ -80,10 +80,10 @@
                             ? json_decode($specialMemo->internal_participants, true)
                             : ($specialMemo->internal_participants ?? []);
                     @endphp
-                    @foreach($staff as $member)
+                    @foreach($divisionStaff as $member)
                         <option value="{{ $member->staff_id }}" 
                                 {{ in_array($member->staff_id, old('internal_participants', array_keys($internalParticipants))) ? 'selected' : '' }}>
-                            {{ $member->name }}
+                            {{ $member->fname }} {{ $member->lname }}
                         </option>
                     @endforeach
                 </select>
@@ -91,10 +91,10 @@
             </div>
             <div class="col-md-4">
                 <label for="total_external_participants" class="form-label fw-semibold">
-                    <i class="fas fa-users me-1 text-success"></i> Number of External Participants <span class="text-danger">*</span>
+                    <i class="fas fa-users me-1 text-success"></i> Number of External Participants
                 </label>
                 <input type="number" name="total_external_participants" id="total_external_participants" class="form-control border-success" 
-                       value="{{ old('total_external_participants', $specialMemo->total_external_participants ?? 0) }}" min="1" required>
+                       value="{{ old('total_external_participants', $specialMemo->total_external_participants ?? 0) }}" min="0">
             </div>
             <div class="col-md-12">
                 <label for="activity_request_remarks" class="form-label fw-semibold">
