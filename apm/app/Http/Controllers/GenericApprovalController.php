@@ -6,6 +6,7 @@ use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class GenericApprovalController extends Controller
 {
@@ -35,25 +36,46 @@ class GenericApprovalController extends Controller
      */
     public function updateStatus(Request $request, string $model, int $id): RedirectResponse
     {
+        // Debug: Log the incoming request
+        Log::info('GenericApprovalController updateStatus called', [
+            'request_all' => $request->all(),
+            'model' => $model,
+            'id' => $id,
+            'user_id' => user_session('staff_id')
+        ]);
+
         $request->validate(['action' => 'required']);
 
         $modelInstance = $this->resolveModel($model, $id);
         
         if (!$modelInstance) {
+            Log::error('Model not found', ['model' => $model, 'id' => $id]);
             return redirect()->back()->with('error', 'Model not found.');
         }
 
         $userId = user_session('staff_id');
         
+        Log::info('Model resolved', [
+            'model_class' => get_class($modelInstance),
+            'model_id' => $modelInstance->id,
+            'current_status' => $modelInstance->overall_status ?? 'N/A',
+            'current_level' => $modelInstance->approval_level ?? 'N/A'
+        ]);
+        
         // Check if user can take action
         if (!$this->approvalService->canTakeAction($modelInstance, $userId)) {
+            Log::error('User not authorized', ['user_id' => $userId, 'model_id' => $modelInstance->id]);
             return redirect()->back()->with('error', 'You are not authorized to perform this action.');
         }
 
+        Log::info('User authorized, processing approval', ['action' => $request->action]);
+
         // Process the approval using the model's own approval workflow
         if (method_exists($modelInstance, 'updateApprovalStatus')) {
+            Log::info('Using model updateApprovalStatus method');
             $modelInstance->updateApprovalStatus($request->action, $request->comment ?? '');
         } else {
+            Log::info('Using approval service fallback');
             // Fallback to approval service
             $this->approvalService->processApproval(
                 $modelInstance, 
@@ -67,6 +89,7 @@ class GenericApprovalController extends Controller
         $this->sendNotification($modelInstance, $request->action);
 
         $message = ucfirst(class_basename($modelInstance)) . " status updated successfully";
+        Log::info('Approval completed successfully', ['message' => $message]);
 
         return redirect()->back()->with('success', $message);
     }

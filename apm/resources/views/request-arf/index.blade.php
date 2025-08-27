@@ -5,11 +5,7 @@
 @section('header', 'Request for ARF')
 
 @section('header-actions')
-<div class="d-flex gap-2">
-    <a href="{{ route('request-arf.create') }}" class="btn btn-success shadow-sm">
-        <i class="bx bx-plus-circle me-1"></i> Create New Request
-    </a>
-</div>
+<!-- Create functionality removed - requests will be handled from activities -->
 @endsection
 
 @section('content')

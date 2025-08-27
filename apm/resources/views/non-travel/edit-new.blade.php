@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Create Non-Travel Memo')
-@section('header', 'Fill Request')
+@section('title', 'Edit Non-Travel Memo')
+@section('header', 'Edit Request')
 
 @section('header-actions')
     <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary">
@@ -17,8 +17,9 @@
             </h5>
         </div>
         <div class="card-body p-4">
-            <form action="{{ route('non-travel.store') }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
+            <form action="{{ route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
                 @csrf
+                @method('PUT')
                 <input type="hidden" name="_token" value="{{ csrf_token() }}">
 
                 <!-- Section 1: Basic Information -->
@@ -46,7 +47,7 @@
                                 </label>
                                 <input type="text" name="date_required" id="date_required" 
                                        class="form-control datepicker @error('date_required') is-invalid @enderror" 
-                                       value="{{ old('date_required') }}" required>
+                                       value="{{ old('date_required', $nonTravel->date_required) }}" required>
                                 @error('date_required')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -63,7 +64,7 @@
                                         class="form-select border-success select2 @error('location_id') is-invalid @enderror" 
                                         multiple required>
                                     @foreach($locations as $loc)
-                                        <option value="{{ $loc->id }}" {{ in_array($loc->id, old('location_id', [])) ? 'selected' : '' }}>
+                                        <option value="{{ $loc->id }}" {{ in_array($loc->id, old('location_id', $nonTravel->location_id ? json_decode($nonTravel->location_id, true) : [])) ? 'selected' : '' }}>
                                             {{ $loc->name }}
                                         </option>
                                     @endforeach
@@ -85,7 +86,7 @@
                                         required>
                                     <option value="">Select Category</option>
                                     @foreach($categories as $cat)
-                                        <option value="{{ $cat->id }}" {{ old('non_travel_memo_category_id') == $cat->id ? 'selected' : '' }}>
+                                        <option value="{{ $cat->id }}" {{ old('non_travel_memo_category_id', $nonTravel->non_travel_memo_category_id) == $cat->id ? 'selected' : '' }}>
                                             {{ $cat->name }}
                                         </option>
                                     @endforeach
@@ -113,7 +114,7 @@
                                 </label>
                                 <textarea name="title" id="title" 
                                           class="form-control @error('title') is-invalid @enderror" 
-                                          rows="2" required>{{ old('title') }}</textarea>
+                                          rows="2" required>{{ old('title', $nonTravel->title) }}</textarea>
                                 @error('title')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -128,7 +129,7 @@
                                 </label>
                                 <textarea name="background" id="background" 
                                           class="form-control @error('background') is-invalid @enderror" 
-                                          rows="3" required>{{ old('background') }}</textarea>
+                                          rows="3" required>{{ old('background', $nonTravel->background) }}</textarea>
                                 @error('background')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -143,7 +144,7 @@
                                 </label>
                                 <textarea name="description" id="description" 
                                           class="form-control @error('description') is-invalid @enderror" 
-                                          rows="5" required>{{ old('description') }}</textarea>
+                                          rows="5" required>{{ old('description', $nonTravel->description) }}</textarea>
                                 @error('description')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -159,7 +160,7 @@
                                 </label>
                                 <textarea name="approval" id="approval" 
                                           class="form-control @error('approval') is-invalid @enderror" 
-                                          rows="2" required>{{ old('approval') }}</textarea>
+                                          rows="2" required>{{ old('approval', $nonTravel->approval) }}</textarea>
                                 @error('approval')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -174,7 +175,7 @@
                                     <i class="bx bx-info me-1 text-success"></i> Any Other Information
                                 </label>
                                 <textarea name="other_information" id="other_information" 
-                                          class="form-control" rows="2">{{ old('other_information') }}</textarea>
+                                          class="form-control" rows="2">{{ old('other_information', $nonTravel->other_information) }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -195,7 +196,9 @@
                         <select name="fund_type" id="fund_type" class="form-select border-success" required>
                             <option value="">Select Fund Type</option>
                             @foreach($fundTypes as $type)
-                                <option value="{{ $type->id }}">{{ ucfirst($type->name) }}</option>
+                                <option value="{{ $type->id }}" {{ old('fund_type', $nonTravel->fund_type_id) == $type->id ? 'selected' : '' }}>
+                                    {{ ucfirst($type->name) }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -207,6 +210,21 @@
                         <select name="budget_codes[]" id="budget_codes" class="form-select  select2 border-success" multiple disabled>
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
+                        <script>
+                            // Populate budget codes with existing data
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const existingBudgetCodes = @json($nonTravel->budget_id ? json_decode($nonTravel->budget_id, true) : []);
+                                if (existingBudgetCodes.length > 0) {
+                                    const budgetSelect = document.getElementById('budget_codes');
+                                    existingBudgetCodes.forEach(codeId => {
+                                        const option = budgetSelect.querySelector(`option[value="${codeId}"]`);
+                                        if (option) {
+                                            option.selected = true;
+                                        }
+                                    });
+                                }
+                            });
+                        </script>
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
 
@@ -214,7 +232,7 @@
                         <label for="activity_code" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code
                         </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" />
+                        <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $nonTravel->workplan_activity_code) }}" />
                     </div>
                 </div>
                     <div class="alert alert-info">
@@ -257,10 +275,10 @@
 
                 <div class="d-flex justify-content-end gap-3 border-top pt-4 mt-5">
                     <button type="submit" name="action" value="draft" class="btn btn-secondary btn-lg px-5">
-                        <i class="bx bx-save me-1"></i> Save as Draft
+                        <i class="bx bx-save me-1"></i> Update Draft
                     </button>
                     <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
-                        <i class="bx bx-check-circle me-1"></i> Submit for Approval
+                        <i class="bx bx-check-circle me-1"></i> Update & Submit
                     </button>
                 </div>
             </form>
@@ -273,7 +291,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title" id="successModalLabel">
-                        <i class="bx bx-check-circle me-2"></i> Memo Created Successfully!
+                        <i class="bx bx-check-circle me-2"></i> Memo Updated Successfully!
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -328,6 +346,31 @@
             theme: 'bootstrap4',
             width: '100%'
         });
+
+        // Populate existing budget data
+        const existingBudget = @json($nonTravel->budget ? json_decode($nonTravel->budget, true) : []);
+        const existingBudgetCodes = @json($nonTravel->budget_id ? json_decode($nonTravel->budget_id, true) : []);
+        
+        if (existingBudgetCodes.length > 0 && existingBudget.length > 0) {
+            // Enable budget codes select
+            $('#budget_codes').prop('disabled', false);
+            
+            // Populate budget codes
+            existingBudgetCodes.forEach(codeId => {
+                const option = $(`#budget_codes option[value="${codeId}"]`);
+                if (option.length) {
+                    option.prop('selected', true);
+                }
+            });
+            
+            // Trigger change event to load budget codes
+            $('#fund_type').trigger('change');
+            
+            // Wait for budget codes to load, then populate budget items
+            setTimeout(() => {
+                populateExistingBudgetItems(existingBudget);
+            }, 500);
+        }
 
         // Fund type change handler
         $('#fund_type').change(function(event) {
@@ -431,26 +474,32 @@
             updateGrandTotal();
         });
 
-        function createBudgetRow(codeId, index) {
+        function createBudgetRow(codeId, index, existingItem = null) {
+            const description = existingItem ? existingItem.description || '' : '';
+            const unit = existingItem ? existingItem.unit || '' : '';
+            const quantity = existingItem ? existingItem.quantity || 1 : 1;
+            const unitCost = existingItem ? existingItem.unit_cost || 0 : 0;
+            const total = existingItem ? (quantity * unitCost).toFixed(2) : '0.00';
+            
             return `
                 <tr>
                     <td>
                         <input type="text" name="budget[${codeId}][${index}][description]" 
-                               class="form-control description" required>
+                               class="form-control description" value="${description}" required>
                     </td>
                     <td>
                         <input type="text" name="budget[${codeId}][${index}][unit]" 
-                               class="form-control unit" required>
+                               class="form-control unit" value="${unit}" required>
                     </td>
                     <td>
                         <input type="number" name="budget[${codeId}][${index}][quantity]" 
-                               class="form-control quantity" min="1" value="1" required>
+                               class="form-control quantity" min="1" value="${quantity}" required>
                     </td>
                     <td>
                         <input type="number" name="budget[${codeId}][${index}][unit_cost]" 
-                               class="form-control unit-cost" min="0" step="0.01" required>
+                               class="form-control unit-cost" min="0" step="0.01" value="${unitCost}" required>
                     </td>
-                    <td class="total text-center">0.00</td>
+                    <td class="total text-center">${total}</td>
                     <td>
                         <button type="button" class="btn btn-danger btn-sm remove-budget-row">
                             <i class="fas fa-trash"></i>
@@ -610,6 +659,66 @@
                     submitBtn.prop('disabled', false).html(originalText);
                 }
             });
+
+            // Function to populate existing budget items
+            function populateExistingBudgetItems(existingBudget) {
+                const container = $('#budgetCards');
+                container.empty();
+
+                Object.keys(existingBudget).forEach(codeId => {
+                    if (codeId === 'grand_total') return;
+                    
+                    const items = existingBudget[codeId];
+                    if (Array.isArray(items)) {
+                        // Find the budget code option to get label and balance
+                        const option = $(`#budget_codes option[value="${codeId}"]`);
+                        const label = option.length ? option.text() : `Budget Code ${codeId}`;
+                        const balance = option.length ? option.data('balance') : 0;
+
+                        const cardHtml = `
+                            <div class="card mt-4 budget-card" data-code="${codeId}">
+                                <div class="card-header bg-light">
+                                    <h6 class="fw-semibold">
+                                        Budget for: ${label}
+                                        <span class="float-end text-muted">Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-bordered align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Description</th>
+                                                <th>Unit</th>
+                                                <th>Qty</th>
+                                                <th>Unit Cost</th>
+                                                <th>Total</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="budget-items">
+                                            ${items.map((item, index) => createBudgetRow(codeId, index, item)).join('')}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="4" class="text-end fw-bold">Subtotal:</td>
+                                                <td class="subtotal fw-bold text-success">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                    <button type="button" class="btn btn-sm btn-success add-row" data-code="${codeId}">
+                                        <i class="bx bx-plus"></i> Add Row
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        container.append(cardHtml);
+                    }
+                });
+
+                // Update totals after populating
+                updateGrandTotal();
+            }
         });
     });
 </script>

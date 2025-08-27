@@ -116,7 +116,7 @@ class NonTravelMemoController extends Controller
     }
 
     /** Persist new memo */
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request): \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
         //dd($request->all());
 
@@ -186,7 +186,7 @@ class NonTravelMemoController extends Controller
             'attachment' => $attachmentsJson,
             'forward_workflow_id' => $isDraft ? null : 1,
             'approval_level' => $isDraft ? 0 : 1,
-            'next_approval_level' => $isDraft ? null : 2,
+                            'next_approval_level' => $isDraft ? 1 : 2,
             'overall_status' => $overallStatus,
             'is_draft' => $isDraft,
         ]);
@@ -251,9 +251,44 @@ class NonTravelMemoController extends Controller
         $message = $isDraft 
             ? 'Non-travel memo saved as draft successfully.'
             : 'Non-travel memo submitted for approval successfully.';
+        
+        // If it's an AJAX request, return JSON response
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'memo' => [
+                    'id' => $memo->id,
+                    'title' => $memo->activity_title,
+                    'category' => $memo->nonTravelMemoCategory->name ?? 'N/A',
+                    'status' => $memo->overall_status,
+                    'date_required' => $memo->memo_date,
+                    'total_budget' => $this->calculateTotalBudget($data['budget']),
+                    'preview_url' => route('non-travel.show', $memo->id)
+                ]
+            ]);
+        }
             
         return redirect()->route('non-travel.index')
             ->with('success', $message);
+    }
+
+    /**
+     * Calculate total budget from budget array
+     */
+    private function calculateTotalBudget(array $budget): float
+    {
+        $total = 0;
+        foreach ($budget as $codeId => $items) {
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    $qty = isset($item['quantity']) ? floatval($item['quantity']) : 1;
+                    $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
+                    $total += $qty * $unitCost;
+                }
+            }
+        }
+        return $total;
     }
 
     /** Show one memo */
@@ -284,6 +319,13 @@ class NonTravelMemoController extends Controller
     /** Show edit form */
     public function edit(NonTravelMemo $nonTravel)
     {
+        // Check if memo is in draft status - only allow editing of drafts
+        if ($nonTravel->overall_status !== 'draft') {
+            return redirect()
+                ->route('non-travel.show', $nonTravel)
+                ->with('error', 'Cannot edit memo. Only draft memos can be edited.');
+        }
+
         // Retrieve budgets with funder details
         $budgets = FundCode::with('funder')
             ->where('division_id', user_session('division_id'))
@@ -308,20 +350,31 @@ class NonTravelMemoController extends Controller
         $workflows = WorkflowDefinition::all();
         $staff = Staff::active()->get(); // Retrieve active staff members
 
-        return view('non-travel.edit', compact(
+        // Get fund types for the form
+        $fundTypes = FundType::all();
+        
+        return view('non-travel.edit-new', compact(
             'nonTravel', 
             'budgets', 
             'selectedBudgetCodes', 
             'categories', 
             'locations', 
             'workflows', 
-            'staff' // Pass staff to the view
+            'staff',
+            'fundTypes'
         ));
     }
 
     /** Update memo */
     public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse
     {
+        // Check if memo is in draft status - only allow updating of drafts
+        if ($nonTravel->overall_status !== 'draft') {
+            return redirect()
+                ->route('non-travel.show', $nonTravel)
+                ->with('error', 'Cannot update memo. Only draft memos can be updated.');
+        }
+
         $data = $request->validate([
             'memo_date'                    => 'required|date',
             'location_id'                  => 'required|array|min:1',
@@ -408,10 +461,22 @@ class NonTravelMemoController extends Controller
      */
     public function updateStatus(Request $request, NonTravelMemo $nonTravel): RedirectResponse
     {
+        // Debug: Log the incoming request data
+        \Log::info('NonTravelMemo updateStatus called', [
+            'request_all' => $request->all(),
+            'memo_id' => $nonTravel->id,
+            'current_status' => $nonTravel->overall_status,
+            'current_level' => $nonTravel->approval_level,
+            'user_id' => user_session('staff_id')
+        ]);
+
         $request->validate([
             'action' => 'required|in:approved,rejected,returned',
             'comment' => 'nullable|string|max:1000',
         ]);
+
+        // Debug: Log validation passed
+        \Log::info('Validation passed, calling generic approval controller');
 
         // Use the generic approval system
         $genericController = app(\App\Http\Controllers\GenericApprovalController::class);

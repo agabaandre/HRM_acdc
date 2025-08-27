@@ -132,6 +132,34 @@
             </form>
         </div>
     </div>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-centered" data-bs-backdrop="static">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="successModalLabel">
+                        <i class="bx bx-check-circle me-2"></i>Activity Created Successfully!
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="bx bx-check-circle text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <div id="activityDetails">
+                        <!-- Activity details will be populated here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="#" id="viewActivityBtn" class="btn btn-primary">
+                        <i class="bx bx-eye me-1"></i>View Activity
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -149,6 +177,22 @@ $(document).ready(function () {
         const submitBtn = $('#submitBtn');
         const originalBtnText = submitBtn.html();
         
+        // Frontend validation
+        const totalParticipants = parseInt($('#total_participants').val()) || 0;
+        const totalBudget = parseFloat($('#grandBudgetTotalInput').val()) || 0;
+        
+        if (totalParticipants <= 0) {
+            show_notification('Cannot create activity with zero or negative total participants.', 'error');
+            submitBtn.prop('disabled', false).html(originalBtnText);
+            return;
+        }
+        
+        if (totalBudget <= 0) {
+            show_notification('Cannot create activity with zero or negative total budget.', 'error');
+            submitBtn.prop('disabled', false).html(originalBtnText);
+            return;
+        }
+        
         // Disable submit button and show loading state
         submitBtn.prop('disabled', true)
             .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Saving...');
@@ -164,12 +208,62 @@ $(document).ready(function () {
             contentType: false,
             success: function(response) {
                 if (response.success) {
+                    // Populate modal with activity details
+                    $('#activityDetails').html(`
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <h6 class="fw-bold text-primary">${response.activity?.title || 'Activity'}</h6>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Matrix:</small><br>
+                                <strong>{{ $matrix->quarter }} {{ $matrix->year }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Status:</small><br>
+                                <span class="badge bg-secondary">Draft</span>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Date From:</small><br>
+                                <strong>${response.activity?.date_from || 'N/A'}</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Date To:</small><br>
+                                <strong>${response.activity?.date_to || 'N/A'}</strong>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted">Total Participants:</small><br>
+                                <strong class="text-success">${response.activity?.total_participants || '0'}</strong>
+                            </div>
+                        </div>
+                    `);
+                    
+                    // Set view activity URL
+                    $('#viewActivityBtn').attr('href', response.redirect_url);
+                    
+                    // Show success modal
+                    $('#successModal').modal('show');
+                    
+                    // Reset form
+                    form[0].reset();
+                    
+                    // Reset budget totals
+                    $('#grandBudgetTotal').text('0.00');
+                    $('#grandBudgetTotalInput').val('0');
+                    
+                    // Clear budget container
+                    $('#budgetGroupContainer').empty();
+                    
+                    // Reset participants
+                    $('#participantsTableBody').empty();
+                    $('#total_participants_display').val('0');
+                    $('#total_participants').val('0');
+                    
+                    // Reset file inputs
+                    $('input[type="file"]').val('');
+                    
+                    // Show success notification
                     show_notification(response.msg || 'Activity created successfully!', 'success');
                     
-                    // Redirect to the activity show page after a short delay
-                    setTimeout(function() {
-                        window.location.href = response.redirect_url || '{{ route("matrices.show", $matrix) }}';
-                    }, 1500);
                 } else {
                     show_notification(response.msg || 'An error occurred while creating the activity.', 'error');
                     submitBtn.prop('disabled', false).html(originalBtnText);

@@ -50,7 +50,7 @@
                         <select name="staff_id" id="staff_id" class="form-select">
                                     <option value="">All Staff</option>
                             @foreach($staff as $member)
-                                <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
+                                <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
                                     {{ $member->fname }} {{ $member->lname }}
                                         </option>
                                     @endforeach
@@ -112,6 +112,12 @@
                     <span class="badge bg-success text-white ms-2">{{ $mySubmittedMemos->count() ?? 0 }}</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sharedMemos-tab" data-bs-toggle="tab" data-bs-target="#sharedMemos" type="button" role="tab" aria-controls="sharedMemos" aria-selected="false">
+                    <i class="bx bx-share me-2"></i> Shared Special Memos
+                    <span class="badge bg-info text-white ms-2">{{ $sharedMemos->count() ?? 0 }}</span>
+                </button>
+            </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="allMemos-tab" data-bs-toggle="tab" data-bs-target="#allMemos" type="button" role="tab" aria-controls="allMemos" aria-selected="false">
@@ -162,7 +168,7 @@
                                             <td>{{ $count++ }}</td>
                                             <td>
                                                 <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                                <small class="text-muted">{{ $memo->workplan_activity_code ?? 'No Code' }}</small>
+                                              
                                         </td>
                                             <td>
                                                 <span class="badge bg-info text-dark">
@@ -291,7 +297,7 @@
                                                 <td>{{ $count++ }}</td>
                                                 <td>
                                                     <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                                    <small class="text-muted">{{ $memo->workplan_activity_code ?? 'No Code' }}</small>
+                                                   
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-info text-dark">
@@ -387,6 +393,135 @@
                     </div>
                 </div>
             @endif
+
+            <!-- Shared Special Memos Tab -->
+            <div class="tab-pane fade" id="sharedMemos" role="tabpanel" aria-labelledby="sharedMemos-tab">
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-info fw-bold">
+                                <i class="bx bx-share me-2"></i> Shared Special Memos
+                            </h6>
+                            <small class="text-muted">Special memos where you have been added as a participant by other staff</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('special-memo.export.shared', request()->query()) }}" class="btn btn-outline-info btn-sm">
+                                <i class="bx bx-download me-1"></i> Export to Excel
+                            </a>
+                        </div>
+                    </div>
+                    
+                    @if($sharedMemos && $sharedMemos->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-info">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Title</th>
+                                        <th>Request Type</th>
+                                        <th>Created By</th>
+                                        <th>Division</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @php $count = 1; @endphp
+                                    @foreach($sharedMemos as $memo)
+                                        <tr>
+                                            <td>{{ $count++ }}</td>
+                                            <td>
+                                                <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                                                <small class="text-muted">{{ $memo->requestType->name ?? 'N/A' }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info text-dark">
+                                                    <i class="bx bx-category me-1"></i>
+                                                    {{ $memo->requestType->name ?? 'N/A' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if($memo->staff)
+                                                    {{ $memo->staff->fname }} {{ $memo->staff->lname }}
+                                                @else
+                                                    <span class="text-muted">Not assigned</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
+                                            <td>{{ $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') : 'N/A' }}</td>
+                                            <td>
+                                                @php
+                                                    $statusBadgeClass = [
+                                                        'draft' => 'bg-secondary',
+                                                        'pending' => 'bg-warning',
+                                                        'approved' => 'bg-success',
+                                                        'rejected' => 'bg-danger',
+                                                        'returned' => 'bg-info',
+                                                    ];
+                                                    $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
+                                                    
+                                                    // Get workflow information
+                                                    $approvalLevel = $memo->approval_level ?? 'N/A';
+                                                    $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
+                                                    $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
+                                                @endphp
+                                                
+                                                @if($memo->overall_status === 'pending')
+                                                    <!-- Structured display for pending status -->
+                                                    <div class="text-center">
+                                                        <span class="badge {{ $statusClass }} mb-1">
+                                                            {{ strtoupper($memo->overall_status) }}
+                                                        </span>
+                                                        <br>
+                                                        <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                                        @if($actorName !== 'N/A')
+                                                            <small class="text-muted d-block">{{ $actorName }}</small>
+                                                        @endif
+                                                    </div>
+                                                @else
+                                                    <!-- Standard badge for other statuses -->
+                                                    <span class="badge {{ $statusClass }}">
+                                                        {{ strtoupper($memo->overall_status ?? 'draft') }}
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a href="{{ route('special-memo.show', $memo) }}" 
+                                                       class="btn btn-sm btn-outline-info" title="View">
+                                                        <i class="bx bx-show"></i>
+                                                    </a>
+                                                    @if($memo->overall_status === 'approved')
+                                                        <a href="{{ route('special-memo.print', $memo) }}" 
+                                                           class="btn btn-sm btn-outline-success" title="Print" target="_blank">
+                                                            <i class="bx bx-printer"></i>
+                                                        </a>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        @if($sharedMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $sharedMemos->hasPages())
+                            <div class="d-flex justify-content-center mt-3">
+                                {{ $sharedMemos->appends(request()->query())->links() }}
+                            </div>
+                        @endif
+                    @else
+                        <div class="text-center py-4 text-muted">
+                            <i class="bx bx-share fs-1 text-info opacity-50"></i>
+                            <p class="mb-0">No shared special memos found.</p>
+                            <small>Special memos where you have been added as a participant will appear here.</small>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 </div>
