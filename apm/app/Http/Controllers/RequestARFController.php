@@ -20,29 +20,50 @@ class RequestARFController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = RequestARF::with(['staff', 'division'])
+        $currentStaffId = user_session('staff_id');
+        
+        // Get My ARFs (created by current user)
+        $myArfsQuery = RequestARF::with(['staff', 'division'])
+            ->where('staff_id', $currentStaffId)
             ->latest();
             
-        // Filter by staff if provided
-        if ($request->has('staff_id') && $request->staff_id) {
-            $query->where('staff_id', $request->staff_id);
-        }
-        
-        // Filter by division if provided
+        // Apply filters to My ARFs
         if ($request->has('division_id') && $request->division_id) {
-            $query->where('division_id', $request->division_id);
+            $myArfsQuery->where('division_id', $request->division_id);
         }
         
-        // Filter by status if provided
         if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
+            $myArfsQuery->where('status', $request->status);
         }
         
-        $requestARFs = $query->paginate(10);
+        $myArfs = $myArfsQuery->paginate(10);
+        
+        // Get All ARFs (only for users with permission 87)
+        $allArfs = collect();
+        if (in_array(87, user_session('permissions', []))) {
+            $allArfsQuery = RequestARF::with(['staff', 'division'])
+                ->latest();
+                
+            // Apply filters to All ARFs
+            if ($request->has('division_id') && $request->division_id) {
+                $allArfsQuery->where('division_id', $request->division_id);
+            }
+            
+            if ($request->has('staff_id') && $request->staff_id) {
+                $allArfsQuery->where('staff_id', $request->staff_id);
+            }
+            
+            if ($request->has('status') && $request->status) {
+                $allArfsQuery->where('status', $request->status);
+            }
+            
+            $allArfs = $allArfsQuery->paginate(10);
+        }
+        
         $divisions = Division::all();
         $staff = Staff::active()->get();
         
-        return view('request-arf.index', compact('requestARFs', 'divisions', 'staff'));
+        return view('request-arf.index', compact('myArfs', 'allArfs', 'divisions', 'staff'));
     }
 
     /**

@@ -1174,7 +1174,7 @@ class ActivityController extends Controller
         });
         
         // Tab 1: All Activities (visible to users with permission 87)
-        $allActivities = collect();
+        $allActivities = Activity::query()->paginate(0); // Empty paginated result
         if (in_array(87, user_session('permissions', []))) {
             $allActivitiesQuery = clone $baseQuery;
             
@@ -1188,7 +1188,7 @@ class ActivityController extends Controller
         }
         
         // Tab 2: My Division Activities
-        $myDivisionActivities = collect();
+        $myDivisionActivities = Activity::query()->paginate(0); // Empty paginated result
         if ($userDivisionId) {
             $myDivisionQuery = clone $baseQuery;
             $myDivisionQuery->whereHas('matrix', function($query) use ($userDivisionId) {
@@ -1198,7 +1198,7 @@ class ActivityController extends Controller
         }
         
         // Tab 3: Shared Activities (activities I'm added to in other divisions)
-        $sharedActivities = collect();
+        $sharedActivities = Activity::query()->paginate(0); // Empty paginated result
         if ($userStaffId) {
             $sharedQuery = clone $baseQuery;
             $sharedQuery->where('staff_id', $userStaffId)
