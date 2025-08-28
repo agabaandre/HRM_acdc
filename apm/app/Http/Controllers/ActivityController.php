@@ -25,6 +25,7 @@ use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Services\ApprovalService;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 use function PHPUnit\Framework\isEmpty;
 
@@ -47,12 +48,39 @@ class ActivityController extends Controller
         $requestTypes = RequestType::all();
         $fundTypes = FundType::all();
 
+        // For matrix-specific activities, we need to provide the same variables that the view expects
+        $years = range(now()->year - 2, now()->year + 2);
+        $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        $divisions = \App\Models\Division::orderBy('division_name')->get();
+        
+        // Initialize empty paginated results for the tabs (since this is matrix-specific)
+        $allActivities = new LengthAwarePaginator([], 0, 20);
+        $myDivisionActivities = new LengthAwarePaginator([], 0, 20);
+        $sharedActivities = new LengthAwarePaginator([], 0, 20);
+        
+        // Set default values for the view
+        $selectedYear = $matrix->year;
+        $selectedQuarter = $matrix->quarter;
+        $selectedDivisionId = $matrix->division_id;
+        $userDivisionId = user_session('division_id');
+
         return view('activities.index', [
             'matrix' => $matrix,
             'activities' => $activities,
             'requestTypes' => $requestTypes,
             'fundTypes' => $fundTypes,
-            'title' => 'Activities'
+            'title' => 'Activities',
+            // Add the variables that the view expects
+            'years' => $years,
+            'quarters' => $quarters,
+            'divisions' => $divisions,
+            'allActivities' => $allActivities,
+            'myDivisionActivities' => $myDivisionActivities,
+            'sharedActivities' => $sharedActivities,
+            'selectedYear' => $selectedYear,
+            'selectedQuarter' => $selectedQuarter,
+            'selectedDivisionId' => $selectedDivisionId,
+            'userDivisionId' => $userDivisionId
         ]);
     }
 
@@ -416,30 +444,35 @@ class ActivityController extends Controller
 
 
     public function getBudgetCodesByFundType(Request $request)
-{
-    $request->validate([
-        'fund_type_id' => 'required|exists:fund_types,id',
-        'division_id' => 'required|exists:divisions,id',
-    ]);
+    {
+        $request->validate([
+            'fund_type_id' => 'required|exists:fund_types,id',
+            'division_id' => 'required|exists:divisions,id',
+        ]);
 
-    $budgetCodes = FundCode::with('funder:id,name')
-        ->where('fund_type_id', $request->fund_type_id)
-        ->where('division_id', $request->division_id)
-        ->where('is_active', true)
-        ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
+        $budgetCodes = FundCode::with('funder:id,name')
+            ->where('fund_type_id', $request->fund_type_id)
+            ->where('is_active', true)
+            ->where(function ($query) use ($request) {
+                // Include codes where division_id matches the request, or is NULL, or is empty string (universal)
+                $query->where('division_id', $request->division_id)
+                      ->orWhereNull('division_id')
+                      ->orWhere('division_id', '');
+            })
+            ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
 
-    $result = $budgetCodes->map(function ($code) {
-        return [
-            'id' => $code->id,
-            'code' => $code->code,
-            'activity' => $code->activity,
-            'budget_balance' => $code->budget_balance,
-            'funder_name' => optional($code->funder)->name,
-        ];
-    });
+        $result = $budgetCodes->map(function ($code) {
+            return [
+                'id' => $code->id,
+                'code' => $code->code,
+                'activity' => $code->activity,
+                'budget_balance' => $code->budget_balance,
+                'funder_name' => optional($code->funder)->name,
+            ];
+        });
 
-    return response()->json($result);
-}
+        return response()->json($result);
+    }
 
     /**
      * Show the form for editing the specified activity.
@@ -603,47 +636,59 @@ class ActivityController extends Controller
                     ? json_decode($activity->attachment, true) 
                     : ($activity->attachment ?? []);
                 
-                if ($request->hasFile('attachments')) {
-                    $uploadedFiles = $request->file('attachments');
-                    $attachmentTypes = $request->input('attachments', []);
+                // Get attachment data from request
+                $attachmentData = $request->input('attachments', []);
+                
+                // Process each attachment slot
+                foreach ($attachmentData as $index => $attachmentInfo) {
+                    $type = $attachmentInfo['type'] ?? 'Document';
+                    $file = $request->file("attachments.{$index}.file");
+                    $shouldReplace = isset($attachmentInfo['replace']) && $attachmentInfo['replace'] == '1';
+                    $shouldDelete = isset($attachmentInfo['delete']) && $attachmentInfo['delete'] == '1';
                     
-                    foreach ($uploadedFiles as $index => $file) {
-                        if ($file && $file->isValid()) {
-                            // Get the type from the corresponding attachment type input
-                            $type = $attachmentTypes[$index]['type'] ?? 'Document';
-                            
-                            // Validate file type
-                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
-                            $extension = strtolower($file->getClientOriginalExtension());
-                            
-                            if (!in_array($extension, $allowedExtensions)) {
-                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
-                            }
-                            
-                            // Generate unique filename
-                            $filename = time() . '_' . uniqid() . '.' . $extension;
-                            
-                            // Store file in public/uploads/activities directory
-                            $path = $file->storeAs('uploads/activities', $filename, 'public');
-                            
-                            $attachments[] = [
-                                'type' => $type,
-                                'filename' => $filename,
-                                'original_name' => $file->getClientOriginalName(),
-                                'path' => $path,
-                                'size' => $file->getSize(),
-                                'mime_type' => $file->getMimeType(),
-                                'uploaded_at' => now()->toDateTimeString()
-                            ];
-                        } else {
-                            // Keep existing attachment if no new file was uploaded
-                            if (isset($existingAttachments[$index])) {
-                                $attachments[] = $existingAttachments[$index];
-                            }
+                    // Skip if user wants to delete this attachment
+                    if ($shouldDelete) {
+                        continue;
+                    }
+                    
+                    if ($file && $file->isValid()) {
+                        // New file uploaded - validate and store
+                        $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                        $extension = strtolower($file->getClientOriginalExtension());
+                        
+                        if (!in_array($extension, $allowedExtensions)) {
+                            throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
+                        }
+                        
+                        // Generate unique filename
+                        $filename = time() . '_' . uniqid() . '.' . $extension;
+                        
+                        // Store file in public/uploads/activities directory
+                        $path = $file->storeAs('uploads/activities', $filename, 'public');
+                        
+                        $attachments[] = [
+                            'type' => $type,
+                            'filename' => $filename,
+                            'original_name' => $file->getClientOriginalName(),
+                            'path' => $path,
+                            'size' => $file->getSize(),
+                            'mime_type' => $file->getMimeType(),
+                            'uploaded_at' => now()->toDateTimeString()
+                        ];
+                    } else {
+                        // No new file uploaded - check if user wants to replace
+                        if ($shouldReplace && isset($existingAttachments[$index])) {
+                            // User wants to replace but no new file provided - skip this attachment
+                            continue;
+                        } elseif (isset($existingAttachments[$index])) {
+                            // Keep existing attachment
+                            $attachments[] = $existingAttachments[$index];
                         }
                     }
-                } else {
-                    // If no files were uploaded, keep all existing attachments
+                }
+                
+                // If no attachment data was provided, keep all existing attachments
+                if (empty($attachmentData)) {
                     $attachments = $existingAttachments;
                 }
 
@@ -1170,18 +1215,37 @@ class ActivityController extends Controller
         $selectedQuarter = $request->get('quarter', 'Q' . $nextQuarter);
         $selectedDivisionId = $request->get('division_id', '');
         
-        // Base query for activities
+        // Ensure quarter is in correct format (Q1, Q2, Q3, Q4)
+        if (!str_starts_with($selectedQuarter, 'Q')) {
+            $selectedQuarter = 'Q' . $selectedQuarter;
+        }
+        
+        // Base query for activities - only show activities from approved matrices
         $baseQuery = Activity::with([
             'matrix.division',
             'responsiblePerson',
             'staff'
         ])->whereHas('matrix', function($query) use ($selectedYear, $selectedQuarter) {
             $query->where('year', $selectedYear)
-                  ->where('quarter', $selectedQuarter);
+                  ->where('quarter', $selectedQuarter)
+                  ->where('overall_status', 'approved'); // Only show activities from approved matrices
         });
         
+        // Debug: Check what matrices are found
+        $debugMatrices = \App\Models\Matrix::where('year', $selectedYear)
+            ->where('quarter', $selectedQuarter)
+            ->where('overall_status', 'approved')
+            ->get(['id', 'division_id', 'overall_status', 'forward_workflow_id']);
+            
+        Log::info('Debug: Found approved matrices for activities', [
+            'year' => $selectedYear,
+            'quarter' => $selectedQuarter,
+            'matrices_count' => $debugMatrices->count(),
+            'matrices' => $debugMatrices->toArray()
+        ]);
+        
         // Tab 1: All Activities (visible to users with permission 87)
-        $allActivities = Activity::query()->paginate(0); // Empty paginated result
+        $allActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if (in_array(87, user_session('permissions', []))) {
             $allActivitiesQuery = clone $baseQuery;
             
@@ -1192,20 +1256,63 @@ class ActivityController extends Controller
             }
             
             $allActivities = $allActivitiesQuery->latest()->paginate(20);
+            
+            // Debug: Log activities before filtering
+            Log::info('All Activities Before Final Approval Filter', [
+                'originalCount' => $allActivitiesQuery->count(),
+                'activities' => $allActivities->getCollection()->map(function($activity) {
+                    return [
+                        'id' => $activity->id,
+                        'title' => $activity->activity_title,
+                        'matrix_id' => $activity->matrix_id,
+                        'matrix_status' => $activity->matrix->overall_status ?? 'N/A'
+                    ];
+                })->toArray()
+            ]);
+            
+            // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
+            // This is causing issues - let's see what activities we get without filtering
+            /*
+            $allActivities->getCollection()->transform(function($activity) {
+                if ($this->isActivityFullyApproved($activity)) {
+                    return $activity;
+                }
+                return null;
+            });
+            $allActivities->setCollection($allActivities->getCollection()->filter()->values());
+            */
+            
+            // Debug logging for final approval filtering
+            Log::info('All Activities Final Approval Filter', [
+                'originalCount' => $allActivitiesQuery->count(),
+                'afterFilterCount' => $allActivities->count(),
+                'activities' => $allActivities->getCollection()->pluck('id')->toArray()
+            ]);
         }
         
         // Tab 2: My Division Activities
-        $myDivisionActivities = Activity::query()->paginate(0); // Empty paginated result
+        $myDivisionActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if ($userDivisionId) {
             $myDivisionQuery = clone $baseQuery;
             $myDivisionQuery->whereHas('matrix', function($query) use ($userDivisionId) {
                 $query->where('division_id', $userDivisionId);
             });
             $myDivisionActivities = $myDivisionQuery->latest()->paginate(20);
+            
+            // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
+            /*
+            $myDivisionActivities->getCollection()->transform(function($activity) {
+                if ($this->isActivityFullyApproved($activity)) {
+                    return $activity;
+                }
+                return null;
+            });
+            $myDivisionActivities->setCollection($myDivisionActivities->getCollection()->filter()->values());
+            */
         }
         
         // Tab 3: Shared Activities (activities I'm added to in other divisions)
-        $sharedActivities = Activity::query()->paginate(0); // Empty paginated result
+        $sharedActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if ($userStaffId) {
             $sharedQuery = clone $baseQuery;
             $sharedQuery->where('staff_id', $userStaffId)
@@ -1213,6 +1320,17 @@ class ActivityController extends Controller
                            $query->where('division_id', '!=', $userDivisionId);
                        });
             $sharedActivities = $sharedQuery->latest()->paginate(20);
+            
+            // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
+            /*
+            $sharedActivities->getCollection()->transform(function($activity) {
+                if ($this->isActivityFullyApproved($activity)) {
+                    return $activity;
+                }
+                return null;
+            });
+            $sharedActivities->setCollection($sharedActivities->getCollection()->filter()->values());
+            */
         }
         
         // Get divisions for filter
@@ -1221,6 +1339,20 @@ class ActivityController extends Controller
         // Get years and quarters for filter
         $years = range($currentYear - 2, $currentYear + 2);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        
+        // Debug logging
+        Log::info('Activities Index Debug', [
+            'selectedYear' => $selectedYear,
+            'selectedQuarter' => $selectedQuarter,
+            'selectedDivisionId' => $selectedDivisionId,
+            'userStaffId' => $userStaffId,
+            'userDivisionId' => $userDivisionId,
+            'allActivitiesCount' => $allActivities->count(),
+            'myDivisionActivitiesCount' => $myDivisionActivities->count(),
+            'sharedActivitiesCount' => $sharedActivities->count(),
+            'baseQuerySQL' => $baseQuery->toSql(),
+            'baseQueryBindings' => $baseQuery->getBindings()
+        ]);
         
         return view('activities.index', compact(
             'allActivities',
@@ -1234,6 +1366,77 @@ class ActivityController extends Controller
             'selectedDivisionId',
             'userDivisionId'
         ));
+    }
+
+    /**
+     * Check if an activity has been fully approved at the final approval level.
+     */
+    private function isActivityFullyApproved(Activity $activity): bool
+    {
+        // Get the matrix's workflow
+        $matrix = $activity->matrix;
+        if (!$matrix || !$matrix->forward_workflow_id) {
+            Log::info('Activity not fully approved: No matrix or workflow', [
+                'activity_id' => $activity->id,
+                'matrix_id' => $activity->matrix_id,
+                'forward_workflow_id' => $matrix?->forward_workflow_id
+            ]);
+            return false;
+        }
+
+        // Get the maximum approval order from workflow definition
+        $maxApprovalOrder = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->max('approval_order');
+
+        if (!$maxApprovalOrder) {
+            Log::info('Activity not fully approved: No max approval order', [
+                'activity_id' => $activity->id,
+                'workflow_id' => $matrix->forward_workflow_id
+            ]);
+            return false;
+        }
+
+        // Check if the activity has any approval trails with 'passed' action
+        $activityApprovals = \App\Models\ActivityApprovalTrail::where('activity_id', $activity->id)
+            ->where('action', 'passed')
+            ->get();
+
+        Log::info('Activity approval check', [
+            'activity_id' => $activity->id,
+            'matrix_id' => $matrix->id,
+            'matrix_status' => $matrix->overall_status,
+            'workflow_id' => $matrix->forward_workflow_id,
+            'max_approval_order' => $maxApprovalOrder,
+            'passed_approvals_count' => $activityApprovals->count(),
+            'passed_approvals' => $activityApprovals->pluck('action', 'staff_id')->toArray()
+        ]);
+
+        // Simplified logic: If matrix is approved and activity has at least one passed approval, consider it fully approved
+        if ($matrix->overall_status === 'approved' && $activityApprovals->count() > 0) {
+            Log::info('Activity fully approved: Matrix approved + has passed approvals', [
+                'activity_id' => $activity->id
+            ]);
+            return true;
+        }
+
+        // Alternative: Check if we have enough passed approvals to match the workflow
+        if ($activityApprovals->count() >= $maxApprovalOrder) {
+            Log::info('Activity fully approved: Has enough passed approvals', [
+                'activity_id' => $activity->id,
+                'passed_count' => $activityApprovals->count(),
+                'required_count' => $maxApprovalOrder
+            ]);
+            return true;
+        }
+
+        Log::info('Activity not fully approved: Insufficient approvals', [
+            'activity_id' => $activity->id,
+            'passed_count' => $activityApprovals->count(),
+            'required_count' => $maxApprovalOrder
+        ]);
+
+        return false;
     }
 
     /**

@@ -145,9 +145,21 @@
                                 <div class="col-md-4 attachment-block">
                                     <label class="form-label">Document Type*</label>
                                     <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}" required>
-                                    <input type="file" name="attachments[]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
+                                    <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
                                     <small class="text-muted">Current: {{ $attachment['original_name'] ?? 'No file' }}</small>
                                     <small class="text-muted d-block">Leave empty to keep existing file</small>
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="attachments[{{ $index }}][replace]" id="replace_{{ $index }}" value="1">
+                                        <label class="form-check-label" for="replace_{{ $index }}">
+                                            <small class="text-warning">Replace existing file</small>
+                                        </label>
+                                    </div>
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" name="attachments[{{ $index }}][delete]" id="delete_{{ $index }}" value="1">
+                                        <label class="form-check-label" for="delete_{{ $index }}">
+                                            <small class="text-danger">Delete this attachment</small>
+                                        </label>
+                                    </div>
                                 </div>
                             @endforeach
                         @else
@@ -910,6 +922,24 @@ $(document).ready(function () {
     // Call initialization after a short delay to ensure all elements are loaded
     setTimeout(initializeExistingData, 100);
     
+    // Initialize attachment UI state
+    setTimeout(function() {
+        $('.attachment-block').each(function() {
+            const attachmentBlock = $(this);
+            const fileInput = attachmentBlock.find('input[type="file"]');
+            const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
+            const deleteCheckbox = attachmentBlock.find('input[name*="[delete]"]');
+            
+            // Hide replace checkbox initially (will show when file is selected)
+            replaceCheckbox.closest('.form-check').hide();
+            
+            // Show delete checkbox for existing attachments
+            if (attachmentBlock.find('small:contains("Current:")').length > 0) {
+                deleteCheckbox.closest('.form-check').show();
+            }
+        });
+    }, 200);
+    
     // Fallback: Retry budget initialization if it fails
     setTimeout(() => {
         if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0) {
@@ -935,12 +965,20 @@ $(document).ready(function () {
         initializeExistingData();
     });
     
-    // File validation
+    // File validation and UI enhancement
     $(document).on('change', '.attachment-input', function () {
         const fileInput = this;
         const file = fileInput.files[0];
+        const attachmentBlock = $(fileInput).closest('.attachment-block');
+        const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
+        const deleteCheckbox = attachmentBlock.find('input[name*="[delete]"]');
         
         if (!file) {
+            // No file selected - hide replace checkbox and show delete option if it's an existing attachment
+            replaceCheckbox.closest('.form-check').hide();
+            if (attachmentBlock.find('small:contains("Current:")').length > 0) {
+                deleteCheckbox.closest('.form-check').show();
+            }
             return;
         }
         
@@ -954,6 +992,7 @@ $(document).ready(function () {
         if (!allowedExtensions.includes(ext)) {
             show_notification("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.", "warning");
             $(fileInput).val(''); // Clear invalid file
+            replaceCheckbox.closest('.form-check').hide();
             return;
         }
         
@@ -961,11 +1000,48 @@ $(document).ready(function () {
         if (fileSize > maxSize) {
             show_notification("File size must be less than 10MB.", "warning");
             $(fileInput).val(''); // Clear invalid file
+            replaceCheckbox.closest('.form-check').hide();
             return;
+        }
+        
+        // File is valid - show replace checkbox if it's an existing attachment
+        if (attachmentBlock.find('small:contains("Current:")').length > 0) {
+            replaceCheckbox.closest('.form-check').show();
+            deleteCheckbox.closest('.form-check').hide();
         }
         
         // Show success message
         show_notification(`File "${fileName}" selected successfully.`, "success");
+    });
+    
+    // Handle delete checkbox changes
+    $(document).on('change', 'input[name*="[delete]"]', function() {
+        const deleteCheckbox = $(this);
+        const attachmentBlock = deleteCheckbox.closest('.attachment-block');
+        const fileInput = attachmentBlock.find('input[type="file"]');
+        const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
+        
+        if (deleteCheckbox.is(':checked')) {
+            // Disable file input and type input when deleting
+            fileInput.prop('disabled', true);
+            attachmentBlock.find('input[name*="[type]"]').prop('disabled', true);
+            replaceCheckbox.closest('.form-check').hide();
+            
+            // Show confirmation
+            if (!confirm('Are you sure you want to delete this attachment?')) {
+                deleteCheckbox.prop('checked', false);
+                fileInput.prop('disabled', false);
+                attachmentBlock.find('input[name*="[type]"]').prop('disabled', false);
+                replaceCheckbox.closest('.form-check').show();
+            }
+        } else {
+            // Re-enable inputs when unchecking delete
+            fileInput.prop('disabled', false);
+            attachmentBlock.find('input[name*="[type]"]').prop('disabled', false);
+            if (fileInput.val()) {
+                replaceCheckbox.closest('.form-check').show();
+            }
+        }
     });
 
     // Attachment management
@@ -976,7 +1052,7 @@ $(document).ready(function () {
             <div class="col-md-4 attachment-block">
                 <label class="form-label">Document Type*</label>
                 <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
-                <input type="file" name="attachments[]" 
+                <input type="file" name="attachments[${attachmentIndex}][file]" 
                        class="form-control mt-1 attachment-input" 
                        accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" 
                        required>

@@ -194,8 +194,9 @@ class ApprovalService
     public function canTakeAction(Model $model, int $userId): bool
     {
            $user = session('user', []);
+           
 
-           ///dd($user);
+           //dd($user);
            //dd(done_approving($model));
 
           if (empty($user['staff_id']) || $this->hasUserApproved($model, $user['staff_id']) || in_array($model->overall_status,['approved','draft','returned'])) {

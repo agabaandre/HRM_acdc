@@ -27,6 +27,7 @@ class NonTravelMemoController extends Controller
     /** List all memos with optional filters */
     public function index(Request $request): View
     {
+            //  dd(ApprovalService::canTakeAction(new NonTravelMemo(),user_session('staff_id')));
         // Cache lookup tables for 60 minutes
         $staff  = Cache::remember('non_travel_staff', 60 * 60, fn() => Staff::active()->get());
         $categories = Cache::remember('non_travel_categories', 60 * 60, fn() => NonTravelMemoCategory::all());
