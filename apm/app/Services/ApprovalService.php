@@ -495,7 +495,7 @@ class ApprovalService
     // }
 
 
-    private function getNextApprover($model){
+    public function getNextApprover($model){
 
         $division   = $model->division;
 
