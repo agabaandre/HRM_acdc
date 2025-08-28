@@ -384,8 +384,8 @@
       <td>
         <?php
           // Check if activity division is Operations or Programs and display appropriate head
-          $divisionName = $matrix->division->division_name ?? '';
-          if (stripos($divisionName, 'Operations') !== false): ?>
+          $divisionCategory = $matrix->division->category ?? '';
+          if (stripos($divisionCategory, 'Operations') !== false): ?>
             <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
               <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
                 <?php if (stripos($step['role'] ?? '', 'Head of Operations') !== false): ?>
@@ -415,7 +415,7 @@
         <?php else: ?>
           Andrew Agaba<br><small style="color: #666;">Head of Operations</small>
         <?php endif; ?>
-      <?php elseif (stripos($divisionName, 'Programs') !== false): ?>
+      <?php elseif (stripos($divisionCategory, 'Programs') !== false): ?>
         <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
           <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
             <?php if (stripos($step['role'] ?? '', 'Head of Programs') !== false): ?>
