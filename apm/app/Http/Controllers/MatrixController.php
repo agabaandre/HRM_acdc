@@ -373,18 +373,62 @@ class MatrixController extends Controller
     {
         $divisions = Division::all();
         $staff = Staff::active()->get();
-        $focalPersons = Staff::active()->get();
+        $focalPersons = $staff;
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
+        
+        // Calculate current and next quarter/year for one quarter ahead functionality
+        $currentYear = date('Y');
+        $currentMonth = date('n');
+        $currentQuarter = 'Q' . ceil($currentMonth / 3);
+        
+        // Calculate next quarter and year
+        $nextQuarter = '';
+        $nextYear = $currentYear;
+        
+        switch ($currentQuarter) {
+            case 'Q1':
+                $nextQuarter = 'Q2';
+                break;
+            case 'Q2':
+                $nextQuarter = 'Q3';
+                break;
+            case 'Q3':
+                $nextQuarter = 'Q4';
+                break;
+            case 'Q4':
+                $nextQuarter = 'Q1';
+                $nextYear = $currentYear + 1;
+                break;
+        }
+        
+        // Create quarters array with current and next quarter
+        $availableQuarters = [$currentQuarter];
+        if ($nextQuarter) {
+            $availableQuarters[] = $nextQuarter;
+        }
+        
+        // Add next year to years array if not already present
+        if (!in_array($nextYear, $years)) {
+            $years[] = $nextYear;
+            sort($years);
+        }
     
-        // Prepare staff and focal person mapping per division
         $staffByDivision = [];
         $divisionFocalPersons = [];
+        $existingMatrices = [];
+        $nextAvailableQuarters = [];
     
         foreach ($divisions as $division) {
-            $divisionStaff = $staff->where('division_id', $division->id);
+            $divisionStaff = Staff::active()->where('division_id', $division->id)->get();
             $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
             $divisionFocalPersons[$division->id] = $division->focal_person;
+            
+            // Get existing matrices for this division
+            $existingMatrices[$division->id] = Matrix::getExistingMatricesForDivision($division->id);
+            
+            // Get next available quarter for current year
+            $nextAvailableQuarters[$division->id] = Matrix::getNextAvailableQuarter($division->id, date('Y'));
         }
     
         // Ensure key_result_area is an array
@@ -393,16 +437,28 @@ class MatrixController extends Controller
             $matrix->key_result_area = is_array($decoded) ? $decoded : [];
         }
     
-        return view('matrices.edit', compact(
-            'matrix',
-            'divisions',
-            'staff',
-            'quarters',
-            'years',
-            'focalPersons',
-            'staffByDivision',
-            'divisionFocalPersons'
-        ));
+        // Save division name in session for breadcrumb use
+        session()->put('division_name', user_session('division_name'));
+    
+        return view('matrices.create', [
+            'matrix' => $matrix, // Pass the matrix for editing
+            'editing' => true, // Flag to indicate we're editing
+            'divisions' => $divisions,
+            'title' => user_session('division_name'),
+            'module' => 'Quarterly Matrix',
+            'staff' => $staff,
+            'quarters' => $availableQuarters, // Only show current and next quarter
+            'years' => $years,
+            'focalPersons' => $focalPersons,
+            'staffByDivision' => $staffByDivision,
+            'divisionFocalPersons' => $divisionFocalPersons,
+            'existingMatrices' => $existingMatrices,
+            'nextAvailableQuarters' => $nextAvailableQuarters,
+            'currentQuarter' => $currentQuarter,
+            'nextQuarter' => $nextQuarter,
+            'currentYear' => $currentYear,
+            'nextYear' => $nextYear,
+        ]);
     }
     
     

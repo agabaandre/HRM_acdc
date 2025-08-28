@@ -121,7 +121,7 @@ class Activity extends Model
 
     public function activityApprovalTrails(): HasMany
     {
-        return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', Activity::class);
+        return $this->hasMany(ActivityApprovalTrail::class, 'activity_id');
     }
 
     // JSON-BASED: location_id[] mapped to Location model

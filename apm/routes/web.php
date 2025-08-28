@@ -211,6 +211,6 @@ Route::post('non-travel/{nonTravel}/update-status', [App\Http\Controllers\NonTra
 Route::get('non-travel/{nonTravel}/status', [App\Http\Controllers\NonTravelMemoController::class, 'status'])->name('non-travel.status');
 
 // Activities Routes
-Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index');
+Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index')->middleware(CheckSessionMiddleware::class);
 
 

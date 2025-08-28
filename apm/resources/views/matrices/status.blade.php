@@ -217,51 +217,6 @@
                 </div>
             @endif
 
-            <!-- Approval Actions -->
-            @if(can_take_action($matrix))
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0">
-                            <i class="bx bx-check-circle me-2 text-success"></i>Take Action - Level {{ $matrix->approval_level ?? 0 }}
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info mb-3">
-                            <i class="bx bx-info-circle me-2"></i>
-                            <strong>Current Level:</strong> {{ $matrix->approval_level ?? 0 }}
-                            @if($matrix->workflow_definition)
-                                - <strong>Role:</strong> {{ $matrix->workflow_definition->role ?? 'Not specified' }}
-                            @endif
-                        </div>
-                        
-                        <form action="{{ route('matrices.status', $matrix) }}" method="POST">
-                            @csrf
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="mb-3">
-                                        <label for="comment" class="form-label">Comments (Optional)</label>
-                                        <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="d-grid gap-2">
-                                        <button type="submit" name="action" value="approved" class="btn btn-success">
-                                            <i class="bx bx-check me-1"></i> Approve
-                                        </button>
-                                        <button type="submit" name="action" value="returned" class="btn btn-warning">
-                                            <i class="bx bx-undo me-1"></i> Return for Revision
-                                        </button>
-                                        <button type="submit" name="action" value="rejected" class="btn btn-danger">
-                                            <i class="bx bx-x me-1"></i> Reject
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            @endif
-
             <!-- Approval Trail -->
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
