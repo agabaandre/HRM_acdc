@@ -123,6 +123,7 @@ class SyncStaffCommand extends Command
                         'whatsapp' => $data['whatsapp'] ?? '',
                         'private_email' => $data['private_email'] ?? '',
                         'photo' => $data['photo'] ?? '',
+                        'signature' => $data['signature'] ?? '',
                         'physical_location' => $data['physical_location'] ?? '',
                     ];
 

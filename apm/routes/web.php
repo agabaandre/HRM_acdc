@@ -126,6 +126,10 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
         ->name('matrices.activities.status');
     Route::post('/matrices/activities/batch/status', [ActivityController::class, 'batch_update_status'])
         ->name('matrices.activities.batch.status');
+    
+    // Activity PDF Generation Route
+    Route::get('/matrices/{matrix}/activities/{activity}/memo-pdf', [ActivityController::class, 'generateMemoPdf'])
+        ->name('matrices.activities.memo-pdf');
 
     Route::get('/participant-schedules', [ActivityController::class, 'get_participant_schedules'])->name('participant-schedules');
     

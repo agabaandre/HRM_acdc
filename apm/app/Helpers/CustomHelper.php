@@ -317,3 +317,14 @@ function getFullSql($query) {
     }
     return $sql;
 }
+
+function generateShortCodeFromDivision(string $name): string
+{
+    $ignore = ['of', 'and', 'for', 'the', 'in'];
+    $words = preg_split('/\s+/', strtolower($name));
+    $initials = array_map(function ($word) use ($ignore) {
+        return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+    }, $words);
+
+    return implode('', array_filter($initials));
+}

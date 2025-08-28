@@ -166,7 +166,7 @@ class Activity extends Model
         $division_name = user_session('division_name');
         $short = ucwords($this->generateShortCodeFromDivision($division_name));
         $prefix = 'AU/CDC/' . $short . '/QM';
-        $quarter = 'Q' . $this->matrix->quarter;
+        $quarter =  $this->matrix->quarter;
         $year = substr($this->matrix->year, -2);
     
         $latestActivity = self::where('matrix_id', $this->matrix_id)
@@ -222,6 +222,26 @@ class Activity extends Model
         return ActivityApprovalTrail::where('activity_id',$this->id)
         ->where('staff_id',$user['staff_id'])
         ->orderByDesc('id')->first();
+    }
+
+    public function getFinalApprovalStatusAttribute(){
+        // Get the latest approval trail entry for this activity
+        $latestTrail = ActivityApprovalTrail::where('activity_id', $this->id)
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        if (!$latestTrail) {
+            return 'pending'; // No approval trail yet
+        }
+        
+        // Check if the latest action was 'passed' or 'failed'
+        if (strtolower($latestTrail->action) === 'passed') {
+            return 'passed';
+        } elseif (strtolower($latestTrail->action) === 'failed') {
+            return 'failed';
+        } else {
+            return 'pending'; // Other actions like 'returned', 'rejected', etc.
+        }
     }
 
     public function focalPerson(): BelongsTo

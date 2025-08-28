@@ -311,6 +311,96 @@ if (!function_exists('get_pending_service_requests_count')) {
     }
 }
 
+if (!function_exists('mpdf_print')) {
+    function mpdf_print($view, $data = [], $options = [])
+    {
+        // Set timezone
+        date_default_timezone_set("Africa/Nairobi");
+        
+        // Load the view with data
+        if (strpos($view, '.blade.php') !== false) {
+            // If it's a Blade view, render it normally
+            $html = view($view, $data)->render();
+        } else {
+            // If it's a PHP template, include it directly
+            $templatePath = resource_path('views/' . str_replace('.', '/', $view) . '.php');
+            if (file_exists($templatePath)) {
+                // Extract variables from data array for PHP template
+                extract($data);
+                
+                // Start output buffering before including template
+                ob_start();
+                include $templatePath;
+                $html = ob_get_contents();
+                ob_end_clean();
+            } else {
+                // Fallback to Blade view
+                $html = view($view, $data)->render();
+            }
+        }
+        
+        // Generate PDF using mPDF - exactly like CodeIgniter
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'default_font' => 'Arial'
+        ]);
+        
+        // Set PDF margins exactly like CodeIgniter
+        $mpdf->SetMargins(10, 10, 10);         // left, top, right margins
+        $mpdf->SetAutoPageBreak(true, 30);     // allow auto page break with 30mm bottom margin for footer
+        
+        // Set footer exactly like CodeIgniter
+        $footer = '
+        <table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
+            <tr>
+                <td align="left" style="border: none;">
+                    Africa CDC, P.O. Box 3243, Addis Ababa, Ethiopia, Ring Road, 16/17<br>
+                    Tel: +251 (0) 11 551 77 00, Fax: +251 (0) 11 551 78 44<br>
+                    Website: <a href="https://africacdc.org" style="color: #911C39;">africacdc.org</a>
+                </td>
+                <td align="left" style="border: none;">
+                    Source: Africa CDC - Central Business Platform<br>
+                    Generated on: ' . date('d F, Y h:i A') . '<br>
+                    ' . config('app.url') . '
+                </td>
+            </tr>
+          
+        </table>'.  '<p style="text-align:right;">Page {PAGENO} of {nbpg}</p>';
+        
+        $mpdf->SetHTMLFooter($footer);
+        
+        // Write HTML content exactly like CodeIgniter with error handling
+        try {
+            $mpdf->WriteHTML($html);
+        } catch (Exception $e) {
+            // If there's an error, try with minimal HTML
+            $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
+            $mpdf->WriteHTML($simpleHtml);
+        }
+        
+        return $mpdf;
+    }
+}
+
+
+
+
+
+
+
+if (!function_exists('allow_activity_operations')) {
+    /**
+     * Check if activity operations are allowed based on environment variable
+     *
+     * @return bool
+     */
+    function allow_activity_operations(): bool
+    {
+        return env('ALLOW_ACTIVITY_OPERATIONS', false);
+    }
+}
+
 if (!function_exists('get_pending_request_arf_count')) {
     /**
      * Get count of pending ARF requests that require action from the current staff member

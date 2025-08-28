@@ -4,7 +4,7 @@
 <html>
 <head>
   <style>
-    body { font-family: serif; font-size: 12px; margin: 10px; }
+    body { font-family: Arial, sans-serif; font-size: 12px; margin: 10px; }
     .header img { width: 150px; }
     .section-title { font-size: 14px; font-weight: bold; margin-top: 20px; border-bottom: 1px solid #ccc; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
