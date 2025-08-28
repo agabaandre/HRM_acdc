@@ -967,7 +967,7 @@ class ActivityController extends Controller
         $activities = $request->input('activity_ids',[]);
         //explode the activities into an array
         $activities = count($activities) > 0 ? explode(',', $activities[0]) : [];
-        dd($activities);
+        //dd($activities);
         $matrix = Matrix::find($request->input('matrix_id'));
 
         foreach($activities as $activity){

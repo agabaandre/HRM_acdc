@@ -265,7 +265,7 @@
             @include('matrices.partials.approval-trail')
         @else
             <div class="card shadow-sm border-0">
-                <div class="card-body text-center py-5">
+                <div class="card-body text-center ">
                     <i class="bx bx-history fs-1 text-muted mb-3"></i>
                     <h5 class="text-muted">No Approval History</h5>
                     <p class="text-muted mb-0">Approval trail will appear here once actions are taken on this matrix.</p>
