@@ -29,14 +29,13 @@ class ActivityApprovalTrail extends Model
      *
      * @return array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'id' => 'integer',
-            'matrix_id' => 'integer',
-            'activity_id' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'id' => 'integer',
+        'matrix_id' => 'integer',
+        'activity_id' => 'integer',
+        'staff_id' => 'integer',
+        'oic_staff_id' => 'integer',
+    ];
 
     public function activity(): BelongsTo
     {

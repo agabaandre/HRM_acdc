@@ -242,6 +242,90 @@
               @include('activities.partials.approval-actions',['activity'=>$activity,'matrix'=>$matrix])
             </div>
             @endif
+
+            {{-- Debug Information (Temporary) --}}
+            @if(allow_activity_operations())
+            <div class="col-md-12 mb-3">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bx bx-bug me-2"></i>Debug Info (Remove after testing)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <strong>allow_activity_operations():</strong> {{ allow_activity_operations() ? 'true' : 'false' }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Activity Status (DB):</strong> {{ $activity->status ?? 'NULL' }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Matrix Status:</strong> {{ $matrix->overall_status ?? 'NULL' }}
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-4">
+                                <strong>Final Approval Status:</strong> {{ $activity->final_approval_status ?? 'NULL' }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Fund Type:</strong> {{ $activity->fundType->name ?? 'NULL' }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Should Show Buttons:</strong> 
+                                {{ allow_activity_operations() ? 'YES (OVERRIDE)' : 'NO' }}
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <strong>Latest Approval Trail:</strong> 
+                                @if($activity->my_last_action)
+                                    {{ $activity->my_last_action->action ?? 'NULL' }} 
+                                    ({{ $activity->my_last_action->created_at ?? 'NULL' }})
+                                @else
+                                    No approval trail found
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- Activity Operations Buttons --}}
+            @if(allow_activity_operations())
+            <div class="col-md-12 mb-3">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bx bx-cog me-2"></i>Activity Operations (OVERRIDE MODE)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural')
+                                    <a href="{{ route('request-arf.create') }}?activity_id={{ $activity->id }}" 
+                                       class="btn btn-success w-100">
+                                        <i class="bx bx-file-plus me-2"></i>Create ARF Request
+                                    </a>
+                                    <small class="text-muted d-block mt-1">Extramural activity - Create ARF for external funding</small>
+                                @else
+                                    <a href="{{ route('service-requests.create') }}?activity_id={{ $activity->id }}" 
+                                       class="btn btn-info w-100">
+                                        <i class="bx bx-wrench me-2"></i>Request for Services
+                                    </a>
+                                    <small class="text-muted d-block mt-1">Intramural activity - Request internal services</small>
+                                @endif
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
+                                   class="btn btn-secondary w-100">
+                                    <i class="bx bx-printer me-2"></i>Print Activity
+                                </a>
+                                <small class="text-muted d-block mt-1">Print activity details and budget</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
      
 
             </div>

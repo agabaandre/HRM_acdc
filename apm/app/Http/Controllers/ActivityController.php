@@ -1228,4 +1228,166 @@ class ActivityController extends Controller
             'userDivisionId'
         ));
     }
+
+    /**
+     * Generate PDF memo for an activity.
+     */
+    public function generateMemoPdf(Matrix $matrix, Activity $activity)
+    {
+        // Load necessary relationships
+        $activity->load([
+            'matrix.division.divisionHead',
+            'matrix.division.focalPerson',
+            'requestType',
+            'fundType',
+            'responsiblePerson',
+            'activity_budget'
+        ]);
+
+        // Load locations
+        $locationIds = [];
+        if ($activity->location_id) {
+            // Handle JSON location_id field
+            if (is_string($activity->location_id)) {
+                $locationIds = json_decode($activity->location_id, true) ?? [];
+            } elseif (is_array($activity->location_id)) {
+                $locationIds = $activity->location_id;
+            }
+            
+            // Flatten and filter to ensure we have a simple array of IDs
+            $locationIds = collect($locationIds)->flatten()->filter(function($id) {
+                return is_numeric($id) && $id > 0;
+            })->values()->toArray();
+        }
+        
+        $locations = collect();
+        if (!empty($locationIds)) {
+            $locations = Location::whereIn('id', $locationIds)->get();
+        }
+        
+        // Load internal participants with their details
+        $internalParticipants = collect();
+        if ($activity->internal_participants) {
+            // Handle JSON internal_participants field
+            $participantIds = [];
+            if (is_string($activity->internal_participants)) {
+                $participantIds = json_decode($activity->internal_participants, true) ?? [];
+            } elseif (is_array($activity->internal_participants)) {
+                $participantIds = $activity->internal_participants;
+            }
+            
+            // Flatten and filter to ensure we have a simple array of IDs
+            $participantIds = collect($participantIds)->flatten()->filter(function($id) {
+                return is_numeric($id) && $id > 0;
+            })->values()->toArray();
+            
+            if (!empty($participantIds)) {
+                $internalParticipants = Staff::whereIn('staff_id', $participantIds)
+                    ->get()
+                    ->map(function($staff) {
+                        // Add days information if available
+                        $staff->pivot = (object) ['days' => 'N/A'];
+                        return $staff;
+                    });
+            }
+        }
+
+        // Get workflow information
+        $workflowInfo = $this->getWorkflowInfo($activity);
+
+                                        // Generate PDF using the simplified mpdf_print helper function with simple template
+        $pdf = mpdf_print('activities.memo-pdf-simple', [
+            'activity' => $activity,
+            'matrix' => $matrix,
+            'locations' => $locations,
+            'internal_participants' => $internalParticipants,
+            'workflow_info' => $workflowInfo
+        ]);
+
+        // Generate filename
+        $filename = 'Activity_Memo_' . str_replace(['/', '\\'], '_', $activity->activity_ref) . '_' . now()->format('Y-m-d') . '.pdf';
+
+        // Return PDF for display in browser using mPDF Output method
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
+    }
+
+    /**
+     * Get workflow information for the activity
+     */
+    private function getWorkflowInfo(Activity $activity)
+    {
+        $workflowInfo = [
+            'current_level' => null,
+            'current_approver' => null,
+            'workflow_steps' => collect(),
+            'approval_trail' => collect()
+        ];
+
+        if ($activity->forward_workflow_id) {
+            // Get workflow definition
+            $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $activity->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->orderBy('approval_order')
+                ->with(['approvers.staff', 'approvers.oicStaff'])
+                ->get();
+
+            $workflowInfo['workflow_steps'] = $workflowDefinitions->map(function($definition) {
+                return [
+                    'order' => $definition->approval_order,
+                    'role' => $definition->role,
+                    'approvers' => $definition->approvers->map(function($approver) {
+                        return [
+                            'staff' => $approver->staff ? [
+                                'name' => $approver->staff->fname . ' ' . $approver->staff->lname,
+                                'position' => $approver->staff->position ?? 'N/A',
+                                'division' => $approver->staff->division_name ?? 'N/A'
+                            ] : null,
+                            'oic_staff' => $approver->oicStaff ? [
+                                'name' => $approver->oicStaff->fname . ' ' . $approver->oicStaff->lname,
+                                'position' => $approver->oicStaff->position ?? 'N/A',
+                                'division' => $approver->oicStaff->division_name ?? 'N/A'
+                            ] : null,
+                            'start_date' => $approver->start_date,
+                            'end_date' => $approver->end_date
+                        ];
+                    })->values()
+                ];
+            })->values();
+
+            // Get current approval level
+            if ($activity->approval_level) {
+                $currentDefinition = $workflowDefinitions->where('approval_order', $activity->approval_level)->first();
+                if ($currentDefinition) {
+                    $workflowInfo['current_level'] = $currentDefinition->role;
+                    $currentApprover = $currentDefinition->approvers->first();
+                    if ($currentApprover) {
+                        $workflowInfo['current_approver'] = $currentApprover->staff ? 
+                            $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname :
+                            ($currentApprover->oicStaff ? $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname : 'N/A');
+                    }
+                }
+            }
+        }
+
+        // Get approval trail from activity_approval_trails table
+        $approvalTrails = \App\Models\ActivityApprovalTrail::where('activity_id', $activity->id)
+            ->orderBy('created_at')
+            ->with('staff')
+            ->get();
+
+        $workflowInfo['approval_trail'] = $approvalTrails->map(function($trail) {
+            return [
+                'action' => $trail->action,
+                'remarks' => $trail->remarks,
+                'staff' => $trail->staff ? $trail->staff->fname . ' ' . $trail->staff->lname : 'N/A',
+                'date' => $trail->created_at ? $trail->created_at->format('d/m/Y H:i:s') : 'N/A',
+                'matrix_id' => $trail->matrix_id ?? null
+            ];
+        })->values();
+
+        return $workflowInfo;
+    }
 }
