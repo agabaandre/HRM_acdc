@@ -4,8 +4,7 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    max-height: 50vh;
-    overflow-y: auto;
+    /* Remove max-height and overflow to show all content */
 }
 .timeline:before {
     content: '';
@@ -66,6 +65,8 @@
 .timeline-remarks {
     color: #555;
     font-size: 0.95rem;
+    white-space: pre-line;
+    /* Show all remarks, allow line breaks */
 }
 </style>
 
@@ -83,7 +84,7 @@
                             <i class="bx bx-check"></i>
                         @elseif(strtolower($trail->action) === 'rejected')
                             <i class="bx bx-x"></i>
-                       @elseif(strtolower($trail->action) === 'submitted')
+                        @elseif(strtolower($trail->action) === 'submitted')
                             <i class="bx bx-time"></i>
                         @else
                             <i class="bx bx-x"></i>
@@ -99,13 +100,7 @@
                             {{ ucfirst($trail->action) }}
                         </span>
                     </div>
-                    <div class="timeline-remarks text-muted">
-                        {{ Str::limit($trail->remarks,100) ?? 'No remarks' }} {{ (strlen($trail->remarks)>100)?'...':''}}
-                        @if(strlen($trail->remarks)>100)
-                            <a href="#trailDetail{{$trail->id}}" data-bs-toggle="modal">Read More</a>
-                            @include('matrices.partials.trail-detail-modal',['trail'=>$trail])
-                        @endif
-                    </div>
+                  
                 </li>
             @empty
                 <li class="timeline-item">
