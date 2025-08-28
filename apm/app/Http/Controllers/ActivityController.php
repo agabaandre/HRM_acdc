@@ -26,6 +26,8 @@ use App\Models\WorkflowDefinition;
 use App\Services\ApprovalService;
 use Carbon\Carbon;
 
+use function PHPUnit\Framework\isEmpty;
+
 class ActivityController extends Controller
 {
     
@@ -943,6 +945,7 @@ class ActivityController extends Controller
 
         $activityTrail->remarks  = $request->comment  ?? 'Passed';
         $activityTrail->action   = $request->action;
+        $activityTrail->approval_order = $activity->matrix->approval_level;
         $activityTrail->activity_id   = $activity->id;
         $activityTrail->matrix_id   = $activity->matrix_id;
         $activityTrail->staff_id = user_session('staff_id');
@@ -961,10 +964,14 @@ class ActivityController extends Controller
     public function batch_update_status(Request $request){
 
         $request->validate(['action' => 'required','activity_ids' => 'required|array']);
-        $activities = $request->input('activity_ids', []);
+        $activities = $request->input('activity_ids',[]);
+        //explode the activities into an array
+        $activities = count($activities) > 0 ? explode(',', $activities[0]) : [];
+        dd($activities);
         $matrix = Matrix::find($request->input('matrix_id'));
 
         foreach($activities as $activity){
+
             $activity = Activity::find($activity);
             $this->update_activity_status($request, $activity);
         }

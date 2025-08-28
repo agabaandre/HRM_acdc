@@ -148,7 +148,7 @@ class MatrixController extends Controller
 
         // Filter matrices based on CustomHelper functions for accurate counts
         $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
-             //dd(can_take_action($matrix));
+            // dd(can_take_action($matrix));
             return can_take_action($matrix)  || still_with_creator($matrix);
         });
 
@@ -632,6 +632,7 @@ class MatrixController extends Controller
         }
 
         $definition = ($next_definition->count()>0)?$next_definition[0]:null;
+        //dd($definition);
         //intramural only, skip extra mural role
         if($definition  && !$matrix->has_extramural &&  $definition->fund_type==2){
           return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)

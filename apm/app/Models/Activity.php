@@ -221,6 +221,7 @@ class Activity extends Model
         $user = session('user', []);
         return ActivityApprovalTrail::where('activity_id',$this->id)
         ->where('staff_id',$user['staff_id'])
+        ->where('approval_order',$this->matrix->approval_level)
         ->orderByDesc('id')->first();
     }
 

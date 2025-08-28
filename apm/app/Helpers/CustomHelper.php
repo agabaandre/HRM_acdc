@@ -66,7 +66,7 @@ if (!function_exists('user_session')) {
             $my_appoval =  ApprovalTrail::where('model_id',"=",$matrix->id)
             ->where('model_type', "="  , 'App\Models\\'.ucfirst(class_basename($matrix)))
             ->where('action','approved')
-            //->where('approval_order',$matrix->approval_level)
+            ->where('approval_order',$matrix->approval_level)
             ->where('staff_id',$user['staff_id'])->pluck('id');
             
 
@@ -103,6 +103,7 @@ if (!function_exists('user_session')) {
             $user = session('user', []);
             $my_appoval =  ActivityApprovalTrail::where('activity_id',$activity->id)
             ->where('action','passed')
+            ->where('approval_order',$activity->matrix->approval_level)
             ->where('staff_id',$user['staff_id'])->pluck('id');
 
             return count($my_appoval)>0;
@@ -138,6 +139,7 @@ if (!function_exists('user_session')) {
             foreach ($approvable_activities as $activity) {
                 $has_approved = ActivityApprovalTrail::where("staff_id", $user['staff_id'])
                     ->where("matrix_id", $matrix->id)
+                    ->where("approval_order", $matrix->approval_level)
                     ->where("activity_id", $activity->id)
                     ->where("action", "passed")
                     ->exists();
@@ -159,13 +161,15 @@ if (!function_exists('user_session')) {
         {
             $user = session('user', []);
 
-           // dd($user);
+            ///dd($user);
+            //dd(done_approving($matrix));
 
            if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft','returned'])) {
                return false;
            }
 
             $still_with_creator = still_with_creator($matrix);
+            //dd($still_with_creator);
 
             if($still_with_creator || !$matrix->forward_workflow_id)
             return false;
@@ -186,6 +190,7 @@ if (!function_exists('user_session')) {
             ->orderBy('id','desc')
             ->pluck('workflow_dfn_id');
 
+           // dd($workflow_dfns);
            
             $division_specific_access=false;
             $is_at_my_approval_level =false;
@@ -193,7 +198,7 @@ if (!function_exists('user_session')) {
             
            //if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
-
+                //dd("here");
                 $division_specific_access = false;
 
                 $current_approval_point = $current_approval_point->first();
@@ -213,9 +218,12 @@ if (!function_exists('user_session')) {
                 //how to check approval levels against approver in approvers table???
                 
             }else{
-
-                $current_approval_point = $current_approval_point->where('approval_order',$workflow_dfns[0])->first();
-
+                // dd("here2");
+                 //dd($current_approval_point);
+               // $current_approval_point = $current_approval_point->where('approval_order',$workflow_dfns[0])->first();
+                $current_approval_point = $current_approval_point->where('id',$workflow_dfns[0])->first();
+               // dd(getFullSql(($current_approval_point)));
+               //dd($current_approval_point);
                 $next_definition = WorkflowDefinition::whereIn('workflow_id', $workflow_dfns->toArray())
                 ->where('approval_order',(int) $matrix->approval_level)
                 ->where('is_enabled',1)
