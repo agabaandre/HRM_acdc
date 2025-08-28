@@ -76,7 +76,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="confirmReviewComment" class="form-label">Comments</label>
-                                <textarea class="form-control" id="confirmReviewComment" name="comment" rows="3" required></textarea>
+                                <textarea class="form-control" id="confirmReviewComment" name="comment" rows="3"></textarea>
                             </div>
                         </div>
                         <div class="modal-footer">
