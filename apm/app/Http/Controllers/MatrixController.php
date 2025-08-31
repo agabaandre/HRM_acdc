@@ -337,10 +337,12 @@ class MatrixController extends Controller
      public function show(Matrix $matrix): View
      {
          // Load primary relationships
-         $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff']);
-     
+         //(can_take_action($matrix));
+
+         $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails']);
+     //dd($matrix);
          // Paginate related activities and eager load direct relationships
-         $activities = $matrix->activities()->with(['requestType', 'fundType'])->latest()->paginate(10);
+         $activities = $matrix->activities()->with(['requestType', 'fundType','activity_budget','activity_budget.fundcode'])->latest()->paginate(10);
      
          // Prepare additional decoded & related data per activity
          foreach ($activities as $activity) {
@@ -629,9 +631,10 @@ class MatrixController extends Controller
         $matrixTrail->remarks  = $comment;
         $matrixTrail->action   = $action;
         $matrixTrail->model_id   = $matrix->id;
+        $matrixTrail->forward_workflow_id = $matrix->forward_workflow_id;
         $matrixTrail->model_type = Matrix::class;
         $matrixTrail->matrix_id   = $matrix->id; // For backward compatibility
-        $matrixTrail->approval_order   = $matrix->approval_level ?? 1;
+        $matrixTrail->approval_order   = ($matrix->approval_level==0||$action=='submitted')?0:$matrix->approval_level;
         $matrixTrail->staff_id = user_session('staff_id');
         $matrixTrail->save();
 

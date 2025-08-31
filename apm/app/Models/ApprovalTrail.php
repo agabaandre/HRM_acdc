@@ -95,7 +95,7 @@ class ApprovalTrail extends Model
         }
 
         $workflowDefinition = WorkflowDefinition::where('approval_order', $this->approval_order)
-            ->where('workflow_id', $model->forward_workflow_id)
+            ->where('workflow_id', $this->forward_workflow_id)
             ->first();
 
         return $workflowDefinition ? $workflowDefinition->role : 'Focal Person';

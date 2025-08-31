@@ -144,7 +144,10 @@
                     <tbody>
                         @php
                           $count=1;
+                          //dd($activities[0]->activity_budget);
+                        //  dd($activities[1]->activity_budget->fundcode);
                         @endphp
+
                         @forelse($activities as $activity)
                             <tr>
                                 @if(!activities_approved_by_me($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
@@ -166,6 +169,7 @@
                                 </td>
                              <td class="px-3 py-3 text-center">
                                 @php
+                                //dd($activity);
                                     $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
                                     $totalBudget = 0;
 
@@ -262,7 +266,7 @@
 
     <div class="col-lg-3">
         @if(count($matrix->matrixApprovalTrails) > 0)
-            @include('matrices.partials.approval-trail')
+            @include('matrices.partials.approval-trail',['trails'=>$matrix->matrixApprovalTrails])
         @else
             <div class="card shadow-sm border-0">
                 <div class="card-body text-center ">
@@ -279,11 +283,18 @@
 <div class="row mt-4">
     <div class="col-12">
         <div class="d-flex justify-content-end gap-3">
-            @if(can_take_action($matrix))
+            @if(can_take_action($matrix) || (can_division_head_edit($matrix) && $matrix->overall_status === 'returned'))
                 <div class="d-flex align-items-center">
                     @include('matrices.partials.approval-actions', ['matrix' => $matrix])
                 </div>
             @endif
+             
+            {{-- @if($matrix->overall_status === 'returned')
+              <button type="button" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#returnMatrixModal">
+                    <i class="bx bx-save me-2"></i> Return to Focal Person
+                </button>
+            
+            @endif --}}
 
             @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
                 <button type="button" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
@@ -299,9 +310,11 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
+           
                 <h5 class="modal-title text-white" id="submitMatrixModalLabel">
                     <i class="bx bx-save me-2"></i> Submit Matrix for Approval
                 </h5>
+
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -353,8 +366,7 @@
         </div>
     </div>
 </div>
- 
-</div>
+
 
 <!-- Approve Selected Activities Confirmation Modal -->
 <div class="modal fade" id="approveSelectedModal" tabindex="-1" aria-labelledby="approveSelectedModalLabel" aria-hidden="true">
