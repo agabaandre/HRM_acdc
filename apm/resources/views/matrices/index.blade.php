@@ -239,7 +239,7 @@
                                                     </div>
                                                 </td>
                     
-                                                <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : ($matrix->workflow_definition ? $matrix->workflow_definition->role : 'Focal Person') }}
+                                                <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : (($matrix->workflow_definition && $matrix->approval_level>0) ? $matrix->workflow_definition->role : 'Focal Person') }}
                                                     <small
                                                         class="text-muted">{{ $matrix->current_actor ? '(' . $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname . ')' : '' }}</small>
                                                 </td>

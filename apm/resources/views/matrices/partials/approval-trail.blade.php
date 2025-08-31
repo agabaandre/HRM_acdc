@@ -76,13 +76,16 @@
     </div>
     <div class="card-body">
         <ul class="timeline">
-            @forelse($matrix->approvalTrails as $trail)
+        @php
+           // dd($trails);
+        @endphp
+            @forelse($trails as $trail)
                 <li class="timeline-item">
                     <div class="timeline-badge 
                         {{ strtolower($trail->action)}}">
-                        @if(strtolower($trail->action) === 'approved')
+                        @if(strtolower($trail->action) === 'approved'| strtolower($trail->action) === 'passed')
                             <i class="bx bx-check"></i>
-                        @elseif(strtolower($trail->action) === 'rejected')
+                        @elseif(strtolower($trail->action) === 'rejected'|| strtolower($trail->action) === 'flagged')
                             <i class="bx bx-x"></i>
                         @elseif(strtolower($trail->action) === 'submitted')
                             <i class="bx bx-time"></i>
@@ -96,9 +99,13 @@
                     <div class="timeline-title">
                         {{ $trail->staff->name ?? 'N/A' }} 
                         <span class="text-muted">({{ $trail->approver_role_name ?? 'Focal Person' }})</span>
-                        <span class="badge bg-{{ strtolower($trail->action) === 'approved' ? 'success' : (strtolower($trail->action) === 'rejected' ? 'danger':'warning') }}">
+                        <span class="badge bg-{{ strtolower($trail->action) === 'approved'|| strtolower($trail->action) === 'passed' ? 'success' : (strtolower($trail->action) === 'rejected'|| strtolower($trail->action) === 'flagged' ? 'danger':'warning') }}">
                             {{ ucfirst($trail->action) }}
+                            
                         </span>
+                        @if($trail->action === 'returned'||$trail->action === 'flagged')
+                            <p class="text-muted">{{ $trail->comments ?? $trail->remarks ?? 'No comments' }}</p>
+                        @endif
                     </div>
                   
                 </li>

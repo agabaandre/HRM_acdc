@@ -41,6 +41,9 @@ if (!function_exists('user_session')) {
          */
         function still_with_creator($matrix,$activity=null)
         {
+            //dd(session('user'));
+            //dd((can_division_head_edit($matrix)));
+           // dd( ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id,$activity?$activity->responsible_staff_id:null]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
             return  (can_division_head_edit($matrix) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id,$activity?$activity->responsible_staff_id:null]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
         }
 
@@ -83,13 +86,15 @@ if (!function_exists('user_session')) {
             if($activity->matrix->forward_workflow_id==null)
                 return true;
 
+           // dd($activity);
+
             if(count($activity->activity_budget)==0)
                 return false;
 
-            if(!$activity->matrix->workflow_definition->allowed_funders)
+            if(!$activity->matrix->workflow_definition->allowed_funders||empty($activity->matrix->workflow_definition->allowed_funders))
                 return true;
 
-            return  in_array($activity->activity_budget[0]->fundcode->funder_id,json_decode($activity->matrix->workflow_definition->allowed_funders));
+            return  in_array($activity->activity_budget[0]->fundcode->fund_type_id,json_decode($activity->matrix->workflow_definition->allowed_funders));
         }
     }
 

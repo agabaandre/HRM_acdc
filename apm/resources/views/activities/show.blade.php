@@ -331,6 +331,11 @@
             </div>
         </div>
     </div>
+    @php
+    //dd($activity->activityApprovalTrails);
+    @endphp
+
+    @include('matrices.partials.approval-trail',['trails'=>$activity->activityApprovalTrails])
 
     {{-- <div class="col-md-3">
         <div class="card shadow-sm">
