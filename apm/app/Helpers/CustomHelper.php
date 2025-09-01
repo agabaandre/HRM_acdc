@@ -83,8 +83,8 @@ if (!function_exists('user_session')) {
         
         function can_approve_activity($activity){
 
-            if (!can_take_action($activity->matrix))
-              return false;
+            // if (!can_take_action($activity->matrix))
+            //   return false;
           
             if($activity->matrix->forward_workflow_id==null)
                 return true;

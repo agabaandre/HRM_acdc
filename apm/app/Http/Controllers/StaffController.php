@@ -269,8 +269,12 @@ class StaffController extends Controller
         // Get the staff member
         $staff = Staff::findOrFail($staffId);
         
+        // Get the matrix to get quarter and year
+        $matrix = \App\Models\Matrix::find($matrixId);
+        $quarter_year = $matrix->quarter . "-" . $matrix->year;
+        
         // Get activities where this staff is a participant
-        $activities = Activity::with(['matrix', 'focalPerson', 'matrix.division'])
+        $activities = Activity::with(['matrix', 'focalPerson', 'matrix.division', 'participantSchedules'])
             ->where('matrix_id', $matrixId)
             ->whereHas('participantSchedules', function($query) use ($staffId) {
                 $query->where('participant_id', $staffId);
@@ -285,8 +289,13 @@ class StaffController extends Controller
         $otherDivisionsActivities = [];
 
         foreach ($activities as $activity) {
-            $participantSchedule = $activity->participantSchedules->where('participant_id', $staffId)->first();
-            $days = $participantSchedule ? $participantSchedule->days : 0;
+            // Calculate days based on staff's division_days and other_days arrays
+            $division_days = isset($staff->division_days[$quarter_year]) ? $staff->division_days[$quarter_year] : 0;
+            $other_days = isset($staff->other_days[$quarter_year]) ? $staff->other_days[$quarter_year] : 0;
+            $total_days = $division_days + $other_days;
+            
+            // For now, we'll show total days. You can modify this logic based on your needs
+            $days = $total_days;
             
             $activityData = [
                 'activity_title' => $activity->activity_title,
@@ -303,6 +312,8 @@ class StaffController extends Controller
             } else {
                 $otherDivisionsActivities[] = $activityData;
             }
+            
+            Log::info('Activity ' . $activity->id . ' - Division: ' . ($activity->matrix && $activity->matrix->division ? $activity->matrix->division->division_name : 'N/A') . ', Days: ' . $days);
         }
 
         return response()->json([
