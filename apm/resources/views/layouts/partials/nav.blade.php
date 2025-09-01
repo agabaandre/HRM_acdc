@@ -57,7 +57,7 @@ $settingsMenuItems = [
             <!-- Start Page -->
             <li class="nav-item">
                 <a href="{{ str_replace('apm/', '', url('dashboard')) }}"
-                    class="nav-link {{ Request::is('home/index') ? 'active' : '' }}">
+                    class="nav-link {{ Request::is('home/index') ? 'active' : '' }}" target="_blank">
                     <div class="parent-icon"><i class="fas fa-users"></i></div>
                     <div class="menu-title">Staff Portal</div>
                 </a>
