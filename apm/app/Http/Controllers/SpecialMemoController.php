@@ -1006,7 +1006,6 @@ class SpecialMemoController extends Controller
                 ];
             }
         }
-
         // Fetch related collections
         $locations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
