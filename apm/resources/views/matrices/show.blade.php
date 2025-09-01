@@ -136,6 +136,7 @@
                             <th class="border-0 px-3 py-3 text-muted fw-semibold">Title</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold">Date Range</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Participants</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Fund Type</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Budget (USD)</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Status</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Actions</th>
@@ -166,6 +167,9 @@
                                 <td class="px-3 py-3">{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }} - {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</td>
                                 <td class="px-3 py-3 text-center">
                                     <span class="badge bg-info rounded-pill">{{ $activity->total_participants }}</span>
+                                </td>
+                                <td class="px-3 py-3 text-center">
+                                    <span class="badge bg-info rounded-pill">{{ $activity->fundType->name }}</span>
                                 </td>
                              <td class="px-3 py-3 text-center">
                                 @php
