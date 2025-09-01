@@ -56,4 +56,22 @@ class ActivityApprovalTrail extends Model
     {
         return $this->belongsTo(Staff::class,"oic_staff_id","staff_id");
     }
+    public function approverRole(): BelongsTo
+    {
+        return $this->belongsTo(WorkflowDefinition::class, 'approval_order', 'approval_order');
+    }
+
+    /**
+     * Get the approver role name for this approval.
+     */
+    public function getApproverRoleNameAttribute()
+    {
+       
+        $workflowDefinition = WorkflowDefinition::where('approval_order', $this->approval_order)
+            ->where('workflow_id', $this->forward_workflow_id)
+            ->first();
+
+        return $workflowDefinition ? $workflowDefinition->role : 'Focal Person';
+    }
+
 }
