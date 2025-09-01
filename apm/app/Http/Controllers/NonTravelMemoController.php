@@ -295,6 +295,7 @@ class NonTravelMemoController extends Controller
     /** Show one memo */
     public function show(NonTravelMemo $nonTravel): View
     {
+       
         $nonTravel->load(['staff', 'nonTravelMemoCategory']);
         
         // Decode JSON fields
@@ -442,12 +443,7 @@ class NonTravelMemoController extends Controller
      */
     public function submitForApproval(NonTravelMemo $nonTravel): RedirectResponse
     {
-        if ($nonTravel->overall_status !== 'draft') {
-            return redirect()->back()->with([
-                'msg' => 'Only draft non-travel memos can be submitted for approval.',
-                'type' => 'error',
-            ]);
-        }
+       
 
         $nonTravel->submitForApproval();
 
@@ -463,6 +459,8 @@ class NonTravelMemoController extends Controller
     public function updateStatus(Request $request, NonTravelMemo $nonTravel): RedirectResponse
     {
         // Debug: Log the incoming request data
+       //dd(can_division_head_edit_generic($nonTravel));
+
         \Log::info('NonTravelMemo updateStatus called', [
             'request_all' => $request->all(),
             'memo_id' => $nonTravel->id,

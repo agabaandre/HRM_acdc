@@ -13,191 +13,16 @@ use Illuminate\Support\Facades\DB;
 
 class ApprovalService
 {
-    /**
-     * Check if a user can take action on a model.
-     */
-    // public function canTakeAction(Model $model, int $userId): bool
-    // {
-    //     // Debug: Log the canTakeAction check
-    //     if (request()->has('debug_approval')) {
-    //         Log::info('ApprovalService canTakeAction called', [
-    //             'method' => 'canTakeAction',
-    //             'model_id' => $model->id,
-    //             'model_class' => get_class($model),
-    //             'forward_workflow_id' => $model->forward_workflow_id,
-    //             'overall_status' => $model->overall_status,
-    //             'approval_level' => $model->approval_level,
-    //             'user_id' => $userId,
-    //             'request_data' => request()->all()
-    //         ]);
-    //     }
-
-    //     if (
-    //         empty($userId) || $this->hasUserApproved($model, $userId) ||
-    //         in_array($model->overall_status, ['approved', 'draft', 'returned'])
-    //     ) {
-    //         return false;
-    //     }
-
-    //     // Check if the model is still in draft status (using is_draft flag if available)
-    //     if (property_exists($model, 'is_draft') && $model->is_draft) {
-    //         return false;
-    //     }
-
-    //     if ($model->isWithCreator() || !$model->forward_workflow_id) {
-    //         return false;
-    //     }
-
-
-
-    //     $today = Carbon::today();
-
-    //     $user = user_session();
-
-    //     /*$current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
-    //         ->where('workflow_id', $model->forward_workflow_id)
-    //         ->first();
-
-    //     if (!$current_approval_point) {
-    //         return false;
-    //     }
-
-    //     $workflow_dfns = Approver::where('staff_id', $userId)
-    //         ->where('workflow_dfn_id', $current_approval_point->id)
-    //         ->orWhere(function ($query) use ($today, $userId, $current_approval_point) {
-    //             $query->where('workflow_dfn_id', $current_approval_point->id)
-    //                 ->where('oic_staff_id', $userId)
-    //                 ->where('end_date', '>=', $today);
-    //         })
-    //         ->orderBy('id', 'desc')
-    //         ->pluck('workflow_dfn_id');
-
-    //     $division_specific_access = false;
-    //     $is_at_my_approval_level = false;
-
-    //     if ($workflow_dfns->isEmpty()) {
-    //         if ($current_approval_point && $current_approval_point->is_division_specific) {
-    //             if (method_exists($model, 'division') && $model->division || $model->staff->division) {
-    //                 $division = $model->division ?? $model->staff->division;
-    //                 if ($division && $division->{$current_approval_point->division_reference_column} == $userId) {
-    //                     $division_specific_access = true;
-    //                 }
-    //             }
-    //         }
-    //     } else {
-    //         $next_definition = WorkflowDefinition::whereIn('workflow_id', $workflow_dfns->toArray())
-    //             ->where('approval_order', (int) $model->approval_level)
-    //             ->where('is_enabled', 1)
-    //             ->orderBy('approval_order')
-    //             ->get();
-
-    //         if ($next_definition->count() > 1) {
-    //             if (method_exists($model, 'has_extramural') && $model->has_extramural && 
-    //                 $model->approval_level !== $current_approval_point->first()->approval_order) {
-    //                 $current_approval_point = $next_definition->where('fund_type', 2);
-    //             } else {
-    //                 $current_approval_point = $next_definition->where('fund_type', 1);
-    //             }
-    //         }
-
-    //         $is_at_my_approval_level = ($current_approval_point) ? 
-    //             ($current_approval_point->workflow_id === $model->forward_workflow_id && 
-    //              $model->approval_level == $current_approval_point->approval_order) : false;
-    //     }
-
-    //     return (($is_at_my_approval_level || $model->isWithCreator() || $division_specific_access) && 
-    //             $model->overall_status !== 'approved');*/
-
-
-    //     //Check that matrix is at users approval level by getting approver for that staff, at the level of approval the matrix is at
-    //     $current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
-    //         ->where('workflow_id', $model->forward_workflow_id);
-
-    //     $workflow_dfns = Approver::where('staff_id', "=", $user['staff_id'])
-    //         ->whereIn('workflow_dfn_id', $current_approval_point->pluck('id'))
-    //         ->orWhere(function ($query) use ($today, $user, $current_approval_point) {
-    //             $query->whereIn('workflow_dfn_id', $current_approval_point->pluck('id'))
-    //                 ->where('oic_staff_id', "=", $user['staff_id'])
-    //                 ->where('end_date', '>=', $today);
-    //         })
-    //         ->orderBy('id', 'desc')
-    //         ->pluck('workflow_dfn_id');
-
-
-    //     $division_specific_access = false;
-    //     $is_at_my_approval_level = false;
-
-
-    //     //if user is not defined in the approver table, $workflow_dfns will be empty
-    //     if ($workflow_dfns->isEmpty()) {
-
-    //         $division_specific_access = false;
-
-    //         $current_approval_point = $current_approval_point->first();
-
-    //         if (!$current_approval_point)
-    //             return false;
-
-    //         if ($current_approval_point && $current_approval_point->is_division_specific) {
-    //             $division = $model->division;
-
-    //             //staff holds current approval role in division
-    //             if ($division && $division->{$current_approval_point->division_reference_column} == user_session()['staff_id']) {
-    //                 $division_specific_access = true;
-    //             }
-    //         }
-
-    //         //how to check approval levels against approver in approvers table???
-
-    //     } else {
-
-    //         $current_approval_point = $current_approval_point->where('id', $workflow_dfns[0])->first();
-
-    //         $next_definition = WorkflowDefinition::whereIn('workflow_id', $workflow_dfns->toArray())
-    //             ->where('approval_order', (int) $model->approval_level)
-    //             ->where('is_enabled', 1)
-    //             ->orderBy('approval_order')
-    //             ->get();
-
-
-    //         if ($next_definition->count() > 1) {
-
-    //             //if any of next_definition has fund_type, then do the if below
-    //             $has_fund_type = $next_definition->whereNotNull('fund_type')->count() > 0;
-
-    //             if ($has_fund_type) {
-    //                 if ($model->has_extramural && $model->approval_level !== $current_approval_point->approval_order) {
-    //                     $current_approval_point = $next_definition->where('fund_type', 2)->first();
-    //                 } else {
-    //                     $current_approval_point = $next_definition->where('fund_type', 1)->first();
-    //                 }
-    //             } else {
-
-    //                 $has_category = $next_definition->whereNotNull('category')->count() > 0;
-
-    //                 if ($has_category) {
-    //                     $current_approval_point = $next_definition->where('category', (string)$model->division->category)->first();
-    //                 } else {
-    //                     $current_approval_point = $next_definition->first();
-    //                 }
-    //             }
-    //         }
-
-    //         $is_at_my_approval_level = ($current_approval_point) ?
-    //             ($current_approval_point->workflow_id === $model->forward_workflow_id && $model->approval_level == $current_approval_point->approval_order) :
-    //             false;
-    //     }
-    //     return (($is_at_my_approval_level || $model->isWithCreator() || $division_specific_access) && $model->overall_status !== 'approved');
-    // }
-
+   
     
-    public function canTakeAction(Model $model, int $userId): bool
+    public function canTakeAction(Model $model, int $userId):bool
     {
            $user = session('user', []);
            
 
            //dd($user);
            //dd(done_approving($model));
+          // dd($this->hasUserApproved($model, $user['staff_id']));
 
           if (empty($user['staff_id']) || $this->hasUserApproved($model, $user['staff_id']) || in_array($model->overall_status,['approved','draft','returned'])) {
               return false;
@@ -208,6 +33,7 @@ class ApprovalService
 
            if($still_with_creator || !$model->forward_workflow_id)
            return false;
+          
 
            $today = Carbon::today();
 
@@ -311,14 +137,20 @@ class ApprovalService
     public function hasUserApproved(Model $model, int $userId): bool
     {
         // this maps to done apparoving
+        //dd($this->isWithCreator($model));
+        // if($this->isWithCreator($model) && $model->forward_workflow_id==null)
+        //     return false;
         $approval = ApprovalTrail::where('model_id', $model->id)
+           ->select(DB::raw('MAX(id) as id'))
             ->where('model_type', get_class($model))
-            ->where('action', 'approved')
+            //->where('action', 'approved')
             ->where('approval_order', $model->approval_level)
             ->where('staff_id', $userId)
             ->first();
+      //  dd($approval);
 
-        return $approval !== null;
+
+        return $approval !== null && $approval->action === 'approved';
     }
 
     /**
@@ -379,12 +211,14 @@ class ApprovalService
     public function processApproval(Model $model, string $action, string $comment = null, int $userId = null): void
     {
         $userId = $userId ?? user_session('staff_id');
+       // dd($model->approval_level);
 
         // Save approval trail
         $trail = new ApprovalTrail();
         $trail->model_id = $model->id;
         $trail->model_type = get_class($model);
         $trail->remarks = $comment ?? '';
+        $trail->forward_workflow_id = $model->forward_workflow_id;
         $trail->action = $action;
         $trail->approval_order = $model->approval_level ?? 1;
         $trail->staff_id = $userId;
@@ -398,8 +232,9 @@ class ApprovalService
 
         // Update model status
         if ($action !== 'approved') {
-            $model->forward_workflow_id = 1;
-            $model->approval_level = 1;
+            $model->forward_workflow_id = NULL;
+            $model->approval_level = intval($model->approval_level)==1?0:1;
+            //dd($model->approval_level);
             $model->overall_status = 'returned';
         } else {
             $next_approver = $this->getNextApprover($model);
@@ -417,151 +252,76 @@ class ApprovalService
         $model->update();
     }
 
-    /**
-     * Get the next approver for a model.
-     */
-    // public function getNextApprover(Model $model)
-    // {
-    //     if (!$model->forward_workflow_id || !$model->approval_level) {
-    //         return null;
-    //     }
-
-    //     $current_definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
-    //         ->where('is_enabled', 1)
-    //         ->where('approval_order', $model->approval_level)
-    //         ->first();
-
-    //     if (!$current_definition) {
-    //         return null;
-    //     }
-
-    //     // Check if we need to trigger category check
-    //     $go_to_category_check = false;
-    //     if (method_exists($model, 'division') && $model->division) {
-    //         $go_to_category_check = (!$model->has_extramural && !$model->has_intramural &&
-    //             ($model->approval_level != null && $current_definition->approval_order > $model->approval_level));
-    //     }
-
-    //     if (($current_definition && $current_definition->triggers_category_check) || $go_to_category_check) {
-    //         if (method_exists($model, 'division') && $model->division) {
-    //             $category_definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
-    //                 ->where('is_enabled', 1)
-    //                 ->where('category', $model->division->category)
-    //                 ->orderBy('approval_order', 'asc')
-    //                 ->first();
-
-    //             return $category_definition;
-    //         }
-    //     }
-
-    //     // Get all enabled workflow definitions for this workflow, ordered by approval_order
-    //     $allDefinitions = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
-    //         ->where('is_enabled', 1)
-    //         ->orderBy('approval_order', 'asc')
-    //         ->get();
-
-    //     // Find the current definition index
-    //     $currentIndex = $allDefinitions->search(function ($def) use ($model) {
-    //         return $def->approval_order == $model->approval_level;
-    //     });
-
-    //     if ($currentIndex === false) {
-    //         return null;
-    //     }
-
-    //     // Find the next definition, considering all approval conditions
-    //     $nextDefinition = null;
-    //     $nextIndex = $currentIndex + 1;
-
-    //     while ($nextIndex < $allDefinitions->count()) {
-    //         $candidateDefinition = $allDefinitions[$nextIndex];
-
-    //         // Check if this level should be automatically skipped
-    //         if ($this->shouldSkipApprovalLevel($model, $candidateDefinition)) {
-    //             $nextIndex++;
-    //             continue;
-    //         }
-
-    //         // Check if this level has approvers assigned or is division-specific
-    //         if ($this->hasApproversForLevel($candidateDefinition, $model)) {
-    //             $nextDefinition = $candidateDefinition;
-    //             break;
-    //         }
-
-    //         $nextIndex++;
-    //     }
-
-    //     return $nextDefinition;
-    // }
+   
 
 
     public function getNextApprover($model){
 
         $division   = $model->division;
 
-        $current_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-           ->where('is_enabled',1)
-           ->where('approval_order',$model->approval_level)
-           ->first();
+    $current_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+       ->where('is_enabled',1)
+       ->where('approval_order',$model->approval_level)
+       ->first();
 
-        $go_to_category_check_for_external =(!$model->has_extramural && !$model->has_extramural && ($model->approval_level!=null && $current_definition->approval_order > $model->approval_level));
+    $go_to_category_check_for_external =(!$model->has_extramural && !$model->has_extramural && ($model->approval_level!=null && $current_definition->approval_order > $model->approval_level));
 
-        //if it's time to trigger categroy check, just check and continue
-        if(($current_definition && $current_definition->triggers_category_check) || $go_to_category_check_for_external){
+    //if it's time to trigger categroy check, just check and continue
+    if(($current_definition && $current_definition->triggers_category_check) || $go_to_category_check_for_external){
 
-            $category_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-                        ->where('is_enabled',1)
-                        ->where('category',$division->category)
-                        ->orderBy('approval_order','asc')
-                        ->first();
+        $category_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+                    ->where('is_enabled',1)
+                    ->where('category',$division->category)
+                    ->orderBy('approval_order','asc')
+                    ->first();
 
-            return $category_definition;
+        return $category_definition;
+    }
+
+    $nextStepIncrement = 1;
+
+    //Skip Directorate from HOD if no directorate
+    if($model->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)
+        $nextStepIncrement = 2;
+
+     if(!$model->forward_workflow_id)// null
+        $model->forward_workflow_id = 1;
+
+    $next_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+       ->where('is_enabled',1)
+       ->where('approval_order',$model->approval_level +$nextStepIncrement)->get();
+        
+    //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
+    // get from $definition where fund_type=2, else where fund_type=2
+    //if one, just return the one available
+    if ($next_definition->count() > 1) {
+
+        if ($model->has_extramural && $model->approval_level !== $next_definition->first()->approval_order) {
+            return $next_definition->where('fund_type', 2);
+        } 
+        else {
+            return $next_definition->where('fund_type', 1);
         }
+    }
 
-        $nextStepIncrement = 1;
+    $definition = ($next_definition->count()>0)?$next_definition[0]:null;
+    //dd($definition);
+    //intramural only, skip extra mural role
+    if($definition  && !$model->has_extramural &&  $definition->fund_type==2){
+      return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+        ->where('is_enabled',1)
+        ->where('approval_order',$definition->approval_order+1)->first();
+    }
 
-        //Skip Directorate from HOD if no directorate
-        if($model->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)
-            $nextStepIncrement = 2;
+    //only extramural, skip by intramural roles
+    if($definition  && !$model->has_intramural &&  $definition->fund_type==1){
+        return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+          ->where('is_enabled',1)
+          ->where('approval_order', $definition->approval_order+2)->first();
+    }
 
-         if(!$model->forward_workflow_id)// null
-            $model->forward_workflow_id = 1;
    
-        $next_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-           ->where('is_enabled',1)
-           ->where('approval_order',$model->approval_level +$nextStepIncrement)->get();
-            
-        //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
-        // get from $definition where fund_type=2, else where fund_type=2
-        //if one, just return the one available
-        if ($next_definition->count() > 1) {
-
-            if ($model->has_extramural && $model->approval_level !== $next_definition->first()->approval_order) {
-                return $next_definition->where('fund_type', 2);
-            } 
-            else {
-                return $next_definition->where('fund_type', 1);
-            }
-        }
-
-        $definition = ($next_definition->count()>0)?$next_definition[0]:null;
-        //intramural only, skip extra mural role
-        if($definition  && !$model->has_extramural &&  $definition->fund_type==2){
-          return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-            ->where('is_enabled',1)
-            ->where('approval_order',$definition->approval_order+1)->first();
-        }
-
-        //only extramural, skip by intramural roles
-        if($definition  && !$model->has_intramural &&  $definition->fund_type==1){
-            return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-              ->where('is_enabled',1)
-              ->where('approval_order', $definition->approval_order+2)->first();
-        }
-
-       
-        return  $definition;
-
+   return $definition;
     }
     /**
      * Get approval trails for a model.
@@ -588,7 +348,10 @@ class ApprovalService
 
         function canDivisionHeadEdit($model,$has_activity=false){
             $user = (Object) session('user', []);
-            return ($model->division->division_head==$user->staff_id && $model->approval_level==1 && ($has_activity && activities_approved_by_me($model)) && in_array($model->overall_status,['returned']));
+           // dd(activities_approved_by_me($model));
+            //dd($has_activity && activities_approved_by_me($model));
+            
+            return ($model->division->division_head==$user->staff_id && $model->approval_level==1 && in_array($model->overall_status,['returned']));
         }
 
      
