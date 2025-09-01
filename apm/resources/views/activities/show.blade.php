@@ -37,19 +37,19 @@
                             <div class="col-md-12 mb-2 d-flex justify-content-end gap-2">
                                 @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural')
                                     <a href="{{ route('request-arf.create') }}?activity_id={{ $activity->id }}" 
-                                       class="btn btn-success w-20">
+                                       class="btn btn-success w-20" target="_blank">
                                         <i class="bx bx-file-plus me-2"></i>Create ARF Request
                                     </a>
                                 @else
                                     <a href="{{ route('service-requests.create') }}?activity_id={{ $activity->id }}" 
-                                       class="btn btn-info w-20">
+                                       class="btn btn-info w-20" target="_blank">
                                         <i class="bx bx-wrench me-2"></i>Request for Services
                                     </a>
        
                                 @endif
                             
                                 <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
-                                   class="btn btn-secondary w-20">
+                                   class="btn btn-secondary w-20" target="_blank">
                                     <i class="bx bx-printer me-2"></i>Print Activity
                                 </a>
                           
