@@ -11,15 +11,12 @@
     </div>
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
-            <!-- APM -->
-            <?php if (in_array('85', $permissions)) : ?>
-                <li class="nav-item">
-                    <a href="#" class="nav-link" onclick="openAPM()">
-                        <div class="parent-icon"><i class="fa fa-sitemap"></i></div>
-                        <div class="menu-title">APM</div>
-                    </a>
-                </li>
-            <?php endif; ?>
+            <li class="nav-item">
+                <a href="<?= base_url('apm/home') ?>" class="nav-link <?= activelink('home', $this->uri->segment(1)) ?>">
+                    <div class="parent-icon"><i class="fa fa-business"></i></div>
+                    <div class="menu-title">APM</div>
+                </a>
+            </li>
             <!-- Dashboard -->
             <?php if (in_array('76', $permissions)) : ?>
                 <li class="nav-item">
@@ -205,18 +202,3 @@
 </div>
 </nav>
 </div>
-
-<script>
-function openAPM() {
-    // Get current session data
-    const sessionData = <?= json_encode($this->session->userdata('user')) ?>;
-    sessionData.base_url = '<?= base_url() ?>';
-    
-    // Generate token
-    const token = btoa(JSON.stringify(sessionData));
-    
-    // Open APM in new tab with fresh session
-    const apmUrl = '<?= base_url() ?>apm?token=' + encodeURIComponent(token);
-    window.open(apmUrl, '_blank');
-}
-</script>
