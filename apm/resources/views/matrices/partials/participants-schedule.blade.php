@@ -39,8 +39,11 @@
                                 <span class="badge bg-secondary rounded-pill">{{ $count }}</span>
                             </td>
                             <td class="px-3 py-3">
-                                <div class="fw-semibold">{{ $staff->fname . " " . $staff->lname }}</div>
-                              
+                                <div class="fw-semibold">
+                                    <a href="#" class="text-decoration-none text-primary" onclick="showStaffActivities({{ $staff->staff_id }}, '{{ $staff->fname . " " . $staff->lname }}')">
+                                        {{ $staff->fname . " " . $staff->lname }}
+                                    </a>
+                                </div>
                             </td>
                             <td class="px-3 py-3">
                                 <div class="text-muted">{{ $staff->job_name ?? 'Not specified' }}</div>

@@ -100,6 +100,9 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::resource('divisions', App\Http\Controllers\DivisionController::class);
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     Route::resource('staff', App\Http\Controllers\StaffController::class);
+    
+    // Staff activities route for matrix view
+    Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities');
     Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
     Route::resource('locations', App\Http\Controllers\LocationController::class);
     Route::resource('cost-items', App\Http\Controllers\CostItemController::class);

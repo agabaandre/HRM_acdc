@@ -39,6 +39,7 @@ class Activity extends Model
         'is_special_memo',
         'status',
         'fund_type_id',
+        'division_id',
 
         // JSON fields
         'location_id',
@@ -61,6 +62,7 @@ class Activity extends Model
         'responsible_person_id' => 'integer',
         'request_type_id' => 'integer',
         'fund_type_id' => 'integer',
+        'division_id' => 'integer',
         'is_special_memo' => 'boolean',
         'date_from' => 'date',
         'date_to' => 'date',
@@ -252,5 +254,15 @@ class Activity extends Model
 
     public function activity_budget(){
         return $this->hasMany(ActivityBudget::class);
+    }
+
+    public function participantSchedules(): HasMany
+    {
+        return $this->hasMany(ParticipantSchedule::class, 'activity_id');
+    }
+
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(Division::class, 'division_id');
     }
 }
