@@ -86,16 +86,14 @@ $usergroups = Modules::run("permissions/getUserGroups");
           </select>
         </div>
         <div class="col-md-2 d-flex align-items-end">
-          <div class="d-grid gap-2 w-100">
+          <div class="d-grid gap-2 w-100 d-flex flex-direction-row">
             <button type="submit" class="btn text-white" style="background: rgba(52, 143, 65, 1); border-color: rgba(52, 143, 65, 1);">
               <i class="fa fa-search me-1"></i>Search
             </button>
             <button type="button" class="btn btn-outline-secondary clear-filters">
               <i class="fa fa-refresh me-1"></i>Clear
             </button>
-            <button type="button" class="btn btn-outline-info test-status-filter" style="margin-left: 5px;">
-              <i class="fa fa-test-tube me-1"></i>Test Status
-            </button>
+          
           </div>
         </div>
       </form>
@@ -104,15 +102,10 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
       <!-- Users Table -->
   <div class="card border-0 shadow-lg">
-    <div class="card-header text-white py-4" style="background: linear-gradient(135deg, rgba(52, 143, 65, 1) 0%, rgba(45, 120, 55, 1) 100%);">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h5 class="mb-1 fw-bold">
-            <i class="fa fa-users me-2"></i>Users and Their Details
-          </h5>
-          <p class="mb-0 text-white-50 small">Manage system users, permissions, and access controls</p>
-        </div>
-        <div class="d-flex gap-3">
+   
+    <div class="card-body p-0">
+      <div class="table-responsive">
+      <div class="d-flex gap-3">
           <!-- Records Count -->
           <div class="bg-white bg-opacity-20 rounded-3 px-3 py-2 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
             <span class="fw-bold" id="totalUsers" style="color: #228B22; font-size: 1rem;">0</span>
@@ -124,10 +117,6 @@ $usergroups = Modules::run("permissions/getUserGroups");
             <span class="fw-medium" style="color: #228B22; font-size: 0.95rem;">Filtered</span>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
         <table class="table table-hover mb-0" id="usersTable">
           <thead class="table-header">
             <tr>
@@ -149,7 +138,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
   <div class="row mt-4">
     <div class="col-md-6">
       <div class="card border-0 shadow-sm">
-        <div class="card-header text-white py-3" style="background: rgba(52, 143, 65, 1);">
+      <div class="card-header text-muted py-3" style="background:#FFFFFF;">
           <h6 class="mb-0 fw-bold">
             <i class="fa fa-info-circle me-2"></i>Quick Actions
           </h6>
@@ -179,7 +168,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
     <div class="col-md-6">
       <div class="card border-0 shadow-sm">
-        <div class="card-header text-white py-3" style="background: rgba(52, 143, 65, 1);">
+        <div class="card-header text-muted py-3" style="background:#FFFFFF;">
           <h6 class="mb-0 fw-bold">
             <i class="fa fa-lightbulb me-2"></i>Export Features
           </h6>
