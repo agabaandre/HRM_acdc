@@ -36,11 +36,6 @@ $usergroups = Modules::run("permissions/getUserGroups");
 
   <!-- Search and Filters -->
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header text-white py-3" style="background: rgba(52, 143, 65, 1);">
-      <h6 class="mb-0 fw-bold">
-        <i class="fa fa-search me-2"></i>Search & Filters
-      </h6>
-    </div>
     <div class="card-body">
       <form id="searchForm" class="row g-3">
         <!-- CSRF Token -->
