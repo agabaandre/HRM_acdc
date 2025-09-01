@@ -45,8 +45,8 @@ class Auth_mdl extends CI_Model
 		$this->db->select('
 			staff.staff_id, staff.fname, staff.lname, staff.title, staff.oname, staff.work_email, 
 			staff.tel_1, staff.tel_2, staff.private_email, staff.whatsapp, staff.photo, staff.signature,
-			staff.date_of_birth, staff.nationality, staff.SAPNO, staff.duty_station_name,
-			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at, user.updated_at,
+			staff.date_of_birth, staff.SAPNO,
+			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at,
 			user_groups.id as group_id, user_groups.group_name
 		');
 		$this->db->from('staff'); // Set the main table
@@ -80,8 +80,8 @@ class Auth_mdl extends CI_Model
 		$this->db->select('
 			staff.staff_id, staff.fname, staff.lname, staff.title, staff.oname, staff.work_email, 
 			staff.tel_1, staff.tel_2, staff.private_email, staff.whatsapp, staff.photo, staff.signature,
-			staff.date_of_birth, staff.nationality, staff.SAPNO, staff.duty_station_name,
-			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at, user.updated_at,
+			staff.date_of_birth, staff.SAPNO, 
+			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at,
 			user_groups.id as group_id, user_groups.group_name,
 			divisions.division_name, jobs.job_name
 		');
