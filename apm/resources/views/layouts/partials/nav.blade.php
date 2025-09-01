@@ -56,10 +56,10 @@ $settingsMenuItems = [
         <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
             <!-- Start Page -->
             <li class="nav-item">
-                <a href="{{ str_replace('apm/', '', url('home/index')) }}"
+                <a href="{{ str_replace('apm/', '', url('dashboard')) }}"
                     class="nav-link {{ Request::is('home/index') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-home"></i></div>
-                    <div class="menu-title">Start Page</div>
+                    <div class="parent-icon"><i class="fas fa-users"></i></div>
+                    <div class="menu-title">Staff Portal</div>
                 </a>
             </li>
 
@@ -67,7 +67,7 @@ $settingsMenuItems = [
             <li class="nav-item">
                 <a href="{{ url('home') }}"
                     class="nav-link {{ Request::is('home') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-th"></i></div>
+                    <div class="parent-icon"><i class="fas fa-sitemap"></i></div>
                     <div class="menu-title">APM Home</div>
                 </a>
             </li>

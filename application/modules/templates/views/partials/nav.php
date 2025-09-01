@@ -12,9 +12,9 @@
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
             <li class="nav-item">
-                <a href="<?= base_url('home') ?>" class="nav-link <?= activelink('home', $this->uri->segment(1)) ?>">
-                    <div class="parent-icon"><i class="bx bx-home-circle"></i></div>
-                    <div class="menu-title">Home</div>
+                <a href="<?= base_url('apm/home') ?>" class="nav-link <?= activelink('home', $this->uri->segment(1)) ?>">
+                    <div class="parent-icon"><i class="fa fa-sitemap"></i></div>
+                    <div class="menu-title">APM</div>
                 </a>
             </li>
             <!-- Dashboard -->
