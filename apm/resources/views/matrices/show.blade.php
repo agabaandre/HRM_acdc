@@ -447,6 +447,99 @@
     </div>
 </div>
 
+<!-- Staff Activities Modal -->
+<div class="modal fade" id="staffActivitiesModal" tabindex="-1" aria-labelledby="staffActivitiesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #119A48 !important;">
+                <h5 class="modal-title text-white" id="staffActivitiesModalLabel">
+                    <i class="bx bx-user me-2"></i> Staff Activities
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <h4 id="staffNameDisplay" class="mb-2" style="color: #119A48 !important;"></h4>
+                    <p class="text-muted">Activity details for {{ $matrix->quarter }} {{ $matrix->year }}</p>
+                </div>
+                
+                <!-- Tabs -->
+                <ul class="nav nav-tabs" id="staffActivitiesTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="my-division-tab" data-bs-toggle="tab" data-bs-target="#my-division" type="button" role="tab" aria-controls="my-division" aria-selected="true" style="border-color: #119A48 !important; color: #119A48 !important;">
+                            <i class="bx bx-building me-1"></i> My Division
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="other-divisions-tab" data-bs-toggle="tab" data-bs-target="#other-divisions" type="button" role="tab" aria-controls="other-divisions" aria-selected="false">
+                            <i class="bx bx-globe me-1"></i> Other Divisions
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content mt-3" id="staffActivitiesTabContent">
+                    <!-- My Division Tab -->
+                    <div class="tab-pane fade show active" id="my-division" role="tabpanel" aria-labelledby="my-division-tab">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Activity Title</th>
+                                        <th>Focal Person</th>
+                                        <th>Division</th>
+                                        <th class="text-center">Days</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="myDivisionActivities">
+                                    <!-- Content will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Other Divisions Tab -->
+                    <div class="tab-pane fade" id="other-divisions" role="tabpanel" aria-labelledby="other-divisions-tab">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Activity Title</th>
+                                        <th>Focal Person</th>
+                                        <th>Division</th>
+                                        <th class="text-center">Days</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="otherDivisionsActivities">
+                                    <!-- Content will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bx bx-x me-1"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+
+
+#staffActivitiesModal .nav-tabs .nav-link:hover {
+    border-color: #119A48 !important;
+    color: #119A48 !important;
+}
+
+#staffActivitiesModal .nav-tabs {
+    border-bottom-color: #119A48 !important;
+}
+</style>
+
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -538,6 +631,69 @@ document.addEventListener('DOMContentLoaded', function() {
     updateSelectAllState();
     updateApproveSection();
 });
+
+// Staff Activities Modal Function
+function showStaffActivities(staffId, staffName) {
+    // Set staff name in modal
+    document.getElementById('staffNameDisplay').textContent = staffName;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('staffActivitiesModal'));
+    modal.show();
+    
+    // Load activities data
+    loadStaffActivities(staffId);
+}
+
+function loadStaffActivities(staffId) {
+    // Show loading state
+    document.getElementById('myDivisionActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3"><i class="bx bx-loader-alt bx-spin me-2"></i>Loading...</td></tr>';
+    document.getElementById('otherDivisionsActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3"><i class="bx bx-loader-alt bx-spin me-2"></i>Loading...</td></tr>';
+    
+    const url = `${window.location.origin}/staff/${staffId}/activities?matrix_id={{ $matrix->id }}`;
+    console.log('Fetching from URL:', url);
+    
+    // Fetch activities data via AJAX
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            // Populate My Division tab
+            populateActivitiesTable('myDivisionActivities', data.my_division || []);
+            
+            // Populate Other Divisions tab
+            populateActivitiesTable('otherDivisionsActivities', data.other_divisions || []);
+        })
+        .catch(error => {
+            console.error('Error loading staff activities:', error);
+            document.getElementById('myDivisionActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger">Error loading data</td></tr>';
+            document.getElementById('otherDivisionsActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger">Error loading data</td></tr>';
+        });
+}
+
+function populateActivitiesTable(tableId, activities) {
+    const tbody = document.getElementById(tableId);
+    
+    if (activities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No activities found</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    activities.forEach(activity => {
+        html += `
+            <tr>
+                <td class="fw-semibold">${activity.activity_title || 'N/A'}</td>
+                <td>${activity.focal_person || 'N/A'}</td>
+                <td>${activity.division_name || 'N/A'}</td>
+                <td class="text-center">
+                    <span class="badge bg-primary rounded-pill">${activity.days || 0}</span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
 </script>
 @endpush
 @endsection

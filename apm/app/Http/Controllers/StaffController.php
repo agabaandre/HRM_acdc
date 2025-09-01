@@ -10,6 +10,7 @@ use App\Models\Activity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class StaffController extends Controller
 {
@@ -249,5 +250,59 @@ class StaffController extends Controller
         $staff->delete();
         return redirect()->route('staff.index')
             ->with('success', 'Staff record deleted successfully.');
+    }
+
+    /**
+     * Get activities for a specific staff member in a matrix
+     */
+    public function getActivities(Request $request, $staffId)
+    {
+        Log::info('getActivities called with staffId: ' . $staffId);
+        Log::info('Request data: ' . json_encode($request->all()));
+        
+        $matrixId = $request->query('matrix_id');
+        
+        if (!$matrixId) {
+            return response()->json(['error' => 'Matrix ID is required'], 400);
+        }
+
+        // Get the staff member
+        $staff = Staff::findOrFail($staffId);
+        
+        // Get activities where this staff is a participant
+        $activities = Activity::with(['matrix', 'focalPerson', 'division'])
+            ->where('matrix_id', $matrixId)
+            ->whereHas('participantSchedules', function($query) use ($staffId) {
+                $query->where('staff_id', $staffId);
+            })
+            ->get();
+
+        // Separate activities by division
+        $myDivisionActivities = [];
+        $otherDivisionsActivities = [];
+
+        foreach ($activities as $activity) {
+            $participantSchedule = $activity->participantSchedules->where('staff_id', $staffId)->first();
+            $days = $participantSchedule ? $participantSchedule->days : 0;
+            
+            $activityData = [
+                'activity_title' => $activity->activity_title,
+                'focal_person' => $activity->focalPerson ? $activity->focalPerson->fname . ' ' . $activity->focalPerson->lname : 'N/A',
+                'division_name' => $activity->division ? $activity->division->division_name : 'N/A',
+                'days' => $days
+            ];
+
+            // Check if activity is in staff's division
+            if ($activity->division_id == $staff->division_id) {
+                $myDivisionActivities[] = $activityData;
+            } else {
+                $otherDivisionsActivities[] = $activityData;
+            }
+        }
+
+        return response()->json([
+            'my_division' => $myDivisionActivities,
+            'other_divisions' => $otherDivisionsActivities
+        ]);
     }
 }
