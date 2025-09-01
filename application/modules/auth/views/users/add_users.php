@@ -9,7 +9,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h2 class="h3 mb-0 fw-bold text-dark">
-            <i class="fa fa-users me-2" style="color: rgba(52, 143, 65, 1);"></i>User Management
+            <i class="fa fa-users me-2" style="color:#15ca20;"></i>User Management
           </h2>
           <p class="text-muted mb-0">Manage system users, permissions, and access controls</p>
         </div>
@@ -17,7 +17,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
           <a href="<?php echo base_url()?>auth/acdc_users" class="btn btn-outline-success" target="_blank">
             <i class="fa fa-user-plus me-1"></i>Bulk Create Users
           </a>
-          <button class="btn text-white" id="exportExcel" style="background: rgba(52, 143, 65, 1); border-color: rgba(52, 143, 65, 1);">
+          <button class="btn text-white btn-sm btn-success" id="exportExcel">
             <i class="fa fa-file-csv me-1"></i>Export to CSV
           </button>
         </div>
@@ -31,7 +31,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
       <i class="fa fa-check-circle me-2"></i>
       <?php echo $this->session->flashdata("msg"); ?>
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    </div> 
   <?php endif; ?>
 
   <!-- Search and Filters -->
@@ -81,11 +81,11 @@ $usergroups = Modules::run("permissions/getUserGroups");
           </select>
         </div>
         <div class="col-md-2 d-flex align-items-end">
-          <div class="d-grid gap-2 w-100 d-flex flex-direction-row">
-            <button type="submit" class="btn text-white" style="background: rgba(52, 143, 65, 1); border-color: rgba(52, 143, 65, 1);">
+          <div class="d-grid gap-2  d-flex flex-direction-row">
+            <button type="submit" class="btn btn-sm btn-success">
               <i class="fa fa-search me-1"></i>Search
             </button>
-            <button type="button" class="btn btn-outline-secondary clear-filters">
+            <button type="button" class="btn btn-sm btn-outline-secondary clear-filters">
               <i class="fa fa-refresh me-1"></i>Clear
             </button>
           
@@ -108,8 +108,8 @@ $usergroups = Modules::run("permissions/getUserGroups");
           </div>
           <!-- Filtered Count -->
           <div class="bg-white bg-opacity-20 rounded-3 px-3 py-2 d-flex align-items-center gap-2" id="filteredCount" style="display: none; font-size: 0.85rem;">
-            <span class="fw-bold" id="filteredUsers" style="color: #228B22; font-size: 1rem;">0</span>
-            <span class="fw-medium" style="color: #228B22; font-size: 0.95rem;">Filtered</span>
+            <span class="fw-bold" id="filteredUsers" style="color: #15ca20; font-size: 1rem;">0</span>
+            <span class="fw-medium" style="color: #15ca20; font-size: 0.95rem;">Filtered</span>
           </div>
         </div>
         <table class="table table-hover mb-0" id="usersTable">
@@ -267,55 +267,6 @@ $usergroups = Modules::run("permissions/getUserGroups");
   line-height: 1.2;
 }
 
-/* Badges */
-.badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.badge-sm {
-  font-size: 0.7rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-}
-
-.badge.bg-success {
-  background: linear-gradient(135deg, #28a745 0%, #218838 100%) !important;
-}
-
-.badge.bg-danger {
-  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
-}
-
-.badge.bg-primary {
-  background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%) !important;
-}
-
-.badge.bg-warning {
-  background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%) !important;
-}
-
-.badge.bg-info {
-  background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%) !important;
-}
-
-.badge.bg-light {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-  color: #495057 !important;
-}
-
-.badge.bg-secondary {
-  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
-  color: white !important;
-}
-
-.badge.bg-dark {
-  background: linear-gradient(135deg, #343a40 0%, #212529 100%) !important;
-  color: white !important;
-}
 
 /* Ensure consistent badge sizing for role and status */
 .role-status-content .badge {
@@ -340,15 +291,7 @@ $usergroups = Modules::run("permissions/getUserGroups");
   word-break: break-word;
 }
 
-/* Action Buttons */
-.btn {
-  border-radius: 0.375rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  font-size: 0.75rem;
-  padding: 0.375rem 0.5rem;
-}
+
 
 /* Action Button Container */
 .actions-container {
@@ -360,79 +303,16 @@ $usergroups = Modules::run("permissions/getUserGroups");
   white-space: nowrap;
 }
 
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.btn-warning {
-  background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
-  border-color: #ffb300;
-  color: #212529;
-}
-
-.btn-warning:hover {
-  background: linear-gradient(135deg, #ffb300 0%, #ffa000 100%);
-  border-color: #ffa000;
-  color: #212529;
-}
-
-.btn-info {
-  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-  border-color: #138496;
-}
-
-.btn-info:hover {
-  background: linear-gradient(135deg, #138496 0%, #117a8b 100%);
-  border-color: #117a8b;
-}
-
-.btn-outline-danger {
-  border-color: #dc3545;
-  color: #dc3545;
-}
-
-.btn-outline-danger:hover {
-  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-  border-color: #c82333;
-}
-
-.btn-outline-success {
-  border-color: #28a745;
-  color: #28a745;
-}
-
-.btn-outline-success:hover {
-  background: linear-gradient(135deg, #28a745 0%, #218838 100%);
-  border-color: #218838;
-}
-
-.btn-outline-warning {
-  border-color: #ffc107;
-  color: #ffc107;
-}
-
-.btn-outline-warning:hover {
-  background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
-  border-color: #ffb300;
-  color: #212529;
-}
-
-/* Custom Button Hover States */
-.btn[style*="background: rgba(52, 143, 65, 1)"]:hover {
-  background-color: rgba(45, 120, 55, 1) !important;
-  border-color: rgba(45, 120, 55, 1) !important;
-}
 
 /* Pagination styling */
 .pagination .page-link {
-  color: rgba(52, 143, 65, 1);
+  color: #15ca20;
   border-color: #dee2e6;
 }
 
 .pagination .page-item.active .page-link {
-  background-color: rgba(52, 143, 65, 1);
-  border-color: rgba(52, 143, 65, 1);
+  background-color: #15ca20;
+  border-color: #15ca20;
   color: white;
 }
 
@@ -1451,7 +1331,7 @@ $(document).ready(function() {
 
 <!-- Dynamic User Details Modal (will be populated by JavaScript) -->
 <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-info text-white">
         <h5 class="modal-title" id="userDetailsModalLabel">
@@ -1593,7 +1473,7 @@ $(document).ready(function() {
 
 <!-- Block User Confirmation Modal -->
 <div class="modal fade" id="blockUserModal" tabindex="-1" aria-labelledby="blockUserModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered modal-md modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
         <h5 class="modal-title" id="blockUserModalLabel">
@@ -1617,7 +1497,7 @@ $(document).ready(function() {
 
 <!-- Unblock User Confirmation Modal -->
 <div class="modal fade" id="unblockUserModal" tabindex="-1" aria-labelledby="unblockUserModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered modal-md modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
         <h5 class="modal-title" id="unblockUserModalLabel">
@@ -1641,7 +1521,7 @@ $(document).ready(function() {
 
 <!-- Reset Password Confirmation Modal -->
 <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-centered modal-md modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-warning text-dark">
         <h5 class="modal-title" id="resetPasswordModalLabel">
