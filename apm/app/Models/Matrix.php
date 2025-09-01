@@ -214,16 +214,6 @@ class Matrix extends Model
         return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', 'App\Models\Matrix');
     }
 
-    public function getHasIntramuralAttribute(): bool
-    {
-        return $this->activities()->where('fund_type_id', 1)->exists();
-    }
-
-    public function getHasExtramuralAttribute(): bool
-    {
-        return $this->activities()->where('fund_type_id', 2)->exists();
-    }
-
     public function participant_schedules(){
         return $this->hasMany(ParticipantSchedule::class);
     }

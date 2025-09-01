@@ -4,8 +4,6 @@
 
 @section('header', isset($editing) && $editing ? 'Edit Matrix' : 'Create New Matrix')
 
-
-
 @section('content')
 @php
     $isAdmin = user_session('user_role') == 10;
@@ -21,8 +19,6 @@
     // Control for quarter/year selection
     // Set ALLOW_QUARTER_CONTROL in .env to true to allow all quarters/years
     $allowQuarterControl = env('ALLOW_QUARTER_CONTROL', false);
-   //dd(user_session());
- 
 @endphp
 
 <div class="card shadow-lg border-0 mb-5 bg-light">
@@ -68,8 +64,6 @@
                 </div>
             </div>
          
-      
-         
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <label for="year" class="form-label fw-semibold">
@@ -111,9 +105,10 @@
                     <select name="quarter" id="quarter" class="form-select @error('quarter') is-invalid @enderror shadow-sm" required @if(!$allowQuarterControl) readonly @endif>
                         @if($allowQuarterControl)
                             <option value="">Select Quarter</option>
-                            @foreach($quarters as $quarter)
-                                <option value="{{ $quarter }}" {{ old('quarter', isset($editing) && $editing ? $matrix->quarter : ($currentQuarter ?? 'Q1')) == $quarter ? 'selected' : '' }}>{{ $quarter }}</option>
-                            @endforeach
+                            <option value="Q1" {{ old('quarter', isset($editing) && $editing ? $matrix->quarter : ($currentQuarter ?? 'Q1')) == 'Q1' ? 'selected' : '' }}>Q1</option>
+                            <option value="Q2" {{ old('quarter', isset($editing) && $editing ? $matrix->quarter : ($currentQuarter ?? 'Q1')) == 'Q2' ? 'selected' : '' }}>Q2</option>
+                            <option value="Q3" {{ old('quarter', isset($editing) && $editing ? $matrix->quarter : ($currentQuarter ?? 'Q1')) == 'Q3' ? 'selected' : '' }}>Q3</option>
+                            <option value="Q4" {{ old('quarter', isset($editing) && $editing ? $matrix->quarter : ($currentQuarter ?? 'Q1')) == 'Q4' ? 'selected' : '' }}>Q4</option>
                         @else
                             <option value="{{ isset($editing) && $editing ? $matrix->quarter : ($currentQuarter ?? 'Q1') }}" selected>{{ isset($editing) && $editing ? $matrix->quarter : ($currentQuarter ?? 'Q1') }} ({{ isset($editing) && $editing ? 'Selected' : 'Current' }} Quarter)</option>
                             @if(isset($nextQuarter) && $nextQuarter)
@@ -133,7 +128,6 @@
                 </div>
             </div>
         
-         
             <!-- Quick Actions -->
             @if(isset($nextAvailableQuarter) && $nextAvailableQuarter && !$allowQuarterControl)
             <div class="row mb-4">
@@ -234,6 +228,7 @@
         const userDivisionId = {{ $userDivisionId ?? 0 }};
         const isEditing = {{ isset($editing) && $editing ? 'true' : 'false' }};
         const currentMatrixId = {{ isset($editing) && $editing ? $matrix->id : 'null' }};
+        const allowQuarterControl = {{ $allowQuarterControl ? 'true' : 'false' }};
         
         // Function to check if matrix already exists (excluding current matrix when editing)
         function checkMatrixExists(year, quarter) {
@@ -282,8 +277,8 @@
             const year = $('#year').val();
             const quarter = $('#quarter').val();
             
-            // Auto-update year when quarter changes (especially Q4 to Q1)
-            if (quarter && !year) {
+            // Only auto-update year if quarter is changed and quarter control is not allowed
+            if (!allowQuarterControl && quarter && !year) {
                 if (quarter === 'Q1' && '{{ $currentQuarter }}' === 'Q4') {
                     // If selecting Q1 and current quarter is Q4, set year to next year
                     $('#year').val('{{ $nextYear }}').trigger('change');

@@ -621,7 +621,8 @@
                 </div>
 
                 <!-- Enhanced Approval Actions -->
-                @if(can_take_action_generic($nonTravel))
+
+                @if(can_take_action_generic($nonTravel)|| is_with_creator_generic($nonTravel))
                     <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
@@ -650,18 +651,21 @@
                                     </div>
                                     <div class="col-md-4">
                                         <div class="d-grid gap-2">
+                                          @if(!is_with_creator_generic($nonTravel))
                                             <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-check"></i>
                                                 Approve
                                             </button>
+                                            @endif
                                             <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-undo"></i>
                                                 Return
                                             </button>
-                                            <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                            {{-- <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-x"></i>
                                                 Cancel
-                                            </button>
+                                            </button> --}}
+                                            
                                         </div>
                                     </div>
                                 </div>
@@ -815,13 +819,10 @@
                 @include('partials.approval-trail', ['resource' => $nonTravel])
 
                 <!-- Submit for Approval -->
-                @if($nonTravel->overall_status === 'draft' && $nonTravel->staff_id == user_session('staff_id'))
+                @if(in_array($nonTravel->overall_status,['draft','returned']) && is_with_creator_generic($nonTravel))
                     <div class="card sidebar-card border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
-                                <i class="bx bx-send"></i>
-                                Submit for Approval
-                            </h6>
+                            
                         </div>
                         <div class="card-body">
                             <p class="text-muted mb-3">Ready to submit this non-travel memo for approval?</p>
