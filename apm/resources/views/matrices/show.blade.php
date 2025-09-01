@@ -650,7 +650,7 @@ function loadStaffActivities(staffId) {
     document.getElementById('myDivisionActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3"><i class="bx bx-loader-alt bx-spin me-2"></i>Loading...</td></tr>';
     document.getElementById('otherDivisionsActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3"><i class="bx bx-loader-alt bx-spin me-2"></i>Loading...</td></tr>';
     
-    const url = `${window.location.origin}/staff/${staffId}/activities?matrix_id={{ $matrix->id }}`;
+    const url = `${window.location.origin}/staff/apm/staff/${staffId}/activities?matrix_id={{ $matrix->id }}`;
     console.log('Fetching from URL:', url);
     
     // Fetch activities data via AJAX

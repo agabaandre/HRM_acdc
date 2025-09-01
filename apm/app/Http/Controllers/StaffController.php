@@ -270,30 +270,35 @@ class StaffController extends Controller
         $staff = Staff::findOrFail($staffId);
         
         // Get activities where this staff is a participant
-        $activities = Activity::with(['matrix', 'focalPerson', 'division'])
+        $activities = Activity::with(['matrix', 'focalPerson', 'matrix.division'])
             ->where('matrix_id', $matrixId)
             ->whereHas('participantSchedules', function($query) use ($staffId) {
-                $query->where('staff_id', $staffId);
+                $query->where('participant_id', $staffId);
             })
             ->get();
+
+        Log::info('Activities found: ' . $activities->count());
+        Log::info('First activity division: ' . ($activities->first() ? json_encode($activities->first()->division) : 'No activities'));
 
         // Separate activities by division
         $myDivisionActivities = [];
         $otherDivisionsActivities = [];
 
         foreach ($activities as $activity) {
-            $participantSchedule = $activity->participantSchedules->where('staff_id', $staffId)->first();
+            $participantSchedule = $activity->participantSchedules->where('participant_id', $staffId)->first();
             $days = $participantSchedule ? $participantSchedule->days : 0;
             
             $activityData = [
                 'activity_title' => $activity->activity_title,
                 'focal_person' => $activity->focalPerson ? $activity->focalPerson->fname . ' ' . $activity->focalPerson->lname : 'N/A',
-                'division_name' => $activity->division ? $activity->division->division_name : 'N/A',
+                'division_name' => $activity->matrix && $activity->matrix->division ? $activity->matrix->division->division_name : 'N/A',
                 'days' => $days
             ];
 
+            Log::info('Activity data: ' . json_encode($activityData));
+
             // Check if activity is in staff's division
-            if ($activity->division_id == $staff->division_id) {
+            if ($activity->matrix && $activity->matrix->division_id == $staff->division_id) {
                 $myDivisionActivities[] = $activityData;
             } else {
                 $otherDivisionsActivities[] = $activityData;
