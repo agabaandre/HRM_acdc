@@ -16,12 +16,50 @@
     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
+
     
     @if(still_with_creator($matrix,$activity))
         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-sm btn-warning">
             <i class="bx bx-edit"></i> Edit Activity
         </a>
     @endif
+
+    
+</div>
+<div class="col-md-12 d-flex justify-content-end">
+  {{-- Activity Operations Buttons --}}
+            @if(allow_activity_operations())
+            <div class="col-md-12 mb-3">
+                <div class="card border-primary">
+                
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-2 d-flex justify-content-end gap-2">
+                                @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural')
+                                    <a href="{{ route('request-arf.create') }}?activity_id={{ $activity->id }}" 
+                                       class="btn btn-success w-20">
+                                        <i class="bx bx-file-plus me-2"></i>Create ARF Request
+                                    </a>
+                                @else
+                                    <a href="{{ route('service-requests.create') }}?activity_id={{ $activity->id }}" 
+                                       class="btn btn-info w-20">
+                                        <i class="bx bx-wrench me-2"></i>Request for Services
+                                    </a>
+       
+                                @endif
+                            
+                                <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
+                                   class="btn btn-secondary w-20">
+                                    <i class="bx bx-printer me-2"></i>Print Activity
+                                </a>
+                          
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+    
 </div>
 
     <div class="col-md-12">
@@ -182,10 +220,10 @@
                 <h5 class="mb-0">Budget Details</h5>
             </div>
             <div class="card-body">
-            
+        
              @foreach($fundCodes ?? [] as $fundCode )
              
-                 <h6  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} </h6>
+                 <h6  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }}) </h6>
 
                 <div class="table-responsive">
                     <table class="table table-bordered">
@@ -245,7 +283,7 @@
 
             {{-- Debug Information (Temporary) --}}
             @if(allow_activity_operations())
-            <div class="col-md-12 mb-3">
+            {{-- <div class="col-md-12 mb-3">
                 <div class="card border-warning">
                     <div class="card-header bg-warning text-dark">
                         <h6 class="mb-0"><i class="bx bx-bug me-2"></i>Debug Info (Remove after testing)</h6>
@@ -287,45 +325,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> --}}
             @endif
 
-            {{-- Activity Operations Buttons --}}
-            @if(allow_activity_operations())
-            <div class="col-md-12 mb-3">
-                <div class="card border-primary">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0"><i class="bx bx-cog me-2"></i>Activity Operations (OVERRIDE MODE)</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-2">
-                                @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural')
-                                    <a href="{{ route('request-arf.create') }}?activity_id={{ $activity->id }}" 
-                                       class="btn btn-success w-100">
-                                        <i class="bx bx-file-plus me-2"></i>Create ARF Request
-                                    </a>
-                                    <small class="text-muted d-block mt-1">Extramural activity - Create ARF for external funding</small>
-                                @else
-                                    <a href="{{ route('service-requests.create') }}?activity_id={{ $activity->id }}" 
-                                       class="btn btn-info w-100">
-                                        <i class="bx bx-wrench me-2"></i>Request for Services
-                                    </a>
-                                    <small class="text-muted d-block mt-1">Intramural activity - Request internal services</small>
-                                @endif
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
-                                   class="btn btn-secondary w-100">
-                                    <i class="bx bx-printer me-2"></i>Print Activity
-                                </a>
-                                <small class="text-muted d-block mt-1">Print activity details and budget</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endif
+          
      
 
             </div>
