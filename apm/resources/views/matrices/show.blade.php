@@ -191,7 +191,7 @@
 
                                 <td class="px-3 py-3 text-center">
 
-                                {{ dd($can_approve_activity($activity)) }}
+                                @php //dd(can_approve_activity($activity)) @endphp
                                     @if(can_approve_activity($activity))
                                     <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }} rounded-pill">
                                         {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : 'Pending' ) }}
