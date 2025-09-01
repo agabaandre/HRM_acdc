@@ -8,6 +8,10 @@ class Auth_mdl extends CI_Model
 		parent::__construct();
 		$this->table = "user";
 		$this->default_password = $this->argonhash->make(setting()->default_password);
+		
+		// Optional: Temporarily disable ONLY_FULL_GROUP_BY mode if needed
+		// Uncomment the line below if you want to disable it temporarily
+		// $this->db->query("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
 	}
 	public function login($postdata)
 	{
@@ -37,7 +41,14 @@ class Auth_mdl extends CI_Model
 
 	public function getAll($start, $limit, $key)
 	{
-		$this->db->select('staff.*, user.*, user_groups.*'); // Select required columns
+		// Use explicit column selection to avoid GROUP BY issues
+		$this->db->select('
+			staff.staff_id, staff.fname, staff.lname, staff.title, staff.oname, staff.work_email, 
+			staff.tel_1, staff.tel_2, staff.private_email, staff.whatsapp, staff.photo, staff.signature,
+			staff.date_of_birth, staff.nationality, staff.SAPNO, staff.duty_station_name,
+			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at, user.updated_at,
+			user_groups.id as group_id, user_groups.group_name
+		');
 		$this->db->from('staff'); // Set the main table
 	
 		// Add search conditions
@@ -49,15 +60,12 @@ class Auth_mdl extends CI_Model
 			$this->db->group_end(); // End the group
 		}
 	
-		// Join the staff table with a unique alias (staff1)
+		// Join the staff table with user table
 		$this->db->join('user', 'user.auth_staff_id = staff.staff_id');
 	
 		// Join the user_groups table
 		$this->db->join('user_groups', 'user_groups.id = user.role');
 		
-		// Group by user to prevent duplicates
-		$this->db->group_by('user.user_id');
-	
 		// Add limit and offset
 		$this->db->limit( $start,$limit);
 	
@@ -68,8 +76,16 @@ class Auth_mdl extends CI_Model
 	
 	public function getAllFiltered($filters = [], $limit = false, $start = false)
 	{
-		$this->db->select('staff.*, user.*, user_groups.*, divisions.division_name, jobs.job_name'); // Select required columns
-		$this->db->from('staff'); // Set the main table
+		// Use a subquery approach to avoid GROUP BY issues with ONLY_FULL_GROUP_BY mode
+		$this->db->select('
+			staff.staff_id, staff.fname, staff.lname, staff.title, staff.oname, staff.work_email, 
+			staff.tel_1, staff.tel_2, staff.private_email, staff.whatsapp, staff.photo, staff.signature,
+			staff.date_of_birth, staff.nationality, staff.SAPNO, staff.duty_station_name,
+			user.user_id, user.auth_staff_id, user.name, user.role, user.status, user.created_at, user.updated_at,
+			user_groups.id as group_id, user_groups.group_name,
+			divisions.division_name, jobs.job_name
+		');
+		$this->db->from('staff');
 	
 		// Add search conditions
 		if (!empty($filters['search'])) {
@@ -98,18 +114,26 @@ class Auth_mdl extends CI_Model
 		// Join the user_groups table
 		$this->db->join('user_groups', 'user_groups.id = user.role');
 		
-		// Join staff_contracts table first (needed for division and job info)
-		// Use subquery to get the latest/active contract to prevent duplicates
-		$this->db->join("(SELECT staff_id, division_id, job_id FROM staff_contracts WHERE status_id IN (1,2,7) ORDER BY staff_contract_id DESC) as latest_contract", 'latest_contract.staff_id = staff.staff_id', 'left');
+		// Use a subquery to get the latest contract for each staff member
+		$latest_contract_subquery = "
+			SELECT sc1.staff_id, sc1.division_id, sc1.job_id
+			FROM staff_contracts sc1
+			INNER JOIN (
+				SELECT staff_id, MAX(staff_contract_id) as max_contract_id
+				FROM staff_contracts 
+				WHERE status_id IN (1,2,7)
+				GROUP BY staff_id
+			) sc2 ON sc1.staff_contract_id = sc2.max_contract_id
+		";
+		
+		// Join with the latest contract subquery
+		$this->db->join("($latest_contract_subquery) as latest_contract", 'latest_contract.staff_id = staff.staff_id', 'left');
 		
 		// Join divisions table through latest contract
 		$this->db->join('divisions', 'divisions.division_id = latest_contract.division_id', 'left');
 		
 		// Join jobs table through latest contract
 		$this->db->join('jobs', 'jobs.job_id = latest_contract.job_id', 'left');
-		
-		// Group by user to prevent duplicates
-		$this->db->group_by('user.user_id');
 		
 		// Order by name
 		$this->db->order_by('staff.fname', 'ASC');
@@ -195,9 +219,20 @@ class Auth_mdl extends CI_Model
 		// Join the user_groups table
 		$this->db->join('user_groups', 'user_groups.id = user.role');
 		
-		// Join staff_contracts table first (needed for division and job info)
-		// Use subquery to get the latest/active contract to prevent duplicates
-		$this->db->join("(SELECT staff_id, division_id, job_id FROM staff_contracts WHERE status_id IN (1,2,7) ORDER BY staff_contract_id DESC) as latest_contract", 'latest_contract.staff_id = staff.staff_id', 'left');
+		// Use a subquery to get the latest contract for each staff member
+		$latest_contract_subquery = "
+			SELECT sc1.staff_id, sc1.division_id, sc1.job_id
+			FROM staff_contracts sc1
+			INNER JOIN (
+				SELECT staff_id, MAX(staff_contract_id) as max_contract_id
+				FROM staff_contracts 
+				WHERE status_id IN (1,2,7)
+				GROUP BY staff_id
+			) sc2 ON sc1.staff_contract_id = sc2.max_contract_id
+		";
+		
+		// Join with the latest contract subquery
+		$this->db->join("($latest_contract_subquery) as latest_contract", 'latest_contract.staff_id = staff.staff_id', 'left');
 		
 		// Join divisions table through latest contract
 		$this->db->join('divisions', 'divisions.division_id = latest_contract.division_id', 'left');
