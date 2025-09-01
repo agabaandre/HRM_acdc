@@ -325,6 +325,28 @@ if (!function_exists('isDivisionApprover')) {
     }
 }
 
+if (!function_exists('allow_print_activity')) {
+    /**
+     * Check if the current user is assigned as an approver for division-specific workflow definitions.
+     *
+     * @param int|null $staffId Optional staff ID, defaults to current user's staff ID
+     * @return bool
+     */
+    function allow_print_activity(?int $staffId = null): bool
+    {
+        $userStaffId = $staffId ?? user_session('staff_id');
+        
+        if (!$userStaffId) {
+            return false;
+        }
+        
+        return \App\Models\Approver::where('staff_id', $userStaffId)
+            ->whereHas('workflowDefinition', function($q) {
+                $q->where('is_division_specific', 1);
+            })
+            ->exists();
+    }
+}
 
 function getFullSql($query) {
     $sql = $query->toSql();

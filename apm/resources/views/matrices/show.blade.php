@@ -237,9 +237,9 @@
                         <button type="button" class="btn btn-success btn-lg shadow-sm" id="approveSelectedBtn" data-bs-toggle="modal" data-bs-target="#approveSelectedModal">
                             <i class="bx bx-check me-2"></i> Pass Selected Activities
                         </button>
-                        <button type="button" class="btn btn-danger btn-lg shadow-sm" id="rejectSelectedBtn" data-bs-toggle="modal" data-bs-target="#rejectSelectedModal">
-                            <i class="bx bx-x me-2"></i> Reject Activities
-                        </button>
+                        {{-- <button type="button" class="btn btn-danger btn-lg shadow-sm" id="rejectSelectedBtn" data-bs-toggle="modal" data-bs-target="#rejectSelectedModal">
+                            <i class="bx bx-x me-2"></i> N
+                        </button> --}}
                     </div>
                 </div>
             </div>
