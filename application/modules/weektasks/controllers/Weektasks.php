@@ -539,6 +539,8 @@ public function get_weekly_statistics() {
             'total' => count($tasks),
             'completed' => 0,
             'pending' => 0,
+            'carried_forward' => 0,
+            'cancelled' => 0,
             'overdue' => 0
         ];
 
@@ -557,10 +559,14 @@ public function get_weekly_statistics() {
                     $stats['completed']++;
                     break;
                 case 3: // Carried Forward
-                    $stats['pending']++;
+                    $stats['carried_forward']++;
+                    // Check if overdue
+                    if ($task->end_date < $today) {
+                        $stats['overdue']++;
+                    }
                     break;
                 case 4: // Cancelled
-                    // Don't count cancelled tasks in stats
+                    $stats['cancelled']++;
                     break;
             }
         }
