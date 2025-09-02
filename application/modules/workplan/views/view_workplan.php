@@ -10,7 +10,7 @@
   .filter-card .card-header {
     background: rgba(52, 143, 65, 1);
     color: white;
-    border-radius: 15px 15px 0 0;
+    border-radius: 2px 2px 0 0;
     border: none;
     padding: 1rem 1.5rem;
   }
@@ -34,7 +34,7 @@
   }
 
   .btn-modern {
-    border-radius: 25px;
+    border-radius: 2px;
     padding: 0.5rem 1.5rem;
     font-weight: 500;
     transition: all 0.3s ease;
@@ -48,7 +48,7 @@
   /* Statistics Cards Styling */
   .stat-item {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 15px;
+    border-radius: 2px;
     padding: 1.5rem;
     text-align: center;
     transition: all 0.3s ease;
@@ -322,7 +322,7 @@
                             <option value="<?= $div->division_id ?>"><?= $div->division_name ?></option>
                         <?php endforeach; ?>
                     </select>
-                </div>
+            </div>
                 <?php endif; ?>
 
                 <!-- Page Size Selector -->
@@ -644,9 +644,9 @@
                         <div class="col-12">
                             <div class="card">
                                 <div class="card-header">
-                                    <h6 class="mb-0">
+                                    <h6 class="mb-0 text-white">
                                         <i class="fa fa-trophy me-2"></i>Unit Performance Breakdown
-                                        <small class="text-muted ms-2">(Current Division: <?= $this->session->userdata('user')->division_name ?? 'N/A' ?>)</small>
+                                        <small class="text-muted ms-2 text-white">(Current Division: <?= $this->session->userdata('user')->division_name ?? 'N/A' ?>)</small>
                                     </h6>
                                 </div>
                                 <div class="card-body">
@@ -764,26 +764,68 @@ function loadStatistics() {
         data: data,
         dataType: "json",
         success: function(response) {
-            if (response.success) {
-                updateStatistics(response.data);
-            } else {
-                console.error('Statistics load failed:', response.message);
+            try {
+                if (response && response.success && response.data) {
+                    updateStatistics(response.data);
+                } else {
+                    console.error('Statistics load failed:', response ? response.message : 'No response data');
+                    // Set default values for statistics
+                    updateStatistics({
+                        total: 0,
+                        completed: 0,
+                        in_progress: 0,
+                        overdue: 0,
+                        execution_rate: 0,
+                        target_achievement: 0
+                    });
+                }
+            } catch (error) {
+                console.error('Error processing statistics data:', error);
+                // Set default values for statistics
+                updateStatistics({
+                    total: 0,
+                    completed: 0,
+                    in_progress: 0,
+                    overdue: 0,
+                    execution_rate: 0,
+                    target_achievement: 0
+                });
             }
         },
         error: function(xhr, status, error) {
             console.error('AJAX error loading statistics:', error);
+            // Set default values for statistics on error
+            updateStatistics({
+                total: 0,
+                completed: 0,
+                in_progress: 0,
+                overdue: 0,
+                execution_rate: 0,
+                target_achievement: 0
+            });
         }
     });
 }
 
 function updateStatistics(stats) {
+    console.log('Statistics data received:', stats);
+    console.log('Execution rate:', stats.execution_rate, 'Type:', typeof stats.execution_rate);
+    console.log('Target achievement:', stats.target_achievement, 'Type:', typeof stats.target_achievement);
+    
+    // Ensure values are numbers
+    const executionRate = parseFloat(stats.execution_rate) || 0;
+    const targetAchievement = parseFloat(stats.target_achievement) || 0;
+    
+    console.log('Processed execution rate:', executionRate);
+    console.log('Processed target achievement:', targetAchievement);
+    
     // Animate number counting
     animateNumber('#totalActivities', stats.total || 0);
     animateNumber('#completedActivities', stats.completed || 0);
     animateNumber('#inProgressActivities', stats.in_progress || 0);
     animateNumber('#overdueActivities', stats.overdue || 0);
-    animateNumber('#executionRate', (stats.execution_rate || 0) + '%');
-    animateNumber('#targetAchievement', (stats.target_achievement || 0) + '%');
+    animateNumber('#executionRate', executionRate + '%');
+    animateNumber('#targetAchievement', targetAchievement + '%');
     
     // Update progress bars
     const total = stats.total || 0;
@@ -791,11 +833,11 @@ function updateStatistics(stats) {
     updateProgressBar('#completedProgress', stats.completed || 0, total);
     updateProgressBar('#inProgressProgress', stats.in_progress || 0, total);
     updateProgressBar('#overdueProgress', stats.overdue || 0, total);
-    updateProgressBar('#executionProgress', stats.execution_rate || 0, 100);
-    updateProgressBar('#targetProgress', stats.target_achievement || 0, 100);
+    updateProgressBar('#executionProgress', executionRate, 100);
+    updateProgressBar('#targetProgress', targetAchievement, 100);
     
     // Add sparkle effect for high execution rates
-    if ((stats.execution_rate || 0) > 80) {
+    if (executionRate > 80) {
         $('.stat-item.execution-rate').addClass('sparkle');
         setTimeout(() => {
             $('.stat-item.execution-rate').removeClass('sparkle');
@@ -976,14 +1018,20 @@ function loadExecutionData() {
         data: data,
         dataType: "json",
         success: function(response) {
-            if (response.success) {
-                executionData = response.data;
-                executionCurrentPage = 1; // Reset to first page when loading new data
-                executionSearchTerm = ''; // Clear search when loading new data
-                $('#executionSearch').val(''); // Clear search input
-                renderExecutionTable(response.data);
-            } else {
-                console.error('Execution data load failed:', response.message);
+            try {
+                if (response && response.success && response.data) {
+                    executionData = response.data;
+                    executionCurrentPage = 1; // Reset to first page when loading new data
+                    executionSearchTerm = ''; // Clear search when loading new data
+                    $('#executionSearch').val(''); // Clear search input
+                    renderExecutionTable(response.data);
+                } else {
+                    console.error('Execution data load failed:', response ? response.message : 'No response data');
+                    $('#executionTableBody').html('<tr><td colspan="7" class="text-center text-muted">Error loading execution data.</td></tr>');
+                }
+            } catch (error) {
+                console.error('Error processing execution data:', error);
+                $('#executionTableBody').html('<tr><td colspan="7" class="text-center text-muted">Error processing execution data.</td></tr>');
             }
         },
         error: function(xhr, status, error) {
@@ -993,6 +1041,21 @@ function loadExecutionData() {
 }
 
 function renderExecutionTable(data) {
+    // Ensure data is valid
+    if (!data || !Array.isArray(data)) {
+        console.error('Invalid data received for execution table:', data);
+        $('#executionTableBody').html('<tr><td colspan="7" class="text-center text-muted">No execution data found.</td></tr>');
+        return;
+    }
+    
+    // Debug: Log first item to see structure
+    if (data.length > 0) {
+        console.log('First execution item structure:', data[0]);
+        console.log('Created value:', data[0].created, 'Type:', typeof data[0].created);
+        console.log('Completed value:', data[0].completed, 'Type:', typeof data[0].completed);
+        console.log('Target value:', data[0].cumulative_target, 'Type:', typeof data[0].cumulative_target);
+    }
+    
     // Store all data for filtering and pagination
     executionData = data;
     executionFilteredData = data;
@@ -1000,7 +1063,7 @@ function renderExecutionTable(data) {
     // Apply search filter if there's a search term
     if (executionSearchTerm) {
         executionFilteredData = data.filter(item => 
-            item.activity_name.toLowerCase().includes(executionSearchTerm.toLowerCase())
+            item.activity_name && item.activity_name.toLowerCase().includes(executionSearchTerm.toLowerCase())
         );
     }
     
@@ -1122,6 +1185,7 @@ function changeExecutionPage(page) {
 }
 
 function updateExecutionSummary(data) {
+    console.log('Execution summary data:', data);
     if (data.length === 0) {
         $('#executionSummary').hide();
         return;
@@ -1140,19 +1204,20 @@ function updateExecutionSummary(data) {
     
     const overallScore = totalCreated > 0 ? Math.round((totalCompleted / totalCreated) * 100) : 0;
     
-    $('#totalExecutionActivities').text(totalActivities);
-    $('#totalExecutionTarget').text(totalTarget);
-    $('#totalExecutionCompleted').text(totalCompleted);
-    $('#overallExecutionScore').text(overallScore + '%');
+    $('#totalExecutionActivities').text(totalActivities || 0);
+    $('#totalExecutionTarget').text(totalTarget || 0);
+    $('#totalExecutionCompleted').text(totalCompleted || 0);
+    $('#overallExecutionScore').text((overallScore || 0) + '%');
     
     // Color code the overall score
     const scoreElement = $('#overallExecutionScore');
     scoreElement.removeClass('text-warning text-success text-danger text-info');
-    if (overallScore >= 80) {
+    const score = overallScore || 0;
+    if (score >= 80) {
         scoreElement.addClass('text-success');
-    } else if (overallScore >= 60) {
+    } else if (score >= 60) {
         scoreElement.addClass('text-info');
-    } else if (overallScore >= 40) {
+    } else if (score >= 40) {
         scoreElement.addClass('text-warning');
     } else {
         scoreElement.addClass('text-danger');
@@ -1178,10 +1243,16 @@ function loadUnitScores() {
         data: data,
         dataType: "json",
         success: function(response) {
-            if (response.success) {
-                renderUnitScoresTable(response.data);
-            } else {
-                console.error('Unit scores load failed:', response.message);
+            try {
+                if (response && response.success && response.data) {
+                    renderUnitScoresTable(response.data);
+                } else {
+                    console.error('Unit scores load failed:', response ? response.message : 'No response data');
+                    $('#unitScoresTableBody').html('<tr><td colspan="11" class="text-center text-muted">Error loading unit scores.</td></tr>');
+                }
+            } catch (error) {
+                console.error('Error processing unit scores data:', error);
+                $('#unitScoresTableBody').html('<tr><td colspan="11" class="text-center text-muted">Error processing unit scores data.</td></tr>');
             }
         },
         error: function(xhr, status, error) {
@@ -1191,13 +1262,30 @@ function loadUnitScores() {
 }
 
 function renderUnitScoresTable(data) {
+    console.log('Unit scores data received:', data);
+    
+    // Ensure data is valid
+    if (!data || !Array.isArray(data)) {
+        console.error('Invalid data received for unit scores table:', data);
+        $('#unitScoresTableBody').html('<tr><td colspan="11" class="text-center text-muted">No unit performance data found.</td></tr>');
+        return;
+    }
+    
+    // Debug: Log first item to see structure
+    if (data.length > 0) {
+        console.log('First unit score item structure:', data[0]);
+        console.log('Execution rate:', data[0].execution_rate, 'Type:', typeof data[0].execution_rate);
+        console.log('Target achievement:', data[0].target_achievement, 'Type:', typeof data[0].target_achievement);
+        console.log('Overall score:', data[0].overall_score, 'Type:', typeof data[0].overall_score);
+    }
+    
     let html = '';
     if (data.length === 0) {
         html = `<tr><td colspan="11" class="text-center text-muted">No unit performance data found.</td></tr>`;
     } else {
         data.forEach((unit, index) => {
             const rank = index + 1;
-            const performanceBadge = getPerformanceBadge(unit.overall_score);
+            const performanceBadge = getPerformanceBadge(unit.overall_score || 0);
             const rankIcon = getRankIcon(rank);
             
             html += `
@@ -1215,31 +1303,31 @@ function renderUnitScoresTable(data) {
                     <td>${unit.sub_activities_completed}</td>
                     <td>
                         <div class="progress" style="height: 20px;">
-                            <div class="progress-bar ${getProgressBarClass(unit.execution_rate)}" 
+                            <div class="progress-bar ${getProgressBarClass(unit.execution_rate || 0)}" 
                                  role="progressbar" 
-                                 style="width: ${Math.min(unit.execution_rate, 100)}%"
-                                 aria-valuenow="${unit.execution_rate}" 
+                                 style="width: ${Math.min(unit.execution_rate || 0, 100)}%"
+                                 aria-valuenow="${unit.execution_rate || 0}" 
                                  aria-valuemin="0" 
                                  aria-valuemax="100">
-                                ${unit.execution_rate}%
+                                ${unit.execution_rate || 0}%
                             </div>
                         </div>
                     </td>
                     <td>
                         <div class="progress" style="height: 20px;">
-                            <div class="progress-bar ${getProgressBarClass(unit.target_achievement)}" 
+                            <div class="progress-bar ${getProgressBarClass(unit.target_achievement || 0)}" 
                                  role="progressbar" 
-                                 style="width: ${Math.min(unit.target_achievement, 100)}%"
-                                 aria-valuenow="${unit.target_achievement}" 
+                                 style="width: ${Math.min(unit.target_achievement || 0, 100)}%"
+                                 aria-valuenow="${unit.target_achievement || 0}" 
                                  aria-valuemin="0" 
                                  aria-valuemax="100">
-                                ${unit.target_achievement}%
+                                ${unit.target_achievement || 0}%
                             </div>
                         </div>
                     </td>
                     <td>
-                        <span class="badge ${getScoreBadgeClass(unit.overall_score)} fs-6">
-                            ${unit.overall_score}%
+                        <span class="badge ${getScoreBadgeClass(unit.overall_score || 0)} fs-6">
+                            ${unit.overall_score || 0}%
                         </span>
                     </td>
                     <td>${performanceBadge}</td>
@@ -1402,6 +1490,12 @@ $('#pageSizeSelect').on('change', function() {
 });
 
 $(document).ready(function() {
+    // Ensure DOM elements exist before proceeding
+    if ($('#taskTableBody').length === 0) {
+        console.error('Required DOM elements not found');
+        return;
+    }
+    
     fetchTasks();
 
     <?php if ($this->session->flashdata('msg')): ?>

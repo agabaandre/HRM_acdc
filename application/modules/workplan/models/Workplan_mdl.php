@@ -70,7 +70,7 @@ class Workplan_mdl extends CI_Model {
 
         // Get sub-activities created (from work_planner_tasks)
         $sub_activities_created = $this->db
-            ->select('COUNT(wpt.activity_id) as created')
+            ->select('COALESCE(COUNT(wpt.activity_id), 0) as created')
             ->from('work_planner_tasks wpt')
             ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
             ->where('wt.division_id', $division_id)
@@ -80,7 +80,7 @@ class Workplan_mdl extends CI_Model {
 
         // Get completed sub-activities (from weekly tasks with status = 2)
         $sub_activities_completed = $this->db
-            ->select('COUNT(DISTINCT wpt.activity_id) as completed')
+            ->select('COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as completed')
             ->from('work_planner_tasks wpt')
             ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
             ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id')
@@ -92,7 +92,7 @@ class Workplan_mdl extends CI_Model {
 
         // Get in-progress sub-activities (from weekly tasks with status = 1)
         $sub_activities_in_progress = $this->db
-            ->select('COUNT(DISTINCT wpt.activity_id) as in_progress')
+            ->select('COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as in_progress')
             ->from('work_planner_tasks wpt')
             ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
             ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id')
@@ -104,7 +104,7 @@ class Workplan_mdl extends CI_Model {
 
         // Get overdue activities (end date < today and status != 2)
         $overdue = $this->db
-            ->select('COUNT(DISTINCT wpt.activity_id) as overdue')
+            ->select('COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as overdue')
             ->from('work_planner_tasks wpt')
             ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
             ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id')
@@ -115,9 +115,15 @@ class Workplan_mdl extends CI_Model {
             ->get()
             ->row()->overdue ?? 0;
 
+        // Ensure proper data types
+        $sub_activities_created = (int)$sub_activities_created;
+        $sub_activities_completed = (int)$sub_activities_completed;
+        $sub_activities_in_progress = (int)$sub_activities_in_progress;
+        $overdue = (int)$overdue;
+
         // Calculate execution rate
         $execution_rate = $sub_activities_created > 0 ? 
-            round(($sub_activities_completed / $sub_activities_created) * 100, 1) : 0;
+            round(($sub_activities_completed / $sub_activities_created) * 100, 1) : 0.0;
 
         // Calculate target achievement (based on cumulative targets)
         $total_target = $this->db
@@ -128,11 +134,15 @@ class Workplan_mdl extends CI_Model {
             ->get()
             ->row()->total_target ?? 0;
 
+        $total_target = (int)$total_target;
         $target_achievement = $total_target > 0 ? 
-            round(($sub_activities_completed / $total_target) * 100, 1) : 0;
+            round(($sub_activities_completed / $total_target) * 100, 1) : 0.0;
+
+        // Debug: Log the statistics values
+        log_message('debug', 'Statistics calculation: created=' . $sub_activities_created . ', completed=' . $sub_activities_completed . ', execution_rate=' . $execution_rate . ', target_achievement=' . $target_achievement);
 
         return [
-            'total' => $total,
+            'total' => (int)$total,
             'completed' => $sub_activities_completed,
             'in_progress' => $sub_activities_in_progress,
             'overdue' => $overdue,
@@ -148,8 +158,8 @@ class Workplan_mdl extends CI_Model {
                 wt.id,
                 wt.activity_name,
                 COALESCE(wt.cumulative_target, 0) as cumulative_target,
-                COUNT(DISTINCT wpt.activity_id) as created,
-                COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END) as completed
+                COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as created,
+                COALESCE(COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END), 0) as completed
             ')
             ->from('workplan_tasks wt')
             ->join('work_planner_tasks wpt', 'wpt.workplan_id = wt.id', 'left')
@@ -164,6 +174,13 @@ class Workplan_mdl extends CI_Model {
         // Debug: Log the query and result
         log_message('debug', 'Execution tracking query: ' . $this->db->last_query());
         log_message('debug', 'Execution tracking result count: ' . count($result));
+        
+        // Process results to ensure proper data types
+        foreach ($result as $row) {
+            $row->created = (int)$row->created;
+            $row->completed = (int)$row->completed;
+            $row->cumulative_target = (int)$row->cumulative_target;
+        }
         
         return $result;
     }
@@ -194,8 +211,8 @@ class Workplan_mdl extends CI_Model {
                 ->select('
                     wt.activity_name,
                     COALESCE(wt.cumulative_target, 0) as cumulative_target,
-                    COUNT(DISTINCT wpt.activity_id) as sub_activities_created,
-                    COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END) as sub_activities_completed
+                    COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as sub_activities_created,
+                    COALESCE(COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END), 0) as sub_activities_completed
                 ')
                 ->from('workplan_tasks wt')
                 ->join('work_planner_tasks wpt', 'wpt.workplan_id = wt.id', 'left')
@@ -212,16 +229,16 @@ class Workplan_mdl extends CI_Model {
             $total_completed = 0;
 
             foreach ($activities as $activity) {
-                $total_target += (int)$activity->cumulative_target;
-                $total_created += (int)$activity->sub_activities_created;
-                $total_completed += (int)$activity->sub_activities_completed;
+                $total_target += (int)($activity->cumulative_target ?? 0);
+                $total_created += (int)($activity->sub_activities_created ?? 0);
+                $total_completed += (int)($activity->sub_activities_completed ?? 0);
             }
 
             $execution_rate = $total_created > 0 ? 
-                round(($total_completed / $total_created) * 100, 1) : 0;
+                round(($total_completed / $total_created) * 100, 1) : 0.0;
 
             $target_achievement = $total_target > 0 ? 
-                round(($total_completed / $total_target) * 100, 1) : 0;
+                round(($total_completed / $total_target) * 100, 1) : 0.0;
 
             // Calculate overall score (weighted average)
             $overall_score = ($execution_rate * 0.6) + ($target_achievement * 0.4);
@@ -244,6 +261,9 @@ class Workplan_mdl extends CI_Model {
         usort($unit_scores, function($a, $b) {
             return $b['overall_score'] <=> $a['overall_score'];
         });
+
+        // Debug: Log the unit scores data
+        log_message('debug', 'Unit scores data: ' . json_encode($unit_scores));
 
         return $unit_scores;
     }
