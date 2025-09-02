@@ -26,16 +26,15 @@
       font-size: 20px; 
       font-weight: bold; 
       text-align: center; 
-      margin: -4px 0; 
-      margin-bottom: 40px;
-      text-transform: uppercase;
+      margin-top: -20px; 
+      margin-bottom: 10px;
       color: #000000; 
     }
     .section-title { 
       font-size: 14px; 
       font-weight: bold; 
       margin-top: 20px; 
-      border-bottom: 1px solid #ccc; 
+       
       padding-bottom: 5px;
       color:rgb(17, 19, 18); /* AU Green */
     }
@@ -131,7 +130,24 @@
     
     function generateVerificationHash($activityId, $staffId) {
       if (!$activityId || !$staffId) return 'N/A';
-      return substr(md5(sha1($activityId . $staffId . date('Y-m-d'))), 0, 12);
+      return strtoupper(substr(md5(sha1($activityId . $staffId . date('Y-m-d'))), 0, 16));
+    }
+
+    
+    // Helper function to get approval date from matrix approval trail
+    function getApprovalDate($staffId, $matrixApprovalTrails) {
+      foreach ($matrixApprovalTrails as $trail) {
+        if (isset($trail['staff']['id']) && $trail['staff']['id'] == $staffId) {
+          // Try different possible date fields from the approval trail
+          $approvalDate = $trail['approval_date'] ?? $trail['created_at'] ?? $trail['updated_at'] ?? $trail['date'] ?? null;
+          if ($approvalDate) {
+            return date('d/m/Y H:i', strtotime($approvalDate));
+          }
+          // Debug: Show available fields for troubleshooting
+          // echo "<!-- Debug: Trail fields for staff $staffId: " . implode(', ', array_keys($trail)) . " -->";
+        }
+      }
+      return date('d/m/Y H:i');
     }
   ?>
   
@@ -158,76 +174,138 @@
   </style>
 
   <table class="memo-table" style="width: 100%; border-collapse: collapse;">
-    <!-- TO: Director General -->
-    <tr>
-      <td style="width: 12%; border: none; padding: 8px; vertical-align: top;"><strong style="color: #006633;">TO:</strong></td>
-      <td style="width: 35%; border: none; padding: 8px; vertical-align: top;">
-        <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-          <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-            <?php if (stripos($step['role'] ?? '', 'DG') !== false): ?>
+    <?php
+      // Define the order of sections: TO, THROUGH, FROM (excluding 'others')
+      $sectionOrder = ['to', 'through', 'from'];
+      
+      // Filter out 'others' section if it exists
+      if (isset($organized_workflow_steps['others'])) {
+        unset($organized_workflow_steps['others']);
+      }
+
+      // Section labels in sentence case
+      $sectionLabels = [
+        'to' => 'To:',
+        'through' => 'Through:',
+        'from' => 'From:'
+      ];
+
+      // Calculate total rows needed for rowspan
+      $totalRows = 0;
+      foreach ($sectionOrder as $section) {
+        if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0) {
+          $totalRows += $organized_workflow_steps[$section]->count();
+        } else {
+          $totalRows += 1; // At least one row per section
+        }
+      }
+      $currentRow = 0;
+      $dateFileRowspan = $totalRows;
+    ?>
+    <?php foreach ($sectionOrder as $section): ?>
+      <?php if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0): ?>
+        <?php foreach ($organized_workflow_steps[$section] as $index => $step): ?>
+          <tr>
+            <td style="width: 12%; border: none; padding: 8px; vertical-align: top;">
+              <strong style="color: #006633; font-style: italic;"><?php echo $sectionLabels[$section] ?? strtoupper($section) . ':'; ?></strong>
+            </td>
+
+                        <td style="width: 30%; border: none; padding: 4px 6px; vertical-align: top; text-align: left;">
               <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
                 <?php foreach ($step['approvers'] as $approver): ?>
                   <?php if (isset($approver['staff'])): ?>
-                    <?php echo htmlspecialchars($approver['staff']['name']); ?>
+                    <div style="font-size: 14px; font-weight: bold; line-height: 1.1;">
+                      <?php echo htmlspecialchars(trim($approver['staff']['title'] . ' ' . $approver['staff']['name'])); ?>
+                    </div>
                     <?php if (isset($approver['staff']['job_title']) && !empty($approver['staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></small>
+                      <div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></div>
+                    <?php elseif (isset($approver['staff']['title']) && !empty($approver['staff']['title'])): ?>
+                      <div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;"><?php echo htmlspecialchars($approver['staff']['title']); ?></div>
                     <?php else: ?>
-                      <br><small style="color: #666;">Director General of Africa CDC</small>
+                      <div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;"><?php echo htmlspecialchars($step['role']); ?></div>
                     <?php endif; ?>
+                    <?php
+                      // If this is the FROM section, display the division name under the title/job title
+                      if ($section === 'from') {
+                        $divisionName = $matrix->division->division_name ?? '';
+                        if (!empty($divisionName)) {
+                          echo '<div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;">' . htmlspecialchars($divisionName) . '</div>';
+                        }
+                      }
+                    ?>
                   <?php elseif (isset($approver['oic_staff'])): ?>
-                    <?php echo htmlspecialchars($approver['oic_staff']['name']); ?> (OIC)
+                    <div style="font-size: 14px; font-weight: bold; line-height: 1.1;">
+                      <?php echo htmlspecialchars($approver['oic_staff']['name'] . ' (OIC)'); ?>
+                    </div>
                     <?php if (isset($approver['oic_staff']['job_title']) && !empty($approver['oic_staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></small>
+                      <div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></div>
+                    <?php elseif (isset($approver['oic_staff']['title']) && !empty($approver['oic_staff']['title'])): ?>
+                      <div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;"><?php echo htmlspecialchars($approver['oic_staff']['title']); ?></div>
                     <?php else: ?>
-                      <br><small style="color: #666;">Director General of Africa CDC</small>
+                      <div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;"><?php echo htmlspecialchars($step['role']); ?></div>
                     <?php endif; ?>
+                    <?php
+                      // If this is the FROM section, display the division name under the title/job title for OIC as well
+                      if ($section === 'from') {
+                        $divisionName = $matrix->division->division_name ?? '';
+                        if (!empty($divisionName)) {
+                          echo '<div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;">' . htmlspecialchars($divisionName) . '</div>';
+                        }
+                      }
+                    ?>
                   <?php endif; ?>
                 <?php endforeach; ?>
               <?php else: ?>
-                Director General of Africa CDC
-              <?php endif; ?>
-            <?php endif; ?>
-          <?php endforeach; ?>
-        <?php else: ?>
-          Director General of Africa CDC
+                <div style="font-size: 14px; font-weight: bold; line-height: 1.1;">
+                  <?php echo htmlspecialchars($step['role']); ?>
+                </div>
+                <?php
+                  // If this is the FROM section, display the division name under the role
+                  if ($section === 'from') {
+                    $divisionName = $matrix->division->division_name ?? '';
+                    if (!empty($divisionName)) {
+                      echo '<div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;">' . htmlspecialchars($divisionName) . '</div>';
+                    }
+                  }
+                ?>
         <?php endif; ?>
       </td>
-      <td style="width: 25%; border: none; padding: 8px; vertical-align: top; text-align: center;">
-        <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-          <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-            <?php if (stripos($step['role'] ?? '', 'DG') !== false): ?>
+
+?>
+
+            <td style="width: 30%; border: none; padding: 4px 6px; vertical-align: top; text-align: left;">
               <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
                 <?php foreach ($step['approvers'] as $approver): ?>
                   <?php if (isset($approver['staff']) && isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
-                    <img src="<?php echo asset('uploads/staff/signature/' . $approver['staff']['signature']); ?>" 
-                         alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
+                                          <img src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approver['staff']['signature']; ?>" 
+                          alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain; filter: contrast(1.2);">
+                     <br><small style="color: #666; font-size: 10px;"><?php echo getApprovalDate($approver['staff']['id'], $matrix_approval_trails); ?></small>
                     <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
                   <?php elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
-                    <img src="<?php echo asset('uploads/staff/signature/' . $approver['oic_staff']['signature']); ?>" 
-                         alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
+                                          <img src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approver['oic_staff']['signature']; ?>" 
+                          alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain; filter: contrast(1.2);">
+                     <br><small style="color: #666; font-size: 10px;"><?php echo getApprovalDate($approver['oic_staff']['id'], $matrix_approval_trails); ?></small>
                     <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
                   <?php else: ?>
                     <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
+                     <br><small style="color: #666; font-size: 10px;"><?php echo getApprovalDate(getStaffId($approver), $matrix_approval_trails); ?></small>
                     <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php endif; ?>
             <?php endif; ?>
           <?php endforeach; ?>
         <?php endif; ?>
       </td>
-      <td style="width: 28%; border: none; padding: 8px; vertical-align: top;" rowspan="6">
-        <div style="text-align: right; padding-left: 15px;">
-          <div style="margin-bottom: 20px;">
-            <strong style="color: #006633;">DATE:</strong><br>
-            <span style="font-size: 12px;"><?php echo date('d/m/Y'); ?></span>
+
+            <?php if ($currentRow === 0): ?>
+              <td style="width: 28%; border: none; padding: 8px; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
+                <div style="text-align: right; padding-left: 15px;">
+                  <div style="margin-bottom: 20px;">
+                    <strong style="color: #006633; font-style: italic;">Date:</strong>
+                    <span style="font-size: 12px; font-weight: bold;"><?php echo isset($matrix->created_at) ? date('d/m/Y', strtotime($matrix->created_at)) : date('d/m/Y'); ?></span>
           </div>
-          <div>
-            <strong style="color: #006633;">FILE NO:</strong><br>
-            <span style="font-size: 10px; word-break: break-all;">
+                  <div>
+                    <br><br>
+                    <strong style="color: #006633; font-style: italic;">File No:</strong><br>
+                    <span style="font-size: 10px; word-break: break-all; font-weight: bold;">
             <?php
               if (isset($activity)) {
                 $divisionName = $matrix->division->division_name ?? '';
@@ -243,326 +321,101 @@
                   }
                 }
                 $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
-                $year = date('Y', strtotime($activity->created_at ?? 'now'));
+                        $year = date('Y', strtotime($matrix->created_at ?? 'now'));
                 $activityId = $activity->id ?? 'N/A';
                 echo htmlspecialchars("AU/CDC/{$shortCode}/IM/{$matrix->quarter}/{$year}/{$activityId}");
               } else {
                 echo 'N/A';
               }
             ?>
-            </span>
+                    </span>
           </div>
         </div>
       </td>
+            <?php endif; ?>
     </tr>
-    
-    <!-- THROUGH: Chief of Staff -->
-    <tr>
-      <td style="border: none; padding: 8px; vertical-align: top;"><strong style="color: #006633;">THROUGH:</strong></td>
-      <td style="border: none; padding: 8px; vertical-align: top;">
-        <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-          <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-            <?php if (stripos($step['role'] ?? '', 'COS') !== false): ?>
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                  <?php if (isset($approver['staff'])): ?>
-                    <?php echo htmlspecialchars($approver['staff']['name']); ?>
-                    <?php if (isset($approver['staff']['job_title']) && !empty($approver['staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Chief of Staff</small>
-                    <?php endif; ?>
-                  <?php elseif (isset($approver['oic_staff'])): ?>
-                    <?php echo htmlspecialchars($approver['oic_staff']['name']); ?> (OIC)
-                    <?php if (isset($approver['oic_staff']['job_title']) && !empty($approver['oic_staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Chief of Staff</small>
-                    <?php endif; ?>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php else: ?>
-                Chief of Staff
-              <?php endif; ?>
-            <?php endif; ?>
+          <?php $currentRow++; ?>
           <?php endforeach; ?>
-        <?php else: ?>
-          Chief of Staff
-        <?php endif; ?>
-      </td>
-      <td style="border: none; padding: 8px; vertical-align: top; text-align: center;">
-        <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-          <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-            <?php if (stripos($step['role'] ?? '', 'COS') !== false): ?>
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                  <?php if (isset($approver['staff']) && isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
-                    <img src="<?php echo asset('uploads/staff/signature/' . $approver['staff']['signature']); ?>" 
-                         alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                    <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                  <?php elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
-                    <img src="<?php echo asset('uploads/staff/signature/' . $approver['oic_staff']['signature']); ?>" 
-                         alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                    <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                  <?php else: ?>
-                    <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                    <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php endif; ?>
-            <?php endif; ?>
-          <?php endforeach; ?>
-        <?php endif; ?>
-      </td>
-    </tr>
-    
-    <!-- THROUGH: DDG -->
-    <tr>
-      <td style="border: none; padding: 8px; vertical-align: top;"></td>
-      <td style="border: none; padding: 8px; vertical-align: top;">
-        <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-          <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-            <?php if (stripos($step['role'] ?? '', 'DDG') !== false): ?>
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                  <?php if (isset($approver['staff'])): ?>
-                    <?php echo htmlspecialchars($approver['staff']['name']); ?>
-                    <?php if (isset($approver['staff']['job_title']) && !empty($approver['staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Ag. Deputy Director General</small>
-                    <?php endif; ?>
-                  <?php elseif (isset($approver['oic_staff'])): ?>
-                    <?php echo htmlspecialchars($approver['oic_staff']['name']); ?> (OIC)
-                    <?php if (isset($approver['oic_staff']['job_title']) && !empty($approver['oic_staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Ag. Deputy Director General</small>
-                    <?php endif; ?>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php else: ?>
-                Ag. Deputy Director General
-              <?php endif; ?>
-            <?php endif; ?>
-          <?php endforeach; ?>
-        <?php else: ?>
-          Ag. Deputy Director General
-        <?php endif; ?>
-      </td>
-      <td style="border: none; padding: 8px; vertical-align: top; text-align: center;">
-        <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-          <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-            <?php if (stripos($step['role'] ?? '', 'DDG') !== false): ?>
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                  <?php if (isset($approver['staff']) && isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
-                    <img src="<?php echo asset('uploads/staff/signature/' . $approver['staff']['signature']); ?>" 
-                         alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                    <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                  <?php elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
-                    <img src="<?php echo asset('uploads/staff/signature/' . $approver['oic_staff']['signature']); ?>" 
-                         alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                    <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                  <?php else: ?>
-                    <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
-                    <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                    <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php endif; ?>
-            <?php endif; ?>
-          <?php endforeach; ?>
-        <?php endif; ?>
-      </td>
-    </tr>
-    
-    <!-- THROUGH: Head of Operations/Programs (Conditional) -->
-    <tr>
-      <td style="border: none; padding: 8px; vertical-align: top;"></td>
-      <td style="border: none; padding: 8px; vertical-align: top;">
-        <?php
-          // Check if activity division is Operations or Programs and display appropriate head
-          $divisionCategory = $matrix->division->category ?? '';
-          if (stripos($divisionCategory, 'Operations') !== false): ?>
-            <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-              <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-                <?php if (stripos($step['role'] ?? '', 'Head of Operations') !== false): ?>
-                  <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                    <?php foreach ($step['approvers'] as $approver): ?>
-                                        <?php if (isset($approver['staff'])): ?>
-                    <?php echo htmlspecialchars($approver['staff']['name']); ?>
-                    <?php if (isset($approver['staff']['job_title']) && !empty($approver['staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Head of Operations</small>
-                    <?php endif; ?>
-                  <?php elseif (isset($approver['oic_staff'])): ?>
-                    <?php echo htmlspecialchars($approver['oic_staff']['name']); ?> (OIC)
-                    <?php if (isset($approver['oic_staff']['job_title']) && !empty($approver['oic_staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Head of Operations</small>
-                    <?php endif; ?>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php else: ?>
-                Andrew Agaba<br><small style="color: #666;">Head of Operations</small>
-              <?php endif; ?>
-            <?php endif; ?>
-          <?php endforeach; ?>
-        <?php else: ?>
-          Andrew Agaba<br><small style="color: #666;">Head of Operations</small>
-        <?php endif; ?>
-      <?php elseif (stripos($divisionCategory, 'Programs') !== false): ?>
-        <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-          <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-            <?php if (stripos($step['role'] ?? '', 'Head of Programs') !== false): ?>
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                  <?php if (isset($approver['staff'])): ?>
-                    <?php echo htmlspecialchars($approver['staff']['name']); ?>
-                    <?php if (isset($approver['staff']['job_title']) && !empty($approver['staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Head of Programs</small>
-                    <?php endif; ?>
-                  <?php elseif (isset($approver['oic_staff'])): ?>
-                    <?php echo htmlspecialchars($approver['oic_staff']['name']); ?> (OIC)
-                    <?php if (isset($approver['oic_staff']['job_title']) && !empty($approver['oic_staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Head of Programs</small>
-                    <?php endif; ?>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php else: ?>
-                Amare Meselu<br><small style="color: #666;">Head of Programs</small>
-              <?php endif; ?>
-            <?php endif; ?>
-          <?php endforeach; ?>
-        <?php else: ?>
-          Amare Meselu<br><small style="color: #666;">Head of Programs</small>
-        <?php endif; ?>
       <?php else: ?>
-        <!-- Default fallback -->
-        <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-          <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-            <?php if (stripos($step['role'] ?? '', 'Head of Operations') !== false): ?>
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                  <?php if (isset($approver['staff'])): ?>
-                    <?php echo htmlspecialchars($approver['staff']['name']); ?>
-                    <?php if (isset($approver['staff']['job_title']) && !empty($approver['staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Head of Operations</small>
-                    <?php endif; ?>
-                  <?php elseif (isset($approver['oic_staff'])): ?>
-                    <?php echo htmlspecialchars($approver['oic_staff']['name']); ?> (OIC)
-                    <?php if (isset($approver['oic_staff']['job_title']) && !empty($approver['oic_staff']['job_title'])): ?>
-                      <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></small>
-                    <?php else: ?>
-                      <br><small style="color: #666;">Head of Operations</small>
-                    <?php endif; ?>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php else: ?>
-                Head of Operations
-              <?php endif; ?>
-            <?php endif; ?>
-          <?php endforeach; ?>
-        <?php else: ?>
-          Head of Operations
-        <?php endif; ?>
-      <?php endif; ?>
+        <!-- Empty section placeholder -->
+        <tr>
+          <td style="width: 12%; border: none; padding: 8px; vertical-align: top;">
+            <strong style="color: #006633; font-style: italic;"><?php echo $sectionLabels[$section] ?? ucfirst($section) . ':'; ?></strong>
+          </td>
+          <td style="width: 30%; border: none; padding: 4px 6px; vertical-align: top; text-align: left;">
+            <!-- No approvers for this section -->
+            <?php
+              // If this is the FROM section, display the division name under the empty cell
+              if ($section === 'from') {
+                $divisionName = $matrix->division->division_name ?? '';
+                if (!empty($divisionName)) {
+                  echo '<div style="color: #666; font-size: 12px; line-height: 1.0; margin-top: 1px;">' . htmlspecialchars($divisionName) . '</div>';
+                }
+              }
+            ?>
+          </td>
+          <td style="width: 30%; border: none; padding: 4px 6px; vertical-align: top; text-align: center;">
+            <!-- No signatures for this section -->
       </td>
-      <td style="border: none; padding: 8px; vertical-align: top; text-align: center;">
+          <?php if ($currentRow === 0): ?>
+            <td style="width: 28%; border: none; padding: 8px; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
+              <div style="text-align: right; padding-left: 15px;">
+                <div style="margin-bottom: 20px;">
+                  <strong style="color: #006633;">DATE:</strong><br>
+                  <span style="font-size: 12px;"><?php echo isset($matrix->created_at) ? date('d/m/Y', strtotime($matrix->created_at)) : date('d/m/Y'); ?></span>
+                </div>
+                <div>
+                  <strong style="color: #006633;">FILE NO:</strong><br>
+                  <span style="font-size: 10px; word-break: break-all;">
         <?php
-          // Check if activity division is Operations or Programs and display appropriate signature
-          if (stripos($divisionName, 'Operations') !== false): ?>
-            <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-              <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-                <?php if (stripos($step['role'] ?? '', 'Head of Operations') !== false): ?>
-                  <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                    <?php foreach ($step['approvers'] as $approver): ?>
-                      <?php if (isset($approver['staff']) && isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
-                        <img src="<?php echo asset('uploads/staff/signature/' . $approver['staff']['signature']); ?>" 
-                             alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                        <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                        <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                      <?php elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
-                        <img src="<?php echo asset('uploads/staff/signature/' . $approver['oic_staff']['signature']); ?>" 
-                             alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                        <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                        <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                      <?php else: ?>
-                        <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
-                        <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                        <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                      <?php endif; ?>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                <?php endif; ?>
-              <?php endforeach; ?>
-            <?php endif; ?>
-          <?php elseif (stripos($divisionName, 'Programs') !== false): ?>
-            <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
-              <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
-                <?php if (stripos($step['role'] ?? '', 'Head of Programs') !== false): ?>
-                  <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                    <?php foreach ($step['approvers'] as $approver): ?>
-                      <?php if (isset($approver['staff']) && isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
-                        <img src="<?php echo asset('uploads/staff/signature/' . $approver['staff']['signature']); ?>" 
-                             alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                        <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                        <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                      <?php elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
-                        <img src="<?php echo asset('uploads/staff/signature/' . $approver['oic_staff']['signature']); ?>" 
-                             alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain;">
-                        <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                      <?php else: ?>
-                        <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
-                        <br><small style="color: #666; font-size: 10px;"><?php echo date('d/m/Y H:i'); ?></small>
-                        <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver)); ?></small>
-                      <?php endif; ?>
-                    <?php endforeach; ?>
-                  <?php endif; ?>
-                <?php endif; ?>
-              <?php endforeach; ?>
-            <?php endif; ?>
+                    if (isset($activity)) {
+                      $divisionName = $matrix->division->division_name ?? '';
+                      if (!function_exists('generateShortCodeFromDivision')) {
+                        function generateShortCodeFromDivision(string $name): string
+                        {
+                            $ignore = ['of', 'and', 'for', 'the', 'in'];
+                            $words = preg_split('/\s+/', strtolower($name));
+                            $initials = array_map(function ($word) use ($ignore) {
+                                return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+                            }, $words);
+                            return implode('', array_filter($initials));
+                        }
+                      }
+                      $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
+                      $year = date('Y', strtotime($matrix->created_at ?? 'now'));
+                      $activityId = $activity->id ?? 'N/A';
+                      echo htmlspecialchars("AU/CDC/{$shortCode}/IM/{$matrix->quarter}/{$year}/{$activityId}");
+                    } else {
+                      echo 'N/A';
+                    }
+                  ?>
+                  </span>
+                </div>
+              </div>
+            </td>
           <?php endif; ?>
-      </td>
     </tr>
-    
-    <!-- FROM: Head of Division -->
-    <tr>
-      <td style="border: none; padding: 8px; vertical-align: top;"><strong style="color: #006633;">FROM:</strong></td>
-      <td style="border: none; padding: 8px; vertical-align: top;">Head of Division</td>
-      <td style="border: none; padding: 8px; vertical-align: top; text-align: center;"></td>
-    </tr>
+        <?php $currentRow++; ?>
+      <?php endif; ?>
+    <?php endforeach; ?>
   </table>
 
-
-
   <!-- Subject -->
-  <div class="section-title">SUBJECT: <?php echo htmlspecialchars($activity->activity_title ?? 'N/A'); ?></div>
+ <table class="no-border">
+  <tr>
+    <td style="width: 12%;"><strong style="color: #006633; font-style: italic;">Subject:</strong></td>
+    <td style="width: 88%; text-align: left; text-decoration: underline; font-weight: bold;"><?php echo htmlspecialchars($activity->activity_title ?? 'N/A'); ?></td>
+  </tr>
+ </table>
 
-  <!-- Activity Request Remarks -->
-   <?=$activity->background;?>
-
-  <?php if (isset($activity->activity_request_remarks) && !empty($activity->activity_request_remarks)): ?>
-    
-  <?php endif; ?>
-
-  <!-- Content -->
+<!-- Background -->
+ <table class="no-border" style="margin-top: -5px;">
+  <tr>
+   <td style="width: 100%; text-align: justify;"><?=$activity->background;?></td>
+  </tr>
+ </table>
+  
   <div>
-    <p>This memorandum is to inform you of the following activity details:</p>
     
     <div class="section-title">Activity Information</div>
     <table class="no-border">
@@ -618,8 +471,8 @@
       </tr>
       
       <?php if (isset($internal_participants) && $internal_participants->count() > 0): ?>
-        <?php foreach ($internal_participants as $participant): ?>
-        <tr>
+      <?php foreach ($internal_participants as $participant): ?>
+      <tr>
           <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
             <?php echo htmlspecialchars($participant->staff->name ?? 'N/A'); ?>
             <?php if (isset($participant->staff->work_email) && !empty($participant->staff->work_email)): ?>
@@ -642,8 +495,8 @@
               }
             ?>
           </td>
-        </tr>
-        <?php endforeach; ?>
+      </tr>
+      <?php endforeach; ?>
       <?php else: ?>
         <tr>
           <td colspan="4" style="border: 1px solid #ccc; padding: 8px; text-align: center; font-style: italic; color: #666;">
@@ -697,12 +550,14 @@
               <?php echo htmlspecialchars($approver['staff']['name']); ?>
               <?php if (isset($approver['staff']['job_title'])): ?>
                 <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></small>
+              <?php elseif (isset($approver['staff']['title'])): ?>
+                <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['title']); ?></small>
               <?php endif; ?>
             </td>
             <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top; text-align: center;">
               <?php if (isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
-                <img src="<?php echo asset('uploads/staff/signature/' . $approver['staff']['signature']); ?>" 
-                     alt="Signature" style="height: 40px; max-width: 120px; object-fit: contain;">
+                <img src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approver['staff']['signature']; ?>" 
+                     alt="Signature" style="height: 40px; max-width: 120px; object-fit: contain; filter: contrast(1.2);">
               <?php else: ?>
                 <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
               <?php endif; ?>
@@ -715,12 +570,14 @@
               <?php echo htmlspecialchars($approver['oic_staff']['name']); ?> (OIC)
               <?php if (isset($approver['oic_staff']['job_title'])): ?>
                 <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></small>
+              <?php elseif (isset($approver['oic_staff']['title'])): ?>
+                <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['title']); ?></small>
               <?php endif; ?>
             </td>
             <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top; text-align: center;">
               <?php if (isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
-                <img src="<?php echo asset('uploads/staff/signature/' . $approver['oic_staff']['signature']); ?>" 
-                     alt="Signature" style="height: 40px; max-width: 120px; object-fit: contain;">
+                <img src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approver['oic_staff']['signature']; ?>" 
+                     alt="Signature" style="height: 40px; max-width: 120px; object-fit: contain; filter: contrast(1.2);">
               <?php else: ?>
                 <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
               <?php endif; ?>
@@ -733,7 +590,23 @@
     <!-- Division Head -->
     <tr>
       <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;"><strong>Division Head</strong></td>
-      <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">Head of Division, Africa CDC</td>
+      <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
+        <?php 
+          // Get HOD from matrix division
+          if (isset($matrix->division->divisionHead) && $matrix->division->divisionHead): 
+            echo htmlspecialchars($matrix->division->divisionHead->name ?? 'Head of Division');
+            if (isset($matrix->division->divisionHead->job_title) && !empty($matrix->division->divisionHead->job_title)):
+              echo '<br><small style="color: #666;">' . htmlspecialchars($matrix->division->divisionHead->job_title) . '</small>';
+            elseif (isset($matrix->division->divisionHead->title) && !empty($matrix->division->divisionHead->title)):
+              echo '<br><small style="color: #666;">' . htmlspecialchars($matrix->division->divisionHead->title) . '</small>';
+            else:
+              echo '<br><small style="color: #666;">Head of Division, Africa CDC</small>';
+            endif;
+          else:
+            echo 'Head of Division, Africa CDC';
+          endif;
+        ?>
+      </td>
       <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top; text-align: center;"><?php echo date('M j, Y | H:i'); ?> EAST</td>
     </tr>
   </table>

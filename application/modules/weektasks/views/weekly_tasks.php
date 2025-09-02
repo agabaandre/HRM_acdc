@@ -1,93 +1,395 @@
 <style>
 .activity-col {
   width: 300px !important;
-  text-overflow: break-word; /* optional fixed width */
+  text-overflow: break-word;
 }
 .comments-col {
   width: 200px !important;
-  word-break: break-word; /* optional fixed width */
+  word-break: break-word;
 }
 .text-wrap {
   white-space: normal;
   word-break: break-word;
 }
 
+/* Enhanced styling for better UX */
+.page-header {
+  background: rgba(52, 143, 65, 1);
+  color: white;
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+  border-radius: 0 0 15px 15px;
+}
+
+.filter-card {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  margin-bottom: 2rem;
+}
+
+.filter-card .card-header {
+  background: rgba(52, 143, 65, 1);
+  color: white;
+  border-radius: 15px 15px 0 0;
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+.table-card {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.table-card .card-header {
+  background: rgba(52, 143, 65, 1);
+  color: white;
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+.table-card .card-body {
+  padding: 1.5rem;
+}
+
+.btn-modern {
+  border-radius: 25px;
+  padding: 0.5rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.calendar-panel {
+  background: rgba(52, 143, 65, 1);
+  color: white;
+  border-radius: 15px;
+  margin-bottom: 2rem;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-header {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.calendar-header:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.calendar-header h4 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendar-toggle {
+  transition: transform 0.3s ease;
+}
+
+.calendar-toggle.rotated {
+  transform: rotate(180deg);
+}
+
+.calendar-content {
+  padding: 1.5rem;
+  display: none;
+}
+
+.calendar-content.show {
+  display: block;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* FullCalendar Custom Styling */
+.fc {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.fc-header-toolbar {
+  background: rgba(52, 143, 65, 1);
+  color: white;
+  padding: 1rem;
+  border-radius: 10px 10px 0 0;
+  margin-bottom: 0;
+}
+
+.fc-toolbar-title {
+  color: white !important;
+  font-weight: 600;
+}
+
+.fc-button {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: white !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+}
+
+.fc-button:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-2px);
+}
+
+.fc-button:focus {
+  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+}
+
+.fc-daygrid-day {
+  transition: all 0.3s ease;
+}
+
+.fc-daygrid-day:hover {
+  background: rgba(17, 154, 72, 0.1) !important;
+}
+
+.fc-event {
+  border-radius: 6px !important;
+  border: none !important;
+  padding: 2px 6px !important;
+  font-size: 0.8rem !important;
+  font-weight: 500 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.fc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.fc-daygrid-event {
+  margin: 1px 0 !important;
+}
+
+.fc-day-today {
+  background: rgba(17, 154, 72, 0.1) !important;
+}
+
+.fc-daygrid-day-number {
+  font-weight: 600;
+  color: #333;
+}
+
+.fc-col-header-cell {
+  background: rgba(52, 143, 65, 1);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 0;
+}
+
+.fc-daygrid-day-frame {
+  min-height: 100px;
+}
+
+.status-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-spinner {
+  background: white;
+  padding: 2rem;
+  border-radius: 15px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+  }
+  
+  .calendar-day {
+    min-height: 40px;
+    padding: 0.25rem;
+    font-size: 0.8rem;
+  }
+  
+  .page-header {
+    padding: 1rem 0;
+  }
+  
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+}
 </style>
 
-<div class="container-fluid my-4">
-<?php $this->load->view('tasks_tabs')?>
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addModal">
-      <i class="fa fa-plus-circle me-1"></i> Add Weekly Task
-    </button>
+<!-- Page Header -->
+<div class="page-header">
+  <div class="container-fluid">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h4 class="mb-0 text-white"><i class="fa fa-calendar-week me-2 text-white"></i>Weekly Tasks Management</h1>
+        <p class="mb-0 opacity-75">Manage and track weekly activities for your team</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-light btn-modern" data-bs-toggle="modal" data-bs-target="#addModal">
+          <i class="fa fa-plus-circle me-1"></i> Add Weekly Task
+        </button>
+      </div>
+    </div>
   </div>
-  <input type="hidden" id="csrf_token" 
-       name="<?= $this->security->get_csrf_token_name(); ?>" 
-       value="<?= $this->security->get_csrf_hash(); ?>">
+</div>
 
-  <!-- Filters -->
-  <div class="card shadow-sm mb-4">
+<div class="container-fluid">
+<?php $this->load->view('tasks_tabs')?>
+
+<input type="hidden" id="csrf_token" 
+     name="<?= $this->security->get_csrf_token_name(); ?>" 
+     value="<?= $this->security->get_csrf_hash(); ?>">
+
+<!-- Beautiful Collapsible Calendar Panel -->
+<div class="calendar-panel">
+  <div class="calendar-header" id="calendarToggle">
+    <h4 class="mb-0">
+      <span><i class="fa fa-calendar-alt me-2 text"></i>Activity Calendar</span>
+      <i class="fa fa-chevron-down calendar-toggle" id="calendarToggleIcon"></i>
+    </h4>
+  </div>
+  <div class="calendar-content" id="calendarContent">
+    <div class="row align-items-center mb-3">
+      <div class="col-md-8">
+        <p class="mb-0 opacity-75">Interactive calendar view of your weekly activities and tasks</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-outline-light btn-sm btn-modern" id="refreshCalendar">
+          <i class="fa fa-sync-alt me-1"></i> Refresh
+        </button>
+        <button class="btn btn-outline-light btn-sm btn-modern ms-2" id="todayCalendar">
+          <i class="fa fa-home me-1"></i> Today
+        </button>
+      </div>
+    </div>
+    <div id="fullCalendar"></div>
+  </div>
+</div>
+
+  <!-- Enhanced Filters -->
+  <div class="card filter-card">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fa fa-filter me-2"></i>Advanced Filters</h5>
+    </div>
     <div class="card-body">
-    <?= form_open('', ['id' => 'filterForm']) ?>
+      <?= form_open('', ['id' => 'filterForm']) ?>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-building me-1"></i>Division
+          </label>
+          <select id="filterDivision" class="form-select select2">
+            <option value="">All Divisions</option>
+            <?php foreach ($divisions as $division): ?>
+              <option value="<?= $division->division_id ?>"><?= $division->division_name ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
 
-        <div class="row g-3 align-items-end">
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">Division</label>
-            <select id="filterDivision" class="form-select select2">
-              <option value="">All Divisions</option>
-              <?php foreach ($divisions as $division): ?>
-                <option value="<?= $division->division_id ?>"><?= $division->division_name ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-users me-1"></i>Staff Members
+          </label>
+          <select id="filterStaff" class="form-select select2" multiple>
+            <?php foreach ($staff_list as $staff): ?>
+              <option value="<?= $staff->staff_id ?>"><?= $staff->title . ' ' . $staff->fname . ' ' . $staff->lname ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
 
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">Staff</label>
-            <select id="filterStaff" class="form-select select2" multiple>
-              <?php foreach ($staff_list as $staff): ?>
-                <option value="<?= $staff->staff_id ?>"><?= $staff->title . ' ' . $staff->fname . ' ' . $staff->lname ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-user-tie me-1"></i>Team Lead
+          </label>
+          <select id="filterLead" class="form-select select2">
+            <option value="all">All Team Leads</option>
+            <?php foreach ($team_leads as $lead): ?>
+              <option value="<?= $lead->staff_id ?>"><?= $lead->fname.' '. $lead->lname?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
 
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">Team Lead</label>
-            <select id="filterLead" class="form-select select2">
-              <option value="all">All Team Leads</option>
-              <?php foreach ($team_leads as $lead): ?>
-                <option value="<?= $lead->staff_id ?>"><?= $lead->fname.' '. $lead->lname?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-calendar me-1"></i>Status
+          </label>
+          <select id="filterStatus" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="1">Pending</option>
+            <option value="2">Done</option>
+            <option value="3">Next Week</option>
+            <option value="4">Cancelled</option>
+          </select>
+        </div>
 
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">Start Date</label>
-            <input type="text" id="filterStartDate" class="form-control datepicker" placeholder="YYYY-MM-DD">
-          </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-calendar-start me-1"></i>Start Date
+          </label>
+          <input type="date" id="filterStartDate" class="form-control">
+        </div>
 
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">End Date</label>
-            <input type="text" id="filterEndDate" class="form-control datepicker" placeholder="YYYY-MM-DD">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label fw-semibold">Status</label>
-            <select id="filterStatus" class="form-select">
-              <option value="">All Statuses</option>
-              <option value="1">Pending</option>
-              <option value="2">Done</option>
-              <option value="3">Next Week</option>
-              <option value="4">Cancelled</option>
-            </select>
-          </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">
+            <i class="fa fa-calendar-end me-1"></i>End Date
+          </label>
+          <input type="date" id="filterEndDate" class="form-control">
+        </div>
 
-
-          <div class="col-md-3 mt-2">
-            <button type="button" class="btn btn-success w-100 mt-1" id="applyFilters">
+        <div class="col-md-6">
+          <div class="d-flex gap-2 mt-4">
+            <button type="button" class="btn btn-success btn-modern" id="applyFilters" style="background-color: rgba(52, 143, 65, 1); border-color: rgba(52, 143, 65, 1);">
               <i class="fa fa-filter me-1"></i> Apply Filters
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-modern" id="clearFilters">
+              <i class="fa fa-times me-1"></i> Clear All
+            </button>
+            <button type="button" class="btn btn-outline-info btn-modern" id="exportData">
+              <i class="fa fa-download me-1"></i> Export
             </button>
           </div>
         </div>
-        <?= form_close(); ?>
+      </div>
+      <?= form_close(); ?>
       <!-- Print Buttons -->
       <div class="row mt-4" id="printButtons">
         <div class="col-md-3">
@@ -109,26 +411,79 @@
     </div>
   </div>
 
-  <!-- Data Table -->
-  <div class="table-responsive">
-    <table class="table table-bordered table-hover" id="activitiesTable">
-      <thead class="table-dark text-center">
-        <tr>
-          <th>#</th>
-          <th class="activity-col">Activity</th>
-          <th>Start Date</th>
-          <th>End Date</th>
-          <th class="comments-col">Comments</th>
-          <th>Assigned To</th>
-          <th>Created By</th>
-          <th>Updated By</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-    </table>
+  <!-- Enhanced Data Table -->
+  <div class="card table-card">
+    <div class="card-header">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h5 class="mb-0"><i class="fa fa-table me-2"></i>Weekly Tasks Overview</h5>
+        </div>
+        <div class="col-md-4 text-end">
+          <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-light btn-sm" id="viewModeList">
+              <i class="fa fa-list"></i>
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" id="viewModeGrid">
+              <i class="fa fa-th"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="activitiesTable">
+          <thead class="table-dark">
+            <tr>
+              <th class="text-center">#</th>
+              <th class="activity-col">
+                <i class="fa fa-tasks me-1"></i>Activity
+              </th>
+              <th class="text-center">
+                <i class="fa fa-calendar-start me-1"></i>Start Date
+              </th>
+              <th class="text-center">
+                <i class="fa fa-calendar-end me-1"></i>End Date
+              </th>
+              <th class="comments-col">
+                <i class="fa fa-comment me-1"></i>Comments
+              </th>
+              <th class="text-center">
+                <i class="fa fa-users me-1"></i>Assigned To
+              </th>
+              <th class="text-center">
+                <i class="fa fa-user-plus me-1"></i>Created By
+              </th>
+              <th class="text-center">
+                <i class="fa fa-user-edit me-1"></i>Updated By
+              </th>
+              <th class="text-center">
+                <i class="fa fa-flag me-1"></i>Status
+              </th>
+              <th class="text-center">
+                <i class="fa fa-cogs me-1"></i>Actions
+              </th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2 mb-0">Loading tasks...</p>
+  </div>
+</div>
+
+<!-- FullCalendar CDN -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
 
 <!-- Modals -->
 <?php $this->load->view('modals.php'); ?>
@@ -207,11 +562,11 @@ $(function () {
       data: 'status',
       render: function (status) {
         switch (parseInt(status)) {
-          case 1: return '<span class="badge bg-warning">Pending</span>';
-          case 2: return '<span class="badge bg-success">Done</span>';
-          case 3: return '<span class="badge bg-primary">Next Week</span>';
-          case 4: return '<span class="badge bg-danger">Cancelled</span>';
-          default: return '<span class="badge bg-secondary">Unknown</span>';
+          case 1: return '<span class="status-badge bg-warning text-dark">Pending</span>';
+          case 2: return '<span class="status-badge bg-success text-white">Done</span>';
+          case 3: return '<span class="status-badge bg-primary text-white">Next Week</span>';
+          case 4: return '<span class="status-badge bg-danger text-white">Cancelled</span>';
+          default: return '<span class="status-badge bg-secondary text-white">Unknown</span>';
         }
       }
     },
@@ -232,7 +587,200 @@ $(function () {
   ]
 });
 
-  $('#applyFilters').on('click', () => table.ajax.reload());
+  // Enhanced filter functionality
+  $('#applyFilters').on('click', () => {
+    showLoading();
+    table.ajax.reload(() => {
+      hideLoading();
+      if (calendar) {
+        refreshCalendar();
+      }
+    });
+  });
+
+  // Clear filters functionality
+  $('#clearFilters').on('click', function() {
+    $('#filterForm')[0].reset();
+    $('#filterStaff').val(null).trigger('change');
+    $('#filterDivision').val('').trigger('change');
+    $('#filterLead').val('all').trigger('change');
+    $('#filterStatus').val('').trigger('change');
+    showLoading();
+    table.ajax.reload(() => {
+      hideLoading();
+      if (calendar) {
+        refreshCalendar();
+      }
+    });
+  });
+
+  // Auto-apply filters on change (with debounce)
+  let filterTimeout;
+  $('#filterDivision, #filterStaff, #filterLead, #filterStatus, #filterStartDate, #filterEndDate').on('change', function() {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+      showLoading();
+      table.ajax.reload(() => {
+        hideLoading();
+        if (calendar) {
+          refreshCalendar();
+        }
+      });
+    }, 500);
+  });
+
+  // Export functionality
+  $('#exportData').on('click', function() {
+    const filters = {
+      division: $('#filterDivision').val(),
+      staff_id: $('#filterStaff').val(),
+      teamlead: $('#filterLead').val(),
+      start_date: $('#filterStartDate').val(),
+      end_date: $('#filterEndDate').val(),
+      status: $('#filterStatus').val()
+    };
+    
+    // Create export URL with filters
+    const exportUrl = '<?= base_url("weektasks/export") ?>?' + $.param(filters);
+    window.open(exportUrl, '_blank');
+  });
+
+  // Calendar refresh
+  $('#refreshCalendar').on('click', function() {
+    if (calendar) {
+      refreshCalendar();
+    }
+  });
+
+  // Loading functions
+  function showLoading() {
+    $('#loadingOverlay').css('display', 'flex');
+  }
+
+  function hideLoading() {
+    $('#loadingOverlay').hide();
+  }
+
+  // FullCalendar Implementation
+  let calendar;
+  
+  function initializeCalendar() {
+    const calendarEl = document.getElementById('fullCalendar');
+    
+    calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,listWeek'
+      },
+      height: 'auto',
+      aspectRatio: 1.8,
+      events: function(info, successCallback, failureCallback) {
+        // Fetch events based on current filters
+        fetchCalendarEvents(info.start, info.end, successCallback, failureCallback);
+      },
+      eventClick: function(info) {
+        // Handle event click - could open modal or navigate
+        console.log('Event clicked:', info.event);
+      },
+      dateClick: function(info) {
+        // Handle date click - could add new task
+        console.log('Date clicked:', info.dateStr);
+      },
+      eventDidMount: function(info) {
+        // Add custom styling to events
+        info.el.style.borderRadius = '6px';
+        info.el.style.border = 'none';
+        info.el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+      },
+      dayMaxEvents: 3,
+      moreLinkClick: 'popover',
+      eventDisplay: 'block',
+      displayEventTime: true,
+      eventTimeFormat: {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }
+    });
+    
+    calendar.render();
+  }
+
+  function fetchCalendarEvents(start, end, successCallback, failureCallback) {
+    // Get current filter values
+    const filters = {
+      start_date: $('#filterStartDate').val(),
+      end_date: $('#filterEndDate').val(),
+      status: $('#filterStatus').val(),
+      division: $('#filterDivision').val(),
+      staff_id: $('#filterStaff').val(),
+      teamlead: $('#filterLead').val(),
+      [csrfName]: csrfHash
+    };
+
+    $.ajax({
+      url: '<?= base_url("weektasks/fetch_calendar_events") ?>',
+      type: 'POST',
+      data: filters,
+      dataType: 'json',
+      success: function(response) {
+        if (response.success) {
+          successCallback(response.events);
+        } else {
+          failureCallback(response.message);
+        }
+      },
+      error: function() {
+        failureCallback('Failed to load calendar events');
+      }
+    });
+  }
+
+  function refreshCalendar() {
+    if (calendar) {
+      calendar.refetchEvents();
+    }
+  }
+
+  function goToToday() {
+    if (calendar) {
+      calendar.today();
+    }
+  }
+
+  // Calendar Panel Toggle
+  $('#calendarToggle').on('click', function() {
+    const content = $('#calendarContent');
+    const icon = $('#calendarToggleIcon');
+    
+    if (content.hasClass('show')) {
+      content.removeClass('show');
+      icon.removeClass('rotated');
+    } else {
+      content.addClass('show');
+      icon.addClass('rotated');
+      
+      // Initialize calendar if not already done
+      if (!calendar) {
+        setTimeout(initializeCalendar, 100);
+      }
+    }
+  });
+
+  // Calendar control buttons
+  $('#refreshCalendar').on('click', function() {
+    refreshCalendar();
+  });
+
+  $('#todayCalendar').on('click', function() {
+    goToToday();
+  });
+
+  function formatDate(date) {
+    return date.toISOString().split('T')[0];
+  }
 
   function show_notification(message, type) {
     Lobibox.notify(type, {
@@ -309,61 +857,95 @@ $(function () {
     }, 'json');
   });
 
-  // Enable Print Buttons
+  // Enhanced Print Buttons with Filter Parameters
   function checkPrintEligibility() {
     const staff = $('#filterStaff').val();
+    const division = $('#filterDivision').val();
     const start = $('#filterStartDate').val();
     const end = $('#filterEndDate').val();
-    if (($('#filterDivision').val() && start && end)) {
-      $('#printDivisionBtn').fadeIn();
-      $('#printCombinedBtn').fadeIn();
-    } else {
-      $('#printDivisionBtn').fadeIn();
-      $('#printCombinedBtn').fadeIn();
-    }
+    const status = $('#filterStatus').val();
+    const teamlead = $('#filterLead').val();
 
-    if(staff && start && end){
-      $('#printStaffBtn').fadeIn();
-  
-    } else {
-      $('#printStaffBtn').fadeIn();
-    }
+    // Show all print buttons - they will work with current filters
+    $('#printStaffBtn').fadeIn();
+    $('#printDivisionBtn').fadeIn();
+    $('#printCombinedBtn').fadeIn();
   }
 
-  $('#filterStaff, #filterStartDate, #filterEndDate, #filterDivision').on('change keyup', checkPrintEligibility);
+  $('#filterStaff, #filterStartDate, #filterEndDate, #filterDivision, #filterStatus, #filterLead').on('change keyup', checkPrintEligibility);
 
+  // Enhanced Print Staff Report - works with all current filters
   $('#printStaffBtn').on('click', function () {
-  const staff = $('#filterStaff').val();
-  const start = $('#filterStartDate').val();
-  const end = $('#filterEndDate').val();
-  const status = $('#filterStatus').val() || 'all'; // ← default to 'all'
+    const filters = getCurrentFilters();
+    
+    if (filters.staff && filters.staff.length > 0) {
+      // Use the first selected staff member for individual report
+      const staffId = filters.staff[0];
+      const queryParams = buildFilterQueryString(filters);
+      window.open(`<?= base_url('weektasks/print_staff_report_filtered/') ?>${staffId}?${queryParams}`, '_blank');
+    } else {
+      show_notification('Please select at least one staff member to print individual report', 'warning');
+    }
+  });
 
-  if (staff && start && end) {
-    window.open(`<?= base_url('weektasks/print_staff_report/') ?>${staff[0]}/${start}/${end}/${status}`, '_blank');
+  // Enhanced Print Division Report - works with all current filters
+  $('#printDivisionBtn').on('click', function () {
+    const filters = getCurrentFilters();
+    
+    if (filters.division) {
+      const queryParams = buildFilterQueryString(filters);
+      window.open(`<?= base_url('weektasks/print_division_report_filtered/') ?>${filters.division}?${queryParams}`, '_blank');
+    } else {
+      show_notification('Please select a division to print division report', 'warning');
+    }
+  });
+
+  // Enhanced Print Combined Report - works with all current filters
+  $('#printCombinedBtn').on('click', function () {
+    const filters = getCurrentFilters();
+    
+    if (filters.division) {
+      const queryParams = buildFilterQueryString(filters);
+      window.open(`<?= base_url('weektasks/print_combined_division_report_filtered/') ?>${filters.division}?${queryParams}`, '_blank');
+    } else {
+      show_notification('Please select a division to print combined report', 'warning');
+    }
+  });
+
+  // Helper function to get current filter values
+  function getCurrentFilters() {
+    return {
+      staff: $('#filterStaff').val() || [],
+      division: $('#filterDivision').val() || '',
+      start_date: $('#filterStartDate').val() || '',
+      end_date: $('#filterEndDate').val() || '',
+      status: $('#filterStatus').val() || 'all',
+      teamlead: $('#filterLead').val() || 'all'
+    };
   }
-});
 
-$('#printDivisionBtn').on('click', function () {
-  const division = $('#filterDivision').val();
-  const start = $('#filterStartDate').val();
-  const end = $('#filterEndDate').val();
-  const status = $('#filterStatus').val() || 'all';
-
-  if (division && start && end) {
-    window.open(`<?= base_url('weektasks/print_division_report/') ?>${division}/${start}/${end}/${status}`, '_blank');
+  // Helper function to build query string from filters
+  function buildFilterQueryString(filters) {
+    const params = new URLSearchParams();
+    
+    if (filters.staff && filters.staff.length > 0) {
+      params.append('staff_ids', filters.staff.join(','));
+    }
+    if (filters.start_date) {
+      params.append('start_date', filters.start_date);
+    }
+    if (filters.end_date) {
+      params.append('end_date', filters.end_date);
+    }
+    if (filters.status && filters.status !== 'all') {
+      params.append('status', filters.status);
+    }
+    if (filters.teamlead && filters.teamlead !== 'all') {
+      params.append('teamlead', filters.teamlead);
+    }
+    
+    return params.toString();
   }
-});
-
-$('#printCombinedBtn').on('click', function () {
-  const division = $('#filterDivision').val();
-  const start = $('#filterStartDate').val();
-  const end = $('#filterEndDate').val();
-  const status = $('#filterStatus').val() || 'all';
-
-  if (division && start && end) {
-    window.open(`<?= base_url('weektasks/print_combined_division_report/') ?>${division}/${start}/${end}/${status}`, '_blank');
-  }
-});
 
 
 });

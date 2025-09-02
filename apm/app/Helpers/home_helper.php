@@ -312,11 +312,20 @@ if (!function_exists('get_pending_service_requests_count')) {
 }
 
 if (!function_exists('mpdf_print')) {
+    /**
+     * Generate a PDF using mPDF, or preview the HTML in the browser for debugging.
+     *
+     * @param string $view
+     * @param array $data
+     * @param array $options
+     *        - 'preview_html' (bool): If true, output HTML to browser instead of PDF (for debug)
+     * @return \Mpdf\Mpdf|string
+     */
     function mpdf_print($view, $data = [], $options = [])
     {
         // Set timezone
         date_default_timezone_set("Africa/Nairobi");
-        
+
         // Load the view with data
         if (strpos($view, '.blade.php') !== false) {
             // If it's a Blade view, render it normally
@@ -327,7 +336,7 @@ if (!function_exists('mpdf_print')) {
             if (file_exists($templatePath)) {
                 // Extract variables from data array for PHP template
                 extract($data);
-                
+
                 // Start output buffering before including template
                 ob_start();
                 include $templatePath;
@@ -338,18 +347,28 @@ if (!function_exists('mpdf_print')) {
                 $html = view($view, $data)->render();
             }
         }
-        
+
+        // If preview_html option is set, output HTML directly for debugging
+        if (!empty($options['preview_html'])) {
+            // Set content type header for HTML if not already sent
+            if (!headers_sent()) {
+                header('Content-Type: text/html; charset=utf-8');
+            }
+            echo $html;
+            exit;
+        }
+
         // Generate PDF using mPDF - exactly like CodeIgniter
         $mpdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
             'default_font' => 'Arial'
         ]);
-        
+
         // Set PDF margins exactly like CodeIgniter
         $mpdf->SetMargins(10, 10, 10);         // left, top, right margins
         $mpdf->SetAutoPageBreak(true, 30);     // allow auto page break with 30mm bottom margin for footer
-        
+
         // Set footer exactly like CodeIgniter
         $footer = '
         <table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
@@ -365,11 +384,10 @@ if (!function_exists('mpdf_print')) {
                     ' . config('app.url') . '
                 </td>
             </tr>
-          
         </table>'.  '<p style="text-align:right;">Page {PAGENO} of {nbpg}</p>';
-        
+
         $mpdf->SetHTMLFooter($footer);
-        
+
         // Write HTML content exactly like CodeIgniter with error handling
         try {
             $mpdf->WriteHTML($html);
@@ -378,7 +396,7 @@ if (!function_exists('mpdf_print')) {
             $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
             $mpdf->WriteHTML($simpleHtml);
         }
-        
+
         return $mpdf;
     }
 }
