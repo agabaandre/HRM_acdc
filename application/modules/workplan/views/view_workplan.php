@@ -292,7 +292,7 @@
 
                 <!-- Search -->
                 <div class="col-md-3">
-                    <label class="form-label fw-semibold">Search Activity</label>
+                    <label class="form-label fw-semibold">Search Workplan</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fa fa-search"></i></span>
                         <input type="text" id="searchBox" class="form-control" placeholder="Enter keyword...">
@@ -313,6 +313,7 @@
                 </div>
 
                 <!-- Division Filter -->
+                <?php if (in_array('85', $this->session->userdata('user')->permissions)): ?>
                 <div class="col-md-3">
                     <label class="form-label fw-semibold">Division</label>
                     <select id="divisionSelect" class="form-select">
@@ -320,6 +321,18 @@
                         <?php foreach ($divisions as $div): ?>
                             <option value="<?= $div->division_id ?>"><?= $div->division_name ?></option>
                         <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
+                <!-- Page Size Selector -->
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Items per Page</label>
+                    <select id="pageSizeSelect" class="form-select">
+                        <option value="10">10</option>
+                        <option value="15" selected>15</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
                     </select>
                 </div>
 
@@ -343,8 +356,8 @@
     </div>
 
     <!-- Upload Form -->
-    <?php 
-    $session = $this->session->userdata('user');
+     <?php 
+     $session = $this->session->userdata('user');
     $permissions = $session->permissions;
     ?>
     <?php if (in_array('86', $permissions)) : ?>
@@ -357,12 +370,12 @@
         <div class="card-body">
             <?= form_open_multipart('workplan/upload_workplan', ['id' => 'uploadForm']) ?>
             <div class="input-group">
-                <input type="file" name="file" class="form-control" required>
+            <input type="file" name="file" class="form-control" required>
                 <button class="btn btn-success" type="submit">
-                    <i class="fa fa-upload me-1"></i> Upload Workplan
-                </button>
-            </div>
-            <?= form_close() ?>
+                <i class="fa fa-upload me-1"></i> Upload Workplan
+            </button>
+        </div>
+    <?= form_close() ?>
         </div>
     </div>
     <?php endif; ?>
@@ -470,29 +483,68 @@
                 <!-- Activities Tab -->
                 <div class="tab-pane fade show active" id="activities" role="tabpanel">
                     <div class="table-responsive mt-3">
-                        <table class="table table-bordered align-middle text-wrap">
-                            <thead class="table-dark text-center">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Year</th>
-                                    <th>Division</th>
-                                    <th>Intermediate Outcome</th>
-                                    <th>Broad Activity</th>
-                                    <th>Output Indicator</th>
-                                    <th>Target</th>
-                                    <th>Activity Name</th>
-                                    <th>Has Budget</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="taskTableBody" class="text-center"></tbody>
-                        </table>
-                    </div>
+        <table class="table table-bordered align-middle text-wrap">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>#</th>
+                    <th>Year</th>
+                    <th>Division</th>
+                    <th>Intermediate Outcome</th>
+                    <th>Broad Activity</th>
+                    <th>Output Indicator</th>
+                    <th>Target</th>
+                    <th>Activity Name</th>
+                    <th>Has Budget</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="taskTableBody" class="text-center"></tbody>
+        </table>
+    </div>
 
-                    <!-- Pagination -->
-                    <nav>
-                        <ul class="pagination justify-content-center mt-3" id="paginationContainer"></ul>
-                    </nav>
+    <!-- Pagination -->
+    <nav>
+        <ul class="pagination justify-content-center mt-3" id="paginationContainer"></ul>
+    </nav>
+                    
+                    <!-- Workplan Summary -->
+                    <div class="row mt-4" id="workplanSummary" style="display: none;">
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-3">
+                                        <i class="fa fa-chart-bar me-2"></i>Workplan Summary
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h4 class="text-primary mb-1" id="totalWorkplanActivities">0</h4>
+                                                <small class="text-muted">Total Activities</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h4 class="text-info mb-1" id="totalWorkplanTarget">0</h4>
+                                                <small class="text-muted">Total Target</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h4 class="text-success mb-1" id="workplanWithBudget">0</h4>
+                                                <small class="text-muted">With Budget</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="text-center">
+                                                <h4 class="text-warning mb-1" id="workplanWithoutBudget">0</h4>
+                                                <small class="text-muted">Without Budget</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Execution Tracking Tab -->
@@ -501,7 +553,19 @@
                         <div class="col-12">
                             <div class="card">
                                 <div class="card-header">
-                                    <h6 class="mb-0">Execution Progress by Activity</h6>
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <h6 class="mb-0 text-white">Execution Progress by Activity</h6>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="executionSearch" placeholder="Search activities...">
+                                                <button class="btn btn-outline-secondary" type="button" id="clearExecutionSearch">
+                                                    <i class="fa fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
@@ -509,7 +573,7 @@
                                             <thead>
                                                 <tr>
                                                     <th>#</th>
-                                                    <th>Activity Name</th>
+                                                    <th>Workplan Activity Name</th>
                                                     <th>Target</th>
                                                     <th>Sub-Activities Created</th>
                                                     <th>Sub-Activities Completed</th>
@@ -521,6 +585,52 @@
                                                 <!-- Will be populated by JavaScript -->
                                             </tbody>
                                         </table>
+                                    </div>
+                                    
+                                    <!-- Execution Pagination -->
+                                    <nav class="mt-3">
+                                        <ul class="pagination justify-content-center" id="executionPagination">
+                                            <!-- Will be populated by JavaScript -->
+                                        </ul>
+                                    </nav>
+                                    
+                                    <!-- Execution Summary -->
+                                    <div class="row mt-4" id="executionSummary" style="display: none;">
+                                        <div class="col-12">
+                                            <div class="card bg-light">
+                                                <div class="card-body">
+                                                    <h6 class="card-title mb-3">
+                                                        <i class="fa fa-chart-bar me-2"></i>Execution Summary
+                                                    </h6>
+                                                    <div class="row">
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h4 class="text-primary mb-1" id="totalExecutionActivities">0</h4>
+                                                                <small class="text-muted">Total Activities</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h4 class="text-info mb-1" id="totalExecutionTarget">0</h4>
+                                                                <small class="text-muted">Total Target</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h4 class="text-success mb-1" id="totalExecutionCompleted">0</h4>
+                                                                <small class="text-muted">Total Completed</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h4 class="text-warning mb-1" id="overallExecutionScore">0%</h4>
+                                                                <small class="text-muted">Overall Score</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -589,6 +699,14 @@
 <script>
 let latestFetchedData = [];
 let executionData = [];
+let executionCurrentPage = 1;
+let executionItemsPerPage = 10;
+let executionTotalItems = 0;
+let executionFilteredData = [];
+let executionSearchTerm = '';
+let workplanCurrentPage = 1;
+let workplanItemsPerPage = 15;
+let workplanTotalItems = 0;
 
 function show_notification(message, type) {
     Lobibox.notify(type, {
@@ -630,14 +748,20 @@ function fetchTasks(query = '', year = '', division = '') {
 }
 
 function loadStatistics() {
+    const data = {
+        year: $('#yearSelect').val(),
+        '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
+    };
+    
+    // Only add division if the filter exists (user has permission 85)
+    if ($('#divisionSelect').length) {
+        data.division = $('#divisionSelect').val();
+    }
+    
     $.ajax({
         url: "<?= site_url('workplan/get_statistics') ?>",
         method: "POST",
-        data: {
-            year: $('#yearSelect').val(),
-            division: $('#divisionSelect').val(),
-            '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
-        },
+        data: data,
         dataType: "json",
         success: function(response) {
             if (response.success) {
@@ -703,15 +827,15 @@ function updateProgressBar(selector, current, total) {
 }
 
 function renderPaginatedTable(data) {
-    const itemsPerPage = 50;
-    let currentPage = 1;
-    const totalPages = Math.ceil(data.length / itemsPerPage);
+    workplanTotalItems = data.length;
+    workplanCurrentPage = 1; // Reset to first page when loading new data
+    const totalPages = Math.ceil(workplanTotalItems / workplanItemsPerPage);
 
     function renderPage(page) {
         let html = '';
         const role = <?= $this->session->userdata('user')->role ?>;
-        const start = (page - 1) * itemsPerPage;
-        const end = start + itemsPerPage;
+        const start = (page - 1) * workplanItemsPerPage;
+        const end = start + workplanItemsPerPage;
         const pageItems = data.slice(start, end);
 
         if (pageItems.length === 0) {
@@ -749,35 +873,114 @@ function renderPaginatedTable(data) {
 
     function renderPaginationControls(totalPages, currentPage) {
         let paginationHTML = '';
-        for (let i = 1; i <= totalPages; i++) {
-            paginationHTML += `
-                <li class="page-item ${i === currentPage ? 'active' : ''}">
+        
+        if (totalPages <= 1) {
+            $('#paginationContainer').html('');
+            return;
+        }
+        
+        // Previous button
+        paginationHTML += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="goToPage(${currentPage - 1}); return false;">Previous</a>
+        </li>`;
+        
+        // Page numbers with smart display
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        
+        if (startPage > 1) {
+            paginationHTML += `<li class="page-item">
+                <a class="page-link" href="#" onclick="goToPage(1); return false;">1</a>
+            </li>`;
+            if (startPage > 2) {
+                paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHTML += `<li class="page-item ${i === currentPage ? 'active' : ''}">
                     <a class="page-link" href="#" onclick="goToPage(${i}); return false;">${i}</a>
                 </li>`;
         }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            paginationHTML += `<li class="page-item">
+                <a class="page-link" href="#" onclick="goToPage(${totalPages}); return false;">${totalPages}</a>
+            </li>`;
+        }
+        
+        // Next button
+        paginationHTML += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="goToPage(${currentPage + 1}); return false;">Next</a>
+        </li>`;
+        
         $('#paginationContainer').html(paginationHTML);
     }
 
     window.goToPage = function(page) {
+        if (page >= 1 && page <= totalPages) {
+            workplanCurrentPage = page;
         renderPage(page);
+        }
     };
 
-    renderPage(currentPage);
+    renderPage(workplanCurrentPage);
+    updateWorkplanSummary(data);
+}
+
+function updateWorkplanSummary(data) {
+    if (data.length === 0) {
+        $('#workplanSummary').hide();
+        return;
+    }
+    
+    let totalActivities = data.length;
+    let totalTarget = 0;
+    let withBudget = 0;
+    let withoutBudget = 0;
+    
+    data.forEach(item => {
+        totalTarget += parseInt(item.cumulative_target) || 0;
+        if (item.has_budget == 1) {
+            withBudget++;
+        } else {
+            withoutBudget++;
+        }
+    });
+    
+    $('#totalWorkplanActivities').text(totalActivities);
+    $('#totalWorkplanTarget').text(totalTarget);
+    $('#workplanWithBudget').text(withBudget);
+    $('#workplanWithoutBudget').text(withoutBudget);
+    
+    $('#workplanSummary').show();
 }
 
 function loadExecutionData() {
+    const data = {
+        year: $('#yearSelect').val(),
+        '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
+    };
+    
+    // Only add division if the filter exists (user has permission 85)
+    if ($('#divisionSelect').length) {
+        data.division = $('#divisionSelect').val();
+    }
+    
     $.ajax({
         url: "<?= site_url('workplan/get_execution_data') ?>",
         method: "POST",
-        data: {
-            year: $('#yearSelect').val(),
-            division: $('#divisionSelect').val(),
-            '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
-        },
+        data: data,
         dataType: "json",
         success: function(response) {
             if (response.success) {
                 executionData = response.data;
+                executionCurrentPage = 1; // Reset to first page when loading new data
+                executionSearchTerm = ''; // Clear search when loading new data
+                $('#executionSearch').val(''); // Clear search input
                 renderExecutionTable(response.data);
             } else {
                 console.error('Execution data load failed:', response.message);
@@ -790,22 +993,50 @@ function loadExecutionData() {
 }
 
 function renderExecutionTable(data) {
+    // Store all data for filtering and pagination
+    executionData = data;
+    executionFilteredData = data;
+    
+    // Apply search filter if there's a search term
+    if (executionSearchTerm) {
+        executionFilteredData = data.filter(item => 
+            item.activity_name.toLowerCase().includes(executionSearchTerm.toLowerCase())
+        );
+    }
+    
+    // Calculate pagination
+    executionTotalItems = executionFilteredData.length;
+    const totalPages = Math.ceil(executionTotalItems / executionItemsPerPage);
+    const startIndex = (executionCurrentPage - 1) * executionItemsPerPage;
+    const endIndex = startIndex + executionItemsPerPage;
+    const paginatedData = executionFilteredData.slice(startIndex, endIndex);
+    
+    // Render table
     let html = '';
-    if (data.length === 0) {
+    if (paginatedData.length === 0) {
         html = `<tr><td colspan="7" class="text-center text-muted">No execution data found.</td></tr>`;
     } else {
-        data.forEach((item, index) => {
-            const executionRate = item.target > 0 ? ((item.completed / item.target) * 100).toFixed(1) : 0;
+        paginatedData.forEach((item, index) => {
+            const target = parseInt(item.cumulative_target) || 0;
+            const created = parseInt(item.created) || 0;
+            const completed = parseInt(item.completed) || 0;
+            const executionRate = created > 0 ? 
+                Math.round((completed / created) * 100) : 0;
             const progressBarWidth = Math.min(executionRate, 100);
+            const rowNumber = startIndex + index + 1;
             
             html += `
                 <tr>
-                    <td>${index + 1}</td>
-                    <td>${item.activity_name}</td>
-                    <td>${item.target}</td>
-                    <td>${item.created}</td>
-                    <td>${item.completed}</td>
-                    <td>${executionRate}%</td>
+                    <td>${rowNumber}</td>
+                    <td>
+                        <div style="word-wrap: break-word; max-width: 300px; white-space: normal;">
+                            ${item.activity_name}
+                        </div>
+                    </td>
+                    <td><span class="badge bg-primary">${target}</span></td>
+                    <td><span class="badge bg-info">${created}</span></td>
+                    <td><span class="badge bg-success">${completed}</span></td>
+                    <td><strong>${executionRate}%</strong></td>
                     <td>
                         <div class="progress" style="height: 20px;">
                             <div class="progress-bar ${getProgressBarClass(executionRate)}" 
@@ -822,6 +1053,12 @@ function renderExecutionTable(data) {
         });
     }
     $('#executionTableBody').html(html);
+    
+    // Render pagination
+    renderExecutionPagination(totalPages);
+    
+    // Update summary
+    updateExecutionSummary(executionFilteredData);
 }
 
 function getProgressBarClass(rate) {
@@ -831,15 +1068,114 @@ function getProgressBarClass(rate) {
     return 'bg-danger';
 }
 
+function renderExecutionPagination(totalPages) {
+    let html = '';
+    
+    if (totalPages <= 1) {
+        $('#executionPagination').html('');
+        return;
+    }
+    
+    // Previous button
+    html += `<li class="page-item ${executionCurrentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changeExecutionPage(${executionCurrentPage - 1})">Previous</a>
+    </li>`;
+    
+    // Page numbers
+    const startPage = Math.max(1, executionCurrentPage - 2);
+    const endPage = Math.min(totalPages, executionCurrentPage + 2);
+    
+    if (startPage > 1) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="changeExecutionPage(1)">1</a></li>`;
+        if (startPage > 2) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<li class="page-item ${i === executionCurrentPage ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="changeExecutionPage(${i})">${i}</a>
+        </li>`;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="changeExecutionPage(${totalPages})">${totalPages}</a></li>`;
+    }
+    
+    // Next button
+    html += `<li class="page-item ${executionCurrentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changeExecutionPage(${executionCurrentPage + 1})">Next</a>
+    </li>`;
+    
+    $('#executionPagination').html(html);
+}
+
+function changeExecutionPage(page) {
+    const totalPages = Math.ceil(executionTotalItems / executionItemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+        executionCurrentPage = page;
+        renderExecutionTable(executionData);
+    }
+}
+
+function updateExecutionSummary(data) {
+    if (data.length === 0) {
+        $('#executionSummary').hide();
+        return;
+    }
+    
+    let totalActivities = data.length;
+    let totalTarget = 0;
+    let totalCreated = 0;
+    let totalCompleted = 0;
+    
+    data.forEach(item => {
+        totalTarget += parseInt(item.cumulative_target) || 0;
+        totalCreated += parseInt(item.created) || 0;
+        totalCompleted += parseInt(item.completed) || 0;
+    });
+    
+    const overallScore = totalCreated > 0 ? Math.round((totalCompleted / totalCreated) * 100) : 0;
+    
+    $('#totalExecutionActivities').text(totalActivities);
+    $('#totalExecutionTarget').text(totalTarget);
+    $('#totalExecutionCompleted').text(totalCompleted);
+    $('#overallExecutionScore').text(overallScore + '%');
+    
+    // Color code the overall score
+    const scoreElement = $('#overallExecutionScore');
+    scoreElement.removeClass('text-warning text-success text-danger text-info');
+    if (overallScore >= 80) {
+        scoreElement.addClass('text-success');
+    } else if (overallScore >= 60) {
+        scoreElement.addClass('text-info');
+    } else if (overallScore >= 40) {
+        scoreElement.addClass('text-warning');
+    } else {
+        scoreElement.addClass('text-danger');
+    }
+    
+    $('#executionSummary').show();
+}
+
 function loadUnitScores() {
+    const data = {
+        year: $('#yearSelect').val(),
+        '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
+    };
+    
+    // Only add division if the filter exists (user has permission 85)
+    if ($('#divisionSelect').length) {
+        data.division = $('#divisionSelect').val();
+    }
+    
     $.ajax({
         url: "<?= site_url('workplan/get_unit_scores') ?>",
         method: "POST",
-        data: {
-            year: $('#yearSelect').val(),
-            division: $('#divisionSelect').val(),
-            '<?= $this->security->get_csrf_token_name(); ?>': '<?= $this->security->get_csrf_hash(); ?>'
-        },
+        data: data,
         dataType: "json",
         success: function(response) {
             if (response.success) {
@@ -1033,6 +1369,20 @@ $('#unit-scores-tab').on('click', function() {
     loadUnitScores();
 });
 
+// Execution search functionality
+$('#executionSearch').on('input', function() {
+    executionSearchTerm = $(this).val();
+    executionCurrentPage = 1; // Reset to first page when searching
+    renderExecutionTable(executionData);
+});
+
+$('#clearExecutionSearch').on('click', function() {
+    $('#executionSearch').val('');
+    executionSearchTerm = '';
+    executionCurrentPage = 1;
+    renderExecutionTable(executionData);
+});
+
 // Filters
 $('#searchBox, #yearSelect, #divisionSelect').on('input change', function() {
     // Debounced search
@@ -1040,6 +1390,15 @@ $('#searchBox, #yearSelect, #divisionSelect').on('input change', function() {
     window.searchTimeout = setTimeout(() => {
         fetchTasks($('#searchBox').val(), $('#yearSelect').val(), $('#divisionSelect').val());
     }, 500);
+});
+
+// Page size selector
+$('#pageSizeSelect').on('change', function() {
+    workplanItemsPerPage = parseInt($(this).val());
+    workplanCurrentPage = 1; // Reset to first page when changing page size
+    if (latestFetchedData.length > 0) {
+        renderPaginatedTable(latestFetchedData);
+    }
 });
 
 $(document).ready(function() {

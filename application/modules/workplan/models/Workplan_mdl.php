@@ -121,7 +121,7 @@ class Workplan_mdl extends CI_Model {
 
         // Calculate target achievement (based on cumulative targets)
         $total_target = $this->db
-            ->select('SUM(CAST(cumulative_target AS UNSIGNED)) as total_target')
+            ->select('SUM(COALESCE(CAST(cumulative_target AS UNSIGNED), 0)) as total_target')
             ->from('workplan_tasks')
             ->where('division_id', $division_id)
             ->where('year', $year)
@@ -145,8 +145,9 @@ class Workplan_mdl extends CI_Model {
     public function get_execution_tracking_data($division_id, $year) {
         $this->db
             ->select('
+                wt.id,
                 wt.activity_name,
-                wt.cumulative_target,
+                COALESCE(wt.cumulative_target, 0) as cumulative_target,
                 COUNT(DISTINCT wpt.activity_id) as created,
                 COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END) as completed
             ')
@@ -158,7 +159,13 @@ class Workplan_mdl extends CI_Model {
             ->group_by('wt.id, wt.activity_name, wt.cumulative_target')
             ->order_by('wt.activity_name', 'ASC');
 
-        return $this->db->get()->result();
+        $result = $this->db->get()->result();
+        
+        // Debug: Log the query and result
+        log_message('debug', 'Execution tracking query: ' . $this->db->last_query());
+        log_message('debug', 'Execution tracking result count: ' . count($result));
+        
+        return $result;
     }
 
     // Get unit score breakdown
@@ -186,7 +193,7 @@ class Workplan_mdl extends CI_Model {
             $activities = $this->db
                 ->select('
                     wt.activity_name,
-                    wt.cumulative_target,
+                    COALESCE(wt.cumulative_target, 0) as cumulative_target,
                     COUNT(DISTINCT wpt.activity_id) as sub_activities_created,
                     COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END) as sub_activities_completed
                 ')

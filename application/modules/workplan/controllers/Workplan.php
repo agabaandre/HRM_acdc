@@ -155,6 +155,12 @@ class Workplan extends MX_Controller {
         try {
             $year = $this->input->post('year') ?: date('Y');
             $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
+            
+            // If user doesn't have permission 85, force their division
+            $user_permissions = $this->session->userdata('user')->permissions;
+            if (!in_array('85', $user_permissions)) {
+                $division_id = $this->session->userdata('user')->division_id;
+            }
 
             $stats = $this->workplan_mdl->get_workplan_statistics($division_id, $year);
             
@@ -175,6 +181,12 @@ class Workplan extends MX_Controller {
         try {
             $year = $this->input->post('year') ?: date('Y');
             $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
+            
+            // If user doesn't have permission 85, force their division
+            $user_permissions = $this->session->userdata('user')->permissions;
+            if (!in_array('85', $user_permissions)) {
+                $division_id = $this->session->userdata('user')->division_id;
+            }
 
             $data = $this->workplan_mdl->get_execution_tracking_data($division_id, $year);
             
@@ -195,6 +207,12 @@ class Workplan extends MX_Controller {
         try {
             $year = $this->input->post('year') ?: date('Y');
             $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
+            
+            // If user doesn't have permission 85, force their division
+            $user_permissions = $this->session->userdata('user')->permissions;
+            if (!in_array('85', $user_permissions)) {
+                $division_id = $this->session->userdata('user')->division_id;
+            }
 
             $data = $this->workplan_mdl->get_unit_score_breakdown($division_id, $year);
             
