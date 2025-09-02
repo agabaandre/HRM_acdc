@@ -18,15 +18,15 @@
   .page-header {
     background: rgba(52, 143, 65, 1);
     color: white;
-    padding: 2rem 0;
-    margin-bottom: 2rem;
+    padding: 1.2rem 0;
+    margin-bottom: 1rem;
     border-radius: 0 0 15px 15px;
   }
 
   .filter-card {
     border: none;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    border-radius: 15px;
+    border-radius: 1px;
     margin-bottom: 2rem;
   }
 
@@ -41,7 +41,7 @@
   .table-card {
     border: none;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    border-radius: 15px;
+    border-radius: 1px;
     overflow: hidden;
   }
 
