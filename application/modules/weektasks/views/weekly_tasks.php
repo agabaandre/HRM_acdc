@@ -224,20 +224,15 @@
             <option value="4">Cancelled</option>
           </select>
         </div>
-
         <div class="col-md-3">
-          <label class="form-label fw-semibold">
-            <i class="fa fa-calendar-start me-1"></i>Start Date
-          </label>
-          <input type="date" id="filterStartDate" class="form-control">
-        </div>
+            <label class="form-label fw-semibold">Start Date</label>
+            <input type="text" id="filterStartDate" class="form-control datepicker" placeholder="YYYY-MM-DD">
+          </div>
 
-        <div class="col-md-3">
-          <label class="form-label fw-semibold">
-            <i class="fa fa-calendar-end me-1"></i>End Date
-          </label>
-          <input type="date" id="filterEndDate" class="form-control">
-        </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">End Date</label>
+            <input type="text" id="filterEndDate" class="form-control datepicker" placeholder="YYYY-MM-DD">
+          </div>
 
         <div class="col-md-6">
           <div class="d-flex gap-2 mt-4">
