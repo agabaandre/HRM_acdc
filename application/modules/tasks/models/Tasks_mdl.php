@@ -341,8 +341,8 @@ class Tasks_mdl extends CI_Model {
             ->result();
     }
 
-    // Get filtered activities
-    public function get_activities_filtered($division_id, $start_date = null, $end_date = null, $team_members = null, $work_plan = null) {
+    // Get filtered activities with server-side pagination
+    public function get_activities_filtered_paginated($division_id, $start_date = null, $end_date = null, $team_members = null, $work_plan = null, $start = 0, $length = 10, $search_value = '', $order_column = 0, $order_dir = 'asc') {
         // Subquery: Get latest contract per staff
         $subquery = $this->db
             ->select('MAX(staff_contract_id)', false)
@@ -350,6 +350,17 @@ class Tasks_mdl extends CI_Model {
             ->group_by('staff_id')
             ->get_compiled_select();
 
+        // Column mapping for ordering
+        $columns = [
+            'wpt.activity_name',
+            'CONCAT(s.fname, " ", s.lname)',
+            'wpt.start_date',
+            'wpt.end_date',
+            'wpt.status',
+            'wpt.comments'
+        ];
+
+        // Base query
         $this->db
             ->select('
                 wpt.activity_id,
@@ -367,7 +378,8 @@ class Tasks_mdl extends CI_Model {
                 r.report_id,
                 r.description as report,
                 r.report_date,
-                r.status as report_status
+                r.status as report_status,
+                d.division_name
             ')
             ->from('work_planner_tasks wpt')
             ->join('staff s', 's.staff_id = wpt.created_by', 'left')
@@ -375,6 +387,7 @@ class Tasks_mdl extends CI_Model {
             ->join('jobs j', 'j.job_id = sc.job_id', 'left')
             ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id', 'left')
             ->join('reports r', 'r.activity_id = wpt.activity_id', 'left')
+            ->join('divisions d', 'd.division_id = sc.division_id', 'left')
             ->where("sc.staff_contract_id IN ($subquery)", null, false)
             ->where_in('sc.status_id', [1, 2, 3, 7])
             ->where('sc.division_id', $division_id);
@@ -396,10 +409,46 @@ class Tasks_mdl extends CI_Model {
             $this->db->where('wpt.workplan_id', $work_plan);
         }
 
-        return $this->db
-            ->order_by('wpt.start_date', 'DESC')
-            ->get()
-            ->result();
+        // Global search
+        if (!empty($search_value)) {
+            $this->db->group_start();
+            $this->db->like('wpt.activity_name', $search_value);
+            $this->db->or_like('s.fname', $search_value);
+            $this->db->or_like('s.lname', $search_value);
+            $this->db->or_like('wt.activity_name', $search_value);
+            $this->db->or_like('j.job_name', $search_value);
+            $this->db->or_like('d.division_name', $search_value);
+            $this->db->group_end();
+        }
+
+        // Get total records count (before pagination)
+        $total_records = $this->db->count_all_results('', false);
+
+        // Apply ordering
+        if (isset($columns[$order_column])) {
+            $this->db->order_by($columns[$order_column], $order_dir);
+        } else {
+            $this->db->order_by('wpt.start_date', 'DESC');
+        }
+
+        // Apply pagination
+        if ($length > 0) {
+            $this->db->limit($length, $start);
+        }
+
+        $data = $this->db->get()->result();
+
+        return [
+            'data' => $data,
+            'total_records' => $total_records,
+            'filtered_records' => $total_records // Same as total since we're not doing separate filtered count
+        ];
+    }
+
+    // Get filtered activities (legacy method for backward compatibility)
+    public function get_activities_filtered($division_id, $start_date = null, $end_date = null, $team_members = null, $work_plan = null) {
+        $result = $this->get_activities_filtered_paginated($division_id, $start_date, $end_date, $team_members, $work_plan, 0, 0);
+        return $result['data'];
     }
 
     // Get team performance data
