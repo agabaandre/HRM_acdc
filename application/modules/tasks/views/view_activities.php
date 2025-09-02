@@ -161,6 +161,20 @@
     font-size: 1rem;
   }
 
+  .member-number {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6c757d, #495057);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin: 0 auto;
+  }
+
   .performance-bar {
     height: 8px;
     background: #e9ecef;
@@ -207,6 +221,65 @@
     padding: 1rem 0.75rem;
     vertical-align: middle;
     border-color: #f1f3f4;
+  }
+
+  /* Text wrapping for table cells */
+  .table td.text-wrap {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    max-width: 200px;
+  }
+
+  /* Specific column widths for better layout */
+  #activitiesTable th:nth-child(1),
+  #activitiesTable td:nth-child(1) {
+    width: 50px;
+    text-align: center;
+  }
+
+  #activitiesTable th:nth-child(2),
+  #activitiesTable td:nth-child(2) {
+    width: 250px;
+    min-width: 200px;
+  }
+
+  #activitiesTable th:nth-child(3),
+  #activitiesTable td:nth-child(3) {
+    width: 150px;
+    min-width: 120px;
+  }
+
+  #activitiesTable th:nth-child(4),
+  #activitiesTable td:nth-child(4) {
+    width: 120px;
+    min-width: 100px;
+  }
+
+  #activitiesTable th:nth-child(5),
+  #activitiesTable td:nth-child(5) {
+    width: 100px;
+  }
+
+  #activitiesTable th:nth-child(6),
+  #activitiesTable td:nth-child(6) {
+    width: 100px;
+  }
+
+  #activitiesTable th:nth-child(7),
+  #activitiesTable td:nth-child(7) {
+    width: 120px;
+  }
+
+  #activitiesTable th:nth-child(8),
+  #activitiesTable td:nth-child(8) {
+    width: 120px;
+  }
+
+  #activitiesTable th:nth-child(9),
+  #activitiesTable td:nth-child(9) {
+    width: 120px;
+    text-align: center;
   }
 
   .status-badge {
@@ -399,8 +472,9 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
     <div class="card-body">
       <div class="table-responsive">
         <table class="table table-hover mb-0" id="activitiesTable">
-          <thead>
+                    <thead>
             <tr>
+              <th>#</th>
                 <th>Activity Name</th>
               <th>Team Member</th>
               <th>Division</th>
@@ -463,6 +537,8 @@ $(document).ready(function() {
     activitiesTable = $('#activitiesTable').DataTable({
       processing: true,
       serverSide: true,
+      responsive: true,
+      autoWidth: false,
       ajax: {
         url: '<?= base_url("tasks/fetch_activities_filtered") ?>',
         type: 'POST',
@@ -480,12 +556,33 @@ $(document).ready(function() {
         }
       },
       columns: [
-        { data: 'activity_name', name: 'activity_name' },
+        { 
+          data: null,
+          name: 'row_number',
+          orderable: false,
+          searchable: false,
+          render: function(data, type, row, meta) {
+            return meta.row + meta.settings._iDisplayStart + 1;
+          }
+        },
+        { 
+          data: 'activity_name', 
+          name: 'activity_name',
+          render: function(data, type, row) {
+            return data || 'N/A';
+          },
+          createdCell: function(td, cellData, rowData, row, col) {
+            $(td).addClass('text-wrap');
+          }
+        },
         { 
           data: 'member_name', 
           name: 'member_name',
           render: function(data, type, row) {
             return data || 'N/A';
+          },
+          createdCell: function(td, cellData, rowData, row, col) {
+            $(td).addClass('text-wrap');
           }
         },
         { 
@@ -493,6 +590,9 @@ $(document).ready(function() {
           name: 'division_name',
           render: function(data, type, row) {
             return data || 'N/A';
+          },
+          createdCell: function(td, cellData, rowData, row, col) {
+            $(td).addClass('text-wrap');
           }
         },
         { data: 'start_date', name: 'start_date' },
@@ -555,7 +655,7 @@ $(document).ready(function() {
       ],
       pageLength: 25,
       lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-      order: [[3, 'desc']], // Order by start date descending by default
+      order: [[4, 'desc']], // Order by start date descending by default
       language: {
         processing: "Loading activities...",
         emptyTable: "No activities found",
@@ -567,21 +667,21 @@ $(document).ready(function() {
           extend: 'excelHtml5',
           title: 'Activities Export',
           exportOptions: {
-            columns: [0, 1, 2, 3, 4, 5, 6] // Exclude actions column
+            columns: [1, 2, 3, 4, 5, 6, 7] // Exclude numbering and actions columns
           }
         },
         {
           extend: 'csvHtml5',
           title: 'Activities Export',
           exportOptions: {
-            columns: [0, 1, 2, 3, 4, 5, 6] // Exclude actions column
+            columns: [1, 2, 3, 4, 5, 6, 7] // Exclude numbering and actions columns
           }
         },
         {
           extend: 'pdfHtml5',
           title: 'Activities Export',
           exportOptions: {
-            columns: [0, 1, 2, 3, 4, 5, 6] // Exclude actions column
+            columns: [1, 2, 3, 4, 5, 6, 7] // Exclude numbering and actions columns
           }
         }
       ]
@@ -709,7 +809,7 @@ $(document).ready(function() {
       return;
     }
 
-    teamData.forEach(function(member) {
+    teamData.forEach(function(member, index) {
       const initials = ((member.fname || '').charAt(0) + (member.lname || '').charAt(0)).toUpperCase();
       const completionRate = (member.total_activities || 0) > 0 ? Math.round(((member.completed_activities || 0) / (member.total_activities || 1)) * 100) : 0;
       
@@ -717,13 +817,16 @@ $(document).ready(function() {
         <div class="team-member-card">
           <div class="row align-items-center">
             <div class="col-md-1">
+              <div class="member-number">${index + 1}</div>
+            </div>
+            <div class="col-md-1">
               <div class="member-avatar">${initials}</div>
             </div>
             <div class="col-md-3">
               <h6 class="mb-1">${member.fname || ''} ${member.lname || ''}</h6>
               <small class="text-muted">${member.job_name || member.job_title || 'Team Member'}</small>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="d-flex justify-content-between">
                 <span class="text-muted">Completed:</span>
                 <span class="fw-bold">${member.completed_activities || 0}/${member.total_activities || 0}</span>
