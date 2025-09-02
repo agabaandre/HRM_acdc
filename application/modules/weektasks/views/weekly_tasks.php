@@ -393,21 +393,21 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             <input type="text" id="filterEndDate" class="form-control datepicker" placeholder="YYYY-MM-DD">
           </div>
 
-        <div class="col-md-6">
-          <div class="d-flex gap-2 mt-4">
-            <button type="button" class="btn btn-success btn-modern" id="applyFilters" style="background-color: rgba(52, 143, 65, 1); border-color: rgba(52, 143, 65, 1);">
+        <div class="col-6">
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <button type="button" class="btn btn-success btn-sm" id="applyFilters" style="background-color: rgba(52, 143, 65, 1); border-color: rgba(52, 143, 65, 1);">
               <i class="fa fa-filter me-1"></i> Apply Filters
             </button>
-            <button type="button" class="btn btn-outline-secondary btn-modern" id="clearFilters">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="clearFilters">
               <i class="fa fa-times me-1"></i> Clear All
             </button>
-            <button type="button" class="btn btn-outline-primary btn-modern" id="thisWeekBtn">
+            <button type="button" class="btn btn-outline-primary btn-sm" id="thisWeekBtn">
               <i class="fa fa-calendar-week me-1"></i> This Week
             </button>
-            <button type="button" class="btn btn-outline-success btn-modern" id="myTasksBtn">
+            <button type="button" class="btn btn-outline-success btn-sm" id="myTasksBtn">
               <i class="fa fa-user me-1"></i> My Tasks
             </button>
-            <button type="button" class="btn btn-outline-info btn-modern" id="exportData">
+            <button type="button" class="btn btn-outline-info btn-sm" id="exportData">
               <i class="fa fa-download me-1"></i> Export
             </button>
           </div>
@@ -417,17 +417,17 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
       <!-- Print Buttons -->
       <div class="row mt-4" id="printButtons">
         <div class="col-md-3">
-          <button class="btn btn-outline-dark w-100" id="printStaffBtn" style="display: none;">
+          <button class="btn btn-sm btn-outline-dark w-100" id="printStaffBtn" style="display: none;">
             <i class="fa fa-print me-1"></i> Print Staff Report
           </button>
         </div>
         <div class="col-md-3">
-          <button class="btn btn-outline-success w-100" id="printDivisionBtn" style="display: none;">
+          <button class="btn btn-sm btn-outline-success w-100" id="printDivisionBtn" style="display: none;">
             <i class="fa fa-print me-1"></i> Print Division Report
           </button>
         </div>
         <div class="col-md-3">
-          <button class="btn btn-outline-success w-100" id="printCombinedBtn" style="display: none;"> 
+          <button class="btn btn-sm btn-outline-success w-100" id="printCombinedBtn" style="display: none;"> 
             <i class="fa fa-print me-1"></i> Combined Effort Report
           </button>
         </div>
