@@ -819,6 +819,12 @@ function updateStatistics(stats) {
     console.log('Processed execution rate:', executionRate);
     console.log('Processed target achievement:', targetAchievement);
     
+    // Debug: Check if elements exist
+    console.log('Execution rate element exists:', $('#executionRate').length > 0);
+    console.log('Target achievement element exists:', $('#targetAchievement').length > 0);
+    console.log('Execution rate element current text:', $('#executionRate').text());
+    console.log('Target achievement element current text:', $('#targetAchievement').text());
+    
     // Animate number counting
     animateNumber('#totalActivities', stats.total || 0);
     animateNumber('#completedActivities', stats.completed || 0);
@@ -845,9 +851,36 @@ function updateStatistics(stats) {
     }
 }
 
-function animateNumber(selector, targetNumber) {
+function animateNumber(selector, targetValue) {
     const element = $(selector);
-    const startNumber = parseInt(element.text()) || 0;
+    
+    console.log('animateNumber called for:', selector, 'with value:', targetValue);
+    console.log('Element found:', element.length > 0);
+    console.log('Element current text:', element.text());
+    
+    // Handle percentage values (e.g., "34.8%")
+    let isPercentage = false;
+    let targetNumber;
+    
+    if (typeof targetValue === 'string' && targetValue.includes('%')) {
+        isPercentage = true;
+        targetNumber = parseFloat(targetValue.replace('%', '')) || 0;
+    } else {
+        targetNumber = parseFloat(targetValue) || 0;
+    }
+    
+    // Get current value from element text, handling percentage format
+    const currentText = element.text().trim();
+    let startNumber = 0;
+    
+    if (currentText.includes('%')) {
+        startNumber = parseFloat(currentText.replace('%', '')) || 0;
+    } else {
+        startNumber = parseFloat(currentText) || 0;
+    }
+    
+    console.log('Animation values - start:', startNumber, 'target:', targetNumber, 'isPercentage:', isPercentage);
+    
     const duration = 1000; // 1 second
     const increment = (targetNumber - startNumber) / (duration / 16); // 60fps
     let currentNumber = startNumber;
@@ -859,7 +892,13 @@ function animateNumber(selector, targetNumber) {
             currentNumber = targetNumber;
             clearInterval(timer);
         }
-        element.text(Math.round(currentNumber));
+        
+        // Format the number based on whether it's a percentage or not
+        if (isPercentage) {
+            element.text(currentNumber.toFixed(1) + '%');
+        } else {
+            element.text(Math.round(currentNumber));
+        }
     }, 16);
 }
 
