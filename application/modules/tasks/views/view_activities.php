@@ -313,7 +313,7 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
   </div>
   <?php endif; ?>
 
-  <!-- Enhanced Filters -->
+  <!-- Enhanced Filters ------>
   <div class="card filter-card">
     <div class="card-header">
       <h5 class="mb-0">
