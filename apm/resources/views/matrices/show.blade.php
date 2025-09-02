@@ -127,7 +127,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
-                            @if(!activities_approved_by_me($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
+                            @if(can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
                                 <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">
                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                 </th>
@@ -151,7 +151,7 @@
 
                         @forelse($activities as $activity)
                             <tr>
-                                @if(!activities_approved_by_me($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
+                                @if(can_take_action($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
                                <td class="px-3 py-3">
                                     @if(can_approve_activity($activity) && !done_approving_activty($activity))
                                         <input type="checkbox" class="form-check-input activity-checkbox" value="{{ $activity->id }}" data-activity-title="{{ $activity->activity_title }}">
@@ -197,8 +197,14 @@
 
                                 @php //dd(can_approve_activity($activity)) @endphp
                                     @if(can_approve_activity($activity))
-                                    <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }} rounded-pill">
-                                        {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : 'Pending' ) }}
+                                    <span class="badge bg-{{ allow_print_activity($activity) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }} rounded-pill">
+                                        @if(allow_print_activity($activity))
+                                            Passed
+                                        @elseif(!empty($activity->my_last_action))
+                                            {{ ucfirst($activity->my_last_action->action) }}
+                                        @else
+                                            Pending
+                                        @endif
                                     </span>
                                     @else
                                     <span class="badge bg-success rounded-pill">No Action Required</span>

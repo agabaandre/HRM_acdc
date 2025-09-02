@@ -25,7 +25,9 @@
 
                 @includeIf('activities.form')
 
-                <div class="row g-4 mt-2">
+                <div class="card border-0 shadow-sm mb-5">
+                    <div class="card-body">
+                        <div class="row g-4">
                     <div class="col-md-4 fund_type">
                         <label for="fund_type" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> Fund Type <span class="text-danger">*</span>
@@ -55,6 +57,12 @@
                         <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $activity->workplan_activity_code) }}" />
                     </div>
 
+                    <div class="col-md-2">
+                        <!-- Empty column for spacing -->
+                    </div>
+                </div>
+
+                <div class="row g-4">
                     <div class="col-md-4">
                         <label for="key_result_link" class="form-label fw-semibold">
                             <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
@@ -190,6 +198,8 @@
                     <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
                         <i class="bx bx-check-circle me-1"></i> Update Activity
                     </button>
+                </div>
+                    </div>
                 </div>
             </form>
         </div>

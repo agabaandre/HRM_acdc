@@ -1450,7 +1450,10 @@ class ActivityController extends Controller
             'matrix.division.focalPerson',
             'requestType',
             'fundType',
+            'activityApprovalTrails',
+            'matrix.approvalTrails',
             'responsiblePerson',
+            'staff',
             'activity_budget'
         ]);
 
@@ -1501,8 +1504,9 @@ class ActivityController extends Controller
                     });
             }
         }
-
+        $staff = $activity->staff;
         // Get workflow information
+        $matrixApprovals = $activity->matrix->approvalTrails;
         $workflowInfo = $this->getWorkflowInfo($activity);
 
                                         // Generate PDF using the simplified mpdf_print helper function with simple template
@@ -1511,6 +1515,8 @@ class ActivityController extends Controller
             'matrix' => $matrix,
             'locations' => $locations,
             'internal_participants' => $internalParticipants,
+            'matrix_approval_trails' => $matrixApprovals,
+            'staff' => $staff,
             'workflow_info' => $workflowInfo
         ]);
 

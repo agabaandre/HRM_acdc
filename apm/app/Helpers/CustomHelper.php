@@ -294,7 +294,7 @@ if (!function_exists('reduce_fund_code_balance')) {
     function reduce_fund_code_balance($fundCodeId, $amount)
     {
         if ($fundCodeId && $amount > 0) {
-            return \DB::table('fund_codes')
+            return DB::table('fund_codes')
                 ->where('id', $fundCodeId)
                 ->decrement('budget_balance', $amount);
         }
@@ -327,26 +327,39 @@ if (!function_exists('isDivisionApprover')) {
 
 if (!function_exists('allow_print_activity')) {
     /**
-     * Check if the current user is assigned as an approver for division-specific workflow definitions.
+     * Check if an activity can be printed based on workflow approval status and matrix approval.
      *
-     * @param int|null $staffId Optional staff ID, defaults to current user's staff ID
+     * @param \App\Models\Activity $activity The activity to check
      * @return bool
      */
-    function allow_print_activity(?int $staffId = null): bool
+    function allow_print_activity($activity): bool
     {
-        $userStaffId = $staffId ?? user_session('staff_id');
-        
-        if (!$userStaffId) {
+        // Check if the matrix exists and is approved
+        if (!$activity->matrix || $activity->matrix->overall_status !== 'approved') {
             return false;
         }
         
-        return \App\Models\Approver::where('staff_id', $userStaffId)
-            ->whereHas('workflowDefinition', function($q) {
-                $q->where('is_division_specific', 1);
-            })
+        // Check if the activity has been passed by the final approver
+        // Get the final approval order from the workflow definition
+        $finalApprovalOrder = \App\Models\WorkflowDefinition::where('workflow_id', $activity->matrix->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'desc')
+            ->value('approval_order');
+        
+        if (!$finalApprovalOrder) {
+            return false;
+        }
+        
+        // Check if there's a 'passed' approval trail entry for the final approval order
+        $finalApprovalExists = \App\Models\ActivityApprovalTrail::where('activity_id', $activity->id)
+            ->where('approval_order', $finalApprovalOrder)
+            ->where('action', 'passed')
             ->exists();
+        
+        return $finalApprovalExists;
     }
 }
+
 
 function getFullSql($query) {
     $sql = $query->toSql();

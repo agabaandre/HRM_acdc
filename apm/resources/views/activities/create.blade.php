@@ -32,7 +32,9 @@
 
                 <input type="hidden" name="is_single_memo" value="{{ $is_single_memo }}">
 
-                <div class="row g-4 mt-2">
+                <div class="card border-0 shadow-sm mb-5">
+                    <div class="card-body">
+                        <div class="row g-4">
                     <div class="col-md-4 fund_type">
                         <label for="fund_type" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> Fund Type <span class="text-danger">*</span>
@@ -44,8 +46,6 @@
                             @endforeach
                         </select>
                     </div>
-
-              
 
                     <div class="col-md-4">
                         <label for="budget_codes" class="form-label fw-semibold">
@@ -64,23 +64,8 @@
                         <input name="activity_code" id="activity_code" class="form-control border-success" />
                     </div>
 
-                    <div class="col-md-4">
-                        <label for="key_result_link" class="form-label fw-semibold">
-                            <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
-                        </label>
-                        <select name="key_result_link" id="key_result_link" class="form-select border-success" required>
-                            <option value="">Select Key Result</option>
-                            @php
-                                $keyResults = is_array($matrix->key_result_area) 
-                                            ? $matrix->key_result_area 
-                                            : json_decode($matrix->key_result_area ?? '[]', true);
-                            @endphp
-                            @foreach($keyResults as $index => $kr)
-                                <option value="{{ $index }}">
-                                    {{ $kr['description'] ?? 'No Description' }}
-                                </option>
-                            @endforeach
-                        </select>
+                    <div class="col-md-2">
+                        <!-- Empty column for spacing -->
                     </div>
                 </div>
 
@@ -102,6 +87,13 @@
                 <div id="budgetGroupContainer" class="mt-4"></div>
 
                 <!-- Attachments Section -->
+            <div class="col-md-12">
+                <label for="activity_request_remarks" class="form-label fw-semibold">
+                    <i class="fas fa-comment-dots me-1 text-success"></i>Request for Approval  <span class="text-danger">*</span>
+                </label>
+                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks', $activity->activity_request_remarks ?? '') }}</textarea>
+            </div>
+
                 <div class="mt-5">
                     <h5 class="fw-bold text-success mb-3">
                         <i class="fas fa-paperclip me-2"></i> Attachments
@@ -123,11 +115,14 @@
                     </div>
                 </div>
 
+
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
                    
                     <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
                         <i class="bx bx-check-circle me-1"></i> Save {{ $title }}
                     </button>
+                </div>
+                    </div>
                 </div>
             </form>
         </div>

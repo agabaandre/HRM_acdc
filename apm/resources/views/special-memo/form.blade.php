@@ -44,14 +44,14 @@
             </div>
             <div class="col-md-3">
                 <label for="date_from" class="form-label fw-semibold">
-                    <i class="fas fa-calendar-day me-1 text-success"></i> Date From <span class="text-danger">*</span>
+                    <i class="fas fa-calendar-day me-1 text-success"></i> Activity Date From <span class="text-danger">*</span>
                 </label>
                 <input type="text" name="date_from" id="date_from" class="form-control datepicker" 
                        value="{{ old('date_from', optional($specialMemo?->date_from)->format('Y-m-d')) }}" required>
             </div>
             <div class="col-md-3">
                 <label for="date_to" class="form-label fw-semibold">
-                    <i class="fas fa-calendar-check me-1 text-success"></i> Date To <span class="text-danger">*</span>
+                    <i class="fas fa-calendar-check me-1 text-success"></i> Activity Date To <span class="text-danger">*</span>
                 </label>
                 <input type="text" name="date_to" id="date_to" class="form-control datepicker" 
                        value="{{ old('date_to', optional($specialMemo?->date_to)->format('Y-m-d')) }}" required>
@@ -96,12 +96,7 @@
                 <input type="number" name="total_external_participants" id="total_external_participants" class="form-control border-success" 
                        value="{{ old('total_external_participants', $specialMemo->total_external_participants ?? 0) }}" min="0">
             </div>
-            <div class="col-md-12">
-                <label for="activity_request_remarks" class="form-label fw-semibold">
-                    <i class="fas fa-comment-dots me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
-                </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '') }}</textarea>
-            </div>
+
             <div class="col-md-12">
                 <label for="justification" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i> Supporting Reasons for the Special Memo <span class="text-danger">*</span>
@@ -123,8 +118,8 @@
                     <thead class="table-light">
                         <tr>
                             <th>Participant Name</th>
-                            <th>Start Date</th>
-                            <th>End Date</th>
+                            <th>Activity Start Date</th>
+                            <th>Activity End Date</th>
                             <th>No. of Days</th>
                         </tr>
                     </thead>

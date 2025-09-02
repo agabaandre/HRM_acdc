@@ -55,6 +55,8 @@
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
 
+
+
                
                 </div>
 
@@ -74,7 +76,12 @@
                 <div id="externalParticipantsWrapper"></div>
 
                 <div id="budgetGroupContainer" class="mt-4"></div>
-
+                <div class="col-md-12">
+                    <label for="activity_request_remarks" class="form-label fw-semibold">
+                        <i class="fas fa-comment-dots me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
+                    </label>
+                    <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '') }}</textarea>
+                </div>
                 <!-- Attachments Section -->
                 <div class="mt-5">
                     <h5 class="fw-bold text-success mb-3">
