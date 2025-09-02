@@ -178,9 +178,22 @@ class Weektasks_mdl extends CI_Model {
     public function get_tasks_for_calendar($staff_id)
     {
         return $this->db
-            ->select('activity_name, start_date, end_date, status')
+            ->select('activity_name, start_date, end_date, status, comments')
             ->from('work_plan_weekly_tasks')
             ->where("FIND_IN_SET($staff_id, staff_id) >", 0)
+            ->order_by('start_date', 'ASC')
+            ->get()
+            ->result();
+    }
+
+    public function get_tasks_for_calendar_by_date_range($staff_id, $start_date, $end_date)
+    {
+        return $this->db
+            ->select('activity_name, start_date, end_date, status, comments')
+            ->from('work_plan_weekly_tasks')
+            ->where("FIND_IN_SET($staff_id, staff_id) >", 0)
+            ->where('start_date >=', $start_date)
+            ->where('start_date <=', $end_date)
             ->order_by('start_date', 'ASC')
             ->get()
             ->result();

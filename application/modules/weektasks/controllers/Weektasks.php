@@ -260,10 +260,66 @@ class Weektasks extends MX_Controller {
             'end'   => date('Y-m-d', strtotime($task->end_date . ' +1 day')), // FullCalendar needs exclusive end
             'color' => $statusColor,
             'allDay' => true,
+            'extendedProps' => [
+                'status' => $task->status,
+                'comments' => isset($task->comments) ? $task->comments : ''
+            ]
         ];
     }
 
     echo json_encode($events);
+}
+
+// Get calendar statistics for the current view
+public function get_calendar_stats() {
+    $start_date = $this->input->post('start_date');
+    $end_date = $this->input->post('end_date');
+    $staff_id = $this->session->userdata('user')->staff_id;
+
+    try {
+        // Get tasks for the date range
+        $tasks = $this->weektasks_mdl->get_tasks_for_calendar_by_date_range($staff_id, $start_date, $end_date);
+        
+        $stats = [
+            'total' => count($tasks),
+            'completed' => 0,
+            'pending' => 0,
+            'overdue' => 0
+        ];
+
+        $today = date('Y-m-d');
+
+        foreach ($tasks as $task) {
+            switch ((int)$task->status) {
+                case 1: // Pending
+                    $stats['pending']++;
+                    // Check if overdue
+                    if ($task->end_date < $today) {
+                        $stats['overdue']++;
+                    }
+                    break;
+                case 2: // Completed
+                    $stats['completed']++;
+                    break;
+                case 3: // Carried Forward
+                    $stats['pending']++;
+                    break;
+                case 4: // Cancelled
+                    // Don't count cancelled tasks in stats
+                    break;
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => $stats
+        ]);
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error loading statistics: ' . $e->getMessage()
+        ]);
+    }
 }
 
 public function print_combined_division_report($division_id, $start_date, $end_date, $teamlead=FALSE, $status=FALSE)

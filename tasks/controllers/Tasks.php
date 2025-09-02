@@ -11,27 +11,7 @@ class Tasks extends MX_Controller {
 
     // Add Activity
     public function activity() {
-		$data['title'] = "View Activity";
-		$data['module'] = 'tasks';
-        
-        // Get team members for the current user's division
-        $division_id = $this->session->userdata('user')->division_id;
-        $data['team_members'] = $this->tasks_mdl->get_team_members($division_id);
-        
-        // Get work plans for filtering
-        $data['work_plans'] = $this->tasks_mdl->get_work_plans($division_id);
-        
-        // Debug: Check if data is being fetched
-        // echo "Division ID: " . $division_id . "<br>";
-        // echo "Team Members Count: " . count($data['team_members']) . "<br>";
-        // echo "Work Plans Count: " . count($data['work_plans']) . "<br>";
-        // exit;
-        
-        render('view_activities', $data);
-    }
-
-    // Add Activity Form
-    public function add_activity_form() {
+ 
 		$data['module'] = 'tasks';
 		$data['title'] = "Sub-Activities";
         $formdata=$this->input->post();
@@ -110,14 +90,6 @@ class Tasks extends MX_Controller {
     public function view_activities() {
 		$data['title'] = "View Activity";
 		$data['module'] = 'tasks';
-        
-        // Get team members for the current user's division
-        $division_id = $this->session->userdata('user')->division_id;
-        $data['team_members'] = $this->tasks_mdl->get_team_members($division_id);
-        
-        // Get work plans for filtering
-        $data['work_plans'] = $this->tasks_mdl->get_work_plans($division_id);
-        
         $data['activities'] = $this->tasks_mdl->get_activities();
        render('view_activities', $data);
     }
@@ -141,23 +113,14 @@ class Tasks extends MX_Controller {
     public function submit_report($activity_id) {
 		$data['title'] = "Submit Report";
 		$data['module'] = 'tasks';
-        $data['activity_id'] = $activity_id;
-        
         if ($_POST) {
-            $report_data = array(
+            $data = array(
                 'activity_id' => $activity_id,
                 'report_date' => date('Y-m-d'),
                 'description' => $this->input->post('description'),
                 'status' => 'approved'
             );
-            $this->tasks_mdl->submit_report($report_data);
-            
-            // Check if this is an AJAX request
-            if ($this->input->is_ajax_request()) {
-                echo json_encode(['status' => 'success', 'message' => 'Report submitted successfully!']);
-                return;
-            }
-            
+            $this->tasks_mdl->submit_report($data);
             redirect('tasks/view_reports');
         }
        render('submit_report',$data);
@@ -376,79 +339,6 @@ class Tasks extends MX_Controller {
         );
     
         render('view_reports', $data);
-    }
-
-    // Fetch filtered activities for AJAX
-    public function fetch_activities_filtered() {
-        $start_date = $this->input->post('start_date');
-        $end_date = $this->input->post('end_date');
-        $team_members = $this->input->post('team_members');
-        $work_plan = $this->input->post('work_plan');
-        $division_id = $this->session->userdata('user')->division_id;
-
-        try {
-            $activities = $this->tasks_mdl->get_activities_filtered($division_id, $start_date, $end_date, $team_members, $work_plan);
-            
-            // Debug: Log the query result
-            // log_message('debug', 'Activities count: ' . count($activities));
-            // log_message('debug', 'Division ID: ' . $division_id);
-            
-            echo json_encode([
-                'success' => true,
-                'data' => $activities
-            ]);
-        } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Error loading activities: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    // Get team performance data
-    public function get_team_performance() {
-        $start_date = $this->input->post('start_date');
-        $end_date = $this->input->post('end_date');
-        $team_members = $this->input->post('team_members');
-        $work_plan = $this->input->post('work_plan');
-        $division_id = $this->session->userdata('user')->division_id;
-
-        try {
-            $team_performance = $this->tasks_mdl->get_team_performance_data($division_id, $start_date, $end_date, $team_members, $work_plan);
-            
-            echo json_encode([
-                'success' => true,
-                'data' => $team_performance
-            ]);
-        } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Error loading team performance: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    // Get activity statistics
-    public function get_activity_statistics() {
-        $start_date = $this->input->post('start_date');
-        $end_date = $this->input->post('end_date');
-        $team_members = $this->input->post('team_members');
-        $work_plan = $this->input->post('work_plan');
-        $division_id = $this->session->userdata('user')->division_id;
-
-        try {
-            $statistics = $this->tasks_mdl->get_activity_statistics($division_id, $start_date, $end_date, $team_members, $work_plan);
-            
-            echo json_encode([
-                'success' => true,
-                'data' => $statistics
-            ]);
-        } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Error loading statistics: ' . $e->getMessage()
-            ]);
-        }
     }
     
 

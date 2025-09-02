@@ -1,33 +1,17 @@
-<!-- Submit Report Modal -->
-<div class="modal fade" id="submitReportModal" tabindex="-1" aria-labelledby="submitReportModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-md">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="submitReportModalLabel">
-          <i class="fa fa-file-text me-2"></i>Submit Report
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form id="submitReportForm" method="post" class="needs-validation" novalidate>
-        <div class="modal-body">
-          <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
-          <input type="hidden" name="activity_id" value="<?php echo $activity_id; ?>">
-          
-          <div class="form-group mb-3">
-            <label for="description" class="form-label">Report Description:</label>
-            <textarea name="description" id="description" class="form-control" rows="5" required placeholder="Describe the completion of this activity..."></textarea>
+<?php $this->load->view('tasks_tabs')?>
+<div class="container mt-5">
+    <h2 class="mb-4">Submit Report</h2>
+    <form id="submitReportForm" method="post" class="needs-validation" novalidate>
+        <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
+        
+        <div class="form-group">
+            <label for="description">Description:</label>
+            <textarea name="description" class="form-control" required></textarea>
             <div class="invalid-feedback">Please enter a description.</div>
-          </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="fa fa-save me-1"></i>Submit Report
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+
+        <button type="submit" class="btn btn-primary">Submit Report</button>
+    </form>
 </div>
 
 <script>
