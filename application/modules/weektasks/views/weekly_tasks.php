@@ -44,7 +44,7 @@
 }
 
 .table-card .card-header {
-  background: rgba(52, 143, 65, 1);
+  background: rgb(73, 74, 73);
   color: white;
   border: none;
   padding: 1rem 1.5rem;
@@ -66,145 +66,26 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.calendar-panel {
-  background: rgba(52, 143, 65, 1);
-  color: white;
-  border-radius: 15px;
-  margin-bottom: 2rem;
-  overflow: hidden;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+/* Modal Calendar Styling */
+#calendarModal .modal-dialog {
+  max-width: 95%;
 }
 
-.calendar-header {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.calendar-header:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.calendar-header h4 {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.calendar-toggle {
-  transition: transform 0.3s ease;
-}
-
-.calendar-toggle.rotated {
-  transform: rotate(180deg);
-}
-
-.calendar-content {
+#calendarModal .modal-body {
   padding: 1.5rem;
-  display: none;
 }
 
-.calendar-content.show {
-  display: block;
-  animation: slideDown 0.3s ease;
+#calendarModal .btn-outline-success {
+  border-color: rgba(52, 143, 65, 1);
+  color: rgba(52, 143, 65, 1);
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* FullCalendar Custom Styling */
-.fc {
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.fc-header-toolbar {
-  background: rgba(52, 143, 65, 1);
+#calendarModal .btn-outline-success:hover {
+  background-color: rgba(52, 143, 65, 1);
+  border-color: rgba(52, 143, 65, 1);
   color: white;
-  padding: 1rem;
-  border-radius: 10px 10px 0 0;
-  margin-bottom: 0;
 }
 
-.fc-toolbar-title {
-  color: white !important;
-  font-weight: 600;
-}
-
-.fc-button {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  color: white !important;
-  border-radius: 8px !important;
-  transition: all 0.3s ease !important;
-}
-
-.fc-button:hover {
-  background: rgba(255, 255, 255, 0.3) !important;
-  transform: translateY(-2px);
-}
-
-.fc-button:focus {
-  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
-}
-
-.fc-daygrid-day {
-  transition: all 0.3s ease;
-}
-
-.fc-daygrid-day:hover {
-  background: rgba(17, 154, 72, 0.1) !important;
-}
-
-.fc-event {
-  border-radius: 6px !important;
-  border: none !important;
-  padding: 2px 6px !important;
-  font-size: 0.8rem !important;
-  font-weight: 500 !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-}
-
-.fc-event:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
-}
-
-.fc-daygrid-event {
-  margin: 1px 0 !important;
-}
-
-.fc-day-today {
-  background: rgba(17, 154, 72, 0.1) !important;
-}
-
-.fc-daygrid-day-number {
-  font-weight: 600;
-  color: #333;
-}
-
-.fc-col-header-cell {
-  background: rgba(52, 143, 65, 1);
-  color: white;
-  font-weight: 600;
-  padding: 0.75rem 0;
-}
-
-.fc-daygrid-day-frame {
-  min-height: 100px;
-}
 
 .status-badge {
   padding: 0.4rem 0.8rem;
@@ -265,8 +146,8 @@
       </div>
       <div class="col-md-4 text-end">
         <button class="btn btn-light btn-modern" data-bs-toggle="modal" data-bs-target="#addModal">
-          <i class="fa fa-plus-circle me-1"></i> Add Weekly Task
-        </button>
+      <i class="fa fa-plus-circle me-1"></i> Add Weekly Task
+    </button>
       </div>
     </div>
   </div>
@@ -275,91 +156,72 @@
 <div class="container-fluid">
 <?php $this->load->view('tasks_tabs')?>
 
-<input type="hidden" id="csrf_token" 
-     name="<?= $this->security->get_csrf_token_name(); ?>" 
-     value="<?= $this->security->get_csrf_hash(); ?>">
+  <input type="hidden" id="csrf_token" 
+       name="<?= $this->security->get_csrf_token_name(); ?>" 
+       value="<?= $this->security->get_csrf_hash(); ?>">
 
-<!-- Beautiful Collapsible Calendar Panel -->
-<div class="calendar-panel">
-  <div class="calendar-header" id="calendarToggle">
-    <h4 class="mb-0">
-      <span><i class="fa fa-calendar-alt me-2 text"></i>Activity Calendar</span>
-      <i class="fa fa-chevron-down calendar-toggle" id="calendarToggleIcon"></i>
-    </h4>
-  </div>
-  <div class="calendar-content" id="calendarContent">
-    <div class="row align-items-center mb-3">
-      <div class="col-md-8">
-        <p class="mb-0 opacity-75">Interactive calendar view of your weekly activities and tasks</p>
-      </div>
-      <div class="col-md-4 text-end">
-        <button class="btn btn-outline-light btn-sm btn-modern" id="refreshCalendar">
-          <i class="fa fa-sync-alt me-1"></i> Refresh
-        </button>
-        <button class="btn btn-outline-light btn-sm btn-modern ms-2" id="todayCalendar">
-          <i class="fa fa-home me-1"></i> Today
-        </button>
-      </div>
-    </div>
-    <div id="fullCalendar"></div>
+<!-- Activity Calendar Button -->
+<div class="row mb-3">
+  <div class="col-12 text-center">
+    <button class="btn btn-success btn-modern" data-bs-toggle="modal" data-bs-target="#calendarModal" id="openCalendarBtn">
+      <i class="fa fa-calendar-alt me-2"></i>View Activity Calendar
+    </button>
   </div>
 </div>
 
   <!-- Enhanced Filters -->
   <div class="card filter-card">
-    <div class="card-header">
-      <h5 class="mb-0"><i class="fa fa-filter me-2"></i>Advanced Filters</h5>
-    </div>
+    
     <div class="card-body">
-      <?= form_open('', ['id' => 'filterForm']) ?>
+    <?= form_open('', ['id' => 'filterForm']) ?>
       <div class="row g-3">
-        <div class="col-md-3">
+          <div class="col-md-3">
           <label class="form-label fw-semibold">
             <i class="fa fa-building me-1"></i>Division
           </label>
-          <select id="filterDivision" class="form-select select2">
-            <option value="">All Divisions</option>
-            <?php foreach ($divisions as $division): ?>
-              <option value="<?= $division->division_id ?>"><?= $division->division_name ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
+            <select id="filterDivision" class="form-select select2">
+              <option value="">All Divisions</option>
+              <?php foreach ($divisions as $division): ?>
+                <option value="<?= $division->division_id ?>"><?= $division->division_name ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
 
-        <div class="col-md-3">
+          <div class="col-md-3">
           <label class="form-label fw-semibold">
             <i class="fa fa-users me-1"></i>Staff Members
           </label>
-          <select id="filterStaff" class="form-select select2" multiple>
-            <?php foreach ($staff_list as $staff): ?>
-              <option value="<?= $staff->staff_id ?>"><?= $staff->title . ' ' . $staff->fname . ' ' . $staff->lname ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
+            <select id="filterStaff" class="form-select select2" multiple>
+              <?php foreach ($staff_list as $staff): ?>
+                <option value="<?= $staff->staff_id ?>"><?= $staff->title . ' ' . $staff->fname . ' ' . $staff->lname ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
 
-        <div class="col-md-3">
+          <div class="col-md-3">
           <label class="form-label fw-semibold">
             <i class="fa fa-user-tie me-1"></i>Team Lead
           </label>
-          <select id="filterLead" class="form-select select2">
-            <option value="all">All Team Leads</option>
-            <?php foreach ($team_leads as $lead): ?>
-              <option value="<?= $lead->staff_id ?>"><?= $lead->fname.' '. $lead->lname?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
+            <select id="filterLead" class="form-select select2">
+              <option value="all">All Team Leads</option>
+              <?php foreach ($team_leads as $lead): ?>
+                <option value="<?= $lead->staff_id ?>"><?= $lead->fname.' '. $lead->lname?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
 
-        <div class="col-md-3">
+          <div class="col-md-3">
           <label class="form-label fw-semibold">
             <i class="fa fa-calendar me-1"></i>Status
           </label>
-          <select id="filterStatus" class="form-select">
-            <option value="">All Statuses</option>
-            <option value="1">Pending</option>
-            <option value="2">Done</option>
-            <option value="3">Next Week</option>
-            <option value="4">Cancelled</option>
-          </select>
-        </div>
+            <select id="filterStatus" class="form-select">
+              <option value="">All Statuses</option>
+              <option value="1">Pending</option>
+              <option value="2">Done</option>
+              <option value="3">Next Week</option>
+              <option value="4">Cancelled</option>
+            </select>
+          </div>
 
         <div class="col-md-3">
           <label class="form-label fw-semibold">
@@ -387,9 +249,9 @@
               <i class="fa fa-download me-1"></i> Export
             </button>
           </div>
+          </div>
         </div>
-      </div>
-      <?= form_close(); ?>
+        <?= form_close(); ?>
       <!-- Print Buttons -->
       <div class="row mt-4" id="printButtons">
         <div class="col-md-3">
@@ -416,7 +278,7 @@
     <div class="card-header">
       <div class="row align-items-center">
         <div class="col-md-8">
-          <h5 class="mb-0"><i class="fa fa-table me-2"></i>Weekly Tasks Overview</h5>
+          <h6 class="mb-0 text-white"><i class="fa fa-table me-2"></i>Weekly Tasks Overview</h6>
         </div>
         <div class="col-md-4 text-end">
           <div class="btn-group" role="group">
@@ -431,7 +293,7 @@
       </div>
     </div>
     <div class="card-body">
-      <div class="table-responsive">
+  <div class="table-responsive">
         <table class="table table-hover mb-0" id="activitiesTable">
           <thead class="table-dark">
             <tr>
@@ -463,9 +325,9 @@
               <th class="text-center">
                 <i class="fa fa-cogs me-1"></i>Actions
               </th>
-            </tr>
-          </thead>
-        </table>
+        </tr>
+      </thead>
+    </table>
       </div>
     </div>
   </div>
@@ -484,6 +346,39 @@
 <!-- FullCalendar CDN -->
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css' rel='stylesheet' />
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+
+<!-- Activity Calendar Modal -->
+<div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background: rgba(52, 143, 65, 1); color: white;">
+        <h5 class="modal-title" id="calendarModalLabel">
+          <i class="fa fa-calendar-alt me-2"></i>Activity Calendar
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row align-items-center mb-3">
+          <div class="col-md-8">
+            <p class="mb-0 text-muted">Interactive calendar view of your weekly activities and tasks</p>
+          </div>
+          <div class="col-md-4 text-end">
+            <button class="btn btn-outline-success btn-sm btn-modern" id="refreshCalendar">
+              <i class="fa fa-sync-alt me-1"></i> Refresh
+            </button>
+            <button class="btn btn-outline-success btn-sm btn-modern ms-2" id="todayCalendar">
+              <i class="fa fa-home me-1"></i> Today
+            </button>
+          </div>
+        </div>
+        <div id="fullCalendar"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Modals -->
 <?php $this->load->view('modals.php'); ?>
@@ -591,10 +486,14 @@ $(function () {
   $('#applyFilters').on('click', () => {
     showLoading();
     table.ajax.reload(() => {
-      hideLoading();
-      if (calendar) {
-        refreshCalendar();
-      }
+      // Add a small delay before hiding to ensure smooth transition
+      setTimeout(() => {
+        hideLoading();
+        // Refresh calendar if modal is open
+        if (calendar && $('#calendarModal').hasClass('show')) {
+          refreshCalendar();
+        }
+      }, 100);
     });
   });
 
@@ -607,10 +506,14 @@ $(function () {
     $('#filterStatus').val('').trigger('change');
     showLoading();
     table.ajax.reload(() => {
-      hideLoading();
-      if (calendar) {
-        refreshCalendar();
-      }
+      // Add a small delay before hiding to ensure smooth transition
+      setTimeout(() => {
+        hideLoading();
+        // Refresh calendar if modal is open
+        if (calendar && $('#calendarModal').hasClass('show')) {
+          refreshCalendar();
+        }
+      }, 100);
     });
   });
 
@@ -621,10 +524,14 @@ $(function () {
     filterTimeout = setTimeout(() => {
       showLoading();
       table.ajax.reload(() => {
-        hideLoading();
-        if (calendar) {
-          refreshCalendar();
-        }
+        // Add a small delay before hiding to ensure smooth transition
+        setTimeout(() => {
+          hideLoading();
+          // Refresh calendar if modal is open
+          if (calendar && $('#calendarModal').hasClass('show')) {
+            refreshCalendar();
+          }
+        }, 100);
       });
     }, 500);
   });
@@ -652,12 +559,24 @@ $(function () {
     }
   });
 
-  // Loading functions
+  // Loading functions with better timing
+  let loadingTimeout;
+  
   function showLoading() {
-    $('#loadingOverlay').css('display', 'flex');
+    // Clear any existing timeout
+    clearTimeout(loadingTimeout);
+    
+    // Show loader after a short delay to prevent flicker for fast operations
+    loadingTimeout = setTimeout(() => {
+      $('#loadingOverlay').css('display', 'flex');
+    }, 150);
   }
 
   function hideLoading() {
+    // Clear the show timeout if it hasn't executed yet
+    clearTimeout(loadingTimeout);
+    
+    // Hide loader immediately
     $('#loadingOverlay').hide();
   }
 
@@ -750,22 +669,14 @@ $(function () {
     }
   }
 
-  // Calendar Panel Toggle
-  $('#calendarToggle').on('click', function() {
-    const content = $('#calendarContent');
-    const icon = $('#calendarToggleIcon');
-    
-    if (content.hasClass('show')) {
-      content.removeClass('show');
-      icon.removeClass('rotated');
+  // Calendar Modal Events
+  $('#calendarModal').on('shown.bs.modal', function() {
+    // Initialize calendar when modal is shown
+    if (!calendar) {
+      setTimeout(initializeCalendar, 100);
     } else {
-      content.addClass('show');
-      icon.addClass('rotated');
-      
-      // Initialize calendar if not already done
-      if (!calendar) {
-        setTimeout(initializeCalendar, 100);
-      }
+      // Refresh calendar if already initialized
+      refreshCalendar();
     }
   });
 
@@ -868,9 +779,9 @@ $(function () {
 
     // Show all print buttons - they will work with current filters
     $('#printStaffBtn').fadeIn();
-    $('#printDivisionBtn').fadeIn();
-    $('#printCombinedBtn').fadeIn();
-  }
+      $('#printDivisionBtn').fadeIn();
+      $('#printCombinedBtn').fadeIn();
+    }
 
   $('#filterStaff, #filterStartDate, #filterEndDate, #filterDivision, #filterStatus, #filterLead').on('change keyup', checkPrintEligibility);
 
@@ -889,7 +800,7 @@ $(function () {
   });
 
   // Enhanced Print Division Report - works with all current filters
-  $('#printDivisionBtn').on('click', function () {
+$('#printDivisionBtn').on('click', function () {
     const filters = getCurrentFilters();
     
     if (filters.division) {
@@ -901,7 +812,7 @@ $(function () {
   });
 
   // Enhanced Print Combined Report - works with all current filters
-  $('#printCombinedBtn').on('click', function () {
+$('#printCombinedBtn').on('click', function () {
     const filters = getCurrentFilters();
     
     if (filters.division) {
