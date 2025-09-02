@@ -86,6 +86,7 @@
   </style>
 </head>
 <body>
+  <?php  //dd($activity); ?>
   <!-- Header -->
   <div style="width: 100%; text-align: center; padding-bottom: 5px;">
     <div style="width: 100%; padding-bottom: 5px;">
@@ -156,11 +157,11 @@
     }
   </style>
 
-  <table class="memo-table" style="width: 100%;">
+  <table class="memo-table" style="width: 100%; border-collapse: collapse;">
     <!-- TO: Director General -->
     <tr>
-      <td style="width: 15%; border: none; padding: 5px;"><strong style="color: #006633;">TO:</strong></td>
-      <td style="width: 30%; border: none; padding: 5px;">
+      <td style="width: 12%; border: none; padding: 8px; vertical-align: top;"><strong style="color: #006633;">TO:</strong></td>
+      <td style="width: 35%; border: none; padding: 8px; vertical-align: top;">
         <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
           <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
             <?php if (stripos($step['role'] ?? '', 'DG') !== false): ?>
@@ -191,7 +192,7 @@
           Director General of Africa CDC
         <?php endif; ?>
       </td>
-      <td style="width: 25%; border: none; padding: 5px;">
+      <td style="width: 25%; border: none; padding: 8px; vertical-align: top; text-align: center;">
         <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
           <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
             <?php if (stripos($step['role'] ?? '', 'DG') !== false): ?>
@@ -218,13 +219,15 @@
           <?php endforeach; ?>
         <?php endif; ?>
       </td>
-      <td style="width: 15%; border: none; padding: 5px;" rowspan="6">
-        <div style="text-align: right; padding-left: 10px;">
-          <div style="margin-bottom: 15px;">
-            <strong style="color: #006633;">DATE:</strong> <br>           <?php echo date('d/m/Y'); ?>
+      <td style="width: 28%; border: none; padding: 8px; vertical-align: top;" rowspan="6">
+        <div style="text-align: right; padding-left: 15px;">
+          <div style="margin-bottom: 20px;">
+            <strong style="color: #006633;">DATE:</strong><br>
+            <span style="font-size: 12px;"><?php echo date('d/m/Y'); ?></span>
           </div>
-          <div><br>
-            <strong style="color: #006633;">FILE NO:</strong>
+          <div>
+            <strong style="color: #006633;">FILE NO:</strong><br>
+            <span style="font-size: 10px; word-break: break-all;">
             <?php
               if (isset($activity)) {
                 $divisionName = $matrix->division->division_name ?? '';
@@ -247,6 +250,7 @@
                 echo 'N/A';
               }
             ?>
+            </span>
           </div>
         </div>
       </td>
@@ -254,8 +258,8 @@
     
     <!-- THROUGH: Chief of Staff -->
     <tr>
-      <td style="border: none; padding: 5px;"><strong style="color: #006633;">THROUGH:</strong></td>
-      <td style="border: none; padding: 5px;">
+      <td style="border: none; padding: 8px; vertical-align: top;"><strong style="color: #006633;">THROUGH:</strong></td>
+      <td style="border: none; padding: 8px; vertical-align: top;">
         <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
           <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
             <?php if (stripos($step['role'] ?? '', 'COS') !== false): ?>
@@ -286,7 +290,7 @@
           Chief of Staff
         <?php endif; ?>
       </td>
-      <td>
+      <td style="border: none; padding: 8px; vertical-align: top; text-align: center;">
         <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
           <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
             <?php if (stripos($step['role'] ?? '', 'COS') !== false): ?>
@@ -317,8 +321,8 @@
     
     <!-- THROUGH: DDG -->
     <tr>
-      <td></td>
-      <td>
+      <td style="border: none; padding: 8px; vertical-align: top;"></td>
+      <td style="border: none; padding: 8px; vertical-align: top;">
         <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
           <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
             <?php if (stripos($step['role'] ?? '', 'DDG') !== false): ?>
@@ -349,7 +353,7 @@
           Ag. Deputy Director General
         <?php endif; ?>
       </td>
-      <td>
+      <td style="border: none; padding: 8px; vertical-align: top; text-align: center;">
         <?php if (isset($workflow_info['workflow_steps']) && $workflow_info['workflow_steps']->count() > 0): ?>
           <?php foreach ($workflow_info['workflow_steps'] as $step): ?>
             <?php if (stripos($step['role'] ?? '', 'DDG') !== false): ?>
@@ -380,8 +384,8 @@
     
     <!-- THROUGH: Head of Operations/Programs (Conditional) -->
     <tr>
-      <td></td>
-      <td>
+      <td style="border: none; padding: 8px; vertical-align: top;"></td>
+      <td style="border: none; padding: 8px; vertical-align: top;">
         <?php
           // Check if activity division is Operations or Programs and display appropriate head
           $divisionCategory = $matrix->division->category ?? '';
@@ -478,7 +482,7 @@
         <?php endif; ?>
       <?php endif; ?>
       </td>
-      <td>
+      <td style="border: none; padding: 8px; vertical-align: top; text-align: center;">
         <?php
           // Check if activity division is Operations or Programs and display appropriate signature
           if (stripos($divisionName, 'Operations') !== false): ?>
@@ -538,9 +542,9 @@
     
     <!-- FROM: Head of Division -->
     <tr>
-      <td><strong style="color: #006633;">FROM:</strong></td>
-      <td>Head of Division</td>
-      <td></td>
+      <td style="border: none; padding: 8px; vertical-align: top;"><strong style="color: #006633;">FROM:</strong></td>
+      <td style="border: none; padding: 8px; vertical-align: top;">Head of Division</td>
+      <td style="border: none; padding: 8px; vertical-align: top; text-align: center;"></td>
     </tr>
   </table>
 
@@ -550,13 +554,10 @@
   <div class="section-title">SUBJECT: <?php echo htmlspecialchars($activity->activity_title ?? 'N/A'); ?></div>
 
   <!-- Activity Request Remarks -->
+   <?=$activity->background;?>
+
   <?php if (isset($activity->activity_request_remarks) && !empty($activity->activity_request_remarks)): ?>
-    <div style="margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #006633;">
-      <div style="font-weight: bold; color: #006633; margin-bottom: 10px;">REQUEST REMARKS:</div>
-      <div style="line-height: 1.6; text-align: justify;">
-        <?php echo nl2br(htmlspecialchars($activity->activity_request_remarks)); ?>
-      </div>
-    </div>
+    
   <?php endif; ?>
 
   <!-- Content -->
@@ -606,23 +607,51 @@
       </tr>
     </table>
 
-    <?php if (isset($internal_participants) && $internal_participants->count() > 0): ?>
-    <div class="section-title">Internal Participants</div>
-    <table>
-      <tr>
-        <th>Name</th>
-        <th>Division</th>
-        <th>Days</th>
+    <!-- Participants Table -->
+    <div class="section-title">Participants</div>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <tr style="background-color: #f5f5f5;">
+        <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Name</th>
+        <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Division</th>
+        <th style="border: 1px solid #ccc; padding: 8px; text-align: center; font-weight: bold;">Days</th>
+        <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Role</th>
       </tr>
-      <?php foreach ($internal_participants as $participant): ?>
-      <tr>
-        <td><?php echo htmlspecialchars($participant->staff->name ?? 'N/A'); ?></td>
-        <td><?php echo htmlspecialchars($participant->staff->division->division_name ?? 'N/A'); ?></td>
-        <td><?php echo htmlspecialchars($participant->no_of_days ?? 'N/A'); ?></td>
-      </tr>
-      <?php endforeach; ?>
+      
+      <?php if (isset($internal_participants) && $internal_participants->count() > 0): ?>
+        <?php foreach ($internal_participants as $participant): ?>
+        <tr>
+          <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
+            <?php echo htmlspecialchars($participant->staff->name ?? 'N/A'); ?>
+            <?php if (isset($participant->staff->work_email) && !empty($participant->staff->work_email)): ?>
+              <br><small style="color: #666; font-size: 10px;"><?php echo htmlspecialchars($participant->staff->work_email); ?></small>
+            <?php endif; ?>
+          </td>
+          <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
+            <?php echo htmlspecialchars($participant->staff->division->division_name ?? 'N/A'); ?>
+          </td>
+          <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top; text-align: center;">
+            <?php echo htmlspecialchars($participant->no_of_days ?? 'N/A'); ?>
+          </td>
+          <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
+            <?php 
+              // Check if this participant is the focal person
+              if (isset($activity->focal_person_id) && $participant->staff_id == $activity->focal_person_id) {
+                echo '<strong style="color: #006633;">Focal Person</strong>';
+              } else {
+                echo 'Participant';
+              }
+            ?>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <tr>
+          <td colspan="4" style="border: 1px solid #ccc; padding: 8px; text-align: center; font-style: italic; color: #666;">
+            No participants assigned to this activity
+          </td>
+        </tr>
+      <?php endif; ?>
     </table>
-    <?php endif; ?>
 
     <?php if (isset($matrix->budget_items) && $matrix->budget_items->count() > 0): ?>
     <div class="section-title">Budget Details</div>
@@ -648,11 +677,11 @@
    
   <!-- Signature Section -->
   <div class="section-title">Signatures</div>
-  <table>
+  <table style="width: 100%; border-collapse: collapse;">
     <tr>
-      <th style="width: 30%;">Position</th>
-      <th style="width: 40%;">Name & Title</th>
-      <th style="width: 30%;">Signature</th>
+      <th style="width: 30%; border: 1px solid #ccc; padding: 8px; background-color: #f5f5f5;">Position</th>
+      <th style="width: 40%; border: 1px solid #ccc; padding: 8px; background-color: #f5f5f5;">Name & Title</th>
+      <th style="width: 30%; border: 1px solid #ccc; padding: 8px; background-color: #f5f5f5;">Signature</th>
     </tr>
     
     <!-- First Approver -->
@@ -663,14 +692,14 @@
         $approver = $firstStep['approvers']->first();
         if(isset($approver['staff'])): ?>
           <tr>
-            <td><strong><?php echo htmlspecialchars($firstStep['role'] ?? 'Endorsed by'); ?></strong></td>
-            <td>
+            <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;"><strong><?php echo htmlspecialchars($firstStep['role'] ?? 'Endorsed by'); ?></strong></td>
+            <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
               <?php echo htmlspecialchars($approver['staff']['name']); ?>
               <?php if (isset($approver['staff']['job_title'])): ?>
                 <br><small style="color: #666;"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></small>
               <?php endif; ?>
             </td>
-            <td>
+            <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top; text-align: center;">
               <?php if (isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
                 <img src="<?php echo asset('uploads/staff/signature/' . $approver['staff']['signature']); ?>" 
                      alt="Signature" style="height: 40px; max-width: 120px; object-fit: contain;">
@@ -681,14 +710,14 @@
           </tr>
         <?php elseif(isset($approver['oic_staff'])): ?>
           <tr>
-            <td><strong><?php echo htmlspecialchars($firstStep['role'] ?? 'Endorsed by'); ?></strong></td>
-            <td>
+            <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;"><strong><?php echo htmlspecialchars($firstStep['role'] ?? 'Endorsed by'); ?></strong></td>
+            <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
               <?php echo htmlspecialchars($approver['oic_staff']['name']); ?> (OIC)
               <?php if (isset($approver['oic_staff']['job_title'])): ?>
                 <br><small style="color: #666;"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></small>
               <?php endif; ?>
             </td>
-            <td>
+            <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top; text-align: center;">
               <?php if (isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
                 <img src="<?php echo asset('uploads/staff/signature/' . $approver['oic_staff']['signature']); ?>" 
                      alt="Signature" style="height: 40px; max-width: 120px; object-fit: contain;">
@@ -703,9 +732,9 @@
 
     <!-- Division Head -->
     <tr>
-      <td><strong>Division Head</strong></td>
-      <td>Head of Division, Africa CDC</td>
-      <td><?php echo date('M j, Y | H:i'); ?> EAST</td>
+      <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;"><strong>Division Head</strong></td>
+      <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">Head of Division, Africa CDC</td>
+      <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top; text-align: center;"><?php echo date('M j, Y | H:i'); ?> EAST</td>
     </tr>
   </table>
 </body>

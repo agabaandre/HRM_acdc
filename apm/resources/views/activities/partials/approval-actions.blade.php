@@ -3,9 +3,9 @@
     <button class="btn btn-success w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#confirmReview" style="border-radius: 0px;">
         <i class="bx bx-check text-bold"></i> Pass
     </button>
-    <button class="btn btn-danger w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
+    {{-- <button class="btn btn-danger w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
         <i class="bx bx-edit text-bold"></i> Not Passed
-    </button>
+    </button> --}}
 </div>
         
         <!-- Recommend Changes Modal -->

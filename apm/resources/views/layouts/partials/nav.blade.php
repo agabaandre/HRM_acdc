@@ -80,26 +80,33 @@ $settingsMenuItems = [
                 </a>
             </li>
 
-            <!-- Activities -->
-            <li class="nav-item">
-                <a href="{{ route('activities.index') }}" class="nav-link {{ Request::is('activities*') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-tasks"></i></div>
-                    <div class="menu-title">Matrix Activities</div>
-                </a>
-            </li>
+         
 
          
 
             <!-- Memos Menu -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('special-memo*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('activities*') || Request::is('non-travel*') || Request::is('special-memo*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-envelope-open-text"></i></div>
                     <div class="menu-title">Memos</div>
                 </a>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">Non-Travel</a></li>
-                    <li><a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">Special Travel Memo</a></li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('activities*') ? 'active' : '' }}" href="{{ route('activities.index') }}">
+                            Matrix Memos
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">
+                            Non-Travel Memos
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">
+                            Special Travel Memos
+                        </a>
+                    </li>
                 </ul>
             </li>
 

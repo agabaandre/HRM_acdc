@@ -28,7 +28,7 @@
 </div>
 <div class="col-md-12 d-flex justify-content-end">
   {{-- Activity Operations Buttons --}}
-            @if(allow_activity_operations())
+            @if(allow_print_activity($activity))
             <div class="col-md-12 mb-3">
                 <div class="card border-primary">
                 
