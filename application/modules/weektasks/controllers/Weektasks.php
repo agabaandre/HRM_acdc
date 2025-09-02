@@ -6,7 +6,7 @@ class Weektasks extends MX_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('weektasks_mdl', 'weektasks_mdl');
-        
+        $this->load->model('staff_mdl', 'staff_mdl');
     }
 
     public function tasks() {
@@ -282,7 +282,187 @@ public function print_combined_division_report($division_id, $start_date, $end_d
     pdf_print_data($data, 'Division_Combined_Weekly_Report.pdf', 'L', 'pdfs/combined_tasks');
 }
 
+// Enhanced filtered print methods
+public function print_staff_report_filtered($staff_id) {
+    try {
+        $filters = [
+            'staff_ids' => $this->input->get('staff_ids'),
+            'start_date' => $this->input->get('start_date'),
+            'end_date' => $this->input->get('end_date'),
+            'status' => $this->input->get('status'),
+            'teamlead' => $this->input->get('teamlead')
+        ];
 
+        $data['module'] = 'weektasks';
+        $data['staff'] = $this->weektasks_mdl->get_staff($staff_id);
+        
+        // Generate dynamic report title based on filters
+        $data['report_title'] = $this->generate_filtered_report_title($filters, 'Staff');
+        $data['filter_summary'] = $this->generate_filter_summary($filters);
+        
+        $data['tasks'] = $this->weektasks_mdl->get_tasks_by_staff_and_filters($staff_id, $filters);
+        
+        $log_message = "Printed filtered staff report with parameters: " . json_encode($filters);
+        log_user_action($log_message);
+        
+        pdf_print_data($data, 'Filtered_Staff_Report.pdf', 'P', 'pdfs/print_staff_filtered');
+    } catch (Exception $e) {
+        log_message('error', 'Print staff report error: ' . $e->getMessage());
+        show_error('Error generating staff report: ' . $e->getMessage());
+    }
+}
+
+public function print_division_report_filtered($division_id) {
+    try {
+        $filters = [
+            'staff_ids' => $this->input->get('staff_ids'),
+            'start_date' => $this->input->get('start_date'),
+            'end_date' => $this->input->get('end_date'),
+            'status' => $this->input->get('status'),
+            'teamlead' => $this->input->get('teamlead')
+        ];
+
+        $data['module'] = 'weektasks';
+        $data['division'] = $this->db->where('division_id', $division_id)->get('divisions')->row();
+        
+        // Generate dynamic report title based on filters
+        $data['report_title'] = $this->generate_filtered_report_title($filters, 'Division');
+        $data['filter_summary'] = $this->generate_filter_summary($filters);
+        
+        $staffs = $this->staff_mdl->get_staff_by_division($division_id);
+        $data['division_tasks'] = [];
+
+        foreach ($staffs as $staff) {
+            $tasks = $this->weektasks_mdl->get_tasks_by_staff_and_filters($staff->staff_id, $filters);
+            if (!empty($tasks)) {
+                $data['division_tasks'][$staff->title . ' ' . $staff->fname . ' ' . $staff->lname] = $tasks;
+            }
+        }
+
+        $log_message = "Printed filtered division report for division ID: $division_id with parameters: " . json_encode($filters);
+        log_user_action($log_message);
+
+        pdf_print_data($data, 'Filtered_Division_Report.pdf', 'L', 'pdfs/division_print_filtered');
+    } catch (Exception $e) {
+        log_message('error', 'Print division report error: ' . $e->getMessage());
+        show_error('Error generating division report: ' . $e->getMessage());
+    }
+}
+
+public function print_combined_division_report_filtered($division_id) {
+    try {
+        $filters = [
+            'staff_ids' => $this->input->get('staff_ids'),
+            'start_date' => $this->input->get('start_date'),
+            'end_date' => $this->input->get('end_date'),
+            'status' => $this->input->get('status'),
+            'teamlead' => $this->input->get('teamlead')
+        ];
+
+        $this->load->model('weektasks_mdl');
+
+        $data['module'] = 'weektasks';
+        $data['division'] = $this->db->where('division_id', $division_id)->get('divisions')->row();
+        
+        // Generate dynamic report title based on filters
+        $data['report_title'] = $this->generate_filtered_report_title($filters, 'Combined Division');
+        $data['filter_summary'] = $this->generate_filter_summary($filters);
+        
+        $data['tasks'] = $this->weektasks_mdl->get_combined_tasks_for_division_filtered($division_id, $filters);
+
+        $log_message = "Printed filtered combined division report for division ID: $division_id with parameters: " . json_encode($filters);
+        log_user_action($log_message);
+
+        pdf_print_data($data, 'Filtered_Combined_Division_Report.pdf', 'L', 'pdfs/combined_tasks_filtered');
+    } catch (Exception $e) {
+        log_message('error', 'Print combined division report error: ' . $e->getMessage());
+        show_error('Error generating combined division report: ' . $e->getMessage());
+    }
+}
+
+// Helper methods for filtered reports
+private function generate_filtered_report_title($filters, $type) {
+    $title = "Filtered {$type} Task Report";
+    
+    if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+        $title .= " (" . date('M d, Y', strtotime($filters['start_date'])) . " - " . date('M d, Y', strtotime($filters['end_date'])) . ")";
+    }
+    
+    return $title;
+}
+
+private function generate_filter_summary($filters) {
+    $summary = [];
+    
+    if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+        $summary[] = "Date Range: " . date('M d, Y', strtotime($filters['start_date'])) . " to " . date('M d, Y', strtotime($filters['end_date']));
+    }
+    
+    if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        $status_labels = [1 => 'Pending', 2 => 'Done', 3 => 'Next Week', 4 => 'Cancelled'];
+        $summary[] = "Status: " . ($status_labels[$filters['status']] ?? 'All');
+    }
+    
+    if (!empty($filters['teamlead']) && $filters['teamlead'] !== 'all') {
+        $teamlead_name = staff_name($filters['teamlead']);
+        $summary[] = "Team Lead: " . $teamlead_name;
+    }
+    
+    if (!empty($filters['staff_ids'])) {
+        $staff_names = array_map('staff_name', explode(',', $filters['staff_ids']));
+        $summary[] = "Staff: " . implode(', ', $staff_names);
+    }
+    
+    return implode(' | ', $summary);
+}
+
+// Enhanced calendar events with filters
+public function fetch_calendar_events() {
+    $filters = [
+        'staff_ids' => $this->input->post('staff_ids'),
+        'start_date' => $this->input->post('start_date'),
+        'end_date' => $this->input->post('end_date'),
+        'status' => $this->input->post('status'),
+        'teamlead' => $this->input->post('teamlead'),
+        'division' => $this->input->post('division')
+    ];
+
+    $tasks = $this->weektasks_mdl->get_tasks_for_calendar_filtered($filters);
+    $events = [];
+
+    foreach ($tasks as $task) {
+        // Use switch instead of match for PHP 7.x compatibility
+        switch ((int)$task->status) {
+            case 1:
+                $statusColor = '#ffc107'; // Pending - Yellow
+                break;
+            case 2:
+                $statusColor = '#28a745'; // Completed - Green
+                break;
+            case 3:
+                $statusColor = '#007bff'; // Carried Forward - Blue
+                break;
+            case 4:
+                $statusColor = '#dc3545'; // Cancelled - Red
+                break;
+            default:
+                $statusColor = '#6c757d'; // Unknown - Gray
+        }
+
+        $events[] = [
+            'title' => $task->activity_name,
+            'start' => $task->start_date,
+            'end'   => date('Y-m-d', strtotime($task->end_date . ' +1 day')), // FullCalendar needs exclusive end
+            'color' => $statusColor,
+            'allDay' => true,
+        ];
+    }
+
+    echo json_encode([
+        'success' => true,
+        'events' => $events
+    ]);
+}
 
     
 }

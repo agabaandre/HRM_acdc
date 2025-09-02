@@ -1444,20 +1444,31 @@ class ActivityController extends Controller
      */
     public function generateMemoPdf(Matrix $matrix, Activity $activity)
     {
-        // Load necessary relationships
+        // Load comprehensive relationships for the activity
         $activity->load([
             'matrix.division.divisionHead',
             'matrix.division.focalPerson',
             'requestType',
             'fundType',
-            'activityApprovalTrails',
-            'matrix.approvalTrails',
+            'activityApprovalTrails.staff',
+            'matrix.matrixApprovalTrails.staff',
             'responsiblePerson',
             'staff',
-            'activity_budget'
+            'activity_budget.fundcode.fundType',
+            'focalPerson'
         ]);
 
-        // Load locations
+        // Load matrix with comprehensive relationships
+        $matrix->load([
+            'division.divisionHead',
+            'division.focalPerson',
+            'matrixApprovalTrails.staff',
+            'activities' => function($query) {
+                $query->with(['staff', 'focalPerson', 'responsiblePerson', 'activity_budget.fundcode.fundType']);
+            }
+        ]);
+
+        // Load locations with comprehensive data
         $locationIds = [];
         if ($activity->location_id) {
             // Handle JSON location_id field
@@ -1478,7 +1489,7 @@ class ActivityController extends Controller
             $locations = Location::whereIn('id', $locationIds)->get();
         }
         
-        // Load internal participants with their details
+        // Load internal participants with comprehensive details and days information
         $internalParticipants = collect();
         if ($activity->internal_participants) {
             // Handle JSON internal_participants field
@@ -1496,32 +1507,53 @@ class ActivityController extends Controller
             
             if (!empty($participantIds)) {
                 $internalParticipants = Staff::whereIn('staff_id', $participantIds)
+                    ->with(['division'])
                     ->get()
-                    ->map(function($staff) {
-                        // Add days information if available
-                        $staff->pivot = (object) ['days' => 'N/A'];
+                    ->map(function($staff) use ($activity) {
+                        // Get participant schedule data for days calculation
+                        $participantSchedule = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
+                            ->where('activity_id', $activity->id)
+                            ->first();
+                        
+                        $days = 'N/A';
+                        if ($participantSchedule) {
+                            $days = $participantSchedule->no_of_days ?? 'N/A';
+                        }
+                        
+                        // Add days information
+                        $staff->pivot = (object) ['no_of_days' => $days];
                         return $staff;
                     });
             }
         }
-        $staff = $activity->staff;
-        // Get workflow information
-        $matrixApprovals = $activity->matrix->approvalTrails;
-        $workflowInfo = $this->getWorkflowInfo($activity);
 
-                                        // Generate PDF using the simplified mpdf_print helper function with simple template
+        // Get comprehensive workflow information
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($activity, $matrix);
+
+        // Organize workflow steps by memo_print_section
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+
+        // Get matrix approval trails with staff details
+        $matrixApprovals = $matrix->matrixApprovalTrails()->with('staff')->get();
+
+        // Get activity approval trails with staff details
+        $activityApprovals = $activity->activityApprovalTrails()->with('staff')->get();
+
+        // Generate PDF using the comprehensive data
         $pdf = mpdf_print('activities.memo-pdf-simple', [
             'activity' => $activity,
             'matrix' => $matrix,
             'locations' => $locations,
             'internal_participants' => $internalParticipants,
             'matrix_approval_trails' => $matrixApprovals,
-            'staff' => $staff,
-            'workflow_info' => $workflowInfo
+            'activity_approval_trails' => $activityApprovals,
+            'staff' => $activity->staff,
+            'workflow_info' => $workflowInfo,
+            'organized_workflow_steps' => $organizedWorkflowSteps
         ]);
 
         // Generate filename
-        $filename = 'Activity_Memo_' . str_replace(['/', '\\'], '_', $activity->activity_ref) . '_' . now()->format('Y-m-d') . '.pdf';
+        $filename = 'Activity_Memo_' . str_replace(['/', '\\'], '_', $activity->activity_ref ?? $activity->id) . '_' . now()->format('Y-m-d') . '.pdf';
 
         // Return PDF for display in browser using mPDF Output method
         return response($pdf->Output($filename, 'I'), 200, [
@@ -1531,7 +1563,250 @@ class ActivityController extends Controller
     }
 
     /**
-     * Get workflow information for the activity
+     * Get comprehensive workflow information including matrix approval trails
+     */
+    private function getComprehensiveWorkflowInfo(Activity $activity, Matrix $matrix)
+    {
+        $workflowInfo = [
+            'current_level' => null,
+            'current_approver' => null,
+            'workflow_steps' => collect(),
+            'approval_trail' => collect(),
+            'matrix_approval_trail' => collect()
+        ];
+
+        // Get matrix workflow information
+        if ($matrix->forward_workflow_id) {
+            // Get workflow definition
+            $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->orderBy('approval_order')
+                ->with(['approvers.staff', 'approvers.oicStaff'])
+                ->get();
+
+            $workflowInfo['workflow_steps'] = $workflowDefinitions->map(function($definition) use ($matrix) {
+                $approvers = collect();
+                
+                if ($definition->is_division_specific && $matrix->division) {
+                    // Get approver from division table using division_reference_column
+                    $divisionColumn = $definition->division_reference_column;
+                    if ($divisionColumn && isset($matrix->division->$divisionColumn)) {
+                        $staffId = $matrix->division->$divisionColumn;
+                        if ($staffId) {
+                            $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                            if ($staff) {
+                                $approvers->push([
+                                    'staff' => [
+                                        'id' => $staff->staff_id,
+                                        'title' => $staff->title ?? 'N/A',
+                                        'fname' => $staff->fname ?? '',
+                                        'lname' => $staff->lname ?? '',
+                                        'name' => $staff->fname . ' ' . $staff->lname,
+                                        'job_title' => $staff->job_name ?? $staff->position ?? 'N/A',
+                                        'position' => $staff->position ?? 'N/A',
+                                        'work_email' => $staff->work_email ?? 'N/A',
+                                        'personal_email' => $staff->personal_email ?? 'N/A',
+                                        'phone' => $staff->phone ?? 'N/A',
+                                        'mobile' => $staff->mobile ?? 'N/A',
+                                        'signature' => $staff->signature ?? null,
+                                        'division' => $staff->division_name ?? 'N/A',
+                                        'division_id' => $staff->division_id ?? null,
+                                        'duty_station' => $staff->duty_station_name ?? 'N/A',
+                                        'duty_station_id' => $staff->duty_station_id ?? null,
+                                        'nationality' => $staff->nationality ?? 'N/A',
+                                        'gender' => $staff->gender ?? 'N/A',
+                                        'date_of_birth' => $staff->date_of_birth ?? null,
+                                        'hire_date' => $staff->hire_date ?? null,
+                                        'contract_type' => $staff->contract_type ?? 'N/A',
+                                        'employment_status' => $staff->employment_status ?? 'N/A',
+                                        'created_at' => $staff->created_at ?? null,
+                                        'updated_at' => $staff->updated_at ?? null
+                                    ],
+                                    'oic_staff' => null,
+                                    'start_date' => null,
+                                    'end_date' => null
+                                ]);
+                            }
+                        }
+                    }
+                } else {
+                    // Get approvers from approvers table
+                    $approvers = $definition->approvers->map(function($approver) {
+                        return [
+                            'staff' => $approver->staff ? [
+                                'id' => $approver->staff->staff_id,
+                                'title' => $approver->staff->title ?? 'N/A',
+                                'fname' => $approver->staff->fname ?? '',
+                                'lname' => $approver->staff->lname ?? '',
+                                'name' => $approver->staff->fname . ' ' . $approver->staff->lname,
+                                'job_title' => $approver->staff->job_name ?? $approver->staff->position ?? 'N/A',
+                                'position' => $approver->staff->position ?? 'N/A',
+                                'work_email' => $approver->staff->work_email ?? 'N/A',
+                                'personal_email' => $approver->staff->personal_email ?? 'N/A',
+                                'phone' => $approver->staff->phone ?? 'N/A',
+                                'mobile' => $approver->staff->mobile ?? 'N/A',
+                                'signature' => $approver->staff->signature ?? null,
+                                'division' => $approver->staff->division_name ?? 'N/A',
+                                'division_id' => $approver->staff->division_id ?? null,
+                                'duty_station' => $approver->staff->duty_station_name ?? 'N/A',
+                                'duty_station_id' => $approver->staff->duty_station_id ?? null,
+                                'nationality' => $approver->staff->nationality ?? 'N/A',
+                                'gender' => $approver->staff->gender ?? 'N/A',
+                                'date_of_birth' => $approver->staff->date_of_birth ?? null,
+                                'hire_date' => $approver->staff->hire_date ?? null,
+                                'contract_type' => $approver->staff->contract_type ?? 'N/A',
+                                'employment_status' => $approver->staff->employment_status ?? 'N/A',
+                                'created_at' => $approver->staff->created_at ?? null,
+                                'updated_at' => $approver->staff->updated_at ?? null
+                            ] : null,
+                            'oic_staff' => $approver->oicStaff ? [
+                                'id' => $approver->oicStaff->staff_id,
+                                'title' => $approver->oicStaff->title ?? 'N/A',
+                                'fname' => $approver->oicStaff->fname ?? '',
+                                'lname' => $approver->oicStaff->lname ?? '',
+                                'name' => $approver->oicStaff->fname . ' ' . $approver->oicStaff->lname,
+                                'job_title' => $approver->oicStaff->job_name ?? $approver->oicStaff->position ?? 'N/A',
+                                'position' => $approver->oicStaff->position ?? 'N/A',
+                                'work_email' => $approver->oicStaff->work_email ?? 'N/A',
+                                'personal_email' => $approver->oicStaff->personal_email ?? 'N/A',
+                                'phone' => $approver->oicStaff->phone ?? 'N/A',
+                                'mobile' => $approver->oicStaff->mobile ?? 'N/A',
+                                'signature' => $approver->oicStaff->signature ?? null,
+                                'division' => $approver->oicStaff->division_name ?? 'N/A',
+                                'division_id' => $approver->oicStaff->division_id ?? null,
+                                'duty_station' => $approver->oicStaff->duty_station_name ?? 'N/A',
+                                'duty_station_id' => $approver->oicStaff->duty_station_id ?? null,
+                                'nationality' => $approver->oicStaff->nationality ?? 'N/A',
+                                'gender' => $approver->oicStaff->gender ?? 'N/A',
+                                'date_of_birth' => $approver->oicStaff->date_of_birth ?? null,
+                                'hire_date' => $approver->oicStaff->hire_date ?? null,
+                                'contract_type' => $approver->oicStaff->contract_type ?? 'N/A',
+                                'employment_status' => $approver->oicStaff->employment_status ?? 'N/A',
+                                'created_at' => $approver->oicStaff->created_at ?? null,
+                                'updated_at' => $approver->oicStaff->updated_at ?? null
+                            ] : null,
+                            'start_date' => $approver->start_date,
+                            'end_date' => $approver->end_date
+                        ];
+                    })->values();
+                }
+                
+                return [
+                    'order' => $definition->approval_order,
+                    'role' => $definition->role,
+                    'memo_print_section' => $definition->memo_print_section ?? 'through',
+                    'print_order' => $definition->print_order,
+                    'approvers' => $approvers
+                ];
+            })->values();
+
+            // Get current approval level
+            if ($matrix->approval_level) {
+                $currentDefinition = $workflowDefinitions->where('approval_order', $matrix->approval_level)->first();
+                if ($currentDefinition) {
+                    $workflowInfo['current_level'] = $currentDefinition->role;
+                    
+                    // Handle division-specific approvers
+                    if ($currentDefinition->is_division_specific && $matrix->division) {
+                        $divisionColumn = $currentDefinition->division_reference_column;
+                        if ($divisionColumn && isset($matrix->division->$divisionColumn)) {
+                            $staffId = $matrix->division->$divisionColumn;
+                            if ($staffId) {
+                                $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                                if ($staff) {
+                                    $workflowInfo['current_approver'] = $staff->fname . ' ' . $staff->lname;
+                                }
+                            }
+                        }
+                    } else {
+                        // Handle regular approvers
+                        $currentApprover = $currentDefinition->approvers->first();
+                        if ($currentApprover) {
+                            $workflowInfo['current_approver'] = $currentApprover->staff ? 
+                                $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname :
+                                ($currentApprover->oicStaff ? $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname : 'N/A');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Get matrix approval trail
+        $matrixApprovalTrails = $matrix->matrixApprovalTrails()
+            ->orderBy('created_at')
+            ->with('staff')
+            ->get();
+
+        $workflowInfo['matrix_approval_trail'] = $matrixApprovalTrails->map(function($trail) {
+            return [
+                'action' => $trail->action,
+                'remarks' => $trail->remarks,
+                'staff' => $trail->staff ? [
+                    'name' => $trail->staff->fname . ' ' . $trail->staff->lname,
+                    'job_title' => $trail->staff->job_name ?? $trail->staff->position ?? 'N/A',
+                    'work_email' => $trail->staff->work_email ?? 'N/A',
+                    'signature' => $trail->staff->signature ?? null
+                ] : null,
+                'date' => $trail->created_at ? $trail->created_at->format('d/m/Y H:i:s') : 'N/A',
+                'approval_order' => $trail->approval_order ?? null
+            ];
+        })->values();
+
+        // Get activity approval trail
+        $activityApprovalTrails = \App\Models\ActivityApprovalTrail::where('activity_id', $activity->id)
+            ->orderBy('created_at')
+            ->with('staff')
+            ->get();
+
+        $workflowInfo['approval_trail'] = $activityApprovalTrails->map(function($trail) {
+            return [
+                'action' => $trail->action,
+                'remarks' => $trail->remarks,
+                'staff' => $trail->staff ? [
+                    'name' => $trail->staff->fname . ' ' . $trail->staff->lname,
+                    'job_title' => $trail->staff->job_name ?? $trail->staff->position ?? 'N/A',
+                    'work_email' => $trail->staff->work_email ?? 'N/A',
+                    'signature' => $trail->staff->signature ?? null
+                ] : null,
+                'date' => $trail->created_at ? $trail->created_at->format('d/m/Y H:i:s') : 'N/A',
+                'matrix_id' => $trail->matrix_id ?? null,
+                'approval_order' => $trail->approval_order ?? null
+            ];
+        })->values();
+
+        return $workflowInfo;
+    }
+
+    /**
+     * Organize workflow steps by memo_print_section for dynamic memo rendering
+     */
+    private function organizeWorkflowStepsBySection($workflowSteps)
+    {
+        $organizedSteps = [
+            'to' => collect(),
+            'through' => collect(),
+            'from' => collect(),
+            'others' => collect()
+        ];
+
+        foreach ($workflowSteps as $step) {
+            $section = $step['memo_print_section'] ?? 'through';
+            $organizedSteps[$section]->push($step);
+        }
+
+        // Sort each section by print_order first, then by approval order as fallback
+        foreach ($organizedSteps as $section => $steps) {
+            $organizedSteps[$section] = $steps->sortBy([
+                ['print_order', 'asc'],
+                ['order', 'asc']
+            ])->values();
+        }
+
+        return $organizedSteps;
+    }
+
+    /**
+     * Get workflow information for the activity (legacy method)
      */
     private function getWorkflowInfo(Activity $activity)
     {

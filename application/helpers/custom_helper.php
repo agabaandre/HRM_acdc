@@ -1125,6 +1125,16 @@ function status_badge($status) {
         default: return '<span class="badge bg-secondary">Unknown</span>';
     }
 }
+
+function get_status_text($status) {
+    switch ((int)$status) {
+        case 1: return 'Pending';
+        case 2: return 'Done';
+        case 3: return 'Next Week';
+        case 4: return 'Cancelled';
+        default: return 'Unknown';
+    }
+}
 if (!function_exists('get_week_range')) {
     function get_week_range($week_start_date) {
         $start = date('F j', strtotime($week_start_date));
