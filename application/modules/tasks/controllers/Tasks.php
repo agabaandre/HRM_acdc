@@ -470,6 +470,105 @@ class Tasks extends MX_Controller {
             ]);
         }
     }
+
+    // Print activity report as PDF
+    public function print_activity_report() {
+        $start_date = $this->input->get('start_date');
+        $end_date = $this->input->get('end_date');
+        $team_members = $this->input->get('team_members');
+        $work_plan = $this->input->get('work_plan');
+        $division_id = $this->session->userdata('user')->division_id;
+
+        try {
+            // Get division information
+            $division = $this->db->where('division_id', $division_id)->get('divisions')->row();
+            
+            // Get activities data
+            $activities = $this->tasks_mdl->get_activities_filtered($division_id, $start_date, $end_date, $team_members, $work_plan);
+            
+            // Get team performance data
+            $team_performance = $this->tasks_mdl->get_team_performance_data($division_id, $start_date, $end_date, $team_members, $work_plan);
+            
+            // Get statistics
+            $statistics = $this->tasks_mdl->get_activity_statistics($division_id, $start_date, $end_date, $team_members, $work_plan);
+
+            $data = [
+                'module' => 'tasks',
+                'division' => $division,
+                'activities' => $activities,
+                'team_performance' => $team_performance,
+                'statistics' => $statistics,
+                'date_range' => $this->get_date_range_label($start_date, $end_date),
+                'filters' => [
+                    'start_date' => $start_date,
+                    'end_date' => $end_date,
+                    'team_members' => $team_members,
+                    'work_plan' => $work_plan
+                ]
+            ];
+
+            $log_message = "Printed activity report for division: " . ($division->division_name ?? 'Unknown');
+            log_user_action($log_message);
+
+            pdf_print_data($data, 'Activity_Report.pdf', 'L', 'pdfs/activity_report');
+
+        } catch (Exception $e) {
+            log_message('error', 'Print activity report error: ' . $e->getMessage());
+            show_error('Error generating activity report: ' . $e->getMessage());
+        }
+    }
+
+    // Print individual activity report as PDF
+    public function print_individual_activity_report($activity_id) {
+        try {
+            // Get activity details with all related information
+            $activity = $this->tasks_mdl->get_activity_with_details($activity_id);
+            
+            if (!$activity) {
+                show_error('Activity not found');
+                return;
+            }
+
+            // Get report details if exists
+            $report = $this->tasks_mdl->get_activity_report($activity_id);
+            
+            // Get work plan details
+            $work_plan = null;
+            if ($activity->workplan_id) {
+                $work_plan = $this->db->where('id', $activity->workplan_id)->get('workplan_tasks')->row();
+            }
+
+            $data = [
+                'module' => 'tasks',
+                'activity' => $activity,
+                'report' => $report,
+                'work_plan' => $work_plan,
+                'generated_date' => date('M d, Y H:i:s')
+            ];
+
+            $log_message = "Printed individual activity report for activity ID: $activity_id";
+            log_user_action($log_message);
+
+            pdf_print_data($data, 'Activity_Report_' . $activity_id . '.pdf', 'P', 'pdfs/individual_activity_report');
+
+        } catch (Exception $e) {
+            log_message('error', 'Print individual activity report error: ' . $e->getMessage());
+            show_error('Error generating individual activity report: ' . $e->getMessage());
+        }
+    }
+
+    // Helper method to generate date range label
+    private function get_date_range_label($start_date, $end_date) {
+        if (!empty($start_date) && !empty($end_date)) {
+            return date('M d, Y', strtotime($start_date)) . ' - ' . date('M d, Y', strtotime($end_date));
+        } elseif (!empty($start_date)) {
+            return 'From ' . date('M d, Y', strtotime($start_date));
+        } elseif (!empty($end_date)) {
+            return 'Until ' . date('M d, Y', strtotime($end_date));
+        } else {
+            return 'All Time';
+        }
+    }
     
 
  

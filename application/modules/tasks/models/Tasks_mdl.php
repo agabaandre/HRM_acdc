@@ -451,6 +451,63 @@ class Tasks_mdl extends CI_Model {
         return $result['data'];
     }
 
+    // Get activity with all details for individual report
+    public function get_activity_with_details($activity_id) {
+        // Subquery: Get latest contract per staff
+        $subquery = $this->db
+            ->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+        return $this->db
+            ->select('
+                wpt.activity_id,
+                wpt.activity_name,
+                wpt.start_date,
+                wpt.end_date,
+                wpt.status,
+                wpt.comments,
+                wpt.workplan_id,
+                wpt.created_by,
+                s.fname,
+                s.lname,
+                s.title,
+                s.work_email,
+                j.job_name,
+                CONCAT(s.fname, " ", s.lname) as member_name,
+                wt.activity_name as work_plan_name,
+                d.division_name
+            ')
+            ->from('work_planner_tasks wpt')
+            ->join('staff s', 's.staff_id = wpt.created_by', 'left')
+            ->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left')
+            ->join('jobs j', 'j.job_id = sc.job_id', 'left')
+            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id', 'left')
+            ->join('divisions d', 'd.division_id = sc.division_id', 'left')
+            ->where("sc.staff_contract_id IN ($subquery)", null, false)
+            ->where_in('sc.status_id', [1, 2, 3, 7])
+            ->where('wpt.activity_id', $activity_id)
+            ->get()
+            ->row();
+    }
+
+    // Get activity report details
+    public function get_activity_report($activity_id) {
+        return $this->db
+            ->select('
+                r.report_id,
+                r.description,
+                r.report_date,
+                r.status as report_status,
+                r.created_at
+            ')
+            ->from('reports r')
+            ->where('r.activity_id', $activity_id)
+            ->get()
+            ->row();
+    }
+
     // Get team performance data
     public function get_team_performance_data($division_id, $start_date = null, $end_date = null, $team_members = null, $work_plan = null) {
         // Subquery: Get latest contract per staff
