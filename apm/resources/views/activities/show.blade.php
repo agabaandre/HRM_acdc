@@ -92,8 +92,26 @@
                     </div>
                     <div class="col-md-4">
                         <strong>Status: </strong>
+                        @php
+                            // Determine the status and badge color
+                            $statusText = '';
+                            $badgeClass = 'bg-secondary';
+
+                            //dd($activity);
+
+                            if (can_approve_activity($activity)) {
+                                if ($activity->matrix->overall_status == 'approved') {
+                                    $statusText = ucwords($activity->status);
+                                    $badgeClass = 'bg-success';
+                                } else {
+                                    $statusText = ucwords($activity->status);
+                                    $badgeClass = ($activity->status == 'passed') ? 'bg-success' : 'bg-danger';
+                                }
+                            }
+                        @endphp
+
                         @if(can_approve_activity($activity))
-                            <span badge class="badge {{((($activity->my_last_action)?$activity->my_last_action->action:$activity->status)=='passed')?'bg-success':'bg-danger'}}">{{ucwords(($activity->my_last_action)?$activity->my_last_action->action:$activity->status)}}</span>
+                            <span class="badge {{ $badgeClass }}">{{ $statusText }}</span>
                         @else
                             <span class="badge bg-success">No Action Required</span>
                         @endif
