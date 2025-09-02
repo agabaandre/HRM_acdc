@@ -422,4 +422,47 @@ public function get_tasks_for_calendar_filtered($filters = []) {
         ->result();
 }
 
+// Method to get tasks for statistics calculation
+public function get_tasks_for_statistics($filters = []) {
+    $this->db
+        ->select('w.activity_id, w.start_date, w.end_date, w.status')
+        ->from('work_plan_weekly_tasks w')
+        ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
+        ->join('workplan_tasks wp', 'wp.id = p.workplan_id', 'left');
+
+    // Apply filters
+    if (!empty($filters['start_date'])) {
+        $this->db->where('w.start_date >=', $filters['start_date']);
+    }
+    
+    if (!empty($filters['end_date'])) {
+        $this->db->where('w.end_date <=', $filters['end_date']);
+    }
+    
+    if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        $this->db->where('w.status', $filters['status']);
+    }
+    
+    if (!empty($filters['teamlead']) && $filters['teamlead'] !== 'all') {
+        $this->db->where('p.created_by', $filters['teamlead']);
+    }
+    
+    if (!empty($filters['division'])) {
+        $this->db->where('wp.division_id', $filters['division']);
+    }
+    
+    if (!empty($filters['staff_id']) && is_array($filters['staff_id'])) {
+        $this->db->group_start();
+        foreach ($filters['staff_id'] as $staff_id) {
+            $this->db->or_where("FIND_IN_SET(" . $this->db->escape($staff_id) . ", w.staff_id) >", 0);
+        }
+        $this->db->group_end();
+    }
+
+    return $this->db
+        ->order_by('w.start_date', 'ASC')
+        ->get()
+        ->result();
+}
+
 }

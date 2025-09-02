@@ -371,6 +371,156 @@
   .note-editor .note-editing-area {
     background-color: white;
   }
+
+  /* Activity Statistics Styling */
+  .stat-item {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    border-radius: 15px;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--stat-color), var(--stat-color-light));
+  }
+
+  .stat-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .stat-item.total {
+    --stat-color: #17a2b8;
+    --stat-color-light: #20c997;
+  }
+
+  .stat-item.completed {
+    --stat-color: #28a745;
+    --stat-color-light: #34ce57;
+  }
+
+  .stat-item.pending {
+    --stat-color: #ffc107;
+    --stat-color-light: #ffed4e;
+  }
+
+  .stat-item.overdue {
+    --stat-color: #dc3545;
+    --stat-color-light: #e74c3c;
+  }
+
+  .stat-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--stat-color);
+    display: block;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: countUp 1s ease-out;
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-icon {
+    font-size: 1.5rem;
+    color: var(--stat-color);
+    margin-bottom: 0.5rem;
+    display: block;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Progress bar for visual representation */
+  .stat-progress {
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+  }
+
+  .stat-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--stat-color), var(--stat-color-light));
+    border-radius: 2px;
+    transition: width 1s ease-out;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  /* Sparkle effect for completed tasks */
+  .stat-item.sparkle {
+    animation: sparkle 0.5s ease-in-out;
+  }
+
+  @keyframes sparkle {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(40, 200, 40, 0.5); }
+  }
+
+  /* Enhanced hover effects */
+  .stat-item:hover .stat-icon {
+    animation: bounce 0.6s ease-in-out;
+  }
+
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+  }
+
+  /* Glow effect for overdue tasks */
+  .stat-item.overdue:hover {
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+  }
+
+  /* Success glow for completed tasks */
+  .stat-item.completed:hover {
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+  }
 </style>
 
 <?php $this->load->view('tasks_tabs')?>
@@ -510,6 +660,8 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
       <?= form_close(); ?>
     </div>
   </div>
+
+ 
 
   <!-- Team Performance Breakdown -->
   <div class="card table-card mb-4">
@@ -997,10 +1149,26 @@ $(document).ready(function() {
   }
 
   function updateStatistics(stats) {
+    // Animate number counting
     animateNumber('#totalActivities', stats.total || 0);
     animateNumber('#completedActivities', stats.completed || 0);
     animateNumber('#pendingActivities', stats.pending || 0);
     animateNumber('#overdueActivities', stats.overdue || 0);
+    
+    // Update progress bars
+    const total = stats.total || 0;
+    updateProgressBar('#totalProgress', total, total);
+    updateProgressBar('#completedProgress', stats.completed || 0, total);
+    updateProgressBar('#pendingProgress', stats.pending || 0, total);
+    updateProgressBar('#overdueProgress', stats.overdue || 0, total);
+    
+    // Add sparkle effect for completed activities
+    if ((stats.completed || 0) > 0) {
+      $('.stat-item.completed').addClass('sparkle');
+      setTimeout(() => {
+        $('.stat-item.completed').removeClass('sparkle');
+      }, 2000);
+    }
   }
 
   function getStatusBadge(status, hasReport) {
@@ -1043,6 +1211,12 @@ $(document).ready(function() {
       }
       element.text(Math.round(currentNumber));
     }, 16);
+  }
+
+  // Helper function for progress bar animation
+  function updateProgressBar(selector, value, max) {
+    const percentage = max > 0 ? (value / max) * 100 : 0;
+    $(selector).css('width', percentage + '%');
   }
 
   function showLoading() {
