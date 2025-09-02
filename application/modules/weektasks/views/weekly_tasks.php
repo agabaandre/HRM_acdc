@@ -163,6 +163,16 @@
     --stat-color-light: #ffed4e;
   }
 
+  .stat-item.carried-forward {
+    --stat-color: #007bff;
+    --stat-color-light: #4dabf7;
+  }
+
+  .stat-item.cancelled {
+    --stat-color: #6c757d;
+    --stat-color-light: #adb5bd;
+  }
+
   .stat-item.overdue {
     --stat-color: #dc3545;
     --stat-color-light: #e74c3c;
@@ -259,6 +269,16 @@
     0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
     40% { transform: translateY(-10px); }
     60% { transform: translateY(-5px); }
+  }
+
+  /* Glow effect for carried forward tasks */
+  .stat-item.carried-forward:hover {
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+  }
+
+  /* Glow effect for cancelled tasks */
+  .stat-item.cancelled:hover {
+    box-shadow: 0 8px 25px rgba(108, 117, 125, 0.3);
   }
 
   /* Glow effect for overdue tasks */
@@ -424,7 +444,7 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
     </div>
     <div class="card-body">
       <div class="row g-3" id="activityStatsContainer">
-        <div class="col-md-3">
+        <div class="col-lg-2 col-md-4 col-sm-6">
           <div class="stat-item total">
             <i class="fa fa-tasks stat-icon"></i>
             <span class="stat-number" id="totalActivities">0</span>
@@ -434,7 +454,7 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             </div>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-lg-2 col-md-4 col-sm-6">
           <div class="stat-item completed">
             <i class="fa fa-check-circle stat-icon"></i>
             <span class="stat-number" id="completedActivities">0</span>
@@ -444,17 +464,37 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             </div>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-lg-2 col-md-4 col-sm-6">
           <div class="stat-item pending">
             <i class="fa fa-clock stat-icon"></i>
             <span class="stat-number" id="pendingActivities">0</span>
-            <span class="stat-label">In Progress</span>
+            <span class="stat-label">Pending</span>
             <div class="stat-progress">
               <div class="stat-progress-bar" id="pendingProgress" style="width: 0%"></div>
             </div>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <div class="stat-item carried-forward">
+            <i class="fa fa-forward stat-icon"></i>
+            <span class="stat-number" id="carriedForwardActivities">0</span>
+            <span class="stat-label">Carried Forward</span>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" id="carriedForwardProgress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+          <div class="stat-item cancelled">
+            <i class="fa fa-times-circle stat-icon"></i>
+            <span class="stat-number" id="cancelledActivities">0</span>
+            <span class="stat-label">Cancelled</span>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" id="cancelledProgress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
           <div class="stat-item overdue">
             <i class="fa fa-exclamation-triangle stat-icon"></i>
             <span class="stat-number" id="overdueActivities">0</span>
@@ -662,9 +702,9 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
               case 1:
                 return '<span class="status-badge bg-warning text-dark">Pending</span>';
               case 2:
-                return '<span class="status-badge bg-success text-white">Done</span>';
+                return '<span class="status-badge bg-success text-white">Completed</span>';
               case 3:
-                return '<span class="status-badge bg-primary text-white">Next Week</span>';
+                return '<span class="status-badge bg-primary text-white">Carried Forward</span>';
               case 4:
                 return '<span class="status-badge bg-danger text-white">Cancelled</span>';
               default:
@@ -1148,6 +1188,8 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
       animateNumber('#totalActivities', stats.total || 0);
       animateNumber('#completedActivities', stats.completed || 0);
       animateNumber('#pendingActivities', stats.pending || 0);
+      animateNumber('#carriedForwardActivities', stats.carried_forward || 0);
+      animateNumber('#cancelledActivities', stats.cancelled || 0);
       animateNumber('#overdueActivities', stats.overdue || 0);
       
       // Update progress bars
@@ -1155,6 +1197,8 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
       updateProgressBar('#totalProgress', total, total);
       updateProgressBar('#completedProgress', stats.completed || 0, total);
       updateProgressBar('#pendingProgress', stats.pending || 0, total);
+      updateProgressBar('#carriedForwardProgress', stats.carried_forward || 0, total);
+      updateProgressBar('#cancelledProgress', stats.cancelled || 0, total);
       updateProgressBar('#overdueProgress', stats.overdue || 0, total);
       
       // Add sparkle effect for completed activities
