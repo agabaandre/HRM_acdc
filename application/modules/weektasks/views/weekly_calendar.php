@@ -4,7 +4,7 @@
 
   .calendar-container {
     background: white;
-    border-radius: 20px;
+    border-radius: 2px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
     overflow: hidden;
     margin-bottom: 2rem;
@@ -12,7 +12,7 @@
 
   .calendar-sidebar {
     background: #f8f9fa;
-    border-radius: 20px;
+    border-radius: 2px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
     padding: 2rem;
     height: fit-content;
@@ -20,7 +20,7 @@
 
   .status-legend {
     background: white;
-    border-radius: 15px;
+    border-radius: 2px;
     padding: 1.5rem;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
     margin-bottom: 2rem;
@@ -40,14 +40,14 @@
 
   .status-item:hover {
     background: rgba(52, 143, 65, 0.05);
-    border-radius: 8px;
+    border-radius: 2px;
     padding-left: 0.5rem;
   }
 
   .status-badge {
     width: 20px;
     height: 20px;
-    border-radius: 50%;
+    border-radius: 2px;
     margin-right: 1rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
@@ -216,18 +216,7 @@
     box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
   }
 
-  /* FullCalendar Custom Styling */
-  .fc {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-
-  .fc-header-toolbar {
-    background: linear-gradient(135deg, rgba(52, 143, 65, 1) 0%, rgba(40, 120, 50, 1) 100%);
-    color: white;
-    padding: 1rem 1.5rem;
-    margin: 0;
-    border-radius: 15px 15px 0 0;
-  }
+ 
 
   .fc-toolbar-title {
     font-size: 1.5rem;
@@ -265,26 +254,10 @@
     background: rgba(52, 143, 65, 0.05);
   }
 
-  .fc-day-today {
-    background: rgba(52, 143, 65, 0.1) !important;
-    border: 2px solid rgba(52, 143, 65, 1) !important;
-  }
-
-  .fc-col-header-cell {
-    background: rgba(52, 143, 65, 1);
-    color: white;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 1rem 0.5rem;
-  }
-
-  .fc-day-sat, .fc-day-sun {
-    background: #e9ecef;
-  }
+ 
 
   .fc-event {
-    border-radius: 8px;
+    border-radius: 2px;
     border: none;
     padding: 0.25rem 0.5rem;
     font-size: 0.8rem;
@@ -304,7 +277,7 @@
 
   .calendar-actions {
     background: white;
-    border-radius: 15px;
+    border-radius: 2px;
     padding: 1.5rem;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
     margin-bottom: 2rem;
@@ -464,12 +437,7 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             <a href="<?= base_url('weektasks/tasks') ?>" class="btn btn-outline-success btn-sm">
               <i class="fa fa-list me-2"></i>View Task List
             </a>
-            <a href="<?= base_url('weektasks/tasks') ?>" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
-              <i class="fa fa-plus me-2"></i>Add New Task
-            </a>
-            <button class="btn btn-outline-info btn-sm" onclick="exportCalendar()">
-              <i class="fa fa-download me-2"></i>Export Calendar
-            </button>
+       
           </div>
         </div>
       </div>

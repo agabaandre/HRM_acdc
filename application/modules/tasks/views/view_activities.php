@@ -311,6 +311,66 @@
     border-radius: 15px;
     text-align: center;
   }
+
+  /* Rich text content styling */
+  #previewReportContent {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+  }
+
+  #previewReportContent h1,
+  #previewReportContent h2,
+  #previewReportContent h3,
+  #previewReportContent h4,
+  #previewReportContent h5,
+  #previewReportContent h6 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  #previewReportContent p {
+    margin-bottom: 1rem;
+  }
+
+  #previewReportContent ul,
+  #previewReportContent ol {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+  }
+
+  #previewReportContent table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+  }
+
+  #previewReportContent table th,
+  #previewReportContent table td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    text-align: left;
+  }
+
+  #previewReportContent table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+  }
+
+  /* Summernote editor styling */
+  .note-editor {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+  }
+
+  .note-editor .note-toolbar {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .note-editor .note-editing-area {
+    background-color: white;
+  }
 </style>
 
 <?php $this->load->view('tasks_tabs')?>
@@ -442,6 +502,9 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
           <button type="button" class="btn btn-outline-secondary btn-modern ms-2" id="clearFilters">
             <i class="fa fa-times me-1"></i> Clear All
           </button>
+          <button type="button" class="btn btn-primary btn-modern ms-2" id="printReport">
+            <i class="fa fa-file-pdf me-1"></i> Print Report
+          </button>
         </div>
       </div>
       <?= form_close(); ?>
@@ -530,6 +593,45 @@ $(document).ready(function() {
     dropdownParent: $('#addActivitiesModal')
   });
 
+  // Initialize Summernote rich text editor
+  function initializeSummernote() {
+    $('.summernote').summernote({
+      height: 200,
+      minHeight: 150,
+      maxHeight: 300,
+      focus: false,
+      toolbar: [
+        ['style', ['style']],
+        ['font', ['bold', 'italic', 'underline', 'clear']],
+        ['fontname', ['fontname']],
+        ['fontsize', ['fontsize']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol', 'paragraph']],
+        ['table', ['table']],
+        ['insert', ['link', 'picture', 'video']],
+        ['view', ['fullscreen', 'codeview', 'help']]
+      ],
+      styleTags: ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+      fontNames: ['Arial', 'Arial Black', 'Comic Sans MS', 'Courier New', 'Helvetica', 'Impact', 'Tahoma', 'Times New Roman', 'Verdana'],
+      fontSizes: ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '36', '48'],
+      callbacks: {
+        onInit: function() {
+          // Ensure the editor is properly initialized
+        }
+      }
+    });
+  }
+
+  // Initialize Summernote when the modal is shown
+  $('#submitReportModal').on('shown.bs.modal', function() {
+    initializeSummernote();
+  });
+
+  // Destroy Summernote when modal is hidden to prevent conflicts
+  $('#submitReportModal').on('hidden.bs.modal', function() {
+    $('.summernote').summernote('destroy');
+  });
+
   // Initialize DataTable with server-side processing
   let activitiesTable;
   
@@ -613,45 +715,52 @@ $(document).ready(function() {
             return getProgressBar(hasReport ? 100 : 0);
           }
         },
-        { 
-          data: 'activity_id', 
-          name: 'activity_id',
-          orderable: false,
-          searchable: false,
-          render: function(data, type, row) {
-            const hasReport = row.report_id && row.report_id !== '';
-            return `
-              <div class="btn-group" role="group">
-                <button class="btn btn-sm btn-warning edit-activity-btn" 
-                        data-id="${row.activity_id || ''}"
-                        data-name="${row.activity_name || ''}"
-                        data-start_date="${row.start_date || ''}"
-                        data-end_date="${row.end_date || ''}"
-                        data-comments="${row.comments || ''}"
-                        title="Edit Activity">
-                  <i class="fa fa-edit"></i>
-                </button>
-                ${hasReport ? 
-                  `<button class="btn btn-sm btn-info preview-report-btn" 
-                          data-activity-id="${row.activity_id || ''}"
-                          data-activity-name="${row.activity_name || ''}"
-                          data-report-id="${row.report_id || ''}"
-                          data-report-description="${row.report || ''}"
-                          data-report-date="${row.report_date || ''}"
-                          title="Preview Report">
-                    <i class="fa fa-eye"></i>
-                  </button>` :
-                  `<button class="btn btn-sm btn-primary submit-report-btn" 
-                          data-activity-id="${row.activity_id || ''}"
-                          data-activity-name="${row.activity_name || ''}"
-                          title="Submit Report">
-                    <i class="fa fa-file-text"></i>
-                  </button>`
-                }
-              </div>
-            `;
-          }
-        }
+                   {
+             data: 'activity_id',
+             name: 'activity_id',
+             orderable: false,
+             searchable: false,
+             render: function(data, type, row) {
+               const hasReport = row.report_id && row.report_id !== '';
+               return `
+                 <div class="btn-group" role="group">
+                   <button class="btn btn-sm btn-warning edit-activity-btn"
+                           data-id="${row.activity_id || ''}"
+                           data-name="${row.activity_name || ''}"
+                           data-start_date="${row.start_date || ''}"
+                           data-end_date="${row.end_date || ''}"
+                           data-comments="${row.comments || ''}"
+                           title="Edit Activity">
+                     <i class="fa fa-edit"></i>
+                   </button>
+                   ${hasReport ?
+                     `<button class="btn btn-sm btn-info preview-report-btn"
+                             data-activity-id="${row.activity_id || ''}"
+                             data-activity-name="${row.activity_name || ''}"
+                             data-report-id="${row.report_id || ''}"
+                             data-report-description="${row.report || ''}"
+                             data-report-date="${row.report_date || ''}"
+                             title="Preview Report">
+                       <i class="fa fa-eye"></i>
+                     </button>
+                     <button class="btn btn-sm btn-success print-activity-report-btn"
+                             data-activity-id="${row.activity_id || ''}"
+                             data-activity-name="${row.activity_name || ''}"
+                             data-report-id="${row.report_id || ''}"
+                             title="Print Activity Report">
+                       <i class="fa fa-file-pdf"></i>
+                     </button>` :
+                     `<button class="btn btn-sm btn-primary submit-report-btn"
+                             data-activity-id="${row.activity_id || ''}"
+                             data-activity-name="${row.activity_name || ''}"
+                             title="Submit Report">
+                       <i class="fa fa-file-text"></i>
+                     </button>`
+                   }
+                 </div>
+               `;
+             }
+           }
       ],
       pageLength: 25,
       lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
@@ -723,6 +832,48 @@ $(document).ready(function() {
       loadStatistics();
       setTimeout(hideLoading, 1000);
     }, 500);
+  });
+
+  // Print Report functionality
+  $('#printReport').on('click', function() {
+    const filters = {
+      start_date: $('#filterStartDate').val(),
+      end_date: $('#filterEndDate').val(),
+      team_members: $('#filterTeamMembers').val(),
+      work_plan: $('#filterWorkPlan').val()
+    };
+
+    // Build query string
+    const queryParams = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key] && filters[key] !== '') {
+        if (Array.isArray(filters[key])) {
+          filters[key].forEach(value => {
+            queryParams.append(key + '[]', value);
+          });
+        } else {
+          queryParams.append(key, filters[key]);
+        }
+      }
+    });
+
+    // Open print URL in new window
+    const printUrl = '<?= base_url("tasks/print_activity_report") ?>?' + queryParams.toString();
+    window.open(printUrl, '_blank');
+    
+    show_notification('Generating PDF report...', 'info');
+  });
+
+  // Print Individual Activity Report functionality
+  $(document).on('click', '.print-activity-report-btn', function() {
+    const activityId = $(this).data('activity-id');
+    const activityName = $(this).data('activity-name');
+    
+    // Open individual activity report in new window
+    const printUrl = '<?= base_url("tasks/print_individual_activity_report") ?>/' + activityId;
+    window.open(printUrl, '_blank');
+    
+    show_notification('Generating activity report for: ' + activityName, 'info');
   });
 
   function loadTeamPerformance() {
@@ -961,7 +1112,13 @@ $(document).ready(function() {
     // Update modal with activity info
     $('#submitReportModal .modal-title').html(`<i class="fa fa-file-text me-2"></i>Submit Report - ${activityName}`);
     $('#submitReportForm input[name="activity_id"]').val(activityId);
-    $('#submitReportForm textarea[name="description"]').val('');
+    
+    // Clear any existing Summernote content
+    if ($('#description').hasClass('note-editable')) {
+      $('#description').summernote('code', '');
+    } else {
+      $('#description').val('');
+    }
     
     const submitModal = new bootstrap.Modal(document.getElementById('submitReportModal'));
     submitModal.show();
@@ -973,7 +1130,10 @@ $(document).ready(function() {
     
     // Update modal with report info
     $('#previewReportModal .modal-title').html(`<i class="fa fa-eye me-2"></i>Report Preview - ${data.activityName}`);
-    $('#previewReportContent').html(data.reportDescription || 'No report content available');
+    
+    // Display rich text content properly
+    const reportContent = data.reportDescription || 'No report content available';
+    $('#previewReportContent').html(reportContent);
     $('#previewReportDate').text(data.reportDate || 'N/A');
     
     const previewModal = new bootstrap.Modal(document.getElementById('previewReportModal'));
@@ -984,14 +1144,23 @@ $(document).ready(function() {
   $('#submitReportForm').on('submit', function(e) {
     e.preventDefault();
     
-    const formData = $(this).serializeArray();
-    formData.push({
-      name: csrfName,
-      value: csrfHash
-    });
+    // Get the rich text content from Summernote
+    const description = $('#description').summernote('code');
+    
+    // Validate that description is not empty
+    if (!description || description.trim() === '' || description === '<p><br></p>') {
+      show_notification('Please enter a report description.', 'error');
+      return;
+    }
+    
+    const formData = {
+      activity_id: $('#submitReportForm input[name="activity_id"]').val(),
+      description: description,
+      [csrfName]: csrfHash
+    };
 
     $.ajax({
-      url: '<?= base_url("tasks/submit_report/") ?>' + $('#submitReportForm input[name="activity_id"]').val(),
+      url: '<?= base_url("tasks/submit_report/") ?>' + formData.activity_id,
       method: 'POST',
       data: formData,
       dataType: 'json',
@@ -1206,8 +1375,11 @@ $(document).ready(function() {
           
           <div class="form-group mb-3">
             <label for="description" class="form-label">Report Description:</label>
-            <textarea name="description" id="description" class="form-control" rows="5" required placeholder="Describe the completion of this activity..."></textarea>
+            <textarea name="description" id="description" class="form-control summernote" rows="8" required placeholder="Describe the completion of this activity..."></textarea>
             <div class="invalid-feedback">Please enter a description.</div>
+            <div class="form-text">
+              <i class="fa fa-info-circle me-1"></i>Use the toolbar above to format your report with bold, italic, lists, and more.
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -1243,7 +1415,7 @@ $(document).ready(function() {
         <hr>
         <div class="report-content">
           <h6>Report Description:</h6>
-          <div id="previewReportContent" class="border p-3 rounded bg-light" style="min-height: 200px;">
+          <div id="previewReportContent" class="border p-3 rounded bg-light" style="min-height: 200px; max-height: 400px; overflow-y: auto;">
             <!-- Report content will be loaded here -->
           </div>
         </div>
