@@ -162,7 +162,7 @@ endif;
 
 <!-- Report -->
 <div class="modal fade" id="reportModal" tabindex="-1" role="dialog" aria-labelledby="add_report_label" aria-modal="true">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-lg modal-dialog-centered ">
 
         <div class="modal-content">
             <div class="modal-header">
