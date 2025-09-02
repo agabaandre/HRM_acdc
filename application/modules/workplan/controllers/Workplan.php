@@ -14,7 +14,7 @@ class Workplan extends MX_Controller {
         $data['title'] = "Work Plan";
         $data['module'] = 'workplan';
         $data['division_id'] = $this->session->userdata('user')->division_id;
-        $data['divisions'] = $this->db->order_by('division_id', 'asc')->get('divisions')->result();
+        $data['divisions'] = $this->db->order_by('division_name', 'asc')->get('divisions')->result();
         render('view_workplan', $data);
     }
 
@@ -134,12 +134,12 @@ class Workplan extends MX_Controller {
         echo json_encode($this->workplan_mdl->get_by_id($id));
     }
     
-    public function create_task() {
+        public function create_task() {
         if ($this->input->method() === 'post') {
             $data = $this->input->post();
             $data['division_id'] = $this->session->userdata('user')->division_id ?: 21;
             $data['has_budget'] = $this->input->post('has_budget') ? 1 : 0;
-    
+
             if ($this->workplan_mdl->insert($data)) {
                 echo json_encode(['status' => 'success']);
             } else {
@@ -147,6 +147,66 @@ class Workplan extends MX_Controller {
             }
         } else {
             show_404();
+        }
+    }
+
+    // Get workplan statistics
+    public function get_statistics() {
+        try {
+            $year = $this->input->post('year') ?: date('Y');
+            $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
+
+            $stats = $this->workplan_mdl->get_workplan_statistics($division_id, $year);
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $stats
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error loading statistics: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // Get execution tracking data
+    public function get_execution_data() {
+        try {
+            $year = $this->input->post('year') ?: date('Y');
+            $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
+
+            $data = $this->workplan_mdl->get_execution_tracking_data($division_id, $year);
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error loading execution data: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // Get unit score breakdown
+    public function get_unit_scores() {
+        try {
+            $year = $this->input->post('year') ?: date('Y');
+            $division_id = $this->input->post('division') ?: $this->session->userdata('user')->division_id;
+
+            $data = $this->workplan_mdl->get_unit_score_breakdown($division_id, $year);
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error loading unit scores: ' . $e->getMessage()
+            ]);
         }
     }
     
