@@ -142,16 +142,26 @@
 <div class="page-header">
   <div class="container-fluid">
     <div class="row align-items-center">
-      <div class="col-md-8">
+      <div class="col-md-6">
         <h4 class="mb-0 text-white"><i class="fa fa-calendar-week me-2 text-white"></i>Weekly Tasks Management</h1>
           <p class="mb-0 opacity-75">Manage and track weekly activities for your team</p>
       </div>
-      <div class="col-md-4 text-end">
+       <!-- Activity Calendar Button -->
+    <div class="d-flex col-md-6 justify-content-end">
+    <div class="row mb-6 text-end">
+      <div class="col-12 text-center">
+        <button class="btn btn-warning btn-modern" data-bs-toggle="modal" data-bs-target="#calendarModal" id="openCalendarBtn">
+          <i class="fa fa-calendar-alt me-2"></i>View Activity Calendar
+        </button>
+      </div>
+    </div>
+      <div class="col-md-6 text-end">
         <button class="btn btn-light btn-modern" data-bs-toggle="modal" data-bs-target="#addModal">
           <i class="fa fa-plus-circle me-1"></i> Add Weekly Task
         </button>
       </div>
     </div>
+  </div>
   </div>
 </div>
 
@@ -162,14 +172,7 @@
     name="<?= $this->security->get_csrf_token_name(); ?>"
     value="<?= $this->security->get_csrf_hash(); ?>">
 
-  <!-- Activity Calendar Button -->
-  <div class="row mb-3">
-    <div class="col-12 text-center">
-      <button class="btn btn-success btn-modern" data-bs-toggle="modal" data-bs-target="#calendarModal" id="openCalendarBtn">
-        <i class="fa fa-calendar-alt me-2"></i>View Activity Calendar
-      </button>
-    </div>
-  </div>
+ 
 
   <!-- Enhanced Filters -->
   <div class="card filter-card">
