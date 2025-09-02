@@ -520,5 +520,62 @@ public function fetch_calendar_events() {
     ]);
 }
 
+// Get weekly statistics for the statistics dashboard
+public function get_weekly_statistics() {
+    try {
+        $filters = [
+            'division' => $this->input->post('division'),
+            'staff_id' => $this->input->post('staff_id'),
+            'teamlead' => $this->input->post('teamlead'),
+            'start_date' => $this->input->post('start_date'),
+            'end_date' => $this->input->post('end_date'),
+            'status' => $this->input->post('status')
+        ];
+
+        // Get all tasks with current filters
+        $tasks = $this->weektasks_mdl->get_tasks_for_statistics($filters);
+        
+        $stats = [
+            'total' => count($tasks),
+            'completed' => 0,
+            'pending' => 0,
+            'overdue' => 0
+        ];
+
+        $today = date('Y-m-d');
+
+        foreach ($tasks as $task) {
+            switch ((int)$task->status) {
+                case 1: // Pending
+                    $stats['pending']++;
+                    // Check if overdue
+                    if ($task->end_date < $today) {
+                        $stats['overdue']++;
+                    }
+                    break;
+                case 2: // Completed
+                    $stats['completed']++;
+                    break;
+                case 3: // Carried Forward
+                    $stats['pending']++;
+                    break;
+                case 4: // Cancelled
+                    // Don't count cancelled tasks in stats
+                    break;
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => $stats
+        ]);
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error loading statistics: ' . $e->getMessage()
+        ]);
+    }
+}
+
     
 }

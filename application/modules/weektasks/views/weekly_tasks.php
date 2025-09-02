@@ -120,6 +120,156 @@
       font-size: 1.5rem;
     }
   }
+
+  /* Activity Statistics Styling */
+  .stat-item {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    border-radius: 15px;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--stat-color), var(--stat-color-light));
+  }
+
+  .stat-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .stat-item.total {
+    --stat-color: #17a2b8;
+    --stat-color-light: #20c997;
+  }
+
+  .stat-item.completed {
+    --stat-color: #28a745;
+    --stat-color-light: #34ce57;
+  }
+
+  .stat-item.pending {
+    --stat-color: #ffc107;
+    --stat-color-light: #ffed4e;
+  }
+
+  .stat-item.overdue {
+    --stat-color: #dc3545;
+    --stat-color-light: #e74c3c;
+  }
+
+  .stat-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--stat-color);
+    display: block;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: countUp 1s ease-out;
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-icon {
+    font-size: 1.5rem;
+    color: var(--stat-color);
+    margin-bottom: 0.5rem;
+    display: block;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Progress bar for visual representation */
+  .stat-progress {
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+  }
+
+  .stat-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--stat-color), var(--stat-color-light));
+    border-radius: 2px;
+    transition: width 1s ease-out;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  /* Sparkle effect for completed tasks */
+  .stat-item.sparkle {
+    animation: sparkle 0.5s ease-in-out;
+  }
+
+  @keyframes sparkle {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(40, 200, 40, 0.5); }
+  }
+
+  /* Enhanced hover effects */
+  .stat-item:hover .stat-icon {
+    animation: bounce 0.6s ease-in-out;
+  }
+
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+  }
+
+  /* Glow effect for overdue tasks */
+  .stat-item.overdue:hover {
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+  }
+
+  /* Success glow for completed tasks */
+  .stat-item.completed:hover {
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+  }
 </style>
 
 <?php
@@ -201,17 +351,17 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             </select>
           </div>
 
-        <div class="col-md-3">
+          <div class="col-md-3">
           <label class="form-label fw-semibold">
             <i class="fa fa-calendar me-1"></i>Status
           </label>
-          <select id="filterStatus" class="form-select">
-            <option value="">All Statuses</option>
-            <option value="1">Pending</option>
-            <option value="2">Done</option>
-            <option value="3">Next Week</option>
-            <option value="4">Cancelled</option>
-          </select>
+            <select id="filterStatus" class="form-select">
+              <option value="">All Statuses</option>
+              <option value="1">Pending</option>
+              <option value="2">Done</option>
+              <option value="3">Next Week</option>
+              <option value="4">Cancelled</option>
+            </select>
         </div>
           <div class="col-md-3">
             <label class="form-label fw-semibold">Start Date</label>
@@ -230,6 +380,9 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             </button>
             <button type="button" class="btn btn-outline-secondary btn-modern" id="clearFilters">
               <i class="fa fa-times me-1"></i> Clear All
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-modern" id="thisWeekBtn">
+              <i class="fa fa-calendar-week me-1"></i> This Week
             </button>
             <button type="button" class="btn btn-outline-info btn-modern" id="exportData">
               <i class="fa fa-download me-1"></i> Export
@@ -259,6 +412,58 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
     </div>
   </div>
 
+   <!-- Activity Statistics -->
+   <div class="card table-card mb-4">
+    <div class="card-header text-white">
+      <h5 class="mb-0 text-white">
+        <i class="fa fa-chart-bar me-2 text-white"></i>Activity Statistics
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3" id="activityStatsContainer">
+        <div class="col-md-3">
+          <div class="stat-item total">
+            <i class="fa fa-tasks stat-icon"></i>
+            <span class="stat-number" id="totalActivities">0</span>
+            <span class="stat-label">Total Activities</span>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" id="totalProgress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-item completed">
+            <i class="fa fa-check-circle stat-icon"></i>
+            <span class="stat-number" id="completedActivities">0</span>
+            <span class="stat-label">Completed</span>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" id="completedProgress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-item pending">
+            <i class="fa fa-clock stat-icon"></i>
+            <span class="stat-number" id="pendingActivities">0</span>
+            <span class="stat-label">In Progress</span>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" id="pendingProgress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stat-item overdue">
+            <i class="fa fa-exclamation-triangle stat-icon"></i>
+            <span class="stat-number" id="overdueActivities">0</span>
+            <span class="stat-label">Overdue</span>
+            <div class="stat-progress">
+              <div class="stat-progress-bar" id="overdueProgress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <!-- Enhanced Data Table -->
   <div class="card table-card">
     <div class="card-header">
@@ -492,6 +697,8 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
           if (calendar && $('#calendarModal').hasClass('show')) {
             refreshCalendar();
           }
+          // Load statistics
+          loadStatistics();
         }, 100);
       });
     });
@@ -512,6 +719,8 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
           if (calendar && $('#calendarModal').hasClass('show')) {
             refreshCalendar();
           }
+          // Load statistics
+          loadStatistics();
         }, 100);
       });
     });
@@ -530,6 +739,8 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             if (calendar && $('#calendarModal').hasClass('show')) {
               refreshCalendar();
             }
+            // Load statistics
+            loadStatistics();
           }, 100);
         });
       }, 500);
@@ -549,6 +760,22 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
       // Create export URL with filters
       const exportUrl = '<?= base_url("weektasks/export") ?>?' + $.param(filters);
       window.open(exportUrl, '_blank');
+    });
+
+    // This Week button functionality
+    $('#thisWeekBtn').on('click', function() {
+      setCurrentWeekDates();
+      showLoading();
+      table.ajax.reload(() => {
+        setTimeout(() => {
+          hideLoading();
+          loadStatistics();
+          // Refresh calendar if modal is open
+          if (calendar && $('#calendarModal').hasClass('show')) {
+            refreshCalendar();
+          }
+        }, 100);
+      });
     });
 
     // Calendar refresh
@@ -801,17 +1028,17 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
         window.open(`<?= base_url('weektasks/print_staff_report_filtered/') ?>${staffId}?${queryParams}`, '_blank');
     } else {
         show_notification('Please select at least one staff member to print individual report', 'warning');
-      }
+    }
     });
 
     // Enhanced Print Division Report - works with all current filters
     $('#printDivisionBtn').on('click', function() {
       const filters = getCurrentFilters();
-
+  
       if (filters.division) {
         const queryParams = buildFilterQueryString(filters);
         window.open(`<?= base_url('weektasks/print_division_report_filtered/') ?>${filters.division}?${queryParams}`, '_blank');
-      } else {
+    } else {
         show_notification('Please select a division to print division report', 'warning');
       }
     });
@@ -863,6 +1090,122 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
       return params.toString();
     }
 
+    // Load statistics function
+    function loadStatistics() {
+      const filters = {
+        division: $('#filterDivision').val(),
+        staff_id: $('#filterStaff').val(),
+        teamlead: $('#filterLead').val(),
+        start_date: $('#filterStartDate').val(),
+        end_date: $('#filterEndDate').val(),
+        status: $('#filterStatus').val()
+      };
+
+      $.ajax({
+        url: '<?= base_url("weektasks/get_weekly_statistics") ?>',
+        method: 'POST',
+        data: {
+          ...filters,
+          [csrfName]: csrfHash
+        },
+        dataType: 'json',
+        success: function(response) {
+          if (response.success) {
+            updateStatistics(response.data);
+          } else {
+            console.error('Statistics load failed:', response.message);
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('AJAX error loading statistics:', error);
+        }
+      });
+    }
+
+    // Update statistics display
+    function updateStatistics(stats) {
+      // Animate number counting
+      animateNumber('#totalActivities', stats.total || 0);
+      animateNumber('#completedActivities', stats.completed || 0);
+      animateNumber('#pendingActivities', stats.pending || 0);
+      animateNumber('#overdueActivities', stats.overdue || 0);
+      
+      // Update progress bars
+      const total = stats.total || 0;
+      updateProgressBar('#totalProgress', total, total);
+      updateProgressBar('#completedProgress', stats.completed || 0, total);
+      updateProgressBar('#pendingProgress', stats.pending || 0, total);
+      updateProgressBar('#overdueProgress', stats.overdue || 0, total);
+      
+      // Add sparkle effect for completed activities
+      if ((stats.completed || 0) > 0) {
+        $('.stat-item.completed').addClass('sparkle');
+        setTimeout(() => {
+          $('.stat-item.completed').removeClass('sparkle');
+        }, 2000);
+      }
+    }
+
+    // Helper function for animated number counting
+    function animateNumber(selector, targetNumber) {
+      const element = $(selector);
+      const startNumber = parseInt(element.text()) || 0;
+      const duration = 1000; // 1 second
+      const increment = (targetNumber - startNumber) / (duration / 16); // 60fps
+      let currentNumber = startNumber;
+      
+      const timer = setInterval(() => {
+        currentNumber += increment;
+        if ((increment > 0 && currentNumber >= targetNumber) || 
+            (increment < 0 && currentNumber <= targetNumber)) {
+          currentNumber = targetNumber;
+          clearInterval(timer);
+        }
+        element.text(Math.round(currentNumber));
+      }, 16);
+    }
+
+    // Helper function for progress bar animation
+    function updateProgressBar(selector, value, max) {
+      const percentage = max > 0 ? (value / max) * 100 : 0;
+      $(selector).css('width', percentage + '%');
+    }
+
+    // Set default date range to current week (Monday to Friday)
+    function setCurrentWeekDates() {
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      
+      // Calculate days to subtract to get to Monday
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      
+      // Get Monday of current week
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - daysToMonday);
+      
+      // Get Friday of current week
+      const friday = new Date(monday);
+      friday.setDate(monday.getDate() + 4);
+      
+      // Format dates as YYYY-MM-DD
+      const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      // Set the date inputs
+      $('#filterStartDate').val(formatDate(monday));
+      $('#filterEndDate').val(formatDate(friday));
+    }
+
+    // Set current week dates on page load
+    setCurrentWeekDates();
+
+    // Load statistics and reload table after setting default dates
+    loadStatistics();
+    table.ajax.reload();
 
 });
 </script>
