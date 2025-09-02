@@ -384,6 +384,9 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             <button type="button" class="btn btn-outline-primary btn-modern" id="thisWeekBtn">
               <i class="fa fa-calendar-week me-1"></i> This Week
             </button>
+            <button type="button" class="btn btn-outline-success btn-modern" id="myTasksBtn">
+              <i class="fa fa-user me-1"></i> My Tasks
+            </button>
             <button type="button" class="btn btn-outline-info btn-modern" id="exportData">
               <i class="fa fa-download me-1"></i> Export
             </button>
@@ -765,6 +768,23 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
     // This Week button functionality
     $('#thisWeekBtn').on('click', function() {
       setCurrentWeekDates();
+      setDefaultStaffMember();
+      showLoading();
+      table.ajax.reload(() => {
+        setTimeout(() => {
+          hideLoading();
+          loadStatistics();
+          // Refresh calendar if modal is open
+          if (calendar && $('#calendarModal').hasClass('show')) {
+            refreshCalendar();
+          }
+        }, 100);
+      });
+    });
+
+    // My Tasks button functionality
+    $('#myTasksBtn').on('click', function() {
+      setDefaultStaffMember();
       showLoading();
       table.ajax.reload(() => {
         setTimeout(() => {
@@ -1202,6 +1222,17 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
 
     // Set current week dates on page load
     setCurrentWeekDates();
+
+    // Set logged in user as default staff member
+    function setDefaultStaffMember() {
+      const loggedInUserId = '<?= $this->session->userdata('user')->staff_id ?>';
+      if (loggedInUserId) {
+        $('#filterStaff').val([loggedInUserId]).trigger('change');
+      }
+    }
+
+    // Set default staff member
+    setDefaultStaffMember();
 
     // Load statistics and reload table after setting default dates
     loadStatistics();
