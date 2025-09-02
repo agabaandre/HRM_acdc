@@ -378,7 +378,7 @@ class Tasks extends MX_Controller {
         render('view_reports', $data);
     }
 
-    // Fetch filtered activities for AJAX
+    // Fetch filtered activities for AJAX with server-side pagination
     public function fetch_activities_filtered() {
         $start_date = $this->input->post('start_date');
         $end_date = $this->input->post('end_date');
@@ -386,21 +386,41 @@ class Tasks extends MX_Controller {
         $work_plan = $this->input->post('work_plan');
         $division_id = $this->session->userdata('user')->division_id;
 
+        // DataTables server-side processing parameters
+        $draw = intval($this->input->post('draw'));
+        $start = intval($this->input->post('start'));
+        $length = intval($this->input->post('length'));
+        $search_value = $this->input->post('search')['value'] ?? '';
+        $order_column = intval($this->input->post('order')[0]['column'] ?? 0);
+        $order_dir = $this->input->post('order')[0]['dir'] ?? 'asc';
+
         try {
-            $activities = $this->tasks_mdl->get_activities_filtered($division_id, $start_date, $end_date, $team_members, $work_plan);
-            
-            // Debug: Log the query result
-            // log_message('debug', 'Activities count: ' . count($activities));
-            // log_message('debug', 'Division ID: ' . $division_id);
+            $result = $this->tasks_mdl->get_activities_filtered_paginated(
+                $division_id, 
+                $start_date, 
+                $end_date, 
+                $team_members, 
+                $work_plan,
+                $start,
+                $length,
+                $search_value,
+                $order_column,
+                $order_dir
+            );
             
             echo json_encode([
-                'success' => true,
-                'data' => $activities
+                'draw' => $draw,
+                'recordsTotal' => $result['total_records'],
+                'recordsFiltered' => $result['filtered_records'],
+                'data' => $result['data']
             ]);
         } catch (Exception $e) {
             echo json_encode([
-                'success' => false,
-                'message' => 'Error loading activities: ' . $e->getMessage()
+                'draw' => $draw,
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Error loading activities: ' . $e->getMessage()
             ]);
         }
     }

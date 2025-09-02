@@ -403,6 +403,7 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
             <tr>
                 <th>Activity Name</th>
               <th>Team Member</th>
+              <th>Division</th>
                 <th>Start Date</th>
                 <th>End Date</th>
               <th>Status</th>
@@ -410,8 +411,8 @@ $this->load->view('templates/partials/shared_page_header', $header_data);
               <th>Actions</th>
             </tr>
         </thead>
-          <tbody id="activitiesTableBody">
-            <!-- Activities will be loaded here via AJAX -->
+        <tbody>
+            <!-- Activities will be loaded here via DataTables server-side processing -->
           </tbody>
         </table>
       </div>
@@ -455,15 +456,147 @@ $(document).ready(function() {
     dropdownParent: $('#addActivitiesModal')
   });
 
+  // Initialize DataTable with server-side processing
+  let activitiesTable;
+  
+  function initializeDataTable() {
+    activitiesTable = $('#activitiesTable').DataTable({
+      processing: true,
+      serverSide: true,
+      ajax: {
+        url: '<?= base_url("tasks/fetch_activities_filtered") ?>',
+        type: 'POST',
+        data: function(d) {
+          // Add filter data to the request
+          d.start_date = $('#filterStartDate').val();
+          d.end_date = $('#filterEndDate').val();
+          d.team_members = $('#filterTeamMembers').val();
+          d.work_plan = $('#filterWorkPlan').val();
+          d[csrfName] = csrfHash;
+        },
+        error: function(xhr, error, thrown) {
+          console.error('DataTables AJAX error:', error);
+          console.error('Response:', xhr.responseText);
+        }
+      },
+      columns: [
+        { data: 'activity_name', name: 'activity_name' },
+        { 
+          data: 'member_name', 
+          name: 'member_name',
+          render: function(data, type, row) {
+            return data || 'N/A';
+          }
+        },
+        { 
+          data: 'division_name', 
+          name: 'division_name',
+          render: function(data, type, row) {
+            return data || 'N/A';
+          }
+        },
+        { data: 'start_date', name: 'start_date' },
+        { data: 'end_date', name: 'end_date' },
+        { 
+          data: 'status', 
+          name: 'status',
+          render: function(data, type, row) {
+            const hasReport = row.report_id && row.report_id !== '';
+            return getStatusBadge(data, hasReport);
+          }
+        },
+        { 
+          data: 'report_id', 
+          name: 'report_id',
+          render: function(data, type, row) {
+            const hasReport = data && data !== '';
+            return getProgressBar(hasReport ? 100 : 0);
+          }
+        },
+        { 
+          data: 'activity_id', 
+          name: 'activity_id',
+          orderable: false,
+          searchable: false,
+          render: function(data, type, row) {
+            const hasReport = row.report_id && row.report_id !== '';
+            return `
+              <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-warning edit-activity-btn" 
+                        data-id="${row.activity_id || ''}"
+                        data-name="${row.activity_name || ''}"
+                        data-start_date="${row.start_date || ''}"
+                        data-end_date="${row.end_date || ''}"
+                        data-comments="${row.comments || ''}"
+                        title="Edit Activity">
+                  <i class="fa fa-edit"></i>
+                </button>
+                ${hasReport ? 
+                  `<button class="btn btn-sm btn-info preview-report-btn" 
+                          data-activity-id="${row.activity_id || ''}"
+                          data-activity-name="${row.activity_name || ''}"
+                          data-report-id="${row.report_id || ''}"
+                          data-report-description="${row.report || ''}"
+                          data-report-date="${row.report_date || ''}"
+                          title="Preview Report">
+                    <i class="fa fa-eye"></i>
+                  </button>` :
+                  `<button class="btn btn-sm btn-primary submit-report-btn" 
+                          data-activity-id="${row.activity_id || ''}"
+                          data-activity-name="${row.activity_name || ''}"
+                          title="Submit Report">
+                    <i class="fa fa-file-text"></i>
+                  </button>`
+                }
+              </div>
+            `;
+          }
+        }
+      ],
+      pageLength: 25,
+      lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+      order: [[3, 'desc']], // Order by start date descending by default
+      language: {
+        processing: "Loading activities...",
+        emptyTable: "No activities found",
+        zeroRecords: "No matching activities found"
+      },
+      dom: 'Bfrtip',
+      buttons: [
+        {
+          extend: 'excelHtml5',
+          title: 'Activities Export',
+          exportOptions: {
+            columns: [0, 1, 2, 3, 4, 5, 6] // Exclude actions column
+          }
+        },
+        {
+          extend: 'csvHtml5',
+          title: 'Activities Export',
+          exportOptions: {
+            columns: [0, 1, 2, 3, 4, 5, 6] // Exclude actions column
+          }
+        },
+        {
+          extend: 'pdfHtml5',
+          title: 'Activities Export',
+          exportOptions: {
+            columns: [0, 1, 2, 3, 4, 5, 6] // Exclude actions column
+          }
+        }
+      ]
+    });
+  }
+
   // Load initial data
-  loadActivities();
+  initializeDataTable();
   loadTeamPerformance();
   loadStatistics();
 
   // Filter functionality
   $('#applyFilters').on('click', function() {
     showLoading();
-    loadActivities();
+    activitiesTable.ajax.reload();
     loadTeamPerformance();
     loadStatistics();
     setTimeout(hideLoading, 1000);
@@ -473,7 +606,7 @@ $(document).ready(function() {
     $('#filterForm')[0].reset();
     $('#filterTeamMembers').val(null).trigger('change');
     showLoading();
-    loadActivities();
+    activitiesTable.ajax.reload();
     loadTeamPerformance();
     loadStatistics();
     setTimeout(hideLoading, 1000);
@@ -485,47 +618,12 @@ $(document).ready(function() {
     clearTimeout(filterTimeout);
     filterTimeout = setTimeout(() => {
       showLoading();
-      loadActivities();
+      activitiesTable.ajax.reload();
       loadTeamPerformance();
       loadStatistics();
       setTimeout(hideLoading, 1000);
     }, 500);
   });
-
-  function loadActivities() {
-    const filters = {
-      start_date: $('#filterStartDate').val(),
-      end_date: $('#filterEndDate').val(),
-      team_members: $('#filterTeamMembers').val(),
-      work_plan: $('#filterWorkPlan').val()
-    };
-
-    console.log('Loading activities with filters:', filters);
-
-    $.ajax({
-      url: '<?= base_url("tasks/fetch_activities_filtered") ?>',
-      method: 'POST',
-      data: {
-        ...filters,
-        [csrfName]: csrfHash
-      },
-      dataType: 'json',
-      success: function(response) {
-        console.log('Activities response:', response);
-        if (response.success) {
-          populateActivitiesTable(response.data);
-        } else {
-          console.error('Activities load failed:', response.message);
-          $('#activitiesTableBody').html('<tr><td colspan="7" class="text-center text-danger">Error loading activities: ' + (response.message || 'Unknown error') + '</td></tr>');
-        }
-      },
-      error: function(xhr, status, error) {
-        console.error('AJAX error loading activities:', error);
-        console.error('Response:', xhr.responseText);
-        $('#activitiesTableBody').html('<tr><td colspan="7" class="text-center text-danger">Failed to load activities. Please try again.</td></tr>');
-      }
-    });
-  }
 
   function loadTeamPerformance() {
     const filters = {
@@ -595,68 +693,7 @@ $(document).ready(function() {
     });
   }
 
-  function populateActivitiesTable(activities) {
-    const tbody = $('#activitiesTableBody');
-    if (tbody.length === 0) {
-      console.error('Activities table tbody not found');
-      return;
-    }
-    
-    tbody.empty();
 
-    if (!activities || activities.length === 0) {
-      tbody.append('<tr><td colspan="7" class="text-center text-muted">No activities found</td></tr>');
-      return;
-    }
-
-    activities.forEach(function(activity) {
-      const hasReport = activity.report_id && activity.report_id !== '';
-      const statusBadge = getStatusBadge(activity.status, hasReport);
-      const progressBar = getProgressBar(hasReport ? 100 : 0);
-      
-      const row = `
-        <tr>
-          <td>${activity.activity_name || 'N/A'}</td>
-          <td>${activity.member_name || 'N/A'}</td>
-          <td>${activity.start_date || 'N/A'}</td>
-          <td>${activity.end_date || 'N/A'}</td>
-          <td>${statusBadge}</td>
-          <td>${getProgressBar(0)}</td>
-          <td>
-            <div class="btn-group" role="group">
-              <button class="btn btn-sm btn-warning edit-activity-btn" 
-                      data-id="${activity.activity_id || ''}"
-                      data-name="${activity.activity_name || ''}"
-                      data-start_date="${activity.start_date || ''}"
-                      data-end_date="${activity.end_date || ''}"
-                      data-comments="${activity.comments || ''}"
-                      title="Edit Activity">
-                <i class="fa fa-edit"></i>
-              </button>
-              ${activity.report_id ? 
-                `<button class="btn btn-sm btn-info preview-report-btn" 
-                        data-activity-id="${activity.activity_id || ''}"
-                        data-activity-name="${activity.activity_name || ''}"
-                        data-report-id="${activity.report_id || ''}"
-                        data-report-description="${activity.report || ''}"
-                        data-report-date="${activity.report_date || ''}"
-                        title="Preview Report">
-                  <i class="fa fa-eye"></i>
-                </button>` :
-                `<button class="btn btn-sm btn-primary submit-report-btn" 
-                        data-activity-id="${activity.activity_id || ''}"
-                        data-activity-name="${activity.activity_name || ''}"
-                        title="Submit Report">
-                  <i class="fa fa-file-text"></i>
-                </button>`
-              }
-            </div>
-                </td>
-            </tr>
-      `;
-      tbody.append(row);
-    });
-  }
 
   function populateTeamPerformance(teamData) {
     const container = $('#teamPerformanceContainer');
@@ -764,7 +801,7 @@ $(document).ready(function() {
 
   window.refreshData = function() {
     showLoading();
-    loadActivities();
+    activitiesTable.ajax.reload();
     loadTeamPerformance();
     loadStatistics();
     setTimeout(hideLoading, 1000);
@@ -802,7 +839,7 @@ $(document).ready(function() {
         if (response.status === 'success') {
           $('#editActivityModal').modal('hide');
           show_notification('Activity updated successfully!', 'success');
-          loadActivities(); // Reload activities
+          activitiesTable.ajax.reload(); // Reload activities table
         } else {
           show_notification('Error updating activity: ' + response.message, 'error');
         }
@@ -859,7 +896,7 @@ $(document).ready(function() {
         if (response.status === 'success') {
           $('#submitReportModal').modal('hide');
           show_notification('Report submitted successfully!', 'success');
-          loadActivities(); // Reload activities
+          activitiesTable.ajax.reload(); // Reload activities table
         } else {
           show_notification('Error submitting report: ' + response.message, 'error');
         }
@@ -896,7 +933,7 @@ $(document).ready(function() {
         $('#addActivityForm')[0].reset();
         $('#addActivityForm').removeClass('was-validated');
         $('#addActivitiesModal').modal('hide');
-        loadActivities(); // Reload activities
+        activitiesTable.ajax.reload(); // Reload activities table
       } else {
         show_notification(res.message, 'error');
       }
@@ -1147,7 +1184,7 @@ $(document).ready(function() {
               <?php if(isset($work_plans) && !empty($work_plans)): ?>
                 <?php foreach ($work_plans as $workplan): ?>
                   <option value="<?= $workplan->id ?>"><?= htmlspecialchars($workplan->activity_name) ?></option>
-                <?php endforeach; ?>
+            <?php endforeach; ?>
               <?php else: ?>
                 <option value="" disabled>No workplan activities available for your division</option>
               <?php endif; ?>
@@ -1203,7 +1240,7 @@ $(document).ready(function() {
                     </button>
                   </div>
                 </td>
-              </tr>
+            </tr>
         </tbody>
     </table>
         </div>
