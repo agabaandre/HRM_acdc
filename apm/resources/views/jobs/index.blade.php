@@ -98,12 +98,12 @@
             </div>
         </div>
 
-        <!-- Available Commands -->
+        <!-- Laravel Maintenance Commands -->
         <div class="card mb-4">
             <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bx bx-command me-2 text-primary"></i>Available Artisan Commands</h6>
+                <h6 class="mb-0"><i class="bx bx-cog me-2 text-primary"></i>Laravel Maintenance Commands</h6>
                 <div class="text-muted small mt-1">
-                    <i class="bx bx-info-circle me-1"></i>Execute system maintenance commands
+                    <i class="bx bx-info-circle me-1"></i>Clear caches, optimize application, and manage storage
                 </div>
             </div>
             <div class="card-body">
@@ -125,8 +125,140 @@
                         </div>
                     </div>
 
-                    <!-- Divisions Sync Command -->
+                    <!-- Clear Config Command -->
                     <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-cog text-warning" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Clear Config</h6>
+                                <p class="card-text small text-muted">Clear configuration cache</p>
+                                <button type="button" class="btn btn-outline-warning btn-sm" 
+                                        onclick="executeCommand('config:clear')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clear Route Command -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-route text-info" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Clear Routes</h6>
+                                <p class="card-text small text-muted">Clear route cache</p>
+                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                        onclick="executeCommand('route:clear')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clear View Command -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-show text-secondary" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Clear Views</h6>
+                                <p class="card-text small text-muted">Clear compiled view files</p>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" 
+                                        onclick="executeCommand('view:clear')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Storage Link Command -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-link text-success" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Storage Link</h6>
+                                <p class="card-text small text-muted">Create symbolic link for storage</p>
+                                <button type="button" class="btn btn-outline-success btn-sm" 
+                                        onclick="executeCommand('storage:link')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Storage Unlink Command -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-unlink text-danger" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Storage Unlink</h6>
+                                <p class="card-text small text-muted">Remove symbolic link for storage</p>
+                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                        onclick="executeCommand('storage:unlink')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Optimize Command -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-tachometer text-primary" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Optimize</h6>
+                                <p class="card-text small text-muted">Cache config, routes, and views</p>
+                                <button type="button" class="btn btn-outline-primary btn-sm" 
+                                        onclick="executeCommand('optimize')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Config Cache Command -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-memory-card text-warning" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Cache Config</h6>
+                                <p class="card-text small text-muted">Cache configuration files</p>
+                                <button type="button" class="btn btn-outline-warning btn-sm" 
+                                        onclick="executeCommand('config:cache')">
+                                    <i class="bx bx-play me-1"></i> Execute
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Synchronization Commands -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bx bx-sync me-2 text-primary"></i>Data Synchronization Commands</h6>
+                <div class="text-muted small mt-1">
+                    <i class="bx bx-info-circle me-1"></i>Synchronize data from external sources
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Divisions Sync Command -->
+                    <div class="col-md-6 col-lg-4">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body text-center">
                                 <div class="mb-3">
@@ -143,7 +275,7 @@
                     </div>
 
                     <!-- Staff Sync Command -->
-                    <div class="col-md-6 col-lg-3">
+                    <div class="col-md-6 col-lg-4">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body text-center">
                                 <div class="mb-3">
@@ -160,7 +292,7 @@
                     </div>
 
                     <!-- Directorates Sync Command -->
-                    <div class="col-md-6 col-lg-3">
+                    <div class="col-md-6 col-lg-4">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body text-center">
                                 <div class="mb-3">
