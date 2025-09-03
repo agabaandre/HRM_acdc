@@ -94,6 +94,8 @@
                 <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks', $activity->activity_request_remarks ?? '') }}</textarea>
             </div>
 
+            
+
                 <div class="mt-5">
                     <h5 class="fw-bold text-success mb-3">
                         <i class="fas fa-paperclip me-2"></i> Attachments

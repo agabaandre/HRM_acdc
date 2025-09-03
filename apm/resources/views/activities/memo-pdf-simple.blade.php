@@ -411,121 +411,164 @@
 <!-- Background -->
  <table class="no-border" style="margin-top: -5px;">
   <tr>
+    <td style="width: 12%;"><strong style="color: #006633; font-style: italic;">Background:</strong></td>
+  </tr>
+  <tr>
    <td style="width: 100%; text-align: justify;"><?=$activity->background;?></td>
   </tr>
  </table>
   
   <div>
     
-    <div class="section-title">Activity Information</div>
+  
     <table class="no-border">
-    
-      <tr>
-        <td><strong>Start Date:</strong></td>
-        <td><?php echo isset($activity->start_date) ? date('d/m/Y', strtotime($activity->start_date)) : 'N/A'; ?></td>
-      </tr>
-      <tr>
-        <td><strong>End Date:</strong></td>
-        <td><?php echo isset($activity->end_date) ? date('d/m/Y', strtotime($activity->end_date)) : 'N/A'; ?></td>
-      </tr>
-      <tr>
-        <td><strong>Location:</strong></td>
-        <td>
-          <?php
-            $locationNames = [];
-            if (isset($locations) && (is_array($locations) || $locations instanceof \Illuminate\Support\Collection)) {
-              foreach ($locations as $loc) {
-                if (is_object($loc) && isset($loc->location_name)) {
-                  $locationNames[] = $loc->location_name;
-                } elseif (is_array($loc) && isset($loc['location_name'])) {
-                  $locationNames[] = $loc['location_name'];
-                }
-              }
-            }
-            if (count($locationNames) > 0) {
-              echo htmlspecialchars(implode(', ', $locationNames));
-            } else {
-              echo 'N/A';
-            }
-          ?>
-        </td>
+    <tr>
+    <td style="width:50% ;"><strong style="color: #006633; font-style: italic;">Activity Information:</strong></td>
       </tr>
       <tr>
         <td><strong>Division:</strong></td>
         <td><?php echo htmlspecialchars($matrix->division->division_name ?? 'N/A'); ?></td>
       </tr>
-      <tr>
-        <td><strong>Budget Code:</strong></td>
-        <td><?php echo htmlspecialchars($matrix->fund_code->code ?? 'N/A'); ?></td>
+       <tr>
+        <td><strong>Activity Type:</strong></td>
+        <td><?php echo htmlspecialchars($activity->requestType->name ?? 'N/A'); ?></td>
       </tr>
+  
+      <tr>
+        <td><strong>Activity Start Date:</strong></td>
+        <td><?php echo isset($activity->date_from) ? date('d/m/Y', strtotime($activity->date_from)) : 'N/A'; ?></td>
+      </tr>
+      <tr>
+        <td><strong>Activity End Date:</strong></td>
+        <td><?php echo isset($activity->date_to) ? date('d/m/Y', strtotime($activity->date_to)) : 'N/A'; ?></td>
+      </tr>
+      <tr>
+        <td><strong>Location (s):</strong></td>
+        <td>
+     
+        @foreach($locations as $loc)
+                        <span class="badge bg-info">{{ $loc->name }}</span>
+        @endforeach
+           
+          
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Budget Type:</strong></td>
+        <td><?php echo htmlspecialchars($activity->fundType->name ?? 'N/A'); ?></td>
+      </tr>
+     
     </table>
 
-    <!-- Participants Table -->
-    <div class="section-title">Participants</div>
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-      <tr style="background-color: #f5f5f5;">
-        <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Name</th>
-        <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Division</th>
-        <th style="border: 1px solid #ccc; padding: 8px; text-align: center; font-weight: bold;">Days</th>
-        <th style="border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold;">Role</th>
+      <div class="mb-3">
+                   
+                    <div class="table-responsive mt-2">
+                     <table class="no-border">
+    <tr>
+    <td style="width:50% ;"><strong style="color: #006633; font-style: italic;">Internal Participants:</strong></td>
       </tr>
-      
-      <?php if (isset($internal_participants) && $internal_participants->count() > 0): ?>
-      <?php foreach ($internal_participants as $participant): ?>
-      <tr>
-          <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
-            <?php echo htmlspecialchars($participant->staff->name ?? 'N/A'); ?>
-            <?php if (isset($participant->staff->work_email) && !empty($participant->staff->work_email)): ?>
-              <br><small style="color: #666; font-size: 10px;"><?php echo htmlspecialchars($participant->staff->work_email); ?></small>
-            <?php endif; ?>
-          </td>
-          <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
-            <?php echo htmlspecialchars($participant->staff->division->division_name ?? 'N/A'); ?>
-          </td>
-          <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top; text-align: center;">
-            <?php echo htmlspecialchars($participant->no_of_days ?? 'N/A'); ?>
-          </td>
-          <td style="border: 1px solid #ccc; padding: 8px; vertical-align: top;">
-            <?php 
-              // Check if this participant is the focal person
-              if (isset($activity->focal_person_id) && $participant->staff_id == $activity->focal_person_id) {
-                echo '<strong style="color: #006633;">Focal Person</strong>';
-              } else {
-                echo 'Participant';
-              }
-            ?>
-          </td>
-      </tr>
-      <?php endforeach; ?>
-      <?php else: ?>
-        <tr>
-          <td colspan="4" style="border: 1px solid #ccc; padding: 8px; text-align: center; font-style: italic; color: #666;">
-            No participants assigned to this activity
-          </td>
-        </tr>
-      <?php endif; ?>
-    </table>
+      </table>
+                  
+                        <table class="table table-sm table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <td>#</td>
+                                    <th>Name</th>
+                                    <th>Division</th>
+                                    <th>Job Title</th>
+                                    <th>Duty Station</th>
+                                  
+                                    <th>Days</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                $count = 1;
+                                @endphp
+                                @foreach($internalParticipants as $entry)
+                                    <tr><td>{{$count}}</td>
+                                            <td>{{ $entry['staff']->name ?? 'N/A' }}</td>
+                                             <td>{{ $entry['staff']->division_name ?? 'N/A' }}</td>
+                                            <td>{{ $entry['staff']->job_name ?? 'N/A' }}</td>
+                                          <td>{{ $entry['staff']->duty_station_name ?? 'N/A' }}</td>
+                                        <td>{{ $entry['participant_days'] ?? '-' }}</td>
+                                    </tr>
+                                    @php
+                                        $count++;
+                                    @endphp
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-    <?php if (isset($matrix->budget_items) && $matrix->budget_items->count() > 0): ?>
-    <div class="section-title">Budget Details</div>
-    <table>
-      <tr>
-        <th>Item</th>
-        <th>Cost</th>
-        <th>Units</th>
-        <th>Total</th>
-      </tr>
-      <?php foreach ($matrix->budget_items as $item): ?>
-      <tr>
-        <td><?php echo htmlspecialchars($item->cost_item->name ?? 'N/A'); ?></td>
-        <td><?php echo htmlspecialchars($item->unit_cost ?? 'N/A'); ?></td>
-        <td><?php echo htmlspecialchars($item->no_of_units ?? 'N/A'); ?></td>
-        <td><?php echo htmlspecialchars($item->total_cost ?? 'N/A'); ?></td>
-      </tr>
-      <?php endforeach; ?>
-    </table>
-    <?php endif; ?>
 
+              <div class="mb-0" style="color: #006633; font-style: italic;"><strong>Budget Details</strong></div>
+         
+             @foreach($fundCodes ?? [] as $fundCode )
+
+           
+             
+                 <h6  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }}) </h6>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Cost Item</th>
+                                <th>Unit Cost</th>
+                                <th>Units</th>
+                                <th>Days</th>
+                                <th>Total</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php
+                              $count = 1;
+                              $grandTotal = 0;
+                            @endphp
+                           
+                            @foreach($activity->activity_budget as $item)
+                                @php
+                                    $total = $item->unit_cost * $item->units * $item->days;
+                                    $grandTotal+=$total;
+                                @endphp
+                                <tr>
+                                    <td>{{$count}}</td>
+                                    <td class="text-end">{{ $item->cost }}</td>
+                                    <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
+                                    <td class="text-end">{{ $item->units }}</td>
+                                    <td class="text-end">{{ $item->days }}</td>
+                                    <td class="text-end">{{ number_format($item->total, 2) }}</td>
+                                    <td>{{ $item->description }}</td>
+                                </tr>
+                            @endforeach
+
+                            @php
+                                $count++;
+                            @endphp
+                            
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="5" class="text-end">Grand Total</th>
+                                
+                                <th class="text-end" cols>{{  number_format($grandTotal?? 0, 2)}}</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                     @endforeach
+                </div>
+     <div class="mb-0" style="color: #006633; font-style: italic;"><strong>Request for Approval</strong></div>
+     <table class="no-border">
+      <tr>
+        <td><?php echo htmlspecialchars($activity->activity_request_remarks ?? 'N/A'); ?></td>
+      </tr>
+     </table>
+         
     <div style="page-break-before: always;"></div>
    
   <!-- Signature Section -->
