@@ -27,7 +27,7 @@ class JobsController extends Controller
     public function executeCommand(Request $request): JsonResponse
     {
         $request->validate([
-            'command' => 'required|string|in:clear:cache,divisions:sync,staff:sync,directorates:sync'
+            'command' => 'required|string|in:cache:clear,config:clear,route:clear,view:clear,storage:link,storage:unlink,optimize,config:cache,route:cache,view:cache,divisions:sync,staff:sync,directorates:sync'
         ]);
 
         $command = $request->input('command');
