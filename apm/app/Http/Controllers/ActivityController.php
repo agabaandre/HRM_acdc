@@ -87,286 +87,7 @@ class ActivityController extends Controller
     /**
      * Show the form for creating a new activity.
      */
-    // public function create(Matrix $matrix): View
-    // {
-    //     ini_set('memory_limit', '1024M');
-    //     // Eager load division
-    //     $matrix->load('division');
-
-    //     // Request Types
-    //     $requestTypes = RequestType::all();
-
-    //     // All staff in the system for responsible person (with job details)
-    //     $staff =  Staff::active()
-    //         ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
-    //         ->get();
-
-    //     // Staff only from current matrix division for internal participants
-    //     $divisionStaff =  Staff::active()
-    //         ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name'])
-    //         ->where('division_id', $matrix->division_id)
-    //         ->get();
-
-    //     // All staff grouped by division for external participants
-    //     $allStaff =  Staff::active()
-    //         ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name'])
-    //         ->where('division_id', '!=', $matrix->division_id)
-    //         ->get()
-    //         ->groupBy('division_name');
-
-    //     // Cache locations
-    //     // $locations = Cache::remember('locations', 60, function () {
-    //     //     return Location::all();
-    //     // });
-
-    //     $locations = Location::all();
-
-    //     // Fund and Cost items
-    //     $fundTypes = FundType::all();
-    //     $budgetCodes = FundCode::all();
-    //     $costItems = CostItem::all();
-
-    //     return view('activities.create', [
-    //         'matrix' => $matrix,
-    //         'requestTypes' => $requestTypes,
-    //         'activity' => (object) [],
-    //         'staff' => $staff,
-    //         'divisionStaff' => $divisionStaff,
-    //         'allStaffGroupedByDivision' => $allStaff,
-    //         'locations' => $locations,
-    //         'fundTypes' => $fundTypes,
-    //         'budgetCodes' => $budgetCodes,
-    //         'costItems' => $costItems,
-    //         'title' => 'Create Activity',
-    //         'editing' => false,
-    //     ]);
-    // }
-
-    // public function store(Request $request, Matrix $matrix): RedirectResponse|JsonResponse
-    // {
-    //     if ($matrix->overall_status === 'approved') {
-    //         $message = 'Cannot create new activity. The matrix has been approved.';
-
-    //         if ($request->ajax()) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'msg' => $message
-    //             ], 422);
-    //         }
-
-    //         return redirect()
-    //             ->route('matrices.show', $matrix)
-    //             ->with([
-    //                 'msg' => $message,
-    //                 'type' => 'error'
-    //             ]);
-    //     }
-
-    //     $userStaffId = session('user.auth_staff_id');
-
-    //     return DB::transaction(function () use ($request, $matrix, $userStaffId) {
-    //         try {
-    //             // Validate required fields
-    //             $validated = $request->validate([
-    //                 'activity_title' => 'required|string|max:255',
-    //                 'location_id' => 'required|array|min:1',
-    //                 'location_id.*' => 'exists:locations,id',
-    //                 'participant_start' => 'required|array',
-    //                 'participant_end' => 'required|array',
-    //                 'participant_days' => 'required|array',
-    //                 'attachments.*.type' => 'required|string|max:255',
-    //                 'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240', // 10MB max
-    //             ]);
-
-    //             // Validate total participants and budget
-    //             $totalParticipants = (int) $request->input('total_participants', 0);
-    //             if ($totalParticipants <= 0) {
-    //                 $errorMessage = 'Cannot create activity with zero or negative total participants.';
-
-    //                 if ($request->ajax()) {
-    //                     return response()->json([
-    //                         'success' => false,
-    //                         'msg' => $errorMessage
-    //                     ], 422);
-    //                 }
-
-    //                 return redirect()->back()->withInput()->with([
-    //                     'msg' => $errorMessage,
-    //                     'type' => 'error'
-    //                 ]);
-    //             }
-
-    //             // Calculate total budget from budget items
-    //             $totalBudget = 0;
-    //             $budgetItems = $request->input('budget', []);
-    //             if (!empty($budgetItems)) {
-    //                 foreach ($budgetItems as $codeId => $items) {
-    //                     if (is_array($items)) {
-    //                         foreach ($items as $item) {
-    //                             $qty = isset($item['units']) ? floatval($item['units']) : 1;
-    //                             $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
-    //                             $totalBudget += $qty * $unitCost;
-    //                         }
-    //                     }
-    //                 }
-    //             }
-
-    //             if ($totalBudget <= 0) {
-    //                 $errorMessage = 'Cannot create activity with zero or negative total budget.';
-
-    //                 if ($request->ajax()) {
-    //                     return response()->json([
-    //                         'success' => false,
-    //                         'msg' => $errorMessage
-    //                     ], 422);
-    //                 }
-
-    //                 return redirect()->back()->withInput()->with([
-    //                     'msg' => $errorMessage,
-    //                     'type' => 'error'
-    //                 ]);
-    //             }
-
-    //             // Build internal_participants array with staff_id as key
-    //             $participantStarts = $request->input('participant_start', []);
-    //             $participantEnds = $request->input('participant_end', []);
-    //             $participantDays = $request->input('participant_days', []);
-    //             $internationalTravel = $request->input('international_travel', []);
-
-    //             $internalParticipants = [];
-
-    //             foreach ($participantStarts as $staffId => $startDate) {
-    //                 $internalParticipants[$staffId] = [
-    //                     'participant_start' => $startDate,
-    //                     'participant_end' => $participantEnds[$staffId] ?? null,
-    //                     'participant_days' => $participantDays[$staffId] ?? null,
-    //                     'international_travel' => isset($internationalTravel[$staffId]) ? 1 : 0,
-    //                 ];
-    //             }
-
-    //             // Debug formatted array before insertion
-    //             //dd($internalParticipants);
-
-    //             $budgetCodes = $request->input('budget_codes', []);
-    //             $budgetItems = $request->input('budget', []);
-
-    //             // Handle file uploads for attachments
-    //             $attachments = [];
-    //             if ($request->hasFile('attachments')) {
-    //                 $uploadedFiles = $request->file('attachments');
-    //                 $attachmentTypes = $request->input('attachments', []);
-
-    //                 foreach ($uploadedFiles as $index => $file) {
-    //                     if ($file && $file->isValid()) {
-    //                         $type = $attachmentTypes[$index]['type'] ?? 'Document';
-
-    //                         // Validate file type
-    //                         $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
-    //                         $extension = strtolower($file->getClientOriginalExtension());
-
-    //                         if (!in_array($extension, $allowedExtensions)) {
-    //                             throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
-    //                         }
-
-    //                         // Generate unique filename
-    //                         $filename = time() . '_' . uniqid() . '.' . $extension;
-
-    //                         // Store file in public/uploads/activities directory
-    //                         $path = $file->storeAs('uploads/activities', $filename, 'public');
-
-    //                         $attachments[] = [
-    //                             'type' => $type,
-    //                             'filename' => $filename,
-    //                             'original_name' => $file->getClientOriginalName(),
-    //                             'path' => $path,
-    //                             'size' => $file->getSize(),
-    //                             'mime_type' => $file->getMimeType(),
-    //                             'uploaded_at' => now()->toDateTimeString()
-    //                         ];
-    //                     }
-    //                 }
-    //             }
-
-    //             // Create the activity record
-    //             $activity = $matrix->activities()->create([
-    //                 'staff_id' => $userStaffId, // Use staff_id directly
-    //                 'workplan_activity_code' => $request->input('activity_code'),
-    //                 'responsible_person_id' => $request->input('responsible_person_id'), // Use staff_id directly
-    //                 'date_from' => $request->input('date_from', now()->toDateString()),
-    //                 'date_to' => $request->input('date_to', now()->toDateString()),
-    //                 'total_participants' => (int) $request->input('total_participants', 1),
-    //                 'total_external_participants' => (int) $request->input('total_external_participants', 0),
-    //                 'key_result_area' => $request->input('key_result_link', '-'),
-    //                 'request_type_id' => (int) $request->input('request_type_id', 1),
-    //                 'activity_title' => $request->input('activity_title'),
-    //                 'background' => $request->input('background', ''),
-    //                 'activity_request_remarks' => $request->input('activity_request_remarks', ''),
-    //                 'forward_workflow_id' => 1,
-    //                 'reverse_workflow_id' => 1,
-    //                 'status' => \App\Models\Activity::STATUS_DRAFT,
-    //                 'fund_type_id' => $request->input('fund_type', 1),
-    //                 'location_id' => json_encode($request->input('location_id', [])),
-    //                 'internal_participants' => json_encode($internalParticipants),
-    //                 'budget_id' => json_encode($budgetCodes),
-    //                 'budget' => json_encode($budgetItems),
-    //                 'attachment' => json_encode($attachments),
-    //                 'is_single_memo' => $request->input('is_single_memo', 0),
-    //                 'approval_level' => 1,
-    //                 'overall_status' => \App\Models\Activity::STATUS_DRAFT,
-    //             ]);
-
-    //             if (count($internalParticipants) > 0)
-    //                 $this->storeParticipantSchedules($internalParticipants, $activity);
-
-    //             if (count($budgetItems) > 0)
-    //                 $this->storeBudget($budgetCodes, $budgetItems, $activity);
-
-    //             $successMessage = 'Activity created successfully.';
-    //             $redirectUrl = route('matrices.activities.show', [$matrix, $activity]);
-
-    //             if ($request->ajax()) {
-    //                 return response()->json([
-    //                     'success' => true,
-    //                     'msg' => $successMessage,
-    //                     'redirect_url' => $redirectUrl,
-    //                     'activity' => [
-    //                         'id' => $activity->id,
-    //                         'title' => $activity->activity_title,
-    //                         'date_from' => $activity->date_from,
-    //                         'date_to' => $activity->date_to,
-    //                         'total_participants' => $activity->total_participants,
-    //                         'status' => $activity->overall_status,
-    //                         'request_type' => $activity->requestType->name ?? 'N/A'
-    //                     ]
-    //                 ]);
-    //             }
-
-    //             return redirect($redirectUrl)
-    //                 ->with([
-    //                     'msg' => $successMessage,
-    //                     'type' => 'success'
-    //                 ]);
-    //         } catch (\Exception $e) {
-    //             DB::rollBack();
-    //             Log::error('Error creating activity', ['exception' => $e]);
-
-    //             $errorMessage = 'An error occurred while creating the activity. Please try again.';
-
-    //             if ($request->ajax()) {
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'msg' => $errorMessage
-    //                 ], 500);
-    //             }
-
-    //             return redirect()->back()->withInput()->with([
-    //                 'msg' => $errorMessage,
-    //                 'type' => 'error'
-    //             ]);
-    //         }
-    //     });
-    // }
-
+  
        public function create(Matrix $matrix): View
     {
         ini_set('memory_limit', '1024M');
@@ -421,6 +142,7 @@ class ActivityController extends Controller
             'editing' => false,
         ]);
     }
+    // save activity
 
     public function store(Request $request, Matrix $matrix): RedirectResponse|JsonResponse
     {
@@ -560,7 +282,7 @@ class ActivityController extends Controller
                     'date_to' => $request->input('date_to', now()->toDateString()),
                     'total_participants' => (int) $request->input('total_participants', 1),
                     'total_external_participants' => (int) $request->input('total_external_participants', 0),
-                    'key_result_area' => $request->input('key_result_link'),
+                    'key_result_area' => $request->input('key_result_area'),
                     'request_type_id' => (int) $request->input('request_type_id', 1),
                     'activity_title' => $request->input('activity_title'),
                     'background' => $request->input('background', ''),
@@ -735,6 +457,23 @@ class ActivityController extends Controller
         });
 
         return response()->json($result);
+    }
+
+    public function getFundTypeByBudgetCode(Request $request)
+    {
+        $budgetCodeId = $request->input('budget_code_id');
+
+        if (!$budgetCodeId) {
+            return response()->json(null);
+        }
+
+        $budgetCode = FundCode::find($budgetCodeId);
+        
+        if (!$budgetCode) {
+            return response()->json(null);
+        }
+
+        return response()->json($budgetCode->fund_type_id);
     }
 
     /**
@@ -964,7 +703,7 @@ class ActivityController extends Controller
                     'date_to' => $request->input('date_to', now()->toDateString()),
                     'total_participants' => (int) $request->input('total_participants', 1),
                     'total_external_participants' => (int) $request->input('total_external_participants', 0),
-                    'key_result_area' => $request->input('key_result_link', '-'),
+                    'key_result_area' => $request->input('key_result_area'),
                     'request_type_id' => (int) $request->input('request_type_id', 1),
                     'activity_title' => $request->input('activity_title'),
                     'background' => $request->input('background', ''),

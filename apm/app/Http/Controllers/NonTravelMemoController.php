@@ -136,7 +136,7 @@ class NonTravelMemoController extends Controller
            // 'attachments.*'                => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
             'budget_codes'                 => 'required|array|min:1',
             'budget_codes.*'               => 'exists:fund_codes,id',
-            'budget'                       => 'required|array',
+            'budget_breakdown'             => 'required|array',
             //'budget.*'                     => 'array',
         ]);
 
@@ -161,7 +161,7 @@ class NonTravelMemoController extends Controller
         // Prepare JSON columns
         $locationJson = json_encode($data['location_id']);
         $budgetIdJson = json_encode($data['budget_codes']);
-        $budgetBreakdownJson = json_encode($data['budget']);
+        $budgetBreakdownJson = json_encode($data['budget_breakdown']);
         $attachmentsJson = json_encode($files);
 
         // Determine status based on action
@@ -193,9 +193,9 @@ class NonTravelMemoController extends Controller
         ]);
 
         // Process fund code balance reductions and create transaction records
-        if (!$isDraft && !empty($data['budget_codes']) && !empty($data['budget'])) {
+        if (!$isDraft && !empty($data['budget_codes']) && !empty($data['budget_breakdown'])) {
             $budgetCodes = $data['budget_codes'];
-            $budgetItems = $data['budget'];
+            $budgetItems = $data['budget_breakdown'];
             
             foreach ($budgetCodes as $codeId) {
                 $total = 0;
@@ -264,7 +264,7 @@ class NonTravelMemoController extends Controller
                     'category' => $memo->nonTravelMemoCategory->name ?? 'N/A',
                     'status' => $memo->overall_status,
                     'date_required' => $memo->memo_date,
-                    'total_budget' => $this->calculateTotalBudget($data['budget']),
+                    'total_budget' => $this->calculateTotalBudget($data['budget_breakdown']),
                     'preview_url' => route('non-travel.show', $memo->id)
                 ]
             ]);
@@ -346,6 +346,20 @@ class NonTravelMemoController extends Controller
             ? $nonTravel->budget_id 
             : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
 
+        // Decode budget breakdown data - use budget_breakdown field, not budget
+        $budgetBreakdown = is_array($nonTravel->budget_breakdown) 
+            ? $nonTravel->budget_breakdown 
+            : (is_string($nonTravel->budget_breakdown) ? json_decode($nonTravel->budget_breakdown, true) : []);
+        
+        // Debug: Log the budget data
+        \Illuminate\Support\Facades\Log::info('NonTravelMemo Budget Debug', [
+            'memo_id' => $nonTravel->id,
+            'raw_budget_breakdown' => $nonTravel->budget_breakdown,
+            'budget_breakdown_type' => gettype($nonTravel->budget_breakdown),
+            'decoded_budget_breakdown' => $budgetBreakdown,
+            'selected_budget_codes' => $selectedBudgetCodes
+        ]);
+
         // Retrieve other necessary data
         $categories = NonTravelMemoCategory::all();
         $locations = Location::all();
@@ -359,6 +373,7 @@ class NonTravelMemoController extends Controller
             'nonTravel', 
             'budgets', 
             'selectedBudgetCodes', 
+            'budgetBreakdown',
             'categories', 
             'locations', 
             'workflows', 
@@ -461,7 +476,7 @@ class NonTravelMemoController extends Controller
         // Debug: Log the incoming request data
        //dd(can_division_head_edit_generic($nonTravel));
 
-        \Log::info('NonTravelMemo updateStatus called', [
+        \Illuminate\Support\Facades\Log::info('NonTravelMemo updateStatus called', [
             'request_all' => $request->all(),
             'memo_id' => $nonTravel->id,
             'current_status' => $nonTravel->overall_status,
@@ -475,7 +490,7 @@ class NonTravelMemoController extends Controller
         ]);
 
         // Debug: Log validation passed
-        \Log::info('Validation passed, calling generic approval controller');
+        \Illuminate\Support\Facades\Log::info('Validation passed, calling generic approval controller');
 
         // Use the generic approval system
         $genericController = app(\App\Http\Controllers\GenericApprovalController::class);

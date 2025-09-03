@@ -20,18 +20,19 @@
                 </select>
             </div>
              <div class="col-md-3">
-                        <label for="key_result_link" class="form-label fw-semibold">
+                        <label for="key_result_area" class="form-label fw-semibold">
                             <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
                         </label>
-                        <select name="key_result_link" id="key_result_link" class="form-select border-success" required>
+                        <select name="key_result_area" id="key_result_area" class="form-select border-success" required>
                             <option value="">Select Key Result</option>
                             @php
                                 $keyResults = is_array($matrix->key_result_area) 
                                             ? $matrix->key_result_area 
                                             : json_decode($matrix->key_result_area ?? '[]', true);
+                                $selectedKeyResult = old('key_result_area', $activity->key_result_area ?? '');
                             @endphp
                             @foreach($keyResults as $index => $kr)
-                                <option value="{{ $index }}">
+                                <option value="{{ $index }}" {{ $selectedKeyResult == $index ? 'selected' : '' }}>
                                     {{ $kr['description'] ?? 'No Description' }}
                                 </option>
                             @endforeach
