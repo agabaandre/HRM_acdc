@@ -103,7 +103,7 @@
                                 <h6 class="card-title">Clear Cache</h6>
                                 <p class="card-text small text-muted">Clear application cache and temporary files</p>
                                 <button type="button" class="btn btn-outline-danger btn-sm" 
-                                        onclick="executeCommand('clear:cache')">
+                                        onclick="executeCommand('cache:clear')">
                                     <i class="bx bx-play me-1"></i> Execute
                                 </button>
                             </div>
