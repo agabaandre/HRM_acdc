@@ -21,7 +21,7 @@ if (!function_exists('user_session')) {
         function user_session(?string $key = null, mixed $default = null): mixed
         {
             $user = session('user', []);
-            return $key === null ? $user : data_get($user, $key, $default);
+            return $key == null ? $user : data_get($user, $key, $default);
         }
         function isfocal_person()
         {
@@ -30,7 +30,7 @@ if (!function_exists('user_session')) {
             $staff_id = $user['staff_id'] ?? null;
             $division_fp_id = $user['focal_person'] ?? null;
         
-            return $staff_id === $division_fp_id;
+            return $staff_id == $division_fp_id;
         }
         
     }
