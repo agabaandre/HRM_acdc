@@ -122,6 +122,12 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     Route::get('/jobs/system-info', [App\Http\Controllers\JobsController::class, 'getSystemInfo'])->name('jobs.system-info');
+
+    // Audit Logs Routes
+    Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
+    Route::get('/audit-logs/{auditLog}', [App\Http\Controllers\AuditLogsController::class, 'show'])->name('audit-logs.show');
+    Route::get('/audit-logs/export/csv', [App\Http\Controllers\AuditLogsController::class, 'export'])->name('audit-logs.export');
+    Route::post('/audit-logs/cleanup', [App\Http\Controllers\AuditLogsController::class, 'cleanup'])->name('audit-logs.cleanup');
     
     // Add matrices and activities resources inside the middleware group
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts

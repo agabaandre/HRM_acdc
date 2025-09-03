@@ -53,6 +53,11 @@ $settingsMenuItems = [
 'icon' => 'fas fa-tasks',
 'title' => 'Jobs'
 ],
+[
+'route' => 'audit-logs.index',
+'icon' => 'fas fa-clipboard-list',
+'title' => 'Audit Logs'
+],
 ];
 @endphp
 
