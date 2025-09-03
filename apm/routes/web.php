@@ -116,6 +116,13 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::resource('cost-items', App\Http\Controllers\CostItemController::class);
     Route::resource('non-travel-categories', App\Http\Controllers\NonTravelMemoCategoryController::class);
     
+    // Jobs Management Routes
+    Route::get('/jobs', [App\Http\Controllers\JobsController::class, 'index'])->name('jobs.index');
+    Route::post('/jobs/execute-command', [App\Http\Controllers\JobsController::class, 'executeCommand'])->name('jobs.execute-command');
+    Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
+    Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
+    Route::get('/jobs/system-info', [App\Http\Controllers\JobsController::class, 'getSystemInfo'])->name('jobs.system-info');
+    
     // Add matrices and activities resources inside the middleware group
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
     Route::get('/matrices/pending-approvals', [MatrixController::class, 'pendingApprovals'])->name('matrices.pending-approvals');

@@ -118,7 +118,9 @@ class MatrixController extends Controller
 
        //  dd(getFullSql($query));
 
-        $matrices = $query->latest()->paginate(20);
+        $matrices = $query->orderBy('year', 'desc')
+                          ->orderBy('quarter', 'desc')
+                          ->paginate(24);
 
         //dd($matrices->toArray());
 
@@ -137,29 +139,40 @@ class MatrixController extends Controller
 
         
        
-        // Separate matrices into actionable and actioned lists
-        $actionableMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
-        });
-        $myDivisionMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return $matrix->division_id == user_session('division_id');
-        });
+        // Create separate queries for each tab with proper server-side pagination
+        $myDivisionQuery = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow',
+            'activities' => function ($q) {
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                  ->whereNotNull('matrix_id');
+            }
+        ])->where('division_id', user_session('division_id'));
 
+        // Apply filters to my division query
+        if ($request->filled('year')) {
+            $myDivisionQuery->where('year', $request->year);
+        }
+        if ($request->filled('quarter')) {
+            $myDivisionQuery->where('quarter', $request->quarter);
+        }
+        if ($request->filled('focal_person')) {
+            $myDivisionQuery->where('focal_person_id', $request->focal_person);
+        }
+        if ($request->filled('division')) {
+            $myDivisionQuery->where('id', $request->division);
+        }
 
-        // Filter matrices based on CustomHelper functions for accurate counts
-        $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
-            // dd(can_take_action($matrix));
-            return can_take_action($matrix)  || still_with_creator($matrix);
-        });
-
-        $filteredActionedMatrices = $matrices->filter(function ($matrix) {
-            return done_approving($matrix) ;
-        });
+        $myDivisionMatrices = $myDivisionQuery->orderBy('year', 'desc')
+                                            ->orderBy('quarter', 'desc')
+                                            ->paginate(24, ['*'], 'my_division_page');
 
         // Get all matrices for users with permission ID 87
         $allMatrices = collect();
         if (in_array(87, user_session('permissions', []))) {
-            $allMatrices = Matrix::with([
+            $allMatricesQuery = Matrix::with([
                 'division',
                 'staff',
                 'focalPerson',
@@ -168,7 +181,28 @@ class MatrixController extends Controller
                     $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
                       ->whereNotNull('matrix_id');
                 }
-            ])->latest()->paginate(20);
+            ]);
+
+            // Apply same filters to all matrices query
+            if ($request->filled('year')) {
+                $allMatricesQuery->where('year', $request->year);
+            }
+        
+            if ($request->filled('quarter')) {
+                $allMatricesQuery->where('quarter', $request->quarter);
+            }
+        
+            if ($request->filled('focal_person')) {
+                $allMatricesQuery->where('focal_person_id', $request->focal_person);
+            }
+        
+            if ($request->filled('division')) {
+                $allMatricesQuery->where('id', $request->division);
+            }
+
+            $allMatrices = $allMatricesQuery->orderBy('year', 'desc')
+                                           ->orderBy('quarter', 'desc')
+                                           ->paginate(24, ['*'], 'all_matrices_page');
         }
 
         //  dd($filteredActionedMatrices->toArray());
@@ -176,10 +210,6 @@ class MatrixController extends Controller
     
         return view('matrices.index', [
             'matrices' => $matrices,
-            'actionableMatrices' => $actionableMatrices,
-            'actionedMatrices' => $filteredActionedMatrices,
-            'filteredActionableMatrices' => $filteredActionableMatrices,
-            'filteredActionedMatrices' => $filteredActionedMatrices,
             'myDivisionMatrices' => $myDivisionMatrices,
             'allMatrices' => $allMatrices,
             'title' => user_session('division_name'),
