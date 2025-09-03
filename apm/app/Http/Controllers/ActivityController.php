@@ -31,7 +31,7 @@ use function PHPUnit\Framework\isEmpty;
 
 class ActivityController extends Controller
 {
-
+    
     /**
      * Display a listing of activities for a matrix.
      */
@@ -52,12 +52,12 @@ class ActivityController extends Controller
         $years = range(now()->year - 2, now()->year + 2);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $divisions = \App\Models\Division::orderBy('division_name')->get();
-
+        
         // Initialize empty paginated results for the tabs (since this is matrix-specific)
         $allActivities = new LengthAwarePaginator([], 0, 20);
         $myDivisionActivities = new LengthAwarePaginator([], 0, 20);
         $sharedActivities = new LengthAwarePaginator([], 0, 20);
-
+        
         // Set default values for the view
         $selectedYear = $matrix->year;
         $selectedQuarter = $matrix->quarter;
@@ -88,7 +88,7 @@ class ActivityController extends Controller
      * Show the form for creating a new activity.
      */
   
-       public function create(Matrix $matrix): View
+    public function create(Matrix $matrix): View
     {
         ini_set('memory_limit', '1024M');
         // Eager load division
@@ -147,7 +147,7 @@ class ActivityController extends Controller
     public function store(Request $request, Matrix $matrix): RedirectResponse|JsonResponse
     {
  
-   
+    
         $userStaffId = session('user.auth_staff_id');
     
         return DB::transaction(function () use ($request, $matrix, $userStaffId) {
@@ -366,37 +366,37 @@ class ActivityController extends Controller
             'activity_budget',
             'activity_budget.fundcode'
         ]);
-
+    
         // Load all staff
         $staff = Staff::active()->get();
-
+    
         // Decode JSON fields
         $locationIds = is_string($activity->location_id)
             ? json_decode($activity->location_id, true)
             : ($activity->location_id ?? []);
-
+    
         $budgetIds = is_string($activity->budget_id)
             ? json_decode($activity->budget_id, true)
             : ($activity->budget_id ?? []);
-
+    
         $budgetItems = is_string($activity->budget)
             ? json_decode($activity->budget, true)
             : ($activity->budget ?? []);
-
+    
         $attachments = is_string($activity->attachment)
             ? json_decode($activity->attachment, true)
             : ($activity->attachment ?? []);
-
+    
         // Decode internal participants (new format)
         $rawParticipants = is_string($activity->internal_participants)
             ? json_decode($activity->internal_participants, true)
             : ($activity->internal_participants ?? []);
-
+    
         // Extract staff details and append date/days info
         $internalParticipants = [];
         if (!empty($rawParticipants)) {
             $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))->get()->keyBy('staff_id');
-
+    
             foreach ($rawParticipants as $staffId => $participantData) {
                 if (isset($staffDetails[$staffId])) {
                     $internalParticipants[] = [
@@ -408,11 +408,11 @@ class ActivityController extends Controller
                 }
             }
         }
-
+    
         // Fetch related data
         $locations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
-
+    
         return view('activities.show', [
             'matrix' => $matrix,
             'activity' => $activity,
@@ -425,7 +425,7 @@ class ActivityController extends Controller
             'title' => 'View Activity: ' . $activity->activity_title
         ]);
     }
-
+    
 
 
     public function getBudgetCodesByFundType(Request $request)
@@ -441,8 +441,8 @@ class ActivityController extends Controller
             ->where(function ($query) use ($request) {
                 // Include codes where division_id matches the request, or is NULL, or is empty string (universal)
                 $query->where('division_id', $request->division_id)
-                    ->orWhereNull('division_id')
-                    ->orWhere('division_id', '');
+                      ->orWhereNull('division_id')
+                      ->orWhere('division_id', '');
             })
             ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
 
@@ -496,17 +496,17 @@ class ActivityController extends Controller
         $staff = Staff::active()
             ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
             ->get();
-
+        
         // Staff only from current matrix division for internal participants
         $divisionStaff = Staff::active()
             ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name'])
             ->where('division_id', $matrix->division_id)
             ->get();
-
+        
         $locations = Location::all();
         $fundTypes = FundType::all();
         $costItems = CostItem::all();
-
+        
         // Get all staff grouped by division for external participants
         $allStaffGroupedByDivision = Staff::active()
             ->with('division')
@@ -583,14 +583,14 @@ class ActivityController extends Controller
         // Check if matrix is approved
         if ($matrix->overall_status === 'approved') {
             $message = 'Cannot update activity. The matrix has been approved.';
-
+            
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'msg' => $message
                 ], 422);
             }
-
+            
             return redirect()
                 ->route('matrices.activities.show', [$matrix, $activity])
                 ->with('error', $message);
@@ -631,43 +631,43 @@ class ActivityController extends Controller
 
                 $budgetCodes = $request->input('budget_codes', []);
                 $budgetItems = $request->input('budget', []);
-
+                
                 // Handle file uploads for attachments
                 $attachments = [];
-                $existingAttachments = is_string($activity->attachment)
-                    ? json_decode($activity->attachment, true)
+                $existingAttachments = is_string($activity->attachment) 
+                    ? json_decode($activity->attachment, true) 
                     : ($activity->attachment ?? []);
-
+                
                 // Get attachment data from request
                 $attachmentData = $request->input('attachments', []);
-
+                
                 // Process each attachment slot
                 foreach ($attachmentData as $index => $attachmentInfo) {
                     $type = $attachmentInfo['type'] ?? 'Document';
                     $file = $request->file("attachments.{$index}.file");
                     $shouldReplace = isset($attachmentInfo['replace']) && $attachmentInfo['replace'] == '1';
                     $shouldDelete = isset($attachmentInfo['delete']) && $attachmentInfo['delete'] == '1';
-
+                    
                     // Skip if user wants to delete this attachment
                     if ($shouldDelete) {
                         continue;
                     }
-
+                    
                     if ($file && $file->isValid()) {
                         // New file uploaded - validate and store
                         $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
                         $extension = strtolower($file->getClientOriginalExtension());
-
+                        
                         if (!in_array($extension, $allowedExtensions)) {
                             throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
                         }
-
+                        
                         // Generate unique filename
                         $filename = time() . '_' . uniqid() . '.' . $extension;
-
+                        
                         // Store file in public/uploads/activities directory
                         $path = $file->storeAs('uploads/activities', $filename, 'public');
-
+                        
                         $attachments[] = [
                             'type' => $type,
                             'filename' => $filename,
@@ -688,7 +688,7 @@ class ActivityController extends Controller
                         }
                     }
                 }
-
+                
                 // If no attachment data was provided, keep all existing attachments
                 if (empty($attachmentData)) {
                     $attachments = $existingAttachments;
@@ -724,7 +724,7 @@ class ActivityController extends Controller
 
                 $successMessage = 'Activity updated successfully.';
                 $redirectUrl = route('matrices.activities.show', [$matrix, $activity]);
-
+                
                 if ($request->ajax()) {
                     return response()->json([
                         'success' => true,
@@ -743,7 +743,7 @@ class ActivityController extends Controller
                 Log::error('Error updating activity', ['exception' => $e]);
 
                 $errorMessage = 'An error occurred while updating the activity. Please try again.';
-
+                
                 if ($request->ajax()) {
                     return response()->json([
                         'success' => false,
@@ -790,7 +790,7 @@ class ActivityController extends Controller
                 ->with('success', 'Activity deleted successfully.');
         } catch (\Exception $e) {
             Log::error('Error deleting activity', ['exception' => $e]);
-
+            
             return redirect()
                 ->route('matrices.activities.index', $matrix)
                 ->with('error', 'An error occurred while deleting the activity.');
@@ -801,26 +801,26 @@ class ActivityController extends Controller
     {
         // Get existing budget records for this activity
         $existingBudgets = ActivityBudget::where('activity_id', $activity->id)->get()->keyBy('id');
-
+        
         if (count($budgetItems) > 0) {
-
+            
             foreach ($budgetCodes as $key => $fundCode) {
                 $items = $budgetItems[$fundCode];
-
+               
                 foreach ($items as $index => $item) {
                     $item = (object) $item;
                     $total = ($item->unit_cost * $item->units) * $item->days;
 
                     try {
                         DB::beginTransaction();
-
+                        
                         // Check if we have an existing budget record to update
                         $existingBudget = $existingBudgets->first(function ($budget) use ($fundCode, $item) {
-                            return $budget->fund_code == $fundCode &&
-                                $budget->cost == $item->cost &&
-                                $budget->description == $item->description;
+                            return $budget->fund_code == $fundCode && 
+                                   $budget->cost == $item->cost &&
+                                   $budget->description == $item->description;
                         });
-
+                        
                         if ($existingBudget) {
                             // Update existing record
                             $oldTotal = $existingBudget->total;
@@ -830,26 +830,26 @@ class ActivityController extends Controller
                                 'days' => $item->days,
                                 'total' => $total
                             ]);
-
+                            
                             // Update the fund code transaction if total changed
                             if ($oldTotal != $total) {
                                 $transaction = FundCodeTransaction::where('activity_budget_id', $existingBudget->id)->first();
                                 if ($transaction) {
                                     $fundCode = FundCode::find($fundCode);
                                     $difference = $total - $oldTotal;
-
+                                    
                                     // Update transaction
                                     $transaction->update([
                                         'amount' => $total,
                                         'balance_after' => $transaction->balance_before - $total
                                     ]);
-
+                                    
                                     // Update fund code balance
                                     $fundCode->budget_balance = $fundCode->budget_balance - $difference;
                                     $fundCode->save();
                                 }
                             }
-
+                            
                             $activityBudget = $existingBudget;
                         } else {
                             // Create new record
@@ -868,16 +868,16 @@ class ActivityController extends Controller
 
                             $this->store_fund_code_transaction($fundCode, $total, $activity, $activityBudget);
                         }
-
+                        
                         DB::commit();
                     } catch (Exception $e) {
                         DB::rollBack();
                         Log::error('Error storing activity budget', ['exception' => $e]);
                         return false;
                     }
-                }
+                } 
             }
-
+            
             // Remove any existing budget records that are no longer in the updated data
             $updatedBudgetIds = [];
             foreach ($budgetCodes as $fundCode) {
@@ -885,16 +885,16 @@ class ActivityController extends Controller
                 foreach ($items as $item) {
                     $item = (object) $item;
                     $existingBudget = $existingBudgets->first(function ($budget) use ($fundCode, $item) {
-                        return $budget->fund_code == $fundCode &&
-                            $budget->cost == $item->cost &&
-                            $budget->description == $item->description;
+                        return $budget->fund_code == $fundCode && 
+                               $budget->cost == $item->cost &&
+                               $budget->description == $item->description;
                     });
                     if ($existingBudget) {
                         $updatedBudgetIds[] = $existingBudget->id;
                     }
                 }
             }
-
+            
             // Delete budget records that are no longer needed
             $budgetsToDelete = $existingBudgets->whereNotIn('id', $updatedBudgetIds);
             foreach ($budgetsToDelete as $budgetToDelete) {
@@ -922,7 +922,7 @@ class ActivityController extends Controller
 
     private function store_fund_code_transaction($fundCodeId, $amount, $activity, $activityBudget)
     {
-
+        
         $fundCode = FundCode::find($fundCodeId);
 
         FundCodeTransaction::create([
@@ -971,19 +971,19 @@ class ActivityController extends Controller
     public function update_status(Request $request, Matrix $matrix, Activity $activity): RedirectResponse
     {
         $request->validate(['action' => 'required']);
-
+     
         $this->update_activity_status($request, $activity);
 
         $message = "Activity Updated successfully";
 
         return redirect()
-            ->route('matrices.activities.show', [$matrix, $activity])
-            ->with('success', $message);
+        ->route('matrices.activities.show', [$matrix, $activity])
+        ->with('success', $message);
     }
 
     private function update_activity_status($request, $activity)
     {
-
+        
         $activityTrail = new ActivityApprovalTrail();
 
         $activityTrail->remarks  = $request->comment  ?? 'Passed';
@@ -1022,16 +1022,16 @@ class ActivityController extends Controller
         $message = "Activities Updated successfully";
 
         return redirect()
-            ->route('matrices.show', [$matrix])
-            ->with('success', $message);
+        ->route('matrices.show', [$matrix])
+        ->with('success', $message);
     }
 
     public function get_participant_schedules(Request $request)
     {
         $participant_schedules = ParticipantSchedule::with('activity', 'matrix')->where('participant_id', user_session('staff_id'))
-            //->where('participant_end', '>=', Carbon::now()->toDateString())
-            ->orderBy('participant_end', 'desc')
-            ->paginate(10);
+        //->where('participant_end', '>=', Carbon::now()->toDateString())
+        ->orderBy('participant_end', 'desc')
+        ->paginate(10);
 
         // Transform the data while preserving pagination
         $transformed_data = $participant_schedules->getCollection()->map(function ($schedule) {
@@ -1079,14 +1079,14 @@ class ActivityController extends Controller
         $query = Activity::with(['staff', 'matrix.division'])
             ->where('is_single_memo', true)
             ->latest();
-
+        
         // Get current user's staff ID
         $currentStaffId = user_session('staff_id');
 
         if ($request->has('staff_id') && $request->staff_id) {
             $query->where('staff_id', $request->staff_id);
         }
-
+    
         if ($request->has('division_id') && $request->division_id) {
             $query->where('division_id', $request->division_id);
         }
@@ -1105,23 +1105,23 @@ class ActivityController extends Controller
             $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
             $query->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
         }
-
+        
         // Hide draft memos from non-creators
         $query->where(function ($q) use ($currentStaffId) {
             $q->where('overall_status', '!=', 'draft')
-                ->orWhere('staff_id', $currentStaffId);
+              ->orWhere('staff_id', $currentStaffId);
         });
-
+        
         $singleMemos = $query->paginate(10);
         $staff = Staff::active()->get();
-
+    
         // Get distinct divisions from staff table
         $divisions = Staff::select('division_id', 'division_name')
             ->whereNotNull('division_id')
             ->distinct()
             ->orderBy('division_name')
             ->get();
-
+    
         return view('activities.single-memos.index', compact('singleMemos', 'staff', 'divisions'));
     }
 
@@ -1163,7 +1163,7 @@ class ActivityController extends Controller
         ]);
 
         $approvalService = app(ApprovalService::class);
-
+        
         if (!$approvalService->canTakeAction($activity, user_session('staff_id'))) {
             return redirect()->back()->with([
                 'msg' => 'You are not authorized to take this action.',
@@ -1192,7 +1192,7 @@ class ActivityController extends Controller
     public function showSingleMemoStatus(Activity $activity): View
     {
         $activity->load(['staff', 'matrix.division']);
-
+        
         return view('activities.single-memos.status', compact('activity'));
     }
 
@@ -1203,22 +1203,22 @@ class ActivityController extends Controller
     {
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
-
+        
         // Get next quarter as default
         $currentYear = now()->year;
         $currentQuarter = now()->quarter;
         $nextQuarter = $currentQuarter == 4 ? 1 : $currentQuarter + 1;
         $nextYear = $currentQuarter == 4 ? $currentYear + 1 : $currentYear;
-
+        
         $selectedYear = $request->get('year', $nextYear);
         $selectedQuarter = $request->get('quarter', 'Q' . $nextQuarter);
         $selectedDivisionId = $request->get('division_id', '');
-
+        
         // Ensure quarter is in correct format (Q1, Q2, Q3, Q4)
         if (!str_starts_with($selectedQuarter, 'Q')) {
             $selectedQuarter = 'Q' . $selectedQuarter;
         }
-
+        
         // Base query for activities - only show activities from approved matrices
         $baseQuery = Activity::with([
             'matrix.division',
@@ -1226,36 +1226,36 @@ class ActivityController extends Controller
             'staff'
         ])->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter) {
             $query->where('year', $selectedYear)
-                ->where('quarter', $selectedQuarter)
-                ->where('overall_status', 'approved'); // Only show activities from approved matrices
+                  ->where('quarter', $selectedQuarter)
+                  ->where('overall_status', 'approved'); // Only show activities from approved matrices
         });
-
+        
         // Debug: Check what matrices are found
         $debugMatrices = \App\Models\Matrix::where('year', $selectedYear)
             ->where('quarter', $selectedQuarter)
             ->where('overall_status', 'approved')
             ->get(['id', 'division_id', 'overall_status', 'forward_workflow_id']);
-
+            
         Log::info('Debug: Found approved matrices for activities', [
             'year' => $selectedYear,
             'quarter' => $selectedQuarter,
             'matrices_count' => $debugMatrices->count(),
             'matrices' => $debugMatrices->toArray()
         ]);
-
+        
         // Tab 1: All Activities (visible to users with permission 87)
         $allActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if (in_array(87, user_session('permissions', []))) {
             $allActivitiesQuery = clone $baseQuery;
-
+            
             if ($selectedDivisionId) {
                 $allActivitiesQuery->whereHas('matrix', function ($query) use ($selectedDivisionId) {
                     $query->where('division_id', $selectedDivisionId);
                 });
             }
-
+            
             $allActivities = $allActivitiesQuery->latest()->paginate(20);
-
+            
             // Debug: Log activities before filtering
             Log::info('All Activities Before Final Approval Filter', [
                 'originalCount' => $allActivitiesQuery->count(),
@@ -1268,7 +1268,7 @@ class ActivityController extends Controller
                     ];
                 })->toArray()
             ]);
-
+            
             // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
             // This is causing issues - let's see what activities we get without filtering
             /*
@@ -1280,7 +1280,7 @@ class ActivityController extends Controller
             });
             $allActivities->setCollection($allActivities->getCollection()->filter()->values());
             */
-
+            
             // Debug logging for final approval filtering
             Log::info('All Activities Final Approval Filter', [
                 'originalCount' => $allActivitiesQuery->count(),
@@ -1288,7 +1288,7 @@ class ActivityController extends Controller
                 'activities' => $allActivities->getCollection()->pluck('id')->toArray()
             ]);
         }
-
+        
         // Tab 2: My Division Activities
         $myDivisionActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if ($userDivisionId) {
@@ -1297,7 +1297,7 @@ class ActivityController extends Controller
                 $query->where('division_id', $userDivisionId);
             });
             $myDivisionActivities = $myDivisionQuery->latest()->paginate(20);
-
+            
             // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
             /*
             $myDivisionActivities->getCollection()->transform(function($activity) {
@@ -1309,17 +1309,17 @@ class ActivityController extends Controller
             $myDivisionActivities->setCollection($myDivisionActivities->getCollection()->filter()->values());
             */
         }
-
+        
         // Tab 3: Shared Activities (activities I'm added to in other divisions)
         $sharedActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if ($userStaffId) {
             $sharedQuery = clone $baseQuery;
             $sharedQuery->where('staff_id', $userStaffId)
                 ->whereHas('matrix', function ($query) use ($userDivisionId) {
-                    $query->where('division_id', '!=', $userDivisionId);
-                });
+                           $query->where('division_id', '!=', $userDivisionId);
+                       });
             $sharedActivities = $sharedQuery->latest()->paginate(20);
-
+            
             // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
             /*
             $sharedActivities->getCollection()->transform(function($activity) {
@@ -1331,14 +1331,14 @@ class ActivityController extends Controller
             $sharedActivities->setCollection($sharedActivities->getCollection()->filter()->values());
             */
         }
-
+        
         // Get divisions for filter
         $divisions = \App\Models\Division::orderBy('division_name')->get();
-
+        
         // Get years and quarters for filter
         $years = range($currentYear - 2, $currentYear + 2);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-
+        
         // Debug logging
         Log::info('Activities Index Debug', [
             'selectedYear' => $selectedYear,
@@ -1352,10 +1352,10 @@ class ActivityController extends Controller
             'baseQuerySQL' => $baseQuery->toSql(),
             'baseQueryBindings' => $baseQuery->getBindings()
         ]);
-
+        
         return view('activities.index', compact(
             'allActivities',
-            'myDivisionActivities',
+            'myDivisionActivities', 
             'sharedActivities',
             'divisions',
             'years',
@@ -1842,7 +1842,7 @@ class ActivityController extends Controller
                     $workflowInfo['current_level'] = $currentDefinition->role;
                     $currentApprover = $currentDefinition->approvers->first();
                     if ($currentApprover) {
-                        $workflowInfo['current_approver'] = $currentApprover->staff ?
+                        $workflowInfo['current_approver'] = $currentApprover->staff ? 
                             $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname : ($currentApprover->oicStaff ? $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname : 'N/A');
                     }
                 }
