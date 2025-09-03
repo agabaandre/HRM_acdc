@@ -26,6 +26,17 @@ return new class extends Migration
             }
         }
         
+        // First, ensure all existing data is valid for the new enum
+        // Update any invalid values to 'others' as a safe fallback
+        DB::table('workflow_definition')
+            ->whereNotIn('memo_print_section', ['from', 'to', 'through', 'others'])
+            ->update(['memo_print_section' => 'others']);
+        
+        // Also handle NULL values
+        DB::table('workflow_definition')
+            ->whereNull('memo_print_section')
+            ->update(['memo_print_section' => 'through']);
+        
         Schema::table('workflow_definition', function (Blueprint $table) {
             // Modify the memo_print_section column to add 'through' option and set it as default
             $table->enum('memo_print_section', ['from', 'to', 'through', 'others'])
@@ -40,6 +51,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // First, update any 'through' values to 'others' to avoid data truncation
+        DB::table('workflow_definition')
+            ->where('memo_print_section', 'through')
+            ->update(['memo_print_section' => 'others']);
+        
         Schema::table('workflow_definition', function (Blueprint $table) {
             // Revert back to the original enum without 'through' and without default
             $table->enum('memo_print_section', ['from', 'to', 'others'])
