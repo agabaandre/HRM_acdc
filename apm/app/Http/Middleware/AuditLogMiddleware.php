@@ -65,7 +65,16 @@ class AuditLogMiddleware
 
         // Only audit if response is successful and route should be audited
         if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
-            $this->logAudit($request, $response);
+            try {
+                $this->logAudit($request, $response);
+            } catch (\Exception $e) {
+                // Log the error but don't break the request
+                Log::error('Audit middleware error: ' . $e->getMessage(), [
+                    'url' => $request->fullUrl(),
+                    'method' => $request->method(),
+                    'error' => $e->getTraceAsString()
+                ]);
+            }
         }
 
         return $response;

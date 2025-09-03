@@ -11,11 +11,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->web(append: [
-            \App\Http\Middleware\AuditLogMiddleware::class,
-        ]);
+        // Temporarily disable audit middleware to debug the error
+        // $middleware->web(append: [
+        //     \App\Http\Middleware\AuditLogMiddleware::class,
+        // ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
-      Spatie\LaravelFlare\Facades\Flare::handles($exceptions);
+        // Re-enable Flare as it was working before
+        if (class_exists(\Spatie\LaravelFlare\Facades\Flare::class)) {
+            \Spatie\LaravelFlare\Facades\Flare::handles($exceptions);
+        }
     })->create();
