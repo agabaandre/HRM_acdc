@@ -131,6 +131,16 @@
                         </div>
                         
                         @if($myDivisionMatrices->count() > 0)
+                            <!-- Pagination Info -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="pagination-info text-muted small">
+                                    Showing {{ $myDivisionMatrices->firstItem() ?? 0 }} to {{ $myDivisionMatrices->lastItem() ?? 0 }} of {{ $myDivisionMatrices->total() }} results
+                                </div>
+                                <div class="text-muted small">
+                                    Page {{ $myDivisionMatrices->currentPage() }} of {{ $myDivisionMatrices->lastPage() }}
+                                </div>
+                            </div>
+                            
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-warning">
@@ -148,10 +158,9 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($myDivisionMatrices as $matrix)
+                                        @foreach($myDivisionMatrices as $index => $matrix)
                                             <tr>    
-                                                <td>{{ $count }}</td>
+                                                <td>{{ $myDivisionMatrices->firstItem() + $index }}</td>
                                                 <td>{{ $matrix->year }}</td>
                                                 <td>{{ $matrix->quarter }}</td>
                                                 <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
@@ -261,7 +270,6 @@
                                                     </div>
                                                 </td>
                                             </tr>
-                                            @php $count++; @endphp
                                         @endforeach
                                     </tbody>
                                 </table>
@@ -270,7 +278,7 @@
                             <!-- Pagination -->
                             @if($myDivisionMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $myDivisionMatrices->hasPages())
                                 <div class="d-flex justify-content-center mt-3">
-                                    {{ $myDivisionMatrices->appends(request()->query())->links() }}
+                                    {{ $myDivisionMatrices->appends(request()->except('my_division_page'))->links() }}
                                 </div>
                             @endif
                         @else
@@ -302,6 +310,16 @@
                         </div>
                         
                         @if($allMatrices->count() > 0)
+                            <!-- Pagination Info -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="pagination-info text-muted small">
+                                    Showing {{ $allMatrices->firstItem() ?? 0 }} to {{ $allMatrices->lastItem() ?? 0 }} of {{ $allMatrices->total() }} results
+                                </div>
+                                <div class="text-muted small">
+                                    Page {{ $allMatrices->currentPage() }} of {{ $allMatrices->lastPage() }}
+                                </div>
+                            </div>
+                            
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-primary">
@@ -319,10 +337,9 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($allMatrices as $matrix)
+                                        @foreach($allMatrices as $index => $matrix)
                                                 <tr>
-                                                    <td>{{ $count }}</td>
+                                                    <td>{{ $allMatrices->firstItem() + $index }}</td>
                                                     <td>{{ $matrix->year }}</td>
                                                     <td>{{ $matrix->quarter }}</td>
                                                     <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
@@ -432,7 +449,6 @@
                                                         </div>
                                                     </td>
                                                 </tr>
-                                                @php $count++; @endphp
                                         @endforeach
                                     </tbody>
                                 </table>
@@ -441,7 +457,7 @@
                             <!-- Pagination -->
                             @if($allMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMatrices->hasPages())
                                 <div class="d-flex justify-content-center mt-3">
-                                    {{ $allMatrices->appends(request()->query())->links() }}
+                                    {{ $allMatrices->appends(request()->except('all_matrices_page'))->links() }}
                                 </div>
                             @endif
                         @else
@@ -481,8 +497,47 @@
                     if (val) url.searchParams.set(id, val);
                     else url.searchParams.delete(id);
                 });
+                
+                // Clear pagination parameters when applying filters
+                url.searchParams.delete('my_division_page');
+                url.searchParams.delete('all_matrices_page');
+                
                 window.location.href = url.toString();
             });
+
+            // Handle tab switching to preserve pagination state
+            $('#matrixTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const target = $(e.target).attr('data-bs-target');
+                const url = new URL(window.location.href);
+                
+                // Clear the other tab's pagination parameter
+                if (target === '#myDivision') {
+                    url.searchParams.delete('all_matrices_page');
+                } else if (target === '#allMatrices') {
+                    url.searchParams.delete('my_division_page');
+                }
+                
+                // Update URL without reloading
+                window.history.replaceState({}, '', url.toString());
+            });
+
+            // Show pagination info
+            function updatePaginationInfo() {
+                $('.pagination-info').each(function() {
+                    const $pagination = $(this).closest('.tab-pane').find('.pagination');
+                    if ($pagination.length > 0) {
+                        const $paginationLinks = $pagination.find('a, span');
+                        const currentPage = $paginationLinks.filter('.active').text();
+                        const totalPages = $paginationLinks.filter('.page-link').length;
+                        
+                        if (currentPage && totalPages > 1) {
+                            $(this).text(`Page ${currentPage} of ${totalPages}`);
+                        }
+                    }
+                });
+            }
+            
+            updatePaginationInfo();
         });
     </script>
 @endpush
