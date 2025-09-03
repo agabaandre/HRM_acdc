@@ -42,13 +42,13 @@
                         <!-- Date Required -->
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label for="date_required" class="form-label fw-semibold">
+                                <label for="memo_date" class="form-label fw-semibold">
                                     <i class="bx bx-calendar me-1 text-success"></i> Date Required <span class="text-danger">*</span>
                                 </label>
-                                <input type="text" name="date_required" id="date_required" 
-                                       class="form-control datepicker @error('date_required') is-invalid @enderror" 
-                                       value="{{ old('date_required', $nonTravel->date_required) }}" required>
-                                @error('date_required')
+                                <input type="text" name="memo_date" id="memo_date" 
+                                       class="form-control datepicker @error('memo_date') is-invalid @enderror" 
+                                       value="{{ old('memo_date', $nonTravel->memo_date) }}" required>
+                                @error('memo_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -102,20 +102,20 @@
                 <!-- Section 2: Mission Details -->
                 <div class="mb-5">
                     <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                        <i class="fas fa-tasks me-2"></i> Mission Details
+                        <i class="fas fa-tasks me-2"></i> Details
                     </h6>
                     
                     <div class="row g-4">
                         <!-- Title -->
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="title" class="form-label fw-semibold">
+                                <label for="activity_title" class="form-label fw-semibold">
                                     <i class="bx bx-heading me-1 text-success"></i> Title of Activity <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="title" id="title" 
-                                          class="form-control @error('title') is-invalid @enderror" 
-                                          rows="2" required>{{ old('title', $nonTravel->title) }}</textarea>
-                                @error('title')
+                                <textarea name="activity_title" id="activity_title" 
+                                          class="form-control @error('activity_title') is-invalid @enderror" 
+                                          rows="2" required>{{ old('activity_title', $nonTravel->activity_title) }}</textarea>
+                                @error('activity_title')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -139,47 +139,19 @@
                         <!-- Description -->
                           <div class="col-md-6">
                             <div class="form-group">
-                                <label for="description" class="form-label fw-semibold">
-                                    <i class="bx bx-comment-detail me-1 text-success"></i> Description <span class="text-danger">*</span>
+                                    <label for="justification" class="form-label fw-semibold">
+                                    <i class="bx bx-comment-detail me-1 text-success"></i> Justification <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="description" id="description" 
-                                          class="form-control @error('description') is-invalid @enderror" 
-                                          rows="5" required>{{ old('description', $nonTravel->description) }}</textarea>
-                                @error('description')
+                                <textarea name="justification" id="justification" 
+                                          class="form-control @error('justification') is-invalid @enderror" 
+                                          rows="5" required>{{ old('justification', $nonTravel->justification) }}</textarea>
+                                @error('justification')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                      
-                        
-                        <!-- RA -->
-                          <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="approval" class="form-label fw-semibold">
-                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
-                                </label>
-                                <textarea name="approval" id="approval" 
-                                          class="form-control @error('approval') is-invalid @enderror" 
-                                          rows="2" required>{{ old('approval', $nonTravel->approval) }}</textarea>
-                                @error('approval')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                      
-                        
-                        <!-- Other Information -->
-                        <div class="col-12">
-                            <div class="form-group">
-                                <label for="other_information" class="form-label fw-semibold">
-                                    <i class="bx bx-info me-1 text-success"></i> Any Other Information
-                                </label>
-                                <textarea name="other_information" id="other_information" 
-                                          class="form-control" rows="2">{{ old('other_information', $nonTravel->other_information) }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+         
 
             
                 <!-- Budget Section -->
@@ -211,19 +183,9 @@
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
                         <script>
-                            // Populate budget codes with existing data
-                            document.addEventListener('DOMContentLoaded', function() {
-                                const existingBudgetCodes = @json($nonTravel->budget_id ? json_decode($nonTravel->budget_id, true) : []);
-                                if (existingBudgetCodes.length > 0) {
-                                    const budgetSelect = document.getElementById('budget_codes');
-                                    existingBudgetCodes.forEach(codeId => {
-                                        const option = budgetSelect.querySelector(`option[value="${codeId}"]`);
-                                        if (option) {
-                                            option.selected = true;
-                                        }
-                                    });
-                                }
-                            });
+                            // Store existing budget data for initialization
+                            window.existingBudgetCodes = @json($selectedBudgetCodes ?? []);
+                            window.existingBudgetBreakdown = @json($budgetBreakdown ?? []);
                         </script>
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
@@ -248,10 +210,23 @@
                             <i class="fas fa-coins me-2 text-success"></i>
                             Total Budget: <span class="text-success fw-bold">$<span id="grandBudgetTotal">0.00</span></span>
                         </h5>
-                        <input type="hidden" name="budget[grand_total]" id="grandBudgetTotalInput" value="0">
+                        <input type="hidden" name="budget_breakdown[grand_total]" id="grandBudgetTotalInput" value="0">
                     </div>
                 </div>
-
+               <!-- RA -->
+                          <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="activity_request_remarks" class="form-label fw-semibold">
+                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
+                                </label>
+                                    <textarea name="activity_request_remarks" id="activity_request_remarks" 
+                                          class="form-control @error('activity_request_remarks') is-invalid @enderror" 
+                                          rows="2" required>{{ old('activity_request_remarks', $nonTravel->activity_request_remarks) }}</textarea>
+                                @error('activity_request_remarks')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
                 <!-- Attachments Section -->
                 <div class="mt-5">
                     <h5 class="fw-bold text-success mb-3">
@@ -348,7 +323,7 @@
         });
 
         // Populate existing budget data
-        const existingBudget = @json($nonTravel->budget ? json_decode($nonTravel->budget, true) : []);
+        const existingBudget = @json($nonTravel->budget_breakdown ? json_decode($nonTravel->budget_breakdown, true) : []);
         const existingBudgetCodes = @json($nonTravel->budget_id ? json_decode($nonTravel->budget_id, true) : []);
         
         if (existingBudgetCodes.length > 0 && existingBudget.length > 0) {
@@ -484,19 +459,19 @@
             return `
                 <tr>
                     <td>
-                        <input type="text" name="budget[${codeId}][${index}][description]" 
+                        <input type="text" name="budget_breakdown[${codeId}][${index}][description]" 
                                class="form-control description" value="${description}" required>
                     </td>
                     <td>
-                        <input type="text" name="budget[${codeId}][${index}][unit]" 
+                        <input type="text" name="budget_breakdown[${codeId}][${index}][unit]" 
                                class="form-control unit" value="${unit}" required>
                     </td>
                     <td>
-                        <input type="number" name="budget[${codeId}][${index}][quantity]" 
+                        <input type="number" name="budget_breakdown[${codeId}][${index}][quantity]" 
                                class="form-control quantity" min="1" value="${quantity}" required>
                     </td>
                     <td>
-                        <input type="number" name="budget[${codeId}][${index}][unit_cost]" 
+                        <input type="number" name="budget_breakdown[${codeId}][${index}][unit_cost]" 
                                class="form-control unit-cost" min="0" step="0.01" value="${unitCost}" required>
                     </td>
                     <td class="total text-center">${total}</td>
@@ -590,6 +565,130 @@
                 $(fileInput).val(''); // Clear invalid file
             }
         });
+
+        // Initialize existing budget data - moved to global scope
+        window.initializeExistingBudgetData = function() {
+            console.log('Initializing existing budget data...');
+            console.log('Existing budget codes:', window.existingBudgetCodes);
+            console.log('Existing budget breakdown:', window.existingBudgetBreakdown);
+            console.log('Type of existingBudgetBreakdown:', typeof window.existingBudgetBreakdown);
+            console.log('Keys in existingBudgetBreakdown:', window.existingBudgetBreakdown ? Object.keys(window.existingBudgetBreakdown) : 'undefined');
+            
+            if (window.existingBudgetCodes && window.existingBudgetCodes.length > 0) {
+                // First, we need to get the fund type for the existing budget codes
+                // and set it automatically so the budget codes dropdown can be populated
+                const firstBudgetCode = window.existingBudgetCodes[0];
+                console.log('Getting fund type for budget code:', firstBudgetCode);
+                
+                // Get fund type from the budget code
+                $.get('{{ route("budget-codes.get-fund-type") }}', {
+                    budget_code_id: firstBudgetCode
+                }, function(fundTypeId) {
+                    console.log('Retrieved fund type ID:', fundTypeId);
+                    
+                    if (fundTypeId) {
+                        // Set the fund type
+                        $('#fund_type').val(fundTypeId).trigger('change');
+                        console.log('Set fund type to:', fundTypeId);
+                        
+                        // Wait for budget codes to load, then select existing codes
+                        setTimeout(() => {
+                            const budgetSelect = $('#budget_codes');
+                            console.log('Budget select found:', budgetSelect.length);
+                            console.log('Budget select options count:', budgetSelect.find('option').length);
+                            
+                            // Select existing budget codes
+                            window.existingBudgetCodes.forEach(codeId => {
+                                const option = budgetSelect.find(`option[value="${codeId}"]`);
+                                if (option.length) {
+                                    option.prop('selected', true);
+                                    console.log(`Selected budget code: ${codeId}`);
+                                } else {
+                                    console.log(`Budget code option not found: ${codeId}`);
+                                }
+                            });
+                            
+                            // Trigger change to create budget cards
+                            console.log('Triggering change event on budget select...');
+                            budgetSelect.trigger('change');
+                            
+                            // Load existing budget items after cards are created
+                            setTimeout(() => {
+                                console.log('About to call loadExistingBudgetItems...');
+                                window.loadExistingBudgetItems();
+                            }, 300);
+                        }, 1000); // Wait 1 second for fund type change to load budget codes
+                    } else {
+                        console.log('No fund type found for budget code:', firstBudgetCode);
+                    }
+                }).fail(function() {
+                    console.log('Failed to get fund type for budget code:', firstBudgetCode);
+                });
+            } else {
+                console.log('No existing budget codes found');
+            }
+        };
+        
+        // Load existing budget items into the cards - moved to global scope
+        window.loadExistingBudgetItems = function() {
+            console.log('loadExistingBudgetItems called');
+            console.log('window.existingBudgetBreakdown:', window.existingBudgetBreakdown);
+            console.log('Type of existingBudgetBreakdown:', typeof window.existingBudgetBreakdown);
+            console.log('Keys in existingBudgetBreakdown:', window.existingBudgetBreakdown ? Object.keys(window.existingBudgetBreakdown) : 'undefined');
+            
+            if (window.existingBudgetBreakdown && Object.keys(window.existingBudgetBreakdown).length > 0) {
+                console.log('Loading existing budget items...');
+                
+                try {
+                    Object.entries(window.existingBudgetBreakdown).forEach(([codeId, items]) => {
+                        console.log(`Processing codeId: ${codeId}, items:`, items);
+                        
+                        if (codeId === 'grand_total') {
+                            console.log('Skipping grand_total');
+                            return; // Skip grand total
+                        }
+                        
+                        const card = $(`.budget-card[data-code="${codeId}"]`);
+                        console.log(`Found card for codeId ${codeId}:`, card.length);
+                        
+                        if (card.length && items && items.length > 0) {
+                            console.log(`Loading ${items.length} items for code ${codeId}`);
+                            const tbody = card.find('.budget-items');
+                            tbody.empty(); // Clear existing rows
+                            
+                            items.forEach((item, index) => {
+                                console.log(`Creating budget row for item ${index}:`, item);
+                                console.log('createBudgetRow function exists:', typeof createBudgetRow);
+                                if (typeof createBudgetRow === 'function') {
+                                    const row = createBudgetRow(codeId, index, item);
+                                    console.log('Created row:', row);
+                                    tbody.append(row);
+                                } else {
+                                    console.error('createBudgetRow function not found!');
+                                }
+                            });
+                            
+                            // Update totals
+                            console.log('updateSubtotal function exists:', typeof updateSubtotal);
+                            console.log('updateGrandTotal function exists:', typeof updateGrandTotal);
+                            if (typeof updateSubtotal === 'function') {
+                                updateSubtotal(card);
+                            }
+                            if (typeof updateGrandTotal === 'function') {
+                                updateGrandTotal();
+                            }
+                            console.log(`Loaded ${items.length} budget items for code ${codeId}`);
+                        } else {
+                            console.log(`No card found or no items for codeId ${codeId}. Card length: ${card.length}, Items:`, items);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error loading existing budget items:', error);
+                }
+            } else {
+                console.log('No existing budget breakdown data found or empty object');
+            }
+        };
 
         // AJAX form submission
         $('#nonTravelForm').on('submit', function(e) {
@@ -720,6 +819,18 @@
                 updateGrandTotal();
             }
         });
+    });
+    
+    // Initialize existing budget data when document is ready
+    $(document).ready(function() {
+        // Set fund type first if it exists
+        const fundTypeId = $('#fund_type').val();
+        if (fundTypeId) {
+            $('#fund_type').trigger('change');
+        }
+        
+        // Initialize budget data after a short delay to ensure everything is loaded
+        setTimeout(window.initializeExistingBudgetData, 800);
     });
 </script>
 @endpush

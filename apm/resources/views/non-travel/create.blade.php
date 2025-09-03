@@ -135,20 +135,7 @@
                             </div>
                         </div>
                         
-                        <!-- Description -->
-                          <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="description" class="form-label fw-semibold">
-                                    <i class="bx bx-comment-detail me-1 text-success"></i> Description <span class="text-danger">*</span>
-                                </label>
-                                <textarea name="description" id="description" 
-                                          class="form-control @error('description') is-invalid @enderror" 
-                                          rows="5" required>{{ old('description') }}</textarea>
-                                @error('description')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
+                    
                      
                         
                         <!-- RA -->
@@ -230,7 +217,7 @@
                             <i class="fas fa-coins me-2 text-success"></i>
                             Total Budget: <span class="text-success fw-bold">$<span id="grandBudgetTotal">0.00</span></span>
                         </h5>
-                        <input type="hidden" name="budget[grand_total]" id="grandBudgetTotalInput" value="0">
+                        <input type="hidden" name="budget_breakdown[grand_total]" id="grandBudgetTotalInput" value="0">
                     </div>
                 </div>
 
@@ -435,19 +422,19 @@
             return `
                 <tr>
                     <td>
-                        <input type="text" name="budget[${codeId}][${index}][description]" 
+                        <input type="text" name="budget_breakdown[${codeId}][${index}][description]" 
                                class="form-control description" required>
                     </td>
                     <td>
-                        <input type="text" name="budget[${codeId}][${index}][unit]" 
+                        <input type="text" name="budget_breakdown[${codeId}][${index}][unit]" 
                                class="form-control unit" required>
                     </td>
                     <td>
-                        <input type="number" name="budget[${codeId}][${index}][quantity]" 
+                        <input type="number" name="budget_breakdown[${codeId}][${index}][quantity]" 
                                class="form-control quantity" min="1" value="1" required>
                     </td>
                     <td>
-                        <input type="number" name="budget[${codeId}][${index}][unit_cost]" 
+                        <input type="number" name="budget_breakdown[${codeId}][${index}][unit_cost]" 
                                class="form-control unit-cost" min="0" step="0.01" required>
                     </td>
                     <td class="total text-center">0.00</td>
