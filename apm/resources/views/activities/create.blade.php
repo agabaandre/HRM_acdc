@@ -2,7 +2,8 @@
 
 @php
     $title = $matrix->overall_status=='draft' ? ' Activity' : ' Single Memo';
-    $is_single_memo = $matrix->overall_status=='draft' ? false : true;
+    $is_single_memo = $matrix->overall_status=='draft' ? 0 : 1;
+   // dd($is_single_memo);
 @endphp
 
 @section('title', $title)

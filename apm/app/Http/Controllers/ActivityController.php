@@ -424,24 +424,8 @@ class ActivityController extends Controller
 
     public function store(Request $request, Matrix $matrix): RedirectResponse|JsonResponse
     {
-        if ($matrix->overall_status === 'approved') {
-            $message = 'Cannot create new activity. The matrix has been approved.';
-            
-            if ($request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'msg' => $message
-                ], 422);
-            }
-            
-            return redirect()
-                ->route('matrices.show', $matrix)
-                ->with([
-                    'msg' => $message,
-                    'type' => 'error'
-                ]);
-        }
-    
+ 
+   
         $userStaffId = session('user.auth_staff_id');
     
         return DB::transaction(function () use ($request, $matrix, $userStaffId) {
