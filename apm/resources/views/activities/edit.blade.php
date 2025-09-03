@@ -61,7 +61,7 @@
                         <!-- Empty column for spacing -->
                     </div>
                 </div>
-
+{{-- 
                 <div class="row g-4">
                     <div class="col-md-4">
                         <label for="key_result_link" class="form-label fw-semibold">
@@ -81,7 +81,7 @@
                             @endforeach
                         </select>
                     </div>
-                </div>
+                </div> --}}
 
                 <div class="row mt-3">
                     <div class="col-md-4 offset-md-8">
@@ -127,10 +127,10 @@
                                                 <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
                                                 <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
                                                 <td>
-                                                    <a href="{{ Storage::url($attachment['path']) }}" target="_blank" class="btn btn-sm btn-info">
+                                                    <a href="{{ url('storage/'.$attachment['path']) }}" target="_blank" class="btn btn-sm btn-info">
                                                         <i class="bx bx-show"></i> View
                                                     </a>
-                                                    <a href="{{ Storage::url($attachment['path']) }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
+                                                    <a href="{{ (url('storage/'.$attachment['path'])) }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
                                                         <i class="bx bx-download"></i> Download
                                                     </a>
                                                 </td>
@@ -152,7 +152,7 @@
                             @foreach($attachments as $index => $attachment)
                                 <div class="col-md-4 attachment-block">
                                     <label class="form-label">Document Type*</label>
-                                    <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}" required>
+                                    <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}">
                                     <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
                                     <small class="text-muted">Current: {{ $attachment['original_name'] ?? 'No file' }}</small>
                                     <small class="text-muted d-block">Leave empty to keep existing file</small>
@@ -171,11 +171,12 @@
                                 </div>
                             @endforeach
                         @else
-                            <div class="col-md-4 attachment-block">
-                                <label class="form-label">Document Type*</label>
-                                <input type="text" name="attachments[0][type]" class="form-control" required>
-                                <input type="file" name="attachments[]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" required>
-                                <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX</small>
+                            <!-- No default attachment field when no attachments exist -->
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    No attachments currently. Click "Add New" to add attachments.
+                                </div>
                             </div>
                         @endif
                     </div>
@@ -1055,17 +1056,19 @@ $(document).ready(function () {
     });
 
     // Attachment management
-    let attachmentIndex = {{ $attachments ? count($attachments) : 1 }};
+    let attachmentIndex = {{ $attachments ? count($attachments) : 0 }};
 
     $('#addAttachment').on('click', function () {
+        // Remove the info alert if it exists
+        $('.alert-info').remove();
+        
         const newField = `
             <div class="col-md-4 attachment-block">
                 <label class="form-label">Document Type*</label>
-                <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
+                <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control">
                 <input type="file" name="attachments[${attachmentIndex}][file]" 
                        class="form-control mt-1 attachment-input" 
-                       accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" 
-                       required>
+                       accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
                 <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX</small>
             </div>`;
         $('#attachmentContainer').append(newField);
@@ -1073,9 +1076,21 @@ $(document).ready(function () {
     });
 
     $('#removeAttachment').on('click', function () {
-        if ($('.attachment-block').length > 1) {
+        if ($('.attachment-block').length > 0) {
             $('.attachment-block').last().remove();
             attachmentIndex--;
+            
+            // If no more attachment blocks, show the info message
+            if ($('.attachment-block').length === 0) {
+                $('#attachmentContainer').html(`
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No attachments currently. Click "Add New" to add attachments.
+                        </div>
+                    </div>
+                `);
+            }
         }
     });
 });

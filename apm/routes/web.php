@@ -96,6 +96,10 @@ Route::get('/budget-codes/by-fund-type', [App\Http\Controllers\ActivityControlle
 Route::get('/budget-codes/get-fund-type', [App\Http\Controllers\ActivityController::class, 'getFundTypeByBudgetCode'])
     ->name('budget-codes.get-fund-type');
 
+// Route for Summernote image upload
+Route::post('/image/upload', [App\Http\Controllers\ImageController::class, 'upload'])
+    ->name('image.upload');
+
 Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function () {
     // Resource Routes
     Route::resource('fund-types', App\Http\Controllers\FundTypeController::class);

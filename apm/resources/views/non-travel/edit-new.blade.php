@@ -107,13 +107,13 @@
                     
                     <div class="row g-4">
                         <!-- Title -->
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="activity_title" class="form-label fw-semibold">
                                     <i class="bx bx-heading me-1 text-success"></i> Title of Activity <span class="text-danger">*</span>
                                 </label>
                                 <textarea name="activity_title" id="activity_title" 
-                                          class="form-control @error('activity_title') is-invalid @enderror" 
+                                          class="form-control  @error('activity_title') is-invalid @enderror" 
                                           rows="2" required>{{ old('activity_title', $nonTravel->activity_title) }}</textarea>
                                 @error('activity_title')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -122,13 +122,13 @@
                         </div>
                         
                            {{-- Background --}}
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="background" class="form-label fw-semibold">
                                     <i class="bx bx-info-circle me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                                 </label>
                                 <textarea name="background" id="background" 
-                                          class="form-control @error('background') is-invalid @enderror" 
+                                          class="form-control summernote @error('background') is-invalid @enderror" 
                                           rows="3" required>{{ old('background', $nonTravel->background) }}</textarea>
                                 @error('background')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -137,13 +137,13 @@
                         </div>
                         
                         <!-- Description -->
-                          <div class="col-md-6">
+                          <div class="col-md-12">
                             <div class="form-group">
                                     <label for="justification" class="form-label fw-semibold">
                                     <i class="bx bx-comment-detail me-1 text-success"></i> Justification <span class="text-danger">*</span>
                                 </label>
                                 <textarea name="justification" id="justification" 
-                                          class="form-control @error('justification') is-invalid @enderror" 
+                                          class="form-control summernote @error('justification') is-invalid @enderror" 
                                           rows="5" required>{{ old('justification', $nonTravel->justification) }}</textarea>
                                 @error('justification')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -214,13 +214,13 @@
                     </div>
                 </div>
                <!-- RA -->
-                          <div class="col-md-6">
+                          <div class="col-md-12">
                             <div class="form-group">
                                 <label for="activity_request_remarks" class="form-label fw-semibold">
                                     <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
                                 </label>
                                     <textarea name="activity_request_remarks" id="activity_request_remarks" 
-                                          class="form-control @error('activity_request_remarks') is-invalid @enderror" 
+                                          class="form-control summernote @error('activity_request_remarks') is-invalid @enderror" 
                                           rows="2" required>{{ old('activity_request_remarks', $nonTravel->activity_request_remarks) }}</textarea>
                                 @error('activity_request_remarks')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -232,16 +232,82 @@
                     <h5 class="fw-bold text-success mb-3">
                         <i class="fas fa-paperclip me-2"></i> Attachments
                     </h5>
+                    
+                    @if($attachments && count($attachments) > 0)
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Current Attachments:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Document Type</th>
+                                            <th>File Name</th>
+                                            <th>Size</th>
+                                            <th>Uploaded</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($attachments as $index => $attachment)
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>{{ $attachment['type'] ?? 'Document' }}</td>
+                                                <td>{{ $attachment['original_name'] ?? 'Unknown' }}</td>
+                                                <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
+                                                <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
+                                                <td>
+                                                    <a href="{{ url('storage/'.$attachment['path']) }}" target="_blank" class="btn btn-sm btn-info">
+                                                        <i class="bx bx-show"></i> View
+                                                    </a>
+                                                    <a href="{{ (url('storage/'.$attachment['path'])) }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
+                                                        <i class="bx bx-download"></i> Download
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="d-flex gap-2 mb-3">
                         <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
                         <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
                     </div>
                     <div class="row g-3" id="attachmentContainer">
-                        <div class="col-md-4 attachment-block">
-                            <label class="form-label">Document Type</label>
-                            <input type="text" name="attachments[0][type]" class="form-control">
-                            <input type="file" name="attachments[0][file]" class="form-control mt-1">
-                        </div>
+                        @if($attachments && count($attachments) > 0)
+                            @foreach($attachments as $index => $attachment)
+                                <div class="col-md-4 attachment-block">
+                                    <label class="form-label">Document Type*</label>
+                                    <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}">
+                                    <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
+                                    <small class="text-muted">Current: {{ $attachment['original_name'] ?? 'No file' }}</small>
+                                    <small class="text-muted d-block">Leave empty to keep existing file</small>
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="attachments[{{ $index }}][replace]" id="replace_{{ $index }}" value="1">
+                                        <label class="form-check-label" for="replace_{{ $index }}">
+                                            <small class="text-warning">Replace existing file</small>
+                                        </label>
+                                    </div>
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" name="attachments[{{ $index }}][delete]" id="delete_{{ $index }}" value="1">
+                                        <label class="form-check-label" for="delete_{{ $index }}">
+                                            <small class="text-danger">Delete this attachment</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                                                @else
+                            <!-- No default attachment field when no attachments exist -->
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    No attachments currently. Click "Add New" to add attachments.
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -321,6 +387,28 @@
             theme: 'bootstrap4',
             width: '100%'
         });
+
+        // Initialize Summernote only for fields with summernote class
+        if ($('.summernote').length > 0) {
+            $('.summernote').summernote({
+                height: 150,
+                fontNames: ['Arial'],
+                fontNamesIgnoreCheck: ['Arial'],
+                defaultFontName: 'Arial',
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['fontname', ['fontname']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link']],
+                    ['view', ['fullscreen', 'codeview', 'help']]
+                ]
+            });
+        }
+
+
 
         // Populate existing budget data
         const existingBudget = @json($nonTravel->budget_breakdown ? json_decode($nonTravel->budget_breakdown, true) : []);
@@ -529,18 +617,22 @@
         }
 
         // Attachments handling
-        let attachmentIndex = 1;
-        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+        let attachmentIndex = {{ ($attachments && is_array($attachments)) ? count($attachments) : 0 }};
+        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
 
         // Add new attachment block
         $('#addAttachment').on('click', function() {
+            // Remove the info alert if it exists
+            $('.alert-info').remove();
+            
             const newField = `
                 <div class="col-md-4 attachment-block">
-                    <label class="form-label">Document Type</label>
+                    <label class="form-label">Document Type*</label>
                     <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control">
                     <input type="file" name="attachments[${attachmentIndex}][file]" 
                            class="form-control mt-1 attachment-input" 
-                           accept=".pdf, .jpg, .jpeg, .png">
+                           accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
+                    <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX</small>
                 </div>`;
             $('#attachmentContainer').append(newField);
             attachmentIndex++;
@@ -548,21 +640,43 @@
 
         // Remove attachment block
         $('#removeAttachment').on('click', function() {
-            if ($('.attachment-block').length > 1) {
+            if ($('.attachment-block').length > 0) {
                 $('.attachment-block').last().remove();
                 attachmentIndex--;
+                
+                // If no more attachment blocks, show the info message
+                if ($('.attachment-block').length === 0) {
+                    $('#attachmentContainer').html(`
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No attachments currently. Click "Add New" to add attachments.
+                            </div>
+                        </div>
+                    `);
+                }
             }
         });
 
-        // Validate file extension on upload
+        // Validate file extension on upload and handle required attribute
         $(document).on('change', '.attachment-input', function() {
             const fileInput = this;
             const fileName = fileInput.files[0]?.name || '';
             const ext = fileName.split('.').pop().toLowerCase();
+            
+            // Find the corresponding type input
+            const typeInput = $(fileInput).closest('.attachment-block').find('input[name*="[type]"]');
 
             if (!allowedExtensions.includes(ext)) {
-                alert("Only PDF, JPG, JPEG, or PNG files are allowed.");
+                alert("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
                 $(fileInput).val(''); // Clear invalid file
+                typeInput.prop('required', false);
+            } else if (fileName) {
+                // File selected, make type required
+                typeInput.prop('required', true);
+            } else {
+                // No file selected, make type not required
+                typeInput.prop('required', false);
             }
         });
 
@@ -716,42 +830,31 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Populate modal with memo details
-                        $('#successMessage').text(response.message);
-                        $('#memoTitle').text(response.memo.title);
-                        $('#memoCategory').text(response.memo.category);
-                        $('#memoStatus').text(response.memo.status.charAt(0).toUpperCase() + response.memo.status.slice(1));
-                        $('#memoDate').text(response.memo.date_required);
-                        $('#memoBudget').text(response.memo.total_budget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                        $('#memoId').text(response.memo.id);
-                        $('#previewMemoBtn').attr('href', response.memo.preview_url);
+                        // Show success notification
+                        show_notification(response.message, 'success');
                         
-                        // Show success modal
-                        $('#successModal').modal('show');
-                        
-                        // Reset form
-                        form[0].reset();
-                        $('.select2').val(null).trigger('change');
-                        $('#budgetCards').empty();
-                        $('#grandBudgetTotal').text('0.00');
-                        $('#grandBudgetTotalInput').val('0.00');
-                        
-                        // Reset attachments
-                        $('.attachment-block:not(:first)').remove();
-                        attachmentIndex = 1;
+                        // For edit form, redirect to the memo view instead of showing modal
+                        setTimeout(function() {
+                            window.location.href = response.memo.preview_url;
+                        }, 1500);
                     }
                 },
                 error: function(xhr) {
-                    let errorMessage = 'An error occurred while submitting the memo.';
+                    let errorMessage = 'An error occurred while updating the memo.';
                     
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         const errors = xhr.responseJSON.errors;
                         errorMessage = Object.values(errors).flat().join('\n');
+                        show_notification(errorMessage, 'error');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
+                        show_notification(errorMessage, 'error');
+                    } else if (xhr.status === 422) {
+                        errorMessage = 'Validation failed. Please check your input and try again.';
+                        show_notification(errorMessage, 'error');
+                    } else {
+                        show_notification(errorMessage, 'error');
                     }
-                    
-                    alert('Error: ' + errorMessage);
                 },
                 complete: function() {
                     // Reset button state

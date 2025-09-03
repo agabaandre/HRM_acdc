@@ -128,12 +128,11 @@ class NonTravelMemoController extends Controller
             'location_id.*'                => 'exists:locations,id',
             'non_travel_memo_category_id'  => 'required|exists:non_travel_memo_categories,id',
             'title'                        => 'required|string|max:255',
-            'approval'                     => 'required|string',
             'background'                   => 'required|string',
-            'description'                  => 'required|string',
-            'other_information'            => 'nullable|string',
-            //'attachments'                  => 'nullable|array',
-           // 'attachments.*'                => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+            'justification'                => 'required|string',
+            'activity_request_remarks'     => 'nullable|string',
+            'attachments.*.type'           => 'required_with:attachments.*.file|string|max:255',
+            'attachments.*.file'           => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
             'budget_codes'                 => 'required|array|min:1',
             'budget_codes.*'               => 'exists:fund_codes,id',
             'budget_breakdown'             => 'required|array',
@@ -144,25 +143,48 @@ class NonTravelMemoController extends Controller
         $data['division_id'] = user_session('division_id');
 
         // Handle attachments
-        $files = [];
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $f) {
-                $path = $f->store('non-travel/attachments', 'public');
-                $files[] = [
-                    'name' => $f->getClientOriginalName(),
-                    'path' => $path,
-                    'size' => $f->getSize(),
-                    'mime_type' => $f->getMimeType(),
-                    'uploaded_at' => now()->toDateTimeString(),
-                ];
-            }
-        }
+       // Handle file uploads for attachments
+       $attachments = [];
+       if ($request->hasFile('attachments')) {
+           $uploadedFiles = $request->file('attachments');
+           $attachmentTypes = $request->input('attachments', []);
+           
+           foreach ($uploadedFiles as $index => $file) {
+               if ($file && $file->isValid()) {
+                   $type = $attachmentTypes[$index]['type'] ?? 'Document';
+                   
+                   // Validate file type
+                   $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                   $extension = strtolower($file->getClientOriginalExtension());
+                   
+                   if (!in_array($extension, $allowedExtensions)) {
+                       throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
+                   }
+                   
+                   // Generate unique filename
+                   $filename = time() . '_' . uniqid() . '.' . $extension;
+                   
+                   // Store file in public/uploads/activities directory
+                   $path = $file->storeAs('uploads/non-travel', $filename, 'public');
+                   
+                   $attachments[] = [
+                       'type' => $type,
+                       'filename' => $filename,
+                       'original_name' => $file->getClientOriginalName(),
+                       'path' => $path,
+                       'size' => $file->getSize(),
+                       'mime_type' => $file->getMimeType(),
+                       'uploaded_at' => now()->toDateTimeString()
+                   ];
+               }
+           }
+       }
 
         // Prepare JSON columns
         $locationJson = json_encode($data['location_id']);
         $budgetIdJson = json_encode($data['budget_codes']);
         $budgetBreakdownJson = json_encode($data['budget_breakdown']);
-        $attachmentsJson = json_encode($files);
+        $attachmentsJson = json_encode($attachments);
 
         // Determine status based on action
         $action = $request->input('action', 'draft');
@@ -181,8 +203,8 @@ class NonTravelMemoController extends Controller
             'budget_id' => $budgetIdJson,
             'activity_title' => $data['title'],
             'background' => $data['background'],
-            'activity_request_remarks' => $data['approval'],
-            'justification' => $data['description'],
+            'activity_request_remarks' => $data['activity_request_remarks'] ?? '',
+            'justification' => $data['justification'],
             'budget_breakdown' => $budgetBreakdownJson,
             'attachment' => $attachmentsJson,
             'forward_workflow_id' => $isDraft ? null : 1,
@@ -223,8 +245,9 @@ class NonTravelMemoController extends Controller
                             'fund_code_id' => $codeId,
                             'amount' => $total,
                             'description' => "Non-Travel Memo: {$data['title']} - Budget allocation",
-                            'activity_id' => null, // Non-travel memo doesn't have activity_id
-                            'matrix_id' => $memo->id,
+                            'activity_id' => $memo->id,
+                            'matrix_id' => null,
+                            'channel' => 'non_travel',
                             'activity_budget_id' => null,
                             'balance_before' => $balanceBefore,
                             'balance_after' => $balanceAfter,
@@ -350,7 +373,9 @@ class NonTravelMemoController extends Controller
         $budgetBreakdown = is_array($nonTravel->budget_breakdown) 
             ? $nonTravel->budget_breakdown 
             : (is_string($nonTravel->budget_breakdown) ? json_decode($nonTravel->budget_breakdown, true) : []);
-        
+         $attachments = is_string($nonTravel->attachment)
+            ? json_decode($nonTravel->attachment, true)
+            : ($nonTravel->attachment ?? []);
         // Debug: Log the budget data
         \Illuminate\Support\Facades\Log::info('NonTravelMemo Budget Debug', [
             'memo_id' => $nonTravel->id,
@@ -373,6 +398,7 @@ class NonTravelMemoController extends Controller
             'nonTravel', 
             'budgets', 
             'selectedBudgetCodes', 
+            'attachments',
             'budgetBreakdown',
             'categories', 
             'locations', 
@@ -382,9 +408,10 @@ class NonTravelMemoController extends Controller
         ));
     }
 
-    /** Update memo */
-    public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse
+    // /** Update memo */
+    public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse|\Illuminate\Http\JsonResponse
     {
+        //dd($request);
         // Check if memo is in draft status - only allow updating of drafts
         if ($nonTravel->overall_status !== 'draft') {
             return redirect()
@@ -398,32 +425,81 @@ class NonTravelMemoController extends Controller
             'location_id.*'                => 'exists:locations,id',
             'non_travel_memo_category_id'  => 'required|exists:non_travel_memo_categories,id',
             'activity_title'               => 'required|string|max:255',
-            'activity_request_remarks'     => 'required|string',
+            'activity_request_remarks'     => 'nullable|string',
             'background'                   => 'required|string',
             'justification'                => 'required|string',
-            'other_information'            => 'nullable|string',
+            'attachments.*.type'           => 'required_with:attachments|string|max:255',
+            'attachments.*.file'           => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
+            'attachments.*.replace'        => 'nullable|boolean',
+            'attachments.*.delete'         => 'nullable|boolean',
             'budget_breakdown'             => 'required|array|min:1',
         ]);
 
-        // Handle attachments
-        $files = $nonTravel->attachment ?? [];
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $f) {
-                $path = $f->store('non-travel/attachments', 'public');
-                $files[] = [
-                    'name' => $f->getClientOriginalName(),
-                    'path' => $path,
-                    'size' => $f->getSize(),
-                    'mime_type' => $f->getMimeType(),
-                    'uploaded_at' => now()->toDateTimeString(),
-                ];
-            }
-        }
-
+       // Handle file uploads for attachments
+       $attachments = [];
+       $existingAttachments = is_string($nonTravel->attachment) 
+           ? json_decode($nonTravel->attachment, true) 
+           : ($nonTravel->attachment ?? []);
+       
+       // Get attachment data from request
+       $attachmentData = $request->input('attachments', []);
+       
+       // Process each attachment slot
+       foreach ($attachmentData as $index => $attachmentInfo) {
+           $type = $attachmentInfo['type'] ?? 'Document';
+           $file = $request->file("attachments.{$index}.file");
+           $shouldReplace = isset($attachmentInfo['replace']) && $attachmentInfo['replace'] == '1';
+           $shouldDelete = isset($attachmentInfo['delete']) && $attachmentInfo['delete'] == '1';
+           
+           // Skip if user wants to delete this attachment
+           if ($shouldDelete) {
+               continue;
+           }
+           
+           if ($file && $file->isValid()) {
+               // New file uploaded - validate and store
+               $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+               $extension = strtolower($file->getClientOriginalExtension());
+               
+               if (!in_array($extension, $allowedExtensions)) {
+                   throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
+               }
+               
+               // Generate unique filename
+               $filename = time() . '_' . uniqid() . '.' . $extension;
+               
+               // Store file in public/uploads/activities directory
+               $path = $file->storeAs('uploads/non-travel', $filename, 'public');
+               
+               $attachments[] = [
+                   'type' => $type,
+                   'filename' => $filename,
+                   'original_name' => $file->getClientOriginalName(),
+                   'path' => $path,
+                   'size' => $file->getSize(),
+                   'mime_type' => $file->getMimeType(),
+                   'uploaded_at' => now()->toDateTimeString()
+               ];
+           } else {
+               // No new file uploaded - check if user wants to replace
+               if ($shouldReplace && isset($existingAttachments[$index])) {
+                   // User wants to replace but no new file provided - skip this attachment
+                   continue;
+               } elseif (isset($existingAttachments[$index])) {
+                   // Keep existing attachment
+                   $attachments[] = $existingAttachments[$index];
+               }
+           }
+       }
+       
+       // If no attachment data was provided, keep all existing attachments
+       if (empty($attachmentData)) {
+           $attachments = $existingAttachments;
+       }
         // Prepare JSON columns
         $locationJson = json_encode($data['location_id']);
         $budgetBreakdownJson = json_encode($data['budget_breakdown']);
-        $attachmentsJson = json_encode($files);
+        $attachmentsJson = json_encode($attachments);
 
         // Update the memo
         $nonTravel->update([
@@ -438,9 +514,152 @@ class NonTravelMemoController extends Controller
             'attachment' => $attachmentsJson,
         ]);
 
+        // Process fund code balance reductions and create transaction records (only for non-draft updates)
+        // if ($nonTravel->overall_status !== 'draft' && !empty($data['budget_breakdown'])) {
+        //     $budgetItems = $data['budget_breakdown'];
+            
+        //     // Get existing budget codes from the memo
+        //     $existingBudgetCodes = is_array($nonTravel->budget_id) 
+        //         ? $nonTravel->budget_id 
+        //         : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
+            
+        //     foreach ($existingBudgetCodes as $codeId) {
+        //         $total = 0;
+        //         if (isset($budgetItems[$codeId]) && is_array($budgetItems[$codeId])) {
+        //             foreach ($budgetItems[$codeId] as $item) {
+        //                 // Support both array and object
+        //                 $qty = isset($item['quantity']) ? $item['quantity'] : (isset($item->quantity) ? $item->quantity : 1);
+        //                 $unitCost = isset($item['unit_cost']) ? $item['unit_cost'] : (isset($item->unit_cost) ? $item->unit_cost : 0);
+        //                 $total += $qty * $unitCost;
+        //             }
+        //         }
+                
+        //         if ($total > 0) {
+        //             // Get current balance before reduction
+        //             $fundCode = FundCode::find($codeId);
+        //             if ($fundCode) {
+        //                 $balanceBefore = floatval($fundCode->budget_balance ?? 0);
+        //                 $balanceAfter = $balanceBefore - $total;
+                        
+        //                 // Reduce fund code balance using the helper
+        //                 //reduce_fund_code_balance($codeId, $total);
+                        
+        //                 // Create transaction record for audit trail
+        //                 FundCodeTransaction::updateOrCreate([
+        //                     'fund_code_id' => $codeId,
+        //                     'amount' => $total,
+        //                     'description' => "Non-Travel Memo Update: {$data['activity_title']} - Budget allocation",
+        //                     'activity_id' => $nonTravel->id,
+        //                     'matrix_id' => null,
+        //                     'channel' => 'non_travel',
+        //                     'activity_budget_id' => null,
+        //                     'balance_before' => $balanceBefore,
+        //                     'balance_after' => $balanceAfter,
+        //                     'is_reversal' => false,
+        //                     'created_by' => user_session('staff_id'),
+        //                 ]);
+
+                        
+        //                 // Log the balance change
+        //                 // \Illuminate\Support\Facades\Log::info('Fund code balance reduced for non-travel memo update', [
+        //                 //     'fund_code_id' => $codeId,
+        //                 //     'fund_code' => $fundCode->code,
+        //                 //     'non_travel_memo_id' => $nonTravel->id,
+        //                 //     'amount_reduced' => $total,
+        //                 //     'balance_before' => $balanceBefore,
+        //                 //     'balance_after' => $balanceAfter,
+        //                 //     'staff_id' => user_session('staff_id'),
+        //                 //     'activity_title' => $data['activity_title']
+        //                 // ]);
+        //             }
+        //         }
+        //     }
+        // }
+
+        // If it's an AJAX request, return JSON response
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Non-travel memo updated successfully.',
+                'memo' => [
+                    'id' => $nonTravel->id,
+                    'title' => $nonTravel->activity_title,
+                    'category' => $nonTravel->nonTravelMemoCategory->name ?? 'N/A',
+                    'status' => $nonTravel->overall_status,
+                    'date_required' => $nonTravel->memo_date,
+                    'total_budget' => $this->calculateTotalBudget($data['budget_breakdown']),
+                    'preview_url' => route('non-travel.show', $nonTravel->id)
+                ]
+            ]);
+        }
+
         return redirect()->route('non-travel.show', $nonTravel)
             ->with('success', 'Non-travel memo updated successfully.');
     }
+
+    // public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse
+    // {
+
+    //     //dd($request);
+    //     // Check if memo is in draft status - only allow updating of drafts
+    //     if ($nonTravel->overall_status !== 'draft') {
+    //         return redirect()
+    //             ->route('non-travel.show', $nonTravel)
+    //             ->with('error', 'Cannot update memo. Only draft memos can be updated.');
+    //     }
+
+    //     $data = $request->validate([
+    //         'memo_date'                    => 'required|date',
+    //         'location_id'                  => 'required|array|min:1',
+    //         'location_id.*'                => 'exists:locations,id',
+    //         'non_travel_memo_category_id'  => 'required|exists:non_travel_memo_categories,id',
+    //         'activity_title'               => 'required|string|max:255',
+    //         'activity_request_remarks'     => 'required|string',
+    //         'background'                   => 'required|string',
+    //         'justification'                => 'required|string',
+    //         'other_information'            => 'nullable|string',
+    //         'budget_breakdown'             => 'required|array|min:1',
+    //     ]);
+
+    //     // Handle attachments
+    //     // $files = $nonTravel->attachment ?? [];
+    //     // if ($request->hasFile('attachments')) {
+    //     //     foreach ($request->file('attachments') as $f) {
+    //     //         $path = $f->store('non-travel/attachments', 'public');
+    //     //         $files[] = [
+    //     //             'name' => $f->getClientOriginalName(),
+    //     //             'path' => $path,
+    //     //             'size' => $f->getSize(),
+    //     //             'mime_type' => $f->getMimeType(),
+    //     //             'uploaded_at' => now()->toDateTimeString(),
+    //     //         ];
+    //     //     }
+    //     // }
+
+    //     // Prepare JSON columns
+    //     $locationJson = json_encode($data['location_id']);
+    //     $budgetBreakdownJson = json_encode($data['budget_breakdown']);
+    //     $attachmentsJson = json_encode($nonTravel->attachment);
+
+    //     // Update the memo
+    //     $nonTravel->update([
+    //         'memo_date' => $data['memo_date'],
+    //         'location_id' => $locationJson,
+    //         'non_travel_memo_category_id' => $data['non_travel_memo_category_id'],
+    //         'activity_title' => $data['activity_title'],
+    //         'activity_request_remarks' => $data['activity_request_remarks'],
+    //         'background' => $data['background'],
+    //         'justification' => $data['justification'],
+    //         'budget_breakdown' => $budgetBreakdownJson,
+    //         'attachment' => $attachmentsJson,
+    //     ]);
+
+    //     return redirect()->route('non-travel.show', $nonTravel)
+    //         ->with('success', 'Non-travel memo updated successfully.');
+    // }
+
+    
+    
 
     /** Delete memo and its files */
     public function destroy(NonTravelMemo $nonTravel): RedirectResponse

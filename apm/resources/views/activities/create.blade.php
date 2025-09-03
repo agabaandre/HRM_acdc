@@ -978,6 +978,11 @@ $(document).on('change', '.attachment-input', function () {
     show_notification(`File "${fileName}" selected successfully.`, "success");
 });
 
+// Reload page when success modal is closed
+$('#successModal').on('hidden.bs.modal', function () {
+    window.location.reload();
+});
+
 
 </script>
 
