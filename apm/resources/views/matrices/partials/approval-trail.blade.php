@@ -1,23 +1,10 @@
 <style>
-html {
-  font-size: 14px;
-}
-body {
-  background: #f6f9fc;
-  font-family: "Open Sans", sans-serif;
-  color: #525f7f;
-}
-h2{
-  margin: 5%;
-  text-align: center;
-  font-size: 2rem;
-  font-weight: 100;
-}
 .timeline {
   display: flex;
   flex-direction: column;
-  width: 50vw;
-  margin: 5% auto;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 0;
 
   &__event {
     background: #fff;
@@ -26,211 +13,246 @@ h2{
     display: flex;
     margin: 20px 0;
     border-radius: 8px;
-    box-shadow: 0 30px 60px -12px rgba(50, 50, 93, 0.25),
-      0 18px 36px -18px rgba(0, 0, 0, 0.3),
-      0 -12px 36px -8px rgba(0, 0, 0, 0.025);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border-left: 4px solid #e5e7eb;
 
     &__title {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       line-height: 1.4;
-      text-transform: uppercase;
-
       font-weight: 600;
-      color: #9251ac;
-      letter-spacing: 1.5px;
+      color: #374151;
+      margin-bottom: 8px;
     }
     &__content {
       padding: 20px;
+      flex: 1;
     }
     &__date {
-      color: #f6a4ec;
-      font-size: 1.5rem;
-      font-weight: 600;
-      white-space: nowrap;
+      color: #6b7280;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 8px;
     }
     &__icon {
       border-radius: 8px 0 0 8px;
-      background: #9251ac;
+      background: #f3f4f6;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-basis: 40%;
-      font-size: 2rem;
-      color: #9251ac;
+      flex-basis: 80px;
+      font-size: 1.5rem;
+      color: #6b7280;
       padding: 20px;
-
-      i {
-        position: absolute;
-        top: 50%;
-        left:-65px;
-        font-size: 2.5rem;
-      transform: translateY(-50%);
-        
-      }
+      min-width: 80px;
     }
     &__description {
-      flex-basis: 60%;
+      flex: 1;
+    }
+    &__badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-left: 8px;
+    }
+    &__remarks {
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: #f9fafb;
+      border-radius: 6px;
+      border-left: 3px solid #d1d5db;
     }
 
     &:after {
       content: "";
       width: 2px;
       height: 100%;
-      background: #9251ac;
+      background: #e5e7eb;
       position: absolute;
-      top: 52%;
-      // transform: translateY(-50%);
-      left: -3.5rem;
-      z-index: -1;
-      
-    
+      top: 0;
+      left: 40px;
+      z-index: 1;
     }
 
     &:before {
       content: "";
-      width: 5rem;
-      height: 5rem;
+      width: 20px;
+      height: 20px;
       position: absolute;
-      background: #f6a4ec;
+      background: #e5e7eb;
       border-radius: 100%;
-      left: -6rem;
-      // right: 90%;
-      top: 50%;
+      left: 30px;
+      top: 20px;
       transform: translateY(-50%);
-      border: 2px solid #9251ac;
+      border: 3px solid #fff;
+      z-index: 2;
     }
-    &--type2 {
+
+    // Approved status
+    &--approved {
+      border-left-color: #10b981;
       &:before {
-        background: #87bbfe;
-        border-color: #555ac0;
+        background: #10b981;
       }
-      &:after{
-        background: #555ac0;
-  
+      &:after {
+        background: #10b981;
       }
-      .timeline__event__date {
-        color: #87bbfe;
-      }
-
       .timeline__event__icon {
-        background: #555ac0;
-        color: #555ac0;
+        background: #d1fae5;
+        color: #10b981;
       }
-      .timeline__event__title {
-        color: #555ac0;
-      }
-      .timeline__event__title {
+      .timeline__event__badge {
+        background: #d1fae5;
+        color: #065f46;
       }
     }
 
-    &--type3 {
+    // Rejected status
+    &--rejected {
+      border-left-color: #ef4444;
       &:before {
-        background: #aff1b6;
-        border-color: #24b47e;
+        background: #ef4444;
       }
-      &:after{
-        background: #24b47e;
-  
+      &:after {
+        background: #ef4444;
       }
-      .timeline__event__date {
-        color: #aff1b6;
-      }
-
       .timeline__event__icon {
-        background: #24b47e;
-        color: #24b47e;
+        background: #fee2e2;
+        color: #ef4444;
       }
-      .timeline__event__title {
-        color: #24b47e;
-      }
-      .timeline__event__title {
+      .timeline__event__badge {
+        background: #fee2e2;
+        color: #991b1b;
       }
     }
-      &:last-child{
 
-        &:after{
-          content: none;
-        }
+    // Submitted status
+    &--submitted {
+      border-left-color: #3b82f6;
+      &:before {
+        background: #3b82f6;
+      }
+      &:after {
+        background: #3b82f6;
+      }
+      .timeline__event__icon {
+        background: #dbeafe;
+        color: #3b82f6;
+      }
+      .timeline__event__badge {
+        background: #dbeafe;
+        color: #1e40af;
+      }
     }
-    
+
+    // Returned status
+    &--returned {
+      border-left-color: #f59e0b;
+      &:before {
+        background: #f59e0b;
+      }
+      &:after {
+        background: #f59e0b;
+      }
+      .timeline__event__icon {
+        background: #fef3c7;
+        color: #f59e0b;
+      }
+      .timeline__event__badge {
+        background: #fef3c7;
+        color: #92400e;
+      }
+    }
+
+    &:last-child {
+      &:after {
+        content: none;
+      }
+    }
   }
 }
 
-@media (max-width: 786px) {
+@media (max-width: 768px) {
   .timeline__event {
     flex-direction: column;
   }
   .timeline__event__icon {
-    border-radius: 4px 4px 0 0;
+    border-radius: 8px 8px 0 0;
+    flex-basis: auto;
+    min-width: auto;
+  }
+  .timeline__event:before {
+    left: 20px;
+  }
+  .timeline__event:after {
+    left: 30px;
   }
 }
 </style>
 
-<div class="timeline">
-  <div class="timeline__event  animated fadeInUp delay-3s timeline__event--type1">
-    <div class="timeline__event__icon ">
-      <i class="lni-cake"></i>
-      <div class="timeline__event__date">
-        20-08-2019
-      </div>
+<div class="card shadow-sm border-0 rounded-3">
+    <div class="card-header bg-white border-bottom">
+        <h6 class="mb-0 text-success">
+            <i class="fas fa-history me-2"></i>Approval Trail
+        </h6>
     </div>
-    <div class="timeline__event__content ">
-      <div class="timeline__event__title">
-        Birthday
-      </div>
-      <div class="timeline__event__description">
-        <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vel, nam! Nam eveniet ut aliquam ab asperiores, accusamus iure veniam corporis incidunt reprehenderit accusantium id aut architecto harum quidem dolorem in!</p>
-      </div>
+    <div class="card-body p-4">
+        <div class="timeline">
+            @forelse($trails as $trail)
+                <div class="timeline__event timeline__event--{{ strtolower($trail->action) }}">
+                    <div class="timeline__event__icon">
+                        @if(strtolower($trail->action) === 'approved' || strtolower($trail->action) === 'passed')
+                            <i class="bx bx-check"></i>
+                        @elseif(strtolower($trail->action) === 'rejected' || strtolower($trail->action) === 'flagged')
+                            <i class="bx bx-x"></i>
+                        @elseif(strtolower($trail->action) === 'submitted')
+                            <i class="bx bx-time"></i>
+                        @elseif(strtolower($trail->action) === 'returned')
+                            <i class="bx bx-undo"></i>
+                        @else
+                            <i class="bx bx-info-circle"></i>
+                        @endif
+                    </div>
+                    <div class="timeline__event__content">
+                        <div class="timeline__event__date">
+                            {{ $trail->created_at->format('j') }}<sup>{{ $trail->created_at->format('S') }}</sup> {{ $trail->created_at->format('F, Y g:i a') }}
+                        </div>
+                        <div class="timeline__event__title">
+                            {{ $trail->staff->name ?? 'N/A' }} 
+                            <span class="text-muted">({{ $trail->approver_role_name ?? 'Focal Person' }})</span>
+                            <span class="timeline__event__badge">
+                                {{ ucfirst($trail->action) }}
+                            </span>
+                        </div>
+                        @if($trail->action === 'returned' || $trail->action === 'flagged' || $trail->action === 'rejected')
+                            @if($trail->comments || $trail->remarks)
+                                <div class="timeline__event__remarks">
+                                    <strong>Remarks:</strong> {{ $trail->comments ?? $trail->remarks }}
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <div class="timeline__event">
+                    <div class="timeline__event__icon">
+                        <i class="bx bx-time"></i>
+                    </div>
+                    <div class="timeline__event__content">
+                        <div class="timeline__event__title">
+                            No approval trail found
+                        </div>
+                        <div class="timeline__event__description">
+                            <p class="text-muted">No approval history is available for this item.</p>
+                        </div>
+                    </div>
+                </div>
+            @endforelse
+        </div>
     </div>
-  </div>
-  <div class="timeline__event animated fadeInUp delay-2s timeline__event--type2">
-    <div class="timeline__event__icon">
-      <i class="lni-burger"></i>
-      <div class="timeline__event__date">
-        20-08-2019
-      </div>
-    </div>
-    <div class="timeline__event__content">
-      <div class="timeline__event__title">
-        Lunch
-      </div>
-      <div class="timeline__event__description">
-        <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vel, nam! Nam eveniet ut aliquam ab asperiores, accusamus iure veniam corporis incidunt reprehenderit accusantium id aut architecto harum quidem dolorem in!</p>
-      </div>
-    </div>
-  </div>
-  <div class="timeline__event animated fadeInUp delay-1s timeline__event--type3">
-    <div class="timeline__event__icon">
-      <i class="lni-slim"></i>
-      <div class="timeline__event__date">
-        20-08-2019
-      </div>
-    </div>
-    <div class="timeline__event__content">
-      <div class="timeline__event__title">
-        Exercise
-      </div>
-      <div class="timeline__event__description">
-        <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vel, nam! Nam eveniet ut aliquam ab asperiores, accusamus iure veniam corporis incidunt reprehenderit accusantium id aut architecto harum quidem dolorem in!</p>
-      </div>
-
-    </div>
-  </div>
-  <div class="timeline__event animated fadeInUp timeline__event--type1">
-    <div class="timeline__event__icon">
-      <i class="lni-cake"></i>
-      <div class="timeline__event__date">
-        20-08-2019
-      </div>
-    </div>
-    <div class="timeline__event__content">
-      <div class="timeline__event__title">
-        Birthday
-      </div>
-      <div class="timeline__event__description">
-        <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vel, nam! Nam eveniet ut aliquam ab asperiores, accusamus iure veniam corporis incidunt reprehenderit accusantium id aut architecto harum quidem dolorem in!</p>
-      </div>
-    </div>
-  </div>
-
 </div>
