@@ -4,181 +4,174 @@
 
 @section('header', 'Matrix Approval Status')
 
+@section('header-actions')
+    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
+        <i class="bx bx-arrow-back me-1"></i> Back to Matrix
+    </a>
+    @if($matrix->overall_status === 'approved')
+        <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-success">
+            <i class="bx bx-check-circle me-1"></i> View Approved Matrix
+        </a>
+    @endif
+    @if(still_with_creator($matrix))
+        <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning">
+            <i class="bx bx-edit me-1"></i> Edit Matrix
+        </a>
+    @endif
+@endsection
+
 @section('content')
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
-        <div class="col-lg-10">
+        <div class="col-lg-12">
             <!-- Header Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="bx bx-info-circle me-2 text-primary"></i>Approval Status & Workflow
+            <div class="card shadow-sm border-0 mb-4 rounded-3">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0 text-success">
+                        <i class="fas fa-info-circle me-2"></i>Approval Status & Workflow
                     </h5>
-                    <div>
-                        <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-primary btn-sm">
-                            <i class="bx bx-arrow-back me-1"></i> Back to Matrix
-                        </a>
-                        @if($matrix->overall_status === 'approved')
-                            <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-success btn-sm">
-                                <i class="bx bx-check-circle me-1"></i> View Approved Matrix
-                            </a>
-                        @endif
-                        @if(still_with_creator($matrix))
-                            <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm">
-                                <i class="bx bx-edit me-1"></i> Edit Matrix
-                            </a>
-                        @endif
+                </div>
+                  <!-- Current Supervisor Information -->
+            @if($matrix->overall_status !== 'approved' && $matrix->overall_status !== 'rejected' && $matrix->current_actor)
+                <div class="card shadow-sm border-0 mb-4 rounded-3" style="border-left: 4px solid #28a745;">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="mb-0 text-success">
+                            <i class="fas fa-user-check me-2"></i>Current Approver Information
+                        </h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label fw-semibold text-muted">
+                                        <i class="bx bx-user me-1 text-success"></i>Current Approver Name
+                                    </label>
+                                    <div class="fw-bold text-success fs-5">{{ $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                @if($matrix->workflow_definition)
+                                    <div class="form-group">
+                                        <label class="form-label fw-semibold text-muted">
+                                            <i class="bx bx-shield me-1 text-success"></i>Approval Role
+                                        </label>
+                                        <div>
+                                            <span class="badge bg-info fs-6 px-3 py-2">{{ $matrix->workflow_definition->role ?? 'Not specified' }}</span>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
+            @endif
+                <div class="card-body p-4">
+                    <div class="row g-4">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <strong class="text-muted">Matrix ID:</strong> 
-                                <span class="fw-bold">#{{ $matrix->id }}</span>
+                            <div class="form-group">
+                                <label class="form-label fw-semibold text-muted">
+                                    <i class="bx bx-hash me-1 text-success"></i>Matrix ID
+                                </label>
+                                <div class="fw-bold text-dark">#{{ $matrix->id }}</div>
                             </div>
-                            <div class="mb-3">
-                                <strong class="text-muted">Title:</strong> 
-                                <span class="fw-bold">{{ $matrix->title ?? 'Not specified' }}</span>
+                            <div class="form-group">
+                                <label class="form-label fw-semibold text-muted">
+                                    <i class="bx bx-edit me-1 text-success"></i>Title
+                                </label>
+                                <div class="fw-bold text-dark">{{ $matrix->title ?? 'Not specified' }}</div>
                             </div>
-                            <div class="mb-3">
-                                <strong class="text-muted">Focal Person:</strong> 
-                                <span class="fw-bold">{{ $matrix->focalPerson ? ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 'Not assigned' }}</span>
+                            <div class="form-group">
+                                <label class="form-label fw-semibold text-muted">
+                                    <i class="bx bx-user me-1 text-success"></i>Focal Person
+                                </label>
+                                <div class="fw-bold text-dark">{{ $matrix->focalPerson ? ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 'Not assigned' }}</div>
                             </div>
-                            <div class="mb-3">
-                                <strong class="text-muted">Division:</strong> 
-                                <span class="fw-bold">{{ $matrix->division ? $matrix->division->division_name : 'Not assigned' }}</span>
+                            <div class="form-group">
+                                <label class="form-label fw-semibold text-muted">
+                                    <i class="bx bx-buildings me-1 text-success"></i>Division
+                                </label>
+                                <div class="fw-bold text-dark">{{ $matrix->division ? $matrix->division->division_name : 'Not assigned' }}</div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <strong class="text-muted">Status:</strong> 
-                                <span class="badge bg-{{ $matrix->overall_status === 'approved' ? 'success' : ($matrix->overall_status === 'pending' ? 'warning' : ($matrix->overall_status === 'rejected' ? 'danger' : 'secondary')) }} fs-6">
-                                    {{ ucfirst($matrix->overall_status ?? 'draft') }}
-                                </span>
+                            <div class="form-group">
+                                <label class="form-label fw-semibold text-muted">
+                                    <i class="bx bx-check-circle me-1 text-success"></i>Status
+                                </label>
+                                <div>
+                                    <span class="badge bg-{{ $matrix->overall_status === 'approved' ? 'success' : ($matrix->overall_status === 'pending' ? 'warning' : ($matrix->overall_status === 'rejected' ? 'danger' : 'secondary')) }} fs-6 px-3 py-2">
+                                        {{ ucfirst($matrix->overall_status ?? 'draft') }}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <strong class="text-muted">Approval Level:</strong> 
-                                <span class="badge bg-primary fs-6">{{ $matrix->approval_level ?? 0 }}</span>
+                            <div class="form-group">
+                                <label class="form-label fw-semibold text-muted">
+                                    <i class="bx bx-layer me-1 text-success"></i>Approval Level
+                                </label>
+                                <div>
+                                    <span class="badge bg-primary fs-6 px-3 py-2">{{ $matrix->approval_level ?? 0 }}</span>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <strong class="text-muted">Current Workflow:</strong> 
-                                <span class="fw-bold">{{ $matrix->forwardWorkflow->workflow_name ?? 'Not assigned' }}</span>
+                            <div class="form-group">
+                                <label class="form-label fw-semibold text-muted">
+                                    <i class="bx bx-git-branch me-1 text-success"></i>Current Workflow
+                                </label>
+                                <div class="fw-bold text-dark">{{ $matrix->forwardWorkflow->workflow_name ?? 'Not assigned' }}</div>
                             </div>
-                            <div class="mb-3">
-                                <strong class="text-muted">Created:</strong> 
-                                <span class="fw-bold">{{ $matrix->created_at ? $matrix->created_at->format('M d, Y H:i') : 'Not available' }}</span>
+                            <div class="form-group">
+                                <label class="form-label fw-semibold text-muted">
+                                    <i class="bx bx-calendar me-1 text-success"></i>Created
+                                </label>
+                                <div class="fw-bold text-dark">{{ $matrix->created_at ? $matrix->created_at->format('M d, Y H:i') : 'Not available' }}</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Current Supervisor Information -->
-            @if($matrix->overall_status !== 'approved' && $matrix->overall_status !== 'rejected' && $matrix->current_actor)
-                <div class="card shadow-sm mb-4" style="border-left: 4px solid #3b82f6;">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0">
-                            <i class="bx bx-user-check me-2 text-primary"></i>Current Supervisor Information
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <strong class="text-muted">Supervisor Name:</strong> 
-                                    <span class="fw-bold text-primary fs-5">{{ $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname }}</span>
-                                </div>
-                                @if($matrix->current_actor->job_name)
-                                    <div class="mb-3">
-                                        <strong class="text-muted">Job Title:</strong> 
-                                        <span class="fw-bold">{{ $matrix->current_actor->job_name }}</span>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="col-md-6">
-                                @if($matrix->current_actor->division_name)
-                                    <div class="mb-3">
-                                        <strong class="text-muted">Division:</strong> 
-                                        <span class="fw-bold">{{ $matrix->current_actor->division_name }}</span>
-                                    </div>
-                                @endif
-                                @if($matrix->workflow_definition)
-                                    <div class="mb-3">
-                                        <strong class="text-muted">Approval Role:</strong> 
-                                        <span class="badge bg-info">{{ $matrix->workflow_definition->role ?? 'Not specified' }}</span>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="mt-3 p-3 bg-primary bg-opacity-10 rounded">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="bx bx-info-circle text-primary"></i>
-                                <span class="text-primary fw-medium">This matrix is currently awaiting approval from the supervisor above.</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
+          
 
             <!-- Approval Levels Overview -->
             @if(!empty($approvalLevels))
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0">
-                            <i class="bx bx-layer-group me-2 text-primary"></i>Approval Levels Overview
+                <div class="card shadow-sm border-0 mb-4 rounded-3">
+                    <div class="card-header bg-white border-bottom">
+                        <h6 class="mb-0 text-success">
+                            <i class="fas fa-layer-group me-2"></i>Approval Levels Overview
                         </h6>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
+                    <div class="card-body p-4">
+                        <div class="row g-2">
                             @foreach($approvalLevels as $level)
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <div class="card border-0 h-100 {{ $level['is_current'] ? 'border-primary border-2' : '' }}" 
-                                         style="background: {{ $level['is_completed'] ? '#d1fae5' : ($level['is_pending'] ? '#fef3c7' : '#f3f4f6') }};">
-                                        <div class="card-body p-3">
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <span class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_pending'] ? 'warning' : 'secondary') }} fs-6">
-                                                    Level {{ $level['order'] }}
+                                <div class="col-md-3 col-lg-2">
+                                    <div class="card border-0 shadow-sm rounded-circle {{ $level['is_current'] ? 'border-success border-2' : '' }}" 
+                                         style="background: {{ $level['is_completed'] ? '#d1fae5' : ($level['is_pending'] ? '#fef3c7' : '#f8f9fa') }}; width: 120px; height: 120px; margin: 0 auto;">
+                                        <div class="card-body p-2 d-flex flex-column justify-content-center align-items-center text-center">
+                                            <div class="mb-1">
+                                                <span class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_pending'] ? 'warning' : 'secondary') }} fs-6 px-1 py-1">
+                                                    {{ $level['order'] }}
                                                 </span>
-                                                @if($level['is_current'])
-                                                    <span class="badge bg-primary">Current</span>
-                                                @elseif($level['is_completed'])
-                                                    <span class="badge bg-success">✓ Completed</span>
-                                                @elseif($level['is_pending'])
-                                                    <span class="badge bg-warning">⏳ Pending</span>
-                                                @else
-                                                    <span class="badge bg-secondary">Waiting</span>
-                                                @endif
                                             </div>
                                             
-                                            <h6 class="fw-bold mb-2">{{ $level['role'] ?? 'Role Not Specified' }}</h6>
+                                            <h6 class="fw-bold mb-1 text-dark small" style="font-size: 0.7rem; line-height: 1.1;">{{ $level['role'] ?? 'Role' }}</h6>
                                             
                                             @if($level['approver'])
-                                                <div class="mb-2">
-                                                    <small class="text-muted">Approver:</small><br>
-                                                    <strong>{{ $level['approver']->fname . ' ' . $level['approver']->lname }}</strong>
+                                                <div class="mb-1">
+                                                    <div class="fw-bold text-dark small" style="font-size: 0.6rem; line-height: 1.1;">{{ $level['approver']->fname . ' ' . $level['approver']->lname }}</div>
                                                 </div>
                                             @else
-                                                <div class="mb-2">
-                                                    <small class="text-muted">Approver:</small><br>
-                                                    <span class="text-muted">Not assigned</span>
+                                                <div class="mb-1">
+                                                    <div class="text-muted small" style="font-size: 0.6rem;">Not assigned</div>
                                                 </div>
                                             @endif
                                             
-                                            @if($level['is_division_specific'])
-                                                <div class="mb-2">
-                                                    <span class="badge bg-info">Division Specific</span>
-                                                    @if($level['division_reference'])
-                                                        <br><small class="text-muted">{{ ucfirst(str_replace('_', ' ', $level['division_reference'])) }}</small>
-                                                    @endif
-                                                </div>
-                                            @endif
-                                            
-                                            @if($level['category'])
-                                                <div class="mb-2">
-                                                    <small class="text-muted">Category:</small><br>
-                                                    <span class="fw-medium">{{ $level['category'] }}</span>
-                                                </div>
+                                            @if($level['is_current'])
+                                                <span class="badge bg-success px-1 py-1 small" style="font-size: 0.5rem;">Current</span>
+                                            @elseif($level['is_completed'])
+                                                <span class="badge bg-success px-1 py-1 small" style="font-size: 0.5rem;">✓</span>
+                                            @elseif($level['is_pending'])
+                                                <span class="badge bg-warning px-1 py-1 small" style="font-size: 0.5rem;">⏳</span>
+                                            @else
+                                                <span class="badge bg-secondary px-1 py-1 small" style="font-size: 0.5rem;">⏸</span>
                                             @endif
                                         </div>
                                     </div>
@@ -186,109 +179,12 @@
                             @endforeach
                         </div>
                         
-                        <!-- Current Level Summary -->
-                        @if($matrix->overall_status !== 'approved' && $matrix->overall_status !== 'rejected')
-                            <div class="mt-4 p-3 bg-light rounded">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <strong class="text-muted">Current Approval Level:</strong> 
-                                        <span class="badge bg-primary fs-6">{{ $matrix->approval_level ?? 0 }}</span>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <strong class="text-muted">Total Levels:</strong> 
-                                        <span class="badge bg-secondary fs-6">{{ count($approvalLevels) }}</span>
-                                    </div>
-                                </div>
-                                @if($matrix->workflow_definition)
-                                    <div class="mt-2">
-                                        <strong class="text-muted">Current Role:</strong> 
-                                        <span class="fw-bold">{{ $matrix->workflow_definition->role ?? 'Not specified' }}</span>
-                                    </div>
-                                    @if($matrix->current_actor)
-                                        <div class="mt-2">
-                                            <strong class="text-muted">Current Approver:</strong> 
-                                            <span class="fw-bold">{{ $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname }}</span>
-                                        </div>
-                                    @endif
-                                @endif
-                            </div>
-                        @endif
+
                     </div>
                 </div>
             @endif
 
-            <!-- Approval Trail -->
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0">
-                        <i class="bx bx-history me-2 text-primary"></i>Approval Trail
-                    </h6>
-                </div>
-                <div class="card-body">
-                    @php 
-                        $approvalTrails = $matrix->approvalTrails()->orderBy('created_at', 'asc')->get();
-                    @endphp
-                    
-                    @if($approvalTrails->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Date & Time</th>
-                                        <th>Action</th>
-                                        <th>Approver</th>
-                                        <th>Comments</th>
-                                        <th>Approval Level</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($approvalTrails as $trail)
-                                        <tr>
-                                            <td>
-                                                <small class="text-muted">
-                                                    {{ $trail->created_at->format('M d, Y') }}<br>
-                                                    <strong>{{ $trail->created_at->format('H:i') }}</strong>
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-{{ $trail->action === 'approved' ? 'success' : ($trail->action === 'returned' ? 'warning' : ($trail->action === 'rejected' ? 'danger' : 'info')) }}">
-                                                    {{ ucfirst($trail->action) }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                @if($trail->staff)
-                                                    <strong>{{ $trail->staff->fname . ' ' . $trail->staff->lname }}</strong><br>
-                                                    <small class="text-muted">{{ $trail->staff->job_name ?? 'Staff' }}</small>
-                                                    @if($trail->staff->division_name)
-                                                        <br><small class="text-muted">{{ $trail->staff->division_name }}</small>
-                                                    @endif
-                                                @else
-                                                    <span class="text-muted">Unknown</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @if($trail->remarks)
-                                                    <span class="text-dark">{{ $trail->remarks }}</span>
-                                                @else
-                                                    <span class="text-muted">No comments</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-secondary">{{ $trail->approval_order ?? 'N/A' }}</span>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <div class="alert alert-secondary text-center">
-                            <i class="bx bx-info-circle me-2"></i>
-                            No approval actions taken yet. This matrix is still in draft status.
-                        </div>
-                    @endif
-                </div>
-            </div>
+         
         </div>
     </div>
 </div>

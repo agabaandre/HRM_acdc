@@ -111,7 +111,7 @@
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                            <th>Document Type</th>
+                                            <th>Document Name</th>
                                             <th>File Name</th>
                                             <th>Size</th>
                                             <th>Uploaded</th>
