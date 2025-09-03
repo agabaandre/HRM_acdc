@@ -310,7 +310,7 @@
                         <tr>
                             <td class="field-label">Activity Code</td>
                             <td class="field-value">
-                                {{ $nonTravel->workplan_activity_code ?? 'Not specified' }}
+                                {{ $nonTravel->id ?? 'Not specified' }}
                             </td>
                             <td class="field-label">Created Date</td>
                             <td class="field-value">
@@ -369,27 +369,7 @@
                             </td>
                         </tr>
                         
-                        <!-- Approval Information -->
-                        <tr>
-                            <td class="field-label">Approval Level</td>
-                            <td class="field-value">
-                                <span class="badge bg-primary">{{ $nonTravel->approval_level ?? 0 }}</span>
-                                @if($nonTravel->workflow_definition)
-                                    <br><small class="text-muted">{{ $nonTravel->workflow_definition->role ?? 'Role not specified' }}</small>
-                                @endif
-                            </td>
-                            <td class="field-label">Current Approver</td>
-                            <td class="field-value">
-                                @if($nonTravel->current_actor)
-                                    {{ $nonTravel->current_actor->fname . ' ' . $nonTravel->current_actor->lname }}
-                                    @if($nonTravel->workflow_definition && $nonTravel->workflow_definition->is_division_specific)
-                                        <br><small class="text-muted">Division Specific</small>
-                                    @endif
-                                @else
-                                    <span class="text-muted">No approver assigned</span>
-                                @endif
-                            </td>
-                        </tr>
+                   
                         
                         <!-- Attachments -->
                         <tr>
@@ -402,29 +382,7 @@
                                 @endif
                             </td>
                         </tr>
-                        
-                        <!-- Workflow Information -->
-                        <tr>
-                            <td class="field-label">Workflow</td>
-                            <td class="field-value">
-                                @if($nonTravel->forward_workflow_id)
-                                    <span class="badge bg-info">{{ $nonTravel->forwardWorkflow->workflow_name ?? 'Workflow #' . $nonTravel->forward_workflow_id }}</span>
-                                @else
-                                    <span class="text-muted">No workflow assigned</span>
-                                @endif
-                            </td>
-                            <td class="field-label">Workflow Role</td>
-                            <td class="field-value">
-                                @if($nonTravel->workflow_definition)
-                                    <span class="badge bg-secondary">{{ $nonTravel->workflow_definition->role ?? 'Not specified' }}</span>
-                                    @if($nonTravel->workflow_definition->is_division_specific)
-                                        <br><small class="text-muted">Division Specific</small>
-                                    @endif
-                                @else
-                                    <span class="text-muted">No role assigned</span>
-                                @endif
-                            </td>
-                        </tr>
+                     
                         
                         <!-- Last Updated -->
                         <tr>
@@ -432,11 +390,9 @@
                             <td class="field-value">
                                 {{ $nonTravel->updated_at ? $nonTravel->updated_at->format('M d, Y H:i') : 'Not available' }}
                             </td>
-                            <td class="field-label">Status</td>
+                            <td class="field-label"></td>
                             <td class="field-value">
-                                <span class="badge bg-{{ $nonTravel->overall_status === 'approved' ? 'success' : ($nonTravel->overall_status === 'pending' ? 'warning' : ($nonTravel->overall_status === 'rejected' ? 'danger' : 'secondary')) }}">
-                                    {{ ucfirst($nonTravel->overall_status ?? 'draft') }}
-                                </span>
+                               
                             </td>
                         </tr>
                     </tbody>
@@ -445,71 +401,8 @@
         </div>
 
         <div class="row">
-            <div class="col-lg-8">
-                <!-- Enhanced Memo Information Card -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 fw-bold">
-                            <i class="bx bx-info-circle me-2 text-primary"></i>Memo Information
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="memo-meta-row">
-                            <div class="memo-meta-item">
-                                <i class="bx bx-calendar-alt"></i>
-                                <span class="memo-meta-label">Memo Date:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->memo_date ? \Carbon\Carbon::parse($nonTravel->memo_date)->format('M d, Y') : 'Not set' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-user"></i>
-                                <span class="memo-meta-label">Requestor:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->staff ? ($nonTravel->staff->fname . ' ' . $nonTravel->staff->lname) : 'Not assigned' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-category"></i>
-                                <span class="memo-meta-label">Category:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->nonTravelMemoCategory ? $nonTravel->nonTravelMemoCategory->name : 'Not categorized' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-code-alt"></i>
-                                <span class="memo-meta-label">Activity Code:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->workplan_activity_code ?? 'Not specified' }}</span>
-                            </div>
-                        </div>
-                        
-                        @if($nonTravel->overall_status !== 'approved')
-                            <div class="mt-3 p-3" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 0.5rem; border: 1px solid #bfdbfe;">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <i class="bx bx-user-check text-blue-600"></i>
-                                    <span class="fw-semibold text-blue-900">Current Approval Level</span>
-                                </div>
-                                <div class="memo-meta-row">
-                                    <div class="memo-meta-item">
-                                        <i class="bx bx-badge-check"></i>
-                                        <span class="memo-meta-value">{{ $nonTravel->workflow_definition ? $nonTravel->workflow_definition->role : 'Not Assigned' }}</span>
-                                    </div>
-                                    <div class="memo-meta-item">
-                                        <i class="bx bx-user"></i>
-                                        <span class="memo-meta-value">{{ $nonTravel->current_actor ? ($nonTravel->current_actor->fname . ' ' . $nonTravel->current_actor->lname) : 'No Approver Assigned' }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Activity Title -->
-                <div class="card content-section bg-blue border-0 mb-4">
-                    <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-semibold d-flex align-items-center gap-2">
-                            <i class="bx bx-bullseye text-primary"></i>
-                            Activity Title
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="mb-0 fw-bold text-dark">{{ $nonTravel->activity_title ?? 'No title provided' }}</h5>
-                    </div>
-                </div>
+            <div class="col-lg-6">
+               
 
                 <!-- Content Sections -->
                 <div class="mb-5">
@@ -526,18 +419,7 @@
                         </div>
                     </div>
 
-                    <!-- Request Remarks -->
-                    <div class="card content-section bg-green border-0 mb-4">
-                        <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-semibold d-flex align-items-center gap-2">
-                                <i class="bx bx-message-detail text-success"></i>
-                                Request Remarks
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="mb-0 lh-lg text-dark">{!! nl2br(e($nonTravel->activity_request_remarks)) !!}</p>
-                        </div>
-                    </div>
+
 
                     <!-- Justification -->
                     <div class="card content-section bg-purple border-0">
@@ -620,120 +502,25 @@
                     </div>
                 </div>
 
-                <!-- Enhanced Approval Actions -->
-
-                @if(can_take_action_generic($nonTravel)|| is_with_creator_generic($nonTravel))
-                    <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                                    <!-- Request Remarks -->
+                <div class="card content-section bg-green border-0 mb-4">
                         <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                                <i class="bx bx-check-circle"></i>
-                                Approval Actions - Level {{ $nonTravel->approval_level ?? 0 }}
+                            <h6 class="mb-0 fw-semibold d-flex align-items-center gap-2">
+                                <i class="bx bx-message-detail text-success"></i>
+                                Request for Approval
                             </h6>
                         </div>
                         <div class="card-body">
-                            <div class="alert alert-info mb-3">
-                                <i class="bx bx-info-circle me-2"></i>
-                                <strong>Current Level:</strong> {{ $nonTravel->approval_level ?? 0 }}
-                                @if($nonTravel->workflow_definition)
-                                    - <strong>Role:</strong> {{ $nonTravel->workflow_definition->role ?? 'Not specified' }}
-                                @endif
-                            </div>
-                            
-                            <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST" id="approvalForm">
-                                @csrf
-                                <input type="hidden" name="debug_approval" value="1">
-                                <div class="row">
-                                    <div class="col-md-8">
-                                        <div class="mb-3">
-                                            <label for="comment" class="form-label">Comments (Optional)</label>
-                                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="d-grid gap-2">
-                                          @if(!is_with_creator_generic($nonTravel))
-                                            <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
-                                                <i class="bx bx-check"></i>
-                                                Approve
-                                            </button>
-                                            @endif
-                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
-                                                <i class="bx bx-undo"></i>
-                                                Return
-                                            </button>
-                                            {{-- <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
-                                                <i class="bx bx-x"></i>
-                                                Cancel
-                                            </button> --}}
-                                            
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
+                            <p class="mb-0 lh-lg text-dark">{!! nl2br(e($nonTravel->activity_request_remarks)) !!}</p>
                         </div>
                     </div>
-                @endif
+
+             
             </div>
 
             <!-- Enhanced Sidebar -->
-            <div class="col-lg-4">
-                <!-- Locations Card -->
-                <div class="card sidebar-card border-0 mb-4">
-                    <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
-                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                            <i class="bx bx-map-pin text-primary"></i>
-                            Locations
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        @if($locations->count() > 0)
-                            <div class="d-flex flex-column gap-2">
-                                @foreach($locations as $location)
-                                    <div class="location-badge">
-                                        <i class="bx bx-map text-primary"></i>
-                                        <span class="fw-medium">{{ $location->name }}</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <p class="text-muted mb-0 text-center py-3">
-                                <i class="bx bx-info-circle me-2"></i>No locations specified
-                            </p>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Budget Items Card -->
-                <div class="card sidebar-card border-0 mb-4">
-                    <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
-                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                            <i class="bx bx-money-withdraw text-success"></i>
-                            Budget Items
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        @if($budgetCodes->count() > 0)
-                            <div class="d-flex flex-column gap-3">
-                                @foreach($budgetCodes as $budget)
-                                    <div class="budget-item" style="background: #f0fdf4; border-color: #bbf7d0;">
-                                        <div class="d-flex justify-content-between align-items-center w-100">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <i class="bx bx-dollar-circle text-success"></i>
-                                                <span class="fw-medium">{{ $budget->code }} | {{ $budget->funder->name ?? 'No Funder' }}</span>
-                                            </div>
-                                            <span class="badge bg-success">${{ number_format($budget->budget_balance, 2) }}</span>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @else
-                            <p class="text-muted mb-0 text-center py-3">
-                                <i class="bx bx-info-circle me-2"></i>No budget items specified
-                            </p>
-                        @endif
-                    </div>
-                </div>
-
+            <div class="col-lg-6">
+  
                 <!-- Attachments Card -->
                 @if(!empty($attachments) && count($attachments) > 0)
                     <div class="card sidebar-card border-0 mb-4">
@@ -751,13 +538,13 @@
                                             <div class="d-flex align-items-center gap-2">
                                                 <i class="bx bx-file" style="color: #8b5cf6;"></i>
                                                 <div>
-                                                    <p class="mb-1 fw-medium">{{ $attachment['name'] ?? 'File #'.($index+1) }}</p>
+                                                    <p class="mb-1 fw-medium">{{ $attachment['type'] ?? 'File #'.($index+1) }}</p>
                                                     <small class="text-muted">
                                                         {{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}
                                                     </small>
                                                 </div>
                                             </div>
-                                            <a href="{{ Storage::url($attachment['path']) }}" target="_blank" 
+                                            <a href="{{url('storage/'.$attachment['path']) }}" target="_blank" 
                                                class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
                                                 <i class="bx bx-download"></i>
                                                 <span>Download</span>
@@ -814,7 +601,53 @@
                         </a>
                     </div>
                 </div>
+   <!-- Enhanced Approval Actions -->
 
+                @if(can_take_action_generic($nonTravel)|| is_with_creator_generic($nonTravel))
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-check-circle"></i>
+                                
+                                Approval Actions
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            
+                            <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST" id="approvalForm">
+                                @csrf
+                                <input type="hidden" name="debug_approval" value="1">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="comment" class="form-label">Comments (Optional)</label>
+                                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-grid gap-2">
+                                          @if(!is_with_creator_generic($nonTravel))
+                                            <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-check"></i>
+                                                Approve
+                                            </button>
+                                            @endif
+                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-undo"></i>
+                                                Return
+                                            </button>
+                                            {{-- <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-x"></i>
+                                                Cancel
+                                            </button> --}}
+                                            
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
                 <!-- Approval Trail -->
                 @include('partials.approval-trail', ['resource' => $nonTravel])
 
