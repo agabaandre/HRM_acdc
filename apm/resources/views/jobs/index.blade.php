@@ -6,9 +6,6 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#systemInfoModal">
-        <i class="bx bx-info-circle"></i> System Info
-    </button>
     <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#envEditorModal">
         <i class="bx bx-edit"></i> Edit Environment
     </button>
@@ -78,6 +75,24 @@
                             @endif
                         </h3>
                         <small class="text-muted">Debug Status</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Information -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bx bx-info-circle me-2 text-primary"></i>System Information</h6>
+                <div class="text-muted small mt-1">
+                    <i class="bx bx-info-circle me-1"></i>Current system status and configuration
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="systemInfoContent">
+                    <div class="text-center">
+                        <i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i>
+                        <p class="mt-2">Loading system information...</p>
                     </div>
                 </div>
             </div>
@@ -181,36 +196,11 @@
     </div>
 </div>
 
-<!-- System Info Modal -->
-<div class="modal fade" id="systemInfoModal" tabindex="-1" aria-labelledby="systemInfoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="systemInfoModalLabel">
-                    <i class="bx bx-info-circle me-2 text-primary"></i>System Information
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="systemInfoContent">
-                    <div class="text-center">
-                        <i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i>
-                        <p class="mt-2">Loading system information...</p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bx bx-x me-1"></i>Close
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <!-- Environment Editor Modal -->
 <div class="modal fade" id="envEditorModal" tabindex="-1" aria-labelledby="envEditorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="envEditorModalLabel">
@@ -251,10 +241,8 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    // Load system info when modal is shown
-    $('#systemInfoModal').on('show.bs.modal', function() {
-        loadSystemInfo();
-    });
+    // Load system info on page load
+    loadSystemInfo();
 
     // Load environment content when modal is shown
     $('#envEditorModal').on('show.bs.modal', function() {
