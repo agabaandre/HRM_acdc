@@ -58,10 +58,17 @@ class AuditLogsController extends Controller
         // Paginate results
         $auditLogs = $query->paginate(50)->withQueryString();
 
-        // Get filter options
-        $actions = AuditLog::distinct()->pluck('action')->sort()->values();
-        $resourceTypes = AuditLog::distinct()->pluck('resource_type')->sort()->values();
-        $routeNames = AuditLog::distinct()->pluck('route_name')->filter()->sort()->values();
+        // Get filter options - handle case when no audit logs exist yet
+        try {
+            $actions = AuditLog::distinct()->pluck('action')->sort()->values();
+            $resourceTypes = AuditLog::distinct()->pluck('resource_type')->sort()->values();
+            $routeNames = AuditLog::distinct()->pluck('route_name')->filter()->sort()->values();
+        } catch (\Exception $e) {
+            $actions = collect();
+            $resourceTypes = collect();
+            $routeNames = collect();
+        }
+        
         $users = User::select('id', 'fname', 'lname', 'work_email')
                     ->orderBy('fname')
                     ->orderBy('lname')
@@ -93,49 +100,60 @@ class AuditLogsController extends Controller
      */
     private function getStatistics(Request $request): array
     {
-        $baseQuery = AuditLog::query();
+        try {
+            $baseQuery = AuditLog::query();
 
-        // Apply same filters as main query
-        if ($request->filled('date_from')) {
-            $baseQuery->whereDate('created_at', '>=', $request->get('date_from'));
+            // Apply same filters as main query
+            if ($request->filled('date_from')) {
+                $baseQuery->whereDate('created_at', '>=', $request->get('date_from'));
+            }
+            if ($request->filled('date_to')) {
+                $baseQuery->whereDate('created_at', '<=', $request->get('date_to'));
+            }
+
+            $totalLogs = $baseQuery->count();
+            
+            $actionsCount = $baseQuery->clone()
+                ->select('action', DB::raw('count(*) as count'))
+                ->groupBy('action')
+                ->orderBy('count', 'desc')
+                ->get();
+
+            $resourceTypesCount = $baseQuery->clone()
+                ->select('resource_type', DB::raw('count(*) as count'))
+                ->groupBy('resource_type')
+                ->orderBy('count', 'desc')
+                ->get();
+
+            $topUsers = $baseQuery->clone()
+                ->select('user_name', DB::raw('count(*) as count'))
+                ->whereNotNull('user_name')
+                ->groupBy('user_name')
+                ->orderBy('count', 'desc')
+                ->limit(10)
+                ->get();
+
+            $recentActivity = $baseQuery->clone()
+                ->where('created_at', '>=', Carbon::now()->subHours(24))
+                ->count();
+
+            return [
+                'total_logs' => $totalLogs,
+                'actions_count' => $actionsCount,
+                'resource_types_count' => $resourceTypesCount,
+                'top_users' => $topUsers,
+                'recent_activity' => $recentActivity,
+            ];
+        } catch (\Exception $e) {
+            // Return empty statistics if there's an error
+            return [
+                'total_logs' => 0,
+                'actions_count' => collect(),
+                'resource_types_count' => collect(),
+                'top_users' => collect(),
+                'recent_activity' => 0,
+            ];
         }
-        if ($request->filled('date_to')) {
-            $baseQuery->whereDate('created_at', '<=', $request->get('date_to'));
-        }
-
-        $totalLogs = $baseQuery->count();
-        
-        $actionsCount = $baseQuery->clone()
-            ->select('action', DB::raw('count(*) as count'))
-            ->groupBy('action')
-            ->orderBy('count', 'desc')
-            ->get();
-
-        $resourceTypesCount = $baseQuery->clone()
-            ->select('resource_type', DB::raw('count(*) as count'))
-            ->groupBy('resource_type')
-            ->orderBy('count', 'desc')
-            ->get();
-
-        $topUsers = $baseQuery->clone()
-            ->select('user_name', DB::raw('count(*) as count'))
-            ->whereNotNull('user_name')
-            ->groupBy('user_name')
-            ->orderBy('count', 'desc')
-            ->limit(10)
-            ->get();
-
-        $recentActivity = $baseQuery->clone()
-            ->where('created_at', '>=', Carbon::now()->subHours(24))
-            ->count();
-
-        return [
-            'total_logs' => $totalLogs,
-            'actions_count' => $actionsCount,
-            'resource_types_count' => $resourceTypesCount,
-            'top_users' => $topUsers,
-            'recent_activity' => $recentActivity,
-        ];
     }
 
     /**
