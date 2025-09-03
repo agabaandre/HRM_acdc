@@ -91,6 +91,7 @@ class SyncDivisionsCommand extends Command
                         $division = Division::updateOrCreate(
                             ['id' => $id],
                             $divisionData
+                            
                         );
                         if ($division->wasRecentlyCreated) {
                             $created++;
