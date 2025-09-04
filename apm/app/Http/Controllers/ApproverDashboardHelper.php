@@ -157,8 +157,16 @@ trait ApproverDashboardHelper
                 $docType
             );
 
-            // Calculate total pending documents as sum of all document types
-            $totalPending = array_sum($pendingCounts);
+            // Calculate total pending documents as sum of all document types (excluding the 'total' key)
+            $totalPending = array_sum(array_diff_key($pendingCounts, ['total' => '']));
+
+            // Calculate total handled documents for this approver
+            $totalHandled = $this->getTotalHandledForApprover(
+                $approverObj->staff_id,
+                $approverObj->level_no,
+                $approverObj->workflow_id,
+                $approverObj->division_id
+            );
 
             $approversWithCounts[] = [
                 'approver_id' => $approverObj->approver_id,
@@ -170,6 +178,7 @@ trait ApproverDashboardHelper
                 'source' => $approverObj->source ?? 'unknown',
                 'pending_counts' => $pendingCounts,
                 'total_pending' => $totalPending,
+                'total_handled' => $totalHandled,
                 'avg_approval_time_hours' => $avgApprovalTime,
                 'avg_approval_time_display' => $this->formatApprovalTime($avgApprovalTime),
             ];
@@ -354,15 +363,8 @@ trait ApproverDashboardHelper
                 $result = DB::select($sql, $params);
                 $counts[$docTypeKey] = $result[0]->count ?? 0;
 
-                // Also count as 'memos' for non_travel
-                if ($docTypeKey === 'non_travel') {
-                    $counts['memos'] = $counts[$docTypeKey];
-                }
-
-                // Also count as 'single_memos' for special
-                if ($docTypeKey === 'special') {
-                    $counts['single_memos'] = $counts[$docTypeKey];
-                }
+                // Note: 'memos' and 'single_memos' are now separate document types
+                // No need to duplicate counts from other types
 
             } catch (\Exception $e) {
                 // Log error and continue
@@ -637,6 +639,34 @@ trait ApproverDashboardHelper
         } else {
             $days = round($hours / 24, 1);
             return $days . ' days';
+        }
+    }
+
+    /**
+     * Get total handled documents for a specific approver.
+     * This counts all documents that have been approved/rejected by this approver.
+     */
+    protected function getTotalHandledForApprover($staffId, $levelNo, $workflowId, $divisionId = null)
+    {
+        try {
+            // Count documents handled by this approver at this level
+            // This includes documents that have been approved or rejected by this specific staff member
+            $sql = "
+                SELECT COUNT(DISTINCT CONCAT(at.model_type, '-', at.model_id)) as total_count
+                FROM approval_trails at
+                WHERE at.staff_id = ?
+                AND at.forward_workflow_id = ?
+                AND at.approval_order = ?
+                AND at.action IN ('approved', 'rejected')
+            ";
+            $params = [$staffId, $workflowId, $levelNo];
+            
+            $result = DB::select($sql, $params);
+            return $result[0]->total_count ?? 0;
+            
+        } catch (\Exception $e) {
+            Log::error('Error calculating total handled for approver: ' . $e->getMessage());
+            return 0;
         }
     }
 }

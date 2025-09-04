@@ -29,7 +29,7 @@ class ApproverDashboardController extends Controller
     /**
      * Get approver dashboard data via API.
      */
-    public function getDashboardData(Request $request): JsonResponse
+    public function getDashboardData(Request $request)
     {
         try {
             // Validate request parameters (allow empty values)
@@ -41,6 +41,7 @@ class ApproverDashboardController extends Controller
                 'doc_type' => 'nullable|string|in:matrix,non_travel,single_memos,special,memos,arf,requests_for_service',
                 'workflow_definition_id' => 'nullable|integer|exists:workflows,id',
                 'approval_level' => 'nullable|integer|min:1',
+                'export' => 'nullable|boolean',
             ]);
 
             $userSession = user_session();
@@ -88,6 +89,11 @@ class ApproverDashboardController extends Controller
 
             // Get pending counts for each approver
             $approversWithCounts = $this->getPendingCountsForApprovers($approvers, $workflowDefinitionId, $docType, $divisionId);
+
+            // Handle Excel export
+            if ($request->get('export')) {
+                return $this->exportToExcel($approversWithCounts);
+            }
 
             return response()->json([
                 'success' => true,
@@ -238,5 +244,64 @@ class ApproverDashboardController extends Controller
                 'data' => []
             ], 500);
         }
+    }
+
+    /**
+     * Export dashboard data to Excel format.
+     */
+    private function exportToExcel($data)
+    {
+        $filename = 'approver_dashboard_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($data) {
+            $file = fopen('php://output', 'w');
+            
+            // Add CSV headers
+            fputcsv($file, [
+                'Approver Name',
+                'Email',
+                'Role',
+                'Level',
+                'Division',
+                'Matrix Pending',
+                'Non-Travel Pending',
+                'Single Memos Pending',
+                'Special Pending',
+                'ARF Pending',
+                'Requests Pending',
+                'Total Pending',
+                'Total Handled',
+                'Avg Approval Time'
+            ]);
+
+            // Add data rows
+            foreach ($data as $approver) {
+                fputcsv($file, [
+                    $approver['approver_name'],
+                    $approver['approver_email'],
+                    $approver['role'],
+                    $approver['level_no'],
+                    $approver['division_name'],
+                    $approver['pending_counts']['matrix'],
+                    $approver['pending_counts']['non_travel'],
+                    $approver['pending_counts']['single_memos'],
+                    $approver['pending_counts']['special'],
+                    $approver['pending_counts']['arf'],
+                    $approver['pending_counts']['requests_for_service'],
+                    $approver['total_pending'],
+                    $approver['total_handled'] ?? 0,
+                    $approver['avg_approval_time_display']
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
