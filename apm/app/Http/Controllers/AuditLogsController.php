@@ -411,6 +411,20 @@ class AuditLogsController extends Controller
                 ['reversed_table' => $table]
             ));
             
+            // Get the actual model table name (remove audit_ prefix)
+            $modelTable = str_replace('audit_', '', $table);
+            $modelTable = str_replace('_logs', '', $modelTable);
+            
+            // Perform actual data reversal based on the original action
+            $reversalResult = $this->performDataReversal($log, $modelTable, $reason);
+            
+            if (!$reversalResult['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $reversalResult['message']
+                ], 400);
+            }
+            
             // Insert reversal log
             $reversalLogId = DB::table($table)->insertGetId($reversalData);
             
@@ -419,16 +433,19 @@ class AuditLogsController extends Controller
                 'original_log_id' => $logId,
                 'reversal_log_id' => $reversalLogId,
                 'table' => $table,
+                'model_table' => $modelTable,
                 'action' => $log->action,
                 'entity_id' => $log->entity_id,
                 'reason' => $reason,
-                'user_id' => user_session('staff_id')
+                'user_id' => user_session('staff_id'),
+                'data_reversal' => $reversalResult['data_reversal']
             ]);
             
             return response()->json([
                 'success' => true,
-                'message' => 'Audit log has been successfully reversed',
-                'reversal_log_id' => $reversalLogId
+                'message' => 'Audit log and data have been successfully reversed',
+                'reversal_log_id' => $reversalLogId,
+                'data_reversal' => $reversalResult['data_reversal']
             ]);
             
         } catch (\Exception $e) {
@@ -438,6 +455,131 @@ class AuditLogsController extends Controller
                 'success' => false,
                 'message' => 'An error occurred during reversal: ' . $e->getMessage()
             ], 500);
+        }
+    }
+    
+    /**
+     * Perform actual data reversal based on the original audit log action
+     */
+    private function performDataReversal($log, $modelTable, $reason)
+    {
+        try {
+            $entityId = $log->entity_id ?? $log->resource_id ?? null;
+            
+            if (!$entityId) {
+                return [
+                    'success' => false,
+                    'message' => 'Cannot reverse: No entity ID found'
+                ];
+            }
+            
+            $oldValues = json_decode($log->old_values ?? '{}', true);
+            $newValues = json_decode($log->new_values ?? '{}', true);
+            
+            switch ($log->action) {
+                case 'created':
+                    // For created actions, delete the record
+                    $deleted = DB::table($modelTable)->where('id', $entityId)->delete();
+                    if ($deleted) {
+                        return [
+                            'success' => true,
+                            'data_reversal' => "Deleted record with ID: {$entityId}",
+                            'message' => 'Record deleted successfully'
+                        ];
+                    } else {
+                        return [
+                            'success' => false,
+                            'message' => 'Record not found or already deleted'
+                        ];
+                    }
+                    
+                case 'updated':
+                    // For updated actions, restore the old values
+                    if (empty($oldValues)) {
+                        return [
+                            'success' => false,
+                            'message' => 'Cannot reverse: No old values found'
+                        ];
+                    }
+                    
+                    // Remove audit-specific fields from old values
+                    $cleanOldValues = array_diff_key($oldValues, [
+                        'created_at' => '',
+                        'updated_at' => '',
+                        'id' => ''
+                    ]);
+                    
+                    $updated = DB::table($modelTable)
+                        ->where('id', $entityId)
+                        ->update($cleanOldValues);
+                    
+                    if ($updated !== false) {
+                        return [
+                            'success' => true,
+                            'data_reversal' => "Restored old values for record ID: {$entityId}",
+                            'message' => 'Record restored to previous state'
+                        ];
+                    } else {
+                        return [
+                            'success' => false,
+                            'message' => 'Failed to restore record'
+                        ];
+                    }
+                    
+                case 'deleted':
+                    // For deleted actions, restore the record
+                    if (empty($oldValues)) {
+                        return [
+                            'success' => false,
+                            'message' => 'Cannot reverse: No old values found to restore'
+                        ];
+                    }
+                    
+                    // Remove audit-specific fields and add reversal metadata
+                    $restoreData = array_diff_key($oldValues, [
+                        'created_at' => '',
+                        'updated_at' => '',
+                        'id' => ''
+                    ]);
+                    
+                    $restoreData['updated_at'] = now();
+                    $restoreData['reversal_reason'] = $reason;
+                    $restoreData['reversed_at'] = now();
+                    $restoreData['reversed_by'] = user_session('staff_id');
+                    
+                    $restoredId = DB::table($modelTable)->insertGetId($restoreData);
+                    
+                    if ($restoredId) {
+                        return [
+                            'success' => true,
+                            'data_reversal' => "Restored deleted record with new ID: {$restoredId}",
+                            'message' => 'Record restored successfully'
+                        ];
+                    } else {
+                        return [
+                            'success' => false,
+                            'message' => 'Failed to restore deleted record'
+                        ];
+                    }
+                    
+                default:
+                    return [
+                        'success' => false,
+                        'message' => "Cannot reverse action: {$log->action}"
+                    ];
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Data reversal error: ' . $e->getMessage(), [
+                'log_id' => $log->id,
+                'model_table' => $modelTable,
+                'entity_id' => $entityId ?? 'unknown'
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Error during data reversal: ' . $e->getMessage()
+            ];
         }
     }
     
