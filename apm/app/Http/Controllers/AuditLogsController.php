@@ -23,27 +23,46 @@ class AuditLogsController extends Controller
         $auditLogs = collect();
         
         foreach ($auditTables as $table) {
-            // Handle different audit table structures
-            if ($table === 'audit_logs') {
-                // This table uses 'resource_id' instead of 'entity_id'
-                $tableLogs = DB::table($table)
-                    ->select('*')
-                    ->addSelect(DB::raw("'{$table}' as source_table"))
-                    ->addSelect(DB::raw("resource_id as entity_id")) // Map resource_id to entity_id
-                    ->orderBy('created_at', 'desc')
-                    ->limit(100)
-                    ->get();
-            } else {
-                // Other tables use 'entity_id'
-                $tableLogs = DB::table($table)
-                    ->select('*')
-                    ->addSelect(DB::raw("'{$table}' as source_table"))
-                    ->orderBy('created_at', 'desc')
-                    ->limit(100)
-                    ->get();
-            }
+            try {
+                // Check if table has entity_id or resource_id column
+                $columns = DB::select("SHOW COLUMNS FROM {$table}");
+                $hasEntityId = collect($columns)->contains('Field', 'entity_id');
+                $hasResourceId = collect($columns)->contains('Field', 'resource_id');
                 
-            $auditLogs = $auditLogs->merge($tableLogs);
+                if ($hasEntityId) {
+                    // Table has entity_id column
+                    $tableLogs = DB::table($table)
+                        ->select('*')
+                        ->addSelect(DB::raw("'{$table}' as source_table"))
+                        ->orderBy('created_at', 'desc')
+                        ->limit(100)
+                        ->get();
+                } elseif ($hasResourceId) {
+                    // Table has resource_id column, map it to entity_id
+                    $tableLogs = DB::table($table)
+                        ->select('*')
+                        ->addSelect(DB::raw("'{$table}' as source_table"))
+                        ->addSelect(DB::raw("CAST(resource_id AS CHAR) as entity_id"))
+                        ->orderBy('created_at', 'desc')
+                        ->limit(100)
+                        ->get();
+                } else {
+                    // Table has neither, use id as entity_id
+                    $tableLogs = DB::table($table)
+                        ->select('*')
+                        ->addSelect(DB::raw("'{$table}' as source_table"))
+                        ->addSelect(DB::raw("CAST(id AS CHAR) as entity_id"))
+                        ->orderBy('created_at', 'desc')
+                        ->limit(100)
+                        ->get();
+                }
+                    
+                $auditLogs = $auditLogs->merge($tableLogs);
+            } catch (\Exception $e) {
+                // Log error and continue with other tables
+                \Log::error("Error processing audit table {$table}: " . $e->getMessage());
+                continue;
+            }
         }
         
         // Sort by created_at desc
@@ -105,8 +124,10 @@ class AuditLogsController extends Controller
         
         foreach ($tables as $table) {
             $tableName = array_values((array)$table)[0];
+            // Include tables that start with 'audit_' and end with '_logs', or are named 'audit_logs'
             if ((strpos($tableName, 'audit_') === 0 && strpos($tableName, '_logs') !== false) || 
-                $tableName === 'audit_logs') {
+                $tableName === 'audit_logs' ||
+                strpos($tableName, '_audit') !== false) {
                 $auditTables[] = $tableName;
             }
         }
