@@ -17,19 +17,35 @@ class CustomCauserResolver implements CauserResolverInterface
     public function resolve(): array
     {
         try {
-            // Get staff_id from CI session using the helper function
-            $staffId = user_session('staff_id');
+            // Try multiple methods to get staff_id
+            $staffId = $this->getStaffIdFromSession();
             
             if (!$staffId) {
-                return [];
+                \Log::info('No staff_id found in session for audit logging');
+                return [
+                    'id' => null,
+                    'type' => null,
+                    'name' => 'System',
+                    'email' => null,
+                    'additional_data' => []
+                ];
             }
 
             // Get staff details from the database
             $staff = Staff::where('staff_id', $staffId)->first();
             
             if (!$staff) {
-                return [];
+                \Log::warning("Staff not found for staff_id: {$staffId}");
+                return [
+                    'id' => $staffId,
+                    'type' => Staff::class,
+                    'name' => 'Unknown User',
+                    'email' => null,
+                    'additional_data' => []
+                ];
             }
+
+            \Log::info("Audit logging for staff: {$staff->fname} {$staff->lname} (ID: {$staffId})");
 
             return [
                 'id' => $staff->staff_id,
@@ -44,9 +60,57 @@ class CustomCauserResolver implements CauserResolverInterface
             ];
         } catch (\Exception $e) {
             // Log the error but don't break the audit logging
-            \Log::warning('Custom causer resolver error: ' . $e->getMessage());
-            return [];
+            \Log::error('Custom causer resolver error: ' . $e->getMessage());
+            return [
+                'id' => null,
+                'type' => null,
+                'name' => 'System (Error)',
+                'email' => null,
+                'additional_data' => []
+            ];
         }
+    }
+    
+    /**
+     * Get staff_id from session using multiple methods
+     */
+    private function getStaffIdFromSession(): ?string
+    {
+        // Method 1: Try the user_session helper function
+        if (function_exists('user_session')) {
+            try {
+                $staffId = user_session('staff_id');
+                if ($staffId) {
+                    return $staffId;
+                }
+            } catch (\Exception $e) {
+                \Log::warning('user_session helper failed: ' . $e->getMessage());
+            }
+        }
+        
+        // Method 2: Try Laravel session
+        if (session()->has('staff_id')) {
+            return session('staff_id');
+        }
+        
+        // Method 3: Try CodeIgniter session if available
+        if (class_exists('CI_Session')) {
+            try {
+                $ci =& get_instance();
+                if (isset($ci->session)) {
+                    return $ci->session->userdata('staff_id');
+                }
+            } catch (\Exception $e) {
+                \Log::warning('CodeIgniter session access failed: ' . $e->getMessage());
+            }
+        }
+        
+        // Method 4: Try global session variables
+        if (isset($_SESSION['staff_id'])) {
+            return $_SESSION['staff_id'];
+        }
+        
+        return null;
     }
 
     /**
@@ -56,7 +120,7 @@ class CustomCauserResolver implements CauserResolverInterface
      */
     public function getCauserId(): int|string|null
     {
-        return user_session('staff_id');
+        return $this->getStaffIdFromSession();
     }
 
     /**

@@ -6,6 +6,9 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
+    <a href="{{ route('audit-logs.index', array_merge(request()->query(), ['export' => 'csv'])) }}" class="btn btn-success">
+        <i class="bx bx-download"></i> Export CSV
+    </a>
     <a href="{{ route('audit-logs.cleanup') }}" class="btn btn-warning" onclick="return confirm('Are you sure you want to clean up old audit logs?')">
         <i class="bx bx-trash"></i> Cleanup Old Logs
     </a>
@@ -94,13 +97,21 @@
                         </div>
                         <div class="col-md-2">
                             <label for="date_from" class="form-label">From</label>
-                            <input type="date" class="form-control" id="date_from" name="date_from" 
-                                   value="{{ request('date_from') }}">
+                            <input type="text" class="form-control datepicker" id="date_from" name="date_from" 
+                                   value="{{ request('date_from') }}" placeholder="Select start date">
                         </div>
                         <div class="col-md-2">
                             <label for="date_to" class="form-label">To</label>
-                            <input type="date" class="form-control" id="date_to" name="date_to" 
-                                   value="{{ request('date_to') }}">
+                            <input type="text" class="form-control datepicker" id="date_to" name="date_to" 
+                                   value="{{ request('date_to') }}" placeholder="Select end date">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="suspicious" class="form-label">Suspicious</label>
+                            <select class="form-select" id="suspicious" name="suspicious">
+                                <option value="">All</option>
+                                <option value="1" {{ request('suspicious') == '1' ? 'selected' : '' }}>Suspicious Only</option>
+                                <option value="0" {{ request('suspicious') == '0' ? 'selected' : '' }}>Not Suspicious</option>
+                            </select>
                         </div>
                         <div class="col-md-1">
                             <label class="form-label">&nbsp;</label>
@@ -124,12 +135,12 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bx bx-list-ul me-2 text-primary"></i>Audit Logs</h6>
-                <small class="text-muted">Showing {{ $auditLogs->count() }} logs</small>
+                <small class="text-muted">Showing {{ $pagination['from'] }}-{{ $pagination['to'] }} of {{ $pagination['total'] }} logs</small>
             </div>
             <div class="card-body p-0">
-                @if($auditLogs->count() > 0)
+                @if($paginatedLogs->count() > 0)
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0 audit-logs-table">
                             <thead class="table-light">
                                 <tr>
                                     <th>ID</th>
@@ -137,13 +148,15 @@
                                     <th>Entity</th>
                                     <th>Table</th>
                                     <th>Causer</th>
+                                    <th>Division & Duty Station</th>
                                     <th>Source</th>
+                                    <th>Suspicious</th>
                                     <th>Date/Time</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($auditLogs as $log)
+                                @foreach($paginatedLogs as $log)
                                     <tr>
                                         <td>
                                             <span class="badge bg-secondary">#{{ $log->id }}</span>
@@ -173,8 +186,33 @@
                                                 @endif
                                             </div>
                                         </td>
+                                        <td class="division-duty-station">
+                                            <div>
+                                                @if($log->causer_id)
+                                                    <div class="mb-1">
+                                                        <span class="badge bg-primary">{{ $log->causer_division_name ?? 'N/A' }}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="badge bg-secondary">{{ $log->causer_duty_station_name ?? 'N/A' }}</span>
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td>
                                             <span class="badge bg-info">{{ $log->source ?? 'Unknown' }}</span>
+                                        </td>
+                                        <td>
+                                            @if($log->is_suspicious ?? false)
+                                                <span class="badge bg-danger suspicious-badge" title="{{ $log->suspicious_reasons ?? 'Suspicious activity detected' }}">
+                                                    <i class="bx bx-shield-x"></i> Yes
+                                                </span>
+                                            @else
+                                                <span class="badge bg-success suspicious-badge">
+                                                    <i class="bx bx-shield-check"></i> No
+                                                </span>
+                                            @endif
                                         </td>
                                         <td>
                                             <div>
@@ -193,7 +231,11 @@
                                                     data-log-causer-name="{{ $log->causer_name ?? 'Unknown User' }}"
                                                     data-log-causer-email="{{ $log->causer_email ?? 'N/A' }}"
                                                     data-log-causer-job="{{ $log->causer_job_title ?? 'N/A' }}"
+                                                    data-log-causer-division="{{ $log->causer_division_name ?? 'N/A' }}"
+                                                    data-log-causer-duty-station="{{ $log->causer_duty_station_name ?? 'N/A' }}"
                                                     data-log-source="{{ $log->source }}"
+                                                    data-log-suspicious="{{ $log->is_suspicious ? 'Yes' : 'No' }}"
+                                                    data-log-suspicious-reasons="{{ $log->suspicious_reasons ?? '' }}"
                                                     data-log-created="{{ $log->created_at }}"
                                                     data-log-old-values="{{ $log->old_values }}"
                                                     data-log-new-values="{{ $log->new_values }}"
@@ -206,6 +248,45 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination -->
+                    @if($pagination['last_page'] > 1)
+                        <div class="card-footer">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="text-muted">
+                                    Showing {{ $pagination['from'] }} to {{ $pagination['to'] }} of {{ $pagination['total'] }} results
+                                </div>
+                                <nav aria-label="Audit logs pagination">
+                                    <ul class="pagination pagination-sm mb-0">
+                                        <!-- Previous Page Link -->
+                                        @if($pagination['current_page'] > 1)
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ request()->fullUrlWithQuery(['page' => $pagination['current_page'] - 1]) }}" aria-label="Previous">
+                                                    <span aria-hidden="true">&laquo;</span>
+                                                </a>
+                                            </li>
+                                        @endif
+                                        
+                                        <!-- Page Numbers -->
+                                        @for($i = max(1, $pagination['current_page'] - 2); $i <= min($pagination['last_page'], $pagination['current_page'] + 2); $i++)
+                                            <li class="page-item {{ $i == $pagination['current_page'] ? 'active' : '' }}">
+                                                <a class="page-link" href="{{ request()->fullUrlWithQuery(['page' => $i]) }}">{{ $i }}</a>
+                                            </li>
+                                        @endfor
+                                        
+                                        <!-- Next Page Link -->
+                                        @if($pagination['current_page'] < $pagination['last_page'])
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ request()->fullUrlWithQuery(['page' => $pagination['current_page'] + 1]) }}" aria-label="Next">
+                                                    <span aria-hidden="true">&raquo;</span>
+                                                </a>
+                                            </li>
+                                        @endif
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    @endif
                 @else
                     <div class="text-center py-5">
                         <i class="bx bx-clipboard text-muted" style="font-size: 3rem;"></i>
@@ -277,10 +358,22 @@
                                     <div class="col-4"><strong>Staff ID:</strong></div>
                                     <div class="col-8" id="modal-log-causer-id">-</div>
                                     
+                                    <div class="col-4"><strong>Division:</strong></div>
+                                    <div class="col-8" id="modal-log-causer-division">-</div>
+                                    
+                                    <div class="col-4"><strong>Duty Station:</strong></div>
+                                    <div class="col-8" id="modal-log-causer-duty-station">-</div>
+                                    
                                     <div class="col-4"><strong>Source:</strong></div>
                                     <div class="col-8">
                                         <span class="badge bg-info" id="modal-log-source">-</span>
                                     </div>
+                                    
+                                    <div class="col-4"><strong>Suspicious:</strong></div>
+                                    <div class="col-8" id="modal-log-suspicious">-</div>
+                                    
+                                    <div class="col-4"><strong>Suspicious Reasons:</strong></div>
+                                    <div class="col-8" id="modal-log-suspicious-reasons">-</div>
                                     
                                     <div class="col-4"><strong>Created:</strong></div>
                                     <div class="col-8" id="modal-log-created">-</div>
@@ -333,8 +426,54 @@
 </div>
 @endsection
 
+@push('styles')
+<style>
+.audit-logs-table td {
+    vertical-align: middle;
+}
+
+.audit-logs-table .division-duty-station {
+    max-width: 200px;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
+.audit-logs-table .division-duty-station .badge {
+    display: inline-block;
+    margin-bottom: 2px;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+.audit-logs-table .suspicious-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.audit-logs-table .suspicious-badge.bg-danger {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+</style>
+@endpush
+
 @push('scripts')
 <script>
+// Initialize datepicker for custom date fields
+$(document).ready(function() {
+    $('.datepicker').datepicker({
+        format: 'yyyy-mm-dd',
+        autoclose: true,
+        todayHighlight: true
+    });
+});
+
 // Auto-submit form on filter change
 document.getElementById('filterForm').addEventListener('change', function() {
     this.submit();
@@ -354,7 +493,11 @@ document.getElementById('auditLogModal').addEventListener('show.bs.modal', funct
     const logCauserName = button.getAttribute('data-log-causer-name');
     const logCauserEmail = button.getAttribute('data-log-causer-email');
     const logCauserJob = button.getAttribute('data-log-causer-job');
+    const logCauserDivision = button.getAttribute('data-log-causer-division');
+    const logCauserDutyStation = button.getAttribute('data-log-causer-duty-station');
     const logSource = button.getAttribute('data-log-source');
+    const logSuspicious = button.getAttribute('data-log-suspicious');
+    const logSuspiciousReasons = button.getAttribute('data-log-suspicious-reasons');
     const logCreated = button.getAttribute('data-log-created');
     const logOldValues = button.getAttribute('data-log-old-values');
     const logNewValues = button.getAttribute('data-log-new-values');
@@ -368,7 +511,20 @@ document.getElementById('auditLogModal').addEventListener('show.bs.modal', funct
     document.getElementById('modal-log-causer-email').textContent = logCauserEmail || 'N/A';
     document.getElementById('modal-log-causer-job').textContent = logCauserJob || 'N/A';
     document.getElementById('modal-log-causer-id').textContent = logCauserId || 'N/A';
+    document.getElementById('modal-log-causer-division').textContent = logCauserDivision || 'N/A';
+    document.getElementById('modal-log-causer-duty-station').textContent = logCauserDutyStation || 'N/A';
     document.getElementById('modal-log-source').textContent = logSource || 'Unknown';
+    
+    // Set suspicious status
+    const suspiciousElement = document.getElementById('modal-log-suspicious');
+    if (logSuspicious === 'Yes') {
+        suspiciousElement.innerHTML = '<span class="badge bg-danger"><i class="bx bx-shield-x"></i> Yes</span>';
+    } else {
+        suspiciousElement.innerHTML = '<span class="badge bg-success"><i class="bx bx-shield-check"></i> No</span>';
+    }
+    
+    // Set suspicious reasons
+    document.getElementById('modal-log-suspicious-reasons').textContent = logSuspiciousReasons || 'None';
     
     // Format and set action badge
     const actionBadge = document.getElementById('modal-log-action');

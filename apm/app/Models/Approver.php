@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class Approver extends Model
 {
+    use Auditable;
     /**
      * The table associated with the model.
      *
