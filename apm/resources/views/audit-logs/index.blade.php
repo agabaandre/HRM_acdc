@@ -221,27 +221,41 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#auditLogModal" 
-                                                    data-log-id="{{ $log->id }}" 
-                                                    data-log-table="{{ $log->source_table }}"
-                                                    data-log-action="{{ $log->action }}"
-                                                    data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
-                                                    data-log-causer-type="{{ $log->causer_type }}"
-                                                    data-log-causer-id="{{ $log->causer_id }}"
-                                                    data-log-causer-name="{{ $log->causer_name ?? 'Unknown User' }}"
-                                                    data-log-causer-email="{{ $log->causer_email ?? 'N/A' }}"
-                                                    data-log-causer-job="{{ $log->causer_job_title ?? 'N/A' }}"
-                                                    data-log-causer-division="{{ $log->causer_division_name ?? 'N/A' }}"
-                                                    data-log-causer-duty-station="{{ $log->causer_duty_station_name ?? 'N/A' }}"
-                                                    data-log-source="{{ $log->source }}"
-                                                    data-log-suspicious="{{ $log->is_suspicious ? 'Yes' : 'No' }}"
-                                                    data-log-suspicious-reasons="{{ $log->suspicious_reasons ?? '' }}"
-                                                    data-log-created="{{ $log->created_at }}"
-                                                    data-log-old-values="{{ $log->old_values }}"
-                                                    data-log-new-values="{{ $log->new_values }}"
-                                                    data-log-metadata="{{ $log->metadata }}">
-                                                <i class="bx bx-show"></i> View
-                                            </button>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#auditLogModal" 
+                                                        data-log-id="{{ $log->id }}" 
+                                                        data-log-table="{{ $log->source_table }}"
+                                                        data-log-action="{{ $log->action }}"
+                                                        data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
+                                                        data-log-causer-type="{{ $log->causer_type }}"
+                                                        data-log-causer-id="{{ $log->causer_id }}"
+                                                        data-log-causer-name="{{ $log->causer_name ?? 'Unknown User' }}"
+                                                        data-log-causer-email="{{ $log->causer_email ?? 'N/A' }}"
+                                                        data-log-causer-job="{{ $log->causer_job_title ?? 'N/A' }}"
+                                                        data-log-causer-division="{{ $log->causer_division_name ?? 'N/A' }}"
+                                                        data-log-causer-duty-station="{{ $log->causer_duty_station_name ?? 'N/A' }}"
+                                                        data-log-source="{{ $log->source }}"
+                                                        data-log-suspicious="{{ $log->is_suspicious ? 'Yes' : 'No' }}"
+                                                        data-log-suspicious-reasons="{{ $log->suspicious_reasons ?? '' }}"
+                                                        data-log-created="{{ $log->created_at }}"
+                                                        data-log-old-values="{{ $log->old_values }}"
+                                                        data-log-new-values="{{ $log->new_values }}"
+                                                        data-log-metadata="{{ $log->metadata }}"
+                                                        title="View Details">
+                                                    <i class="bx bx-show"></i>
+                                                </button>
+                                                @if(in_array(91, user_session('permissions')) && in_array($log->action, ['created', 'updated', 'deleted']))
+                                                    <button type="button" class="btn btn-sm btn-outline-warning" 
+                                                            data-bs-toggle="modal" data-bs-target="#reversalModal"
+                                                            data-log-id="{{ $log->id }}"
+                                                            data-log-table="{{ $log->source_table }}"
+                                                            data-log-action="{{ $log->action }}"
+                                                            data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
+                                                            title="Reverse Action">
+                                                        <i class="bx bx-undo"></i>
+                                                    </button>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -499,6 +513,78 @@
         </div>
     </div>
 </div>
+
+<!-- Reversal Modal -->
+<div class="modal fade" id="reversalModal" tabindex="-1" aria-labelledby="reversalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="reversalModalLabel">
+                    <i class="bx bx-undo me-2"></i>
+                    Reverse Audit Log Action
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bx bx-info-circle me-2"></i>
+                    <strong>Warning:</strong> This action will create a reversal entry in the audit log. This action cannot be undone.
+                </div>
+                
+                <div id="reversal-log-details" class="mb-3">
+                    <div class="card border-primary">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0 text-primary">Log Details to be Reversed</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <strong>Action:</strong> <span id="reversal-action" class="badge bg-primary">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Entity ID:</strong> <span id="reversal-entity">-</span>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <strong>Table:</strong> <span id="reversal-table" class="text-muted">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="reversal-form">
+                    <input type="hidden" id="reversal-log-id" name="log_id">
+                    <input type="hidden" id="reversal-table-name" name="table">
+                    
+                    <div class="mb-3">
+                        <label for="reversal-reason" class="form-label">Reason for Reversal <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="reversal-reason" name="reason" rows="4" 
+                                  placeholder="Please provide a detailed reason for reversing this audit log action..." 
+                                  minlength="10" maxlength="500" required></textarea>
+                        <div class="form-text">Minimum 10 characters, maximum 500 characters.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirm-reversal" required>
+                            <label class="form-check-label" for="confirm-reversal">
+                                I understand that this action will create a permanent reversal entry in the audit log and cannot be undone.
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirm-reversal-btn" disabled>
+                    <i class="bx bx-undo me-1"></i> Reverse Action
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('styles')
@@ -625,6 +711,105 @@ document.getElementById('confirm-cleanup-btn').addEventListener('click', functio
     .catch(error => {
         console.error('Error during cleanup:', error);
         show_notification('An error occurred during cleanup', 'error');
+    })
+    .finally(() => {
+        // Reset button state
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
+});
+
+// Reversal Modal Functionality
+document.getElementById('reversalModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    
+    // Get data from the button
+    const logId = button.getAttribute('data-log-id');
+    const table = button.getAttribute('data-log-table');
+    const action = button.getAttribute('data-log-action');
+    const entity = button.getAttribute('data-log-entity');
+    
+    // Populate the modal with log details
+    document.getElementById('reversal-action').textContent = action;
+    document.getElementById('reversal-entity').textContent = entity;
+    document.getElementById('reversal-table').textContent = table;
+    document.getElementById('reversal-log-id').value = logId;
+    document.getElementById('reversal-table-name').value = table;
+    
+    // Reset form
+    document.getElementById('reversal-reason').value = '';
+    document.getElementById('confirm-reversal').checked = false;
+    document.getElementById('confirm-reversal-btn').disabled = true;
+});
+
+// Enable/disable reversal button based on checkbox and reason
+document.getElementById('confirm-reversal').addEventListener('change', function() {
+    const reason = document.getElementById('reversal-reason').value.trim();
+    const confirmCheckbox = this.checked;
+    
+    document.getElementById('confirm-reversal-btn').disabled = !(confirmCheckbox && reason.length >= 10);
+});
+
+document.getElementById('reversal-reason').addEventListener('input', function() {
+    const reason = this.value.trim();
+    const confirmCheckbox = document.getElementById('confirm-reversal').checked;
+    
+    document.getElementById('confirm-reversal-btn').disabled = !(confirmCheckbox && reason.length >= 10);
+});
+
+// Handle reversal form submission
+document.getElementById('confirm-reversal-btn').addEventListener('click', function() {
+    const logId = document.getElementById('reversal-log-id').value;
+    const table = document.getElementById('reversal-table-name').value;
+    const reason = document.getElementById('reversal-reason').value.trim();
+    const confirmCheckbox = document.getElementById('confirm-reversal').checked;
+    
+    if (!confirmCheckbox) {
+        show_notification('Please confirm that you understand the consequences', 'warning');
+        return;
+    }
+    
+    if (reason.length < 10) {
+        show_notification('Please provide a detailed reason (minimum 10 characters)', 'warning');
+        return;
+    }
+    
+    // Show loading state
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i> Reversing...';
+    
+    // Submit reversal request
+    fetch('{{ route("audit-logs.reverse") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            log_id: logId,
+            table: table,
+            reason: reason
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            show_notification(data.message, 'success');
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('reversalModal')).hide();
+            // Reload page to show updated audit logs
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            show_notification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error during reversal:', error);
+        show_notification('An error occurred during reversal', 'error');
     })
     .finally(() => {
         // Reset button state
