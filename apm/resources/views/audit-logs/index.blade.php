@@ -9,9 +9,9 @@
     <a href="{{ route('audit-logs.index', array_merge(request()->query(), ['export' => 'csv'])) }}" class="btn btn-success">
         <i class="bx bx-download"></i> Export CSV
     </a>
-    <a href="{{ route('audit-logs.cleanup') }}" class="btn btn-warning" onclick="return confirm('Are you sure you want to clean up old audit logs?')">
+    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#cleanupModal">
         <i class="bx bx-trash"></i> Cleanup Old Logs
-    </a>
+    </button>
 </div>
 @endsection
 
@@ -424,6 +424,81 @@
         </div>
     </div>
 </div>
+
+<!-- Cleanup Modal -->
+<div class="modal fade" id="cleanupModal" tabindex="-1" aria-labelledby="cleanupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="cleanupModalLabel">
+                    <i class="bx bx-trash me-2"></i>
+                    Cleanup Old Audit Logs
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bx bx-info-circle me-2"></i>
+                    <strong>Warning:</strong> This action will permanently delete old audit log entries. This cannot be undone.
+                </div>
+                
+                <div id="cleanup-stats" class="mb-3">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary">Total Logs</h6>
+                                    <h4 class="text-primary" id="total-logs">-</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="card border-warning">
+                                <div class="card-body">
+                                    <h6 class="card-title text-warning">Old Logs</h6>
+                                    <h4 class="text-warning" id="old-logs">-</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="card border-info">
+                                <div class="card-body">
+                                    <h6 class="card-title text-info">Retention</h6>
+                                    <h4 class="text-info" id="retention-days">-</h4>
+                                    <small class="text-muted">days</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="cleanup-form">
+                    <div class="mb-3">
+                        <label for="retention-days-input" class="form-label">Retention Period (Days)</label>
+                        <input type="number" class="form-control" id="retention-days-input" name="retention_days" 
+                               min="30" max="3650" value="365" required>
+                        <div class="form-text">Logs older than this number of days will be deleted.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirm-cleanup" required>
+                            <label class="form-check-label" for="confirm-cleanup">
+                                I understand that this action cannot be undone and will permanently delete old audit logs.
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirm-cleanup-btn" disabled>
+                    <i class="bx bx-trash me-1"></i> Cleanup Old Logs
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('styles')
@@ -477,6 +552,85 @@ $(document).ready(function() {
 // Auto-submit form on filter change
 document.getElementById('filterForm').addEventListener('change', function() {
     this.submit();
+});
+
+// Cleanup Modal Functionality
+document.getElementById('cleanupModal').addEventListener('show.bs.modal', function () {
+    // Load cleanup statistics
+    fetch('{{ route("audit-logs.cleanup-modal") }}')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-logs').textContent = data.total_logs.toLocaleString();
+            document.getElementById('old-logs').textContent = data.old_logs.toLocaleString();
+            document.getElementById('retention-days').textContent = data.retention_days;
+            document.getElementById('retention-days-input').value = data.retention_days;
+        })
+        .catch(error => {
+            console.error('Error loading cleanup stats:', error);
+            show_notification('Error loading cleanup statistics', 'error');
+        });
+});
+
+// Enable/disable cleanup button based on checkbox
+document.getElementById('confirm-cleanup').addEventListener('change', function() {
+    document.getElementById('confirm-cleanup-btn').disabled = !this.checked;
+});
+
+// Handle cleanup form submission
+document.getElementById('confirm-cleanup-btn').addEventListener('click', function() {
+    const retentionDays = document.getElementById('retention-days-input').value;
+    const confirmCheckbox = document.getElementById('confirm-cleanup');
+    
+    if (!confirmCheckbox.checked) {
+        show_notification('Please confirm that you understand the consequences', 'warning');
+        return;
+    }
+    
+    if (!retentionDays || retentionDays < 30) {
+        show_notification('Please enter a valid retention period (minimum 30 days)', 'warning');
+        return;
+    }
+    
+    // Show loading state
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i> Cleaning up...';
+    
+    // Submit cleanup request
+    fetch('{{ route("audit-logs.cleanup") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            retention_days: retentionDays
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            show_notification(data.message, 'success');
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('cleanupModal')).hide();
+            // Reload page to show updated statistics
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            show_notification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error during cleanup:', error);
+        show_notification('An error occurred during cleanup', 'error');
+    })
+    .finally(() => {
+        // Reset button state
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
 });
 
 // Handle modal data population
