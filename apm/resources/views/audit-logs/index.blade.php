@@ -155,7 +155,7 @@
                                         </td>
                                         <td>
                                             <div>
-                                                <div class="fw-semibold">ID: {{ $log->entity_id }}</div>
+                                                <div class="fw-semibold">ID: {{ $log->entity_id ?? 'N/A' }}</div>
                                             </div>
                                         </td>
                                         <td>
@@ -185,7 +185,7 @@
                                                     data-log-id="{{ $log->id }}" 
                                                     data-log-table="{{ $log->source_table }}"
                                                     data-log-action="{{ $log->action }}"
-                                                    data-log-entity="{{ $log->entity_id }}"
+                                                    data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
                                                     data-log-causer-type="{{ $log->causer_type }}"
                                                     data-log-causer-id="{{ $log->causer_id }}"
                                                     data-log-source="{{ $log->source }}"
