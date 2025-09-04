@@ -164,8 +164,10 @@
                                         <td>
                                             <div>
                                                 @if($log->causer_id)
-                                                    <div class="fw-semibold">{{ $log->causer_type }}</div>
-                                                    <small class="text-muted">ID: {{ $log->causer_id }}</small>
+                                                    <div class="fw-semibold">{{ $log->causer_name ?? 'Unknown User' }}</div>
+                                                    <small class="text-muted">{{ $log->causer_job_title ?? 'N/A' }}</small>
+                                                    <br>
+                                                    <small class="text-muted">{{ $log->causer_email ?? 'N/A' }}</small>
                                                 @else
                                                     <span class="text-muted">System</span>
                                                 @endif
@@ -188,6 +190,9 @@
                                                     data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
                                                     data-log-causer-type="{{ $log->causer_type }}"
                                                     data-log-causer-id="{{ $log->causer_id }}"
+                                                    data-log-causer-name="{{ $log->causer_name ?? 'Unknown User' }}"
+                                                    data-log-causer-email="{{ $log->causer_email ?? 'N/A' }}"
+                                                    data-log-causer-job="{{ $log->causer_job_title ?? 'N/A' }}"
                                                     data-log-source="{{ $log->source }}"
                                                     data-log-created="{{ $log->created_at }}"
                                                     data-log-old-values="{{ $log->old_values }}"
@@ -260,10 +265,16 @@
                                     <i class="bx bx-user me-2"></i>Causer Information
                                 </h6>
                                 <div class="row g-2">
-                                    <div class="col-4"><strong>Causer Type:</strong></div>
-                                    <div class="col-8" id="modal-log-causer-type">-</div>
+                                    <div class="col-4"><strong>Name:</strong></div>
+                                    <div class="col-8" id="modal-log-causer-name">-</div>
                                     
-                                    <div class="col-4"><strong>Causer ID:</strong></div>
+                                    <div class="col-4"><strong>Email:</strong></div>
+                                    <div class="col-8" id="modal-log-causer-email">-</div>
+                                    
+                                    <div class="col-4"><strong>Job Title:</strong></div>
+                                    <div class="col-8" id="modal-log-causer-job">-</div>
+                                    
+                                    <div class="col-4"><strong>Staff ID:</strong></div>
                                     <div class="col-8" id="modal-log-causer-id">-</div>
                                     
                                     <div class="col-4"><strong>Source:</strong></div>
@@ -340,6 +351,9 @@ document.getElementById('auditLogModal').addEventListener('show.bs.modal', funct
     const logEntity = button.getAttribute('data-log-entity');
     const logCauserType = button.getAttribute('data-log-causer-type');
     const logCauserId = button.getAttribute('data-log-causer-id');
+    const logCauserName = button.getAttribute('data-log-causer-name');
+    const logCauserEmail = button.getAttribute('data-log-causer-email');
+    const logCauserJob = button.getAttribute('data-log-causer-job');
     const logSource = button.getAttribute('data-log-source');
     const logCreated = button.getAttribute('data-log-created');
     const logOldValues = button.getAttribute('data-log-old-values');
@@ -350,7 +364,9 @@ document.getElementById('auditLogModal').addEventListener('show.bs.modal', funct
     document.getElementById('modal-log-id').textContent = logId;
     document.getElementById('modal-log-entity').textContent = logEntity;
     document.getElementById('modal-log-table').textContent = logTable;
-    document.getElementById('modal-log-causer-type').textContent = logCauserType || 'N/A';
+    document.getElementById('modal-log-causer-name').textContent = logCauserName || 'Unknown User';
+    document.getElementById('modal-log-causer-email').textContent = logCauserEmail || 'N/A';
+    document.getElementById('modal-log-causer-job').textContent = logCauserJob || 'N/A';
     document.getElementById('modal-log-causer-id').textContent = logCauserId || 'N/A';
     document.getElementById('modal-log-source').textContent = logSource || 'Unknown';
     
