@@ -384,13 +384,14 @@
                                 <th>Special</th>
                                 <th>ARF</th>
                                 <th>Requests</th>
-                                <th>Total</th>
+                                <th>Total Pending</th>
+                                <th>Total Handled</th>
                                 <th>Avg. Time</th>
                             </tr>
                         </thead>
                         <tbody id="approverTableBody">
                             <tr>
-                                <td colspan="10" class="text-center py-4">
+                                <td colspan="11" class="text-center py-4">
                                     <i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i>
                                     <p class="mt-2">Loading approver data...</p>
                                 </td>
@@ -538,7 +539,7 @@ function updateTable(data) {
     if (data.length === 0) {
         tbody.append(`
             <tr>
-                <td colspan="10" class="text-center py-4">
+                <td colspan="11" class="text-center py-4">
                     <i class="bx bx-info-circle text-muted" style="font-size: 2rem;"></i>
                     <p class="mt-2 text-muted">No approvers found</p>
                 </td>
@@ -606,6 +607,7 @@ function updateTable(data) {
                     }
                 </td>
                 <td><span class="badge ${approver.total_pending > 0 ? 'bg-danger' : 'bg-success'}">${approver.total_pending}</span></td>
+                <td><span class="badge bg-primary">${approver.total_handled || 0}</span></td>
                 <td><span class="badge bg-info">${approver.avg_approval_time_display || 'No data'}</span></td>
             </tr>
         `;
