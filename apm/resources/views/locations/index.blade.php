@@ -12,22 +12,11 @@
 
 @section('content')
 <div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Locations</h5>
+    </div>
+    
     <div class="card-body">
-        @if (session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bx bx-check-circle me-2"></i>
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bx bx-error-circle me-2"></i>
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
 
         <div class="table-responsive">
             <table class="table table-hover">
@@ -59,19 +48,6 @@
                                        title="Edit">
                                         <i class="bx bx-edit"></i>
                                     </a>
-                                    <form action="{{ route('locations.destroy', $location->id) }}" 
-                                          method="POST" 
-                                          class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to delete this location? This action cannot be undone.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" 
-                                                class="btn btn-sm btn-outline-danger" 
-                                                data-bs-toggle="tooltip" 
-                                                title="Delete">
-                                            <i class="bx bx-trash"></i>
-                                        </button>
-                                    </form>
                                 </div>
                             </td>
                         </tr>
@@ -95,11 +71,11 @@
             </table>
         </div>
 
-        @if($locations->hasPages())
-            <div class="d-flex justify-content-center mt-4">
-                {{ $locations->links() }}
-            </div>
-        @endif
+    @if($locations->hasPages())
+        <div class="card-footer">
+            {{ $locations->links() }}
+        </div>
+    @endif
     </div>
 </div>
 

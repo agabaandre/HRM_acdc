@@ -55,7 +55,7 @@ Route::get('/home', function () {
 
 // Workflow Management Routes
 Route::middleware([CheckSessionMiddleware::class])->group(function () {
-    Route::resource('workflows', WorkflowController::class);
+    Route::resource('workflows', WorkflowController::class)->except(['destroy']);
     Route::get('workflows/{workflow}/add-definition', [WorkflowController::class, 'addDefinition'])->name('workflows.add-definition');
     Route::post('workflows/{workflow}/store-definition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
     Route::get('workflows/{workflow}/approvers', [WorkflowController::class, 'approvers'])->name('workflows.approvers');
@@ -102,9 +102,16 @@ Route::post('/image/upload', [App\Http\Controllers\ImageController::class, 'uplo
 
 Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function () {
     // Resource Routes
-    Route::resource('fund-types', App\Http\Controllers\FundTypeController::class);
-    Route::resource('fund-codes', App\Http\Controllers\FundCodeController::class);
+    Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->except(['destroy']);
+    
+    // Fund Codes specific routes (must be before resource route)
+    Route::get('fund-codes/download-template', [App\Http\Controllers\FundCodeController::class, 'downloadTemplate'])->name('fund-codes.download-template');
+    Route::post('fund-codes/upload', [App\Http\Controllers\FundCodeController::class, 'upload'])->name('fund-codes.upload');
     Route::get('fund-codes/{fundCode}/transactions', [App\Http\Controllers\FundCodeController::class, 'transactions'])->name('fund-codes.transactions');
+    Route::resource('fund-codes', App\Http\Controllers\FundCodeController::class)->except(['destroy']);
+    
+    // Funders Management
+    Route::resource('funders', App\Http\Controllers\FunderController::class)->except(['destroy']);
     Route::resource('divisions', App\Http\Controllers\DivisionController::class);
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     Route::resource('staff', App\Http\Controllers\StaffController::class);
@@ -112,8 +119,8 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     // Staff activities route for matrix view
     Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities');
     Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
-    Route::resource('locations', App\Http\Controllers\LocationController::class);
-    Route::resource('cost-items', App\Http\Controllers\CostItemController::class);
+    Route::resource('locations', App\Http\Controllers\LocationController::class)->except(['destroy']);
+    Route::resource('cost-items', App\Http\Controllers\CostItemController::class)->except(['destroy']);
     Route::resource('non-travel-categories', App\Http\Controllers\NonTravelMemoCategoryController::class);
     
     // Jobs Management Routes
@@ -129,13 +136,15 @@ Route::get('/api/approver-dashboard', [App\Http\Controllers\ApproverDashboardCon
 Route::get('/api/approver-dashboard/filter-options', [App\Http\Controllers\ApproverDashboardController::class, 'getFilterOptions'])->name('approver-dashboard.filter-options');
 Route::get('/api/approver-dashboard/summary-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getSummaryStats'])->name('approver-dashboard.summary-stats');
 
+// Audit Logs Routes
+Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
+Route::get('/audit-logs/cleanup', function() {
+    \Artisan::call('audit:cleanup');
+    return redirect()->back()->with('success', 'Audit logs cleanup completed successfully.');
+})->name('audit-logs.cleanup');
 
 
-    // Audit Logs Routes
-    Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
-    Route::get('/audit-logs/{auditLog}', [App\Http\Controllers\AuditLogsController::class, 'show'])->name('audit-logs.show');
-    Route::get('/audit-logs/export/csv', [App\Http\Controllers\AuditLogsController::class, 'export'])->name('audit-logs.export');
-    Route::post('/audit-logs/cleanup', [App\Http\Controllers\AuditLogsController::class, 'cleanup'])->name('audit-logs.cleanup');
+
     
     // Add matrices and activities resources inside the middleware group
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts

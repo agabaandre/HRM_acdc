@@ -105,29 +105,6 @@ class WorkflowController extends Controller
             ->with('success', 'Workflow updated successfully.');
     }
 
-    /**
-     * Remove the specified workflow from storage.
-     *
-     * @param  \App\Models\Workflow  $workflow
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function destroy(Workflow $workflow)
-    {
-        // Check if there are any memos using this workflow
-        if ($workflow->memos()->count() > 0) {
-            return redirect()->route('workflows.index')
-                ->with('error', 'Cannot delete workflow. It is currently being used by memos.');
-        }
-
-        // Delete workflow definitions first
-        $workflow->workflowDefinitions()->delete();
-
-        // Delete workflow
-        $workflow->delete();
-
-        return redirect()->route('workflows.index')
-            ->with('success', 'Workflow deleted successfully.');
-    }
 
     /**
      * Add workflow definition form

@@ -19,6 +19,11 @@ $settingsMenuItems = [
 'title' => 'Fund Codes'
 ],
 [
+'route' => 'funders.index',
+'icon' => 'fas fa-handshake',
+'title' => 'Funders'
+],
+[
 'route' => 'divisions.index',
 'icon' => 'fas fa-building',
 'title' => 'Divisions'
@@ -164,7 +169,7 @@ $settingsMenuItems = [
 
             <!-- Settings -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                     <div class="menu-title">Settings</div>
