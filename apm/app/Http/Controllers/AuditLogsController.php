@@ -216,6 +216,77 @@ class AuditLogsController extends Controller
     }
 
     /**
+     * Show cleanup confirmation modal
+     */
+    public function showCleanupModal()
+    {
+        // Get audit log statistics for the modal
+        $auditTables = $this->getAuditTables();
+        $totalLogs = 0;
+        $oldLogs = 0;
+        
+        foreach ($auditTables as $table) {
+            try {
+                $tableTotal = DB::table($table)->count();
+                $tableOld = DB::table($table)
+                    ->where('created_at', '<', Carbon::now()->subDays(env('LOGS_RETENTION_PERIOD', 365)))
+                    ->count();
+                
+                $totalLogs += $tableTotal;
+                $oldLogs += $tableOld;
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
+
+        return response()->json([
+            'total_logs' => $totalLogs,
+            'old_logs' => $oldLogs,
+            'retention_days' => env('LOGS_RETENTION_PERIOD', 365)
+        ]);
+    }
+    
+    /**
+     * Perform audit logs cleanup
+     */
+    public function cleanup(Request $request)
+    {
+        try {
+            $retentionDays = $request->input('retention_days', env('LOGS_RETENTION_PERIOD', 365));
+            $cutoffDate = Carbon::now()->subDays($retentionDays);
+            
+            $auditTables = $this->getAuditTables();
+            $deletedCount = 0;
+            
+            foreach ($auditTables as $table) {
+                try {
+                    $deleted = DB::table($table)
+                        ->where('created_at', '<', $cutoffDate)
+                        ->delete();
+                    $deletedCount += $deleted;
+                } catch (\Exception $e) {
+                    Log::error("Error cleaning up audit table {$table}: " . $e->getMessage());
+                    continue;
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully cleaned up {$deletedCount} old audit log entries.",
+                'deleted_count' => $deletedCount
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Audit logs cleanup error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred during cleanup: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
      * Mark suspicious activities based on external sources and unknown users
      */
     private function markSuspiciousActivities($auditLogs)

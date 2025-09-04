@@ -138,10 +138,8 @@ Route::get('/api/approver-dashboard/summary-stats', [App\Http\Controllers\Approv
 
 // Audit Logs Routes
 Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
-Route::get('/audit-logs/cleanup', function() {
-    \Artisan::call('audit:cleanup');
-    return redirect()->back()->with('success', 'Audit logs cleanup completed successfully.');
-})->name('audit-logs.cleanup');
+Route::get('/audit-logs/cleanup-modal', [App\Http\Controllers\AuditLogsController::class, 'showCleanupModal'])->name('audit-logs.cleanup-modal');
+Route::post('/audit-logs/cleanup', [App\Http\Controllers\AuditLogsController::class, 'cleanup'])->name('audit-logs.cleanup');
 
 
 
