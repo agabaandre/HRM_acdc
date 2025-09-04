@@ -23,12 +23,25 @@ class AuditLogsController extends Controller
         $auditLogs = collect();
         
         foreach ($auditTables as $table) {
-            $tableLogs = DB::table($table)
-                ->select('*')
-                ->addSelect(DB::raw("'{$table}' as source_table"))
-                ->orderBy('created_at', 'desc')
-                ->limit(100) // Limit per table to prevent memory issues
-                ->get();
+            // Handle different audit table structures
+            if ($table === 'audit_logs') {
+                // This table uses 'resource_id' instead of 'entity_id'
+                $tableLogs = DB::table($table)
+                    ->select('*')
+                    ->addSelect(DB::raw("'{$table}' as source_table"))
+                    ->addSelect(DB::raw("resource_id as entity_id")) // Map resource_id to entity_id
+                    ->orderBy('created_at', 'desc')
+                    ->limit(100)
+                    ->get();
+            } else {
+                // Other tables use 'entity_id'
+                $tableLogs = DB::table($table)
+                    ->select('*')
+                    ->addSelect(DB::raw("'{$table}' as source_table"))
+                    ->orderBy('created_at', 'desc')
+                    ->limit(100)
+                    ->get();
+            }
                 
             $auditLogs = $auditLogs->merge($tableLogs);
         }
@@ -92,7 +105,8 @@ class AuditLogsController extends Controller
         
         foreach ($tables as $table) {
             $tableName = array_values((array)$table)[0];
-            if (strpos($tableName, 'audit_') === 0 && strpos($tableName, '_logs') !== false) {
+            if ((strpos($tableName, 'audit_') === 0 && strpos($tableName, '_logs') !== false) || 
+                $tableName === 'audit_logs') {
                 $auditTables[] = $tableName;
             }
         }
