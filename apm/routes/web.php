@@ -123,6 +123,14 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     Route::get('/jobs/system-info', [App\Http\Controllers\JobsController::class, 'getSystemInfo'])->name('jobs.system-info');
 
+    // Approver Dashboard Routes
+Route::get('/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'index'])->name('approver-dashboard.index');
+Route::get('/api/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'getDashboardData'])->name('approver-dashboard.api');
+Route::get('/api/approver-dashboard/filter-options', [App\Http\Controllers\ApproverDashboardController::class, 'getFilterOptions'])->name('approver-dashboard.filter-options');
+Route::get('/api/approver-dashboard/summary-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getSummaryStats'])->name('approver-dashboard.summary-stats');
+
+
+
     // Audit Logs Routes
     Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
     Route::get('/audit-logs/{auditLog}', [App\Http\Controllers\AuditLogsController::class, 'show'])->name('audit-logs.show');

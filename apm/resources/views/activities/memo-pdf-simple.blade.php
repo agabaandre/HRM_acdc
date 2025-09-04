@@ -570,6 +570,155 @@
      </table>
          
     <div style="page-break-before: always;"></div>
+
+
+    <style>
+  :root{
+    --au-red:#911C39;
+    --au-green:#119A48;
+    --au-gold:#C3A366;
+    --ink:#001011;
+    --muted:#7A7A7A;
+    --line:#444;
+    --bg:#f7f7f7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; color:var(--ink); font:14px/1.35 Arial,Helvetica,sans-serif; background:#fff;}
+  .sheet{max-width:940px; margin:16px auto;}
+
+  table.form, table.sig-grid{width:100%; border-collapse:collapse;}
+  table.form td, table.form th,
+  table.sig-grid td, table.sig-grid th{
+    border:1px solid var(--line); padding:8px; vertical-align:top;
+  }
+  table.form th.label{width:270px; font-weight:700;}
+  table.form .tick{width:26px;}
+  table.form small{color:var(--muted); font-weight:600;}
+  .muted{color:var(--muted); font-weight:normal;}
+  .currency{width:90px; text-align:center; font-weight:700;}
+  .amount{width:280px;}
+  .rightbox div{margin:3px 0;}
+  .nowrap{white-space:nowrap;}
+  .sign-box{height:72px; border:1px dashed #999; margin-top:6px;}
+  .section-head{background:var(--bg); font-weight:700;}
+  .sig-title{background:var(--bg); font-weight:700; color:var(--au-red);}
+  .chip{display:inline-block; padding:2px 6px; border:1px solid var(--au-red); border-radius:4px; font-size:12px;}
+  @media print {.sheet{max-width:190mm}}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <!-- MAIN FORM TABLE -->
+  <table class="form">
+    <colgroup>
+      <col style="width:26px">
+      <col style="width:270px">
+      <col>
+      <col style="width:280px">
+    </colgroup>
+    <tbody>
+      <tr>
+        <td class="tick"></td>
+        <th class="label">Payee/Staff <small>(Vendors)</small></th>
+        <td colspan="2">Africa CDC</td>
+      </tr>
+
+      <tr>
+        <td class="tick"></td>
+        <th class="label">Purpose of Payment</th>
+        <td colspan="2"><strong>Request for PHEOC Infrastructure Inspection and Installation of ICT Equipment and Accessories</strong></td>
+      </tr>
+
+      <tr>
+        <td class="tick"></td>
+        <th class="label">Department Name <small>(Cost Center)</small></th>
+        <td>Africa CDC</td>
+        <td>Africa CDC</td>
+      </tr>
+
+      <tr>
+        <td class="tick"></td>
+        <th class="label">Project/Program <small>(Fund Center)</small></th>
+        <td>CDC0603015MB</td>
+        <td></td>
+      </tr>
+
+      <tr>
+        <td class="tick"></td>
+        <th class="label">Fund <small>(Member State or Name of Partner/Donor)</small></th>
+        <td>PBCOVADB01</td>
+        <td></td>
+      </tr>
+
+      <tr>
+        <td class="tick"></td>
+        <th class="label">Strategic Axis Budget Balance <small>(Certified by SFO)</small></th>
+        <td class="currency">USD</td>
+        <td class="rightbox">
+          <div>US $ <strong>205,270</strong></div>
+          <div class="nowrap">Date: <span>12/03/2025</span></div>
+          <div>Signature:<div class="sign-box"></div></div>
+          <div class="nowrap">Name: <strong>SFO</strong></div>
+        </td>
+      </tr>
+
+      <tr>
+        <td class="tick"></td>
+        <th class="label">Estimated cost</th>
+        <td class="currency">USD</td>
+        <td class="amount"><strong>205,270 US $</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SIGNATORIES BLOCK -->
+  <table class="sig-grid" style="margin-top:14px;">
+    <colgroup>
+      <col>
+      <col style="width:240px">
+    </colgroup>
+    <tbody>
+      <tr><th class="sig-title" colspan="2">Signed (Prepared by)</th></tr>
+      <tr>
+        <td>
+          <div><strong>Dr Wessam Mankoula</strong></div>
+          <div>Ag Head of Emergency Preparedness and Response Division, Africa CDC</div>
+        </td>
+        <td>
+          <div>Signed by:</div>
+          <div class="sign-box"></div>
+        </td>
+      </tr>
+
+      <tr><th class="sig-title" colspan="2">Endorsed by</th></tr>
+      <tr>
+        <td>
+          <div><strong>Adedayo Akinwale</strong></div>
+          <div>Charles OIC Director of Finance, Africa CDC</div>
+        </td>
+        <td>
+          <div>Signature / DocuSign:</div>
+          <div class="sign-box"></div>
+        </td>
+      </tr>
+
+      <tr><th class="sig-title" colspan="2">Approved by</th></tr>
+      <tr>
+        <td>
+          <div><strong>Dr. Raji Tajudeen</strong></div>
+          <div>Ag. Deputy Director General, Africa CDC</div>
+        </td>
+        <td>
+          <div>Signed by:</div>
+          <div class="sign-box"></div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+
+    
    
   <!-- Signature Section -->
   <div class="section-title">Signatures</div>

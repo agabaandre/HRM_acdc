@@ -16,66 +16,84 @@ class AuditLogsController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = AuditLog::with('user')->latest();
+        // Start with minimal data to prevent any errors
+        $auditLogs = collect()->paginate(50);
+        $actions = collect();
+        $resourceTypes = collect();
+        $routeNames = collect();
+        $users = collect();
+        $stats = [
+            'total_logs' => 0,
+            'actions_count' => collect(),
+            'resource_types_count' => collect(),
+            'top_users' => collect(),
+            'recent_activity' => 0,
+        ];
 
-        // Apply filters
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('user_name', 'like', "%{$search}%")
-                  ->orWhere('user_email', 'like', "%{$search}%")
-                  ->orWhere('action', 'like', "%{$search}%")
-                  ->orWhere('resource_type', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('url', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('action')) {
-            $query->where('action', $request->get('action'));
-        }
-
-        if ($request->filled('resource_type')) {
-            $query->where('resource_type', $request->get('resource_type'));
-        }
-
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->get('user_id'));
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->get('date_from'));
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->get('date_to'));
-        }
-
-        if ($request->filled('route_name')) {
-            $query->where('route_name', 'like', "%{$request->get('route_name')}%");
-        }
-
-        // Paginate results
-        $auditLogs = $query->paginate(50)->withQueryString();
-
-        // Get filter options - handle case when no audit logs exist yet
         try {
+            // Try to get audit logs
+            $query = AuditLog::latest();
+
+            // Apply filters
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('user_name', 'like', "%{$search}%")
+                      ->orWhere('user_email', 'like', "%{$search}%")
+                      ->orWhere('action', 'like', "%{$search}%")
+                      ->orWhere('resource_type', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhere('url', 'like', "%{$search}%");
+                });
+            }
+
+            if ($request->filled('action')) {
+                $query->where('action', $request->get('action'));
+            }
+
+            if ($request->filled('resource_type')) {
+                $query->where('resource_type', $request->get('resource_type'));
+            }
+
+            if ($request->filled('user_id')) {
+                $query->where('user_id', $request->get('user_id'));
+            }
+
+            if ($request->filled('date_from')) {
+                $query->whereDate('created_at', '>=', $request->get('date_from'));
+            }
+
+            if ($request->filled('date_to')) {
+                $query->whereDate('created_at', '<=', $request->get('date_to'));
+            }
+
+            if ($request->filled('route_name')) {
+                $query->where('route_name', 'like', "%{$request->get('route_name')}%");
+            }
+
+            // Paginate results
+            $auditLogs = $query->paginate(50)->withQueryString();
+
+            // Get filter options
             $actions = AuditLog::distinct()->pluck('action')->sort()->values();
             $resourceTypes = AuditLog::distinct()->pluck('resource_type')->sort()->values();
             $routeNames = AuditLog::distinct()->pluck('route_name')->filter()->sort()->values();
-        } catch (\Exception $e) {
-            $actions = collect();
-            $resourceTypes = collect();
-            $routeNames = collect();
-        }
-        
-        $users = User::select('id', 'fname', 'lname', 'work_email')
-                    ->orderBy('fname')
-                    ->orderBy('lname')
-                    ->get();
+            
+            // Get users
+            $users = User::select('id', 'fname', 'lname', 'work_email')
+                        ->orderBy('fname')
+                        ->orderBy('lname')
+                        ->get();
 
-        // Get statistics
-        $stats = $this->getStatistics($request);
+            // Get statistics
+            $stats = $this->getStatistics($request);
+
+        } catch (\Exception $e) {
+            // Log the error but continue with minimal data
+            \Log::error('Audit logs controller error: ' . $e->getMessage(), [
+                'error' => $e->getTraceAsString()
+            ]);
+        }
 
         return view('audit-logs.index', compact(
             'auditLogs',
