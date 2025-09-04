@@ -7,7 +7,7 @@
 @section('header-actions')
 <div class="d-flex gap-2">
     <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#bulkAssignmentModal">
-        <i class="bx bx-user-plus"></i> Bulk Assignment
+        <i class="bx bx-user-plus"></i> Quick Assignment
     </button>
     <a href="{{ route('workflows.assign-staff', $workflow->id) }}" class="btn btn-info">
         <i class="bx bx-user-plus"></i> Assign Staff
@@ -233,97 +233,136 @@
 
 <!-- Bulk Assignment Modal -->
 <div class="modal fade" id="bulkAssignmentModal" tabindex="-1" aria-labelledby="bulkAssignmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="bulkAssignmentModalLabel">
-                    <i class="bx bx-user-plus me-2 text-primary"></i>Bulk Approver Assignment
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color: #119A48;">
+                <h5 class="modal-title fw-bold" id="bulkAssignmentModalLabel">
+                    <i class="bx bx-user-plus me-2"></i>Quick Approver Assignment
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="bulkAssignmentForm">
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <input type="hidden" id="bulk_workflow_id" name="workflow_id">
+              
                     
-                    <div class="alert alert-info">
-                        <i class="bx bx-info-circle me-2"></i>
-                        <strong>Quick Assignment:</strong> Select a workflow definition and assign multiple staff members at once.
-                    </div>
-                    
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label for="bulk_workflow_dfn_id" class="form-label fw-semibold">
-                                <i class="bx bx-check-shield me-1 text-primary"></i>Workflow Definition:
-                            </label>
-                            <select name="workflow_dfn_id" id="bulk_workflow_dfn_id" class="form-select" required>
-                                <option value="">Select Workflow Definition</option>
-                                @foreach($workflowDefinitions as $definition)
-                                    <option value="{{ $definition->id }}">
-                                        {{ $definition->role }} (Order: {{ $definition->approval_order }})
-                                    </option>
-                                @endforeach
-                            </select>
+                    <!-- Workflow Configuration Section -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-light border-0">
+                            <h6 class="mb-0 text-primary fw-semibold">
+                                <i class="bx bx-cog me-2"></i>Workflow Configuration
+                            </h6>
                         </div>
-                        
-                        <div class="col-md-6">
-                            <label for="bulk_start_date" class="form-label fw-semibold">
-                                <i class="bx bx-calendar-plus me-1 text-primary"></i>Start Date:
-                            </label>
-                            <input type="date" name="start_date" id="bulk_start_date" class="form-control" required>
-                        </div>
-                    </div>
-                    
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                <i class="bx bx-user me-1 text-primary"></i>Select Primary Approvers:
-                            </label>
-                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
-                                @foreach($availableStaff as $staff)
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="staff_ids[]" 
-                                               value="{{ $staff->staff_id }}" id="staff_{{ $staff->staff_id }}">
-                                        <label class="form-check-label" for="staff_{{ $staff->staff_id }}">
-                                            {{ $staff->fname }} {{ $staff->lname }} 
-                                            <small class="text-muted">({{ $staff->division_name }})</small>
-                                        </label>
-                                    </div>
-                                @endforeach
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="bulk_workflow_dfn_id" class="form-label fw-semibold text-dark">
+                                        <i class="bx bx-check-shield me-1 text-primary"></i>Workflow Definition
+                                    </label><br>
+                                    <select name="workflow_dfn_id" id="bulk_workflow_dfn_id" class="form-select select2" required style="width: 100%;">
+                                        <option value="">Select Workflow Definition</option>
+                                        @foreach($workflowDefinitions as $definition)
+                                            @if(!$definition->is_division_specific)
+                                                <option value="{{ $definition->id }}">
+                                                    {{ $definition->role }} (Order: {{ $definition->approval_order }})
+                                                </option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label for="bulk_start_date" class="form-label fw-semibold text-dark">
+                                        <i class="bx bx-calendar-plus me-1 text-success"></i>Start Date
+                                    </label>
+                                    <input type="text" name="start_date" id="bulk_start_date" class="form-control datepicker">
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label for="bulk_end_date" class="form-label fw-semibold text-dark">
+                                        <i class="bx bx-calendar-minus me-1 text-success"></i>End Date
+                                    </label>
+                                    <input type="text" name="end_date" id="bulk_end_date" class="form-control datepicker">
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                <i class="bx bx-user-voice me-1 text-primary"></i>Select OIC (Optional):
-                            </label>
-                            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="oic_staff_id" 
-                                           value="" id="oic_none" checked>
-                                    <label class="form-check-label" for="oic_none">
-                                        <em>No OIC assigned</em>
-                                    </label>
+                    </div>
+                    
+                    <!-- Approver Assignment Section -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-light border-0">
+                            <h6 class="mb-0 text-primary fw-semibold">
+                                <i class="bx bx-user-plus me-2"></i>Approver Assignment
+                            </h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="bulk_primary_approver" class="form-label fw-semibold text-dark">
+                                        <i class="bx bx-user me-1 text-success"></i>Primary Approver
+                                        <span class="text-danger">*</span>
+                                    </label><br>
+                                    <select name="staff_id" id="bulk_primary_approver" class="form-select select2" required style="width: 100%;">
+                                        <option value="">Select Primary Approver</option>
+                                        @foreach($availableStaff as $staff)
+                                            <option value="{{ $staff->staff_id }}">
+                                                {{ $staff->fname }} {{ $staff->lname }} ({{ $staff->division_name }})
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
-                                @foreach($availableStaff as $staff)
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="oic_staff_id" 
-                                               value="{{ $staff->staff_id }}" id="oic_{{ $staff->staff_id }}">
-                                        <label class="form-check-label" for="oic_{{ $staff->staff_id }}">
-                                            {{ $staff->fname }} {{ $staff->lname }} 
-                                            <small class="text-muted">({{ $staff->division_name }})</small>
-                                        </label>
-                                    </div>
-                                @endforeach
+                                
+                                <div class="col-12">
+                                    <label for="bulk_oic_approver" class="form-label fw-semibold text-dark">
+                                        <i class="bx bx-user-voice me-1 text-warning"></i>OIC (Optional)
+                                    </label><br>
+                                    <select name="oic_staff_id" id="bulk_oic_approver" class="form-select select2" style="width: 100%;">
+                                        <option value="">No OIC assigned</option>
+                                        @foreach($availableStaff as $staff)
+                                            <option value="{{ $staff->staff_id }}">
+                                                {{ $staff->fname }} {{ $staff->lname }} ({{ $staff->division_name }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- OIC Date Fields (shown when OIC is selected) -->
+                    <div class="card border-0 shadow-sm" id="oic-date-fields" style="display: none;">
+                        <div class="card-header bg-warning bg-opacity-10 border-0">
+                            <h6 class="mb-0 text-warning fw-semibold">
+                                <i class="bx bx-calendar me-2"></i>OIC Date Range
+                            </h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="bulk_oic_start_date" class="form-label fw-semibold text-dark">
+                                        <i class="bx bx-calendar-plus me-1 text-warning"></i>OIC Start Date
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" name="oic_start_date" id="bulk_oic_start_date" class="form-control datepicker">
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label for="bulk_oic_end_date" class="form-label fw-semibold text-dark">
+                                        <i class="bx bx-calendar-minus me-1 text-warning"></i>OIC End Date
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" name="oic_end_date" id="bulk_oic_end_date" class="form-control datepicker">
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <div class="modal-footer bg-light border-0 p-4">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                         <i class="bx bx-x me-1"></i>Cancel
                     </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bx bx-plus-circle me-1"></i>Assign Selected Staff
+                    <button type="submit" class="btn shadow-sm" style="background-color: #119A48; border-color: #119A48; color: white;">
+                        <i class="bx bx-plus-circle me-1"></i>Assign Approver
                     </button>
                 </div>
             </form>
@@ -349,10 +388,61 @@
         // Get session from laravel
         const baseUrl = @json(session('base_url', ''));
 
+        // Initialize Select2 for all select elements
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select an option',
+            allowClear: true,
+            width: '100%'
+        });
+
+   
+
         // Initialize bulk assignment modal
         $('#bulkAssignmentModal').on('show.bs.modal', function() {
             $('#bulk_workflow_id').val('{{ $workflow->id }}');
-            $('#bulk_start_date').val(new Date().toISOString().split('T')[0]);
+            const today = new Date().toISOString().split('T')[0];
+            $('#bulk_start_date').val(today);
+            
+            // Reset form
+            $('#bulkAssignmentForm')[0].reset();
+            $('.select2').val(null).trigger('change');
+            $('#oic-date-fields').hide();
+            
+            // Set default start date
+            $('#bulk_start_date').val(today);
+            
+            // Re-initialize datepicker after modal is shown
+            setTimeout(function() {
+                $('.datepicker').datepicker({
+                    format: 'yyyy-mm-dd',
+                    autoclose: true,
+                    todayHighlight: true
+                });
+            }, 300);
+        });
+
+        // Show/hide OIC date fields based on OIC selection
+        $('#bulk_oic_approver').on('change', function() {
+            const oicValue = $(this).val();
+            if (oicValue && oicValue !== '') {
+                $('#oic-date-fields').show();
+                $('#bulk_oic_start_date').attr('required', true);
+                $('#bulk_oic_end_date').attr('required', true);
+                
+                // Re-initialize datepicker for the newly shown fields
+                setTimeout(function() {
+                    $('#bulk_oic_start_date, #bulk_oic_end_date').datepicker({
+                        format: 'yyyy-mm-dd',
+                        autoclose: true,
+                        todayHighlight: true
+                    });
+                }, 100);
+            } else {
+                $('#oic-date-fields').hide();
+                $('#bulk_oic_start_date').attr('required', false);
+                $('#bulk_oic_end_date').attr('required', false);
+            }
         });
 
         // Handle bulk assignment form submission
@@ -363,11 +453,28 @@
             const workflowId = $('#bulk_workflow_id').val();
             const formData = new FormData(this);
             
-            // Validate that at least one staff is selected
-            const selectedStaff = $('input[name="staff_ids[]"]:checked');
-            if (selectedStaff.length === 0) {
-                showAlert('Please select at least one staff member', 'warning');
+            // Validate that primary approver is selected
+            const primaryApprover = $('#bulk_primary_approver').val();
+            if (!primaryApprover) {
+                showAlert('Please select a primary approver', 'warning');
                 return;
+            }
+            
+            // Note: Start and end dates are optional for primary approvers
+            
+            // Validate OIC dates if OIC is selected
+            const oicApprover = $('#bulk_oic_approver').val();
+            if (oicApprover) {
+                const oicStartDate = $('#bulk_oic_start_date').val();
+                const oicEndDate = $('#bulk_oic_end_date').val();
+                if (!oicStartDate) {
+                    showAlert('Please select OIC start date when OIC is assigned', 'warning');
+                    return;
+                }
+                if (!oicEndDate) {
+                    showAlert('Please select OIC end date when OIC is assigned', 'warning');
+                    return;
+                }
             }
             
             $.ajax({

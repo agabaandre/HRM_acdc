@@ -11,13 +11,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->web(append: [
-            \App\Http\Middleware\AuditLogMiddleware::class,
-        ]);
+        //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Re-enable Flare with navigation disabled
-        if (class_exists(\Spatie\LaravelFlare\Facades\Flare::class)) {
-            \Spatie\LaravelFlare\Facades\Flare::handles($exceptions);
-        }
+        //
     })->create();

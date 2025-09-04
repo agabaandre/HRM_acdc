@@ -6,11 +6,8 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-    <button type="button" class="btn btn-warning" onclick="cleanupLogs()">
+    <a href="{{ route('audit-logs.cleanup') }}" class="btn btn-warning" onclick="return confirm('Are you sure you want to clean up old audit logs?')">
         <i class="bx bx-trash"></i> Cleanup Old Logs
-    </button>
-    <a href="{{ route('audit-logs.export', request()->query()) }}" class="btn btn-success">
-        <i class="bx bx-download"></i> Export CSV
     </a>
 </div>
 @endsection
@@ -42,17 +39,17 @@
                 <div class="card border-info">
                     <div class="card-body text-center">
                         <h6 class="card-title text-info">Top Action</h6>
-                        <h3 class="text-info">{{ $stats['actions_count']->first()->action ?? 'N/A' }}</h3>
-                        <small class="text-muted">{{ $stats['actions_count']->first()->count ?? 0 }} times</small>
+                        <h3 class="text-info">{{ $stats['actions_count']->keys()->first() ?? 'N/A' }}</h3>
+                        <small class="text-muted">{{ $stats['actions_count']->first() ?? 0 }} times</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card border-warning">
                     <div class="card-body text-center">
-                        <h6 class="card-title text-warning">Top Resource</h6>
-                        <h3 class="text-warning">{{ $stats['resource_types_count']->first()->resource_type ?? 'N/A' }}</h3>
-                        <small class="text-muted">{{ $stats['resource_types_count']->first()->count ?? 0 }} times</small>
+                        <h6 class="card-title text-warning">Top Table</h6>
+                        <h3 class="text-warning">{{ $stats['tables_count']->keys()->first() ?? 'N/A' }}</h3>
+                        <small class="text-muted">{{ $stats['tables_count']->first() ?? 0 }} records</small>
                     </div>
                 </div>
             </div>
@@ -85,33 +82,22 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label for="resource_type" class="form-label">Resource Type</label>
-                            <select class="form-select" id="resource_type" name="resource_type">
-                                <option value="">All Types</option>
-                                @foreach($resourceTypes as $type)
-                                    <option value="{{ $type }}" {{ request('resource_type') == $type ? 'selected' : '' }}>
-                                        {{ $type }}
+                            <label for="table" class="form-label">Table</label>
+                            <select class="form-select" id="table" name="table">
+                                <option value="">All Tables</option>
+                                @foreach($tables as $table)
+                                    <option value="{{ $table }}" {{ request('table') == $table ? 'selected' : '' }}>
+                                        {{ $table }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label for="user_id" class="form-label">User</label>
-                            <select class="form-select" id="user_id" name="user_id">
-                                <option value="">All Users</option>
-                                @foreach($users as $user)
-                                    <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
-                                        {{ $user->fname }} {{ $user->lname }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-1">
                             <label for="date_from" class="form-label">From</label>
                             <input type="date" class="form-control" id="date_from" name="date_from" 
                                    value="{{ request('date_from') }}">
                         </div>
-                        <div class="col-md-1">
+                        <div class="col-md-2">
                             <label for="date_to" class="form-label">To</label>
                             <input type="date" class="form-control" id="date_to" name="date_to" 
                                    value="{{ request('date_to') }}">
@@ -138,7 +124,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bx bx-list-ul me-2 text-primary"></i>Audit Logs</h6>
-                <small class="text-muted">Showing {{ $auditLogs->count() }} of {{ $auditLogs->total() }} logs</small>
+                <small class="text-muted">Showing {{ $auditLogs->count() }} logs</small>
             </div>
             <div class="card-body p-0">
                 @if($auditLogs->count() > 0)
@@ -147,11 +133,11 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>ID</th>
-                                    <th>User</th>
                                     <th>Action</th>
-                                    <th>Resource</th>
-                                    <th>Description</th>
-                                    <th>IP Address</th>
+                                    <th>Entity</th>
+                                    <th>Table</th>
+                                    <th>Causer</th>
+                                    <th>Source</th>
                                     <th>Date/Time</th>
                                     <th>Actions</th>
                                 </tr>
@@ -163,60 +149,57 @@
                                             <span class="badge bg-secondary">#{{ $log->id }}</span>
                                         </td>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2">
-                                                    <i class="bx bx-user text-white"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="fw-semibold">{{ $log->user_name ?: 'System' }}</div>
-                                                    @if($log->user_email)
-                                                        <small class="text-muted">{{ $log->user_email }}</small>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="badge {{ $log->action_badge_class }}">
-                                                <i class="bx {{ $log->action_icon }} me-1"></i>
+                                            <span class="badge {{ $log->action == 'created' ? 'bg-success' : ($log->action == 'updated' ? 'bg-warning' : 'bg-danger') }}">
                                                 {{ $log->action }}
                                             </span>
                                         </td>
                                         <td>
                                             <div>
-                                                <div class="fw-semibold">{{ $log->resource_type }}</div>
-                                                @if($log->resource_id)
-                                                    <small class="text-muted">ID: {{ $log->resource_id }}</small>
+                                                <div class="fw-semibold">ID: {{ $log->entity_id }}</div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <code class="small">{{ $log->source_table }}</code>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                @if($log->causer_id)
+                                                    <div class="fw-semibold">{{ $log->causer_type }}</div>
+                                                    <small class="text-muted">ID: {{ $log->causer_id }}</small>
+                                                @else
+                                                    <span class="text-muted">System</span>
                                                 @endif
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="text-truncate" style="max-width: 200px;" title="{{ $log->description }}">
-                                                {{ $log->description }}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <code class="small">{{ $log->ip_address }}</code>
+                                            <span class="badge bg-info">{{ $log->source ?? 'Unknown' }}</span>
                                         </td>
                                         <td>
                                             <div>
-                                                <div class="fw-semibold">{{ $log->created_at->format('M j, Y') }}</div>
-                                                <small class="text-muted">{{ $log->created_at->format('g:i A') }}</small>
+                                                <div class="fw-semibold">{{ \Carbon\Carbon::parse($log->created_at)->format('M j, Y') }}</div>
+                                                <small class="text-muted">{{ \Carbon\Carbon::parse($log->created_at)->format('g:i A') }}</small>
                                             </div>
                                         </td>
                                         <td>
-                                            <a href="{{ route('audit-logs.show', $log) }}" class="btn btn-sm btn-outline-primary">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#auditLogModal" 
+                                                    data-log-id="{{ $log->id }}" 
+                                                    data-log-table="{{ $log->source_table }}"
+                                                    data-log-action="{{ $log->action }}"
+                                                    data-log-entity="{{ $log->entity_id }}"
+                                                    data-log-causer-type="{{ $log->causer_type }}"
+                                                    data-log-causer-id="{{ $log->causer_id }}"
+                                                    data-log-source="{{ $log->source }}"
+                                                    data-log-created="{{ $log->created_at }}"
+                                                    data-log-old-values="{{ $log->old_values }}"
+                                                    data-log-new-values="{{ $log->new_values }}"
+                                                    data-log-metadata="{{ $log->metadata }}">
                                                 <i class="bx bx-show"></i> View
-                                            </a>
+                                            </button>
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
-                    </div>
-                    
-                    <!-- Pagination -->
-                    <div class="card-footer">
-                        {{ $auditLogs->links() }}
                     </div>
                 @else
                     <div class="text-center py-5">
@@ -229,38 +212,216 @@
         </div>
     </div>
 </div>
+
+<!-- Audit Log Details Modal -->
+<div class="modal fade" id="auditLogModal" tabindex="-1" aria-labelledby="auditLogModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="auditLogModalLabel">
+                    <i class="bx bx-info-circle me-2 text-primary"></i>
+                    Audit Log Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4">
+                    <!-- Basic Information -->
+                    <div class="col-md-6">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary mb-3">
+                                    <i class="bx bx-info-circle me-2"></i>Basic Information
+                                </h6>
+                                <div class="row g-2">
+                                    <div class="col-4"><strong>ID:</strong></div>
+                                    <div class="col-8" id="modal-log-id">-</div>
+                                    
+                                    <div class="col-4"><strong>Action:</strong></div>
+                                    <div class="col-8">
+                                        <span class="badge" id="modal-log-action">-</span>
+                                    </div>
+                                    
+                                    <div class="col-4"><strong>Entity ID:</strong></div>
+                                    <div class="col-8" id="modal-log-entity">-</div>
+                                    
+                                    <div class="col-4"><strong>Table:</strong></div>
+                                    <div class="col-8"><code id="modal-log-table">-</code></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Causer Information -->
+                    <div class="col-md-6">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary mb-3">
+                                    <i class="bx bx-user me-2"></i>Causer Information
+                                </h6>
+                                <div class="row g-2">
+                                    <div class="col-4"><strong>Causer Type:</strong></div>
+                                    <div class="col-8" id="modal-log-causer-type">-</div>
+                                    
+                                    <div class="col-4"><strong>Causer ID:</strong></div>
+                                    <div class="col-8" id="modal-log-causer-id">-</div>
+                                    
+                                    <div class="col-4"><strong>Source:</strong></div>
+                                    <div class="col-8">
+                                        <span class="badge bg-info" id="modal-log-source">-</span>
+                                    </div>
+                                    
+                                    <div class="col-4"><strong>Created:</strong></div>
+                                    <div class="col-8" id="modal-log-created">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Changes -->
+                    <div class="col-12" id="data-changes-section" style="display: none;">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary mb-3">
+                                    <i class="bx bx-data me-2"></i>Data Changes
+                                </h6>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-danger">Old Values</h6>
+                                        <pre class="bg-white p-3 rounded border" id="modal-log-old-values"><code>-</code></pre>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6 class="text-success">New Values</h6>
+                                        <pre class="bg-white p-3 rounded border" id="modal-log-new-values"><code>-</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metadata -->
+                    <div class="col-12" id="metadata-section" style="display: none;">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary mb-3">
+                                    <i class="bx bx-cog me-2"></i>Metadata
+                                </h6>
+                                <pre class="bg-white p-3 rounded border" id="modal-log-metadata"><code>-</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
-function cleanupLogs() {
-    if (confirm('Are you sure you want to clean up old audit logs? This action cannot be undone.')) {
-        fetch('{{ route("audit-logs.cleanup") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while cleaning up logs.');
-        });
-    }
-}
-
 // Auto-submit form on filter change
 document.getElementById('filterForm').addEventListener('change', function() {
     this.submit();
 });
+
+// Handle modal data population
+document.getElementById('auditLogModal').addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    
+    // Get data attributes
+    const logId = button.getAttribute('data-log-id');
+    const logTable = button.getAttribute('data-log-table');
+    const logAction = button.getAttribute('data-log-action');
+    const logEntity = button.getAttribute('data-log-entity');
+    const logCauserType = button.getAttribute('data-log-causer-type');
+    const logCauserId = button.getAttribute('data-log-causer-id');
+    const logSource = button.getAttribute('data-log-source');
+    const logCreated = button.getAttribute('data-log-created');
+    const logOldValues = button.getAttribute('data-log-old-values');
+    const logNewValues = button.getAttribute('data-log-new-values');
+    const logMetadata = button.getAttribute('data-log-metadata');
+    
+    // Populate basic information
+    document.getElementById('modal-log-id').textContent = logId;
+    document.getElementById('modal-log-entity').textContent = logEntity;
+    document.getElementById('modal-log-table').textContent = logTable;
+    document.getElementById('modal-log-causer-type').textContent = logCauserType || 'N/A';
+    document.getElementById('modal-log-causer-id').textContent = logCauserId || 'N/A';
+    document.getElementById('modal-log-source').textContent = logSource || 'Unknown';
+    
+    // Format and set action badge
+    const actionBadge = document.getElementById('modal-log-action');
+    actionBadge.textContent = logAction;
+    actionBadge.className = 'badge ' + (logAction === 'created' ? 'bg-success' : (logAction === 'updated' ? 'bg-warning' : 'bg-danger'));
+    
+    // Format and set created date
+    if (logCreated) {
+        const createdDate = new Date(logCreated);
+        document.getElementById('modal-log-created').innerHTML = 
+            createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + 
+            ' ' + createdDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) +
+            '<br><small class="text-muted">(' + getRelativeTime(createdDate) + ')</small>';
+    }
+    
+    // Handle old/new values
+    const dataChangesSection = document.getElementById('data-changes-section');
+    if (logOldValues || logNewValues) {
+        dataChangesSection.style.display = 'block';
+        
+        if (logOldValues) {
+            try {
+                const oldValues = JSON.parse(logOldValues);
+                document.getElementById('modal-log-old-values').innerHTML = '<code>' + JSON.stringify(oldValues, null, 2) + '</code>';
+            } catch (e) {
+                document.getElementById('modal-log-old-values').innerHTML = '<code>' + logOldValues + '</code>';
+            }
+        } else {
+            document.getElementById('modal-log-old-values').innerHTML = '<code>No old values</code>';
+        }
+        
+        if (logNewValues) {
+            try {
+                const newValues = JSON.parse(logNewValues);
+                document.getElementById('modal-log-new-values').innerHTML = '<code>' + JSON.stringify(newValues, null, 2) + '</code>';
+            } catch (e) {
+                document.getElementById('modal-log-new-values').innerHTML = '<code>' + logNewValues + '</code>';
+            }
+        } else {
+            document.getElementById('modal-log-new-values').innerHTML = '<code>No new values</code>';
+        }
+    } else {
+        dataChangesSection.style.display = 'none';
+    }
+    
+    // Handle metadata
+    const metadataSection = document.getElementById('metadata-section');
+    if (logMetadata) {
+        metadataSection.style.display = 'block';
+        try {
+            const metadata = JSON.parse(logMetadata);
+            document.getElementById('modal-log-metadata').innerHTML = '<code>' + JSON.stringify(metadata, null, 2) + '</code>';
+        } catch (e) {
+            document.getElementById('modal-log-metadata').innerHTML = '<code>' + logMetadata + '</code>';
+        }
+    } else {
+        metadataSection.style.display = 'none';
+    }
+});
+
+// Helper function for relative time
+function getRelativeTime(date) {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + ' minutes ago';
+    if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + ' hours ago';
+    return Math.floor(diffInSeconds / 86400) + ' days ago';
+}
 </script>
 @endpush

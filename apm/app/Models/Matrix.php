@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
 use function React\Promise\Stream\first;
 use App\Models\Staff;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class Matrix extends Model
 {
-    use HasFactory, HasApprovalWorkflow;
+    use HasFactory, HasApprovalWorkflow, Auditable;
 
     /**
      * The attributes that are mass assignable.

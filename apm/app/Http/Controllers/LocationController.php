@@ -37,9 +37,12 @@ class LocationController extends Controller
         try {
             Location::create($validated);
             return redirect()->route('locations.index')
-                ->with('success', 'Location created successfully.');
+                ->with('msg', 'Location created successfully.')
+                ->with('type', 'success');
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Error creating location: ' . $e->getMessage());
+            return back()->withInput()
+                ->with('msg', 'Error creating location: ' . $e->getMessage())
+                ->with('type', 'error');
         }
     }
 
@@ -71,23 +74,13 @@ class LocationController extends Controller
         try {
             $location->update($validated);
             return redirect()->route('locations.index')
-                ->with('success', 'Location updated successfully');
+                ->with('msg', 'Location updated successfully.')
+                ->with('type', 'success');
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Error updating location: ' . $e->getMessage());
+            return back()->withInput()
+                ->with('msg', 'Error updating location: ' . $e->getMessage())
+                ->with('type', 'error');
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Location $location)
-    {
-        try {
-            $location->delete();
-            return redirect()->route('locations.index')
-                ->with('success', 'Location deleted successfully');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error deleting location: ' . $e->getMessage());
-        }
-    }
 }

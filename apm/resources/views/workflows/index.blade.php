@@ -61,40 +61,13 @@
                                 @endif
                             </td>
                             <td class="text-end">
-                                <div class="btn-group" role="group">
-                                    <a href="{{ route('workflows.show', $workflow->id) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
-                                        <i class="bx bx-show"></i>
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="{{ route('workflows.show', $workflow->id) }}" class="btn btn-sm btn-light action-btn text-info" data-bs-toggle="tooltip" title="View Details">
+                                        <i class="bx bx-show fs-6"></i>
                                     </a>
-                                    <a href="{{ route('workflows.edit', $workflow->id) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                    <a href="{{ route('workflows.edit', $workflow->id) }}" class="btn btn-sm btn-light action-btn text-primary" data-bs-toggle="tooltip" title="Edit Workflow">
+                                        <i class="bx bx-edit fs-6"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteWorkflow{{ $workflow->id }}" data-bs-toggle="tooltip" title="Delete">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Delete Modal -->
-                                <div class="modal fade" id="deleteWorkflow{{ $workflow->id }}" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Delete Workflow</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p>Are you sure you want to delete <strong>{{ $workflow->workflow_name }}</strong>?</p>
-                                                <p class="text-danger"><small>This action cannot be undone. If this workflow has associated activities, deletion may fail.</small></p>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <form action="{{ route('workflows.destroy', $workflow->id) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">Delete</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </td>
                         </tr>

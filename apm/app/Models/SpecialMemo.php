@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class SpecialMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow;
+    use HasFactory, HasApprovalWorkflow, Auditable;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';

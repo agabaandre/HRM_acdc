@@ -585,7 +585,7 @@
                 success: function(response) {
                     if (response.success) {
                         // Show success notification
-                        showNotification(response.message, 'success');
+                        show_notification(response.message, 'success');
                         
                         // For create form, redirect to the memo view
                         setTimeout(function() {
@@ -599,15 +599,15 @@
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         const errors = xhr.responseJSON.errors;
                         errorMessage = Object.values(errors).flat().join('\n');
-                        showNotification(errorMessage, 'error');
+                        show_notification(errorMessage, 'error');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
-                        showNotification(errorMessage, 'error');
+                        show_notification(errorMessage, 'error');
                     } else if (xhr.status === 422) {
                         errorMessage = 'Validation failed. Please check your input and try again.';
-                        showNotification(errorMessage, 'error');
+                        show_notification(errorMessage, 'error');
                     } else {
-                        showNotification(errorMessage, 'error');
+                        show_notification(errorMessage, 'error');
                     }
                 },
                 complete: function() {
@@ -618,7 +618,7 @@
         });
 
         // Notification function (similar to activities form)
-        function showNotification(message, type = 'info') {
+        function show_notification(message, type = 'info') {
             const alertClass = type === 'success' ? 'alert-success' : 
                               type === 'error' ? 'alert-danger' : 
                               type === 'warning' ? 'alert-warning' : 'alert-info';
