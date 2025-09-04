@@ -64,6 +64,15 @@ $settingsMenuItems = [
 <div class="nav-container primary-menu">
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
+            <!-- Approver Dashboard -->
+            <li class="nav-item">
+                <a href="{{ route('approver-dashboard.index') }}"
+                    class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <div class="menu-title">Approver Dashboard</div>
+                </a>
+            </li>
+
             <!-- Start Page -->
             <li class="nav-item">
                 <a href="{{ str_replace('apm/', '', url('dashboard')) }}"
