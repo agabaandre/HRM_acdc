@@ -287,6 +287,161 @@ class AuditLogsController extends Controller
     }
     
     /**
+     * Show reversal confirmation modal
+     */
+    public function showReversalModal(Request $request)
+    {
+        $logId = $request->input('log_id');
+        $table = $request->input('table');
+        
+        if (!$logId || !$table) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid log ID or table'
+            ], 400);
+        }
+        
+        try {
+            $log = DB::table($table)->where('id', $logId)->first();
+            
+            if (!$log) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Audit log not found'
+                ], 404);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'log' => $log
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error loading reversal modal: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading audit log details'
+            ], 500);
+        }
+    }
+    
+    /**
+     * Perform audit log reversal
+     */
+    public function reverse(Request $request)
+    {
+        // Check if user has permission 91
+        if (!in_array(91, user_session('permissions', []))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to reverse audit logs'
+            ], 403);
+        }
+        
+        $request->validate([
+            'log_id' => 'required|integer',
+            'table' => 'required|string',
+            'reason' => 'required|string|min:10|max:500'
+        ]);
+        
+        try {
+            $logId = $request->input('log_id');
+            $table = $request->input('table');
+            $reason = $request->input('reason');
+            
+            // Get the original log
+            $log = DB::table($table)->where('id', $logId)->first();
+            
+            if (!$log) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Audit log not found'
+                ], 404);
+            }
+            
+            // Check if log can be reversed (only certain actions)
+            $reversibleActions = ['created', 'updated', 'deleted'];
+            if (!in_array($log->action, $reversibleActions)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This action cannot be reversed'
+                ], 400);
+            }
+            
+            // Create reversal log entry based on table structure
+            $reversalData = [
+                'action' => 'reversed',
+                'old_values' => json_encode(['original_log_id' => $logId, 'original_action' => $log->action]),
+                'new_values' => json_encode(['reversal_reason' => $reason]),
+                'causer_type' => 'App\\Models\\Staff',
+                'causer_id' => user_session('staff_id'),
+                'metadata' => json_encode([
+                    'ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'reversal_timestamp' => now()->toISOString(),
+                    'original_log_created_at' => $log->created_at
+                ]),
+                'created_at' => now(),
+                'source' => 'reversal'
+            ];
+            
+            // Handle different table structures
+            if ($table === 'audit_logs') {
+                // For audit_logs table (different structure)
+                $reversalData['user_id'] = user_session('staff_id');
+                $reversalData['user_name'] = user_session('fname') . ' ' . user_session('lname');
+                $reversalData['user_email'] = user_session('work_email') ?? user_session('personal_email');
+                $reversalData['resource_type'] = $log->resource_type ?? 'Unknown';
+                $reversalData['resource_id'] = $log->resource_id ?? $log->entity_id;
+                $reversalData['route_name'] = 'audit-logs.reverse';
+                $reversalData['url'] = $request->url();
+                $reversalData['method'] = 'POST';
+                $reversalData['ip_address'] = $request->ip();
+                $reversalData['user_agent'] = $request->userAgent();
+                $reversalData['description'] = "Reversed audit log action: {$log->action}";
+            } else {
+                // For audit_funders_logs, audit_users_logs, etc. (standard structure)
+                $reversalData['entity_id'] = $log->entity_id ?? $log->resource_id ?? null;
+            }
+            
+            // Add the table name to metadata for tracking
+            $reversalData['metadata'] = json_encode(array_merge(
+                json_decode($reversalData['metadata'], true),
+                ['reversed_table' => $table]
+            ));
+            
+            // Insert reversal log
+            $reversalLogId = DB::table($table)->insertGetId($reversalData);
+            
+            // Log the reversal action
+            Log::info('Audit log reversal performed', [
+                'original_log_id' => $logId,
+                'reversal_log_id' => $reversalLogId,
+                'table' => $table,
+                'action' => $log->action,
+                'entity_id' => $log->entity_id,
+                'reason' => $reason,
+                'user_id' => user_session('staff_id')
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Audit log has been successfully reversed',
+                'reversal_log_id' => $reversalLogId
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Audit log reversal error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred during reversal: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
      * Mark suspicious activities based on external sources and unknown users
      */
     private function markSuspiciousActivities($auditLogs)
@@ -311,9 +466,19 @@ class AuditLogsController extends Controller
             $userAgent = $metadata['user_agent'] ?? null;
             
             // Mark as suspicious if from external IP (not local/private)
-            if ($ip && !$this->isInternalIp($ip)) {
-                $isSuspicious = true;
-                $suspiciousReasons[] = 'External IP';
+            if ($ip && $ip !== 'unknown' && filter_var($ip, FILTER_VALIDATE_IP)) {
+                try {
+                    if (!$this->isInternalIp($ip)) {
+                        $isSuspicious = true;
+                        $suspiciousReasons[] = 'External IP';
+                    }
+                } catch (\Exception $e) {
+                    // Log the error but don't mark as suspicious due to IP parsing error
+                    Log::warning('Error checking IP for suspicious activity: ' . $e->getMessage(), [
+                        'ip' => $ip,
+                        'log_id' => $log->id
+                    ]);
+                }
             }
             
             // Mark as suspicious if unknown user (no causer_id or causer_name is "Unknown User")
@@ -395,14 +560,32 @@ class AuditLogsController extends Controller
             return $ip === $range;
         }
         
-        list($subnet, $bits) = explode('/', $range);
+        $parts = explode('/', $range);
+        if (count($parts) !== 2) {
+            return false;
+        }
         
-        if ($bits === null) {
-            $bits = 32;
+        $subnet = $parts[0];
+        $bits = (int) $parts[1];
+        
+        // Check if bits is empty or invalid
+        if (empty($parts[1]) || $bits <= 0) {
+            return false;
+        }
+        
+        // Validate bits value
+        if ($bits < 0 || $bits > 32) {
+            return false;
         }
         
         $ip = ip2long($ip);
         $subnet = ip2long($subnet);
+        
+        // Handle invalid IP addresses
+        if ($ip === false || $subnet === false) {
+            return false;
+        }
+        
         $mask = -1 << (32 - $bits);
         $subnet &= $mask;
         
