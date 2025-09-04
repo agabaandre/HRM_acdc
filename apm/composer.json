@@ -85,7 +85,8 @@
     "extra": {
         "laravel": {
             "dont-discover": [
-                "spatie/laravel-flare"
+                "spatie/laravel-flare",
+                "spatie/laravel-error-share"
             ]
         }
     },
