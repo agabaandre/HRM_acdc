@@ -366,22 +366,44 @@ if (!function_exists('mpdf_print')) {
         ]);
 
         // Set PDF margins exactly like CodeIgniter
-        $mpdf->SetMargins(10, 10, 10);         // left, top, right margins
-        $mpdf->SetAutoPageBreak(true, 30);     // allow auto page break with 30mm bottom margin for footer
+        $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
+        $mpdf->SetAutoPageBreak(true, 30); 
+        $header = '
+        <div style="width: 100%; text-align: center; padding-bottom: 5px;">
+            <div style="width: 100%; padding-bottom: 5px;">
+                <div style="width: 100%; padding: 10px 0;">
+                    <!-- Top Row: Logo and Tagline -->
+                    <div style="display:flex; justify-content: space-between; align-items: center;">
+                        <!-- Left: Logo -->
+                        <div style="width: 60%; text-align: left; float:left;">
+                            <img src="' . asset('assets/images/logo.png') . '" alt="Africa CDC Logo" style="height: 80px;">
+                        </div>
+                        <!-- Right: Tagline -->
+                        <div style="text-align: right; width: 35%; float:right; margin-top:10px;">
+                            <span style="font-size: 14px; color: #911C39;">Safeguarding Africa\'s Health</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ';
+        $mpdf->SetHTMLHeader($header);    // allow auto page break with 30mm bottom margin for footer
 
         // Set footer exactly like CodeIgniter
         $footer = '
-        <table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
+        <table width="100%" style="font-size: 8pt; color: #911C39; border:none;">
             <tr>
                 <td align="left" style="border: none;">
-                    Africa CDC, P.O. Box 3243, Addis Ababa, Ethiopia, Ring Road, 16/17<br>
-                    Tel: +251 (0) 11 551 77 00, Fax: +251 (0) 11 551 78 44<br>
-                    Website: <a href="https://africacdc.org" style="color: #911C39;">africacdc.org</a>
+                    Africa CDC Headquarters, Ring Road, 16/17,<br>
+                    Haile Garment Lafto Square, Nifas Silk-Lafto Sub City,<br>
+                    P.O Box: 200050 Addis Ababa, Tel: +251(0) 112175100/75200<br>
+                    Email: <a href="mailto:registry@africacdc.org" style="color: #911C39;">registry@africacdc.org</a>
                 </td>
                 <td align="left" style="border: none;">
-                    Source: Africa CDC - Central Business Platform<br>
+                    Source: Africa CDC  Central Business Platform<br>
                     Generated on: ' . date('d F, Y h:i A') . '<br>
                     ' . config('app.url') . '
+                    <br>By:'.user_session('name').'
                 </td>
             </tr>
         </table>'.  '<p style="text-align:right;">Page {PAGENO} of {nbpg}</p>';
