@@ -68,6 +68,9 @@ class AuditLogsController extends Controller
         // Sort by created_at desc
         $auditLogs = $auditLogs->sortByDesc('created_at');
         
+        // Resolve causer information (staff details)
+        $auditLogs = $this->resolveCauserInformation($auditLogs);
+        
         // Apply filters
         if ($request->filled('search')) {
             $search = $request->get('search');
@@ -133,5 +136,45 @@ class AuditLogsController extends Controller
         }
         
         return $auditTables;
+    }
+    
+    /**
+     * Resolve causer information by matching causer_id with staff table
+     */
+    private function resolveCauserInformation($auditLogs)
+    {
+        // Get all unique causer_ids that are not null
+        $causerIds = $auditLogs->whereNotNull('causer_id')
+                              ->pluck('causer_id')
+                              ->unique()
+                              ->filter()
+                              ->values();
+        
+        if ($causerIds->isEmpty()) {
+            return $auditLogs;
+        }
+        
+        // Fetch staff information for all causer_ids
+        $staffMembers = DB::table('staff')
+            ->whereIn('staff_id', $causerIds)
+            ->select('staff_id', 'fname', 'lname', 'work_email', 'job_name', 'position')
+            ->get()
+            ->keyBy('staff_id');
+        
+        // Add staff information to each audit log
+        return $auditLogs->map(function ($log) use ($staffMembers) {
+            if ($log->causer_id && isset($staffMembers[$log->causer_id])) {
+                $staff = $staffMembers[$log->causer_id];
+                $log->causer_name = trim($staff->fname . ' ' . $staff->lname);
+                $log->causer_email = $staff->work_email;
+                $log->causer_job_title = $staff->job_name ?? $staff->position ?? 'N/A';
+            } else {
+                $log->causer_name = 'Unknown User';
+                $log->causer_email = 'N/A';
+                $log->causer_job_title = 'N/A';
+            }
+            
+            return $log;
+        });
     }
 }
