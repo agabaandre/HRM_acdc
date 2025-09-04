@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class FundCode extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $table = 'fund_codes';
 

@@ -81,7 +81,19 @@ class FunderController extends Controller
             $validated['is_active'] = true;
         }
 
+        // Debug: Log session information
+        \Log::info('Creating funder - Session data:', [
+            'staff_id' => user_session('staff_id'),
+            'session_id' => session()->getId(),
+            'all_session' => session()->all()
+        ]);
+
         $funder = Funder::create($validated);
+
+        \Log::info('Funder created successfully', [
+            'funder_id' => $funder->id,
+            'funder_name' => $funder->name
+        ]);
 
         return redirect()->route('funders.index')
             ->with('msg', 'Funder created successfully.')

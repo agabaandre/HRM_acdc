@@ -169,5 +169,5 @@ return [
     | information about audit processing.
     |
     */
-    'debug' => env('AUDIT_LOGGER_DEBUG', false),
+    'debug' => env('AUDIT_LOGGER_DEBUG', true),
 ];
