@@ -1541,7 +1541,7 @@ class ActivityController extends Controller
         ]);
 
         // Generate filename
-        $filename = 'Activity_Memo_' . str_replace(['/', '\\'], '_', $activity->activity_ref ?? $activity->id) . '_' . now()->format('Y-m-d') . '.pdf';
+        $filename = 'Activity_Memo_' . str_replace(['/', '\\'], '_', $activity->activity_ref ?? $activity->created_at->format('Y-m-d')) . '_' . now()->format('Y-m-d') . '.pdf';
 
         // Return PDF for display in browser using mPDF Output method
         return response($pdf->Output($filename, 'I'), 200, [

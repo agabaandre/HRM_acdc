@@ -107,6 +107,10 @@ class Staff extends Model
     {
         return $this->hasMany(Activity::class);
     }
+    public function activityApprovalTrails(): HasMany
+    {
+        return $this->hasMany(ActivityApprovalTrail::class,'staff_id');
+    }
 
     public function nonTravelMemos(): HasMany
     {
