@@ -362,7 +362,7 @@
                      <br><small class="signature-date"><?php echo $approvalDate = getApprovalDate($approver['oic_staff']['id'], $matrix_approval_trails,$order); ?></small>
                     <br><small class="signature-hash">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver),$approvalDate); ?></small>
                   <?php else: ?>
-                    <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
+                    <small style="color: #666; font-style: italic;">Signed By: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
                      <br><small class="signature-date"><?php echo $approvalDate = getApprovalDate(getStaffId($approver), $matrix_approval_trails,$order); ?></small>
                     <br><small class="signature-hash">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver),$approvalDate); ?></small>
             <?php endif; ?>
