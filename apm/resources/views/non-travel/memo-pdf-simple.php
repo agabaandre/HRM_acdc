@@ -312,12 +312,12 @@
     }
 
     // Helper function to render signature
-    function renderSignature($approver, $order, $approval_trails, $nonTravel) {
+    function renderSignature($approver, $order, $matrix_approval_trails, $nonTravel) {
         $isOic = isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         $staffId = $staff['staff_id'] ?? $staff['id'] ?? null;
 
-        $approvalDate = getApprovalDate($staffId, $approval_trails, $order);
+        $approvalDate = getApprovalDate($staffId, $matrix_approval_trails, $order);
 
         echo '<div style="line-height: 1.2;">';
         
@@ -496,7 +496,7 @@
                 <td style="width: 30%; vertical-align: top; text-align: left;">
                     <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
                         <?php foreach ($step['approvers'] as $approver): ?>
-                            <?php renderSignature($approver, $order, $approval_trails, $nonTravel); ?>
+                            <?php renderSignature($approver, $order, $matrix_approval_trails, $nonTravel); ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </td>

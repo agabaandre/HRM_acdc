@@ -964,15 +964,17 @@ class NonTravelMemoController extends Controller
     {
         $workflowInfo = [
             'current_level' => null,
-            'workflow_steps' => [],
-            'approval_trails' => []
+            'current_approver' => null,
+            'workflow_steps' => collect(),
+            'approval_trail' => collect(),
+            'matrix_approval_trail' => collect()
         ];
 
         if (!$nonTravel->forward_workflow_id) {
             return $workflowInfo;
         }
 
-        // Get workflow definitions
+        // Get workflow definitions with category filtering for order 7
         $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $nonTravel->forward_workflow_id)
             ->where('is_enabled', 1)
             ->where(function($query) use ($nonTravel) {
@@ -986,75 +988,213 @@ class NonTravelMemoController extends Controller
             ->with(['approvers.staff', 'approvers.oicStaff'])
             ->get();
 
-        // Get approval trails
-        $approvalTrails = $nonTravel->approvalTrails()->with(['staff', 'oicStaff', 'workflowDefinition'])->get();
+        $workflowInfo['workflow_steps'] = $workflowDefinitions->map(function ($definition) use ($nonTravel) {
+            $approvers = collect();
 
-        foreach ($workflowDefinitions as $definition) {
-            $approvers = [];
-            
             if ($definition->is_division_specific && $nonTravel->division) {
-                $staffId = $nonTravel->division->{$definition->division_reference_column} ?? null;
-                if ($staffId) {
-                    $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
-                    if ($staff) {
-                        $approvers[] = [
-                            'staff' => $staff->toArray(),
-                            'oic_staff' => null
-                        ];
+                // Get approver from division table using division_reference_column
+                $divisionColumn = $definition->division_reference_column;
+                if ($divisionColumn && isset($nonTravel->division->$divisionColumn)) {
+                    $staffId = $nonTravel->division->$divisionColumn;
+                    if ($staffId) {
+                        $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                        if ($staff) {
+                            $approvers->push([
+                                'staff' => [
+                                    'id' => $staff->staff_id,
+                                    'staff_id' => $staff->staff_id,
+                                    'title' => $staff->title ?? 'N/A',
+                                    'fname' => $staff->fname ?? '',
+                                    'lname' => $staff->lname ?? '',
+                                    'oname' => $staff->oname ?? '',
+                                    'name' => $staff->fname . ' ' . $staff->lname,
+                                    'job_title' => $staff->job_name ?? $staff->position ?? 'N/A',
+                                    'position' => $staff->position ?? 'N/A',
+                                    'work_email' => $staff->work_email ?? 'N/A',
+                                    'personal_email' => $staff->personal_email ?? 'N/A',
+                                    'phone' => $staff->phone ?? 'N/A',
+                                    'mobile' => $staff->mobile ?? 'N/A',
+                                    'signature' => $staff->signature ?? null,
+                                    'division' => $staff->division_name ?? 'N/A',
+                                    'division_id' => $staff->division_id ?? null,
+                                    'duty_station' => $staff->duty_station_name ?? 'N/A',
+                                    'duty_station_id' => $staff->duty_station_id ?? null,
+                                    'nationality' => $staff->nationality ?? 'N/A',
+                                    'gender' => $staff->gender ?? 'N/A',
+                                    'date_of_birth' => $staff->date_of_birth ?? null,
+                                    'hire_date' => $staff->hire_date ?? null,
+                                    'contract_type' => $staff->contract_type ?? 'N/A',
+                                    'employment_status' => $staff->employment_status ?? 'N/A',
+                                    'created_at' => $staff->created_at ?? null,
+                                    'updated_at' => $staff->updated_at ?? null
+                                ],
+                                'oic_staff' => null,
+                                'start_date' => null,
+                                'end_date' => null
+                            ]);
+                        }
                     }
                 }
             } else {
-                foreach ($definition->approvers as $approver) {
-                    $approvers[] = [
-                        'staff' => $approver->staff ? $approver->staff->toArray() : null,
-                        'oic_staff' => $approver->oicStaff ? $approver->oicStaff->toArray() : null
+                // Get approvers from approvers table
+                $approvers = $definition->approvers->map(function ($approver) {
+                    return [
+                        'staff' => $approver->staff ? [
+                            'id' => $approver->staff->staff_id,
+                            'staff_id' => $approver->staff->staff_id,
+                            'title' => $approver->staff->title ?? 'N/A',
+                            'fname' => $approver->staff->fname ?? '',
+                            'lname' => $approver->staff->lname ?? '',
+                            'oname' => $approver->staff->oname ?? '',
+                            'name' => $approver->staff->fname . ' ' . $approver->staff->lname,
+                            'job_title' => $approver->staff->job_name ?? $approver->staff->position ?? 'N/A',
+                            'position' => $approver->staff->position ?? 'N/A',
+                            'work_email' => $approver->staff->work_email ?? 'N/A',
+                            'personal_email' => $approver->staff->personal_email ?? 'N/A',
+                            'phone' => $approver->staff->phone ?? 'N/A',
+                            'mobile' => $approver->staff->mobile ?? 'N/A',
+                            'signature' => $approver->staff->signature ?? null,
+                            'division' => $approver->staff->division_name ?? 'N/A',
+                            'division_id' => $approver->staff->division_id ?? null,
+                            'duty_station' => $approver->staff->duty_station_name ?? 'N/A',
+                            'duty_station_id' => $approver->staff->duty_station_id ?? null,
+                            'nationality' => $approver->staff->nationality ?? 'N/A',
+                            'gender' => $approver->staff->gender ?? 'N/A',
+                            'date_of_birth' => $approver->staff->date_of_birth ?? null,
+                            'hire_date' => $approver->staff->hire_date ?? null,
+                            'contract_type' => $approver->staff->contract_type ?? 'N/A',
+                            'employment_status' => $approver->staff->employment_status ?? 'N/A',
+                            'created_at' => $approver->staff->created_at ?? null,
+                            'updated_at' => $approver->staff->updated_at ?? null
+                        ] : null,
+                        'oic_staff' => $approver->oicStaff ? [
+                            'id' => $approver->oicStaff->staff_id,
+                            'staff_id' => $approver->oicStaff->staff_id,
+                            'title' => $approver->oicStaff->title ?? 'N/A',
+                            'fname' => $approver->oicStaff->fname ?? '',
+                            'lname' => $approver->oicStaff->lname ?? '',
+                            'oname' => $approver->oicStaff->oname ?? '',
+                            'name' => $approver->oicStaff->fname . ' ' . $approver->oicStaff->lname,
+                            'job_title' => $approver->oicStaff->job_name ?? $approver->oicStaff->position ?? 'N/A',
+                            'position' => $approver->oicStaff->position ?? 'N/A',
+                            'work_email' => $approver->oicStaff->work_email ?? 'N/A',
+                            'personal_email' => $approver->oicStaff->personal_email ?? 'N/A',
+                            'phone' => $approver->oicStaff->phone ?? 'N/A',
+                            'mobile' => $approver->oicStaff->mobile ?? 'N/A',
+                            'signature' => $approver->oicStaff->signature ?? null,
+                            'division' => $approver->oicStaff->division_name ?? 'N/A',
+                            'division_id' => $approver->oicStaff->division_id ?? null,
+                            'duty_station' => $approver->oicStaff->duty_station_name ?? 'N/A',
+                            'duty_station_id' => $approver->oicStaff->duty_station_id ?? null,
+                            'nationality' => $approver->oicStaff->nationality ?? 'N/A',
+                            'gender' => $approver->oicStaff->gender ?? 'N/A',
+                            'date_of_birth' => $approver->oicStaff->date_of_birth ?? null,
+                            'hire_date' => $approver->oicStaff->hire_date ?? null,
+                            'contract_type' => $approver->oicStaff->contract_type ?? 'N/A',
+                            'employment_status' => $approver->oicStaff->employment_status ?? 'N/A',
+                            'created_at' => $approver->oicStaff->created_at ?? null,
+                            'updated_at' => $approver->oicStaff->updated_at ?? null
+                        ] : null,
+                        'start_date' => $approver->start_date,
+                        'end_date' => $approver->end_date
                     ];
-                }
+                });
             }
 
-            $workflowInfo['workflow_steps'][] = [
+            return [
                 'order' => $definition->approval_order,
                 'role' => $definition->role,
-                'approvers' => $approvers,
-                'is_division_specific' => $definition->is_division_specific,
-                'category' => $definition->category
+                'memo_print_section' => $definition->memo_print_section ?? 'through',
+                'print_order' => $definition->print_order ?? $definition->approval_order,
+                'approvers' => $approvers->toArray()
             ];
+        })->values();
+
+        // Get current approval level
+        if ($nonTravel->approval_level) {
+            $currentDefinition = $workflowDefinitions->where('approval_order', $nonTravel->approval_level)->first();
+            if ($currentDefinition) {
+                $workflowInfo['current_level'] = $currentDefinition->role;
+
+                // Handle division-specific approvers
+                if ($currentDefinition->is_division_specific && $nonTravel->division) {
+                    $divisionColumn = $currentDefinition->division_reference_column;
+                    if ($divisionColumn && isset($nonTravel->division->$divisionColumn)) {
+                        $staffId = $nonTravel->division->$divisionColumn;
+                        if ($staffId) {
+                            $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                            if ($staff) {
+                                $workflowInfo['current_approver'] = $staff->fname . ' ' . $staff->lname;
+                            }
+                        }
+                    }
+                } else {
+                    // Handle regular approvers
+                    $currentApprover = $currentDefinition->approvers->first();
+                    if ($currentApprover) {
+                        $workflowInfo['current_approver'] = $currentApprover->staff ?
+                            $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname : ($currentApprover->oicStaff ? $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname : 'N/A');
+                    }
+                }
+            }
         }
 
-        $workflowInfo['approval_trails'] = $approvalTrails;
-        $workflowInfo['current_level'] = $nonTravel->approval_level;
+        // Get approval trail
+        $approvalTrails = $nonTravel->approvalTrails()
+            ->orderBy('created_at')
+            ->with(['staff', 'oicStaff'])
+            ->get();
+
+        $workflowInfo['approval_trail'] = $approvalTrails->map(function ($trail) {
+            return [
+                'action' => $trail->action,
+                'remarks' => $trail->remarks,
+                'staff' => $trail->staff ? [
+                    'name' => $trail->staff->fname . ' ' . $trail->staff->lname,
+                    'job_title' => $trail->staff->job_name ?? $trail->staff->position ?? 'N/A',
+                    'work_email' => $trail->staff->work_email ?? 'N/A',
+                    'signature' => $trail->staff->signature ?? null
+                ] : null,
+                'oic_staff' => $trail->oicStaff ? [
+                    'name' => $trail->oicStaff->fname . ' ' . $trail->oicStaff->lname,
+                    'job_title' => $trail->oicStaff->job_name ?? $trail->oicStaff->position ?? 'N/A',
+                    'work_email' => $trail->oicStaff->work_email ?? 'N/A',
+                    'signature' => $trail->oicStaff->signature ?? null
+                ] : null,
+                'date' => $trail->created_at ? $trail->created_at->format('d/m/Y H:i:s') : 'N/A',
+                'approval_order' => $trail->approval_order ?? null
+            ];
+        })->values();
 
         return $workflowInfo;
     }
 
     /**
-     * Organize workflow steps by section (to, through, from)
+     * Organize workflow steps by memo_print_section for dynamic memo rendering
      */
-    private function organizeWorkflowSteps($workflowInfo)
+    private function organizeWorkflowStepsBySection($workflowSteps)
     {
-        $organized = [
+        $organizedSteps = [
             'to' => collect(),
             'through' => collect(),
             'from' => collect(),
             'others' => collect()
         ];
 
-        foreach ($workflowInfo['workflow_steps'] as $step) {
-            $section = 'others'; // default
-            
-            // Determine section based on approval order
-            if ($step['order'] <= 2) {
-                $section = 'to';
-            } elseif ($step['order'] <= 6) {
-                $section = 'through';
-            } elseif ($step['order'] <= 8) {
-                $section = 'from';
-            }
-
-            $organized[$section]->push($step);
+        foreach ($workflowSteps as $step) {
+            $section = $step['memo_print_section'] ?? 'through';
+            $organizedSteps[$section]->push($step);
         }
 
-        return $organized;
+        // Sort each section by print_order first, then by approval order as fallback
+        foreach ($organizedSteps as $section => $steps) {
+            $organizedSteps[$section] = $steps->sortBy([
+                ['print_order', 'asc'],
+                ['order', 'asc']
+            ])->values();
+        }
+
+        return $organizedSteps;
     }
     
     /**
@@ -1105,7 +1245,7 @@ class NonTravelMemoController extends Controller
 
         // Get workflow information
         $workflowInfo = $this->getComprehensiveWorkflowInfo($nonTravel);
-        $organizedWorkflowSteps = $this->organizeWorkflowSteps($workflowInfo);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
 
         // Use mPDF helper function
         $print = false;
@@ -1116,6 +1256,7 @@ class NonTravelMemoController extends Controller
             'attachments' => $attachments,
             'budgetBreakdown' => $breakdown,
             'approval_trails' => $approvalTrails,
+            'matrix_approval_trails' => $approvalTrails, // For compatibility with activities template
             'workflow_info' => $workflowInfo,
             'organized_workflow_steps' => $organizedWorkflowSteps
         ], ['preview_html' => $print]);
