@@ -358,12 +358,55 @@ if (!function_exists('mpdf_print')) {
             exit;
         }
 
-        // Generate PDF using mPDF - exactly like CodeIgniter
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'default_font' => 'Arial'
-        ]);
+      // mPDF font configuration with Arial + safe fallback
+$defaultConfig      = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+$fontDirs           = $defaultConfig['fontDir'];
+//dd($fontDirs);
+$defaultFontConfig  = (new \Mpdf\Config\FontVariables())->getDefaults();
+$fontData           = $defaultFontConfig['fontdata'];
+//dd($fontData);
+$arialFontDir = public_path('assets/fonts/arial');
+//dd($arialFontDir);
+$arialFiles = [
+    'R'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIAL.TTF',
+    'B'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBD.TTF',
+    'I'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALI.TTF',
+    'BI' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBI.TTF',
+];
+
+// Determine if all Arial files exist (Linux is case-sensitive)
+$haveArial =
+    is_dir($arialFontDir) &&
+    file_exists($arialFiles['R']) &&
+    file_exists($arialFiles['B']) &&
+    file_exists($arialFiles['I']) &&
+    file_exists($arialFiles['BI']);
+
+if (!$haveArial) {
+    \Log::warning('Arial fonts not found or incomplete. Falling back to DejaVuSans.', [
+        'dir_exists' => is_dir($arialFontDir),
+        'files'      => $arialFiles
+    ]);
+}
+
+$mpdf = new \Mpdf\Mpdf([
+    'mode'     => 'utf-8',
+    'format'   => 'A4',
+    'tempDir'  => storage_path('app/mpdf_tmp'), // ensure this exists & is writable
+    'fontDir'  => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
+    'fontdata' => $haveArial
+        ? $fontData + [
+            'arial' => [
+                'R'  => 'ARIAL.TTF',
+                'B'  => 'ARIALBD.TTF',
+                'I'  => 'ARIALI.TTF',
+                'BI' => 'ARIALBI.TTF',
+            ],
+        ]
+        : $fontData, // keep defaults if no Arial
+    'default_font' => $haveArial ? 'arial' : 'freesans',
+    'default_font_size' => 10,
+]);
 
         // Set PDF margins exactly like CodeIgniter
         $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
