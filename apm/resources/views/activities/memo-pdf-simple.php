@@ -1,5 +1,47 @@
 <html>
 <head>
+<style>
+    :root{
+      --bg:#f6f8fb;
+      --paper:#ffffff;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --border:#d8dee9;
+      --accent:#111827;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;color:var(--ink);}
+    body{font-size:15px; font-family: Arial, "Noto Sans", "Liberation Sans", sans-serif; background:var(--bg);}
+
+    /* ---------- Right-side memo meta (stacked, no borders) ---------- */
+    .topbar{display:flex; align-items:flex-start; gap:16px; margin-bottom:10px;}
+    .meta{ margin-left:auto; text-align:right; line-height:1.3; }
+    .meta .memo-id{font-weight:700; letter-spacing:.2px;}
+    .meta .date{color:var(--muted);}
+
+    /* ---------- Tables (NO BORDERS BY DEFAULT) ---------- */
+    table{border-collapse:collapse; width:100%;}
+    table, th, td { border: none; }  /* default: no borders */
+    .form-table{margin:12px 0 18px; background:#fff; overflow:clip; border-radius:10px;}
+    .form-table th, .form-table td{padding:10px; vertical-align:top;}
+    .form-table th{width:30%; font-weight:bold; text-align:left; background:#f9fafb;}
+    .muted{color:var(--muted); font-size:12px;}
+    .fill{min-height:28px; display:block;}
+
+    /* Budget/Certification table wrapper (no borders by default) */
+    .budget-table{margin:12px 0 18px; background:#fff; overflow:clip; border-radius:10px;}
+    .budget-table td{padding:10px; vertical-align:top; min-height:36px;}
+    .budget-table .head{background:#f9fafb; font-weight:bold;}
+
+    /* Signature table wrapper (no borders by default) */
+    .sig-table{margin-top:18px; border-radius:10px; overflow:clip;}
+    .sig-table td{padding:14px 10px; vertical-align:bottom; height:90px;}
+    .sig-table td:first-child{width:12%; font-weight:bold; background:#f9fafb;}
+    .sig-table td:nth-child(2){width:25%;}
+
+    /* Helper underline */
+    .line{display:block; border-bottom:1px dashed#4f545a; height:22px;}
+</style>
 </head>
 <body style="font-family: Arial, sans-serif; font-size: 12px; margin: 40px; line-height: 1.4;">
  
@@ -94,7 +136,7 @@
           ?>
           <tr>
             <td style="width: 12%; border: none; padding: 5px; vertical-align: top;">
-              <strong style="color: #006633; font-weight: bold; font-size: 13px;"><?php echo $sectionLabels[$section] ?? strtoupper($section) . ':'; ?></strong>
+              <strong style="color: #006633; font-weight: bold; font-size: 13px; font-style:italic !important;"><?php echo $sectionLabels[$section] ?? strtoupper($section) . ':'; ?></strong>
             </td>
 
               <td style="width: 30%; border: none; padding: 5px; vertical-align: top; text-align: left;">
@@ -168,16 +210,16 @@
                   <?php if (isset($approver['staff']) && isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
                                           <img src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approver['staff']['signature']; ?>" 
                           alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain; filter: contrast(1.2);">
-                     <br><small style="color: #666; font-size: 10px; margin-top: 5px;"><?php echo $approvalDate = getApprovalDate($approver['staff']['id'], $matrix_approval_trails,$order); ?></small>
+                     <br><small style="color: #666; font-size: 9px; margin-top: 5px;"><?php echo $approvalDate = getApprovalDate($approver['staff']['id'], $matrix_approval_trails,$order); ?></small>
                     <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver),$approvalDate); ?></small>
                   <?php elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
                                           <img src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approver['oic_staff']['signature']; ?>" 
                           alt="Signature" style="height: 25px; max-width: 80px; object-fit: contain; filter: contrast(1.2);">
-                     <br><small style="color: #666; font-size: 10px; margin-top: 5px;"><?php echo $approvalDate = getApprovalDate($approver['oic_staff']['id'], $matrix_approval_trails,$order); ?></small>
+                     <br><small style="color: #666; font-size: 9px; margin-top: 5px;"><?php echo $approvalDate = getApprovalDate($approver['oic_staff']['id'], $matrix_approval_trails,$order); ?></small>
                     <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver),$approvalDate); ?></small>
                   <?php else: ?>
                     <small style="color: #666; font-style: italic;">Signed: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
-                     <br><small style="color: #666; font-size: 10px; margin-top: 5px;"><?php echo $approvalDate = getApprovalDate(getStaffId($approver), $matrix_approval_trails,$order); ?></small>
+                     <br><small style="color: #666; font-size: 9px; margin-top: 5px;"><?php echo $approvalDate = getApprovalDate(getStaffId($approver), $matrix_approval_trails,$order); ?></small>
                     <br><small style="color: #999; font-size: 9px;">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver),$approvalDate); ?></small>
             <?php endif; ?>
           <?php endforeach; ?>
@@ -188,12 +230,12 @@
               <td style="width: 28%; border: none; padding: 5px; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
                 <div style="text-align: right; padding-left: 15px;">
                   <div style="margin-bottom: 20px;">
-                    <strong style="color: #006633; font-style: italic;">Date:</strong>
+                    <strong style="color: #006633; font-size:12px; font-style: italic;">Date:</strong>
                     <span style="font-size: 12px; font-weight: bold;"><?php echo isset($matrix->created_at) ? date('d/m/Y', strtotime($matrix->created_at)) : date('d/m/Y'); ?></span>
           </div>
                   <div>
                     <br><br>
-                    <strong style="color: #006633; font-style: italic;">File No:</strong><br>
+                    <strong style="color: #006633; font-size:12px; font-style: italic;">File No:</strong><br>
                     <span style="font-size: 10px; word-break: break-all; font-weight: bold;">
             <?php
               if (isset($activity)) {
@@ -229,7 +271,7 @@
         <!-- Empty section placeholder -->
         <tr>
           <td style="width: 12%; border: none; padding: 5px; vertical-align: top;">
-            <strong style="color: #006633; font-style: italic;"><?php echo $sectionLabels[$section] ?? ucfirst($section) . ':'; ?></strong>
+            <strong style="color: #006633; font-style:italic !important; font-size:12px; ><?php echo $sectionLabels[$section] ?? ucfirst($section) . ':'; ?></strong>
           </td>
           <td style="width: 30%; border: none; padding: 5px; vertical-align: top; text-align: left;">
             <!-- No approvers for this section -->
@@ -250,13 +292,13 @@
             <td style="width: 28%; border: none; padding: 5px; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
               <div style="text-align: right; padding-left: 15px;">
                 <div style="margin-bottom: 20px;">
-                  <strong style="color: #006633;">DATE:</strong><br>
+                  <strong style="color: #006633; font-style:italic; font-size:12px; " >DATE:</strong><br>
                   <span style="font-size: 12px;"><?php echo isset($matrix->created_at) ? date('j F Y', strtotime($matrix->created_at)) : date('d/m/Y'); ?></span>
                 </div>
                 <div>
-                  <strong style="color: #006633;">FILE NO:</strong><br>
-                  <span style="font-size: 10px; word-break: break-all;">
-        <?php
+                  <strong style="color: #006633; font-style:italic; font-size:12px; ">FILE NO:</strong><br>
+                  <span style="font-size: 12px; word-break: break-all;">
+              <?php
                     if (isset($activity)) {
                       $divisionName = $matrix->division->division_name ?? '';
                       if (!function_exists('generateShortCodeFromDivision')) {
@@ -292,7 +334,7 @@
   <!-- Subject -->
  <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
   <tr>
-    <td style="width: 12%; border: none; padding: 8px; text-align: left; vertical-align: top;"><strong style="color: #006633; font-style: italic;">Subject:</strong></td>
+    <td style="width: 12%; border: none; padding: 8px; text-align: left; vertical-align: top;"><strong style="color: #006633; font-weight: bold; font-style:italic !important; font-size: 14px;">Subject:</strong></td>
     <td style="width: 88%; border: none; padding: 8px; text-align: left; vertical-align: top; text-decoration: underline; font-weight: bold;"><?php echo htmlspecialchars($activity->activity_title ?? 'N/A'); ?></td>
   </tr>
  </table>
@@ -300,7 +342,7 @@
 <!-- Background -->
  <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; margin-top: -5px;">
   <tr>
-    <td style="width: 12%; border: none; padding: 8px; text-align: left; vertical-align: top;"><strong style="color: #006633; font-style: italic;">Background:</strong></td>
+    <td style="width: 12%; border: none; padding: 8px; text-align: left; vertical-align: top;"><strong style="color: #006633; font-weight: bold; font-size: 14px;">Background:</strong></td>
   </tr>
   <tr>
    <td style="width: 100%; border: none; padding: 8px; text-align: justify; vertical-align: top;"><?=$activity->background;?></td>
@@ -312,7 +354,7 @@
   
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
     <tr>
-    <td style="width:50%; border: none; padding: 8px; text-align: left; vertical-align: top;"><strong style="color: #006633; font-style: italic;">Activity Information:</strong></td>
+    <td style="width:50%; border: none; padding: 8px; text-align: left; vertical-align: top;"><strong style="color: #006633; font-weight: bold; font-size: 14px;">Activity Information:</strong></td>
       </tr>
       <tr>
         <td style="border: none; padding: 8px; text-align: left; vertical-align: top;"><strong>Division:</strong></td>
@@ -336,7 +378,7 @@
         <td style="border: none; padding: 8px; text-align: left; vertical-align: top;">
      
         <?php foreach($locations as $loc): ?>
-                        <span style="display: inline-block; padding: 0.25em 0.4em; font-size: 0.75em; font-weight: 700; line-height: 1; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: 0.25rem; background-color: #0dcaf0; color: #000;"><?php echo htmlspecialchars($loc->name); ?></span>
+                        <span><?php echo htmlspecialchars($loc->name); ?></span>
         <?php endforeach; ?>
            
           
@@ -398,7 +440,7 @@
 
            
              
-                 <h6  style="color: #911C39; font-weight: 600;"> <?php echo htmlspecialchars($fundCode->activity); ?> - <?php echo htmlspecialchars($fundCode->code); ?> - (<?php echo htmlspecialchars($fundCode->fundType->name); ?>) </h6>
+                 <h6  style="font-size: 12px; font-weight: 600;"> <?php echo htmlspecialchars($fundCode->activity); ?> - <?php echo htmlspecialchars($fundCode->code); ?> - (<?php echo htmlspecialchars($fundCode->fundType->name); ?>) </h6>
 
                 <div>
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 1px solid #ccc;">
@@ -406,10 +448,10 @@
                             <tr>
                                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">#</th>
                                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">Cost Item</th>
-                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">Unit Cost</th>
+                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">Unit Cost (USD)</th>
                                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">Units</th>
                                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">Days</th>
-                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">Total</th>
+                                <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">Total (USD)</th>
                                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;">Description</th>
                             </tr>
                         </thead>
@@ -426,7 +468,7 @@
                                 ?>
                                 <tr>
                                     <td style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top;"><?php echo $count; ?></td>
-                                    <td style="border: 1px solid #ccc; padding: 8px; text-align: right; vertical-align: top;"><?php echo htmlspecialchars($item->cost); ?></td>
+                                    <td style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top;"><?php echo htmlspecialchars($item->cost); ?></td>
                                     <td style="border: 1px solid #ccc; padding: 8px; text-align: right; vertical-align: top;"><?php echo number_format($item->unit_cost, 2); ?></td>
                                     <td style="border: 1px solid #ccc; padding: 8px; text-align: right; vertical-align: top;"><?php echo $item->units; ?></td>
                                     <td style="border: 1px solid #ccc; padding: 8px; text-align: right; vertical-align: top;"><?php echo $item->days; ?></td>
@@ -444,7 +486,7 @@
                             <tr>
                                 <th style="border: 1px solid #ccc; padding: 8px; text-align: right; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;" colspan="5">Grand Total</th>
                                 
-                                <th style="border: 1px solid #ccc; padding: 8px; text-align: right; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;"><?php echo number_format($grandTotal ?? 0, 2); ?></th>
+                                <th style="border: 1px solid #ccc; padding: 8px; text-align: right; vertical-align: top; background-color: #f9f9f9; font-weight: bold; font-size: 12px;"><?php echo number_format($grandTotal ?? 0, 2); ?> USD</th>
                                 <th style="border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; background-color: #f9f9f9;"></th>
                             </tr>
                         </tfoot>
@@ -463,36 +505,37 @@
     <?php if($fundCode->fundType->id == 1): ?>
 
     <!-- Right-side memo meta (stacked, borderless) -->
-    <div style="display:flex; align-items:flex-start; gap:16px; margin-bottom:10px;">
-      <div style="margin-left:auto; text-align:right; line-height:1.3;" aria-label="Memo metadata">
-        <span style="font-weight:700; letter-spacing:.2px;"><?php echo $activity_refernce; ?></span><br/>
-        <span style="color:#64748b;">Date: <?php echo $activity->created_at->format('j F Y'); ?></span>
+    <div class="topbar">
+      <div class="meta" aria-label="Memo metadata">
+        <span class="memo-id"><?php echo $activity_refernce; ?></span><br/>
+        <span class="date">Date: <?php echo $activity->created_at->format('j F Y'); ?></span>
       </div>
     </div>
 
     <!-- Main form table (borderless by default) -->
-    <table style="margin:12px 0 18px; background:#fff; overflow:clip; border-radius:10px; border-collapse:collapse; width:100%;" role="table" aria-label="Payment details">
+    <table class="form-table" role="table" aria-label="Payment details">
       <tr>
-        <th style="width:36%; font-weight:600; text-align:left; background:#f9fafb; padding:10px; vertical-align:top; border:none;" scope="row">Payee/Staff<br/><span style="color:#64748b; font-size:12px;">(Vendors)</span></th>
-        <td style="padding:10px; vertical-align:top; border:none;">
-        <?php echo $activity->responsiblePerson->title.' '.$activity->responsiblePerson->fname.' '.$activity->responsiblePerson->lname.' '.$activity->responsiblePerson->oname; ?>
-        <span style="min-height:28px; display:block; border-bottom:1px dashed #3d4043; height:22px;" aria-hidden="true"></span></td>
+        <th scope="row">Payee/Staff<br/><span class="muted">(Vendors)</span></th>
+        <td>
+          <?php echo $activity->responsiblePerson->title.' '.$activity->responsiblePerson->fname.' '.$activity->responsiblePerson->lname.' '.$activity->responsiblePerson->oname; ?>
+          <span class="fill line" aria-hidden="true"></span>
+        </td>
       </tr>
       <tr>
-        <th style="width:36%; font-weight:600; text-align:left; background:#f9fafb; padding:10px; vertical-align:top; border:none;" scope="row">Purpose of Payment</th>
-        <td style="padding:10px; vertical-align:top; border:none;"><?php echo htmlspecialchars($activity->activity_title); ?><span style="min-height:28px; display:block; border-bottom:1px dashed #3d4043; height:22px;"></span></td>
+        <th scope="row">Purpose of Payment</th>
+        <td><?php echo htmlspecialchars($activity->activity_title); ?><span class="fill line"></span></td>
       </tr>
       <tr>
-        <th style="width:36%; font-weight:600; text-align:left; background:#f9fafb; padding:10px; vertical-align:top; border:none;" scope="row">Department Name<br/><span style="color:#64748b; font-size:12px;">(Cost Center)</span></th>
-        <td style="padding:10px; vertical-align:top; border:none;">Africa CDC - <?php echo $matrix->division->division_name ?? ''; ?><span style="min-height:28px; display:block; border-bottom:1px dashed #3d4043; height:22px;"></span></td>
+        <th scope="row">Department Name<br/><span class="muted">(Cost Center)</span></th>
+        <td>Africa CDC - <?php echo $matrix->division->division_name ?? ''; ?><span class="fill line"></span></td>
       </tr>
       <tr>
-        <th style="width:36%; font-weight:600; text-align:left; background:#f9fafb; padding:10px; vertical-align:top; border:none;" scope="row">Project/Program<br/><span style="color:#64748b; font-size:12px;">(Fund Center)</span></th>
-        <td style="padding:10px; vertical-align:top; border:none;"><?php echo htmlspecialchars($fundCode->code); ?><span style="min-height:28px; display:block; border-bottom:1px dashed #3d4043; height:22px;"></span></td>
+        <th scope="row">Project/Program<br/><span class="muted">(Fund Center)</span></th>
+        <td><?php echo htmlspecialchars($fundCode->code); ?><span class="fill line"></span></td>
       </tr>
       <tr>
-        <th style="width:36%; font-weight:600; text-align:left; background:#f9fafb; padding:10px; vertical-align:top; border:none;" scope="row">Fund <span style="color:#64748b; font-size:12px;">(Member State or Partner/Donor)</span></th>
-          <td style="padding:10px; vertical-align:top; border:none;"><?php echo htmlspecialchars($fundCode->fund); ?><span style="min-height:28px; display:block; border-bottom:1px dashed #3d4043; height:22px;"></span></td>
+        <th scope="row">Fund <span class="muted">(Member State or Partner/Donor)</span></th>
+        <td><?php echo htmlspecialchars($fundCode->fund); ?><span class="fill line"></span></td>
       </tr>
     </table>
 <?php
@@ -500,18 +543,18 @@
     //dd($approvalOrder5->first());
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
-    <table style="margin:12px 0 18px; background:#fff; overflow:clip; border-radius:10px; border-collapse:collapse; width:100%;" role="table" aria-label="Budget and Certification">
+    <table class="budget-table" role="table" aria-label="Budget and Certification">
       <tr>
-        <td style="background:#f9fafb; font-weight:600; padding:10px; vertical-align:top; min-height:36px; border:none;">Strategic Axis Budget Balance (Certified by SFO)</td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;">USD</td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;">$ <?=number_format($approvalOrder5->first()->amount_allocated ?? 0, 2);?></td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;">Date: <?=$approvalOrder5->first()->created_at->format('j F Y') ?? 'N/A';?></td>
+        <td class="head">Strategic Axis Budget Balance (Certified by SFO)</td>
+        <td>USD</td>
+        <td>$ <?=number_format($approvalOrder5->first()->amount_allocated ?? 0, 2);?></td>
+        <td>Date: <?=$approvalOrder5->first()->created_at->format('j F Y') ?? 'N/A';?></td>
       </tr>
       <tr>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;"></td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;"></td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;"></td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;">
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>
             Signature:
             <?php
            
@@ -536,30 +579,31 @@
         </td>
       </tr>
       <tr>
-        <td style="background:#f9fafb; font-weight:600; padding:10px; vertical-align:top; min-height:36px; border:none;">Estimated cost</td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;">USD</td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;"><?php echo number_format($grandTotal, 2); ?></td>
-        <td style="padding:10px; vertical-align:top; min-height:36px; border:none;">Name: <?php echo $sfoApproval && $sfoApproval->staff ? $sfoApproval->staff->title.' '.$sfoApproval->staff->fname.' '.$sfoApproval->staff->lname.' '.$sfoApproval->staff->oname : 'N/A'; ?></td>
+        <td class="head">Estimated cost</td>
+        <td>USD</td>
+        <td><?php echo number_format($grandTotal, 2); ?></td>
+        <td>Name: <?php echo $sfoApproval && $sfoApproval->staff ? $sfoApproval->staff->title.' '.$sfoApproval->staff->fname.' '.$sfoApproval->staff->lname.' '.$sfoApproval->staff->oname : 'N/A'; ?></td>
       </tr>
     </table>
 
     <!-- Signatures (borderless by default). Last column adds ONLY a left border inline -->
-    <table style="margin-top:18px; border-radius:10px; overflow:clip; border-collapse:collapse; width:100%;" role="table" aria-label="Approvals">
+    <table class="sig-table" role="table" aria-label="Approvals">
       <tr>
-        <td style="width:40%; font-weight:600; background:#f9fafb; padding:14px 10px; vertical-align:bottom; height:90px; border:none;">Signed (Prepared By)</td>
+        <td>Prepared by</td>
         <?php
             $approvalOrder1 = $activity->activityApprovalTrails->where('approval_order', 1)->first();
             //dd($approvalOrder1->first());
         ?>
         
-        <td style="width:30%; padding:14px 10px; vertical-align:bottom; height:90px; border:none;">
+        <td>
           <?php echo $approvalOrder1 && $approvalOrder1->staff ? $approvalOrder1->staff->title.' '.$approvalOrder1->staff->fname.' '.$approvalOrder1->staff->lname.' '.$approvalOrder1->staff->oname : 'N/A'; ?>
           <br>
           <?=$approvalOrder1 && $approvalOrder1->staff ? $approvalOrder1->staff->job_name : 'N/A';?><br>
           <?=$approvalOrder1 && $approvalOrder1->staff ? $approvalOrder1->staff->division_name : 'N/A';?><br>
-        <span style="min-height:28px; display:block; border-bottom:1px dashed #3d4043; height:22px;"></span></td>
-        <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none; padding:14px 10px; vertical-align:bottom; height:90px;">
-          <span style="min-height:28px; display:block;">
+          <span class="fill line"></span>
+        </td>
+        <td style="border-left:1px solid var(--border); border-top:none; border-right:none; border-bottom:none;">
+          <span class="fill">
          <?php if ($approvalOrder1 && $approvalOrder1->staff && !empty($approvalOrder1->staff->signature)) {
                     // Staff signature present
             ?>
@@ -580,19 +624,20 @@
         </td>
       </tr>
       <tr>
-        <td style="width:40%; font-weight:600; background:#f9fafb; padding:14px 10px; vertical-align:bottom; height:90px; border:none;">Endorsed by</td>
+        <td>Endorsed by</td>
         <?php
             $approvalOrder6 = $activity->activityApprovalTrails->where('approval_order', 6)->first();
             //dd($approvalOrder2->first());
         ?>
-        <td style="width:30%; padding:14px 10px; vertical-align:bottom; height:90px; border:none;">
+        <td>
         <?php echo $approvalOrder6 && $approvalOrder6->staff ? $approvalOrder6->staff->title.' '.$approvalOrder6->staff->fname.' '.$approvalOrder6->staff->lname.' '.$approvalOrder6->staff->oname : 'N/A'; ?>
           <br>
           <?=$approvalOrder6 && $approvalOrder6->staff ? $approvalOrder6->staff->job_name : 'N/A';?><br>
-          <?=$approvalOrder6 && $approvalOrder6->staff ? $approvalOrder6->staff->division_name : 'N/A';?><br><span style="min-height:28px; display:block; border-bottom:1px dashed #3d4043; height:22px;"></span></td>
-        <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none; padding:14px 10px; vertical-align:bottom; height:90px;">
-          
-          <span style="min-height:28px; display:block;">
+          <?=$approvalOrder6 && $approvalOrder6->staff ? $approvalOrder6->staff->division_name : 'N/A';?><br>
+          <span class="fill line"></span>
+        </td>
+        <td style="border-left:1px solid var(--border); border-top:none; border-right:none; border-bottom:none;">
+          <span class="fill">
             <?php if ($approvalOrder6 && $approvalOrder6->staff && !empty($approvalOrder6->staff->signature)) {
                     // Staff signature present
             ?>
@@ -613,20 +658,20 @@
         </td>
       </tr>
       <tr>
-        <td style="width:40%; font-weight:600; background:#f9fafb; padding:14px 10px; vertical-align:bottom; height:90px; border:none;">Approved</td>
+        <td>Approved by</td>
         <?php
             $approvalOrder8 = $activity->activityApprovalTrails->where('approval_order', 8)->first();
             //dd($approvalOrder8->first());
         ?>
-        <td style="width:30%; padding:14px 10px; vertical-align:bottom; height:90px; border:none;">
+        <td>
         <?php echo $approvalOrder8 && $approvalOrder8->staff ? $approvalOrder8->staff->title.' '.$approvalOrder8->staff->fname.' '.$approvalOrder8->staff->lname.' '.$approvalOrder8->staff->oname : 'N/A'; ?>
           <br>
           <?=$approvalOrder8 && $approvalOrder8->staff ? $approvalOrder8->staff->job_name : 'N/A';?><br>
           <?=$approvalOrder8 && $approvalOrder8->staff ? $approvalOrder8->staff->division_name : 'N/A';?><br>
-          <span style="min-height:28px; display:block; border-bottom:1px dashed #3d4043; height:22px;"></span></td>
-        <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none; padding:14px 10px; vertical-align:bottom; height:90px;">
-       
-          <span style="min-height:28px; display:block;">
+          <span class="fill line"></span>
+        </td>
+        <td style="border-left:1px solid var(--border); border-top:none; border-right:none; border-bottom:none;">
+          <span class="fill">
             <?php if ($approvalOrder8 && $approvalOrder8->staff && !empty($approvalOrder8->staff->signature)) {
                     // Staff signature present
             ?>
