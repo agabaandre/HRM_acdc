@@ -51,7 +51,7 @@
                 <label for="responsible_person" class="form-label fw-semibold">
                     <i class="fas fa-user-tie me-1 text-success"></i> Responsible Person <span class="text-danger">*</span>
                 </label>
-                <select name="responsible_person_id" id="responsible_person_id" class="form-select select2 " required>
+                <select name="responsible_person_id" id="responsible_person_id" class="form-select select2 " required style="width: 100%;">
                     <option value="">Select</option>
                     @foreach($staff as $member)
                     <option value="{{ $member->staff_id }}" {{ old('responsible_person_id', $activity->responsible_person_id ?? '') == $member->staff_id ? 'selected' : '' }}>
@@ -109,7 +109,7 @@
                 <label for="internal_participants" class="form-label fw-semibold">
                     <i class="fas fa-user-friends me-1 text-success"></i> Select Internal Participants <span class="text-danger">*</span>
                 </label>
-                <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple required>
+                <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple style="width: 100%;">
                     @foreach($divisionStaff as $member)
                         @php
                             $participantIds = [];
@@ -157,10 +157,11 @@
                 <th>End Date</th>
                 <th>No. of Days</th>
                 <th>International Travel</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody id="participantsTableBody">
-            <tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>
+            <tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>
         </tbody>
     </table>
 

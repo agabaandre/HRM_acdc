@@ -509,9 +509,15 @@ class ActivityController extends Controller
         
         // Get all staff grouped by division for external participants
         $allStaffGroupedByDivision = Staff::active()
-            ->with('division')
+            ->select(['staff_id', 'fname', 'lname', 'division_id', 'division_name'])
             ->get()
-            ->groupBy('division.name');
+            ->groupBy('division_name');
+            
+        // Debug: Log the staff data
+        \Illuminate\Support\Facades\Log::info('All staff grouped by division:', [
+            'count' => $allStaffGroupedByDivision->count(),
+            'divisions' => $allStaffGroupedByDivision->keys()->toArray()
+        ]);
 
         // Decode JSON fields
         $locationIds = is_string($activity->location_id)
@@ -537,18 +543,26 @@ class ActivityController extends Controller
 
         // Extract staff details and append date/days info
         $internalParticipants = [];
+        $externalParticipants = [];
         if (!empty($rawParticipants)) {
             $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))->get()->keyBy('staff_id');
 
             foreach ($rawParticipants as $staffId => $participantData) {
                 if (isset($staffDetails[$staffId])) {
-                    $internalParticipants[] = [
+                    $participant = [
                         'staff' => $staffDetails[$staffId],
                         'participant_start' => $participantData['participant_start'] ?? null,
                         'participant_end' => $participantData['participant_end'] ?? null,
                         'participant_days' => $participantData['participant_days'] ?? null,
                         'international_travel' => $participantData['international_travel'] ?? 1,
                     ];
+                    
+                    // Separate internal and external participants
+                    if ($staffDetails[$staffId]->division_id == $matrix->division_id) {
+                        $internalParticipants[] = $participant;
+                    } else {
+                        $externalParticipants[] = $participant;
+                    }
                 }
             }
         }
@@ -556,6 +570,13 @@ class ActivityController extends Controller
         // Fetch related data
         $selectedLocations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
+
+        // Debug: Log external participants
+        \Illuminate\Support\Facades\Log::info('External participants data:', [
+            'count' => count($externalParticipants),
+            'participants' => $externalParticipants,
+            'matrix_division_id' => $matrix->division_id
+        ]);
 
         return view('activities.edit', [
             'matrix' => $matrix,
@@ -568,6 +589,7 @@ class ActivityController extends Controller
             'costItems' => $costItems,
             'allStaffGroupedByDivision' => $allStaffGroupedByDivision,
             'internalParticipants' => $internalParticipants,
+            'externalParticipants' => $externalParticipants,
             'budgetItems' => $budgetItems,
             'attachments' => $attachments,
             'title' => 'Edit Activity',

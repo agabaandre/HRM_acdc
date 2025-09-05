@@ -24,7 +24,6 @@ use App\Models\Workflow;
 use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Models\FundCodeTransaction;
-use Illuminate\Support\Facades\Log;
 
 class SpecialMemoController extends Controller
 {
@@ -191,11 +190,23 @@ class SpecialMemoController extends Controller
     
         $validated = $request->validate([
             'activity_title' => 'required|string|max:255',
+            'date_from' => 'required|date',
+            'date_to' => 'required|date|after_or_equal:date_from',
+            'background' => 'required|string',
+            'justification' => 'required|string',
             'location_id' => 'required|array|min:1',
             'location_id.*' => 'exists:locations,id',
             'participant_start' => 'required|array',
             'participant_end' => 'required|array',
             'participant_days' => 'required|array',
+            'responsible_person_id' => 'required|exists:staff,staff_id',
+            'fund_type_id' => 'required|exists:fund_types,id',
+            'budget_codes' => 'nullable|array',
+            'budget_codes.*' => 'exists:fund_codes,id',
+            'attachments.*.type' => 'required_with:attachments.*.file|string|max:255',
+            'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
+            'attachments.*.replace' => 'nullable|boolean',
+            'attachments.*.delete' => 'nullable|boolean',
         ]);
 
         // Validate total participants and budget
@@ -260,6 +271,43 @@ class SpecialMemoController extends Controller
                 ];
             }
     
+            // Handle attachments
+            $attachments = [];
+            if ($request->hasFile('attachments')) {
+                $uploadedFiles = $request->file('attachments');
+                $attachmentTypes = $request->input('attachments', []);
+                
+                foreach ($uploadedFiles as $index => $file) {
+                    if ($file && $file->isValid()) {
+                        $type = $attachmentTypes[$index]['type'] ?? 'Document';
+                        
+                        // Validate file type
+                        $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                        $extension = strtolower($file->getClientOriginalExtension());
+                        
+                        if (!in_array($extension, $allowedExtensions)) {
+                            throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
+                        }
+                        
+                        // Generate unique filename
+                        $filename = time() . '_' . uniqid() . '.' . $extension;
+                        
+                        // Store file in public/uploads/special-memos directory
+                        $path = $file->storeAs('uploads/special-memos', $filename, 'public');
+                        
+                        $attachments[] = [
+                            'type' => $type,
+                            'filename' => $filename,
+                            'original_name' => $file->getClientOriginalName(),
+                            'path' => $path,
+                            'size' => $file->getSize(),
+                            'mime_type' => $file->getMimeType(),
+                            'uploaded_at' => now()->toDateTimeString()
+                        ];
+                    }
+                }
+            }
+
             // Determine status based on action
             $action = $request->input('action', 'draft');
             $isDraft = ($action === 'draft');
@@ -279,7 +327,7 @@ class SpecialMemoController extends Controller
                 'activity_request_remarks' => $request->input('activity_request_remarks', ''),
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
-                'fund_type_id' => (int) $request->input('fund_type', 1),
+                'fund_type_id' => (int) $request->input('fund_type_id', 1),
                 'forward_workflow_id' => $isDraft ? null : 1, // Set workflow ID only when submitting
                 'reverse_workflow_id' => $isDraft ? null : 1,
                 'overall_status' => $overallStatus,
@@ -293,7 +341,7 @@ class SpecialMemoController extends Controller
     
                 'budget_id' => json_encode($request->input('budget_codes', [])),
                 'budget' => json_encode($request->input('budget', [])),
-                'attachment' => json_encode($request->input('attachments', [])),
+                'attachment' => json_encode($attachments),
     
                 'supporting_reasons' => $request->input('supporting_reasons', null),
             ]);
@@ -328,7 +376,7 @@ class SpecialMemoController extends Controller
                                 // and just log the balance change
                                 
                                 // Log the balance change
-                                \Log::info('Fund code balance reduced for special memo', [
+                                \Illuminate\Support\Facades\Log::info('Fund code balance reduced for special memo', [
                                     'fund_code_id' => $codeId,
                                     'fund_code' => $fundCode->code,
                                     'special_memo_id' => $specialMemo->id,
@@ -375,7 +423,7 @@ class SpecialMemoController extends Controller
     
         } catch (\Throwable $e) {
             DB::rollBack();
-            \Log::error('Error creating special memo', ['exception' => $e]);
+            \Illuminate\Support\Facades\Log::error('Error creating special memo', ['exception' => $e]);
     
             return redirect()->back()->withInput()->with([
                 'msg' => 'An error occurred while creating the special memo. Please try again.',
@@ -383,7 +431,7 @@ class SpecialMemoController extends Controller
             ]);
         }
     }
-
+    
     /**
      * Calculate total budget from budget array
      */
@@ -435,9 +483,8 @@ class SpecialMemoController extends Controller
             ->get();
     
         // All staff grouped by division for external participants
-        $allStaff =  Staff::active()
-            ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
-            ->where('division_id', '!=', $division_id)
+        $allStaffGroupedByDivision = Staff::active()
+            ->select(['staff_id', 'fname', 'lname', 'division_id', 'division_name'])
             ->get()
             ->groupBy('division_name');
     
@@ -468,17 +515,105 @@ class SpecialMemoController extends Controller
         // Replace original budget on the model (optional, for view consistency)
         $specialMemo->budget = $budget;
 
+        // Process participants data for edit form - following activities pattern
+        $rawParticipants = is_string($specialMemo->internal_participants)
+            ? json_decode($specialMemo->internal_participants, true)
+            : ($specialMemo->internal_participants ?? []);
+
+        // Debug: Log the raw participants data
+        \Illuminate\Support\Facades\Log::info('Raw participants data:', ['data' => $rawParticipants]);
+        \Illuminate\Support\Facades\Log::info('Raw participants data type:', ['type' => gettype($rawParticipants)]);
+        \Illuminate\Support\Facades\Log::info('Raw participants data count:', ['count' => is_array($rawParticipants) ? count($rawParticipants) : 'not array']);
+
+        // Extract staff details and append date/days info - following activities pattern
+        $internalParticipants = [];
+        $externalParticipants = [];
+        if (!empty($rawParticipants)) {
+            // Check if data is already in the correct format (array of objects with staff key)
+            if (isset($rawParticipants[0]) && isset($rawParticipants[0]['staff'])) {
+                // Data is already in the correct format, separate internal and external
+                foreach ($rawParticipants as $participant) {
+                    if ($participant['staff']->division_id == $division_id) {
+                        $internalParticipants[] = $participant;
+                    } else {
+                        $externalParticipants[] = $participant;
+                    }
+                }
+                \Illuminate\Support\Facades\Log::info('Participants already in correct format, separated internal and external', []);
+            } else {
+                // Data is in key-value format, process it
+                $staffIds = array_keys($rawParticipants);
+                \Illuminate\Support\Facades\Log::info('Staff IDs to fetch:', ['staff_ids' => $staffIds]);
+                
+                $staffDetails = Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
+                \Illuminate\Support\Facades\Log::info('Staff details found:', ['count' => $staffDetails->count()]);
+
+                foreach ($rawParticipants as $staffId => $participantData) {
+                    if (isset($staffDetails[$staffId])) {
+                        $participant = [
+                            'staff' => $staffDetails[$staffId],
+                            'participant_start' => $participantData['participant_start'] ?? null,
+                            'participant_end' => $participantData['participant_end'] ?? null,
+                            'participant_days' => $participantData['participant_days'] ?? null,
+                        ];
+                        
+                        // Separate internal and external participants
+                        if ($staffDetails[$staffId]->division_id == $division_id) {
+                            $internalParticipants[] = $participant;
+                        } else {
+                            $externalParticipants[] = $participant;
+                        }
+                    }
+                }
+                \Illuminate\Support\Facades\Log::info('Processed participants from key-value format, separated internal and external', []);
+            }
+        }
+
+        // Debug: Log the processed participants
+        \Illuminate\Support\Facades\Log::info('Processed participants count:', ['count' => count($internalParticipants)]);
+        \Illuminate\Support\Facades\Log::info('Processed participants:', ['participants' => $internalParticipants]);
+
+        // Process budget data for edit form - following activities pattern
+        $budgetIds = is_string($specialMemo->budget_id)
+            ? json_decode($specialMemo->budget_id, true)
+            : ($specialMemo->budget_id ?? []);
+
+        $budgetItems = is_string($specialMemo->budget)
+            ? json_decode($specialMemo->budget, true)
+            : ($specialMemo->budget ?? []);
+
+        // Get fund type from special memo or from budget codes
+        $fundTypeId = $specialMemo->fund_type_id ?? null;
+        if (!$fundTypeId && !empty($budgetIds)) {
+            $firstBudgetCode = \App\Models\FundCode::find($budgetIds[0]);
+            if ($firstBudgetCode) {
+                $fundTypeId = $firstBudgetCode->fund_type_id;
+            }
+        }
+
+        // Get budget codes for the specific fund type
+        $budgetCodesForFundType = [];
+        if ($fundTypeId) {
+            $budgetCodesForFundType = \App\Models\FundCode::where('fund_type_id', $fundTypeId)
+                ->where('division_id', $division_id)
+                ->get();
+        }
     
         return view('special-memo.edit', [
             'specialMemo' => $specialMemo,
             'requestTypes' => $requestTypes,
             'staff' => $staff,
             'divisionStaff' => $divisionStaff,
-            'allStaffGroupedByDivision' => $allStaff,
+            'allStaffGroupedByDivision' => $allStaffGroupedByDivision,
             'locations' => $locations,
             'fundTypes' => $fundTypes,
-            'budgetCodes' => $budgetCodes,
+            'budgetCodes' => $budgetCodesForFundType, // Use filtered budget codes
             'costItems' => $costItems,
+            'internalParticipants' => $internalParticipants, // Following activities pattern
+            'externalParticipants' => $externalParticipants, // External participants
+            'budgetItems' => $budgetItems, // Following activities pattern
+            'fundTypeId' => $fundTypeId, // Pass the fund type ID
+            'budgetIds' => $budgetIds, // Pass the selected budget IDs
             'title' => 'Edit Special Memo',
             'editing' => true,
         ]);
@@ -489,13 +624,26 @@ class SpecialMemoController extends Controller
      */
     public function update(Request $request, SpecialMemo $specialMemo): RedirectResponse
     {
+        //dd($request->all());
         $validated = $request->validate([
             'activity_title' => 'required|string|max:255',
+            'date_from' => 'required|date',
+            'date_to' => 'required|date|after_or_equal:date_from',
+            'background' => 'required|string',
+            'justification' => 'required|string',
             'location_id' => 'required|array|min:1',
             'location_id.*' => 'exists:locations,id',
             'participant_start' => 'required|array',
             'participant_end' => 'required|array',
             'participant_days' => 'required|array',
+            'responsible_person_id' => 'required|exists:staff,staff_id',
+            'fund_type_id' => 'required|exists:fund_types,id',
+            'budget_codes' => 'nullable|array',
+            'budget_codes.*' => 'exists:fund_codes,id',
+            'attachments.*.type' => 'required_with:attachments.*.file|string|max:255',
+            'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
+            'attachments.*.replace' => 'nullable|boolean',
+            'attachments.*.delete' => 'nullable|boolean',
         ]);
 
         // Validate total participants and budget
@@ -546,6 +694,68 @@ class SpecialMemoController extends Controller
                 ];
             }
     
+            // Handle attachments - following non-travel pattern
+            $attachments = [];
+            $existingAttachments = is_string($specialMemo->attachment) 
+                ? json_decode($specialMemo->attachment, true) 
+                : ($specialMemo->attachment ?? []);
+            
+            // Get attachment data from request
+            $attachmentData = $request->input('attachments', []);
+            
+            // Process each attachment slot
+            foreach ($attachmentData as $index => $attachmentInfo) {
+                $type = $attachmentInfo['type'] ?? 'Document';
+                $file = $request->file("attachments.{$index}.file");
+                $shouldReplace = isset($attachmentInfo['replace']) && $attachmentInfo['replace'] == '1';
+                $shouldDelete = isset($attachmentInfo['delete']) && $attachmentInfo['delete'] == '1';
+                
+                // Skip if user wants to delete this attachment
+                if ($shouldDelete) {
+                    continue;
+                }
+                
+                if ($file && $file->isValid()) {
+                    // New file uploaded - validate and store
+                    $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    
+                    if (!in_array($extension, $allowedExtensions)) {
+                        throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
+                    }
+                    
+                    // Generate unique filename
+                    $filename = time() . '_' . uniqid() . '.' . $extension;
+                    
+                    // Store file in public/uploads/special-memos directory
+                    $path = $file->storeAs('uploads/special-memos', $filename, 'public');
+                    
+                    $attachments[] = [
+                        'type' => $type,
+                        'filename' => $filename,
+                        'original_name' => $file->getClientOriginalName(),
+                        'path' => $path,
+                        'size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                        'uploaded_at' => now()->toDateTimeString()
+                    ];
+                } else {
+                    // No new file uploaded - check if user wants to replace
+                    if ($shouldReplace && isset($existingAttachments[$index])) {
+                        // User wants to replace but no new file provided - skip this attachment
+                        continue;
+                    } elseif (isset($existingAttachments[$index])) {
+                        // Keep existing attachment
+                        $attachments[] = $existingAttachments[$index];
+                    }
+                }
+            }
+            
+            // If no attachment data was provided, keep all existing attachments
+            if (empty($attachmentData)) {
+                $attachments = $existingAttachments;
+            }
+
             // Determine status based on action
             $action = $request->input('action', 'draft');
             $isDraft = ($action === 'draft');
@@ -561,9 +771,8 @@ class SpecialMemoController extends Controller
                 'activity_request_remarks' => $request->input('activity_request_remarks', ''),
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
-                'fund_type_id' => (int) $request->input('fund_type', 1),
+                'fund_type_id' => (int) $request->input('fund_type_id', 1),
                 'is_draft' => $isDraft,
-                'status' => $overallStatus,
                 'overall_status' => $overallStatus,
                 'total_participants' => (int) $request->input('total_participants', 0),
                 'total_external_participants' => (int) $request->input('total_external_participants', 0),
@@ -573,11 +782,12 @@ class SpecialMemoController extends Controller
     
                 'budget_id' => json_encode($request->input('budget_codes', [])),
                 'budget' => json_encode($request->input('budget', [])),
-                'attachment' => json_encode($request->input('attachments', [])),
+                'attachment' => json_encode($attachments),
     
                 'supporting_reasons' => $request->input('supporting_reasons', null),
             ];
 
+           // dd($updateData);
             // Add workflow fields only when submitting for approval
             if (!$isDraft) {
                 $updateData['forward_workflow_id'] = 1;
@@ -590,6 +800,33 @@ class SpecialMemoController extends Controller
             }
 
             $specialMemo->update($updateData);
+    
+            // Handle submission for approval
+            if (($request->input('action') === 'submit') || ($specialMemo->overall_status === 'returned' && $specialMemo->responsible_person_id == user_session('staff_id'))) {
+                
+
+                    $specialMemo->submitForApproval();
+                 
+                
+
+                // Update the memo status for approval
+                $specialMemo->overall_status = 'pending';
+                $specialMemo->approval_level = 1;
+                $specialMemo->forward_workflow_id = 1;
+                $specialMemo->next_approval_level = 2;
+                $specialMemo->is_draft = 0; // Set is_draft to 0 (false) when submitting for approval
+                $specialMemo->save();
+
+                // Save approval trail
+                $specialMemo->saveApprovalTrail('Submitted for approval', 'submitted');
+            }
+            else{
+                   DB::rollBack();
+                    return redirect()->back()->with([
+                        'msg' => 'Only draft special memos can be submitted for approval.',
+                        'type' => 'error',
+                    ]);
+            }
     
             DB::commit();
     
@@ -604,7 +841,7 @@ class SpecialMemoController extends Controller
     
         } catch (\Throwable $e) {
             DB::rollBack();
-            \Log::error('Error updating special memo', ['exception' => $e]);
+            \Illuminate\Support\Facades\Log::error('Error updating special memo', ['exception' => $e]);
     
             return redirect()->back()->withInput()->with([
                 'msg' => 'An error occurred while updating the special memo. Please try again.',
@@ -678,7 +915,10 @@ class SpecialMemoController extends Controller
      */
     public function submitForApproval(SpecialMemo $specialMemo): RedirectResponse
     {
-        if ($specialMemo->overall_status !== 'draft') {
+        // dd($specialMemo->overall_status);
+        // dd($specialMemo->overall_status);
+        //dd($specialMemo->overall_status);
+        if ($specialMemo->overall_status != 'draft') {
             return redirect()->back()->with([
                 'msg' => 'Only draft special memos can be submitted for approval.',
                 'type' => 'error',
@@ -1015,17 +1255,17 @@ class SpecialMemoController extends Controller
                 
                 if (!empty($staffIds)) {
                     $staffDetails = Staff::whereIn('staff_id', $staffIds)
-                        ->get()
-                        ->keyBy('staff_id');
+                ->get()
+                ->keyBy('staff_id');
 
                     foreach ($rawParticipants as $participantData) {
                         $staffId = $participantData['staff_id'] ?? null;
-                        $internalParticipants[] = [
+                $internalParticipants[] = [
                             'staff' => $staffId ? ($staffDetails[$staffId] ?? null) : null,
-                            'participant_start' => $participantData['participant_start'] ?? null,
-                            'participant_end' => $participantData['participant_end'] ?? null,
-                            'participant_days' => $participantData['participant_days'] ?? null,
-                        ];
+                    'participant_start' => $participantData['participant_start'] ?? null,
+                    'participant_end' => $participantData['participant_end'] ?? null,
+                    'participant_days' => $participantData['participant_days'] ?? null,
+                ];
                     }
                 }
             }

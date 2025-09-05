@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('activity_approval_trails', function (Blueprint $table) {
-            $table->decimal('amount_allocated', 15, 2)->nullable()->after('remarks');
+        Schema::table('special_memos', function (Blueprint $table) {
+            //
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('activity_approval_trails', function (Blueprint $table) {
-            $table->dropColumn('amount_allocated');
+        Schema::table('special_memos', function (Blueprint $table) {
+            //
         });
     }
 };

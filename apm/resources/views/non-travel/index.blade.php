@@ -192,7 +192,7 @@
                                                             {{ strtoupper($memo->overall_status) }}
                                                         </span>
                                                         <br>
-                                                        <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                                      
                                                         <small class="text-muted d-block">{{ $workflowRole }}</small>
                                                         @if($actorName !== 'N/A')
                                                             <small class="text-muted d-block">{{ $actorName }}</small>

@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('non_travel_memos', function (Blueprint $table) {
-            $table->unsignedBigInteger('fund_type_id')->nullable()->after('division_id');
+        Schema::table('special_memos', function (Blueprint $table) {
+            $table->unsignedBigInteger('fund_type_id')->nullable()->after('division_id')->comment('Fund type for this special memo');
             $table->foreign('fund_type_id')->references('id')->on('fund_types')->onDelete('set null');
         });
     }
@@ -22,7 +22,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('non_travel_memos', function (Blueprint $table) {
+        Schema::table('special_memos', function (Blueprint $table) {
             $table->dropForeign(['fund_type_id']);
             $table->dropColumn('fund_type_id');
         });
