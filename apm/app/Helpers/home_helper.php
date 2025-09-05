@@ -368,8 +368,7 @@ if (!function_exists('mpdf_print')) {
         // Set PDF margins exactly like CodeIgniter
         $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
         $mpdf->SetAutoPageBreak(true, 30); 
-        $header = '
-        <div style="width: 100%; text-align: center; padding-bottom: 5px;">
+        $header = '<div style="width: 100%; text-align: center; padding-bottom: 5px;">
             <div style="width: 100%; padding-bottom: 5px;">
                 <div style="width: 100%; padding: 10px 0;">
                     <!-- Top Row: Logo and Tagline -->
@@ -385,13 +384,11 @@ if (!function_exists('mpdf_print')) {
                     </div>
                 </div>
             </div>
-        </div>
-        ';
+        </div>';
         $mpdf->SetHTMLHeader($header);    // allow auto page break with 30mm bottom margin for footer
 
         // Set footer exactly like CodeIgniter
-        $footer = '
-        <table width="100%" style="font-size: 8pt; color: #911C39; border:none;">
+        $footer = ' <table width="100%" style="font-size: 8pt; color: #911C39; border:none;">
             <tr>
                 <td align="left" style="border: none;">
                     Africa CDC Headquarters, Ring Road, 16/17,<br>
