@@ -691,9 +691,8 @@
      <div style="margin-bottom: 0; color: #006633; font-style: italic;"><strong>Request for Approval</strong></div>
      <div class="justify-text" style="padding: 10px;"><?php echo htmlspecialchars($activity->activity_request_remarks ?? 'N/A'); ?></div>
          
-    <div class="page-break"></div>
-
     <?php if($fundCode->fundType->id == 1): ?>
+    <div class="page-break"></div>
 
     <!-- Right-side memo meta (stacked, borderless) -->
     <div class="topbar">
