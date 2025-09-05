@@ -84,7 +84,7 @@ class Staff extends Model
      */
     public function getNameAttribute()
     {
-        return "{$this->fname} {$this->lname}";
+        return "{$this->title} {$this->fname} {$this->lname} {$this->oname}";
     }
 
     

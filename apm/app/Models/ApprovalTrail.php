@@ -91,8 +91,7 @@ class ApprovalTrail extends Model
      */
     public function workflowDefinition(): BelongsTo
     {
-        return $this->belongsTo(WorkflowDefinition::class, 'approval_order', 'approval_order')
-            ->where('workflow_id', $this->forward_workflow_id);
+        return $this->belongsTo(WorkflowDefinition::class, 'approval_order', 'approval_order');
     }
 
     /**

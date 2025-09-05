@@ -284,7 +284,14 @@
     function renderApproverInfo($approver, $role, $section, $nonTravel) {
         $isOic = isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $name = $isOic ? $staff['name'] . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . ($staff['name'] ?? ''));
+        
+        // Construct name from individual fields
+        $staffName = '';
+        if ($staff) {
+            $staffName = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+        }
+        
+        $name = $isOic ? $staffName . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . $staffName);
         echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
         echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
 
@@ -308,7 +315,7 @@
     function renderSignature($approver, $order, $approval_trails, $nonTravel) {
         $isOic = isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $staffId = $staff['id'] ?? null;
+        $staffId = $staff['staff_id'] ?? $staff['id'] ?? null;
 
         $approvalDate = getApprovalDate($staffId, $approval_trails, $order);
 
@@ -433,7 +440,8 @@
         $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
         $year = date('Y', strtotime($nonTravel->created_at ?? 'now'));
         $memoId = $nonTravel->id ?? 'N/A';
-        $memo_reference = "AU/CDC/{$shortCode}/NTM/{$nonTravel->quarter ?? 'Q1'}/{$year}/{$memoId}";
+        $quarter = 'Q' . ceil(date('n', strtotime($nonTravel->created_at ?? 'now')) / 3);
+        $memo_reference = "AU/CDC/{$shortCode}/NTM/{$quarter}/{$year}/{$memoId}";
     }
 
     // Define the order of sections: TO, THROUGH, FROM (excluding 'others')
@@ -626,9 +634,9 @@
                                 ?>
                                 <tr>
                                     <td><?php echo $count; ?></td>
-                                    <td class="text-right"><?php echo htmlspecialchars($item['description']); ?></td>
-                                    <td class="text-right"><?php echo number_format($item['unit_cost'], 2); ?></td>
-                                    <td class="text-right"><?php echo $item['quantity']; ?></td>
+                                    <td class="text-right"><?php echo htmlspecialchars($item['description'] ?? ''); ?></td>
+                                    <td class="text-right"><?php echo number_format($item['unit_cost'] ?? 0, 2); ?></td>
+                                    <td class="text-right"><?php echo $item['quantity'] ?? 1; ?></td>
                                     <td class="text-right"><?php echo $item['days'] ?? 1; ?></td>
                                     <td class="text-right"><?php echo number_format($total, 2); ?></td>
                                     <td><?php echo htmlspecialchars($item['notes'] ?? ''); ?></td>
@@ -694,10 +702,10 @@
     </table>
 <?php
     // Get latest approvals for each order
-    $approvalOrder5 = getLatestApprovalForOrder($approvalTrails, 5);
-    $approvalOrder1 = getLatestApprovalForOrder($approvalTrails, 1);
-    $approvalOrder6 = getLatestApprovalForOrder($approvalTrails, 6);
-    $approvalOrder8 = getLatestApprovalForOrder($approvalTrails, 8);
+    $approvalOrder5 = getLatestApprovalForOrder($approval_trails, 5);
+    $approvalOrder1 = getLatestApprovalForOrder($approval_trails, 1);
+    $approvalOrder6 = getLatestApprovalForOrder($approval_trails, 6);
+    $approvalOrder8 = getLatestApprovalForOrder($approval_trails, 8);
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
     <table class="budget-table" role="table" aria-label="Budget and Certification">
