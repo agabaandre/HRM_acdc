@@ -236,7 +236,7 @@
         ->where('staff_id', $staffId)
         ->sortByDesc('created_at')
         ->first();
-     $date =   $approval->created_at->format('d/m/Y H:i');
+     $date =   $approval->created_at->format('d/m/Y H:i')?? date('d/m/Y H:i');
       //dd($date);
 
       return $date;
