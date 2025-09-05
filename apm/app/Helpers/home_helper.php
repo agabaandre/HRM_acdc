@@ -314,6 +314,7 @@ if (!function_exists('get_pending_service_requests_count')) {
 if (!function_exists('mpdf_print')) {
     /**
      * Generate a PDF using mPDF, or preview the HTML in the browser for debugging.
+     * Ensures all CSS from the view is included in the PDF.
      *
      * @param string $view
      * @param array $data
@@ -326,7 +327,7 @@ if (!function_exists('mpdf_print')) {
         // Set timezone
         date_default_timezone_set("Africa/Nairobi");
 
-        // Load the view with data
+        // Load the view with data and capture the full HTML (including <style> tags)
         if (strpos($view, '.blade.php') !== false) {
             // If it's a Blade view, render it normally
             $html = view($view, $data)->render();
@@ -334,10 +335,7 @@ if (!function_exists('mpdf_print')) {
             // If it's a PHP template, include it directly
             $templatePath = resource_path('views/' . str_replace('.', '/', $view) . '.php');
             if (file_exists($templatePath)) {
-                // Extract variables from data array for PHP template
                 extract($data);
-
-                // Start output buffering before including template
                 ob_start();
                 include $templatePath;
                 $html = ob_get_contents();
@@ -350,7 +348,6 @@ if (!function_exists('mpdf_print')) {
 
         // If preview_html option is set, output HTML directly for debugging
         if (!empty($options['preview_html'])) {
-            // Set content type header for HTML if not already sent
             if (!headers_sent()) {
                 header('Content-Type: text/html; charset=utf-8');
             }
@@ -358,69 +355,65 @@ if (!function_exists('mpdf_print')) {
             exit;
         }
 
-      // mPDF font configuration with Arial + safe fallback
-$defaultConfig      = (new \Mpdf\Config\ConfigVariables())->getDefaults();
-$fontDirs           = $defaultConfig['fontDir'];
-//dd($fontDirs);
-$defaultFontConfig  = (new \Mpdf\Config\FontVariables())->getDefaults();
-$fontData           = $defaultFontConfig['fontdata'];
-//dd($fontData);
-$arialFontDir = public_path('assets/fonts/arial');
-//dd($arialFontDir);
-$arialFiles = [
-    'R'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIAL.TTF',
-    'B'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBD.TTF',
-    'I'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALI.TTF',
-    'BI' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBI.TTF',
-];
+        // mPDF font configuration with Arial + safe fallback
+        $defaultConfig      = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+        $fontDirs           = $defaultConfig['fontDir'];
+        $defaultFontConfig  = (new \Mpdf\Config\FontVariables())->getDefaults();
+        $fontData           = $defaultFontConfig['fontdata'];
+        $arialFontDir = public_path('assets/fonts/arial');
+        $arialFiles = [
+            'R'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIAL.TTF',
+            'B'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBD.TTF',
+            'I'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALI.TTF',
+            'BI' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBI.TTF',
+        ];
 
-// Determine if all Arial files exist (Linux is case-sensitive)
-$haveArial =
-    is_dir($arialFontDir) &&
-    file_exists($arialFiles['R']) &&
-    file_exists($arialFiles['B']) &&
-    file_exists($arialFiles['I']) &&
-    file_exists($arialFiles['BI']);
+        $haveArial =
+            is_dir($arialFontDir) &&
+            file_exists($arialFiles['R']) &&
+            file_exists($arialFiles['B']) &&
+            file_exists($arialFiles['I']) &&
+            file_exists($arialFiles['BI']);
 
-if (!$haveArial) {
-    \Log::warning('Arial fonts not found or incomplete. Falling back to DejaVuSans.', [
-        'dir_exists' => is_dir($arialFontDir),
-        'files'      => $arialFiles
-    ]);
-}
+        if (!$haveArial) {
+            if (class_exists('\Log')) {
+                \Log::warning('Arial fonts not found or incomplete. Falling back to DejaVuSans.', [
+                    'dir_exists' => is_dir($arialFontDir),
+                    'files'      => $arialFiles
+                ]);
+            }
+        }
 
-$mpdf = new \Mpdf\Mpdf([
-    'mode'     => 'utf-8',
-    'format'   => 'A4',
-    'tempDir'  => storage_path('app/mpdf_tmp'), // ensure this exists & is writable
-    'fontDir'  => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
-    'fontdata' => $haveArial
-        ? $fontData + [
-            'arial' => [
-                'R'  => 'ARIAL.TTF',
-                'B'  => 'ARIALBD.TTF',
-                'I'  => 'ARIALI.TTF',
-                'BI' => 'ARIALBI.TTF',
-            ],
-        ]
-        : $fontData, // keep defaults if no Arial
-    'default_font' => $haveArial ? 'arial' : 'freesans',
-    'default_font_size' => 10,
-]);
+        $mpdf = new \Mpdf\Mpdf([
+            'mode'     => 'utf-8',
+            'format'   => 'A4',
+            'tempDir'  => storage_path('app/mpdf_tmp'),
+            'fontDir'  => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
+            'fontdata' => $haveArial
+                ? $fontData + [
+                    'arial' => [
+                        'R'  => 'ARIAL.TTF',
+                        'B'  => 'ARIALBD.TTF',
+                        'I'  => 'ARIALI.TTF',
+                        'BI' => 'ARIALBI.TTF',
+                    ],
+                ]
+                : $fontData,
+            'default_font' => $haveArial ? 'arial' : 'freesans',
+            'default_font_size' => 10,
+        ]);
 
-        // Set PDF margins exactly like CodeIgniter
-        $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
-        $mpdf->SetAutoPageBreak(true, 30); 
+        // Set PDF margins
+        $mpdf->SetMargins(10, 10, 35);
+        $mpdf->SetAutoPageBreak(true, 30);
+
         $header = '<div style="width: 100%; text-align: center; padding-bottom: 5px;">
             <div style="width: 100%; padding-bottom: 5px;">
                 <div style="width: 100%; padding: 10px 0;">
-                    <!-- Top Row: Logo and Tagline -->
                     <div style="display:flex; justify-content: space-between; align-items: center;">
-                        <!-- Left: Logo -->
                         <div style="width: 60%; text-align: left; float:left;">
                             <img src="' . asset('assets/images/logo.png') . '" alt="Africa CDC Logo" style="height: 80px;">
                         </div>
-                        <!-- Right: Tagline -->
                         <div style="text-align: right; width: 35%; float:right; margin-top:10px;">
                             <span style="font-size: 14px; color: #911C39;">Safeguarding Africa\'s Health</span>
                         </div>
@@ -428,9 +421,8 @@ $mpdf = new \Mpdf\Mpdf([
                 </div>
             </div>
         </div>';
-        $mpdf->SetHTMLHeader($header);    // allow auto page break with 30mm bottom margin for footer
+        $mpdf->SetHTMLHeader($header);
 
-        // Set footer exactly like CodeIgniter
         $footer = ' <table width="100%" style="font-size: 8pt; color: #911C39; border:none;">
             <tr>
                 <td align="left" style="border: none;">
@@ -450,11 +442,14 @@ $mpdf = new \Mpdf\Mpdf([
 
         $mpdf->SetHTMLFooter($footer);
 
-        // Write HTML content exactly like CodeIgniter with error handling
+        // --- Ensure all CSS from the view is included in the PDF ---
+        // If the HTML does not have a <style> block, try to include the CSS file if it exists
+        // (But for most Laravel views, the CSS is inline in a <style> tag at the top of the view)
+
+        // mPDF will process <style> tags in the HTML, so just write the HTML as-is
         try {
             $mpdf->WriteHTML($html);
-        } catch (Exception $e) {
-            // If there's an error, try with minimal HTML
+        } catch (\Exception $e) {
             $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
             $mpdf->WriteHTML($simpleHtml);
         }

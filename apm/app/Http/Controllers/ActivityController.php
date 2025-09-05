@@ -429,35 +429,35 @@ class ActivityController extends Controller
 
 
     public function getBudgetCodesByFundType(Request $request)
-    {
-        $request->validate([
-            'fund_type_id' => 'required|exists:fund_types,id',
-            'division_id' => 'required|exists:divisions,id',
-        ]);
+{
+    $request->validate([
+        'fund_type_id' => 'required|exists:fund_types,id',
+        'division_id' => 'required|exists:divisions,id',
+    ]);
 
-        $budgetCodes = FundCode::with('funder:id,name')
-            ->where('fund_type_id', $request->fund_type_id)
-            ->where('is_active', true)
+    $budgetCodes = FundCode::with('funder:id,name')
+        ->where('fund_type_id', $request->fund_type_id)
+        ->where('is_active', true)
             ->where(function ($query) use ($request) {
                 // Include codes where division_id matches the request, or is NULL, or is empty string (universal)
                 $query->where('division_id', $request->division_id)
                       ->orWhereNull('division_id')
                       ->orWhere('division_id', '');
             })
-            ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
+        ->get(['id', 'code', 'activity', 'budget_balance', 'funder_id']);
 
-        $result = $budgetCodes->map(function ($code) {
-            return [
-                'id' => $code->id,
-                'code' => $code->code,
-                'activity' => $code->activity,
-                'budget_balance' => $code->budget_balance,
-                'funder_name' => optional($code->funder)->name,
-            ];
-        });
+    $result = $budgetCodes->map(function ($code) {
+        return [
+            'id' => $code->id,
+            'code' => $code->code,
+            'activity' => $code->activity,
+            'budget_balance' => $code->budget_balance,
+            'funder_name' => optional($code->funder)->name,
+        ];
+    });
 
-        return response()->json($result);
-    }
+    return response()->json($result);
+}
 
     public function getFundTypeByBudgetCode(Request $request)
     {
@@ -474,7 +474,7 @@ class ActivityController extends Controller
         }
 
         return response()->json($budgetCode->fund_type_id);
-    }
+}
 
     /**
      * Show the form for editing the specified activity.
@@ -655,39 +655,39 @@ class ActivityController extends Controller
                     
                     if ($file && $file->isValid()) {
                         // New file uploaded - validate and store
-                        $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
-                        $extension = strtolower($file->getClientOriginalExtension());
-                        
-                        if (!in_array($extension, $allowedExtensions)) {
-                            throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
-                        }
-                        
-                        // Generate unique filename
-                        $filename = time() . '_' . uniqid() . '.' . $extension;
-                        
-                        // Store file in public/uploads/activities directory
-                        $path = $file->storeAs('uploads/activities', $filename, 'public');
-                        
-                        $attachments[] = [
-                            'type' => $type,
-                            'filename' => $filename,
-                            'original_name' => $file->getClientOriginalName(),
-                            'path' => $path,
-                            'size' => $file->getSize(),
-                            'mime_type' => $file->getMimeType(),
-                            'uploaded_at' => now()->toDateTimeString()
-                        ];
-                    } else {
+                            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                            $extension = strtolower($file->getClientOriginalExtension());
+                            
+                            if (!in_array($extension, $allowedExtensions)) {
+                                throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
+                            }
+                            
+                            // Generate unique filename
+                            $filename = time() . '_' . uniqid() . '.' . $extension;
+                            
+                            // Store file in public/uploads/activities directory
+                            $path = $file->storeAs('uploads/activities', $filename, 'public');
+                            
+                            $attachments[] = [
+                                'type' => $type,
+                                'filename' => $filename,
+                                'original_name' => $file->getClientOriginalName(),
+                                'path' => $path,
+                                'size' => $file->getSize(),
+                                'mime_type' => $file->getMimeType(),
+                                'uploaded_at' => now()->toDateTimeString()
+                            ];
+                        } else {
                         // No new file uploaded - check if user wants to replace
                         if ($shouldReplace && isset($existingAttachments[$index])) {
                             // User wants to replace but no new file provided - skip this attachment
                             continue;
                         } elseif (isset($existingAttachments[$index])) {
                             // Keep existing attachment
-                            $attachments[] = $existingAttachments[$index];
+                                $attachments[] = $existingAttachments[$index];
+                            }
                         }
                     }
-                }
                 
                 // If no attachment data was provided, keep all existing attachments
                 if (empty($attachmentData)) {
@@ -1521,10 +1521,12 @@ class ActivityController extends Controller
         // Get matrix approval trails with staff details
         $matrixApprovals = $matrix->matrixApprovalTrails()->with('staff')->get();
 
-        // Get activity approval trails with staff details
-        $activityApprovals = $activity->activityApprovalTrails()->with('staff')->get();
+        // Get activity approval trails with staff details and workflow definition
+        $activityApprovals = $activity->activityApprovalTrails()->with(['staff', 'oicStaff', 'workflowDefinition'])->get();
 
         // Generate PDF using the comprehensive data
+        //$print=true;
+        $print=false;
         $pdf = mpdf_print('activities.memo-pdf-simple', [
             'activity' => $activity,
             'matrix' => $matrix,
@@ -1538,7 +1540,7 @@ class ActivityController extends Controller
             'staff' => $activity->staff,
             'workflow_info' => $workflowInfo,
             'organized_workflow_steps' => $organizedWorkflowSteps
-        ],['preview_html' => false]);
+        ],['preview_html' => $print]);
 
         // Generate filename
         $filename = 'Activity_Memo_' . str_replace(['/', '\\'], '_', $activity->activity_ref ?? $activity->created_at->format('Y-m-d')) . '_' . now()->format('Y-m-d') . '.pdf';
@@ -1565,9 +1567,16 @@ class ActivityController extends Controller
 
         // Get matrix workflow information
         if ($matrix->forward_workflow_id) {
-            // Get workflow definition
+            // Get workflow definition with category filtering for order 7
             $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
                 ->where('is_enabled', 1)
+                ->where(function($query) use ($matrix) {
+                    $query->where('approval_order', '!=', 7)
+                          ->orWhere(function($subQuery) use ($matrix) {
+                              $subQuery->where('approval_order', 7)
+                                       ->where('category', $matrix->division->category ?? null);
+                          });
+                })
                 ->orderBy('approval_order')
                 ->with(['approvers.staff', 'approvers.oicStaff'])
                 ->get();

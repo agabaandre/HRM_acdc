@@ -37,7 +37,7 @@
     table, th, td { border: none; }  /* default: no borders */
     
     .form-table { 
-        margin: 12px 0 18px; 
+        margin: 10px 0 16px; 
         background: #fff; 
         overflow: clip; 
         border-radius: 10px; 
@@ -55,7 +55,7 @@
         overflow: clip; 
         border-radius: 10px; 
     }
-    .budget-table td { padding: 10px; vertical-align: top; min-height: 36px; }
+    .budget-table td { padding: 8px; vertical-align: top; min-height: 30px; }
     .budget-table .head { background: #f9fafb; font-weight: bold; }
 
     /* Signature table wrapper */
@@ -73,7 +73,7 @@
     .sig-table td:nth-child(2) { width: 25%; }
 
     /* Helper underline */
-    .line { display: block; border-bottom: 1px dashed #4f545a; height: 22px; }
+    .line { display: block; border-bottom: 1px solid #4f545a; height: 22px; }
     
     /* Section labels */
     .section-label {
@@ -92,7 +92,7 @@
     
     /* Approver information */
     .approver-name {
-        font-size: 13px; 
+        font-size: 14px; 
         font-weight: bold; 
         line-height: 1.2; 
         margin-bottom: 2px;
@@ -100,28 +100,36 @@
     
     .approver-title {
         color: #666; 
-        font-size: 11px; 
+        font-size: 12px; 
         line-height: 1.1; 
         margin-top: 1px;
     }
     
     /* Signature styling */
     .signature-image {
-        height: 25px; 
+        height: 30px; 
         max-width: 80px; 
         object-fit: contain; 
         filter: contrast(1.2);
+        display: block;
+        margin: 0;
+        padding: 0;
     }
     
     .signature-date {
         color: #666; 
-        font-size: 9px; 
-        margin-top: 5px;
+        font-size: 8px; 
+        margin: 0;
+        padding: 0;
+        line-height: 1.1;
     }
     
     .signature-hash {
         color: #999; 
-        font-size: 9px;
+        font-size: 8px;
+        margin: 0;
+        padding: 0;
+        line-height: 1.1;
     }
     
     /* Table borders for specific sections */
@@ -133,7 +141,7 @@
     .bordered-table th, 
     .bordered-table td {
         border: 1px solid #ccc; 
-        padding: 8px; 
+        padding: 6px; 
         text-align: left; 
         vertical-align: top;
     }
@@ -184,10 +192,17 @@
     .bg-highlight {
         background-color: #f9f9f9;
     }
+    
+    .justify-text {
+        text-align: justify;
+        text-justify: inter-word;
+        word-spacing: 0.1em;
+        line-height: 1.6;
+    }
 </style>
 </head>
 <body>
-
+ 
   <!-- Document Title -->
   <h1 class="document-title">Interoffice Memorandum</h1>
   
@@ -217,11 +232,9 @@
       return strtoupper(substr(md5(sha1($activityId . $staffId . $dateTimeToUse)), 0, 16));
     }
 
-    
-    // Helper function to get approval date from matrix approval trail
     /**
      * Get the approval date for a given staff ID and/or approval order from the matrix approval trails.
-     * Returns a formatted date string if found, otherwise returns an empty string.
+     * Returns a formatted date string if found, otherwise returns the current date/time.
      *
      * @param mixed $staffId
      * @param iterable $matrixApprovalTrails
@@ -229,23 +242,200 @@
      * @return string
      */
     function getApprovalDate($staffId, $matrixApprovalTrails, $order) {
-
-      // Return the formatted approval date for the given staff and order, or empty string if not found
+        // Try to find approval by staff_id and approval_order first
       $approval = $matrixApprovalTrails
         ->where('approval_order', $order)
         ->where('staff_id', $staffId)
         ->sortByDesc('created_at')
         ->first();
-      $date = ($approval && isset($approval->created_at))
-         ? $approval->created_at->format('d/m/Y H:i')
-         : date('d/m/Y H:i');
 
+        // If not found, try to find by oic_staff_id and approval_order
+        if (!$approval) {
+            $approval = $matrixApprovalTrails
+                ->where('approval_order', $order)
+                ->where('oic_staff_id', $staffId)
+                ->sortByDesc('created_at')
+                ->first();
+        }
+
+        // If still not found, try to find by staff_id only
+        if (!$approval) {
+            $approval = $matrixApprovalTrails
+                ->where('staff_id', $staffId)
+                ->sortByDesc('created_at')
+                ->first();
+        }
+
+        // If still not found, try to find by oic_staff_id only
+        if (!$approval) {
+            $approval = $matrixApprovalTrails
+                ->where('oic_staff_id', $staffId)
+                ->sortByDesc('created_at')
+                ->first();
+        }
+
+        $date = ($approval && isset($approval->created_at))
+            ? (is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at)))
+            : date('j F Y H:i');
       return $date;
     }
-  ?>
-  
-  <table class="mb-15">
-    <?php
+
+    // Helper function to render approver info
+    function renderApproverInfo($approver, $role, $section, $matrix) {
+        $isOic = isset($approver['oic_staff']);
+        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
+        $name = $isOic ? $staff['name'] . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . ($staff['name'] ?? ''));
+        echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+        echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+
+        // Add OIC watermark if applicable
+        if ($isOic) {
+            echo '<div style="position: relative; display: inline-block;">';
+            echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
+            echo '</div>';
+        }
+
+        // Show division name for FROM section
+        if ($section === 'from') {
+            $divisionName = $matrix->division->division_name ?? '';
+            if (!empty($divisionName)) {
+                echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
+            }
+        }
+    }
+
+    // Helper function to render signature
+    function renderSignature($approver, $order, $matrix_approval_trails, $activity) {
+        $isOic = isset($approver['oic_staff']);
+        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
+        $staffId = $staff['id'] ?? null;
+
+        $approvalDate = getApprovalDate($staffId, $matrix_approval_trails, $order);
+
+        echo '<div style="line-height: 1.2;">';
+        
+        if (isset($staff['signature']) && !empty($staff['signature'])) {
+            echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
+            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+        } else {
+            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+        }
+        
+        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
+        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($activity->id, $staffId, $approvalDate)) . '</div>';
+        echo '</div>';
+    }
+
+    // Helper function to get latest approval for a specific order
+    function getLatestApprovalForOrder($activityApprovalTrails, $order) {
+        $approvals = $activityApprovalTrails->where('approval_order', $order);
+        return $approvals->sortByDesc('created_at')->first();
+    }
+
+    // Helper function to render budget signature with OIC support
+    function renderBudgetSignature($approval, $activity, $label = '') {
+        if (!$approval) {
+            echo '<span style="color:#aaa;">N/A</span>';
+            return;
+        }
+
+        $isOic = !empty($approval->oic_staff_id);
+        $staff = $isOic ? $approval->oicStaff : $approval->staff;
+        
+        if (!$staff) {
+            echo '<span style="color:#aaa;">N/A</span>';
+            return;
+        }
+
+        $name = $staff->title . ' ' . $staff->fname . ' ' . $staff->lname . ' ' . $staff->oname;
+        if ($isOic) {
+            $name .= ' (OIC)';
+        }
+
+        echo '<div style="line-height: 1.2;">';
+        
+        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+        
+        if (!empty($staff->signature)) {
+            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff->signature) . '" alt="Signature">';
+        } else {
+              echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
+        }
+        
+        $approvalDate = is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at));
+        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
+        
+        $hash = generateVerificationHash($activity->id, $isOic ? $approval->oic_staff_id : $approval->staff_id, $approval->created_at);
+        echo '<div class="signature-hash">Hash: ' . htmlspecialchars($hash) . '</div>';
+         
+        // Add OIC watermark if applicable
+        if ($isOic) {
+            echo '<div style="position: relative; display: inline-block; margin-top: 5px;">';
+            echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
+            echo '</div>';
+        }
+        
+        echo '</div>';
+    }
+
+    // Helper function to render budget approver info with OIC support
+    function renderBudgetApproverInfo($approval, $label = '') {
+        if (!$approval) {
+            echo 'N/A';
+            return;
+        }
+
+        $isOic = !empty($approval->oic_staff_id);
+        $staff = $isOic ? $approval->oicStaff : $approval->staff;
+        
+        if (!$staff) {
+            echo 'N/A';
+            return;
+        }
+
+        $name = $staff->title . ' ' . $staff->fname . ' ' . $staff->lname . ' ' . $staff->oname;
+        if ($isOic) {
+            $name .= ' (OIC)';
+        }
+
+        echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+
+        
+        // Get role from workflow definition instead of job_name
+        $role = 'N/A';
+        if (isset($approval->workflowDefinition) && $approval->workflowDefinition) {
+            $role = $approval->workflowDefinition->role ?? 'N/A';
+        } elseif (isset($approval->role)) {
+            $role = $approval->role;
+        }
+        echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+    
+        if($approval->workflowDefinition->approval_order == 1){
+          echo '<div class="approver-title">' . htmlspecialchars($staff->division_name ?? 'N/A') . '</div>';
+        }
+        echo '<span class="fill line"></span>';
+    }
+
+    // Generate file reference once
+    $activity_refernce = 'N/A';
+    if (isset($activity)) {
+        $divisionName = $matrix->division->division_name ?? '';
+        if (!function_exists('generateShortCodeFromDivision')) {
+            function generateShortCodeFromDivision(string $name): string {
+                $ignore = ['of', 'and', 'for', 'the', 'in'];
+                $words = preg_split('/\s+/', strtolower($name));
+                $initials = array_map(function ($word) use ($ignore) {
+                    return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+                }, $words);
+                return implode('', array_filter($initials));
+            }
+        }
+        $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
+        $year = date('Y', strtotime($matrix->created_at ?? 'now'));
+        $activityId = $activity->id ?? 'N/A';
+        $activity_refernce = "AU/CDC/{$shortCode}/IM/{$matrix->quarter}/{$year}/{$activityId}";
+    }
+
       // Define the order of sections: TO, THROUGH, FROM (excluding 'others')
       $sectionOrder = ['to', 'through', 'from'];
       
@@ -270,207 +460,83 @@
           $totalRows += 1; // At least one row per section
         }
       }
-      $currentRow = 0;
       $dateFileRowspan = $totalRows;
     ?>
+  <table class="mb-15">
     <?php foreach ($sectionOrder as $section): ?>
       <?php if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0): ?>
         <?php foreach ($organized_workflow_steps[$section] as $index => $step): 
-          $order = $organized_workflow_steps[$section][$index]['order'];
+                $order = $step['order'];
+                $role = $step['role'];
           ?>
           <tr>
-            <td style="width: 12%; vertical-align: top;">
-              <strong class="section-label"><?php echo $sectionLabels[$section] ?? strtoupper($section) . ':'; ?></strong>
+                <td style="width: 12%; vertical-align: top;">
+                    <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
             </td>
-
-              <td style="width: 30%; vertical-align: top; text-align: left;">
+                <td style="width: 30%; vertical-align: top; text-align: left;">
               <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
                 <?php foreach ($step['approvers'] as $approver): ?>
-                  <?php if (isset($approver['staff'])): 
-                    
-                    ?>
-                    <div class="approver-name">
-                      <?php echo htmlspecialchars(trim($approver['staff']['title'] . ' ' . $approver['staff']['name'])); ?>
-                    </div>
-                    <?php if (isset($approver['staff']['job_title']) && !empty($approver['staff']['job_title'])): ?>
-                      <div class="approver-title"><?php echo htmlspecialchars($approver['staff']['job_title']); ?></div>
-                    <?php elseif (isset($approver['staff']['title']) && !empty($approver['staff']['title'])): ?>
-                      <div class="approver-title"><?php echo htmlspecialchars($approver['staff']['title']); ?></div>
+                            <?php renderApproverInfo($approver, $role, $section, $matrix); ?>
+                        <?php endforeach; ?>
                     <?php else: ?>
-                      <div class="approver-title"><?php echo htmlspecialchars($step['role']); ?></div>
+                        <div class="approver-name"><?php echo htmlspecialchars($role); ?></div>
+                        <?php if ($section === 'from'): ?>
+                            <div class="approver-title"><?php echo htmlspecialchars($matrix->division->division_name ?? ''); ?></div>
                     <?php endif; ?>
-                    <?php
-                      // If this is the FROM section, display the division name under the title/job title
-                      if ($section === 'from') {
-                        $divisionName = $matrix->division->division_name ?? '';
-                        if (!empty($divisionName)) {
-                          echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
-                        }
-                      }
-                    ?>
-                  <?php elseif (isset($approver['oic_staff'])): ?>
-                    <div class="approver-name">
-                      <?php echo htmlspecialchars($approver['oic_staff']['name'] . ' (OIC)'); ?>
-                    </div>
-                    <?php if (isset($approver['oic_staff']['job_title']) && !empty($approver['oic_staff']['job_title'])): ?>
-                      <div class="approver-title"><?php echo htmlspecialchars($approver['oic_staff']['job_title']); ?></div>
-                    <?php elseif (isset($approver['oic_staff']['title']) && !empty($approver['oic_staff']['title'])): ?>
-                      <div class="approver-title"><?php echo htmlspecialchars($approver['oic_staff']['title']); ?></div>
-                    <?php else: ?>
-                      <div class="approver-title"><?php echo htmlspecialchars($step['role']); ?></div>
-                    <?php endif; ?>
-                    <?php
-                      // If this is the FROM section, display the division name under the title/job title for OIC as well
-                      if ($section === 'from') {
-                        $divisionName = $matrix->division->division_name ?? '';
-                        if (!empty($divisionName)) {
-                          echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
-                        }
-                      }
-                    ?>
-                  <?php endif; ?>
-                <?php endforeach; ?>
-              <?php else: ?>
-                <div class="approver-name">
-                  <?php echo htmlspecialchars($step['role']); ?>
-                </div>
-                <?php
-                  // If this is the FROM section, display the division name under the role
-                  if ($section === 'from') {
-                    $divisionName = $matrix->division->division_name ?? '';
-                    if (!empty($divisionName)) {
-                      echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
-                    }
-                  }
-                ?>
         <?php endif; ?>
       </td>
-
-?>
-
-            <td style="width: 30%; vertical-align: top; text-align: left;">
+                <td style="width: 30%; vertical-align: top; text-align: left;">
               <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
                 <?php foreach ($step['approvers'] as $approver): ?>
-                  <?php if (isset($approver['staff']) && isset($approver['staff']['signature']) && !empty($approver['staff']['signature'])): ?>
-                                          <img class="signature-image" src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approver['staff']['signature']; ?>" 
-                          alt="Signature">
-                     <br><small class="signature-date"><?php echo $approvalDate = getApprovalDate($approver['staff']['id'], $matrix_approval_trails,$order); ?></small>
-                    <br><small class="signature-hash">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver),$approvalDate); ?></small>
-                  <?php elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['signature']) && !empty($approver['oic_staff']['signature'])): ?>
-                                          <img class="signature-image" src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approver['oic_staff']['signature']; ?>" 
-                          alt="Signature">
-                     <br><small class="signature-date"><?php echo $approvalDate = getApprovalDate($approver['oic_staff']['id'], $matrix_approval_trails,$order); ?></small>
-                    <br><small class="signature-hash">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver),$approvalDate); ?></small>
-                  <?php else: ?>
-                    <small style="color: #666; font-style: italic;">Signed By: <?php echo htmlspecialchars(getStaffEmail($approver) ?? 'Email not available'); ?></small>
-                     <br><small class="signature-date"><?php echo $approvalDate = getApprovalDate(getStaffId($approver), $matrix_approval_trails,$order); ?></small>
-                    <br><small class="signature-hash">Hash: <?php echo generateVerificationHash($activity->id, getStaffId($approver),$approvalDate); ?></small>
-            <?php endif; ?>
+                            <?php renderSignature($approver, $order, $matrix_approval_trails, $activity); ?>
           <?php endforeach; ?>
         <?php endif; ?>
       </td>
-
-            <?php if ($currentRow === 0): ?>
-              <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
-                <div class="text-right">
+                <?php if ($section === $sectionOrder[0] && $index === 0): // Only output the Date/FileNo cell once ?>
+                    <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
+                        <div class="text-right">
                   <div style="margin-bottom: 20px;">
-                    <strong class="section-label">Date:</strong>
-                    <span style="font-weight: bold;"><?php echo isset($matrix->created_at) ? date('d/m/Y', strtotime($matrix->created_at)) : date('d/m/Y'); ?></span>
+                                <strong class="section-label">Date:</strong>
+                                <span style="font-weight: bold;"><?php echo isset($matrix->created_at) ? (is_object($matrix->created_at) ? $matrix->created_at->format('j F Y') : date('j F Y', strtotime($matrix->created_at))) : date('j F Y'); ?></span>
           </div>
                   <div>
                     <br><br>
-                    <strong class="section-label">File No:</strong><br>
-                    <span style="word-break: break-all; font-weight: bold;">
-            <?php
-              if (isset($activity)) {
-                $divisionName = $matrix->division->division_name ?? '';
-                if (!function_exists('generateShortCodeFromDivision')) {
-                  function generateShortCodeFromDivision(string $name): string
-                  {
-                      $ignore = ['of', 'and', 'for', 'the', 'in'];
-                      $words = preg_split('/\s+/', strtolower($name));
-                      $initials = array_map(function ($word) use ($ignore) {
-                          return in_array($word, $ignore) ? '' : strtoupper($word[0]);
-                      }, $words);
-                      return implode('', array_filter($initials));
-                  }
-                }
-                $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
-                        $year = date('Y', strtotime($matrix->created_at ?? 'now'));
-                $activityId = $activity->id ?? 'N/A';
-                echo $activity_refernce = htmlspecialchars("AU/CDC/{$shortCode}/IM/{$matrix->quarter}/{$year}/{$activityId}");
-              } else {
-                echo 'N/A';
-              }
-            ?>
-                    </span>
+                                <strong class="section-label">File No:</strong><br>
+                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($activity_refernce); ?></span>
           </div>
         </div>
       </td>
             <?php endif; ?>
     </tr>
-          <?php $currentRow++; ?>
           <?php endforeach; ?>
       <?php else: ?>
-        <!-- Empty section placeholder -->
         <tr>
-          <td style="width: 12%; vertical-align: top;">
-            <strong class="section-label"><?php echo $sectionLabels[$section] ?? ucfirst($section) . ':'; ?></strong>
+                <td style="width: 12%; vertical-align: top;">
+                    <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
           </td>
-          <td style="width: 30%; vertical-align: top; text-align: left;">
-            <!-- No approvers for this section -->
-            <?php
-              // If this is the FROM section, display the division name under the empty cell
-              if ($section === 'from') {
-                $divisionName = $matrix->division->division_name ?? '';
-                if (!empty($divisionName)) {
-                  echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
-                }
-              }
-            ?>
+                <td style="width: 30%; vertical-align: top; text-align: left;">
+                    <div class="approver-name"><?php echo htmlspecialchars($section); ?></div>
+                    <?php if ($section === 'from'): ?>
+                        <div class="approver-title"><?php echo htmlspecialchars($matrix->division->division_name ?? ''); ?></div>
+                    <?php endif; ?>
           </td>
-          <td style="width: 30%; vertical-align: top; text-align: center;">
-            <!-- No signatures for this section -->
-      </td>
-          <?php if ($currentRow === 0): ?>
-            <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
-              <div class="text-right">
+                <td style="width: 30%; vertical-align: top; text-align: left;"></td>
+                <?php if ($section === $sectionOrder[0]): // Only output the Date/FileNo cell once ?>
+                    <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
+                        <div class="text-right">
                 <div style="margin-bottom: 20px;">
-                  <strong class="section-label">DATE:</strong><br>
-                  <span><?php echo isset($matrix->created_at) ? date('j F Y', strtotime($matrix->created_at)) : date('d/m/Y'); ?></span>
+                                <strong class="section-label">Date:</strong>
+                                <span style="font-weight: bold;"><?php echo isset($matrix->created_at) ? (is_object($matrix->created_at) ? $matrix->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($matrix->created_at))) : date('j F Y H:i'); ?></span>
                 </div>
                 <div>
-                  <strong class="section-label">FILE NO:</strong><br>
-                  <span style="word-break: break-all;">
-              <?php
-                    if (isset($activity)) {
-                      $divisionName = $matrix->division->division_name ?? '';
-                      if (!function_exists('generateShortCodeFromDivision')) {
-                        function generateShortCodeFromDivision(string $name): string
-                        {
-                            $ignore = ['of', 'and', 'for', 'the', 'in'];
-                            $words = preg_split('/\s+/', strtolower($name));
-                            $initials = array_map(function ($word) use ($ignore) {
-                                return in_array($word, $ignore) ? '' : strtoupper($word[0]);
-                            }, $words);
-                            return implode('', array_filter($initials));
-                        }
-                      }
-                      $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
-                      $year = date('Y', strtotime($matrix->created_at ?? 'now'));
-                      $activityId = $activity->id ?? 'N/A';
-                      echo htmlspecialchars("AU/CDC/{$shortCode}/IM/{$matrix->quarter}/{$year}/{$activityId}");
-                    } else {
-                      echo 'N/A';
-                    }
-                  ?>
-                  </span>
+                                <br><br>
+                                <strong class="section-label">File No:</strong><br>
+                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($activity_refernce); ?></span>
                 </div>
               </div>
             </td>
           <?php endif; ?>
     </tr>
-        <?php $currentRow++; ?>
       <?php endif; ?>
     <?php endforeach; ?>
   </table>
@@ -489,62 +555,48 @@
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Background:</strong></td>
   </tr>
   <tr>
-   <td style="width: 100%; text-align: justify; vertical-align: top;"><p><?=$activity->background;?></p></td>
+   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><p class="justify-text"><?=$activity->background;?></p></td>
   </tr>
  </table>
   
   <div>
-    
+    <div class="page-break"></div>
+    <div class="section-label mb-15"><strong>Activity Information</strong></div>
   
-    <table class="mb-15">
-    <tr>
-    <td style="width:50%; text-align: left; vertical-align: top;"><strong class="section-label">Activity Information:</strong></td>
+    <table class="form-table mb-15" role="table" aria-label="Activity Information">
+      <tr>
+        <th scope="row">Division</th>
+        <td><?php echo htmlspecialchars($matrix->division->division_name ?? 'N/A'); ?><span class="fill line"></span></td>
       </tr>
       <tr>
-        <td style="text-align: left; vertical-align: top;"><strong>Division:</strong></td>
-        <td style="text-align: left; vertical-align: top;"><?php echo htmlspecialchars($matrix->division->division_name ?? 'N/A'); ?></td>
-      </tr>
-       <tr>
-        <td style="text-align: left; vertical-align: top;"><strong>Activity Type:</strong></td>
-        <td style="text-align: left; vertical-align: top;"><?php echo htmlspecialchars($activity->requestType->name ?? 'N/A'); ?></td>
-      </tr>
-  
-      <tr>
-        <td style="text-align: left; vertical-align: top;"><strong>Activity Start Date:</strong></td>
-        <td style="text-align: left; vertical-align: top;"><?php echo isset($activity->date_from) ? date('d/m/Y', strtotime($activity->date_from)) : 'N/A'; ?></td>
+        <th scope="row">Activity Type</th>
+        <td><?php echo htmlspecialchars($activity->requestType->name ?? 'N/A'); ?><span class="fill line"></span></td>
       </tr>
       <tr>
-        <td style="text-align: left; vertical-align: top;"><strong>Activity End Date:</strong></td>
-        <td style="text-align: left; vertical-align: top;"><?php echo isset($activity->date_to) ? date('d/m/Y', strtotime($activity->date_to)) : 'N/A'; ?></td>
+        <th scope="row">Activity Start Date</th>
+        <td><?php echo isset($activity->date_from) ? date('d/m/Y', strtotime($activity->date_from)) : 'N/A'; ?><span class="fill line"></span></td>
       </tr>
       <tr>
-        <td style="text-align: left; vertical-align: top;"><strong>Location (s):</strong></td>
-        <td style="text-align: left; vertical-align: top;">
-     
-        <?php foreach($locations as $loc): ?>
-                        <span><?php echo htmlspecialchars($loc->name); ?></span>
-        <?php endforeach; ?>
-           
-          
+        <th scope="row">Activity End Date</th>
+        <td><?php echo isset($activity->date_to) ? date('d/m/Y', strtotime($activity->date_to)) : 'N/A'; ?><span class="fill line"></span></td>
+      </tr>
+      <tr>
+        <th scope="row">Location(s)</th>
+        <td>
+          <?php foreach($locations as $loc): ?>
+            <span><?php echo htmlspecialchars($loc->name); ?></span>
+          <?php endforeach; ?>
+          <span class="fill line"></span>
         </td>
       </tr>
       <tr>
-        <td style="text-align: left; vertical-align: top; font-weight: bold;"><strong>Budget Type:</strong></td>
-        <td style="text-align: left; vertical-align: top;"><?php echo htmlspecialchars($activity->fundType->name ?? 'N/A'); ?></td>
+        <th scope="row">Budget Type</th>
+        <td><?php echo htmlspecialchars($activity->fundType->name ?? 'N/A'); ?><span class="fill line"></span></td>
       </tr>
-     
     </table>
-      <div class="page-break"></div>
-      <div style="margin-bottom: 1rem;">
-                   
-                    <div style="margin-top: 0.5rem;">
-                     <table class="mb-15">
-    <tr>
-    <td style="width:50%; text-align: left; vertical-align: top;"><strong class="section-label">Internal Participants:</strong></td>
-      </tr>
-      </table>
-                  
-                        <table class="bordered-table mb-15">
+    
+    <div class="section-label mb-15"><strong>Internal Participants</strong></div>     
+    <table class="bordered-table mb-15">
                             <thead>
                                 <tr>
                                     <td class="bg-highlight">#</td>
@@ -574,8 +626,7 @@
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
-                    </div>
-                </div>
+                  
 
     <div class="page-break"></div>
               <div class="section-label mb-15"><strong>Budget Details</strong></div>
@@ -638,11 +689,7 @@
                    
                 </div>
      <div style="margin-bottom: 0; color: #006633; font-style: italic;"><strong>Request for Approval</strong></div>
-     <table class="mb-15">
-      <tr>
-        <td style="text-align: justify !important;"><p style="width: 100%; text-align: justify !important; vertical-align: top;"><?php echo htmlspecialchars($activity->activity_request_remarks ?? 'N/A'); ?></p></td>
-      </tr>
-     </table>
+     <div class="justify-text" style="padding: 10px;"><?php echo htmlspecialchars($activity->activity_request_remarks ?? 'N/A'); ?></div>
          
     <div class="page-break"></div>
 
@@ -661,7 +708,7 @@
       <tr>
         <th scope="row">Payee/Staff<br/><span class="muted">(Vendors)</span></th>
         <td>
-          <?php echo $activity->responsiblePerson->title.' '.$activity->responsiblePerson->fname.' '.$activity->responsiblePerson->lname.' '.$activity->responsiblePerson->oname; ?>
+        <?php echo $activity->responsiblePerson->title.' '.$activity->responsiblePerson->fname.' '.$activity->responsiblePerson->lname.' '.$activity->responsiblePerson->oname; ?>
           <span class="fill line" aria-hidden="true"></span>
         </td>
       </tr>
@@ -683,155 +730,85 @@
       </tr>
     </table>
 <?php
-    $approvalOrder5 = $activity->activityApprovalTrails->where('approval_order', 5);
-    //dd($approvalOrder5->first());
+    // Get latest approvals for each order
+    $approvalOrder5 = getLatestApprovalForOrder($activity->activityApprovalTrails, 5);
+    $approvalOrder1 = getLatestApprovalForOrder($activity->activityApprovalTrails, 1);
+    $approvalOrder6 = getLatestApprovalForOrder($activity->activityApprovalTrails, 6);
+    $approvalOrder8 = getLatestApprovalForOrder($activity->activityApprovalTrails, 8);
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
     <table class="budget-table" role="table" aria-label="Budget and Certification">
       <tr>
         <td class="head">Strategic Axis Budget Balance (Certified by SFO)</td>
         <td>USD</td>
-        <td>$ <?=number_format($approvalOrder5->first()->amount_allocated ?? 0, 2);?></td>
-        <td>Date: <?=$approvalOrder5->first()->created_at->format('j F Y') ?? 'N/A';?></td>
+        <td>$ <?=number_format($approvalOrder5->amount_allocated ?? 0, 2);?></td>
+        <td>Date: <?=$approvalOrder5 ? (is_object($approvalOrder5->created_at) ? $approvalOrder5->created_at->format('j F Y') : date('j F Y', strtotime($approvalOrder5->created_at))) : 'N/A';?></td>
       </tr>
       <tr>
         <td></td>
         <td></td>
         <td></td>
         <td>
-            Signature:
-            <?php
            
-                // For approval_order 5, use $approvalOrder5->first() as the approver
-                $sfoApproval = $approvalOrder5->first();
-                if ($sfoApproval && $sfoApproval->staff && !empty($sfoApproval->staff->signature)) {
-                    // Staff signature present
-            ?>
-                <img class="signature-image" src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $sfoApproval->staff->signature; ?>"
-                     alt="Signature">
-                <br>
-                <small class="signature-date">
-                    <?php echo \Carbon\Carbon::parse($sfoApproval->created_at)->format('j F Y'); ?>
-                </small>
-                <br>
-                <small class="signature-hash">
-                    Hash: <?php echo generateVerificationHash($activity->id, $sfoApproval->staff_id, $sfoApproval->created_at ? $sfoApproval->created_at->format('Y-m-d H:i:s') : null); ?>
-                </small>
-            <?php } else { ?>
-                <span style="color:#aaa;">N/A</span>
-            <?php } ?>
+            <?php renderBudgetSignature($approvalOrder5, $activity); ?>
         </td>
       </tr>
       <tr>
         <td class="head">Estimated cost</td>
         <td>USD</td>
         <td><?php echo number_format($grandTotal, 2); ?></td>
-        <td>Name: <?php echo $sfoApproval && $sfoApproval->staff ? $sfoApproval->staff->title.' '.$sfoApproval->staff->fname.' '.$sfoApproval->staff->lname.' '.$sfoApproval->staff->oname : 'N/A'; ?></td>
+        <td>Name: <?php 
+            if ($approvalOrder5) {
+                $isOic = !empty($approvalOrder5->oic_staff_id);
+                $staff = $isOic ? $approvalOrder5->oicStaff : $approvalOrder5->staff;
+                if ($staff) {
+                    $name = $staff->title.' '.$staff->fname.' '.$staff->lname.' '.$staff->oname;
+                   
+                    if ($isOic) $name .= ' (OIC)';
+                    echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+                    echo '<div class="approver-title">' . htmlspecialchars($approvalOrder5->workflowDefinition->role) . '</div>';
+                } else {
+                    echo 'N/A';
+                }
+            } else {
+                echo 'N/A';
+            }
+        ?></td>
       </tr>
     </table>
 
     <!-- Signatures (borderless by default). Last column adds ONLY a left border inline -->
     <table class="sig-table" role="table" aria-label="Approvals">
       <tr>
-        <td>Prepared by</td>
-        <?php
-            $approvalOrder1 = $activity->activityApprovalTrails->where('approval_order', 1)->first();
-            //dd($approvalOrder1->first());
-        ?>
-        
+        <td>Signded (Prepared by):</td>
         <td>
-          <?php echo $approvalOrder1 && $approvalOrder1->staff ? $approvalOrder1->staff->title.' '.$approvalOrder1->staff->fname.' '.$approvalOrder1->staff->lname.' '.$approvalOrder1->staff->oname : 'N/A'; ?>
-          <br>
-          <?=$approvalOrder1 && $approvalOrder1->staff ? $approvalOrder1->staff->job_name : 'N/A';?><br>
-          <?=$approvalOrder1 && $approvalOrder1->staff ? $approvalOrder1->staff->division_name : 'N/A';?><br>
-          <span class="fill line"></span>
+          <?php renderBudgetApproverInfo($approvalOrder1); ?>
         </td>
         <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-         <?php if ($approvalOrder1 && $approvalOrder1->staff && !empty($approvalOrder1->staff->signature)) {
-                    // Staff signature present
-            ?>
-          <img class="signature-image" src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approvalOrder1->staff->signature; ?>"
-                     alt="Signature">
-                <br>
-                <small class="signature-date">
-                    <?php echo \Carbon\Carbon::parse($approvalOrder1->created_at)->format('j F Y'); ?>
-                </small>
-                <br>
-                <small class="signature-hash">
-                    Hash: <?php echo generateVerificationHash($activity->id, $approvalOrder1->staff_id, $approvalOrder1->created_at ? $approvalOrder1->created_at->format('Y-m-d H:i:s') : null); ?>
-                </small>
-            <?php } else { ?>
-                <span style="color:#aaa;">N/A</span>
-            <?php } ?>
+            <?php renderBudgetSignature($approvalOrder1, $activity); ?>
           </span>
         </td>
       </tr>
       <tr>
-        <td>Endorsed by</td>
-        <?php
-            $approvalOrder6 = $activity->activityApprovalTrails->where('approval_order', 6)->first();
-            //dd($approvalOrder2->first());
-        ?>
+        <td>Signed (Endorsed by):</td>
         <td>
-        <?php echo $approvalOrder6 && $approvalOrder6->staff ? $approvalOrder6->staff->title.' '.$approvalOrder6->staff->fname.' '.$approvalOrder6->staff->lname.' '.$approvalOrder6->staff->oname : 'N/A'; ?>
-          <br>
-          <?=$approvalOrder6 && $approvalOrder6->staff ? $approvalOrder6->staff->job_name : 'N/A';?><br>
-          <?=$approvalOrder6 && $approvalOrder6->staff ? $approvalOrder6->staff->division_name : 'N/A';?><br>
-          <span class="fill line"></span>
+          <?php renderBudgetApproverInfo($approvalOrder6); ?>
         </td>
         <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-            <?php if ($approvalOrder6 && $approvalOrder6->staff && !empty($approvalOrder6->staff->signature)) {
-                    // Staff signature present
-            ?>
-          <img class="signature-image" src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approvalOrder6->staff->signature; ?>"
-                     alt="Signature">
-                <br>
-                <small class="signature-date">
-                    <?php echo \Carbon\Carbon::parse($approvalOrder6->created_at)->format('j F Y'); ?>
-                </small>
-                <br>
-                <small class="signature-hash">
-                    Hash: <?php echo generateVerificationHash($activity->id, $approvalOrder6->staff_id, $approvalOrder6->created_at ? $approvalOrder6->created_at->format('Y-m-d H:i:s') : null); ?>
-                </small>
-            <?php } else { ?>
-                <span style="color:#aaa;">N/A</span>
-            <?php } ?>
+            <?php renderBudgetSignature($approvalOrder6, $activity); ?>
           </span>
         </td>
       </tr>
       <tr>
-        <td>Approved by</td>
-        <?php
-            $approvalOrder8 = $activity->activityApprovalTrails->where('approval_order', 8)->first();
-            //dd($approvalOrder8->first());
-        ?>
+        <td>Signed (Approved by):</td>
         <td>
-        <?php echo $approvalOrder8 && $approvalOrder8->staff ? $approvalOrder8->staff->title.' '.$approvalOrder8->staff->fname.' '.$approvalOrder8->staff->lname.' '.$approvalOrder8->staff->oname : 'N/A'; ?>
-          <br>
-          <?=$approvalOrder8 && $approvalOrder8->staff ? $approvalOrder8->staff->job_name : 'N/A';?><br>
-          <?=$approvalOrder8 && $approvalOrder8->staff ? $approvalOrder8->staff->division_name : 'N/A';?><br>
-          <span class="fill line"></span>
+          <?php renderBudgetApproverInfo($approvalOrder8); ?>
         </td>
         <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-            <?php if ($approvalOrder8 && $approvalOrder8->staff && !empty($approvalOrder8->staff->signature)) {
-                    // Staff signature present
-            ?>
-          <img class="signature-image" src="<?php echo user_session('base_url') . 'uploads/staff/signature/' . $approvalOrder8->staff->signature; ?>"
-                     alt="Signature">
-                <br>
-                <small class="signature-date">
-                    <?php echo \Carbon\Carbon::parse($approvalOrder8->created_at)->format('j F Y'); ?>
-                </small>
-                <br>
-                <small class="signature-hash">
-                    Hash: <?php echo generateVerificationHash($activity->id, $approvalOrder8->staff_id, $approvalOrder8->created_at ? $approvalOrder8->created_at->format('Y-m-d H:i:s') : null); ?>
-                </small>
-            <?php } else { ?>
-                <span style="color:#aaa;">N/A</span>
-            <?php } ?>
+            <?php renderBudgetSignature($approvalOrder8, $activity); ?>
           </span>
         </td>
       </tr>
