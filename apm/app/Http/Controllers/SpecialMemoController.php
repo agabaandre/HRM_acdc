@@ -961,8 +961,15 @@ class SpecialMemoController extends Controller
      */
     public function print(SpecialMemo $specialMemo)
     {
-        // Eager load relations (exclude unknown relationships)
-        $specialMemo->load(['staff', 'division', 'requestType']);
+        // Eager load relations
+        $specialMemo->load([
+            'staff', 
+            'division', 
+            'requestType',
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'approvalTrails.workflowDefinition'
+        ]);
 
         // Decode JSON fields safely
         $locationIds = is_string($specialMemo->location_id)
@@ -973,13 +980,13 @@ class SpecialMemoController extends Controller
             ? json_decode($specialMemo->budget_id, true)
             : ($specialMemo->budget_id ?? []);
 
-        $budgetItems = $specialMemo->budget;
-        if (!is_array($budgetItems)) {
-            $decoded = json_decode($budgetItems, true);
+        $budgetBreakdown = $specialMemo->budget;
+        if (!is_array($budgetBreakdown)) {
+            $decoded = json_decode($budgetBreakdown, true);
             if (is_string($decoded)) {
                 $decoded = json_decode($decoded, true);
             }
-            $budgetItems = is_array($decoded) ? $decoded : [];
+            $budgetBreakdown = is_array($decoded) ? $decoded : [];
         }
 
         $attachments = is_string($specialMemo->attachment)
@@ -993,39 +1000,158 @@ class SpecialMemoController extends Controller
         // Resolve participants to Staff models
         $internalParticipants = [];
         if (!empty($rawParticipants) && is_array($rawParticipants)) {
-            $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))
-                ->get()
-                ->keyBy('staff_id');
+            // Check if participants are already processed (have 'staff' key)
+            if (isset($rawParticipants[0]) && isset($rawParticipants[0]['staff'])) {
+                // Participants are already processed, use as is
+                $internalParticipants = $rawParticipants;
+            } else {
+                // Participants need to be processed - get staff details
+                $staffIds = [];
+                foreach ($rawParticipants as $participantData) {
+                    if (isset($participantData['staff_id'])) {
+                        $staffIds[] = $participantData['staff_id'];
+                    }
+                }
+                
+                if (!empty($staffIds)) {
+                    $staffDetails = Staff::whereIn('staff_id', $staffIds)
+                        ->get()
+                        ->keyBy('staff_id');
 
-            foreach ($rawParticipants as $staffId => $participantData) {
-                $internalParticipants[] = [
-                    'staff' => $staffDetails[$staffId] ?? null,
-                    'participant_start' => $participantData['participant_start'] ?? null,
-                    'participant_end' => $participantData['participant_end'] ?? null,
-                    'participant_days' => $participantData['participant_days'] ?? null,
-                ];
+                    foreach ($rawParticipants as $participantData) {
+                        $staffId = $participantData['staff_id'] ?? null;
+                        $internalParticipants[] = [
+                            'staff' => $staffId ? ($staffDetails[$staffId] ?? null) : null,
+                            'participant_start' => $participantData['participant_start'] ?? null,
+                            'participant_end' => $participantData['participant_end'] ?? null,
+                            'participant_days' => $participantData['participant_days'] ?? null,
+                        ];
+                    }
+                }
             }
         }
+
         // Fetch related collections
         $locations = Location::whereIn('id', $locationIds ?: [])->get();
-        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
+        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->with('fundType')->get();
 
-        // Render HTML for PDF
-        $html = view('special-memo.print', [
+        // Get approval trails
+        $approvalTrails = $specialMemo->approvalTrails;
+
+        // Get workflow information
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($specialMemo);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+
+        // Use mPDF helper function
+        $print = false;
+        $pdf = mpdf_print('special-memo.memo-pdf-simple', [
             'specialMemo' => $specialMemo,
             'locations' => $locations,
             'fundCodes' => $fundCodes,
-            'internalParticipants' => $internalParticipants,
-            'budgetItems' => $budgetItems,
             'attachments' => $attachments,
-        ])->render();
+            'budgetBreakdown' => $budgetBreakdown,
+            'internalParticipants' => $internalParticipants,
+            'approval_trails' => $approvalTrails,
+            'matrix_approval_trails' => $approvalTrails, // For compatibility with activities template
+            'workflow_info' => $workflowInfo,
+            'organized_workflow_steps' => $organizedWorkflowSteps
+        ], ['preview_html' => $print]);
 
-        // Use dompdf wrapper (barryvdh/laravel-dompdf)
-        $pdf = app('dompdf.wrapper');
-        $pdf->loadHTML($html)->setPaper('A4', 'portrait');
+        // Generate filename
+        $filename = 'Special_Memo_' . $specialMemo->id . '_' . now()->format('Y-m-d') . '.pdf';
 
-        $filename = 'special_memo_'.$specialMemo->id.'.pdf';
-        return $pdf->stream($filename);
+        // Return PDF for display in browser using mPDF Output method
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
+    }
+
+    /**
+     * Get comprehensive workflow information including approval trails
+     */
+    private function getComprehensiveWorkflowInfo(SpecialMemo $specialMemo)
+    {
+        $workflowInfo = [
+            'current_level' => null,
+            'current_approver' => null,
+            'workflow_steps' => collect(),
+            'approval_trail' => collect(),
+            'matrix_approval_trail' => collect()
+        ];
+
+        // Get workflow definitions
+        $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $specialMemo->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where(function($query) use ($specialMemo) {
+                $query->where('approval_order', '!=', 7)
+                      ->orWhere(function($subQuery) use ($specialMemo) {
+                          $subQuery->where('approval_order', 7)
+                                   ->where('category', $specialMemo->division->category ?? null);
+                      });
+            })
+            ->orderBy('approval_order')
+            ->with(['approvers.staff', 'approvers.oicStaff'])
+            ->get();
+
+        // Get approval trails
+        $approvalTrails = $specialMemo->approvalTrails()->with(['staff', 'oicStaff', 'workflowDefinition'])->get();
+
+        foreach ($workflowDefinitions as $definition) {
+            $approvers = [];
+            
+            // Get approvers for this workflow definition
+            foreach ($definition->approvers as $approver) {
+                $approverData = [
+                    'staff' => $approver->staff ? $approver->staff->toArray() : null,
+                    'oic_staff' => $approver->oicStaff ? $approver->oicStaff->toArray() : null,
+                ];
+                $approvers[] = $approverData;
+            }
+
+            $workflowInfo['workflow_steps']->push([
+                'order' => $definition->approval_order,
+                'role' => $definition->role,
+                'memo_print_section' => $definition->memo_print_section,
+                'print_order' => $definition->print_order,
+                'approvers' => $approvers
+            ]);
+        }
+
+        $workflowInfo['approval_trail'] = $approvalTrails;
+        $workflowInfo['matrix_approval_trail'] = $approvalTrails;
+
+        return $workflowInfo;
+    }
+
+    /**
+     * Organize workflow steps by memo_print_section
+     */
+    private function organizeWorkflowStepsBySection($workflowSteps)
+    {
+        $organized = [
+            'to' => collect(),
+            'through' => collect(),
+            'from' => collect(),
+            'others' => collect()
+        ];
+
+        foreach ($workflowSteps as $step) {
+            $section = $step['memo_print_section'] ?? 'others';
+            
+            if (isset($organized[$section])) {
+                $organized[$section]->push($step);
+            } else {
+                $organized['others']->push($step);
+            }
+        }
+
+        // Sort each section by print_order
+        foreach ($organized as $section => $steps) {
+            $organized[$section] = $steps->sortBy('print_order');
+        }
+
+        return $organized;
     }
 
     /**
