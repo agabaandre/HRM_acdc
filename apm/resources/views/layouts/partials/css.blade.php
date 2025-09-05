@@ -119,9 +119,7 @@
         top: 50%;
         transform: translateY(-50%);
     }
-        max-height: 90vh;
-        transition: transform 0.3s ease-out;
-    }
+
 
     .modal.fade .modal-dialog.modal-bottom {
         transform: translateY(100%);
@@ -192,6 +190,7 @@
     .select2-container--bootstrap5 .select2-selection--single .select2-selection__placeholder {
         line-height: 33px !important;
         color: #6c757d !important;
+        width: 100% !important;
     }
 
     .select2-container--bootstrap5 .select2-selection--single:focus {

@@ -76,7 +76,7 @@ class Staff extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->whereIn('status', ['Active', 'Due']);
     }
 
     /**
@@ -84,7 +84,10 @@ class Staff extends Model
      */
     public function getNameAttribute()
     {
-        return "{$this->title} {$this->fname} {$this->lname} {$this->oname}";
+        // Handles possible nulls and extra spaces
+        return trim(collect([$this->title, $this->fname, $this->lname, $this->oname])
+            ->filter()
+            ->implode(' '));
     }
 
     

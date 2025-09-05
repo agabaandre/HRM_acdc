@@ -81,7 +81,7 @@ class CustomCauserResolver implements CauserResolverInterface
             try {
                 $staffId = user_session('staff_id');
                 if ($staffId) {
-                    return $staffId;
+                    return (string) $staffId;
                 }
             } catch (\Exception $e) {
                 \Log::warning('user_session helper failed: ' . $e->getMessage());
@@ -90,7 +90,7 @@ class CustomCauserResolver implements CauserResolverInterface
         
         // Method 2: Try Laravel session
         if (session()->has('staff_id')) {
-            return session('staff_id');
+            return (string) session('staff_id');
         }
         
         // Method 3: Try CodeIgniter session if available
@@ -98,7 +98,8 @@ class CustomCauserResolver implements CauserResolverInterface
             try {
                 $ci =& get_instance();
                 if (isset($ci->session)) {
-                    return $ci->session->userdata('staff_id');
+                    $staffId = $ci->session->userdata('staff_id');
+                    return $staffId ? (string) $staffId : null;
                 }
             } catch (\Exception $e) {
                 \Log::warning('CodeIgniter session access failed: ' . $e->getMessage());
@@ -107,7 +108,7 @@ class CustomCauserResolver implements CauserResolverInterface
         
         // Method 4: Try global session variables
         if (isset($_SESSION['staff_id'])) {
-            return $_SESSION['staff_id'];
+            return (string) $_SESSION['staff_id'];
         }
         
         return null;

@@ -213,8 +213,12 @@ const staffData = @json($allStaffGroupedByDivision);
 const oldParticipants = @json(old('internal_participants', []));
 const oldTravel = @json(old('international_travel', []));
 const existingParticipants = @json($internalParticipants);
+const existingExternalParticipants = @json($externalParticipants ?? []);
 const existingBudgetItems = @json($budgetItems);
 console.log('Budget items passed from controller:', existingBudgetItems);
+console.log('Staff data for external participants:', staffData);
+console.log('Available divisions:', Object.keys(staffData));
+console.log('Existing external participants:', existingExternalParticipants);
 
 $(document).ready(function () {
     // AJAX Form Submission
@@ -389,6 +393,11 @@ $(document).ready(function () {
             }
         });
 
+        // Show "No participants selected yet" message if no participants
+        if (internalCount === 0) {
+            $('#participantsTableBody').html('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
+        }
+
         const externalCount = parseInt($('#total_external_participants').val()) || 0;
         const total = internalCount + externalCount;
 
@@ -426,6 +435,11 @@ $(document).ready(function () {
                                 <input type="checkbox" name="international_travel[${id}]" class="form-check-input" value="1" checked>
                                 <label class="form-check-label ms-2">Yes</label>
                             </div>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                 `);
@@ -486,14 +500,42 @@ $(document).ready(function () {
         updateTotalParticipants();
     });
 
+    // Remove participant event handler
+    $(document).on('click', '.remove-participant', function() {
+        const staffId = $(this).data('staff-id');
+        const row = $(this).closest('tr');
+        
+        // Remove from select2
+        $('#internal_participants').val(function() {
+            return $(this).val().filter(id => id != staffId);
+        }).trigger('change');
+        
+        // Remove from table
+        row.remove();
+        
+        // Update total participants
+        updateTotalParticipants();
+    });
+
     // External participants management
     $('#addDivisionBlock').click(function () {
+        console.log('Add Division Block clicked');
+        console.log('Staff data available:', staffData);
+        console.log('Available divisions:', Object.keys(staffData));
+        
         if (!isValidActivityDates()) {
             show_notification("Please select both Start Date and End Date before adding division staff.", "warning");
             return;
         }
 
         const divisions = Object.keys(staffData);
+        console.log('Creating division options for:', divisions);
+        
+        if (divisions.length === 0) {
+            show_notification("No divisions available. Please check staff data.", "error");
+            return;
+        }
+        
         let divisionOptions = '<option value="">Select Division</option>';
         divisions.forEach(div => {
             divisionOptions += `<option value="${div}">${div}</option>`;
@@ -835,6 +877,82 @@ $(document).ready(function () {
         }, 100);
     }
 
+    // Function to restore external participants division blocks
+    function restoreExternalParticipants(externalParticipants) {
+        // Group external participants by division
+        const participantsByDivision = {};
+        externalParticipants.forEach(participant => {
+            const divisionName = participant.staff.division_name;
+            if (!participantsByDivision[divisionName]) {
+                participantsByDivision[divisionName] = [];
+            }
+            participantsByDivision[divisionName].push(participant);
+        });
+
+        // Create division blocks for each division
+        Object.keys(participantsByDivision).forEach(divisionName => {
+            const participants = participantsByDivision[divisionName];
+            console.log(`Creating division block for ${divisionName} with ${participants.length} participants`);
+            
+            // Create the division block
+            const divisions = Object.keys(staffData);
+            let divisionOptions = '<option value="">Select Division</option>';
+            divisions.forEach(div => {
+                divisionOptions += `<option value="${div}" ${div === divisionName ? 'selected' : ''}>${div}</option>`;
+            });
+
+            const block = `
+                <div class="division-block border p-3 mb-3 rounded bg-light position-relative">
+                    <button type="button" class="btn btn-danger remove-division-block position-absolute end-0 top-0 m-3">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-3">
+                            <label class="form-label">Division</label>
+                            <select class="form-select division-select">${divisionOptions}</select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Division Staff By</label>
+                            <select class="form-select filter-type" disabled>
+                                <option value="title" disabled>Job Title</option>
+                                <option value="name" selected>Name</option>
+                                <option value="number" disabled>Number of Staff</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 job-title-col d-none">
+                            <label class="form-label">Job Title(s)</label>
+                            <select class="form-select job-titles" multiple disabled></select>
+                        </div>
+                        <div class="col-md-3 staff-name-col">
+                            <label class="form-label">Staff Info</label>
+                            <select class="form-select staff-names" multiple></select>
+                        </div>
+                    </div>
+                </div>`;
+
+            const $block = $(block);
+            $('#externalParticipantsWrapper').append($block);
+
+            // Initialize select2
+            $block.find('.division-select, .staff-names').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Select'
+            });
+
+            // Load staff for the division
+            const staff = staffData[divisionName] || [];
+            const staffSelect = $block.find('.staff-names');
+            staffSelect.empty().append(
+                staff.map(s => `<option value="${s.staff_id}">${s.fname} ${s.lname}</option>`)
+            );
+
+            // Select the participants
+            const participantIds = participants.map(p => p.staff.staff_id.toString());
+            staffSelect.val(participantIds).trigger('change');
+        });
+    }
+
     // Initialize form fields with existing data
     function initializeExistingData() {
         // Set activity code visibility based on fund type
@@ -924,6 +1042,12 @@ $(document).ready(function () {
             }
         } else {
             console.log('No fund type selected');
+        }
+
+        // Restore external participants division blocks
+        if (existingExternalParticipants && existingExternalParticipants.length > 0) {
+            console.log('Restoring external participants...');
+            restoreExternalParticipants(existingExternalParticipants);
         }
 
         // Update total participants display

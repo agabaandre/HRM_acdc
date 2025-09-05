@@ -26,20 +26,38 @@
                 <label for="background" class="form-label fw-semibold">
                     <i class="fas fa-align-left me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                 </label>
-                <textarea name="background" id="background" class="form-control" rows="3" required>{{ old('background', $specialMemo->background ?? '') }}</textarea>
+                <textarea name="background" id="background" class="form-control summernote" rows="3" required>{{ old('background', $specialMemo->background ?? '') }}</textarea>
             </div>
             <div class="col-md-6">
                 <label for="responsible_person_id" class="form-label fw-semibold">
                     <i class="fas fa-user-tie me-1 text-success"></i> Responsible Person <span class="text-danger">*</span>
                 </label>
-                <select name="responsible_person_id" id="responsible_person_id" class="form-select select2" required>
+                @php
+                    // Determine the selected responsible person id robustly
+                    $selectedResponsibleId = old('responsible_person_id');
+                    if (is_null($selectedResponsibleId)) {
+                        $selectedResponsibleId = $specialMemo->responsible_person_id ?? $specialMemo->staff_id ?? null;
+                    }
+                    // Find the selected staff member, even if not in $staff
+                    $allStaff = $staff;
+                    $selectedStaff = null;
+                    if ($selectedResponsibleId && !$staff->contains('staff_id', $selectedResponsibleId)) {
+                        $selectedStaff = \App\Models\Staff::where('staff_id', $selectedResponsibleId)->first();
+                    }
+                @endphp
+                <select name="responsible_person_id" id="responsible_person_id" class="form-select select2" required style="width: 100%;">
                     <option value="">Select</option>
                     @foreach($staff as $member)
                         <option value="{{ $member->staff_id }}" 
-                                {{ old('responsible_person_id', $specialMemo->responsible_person_id ?? '') == $member->staff_id ? 'selected' : '' }}>
+                                {{ (string)$selectedResponsibleId === (string)$member->staff_id ? 'selected' : '' }}>
                             {{ $member->fname }} {{ $member->lname }} - {{ $member->job_name ?? 'N/A' }} ({{ $member->duty_station_name ?? 'N/A' }})
                         </option>
                     @endforeach
+                    @if($selectedStaff)
+                        <option value="{{ $selectedStaff->staff_id }}" selected>
+                            {{ $selectedStaff->fname }} {{ $selectedStaff->lname }} - {{ $selectedStaff->job_name ?? 'N/A' }} ({{ $selectedStaff->duty_station_name ?? 'N/A' }})
+                        </option>
+                    @endif
                 </select>
             </div>
             <div class="col-md-3">
@@ -62,8 +80,25 @@
                 </label>
                 <select name="location_id[]" id="location_id" class="form-select border-success" multiple required>
                     @foreach($locations as $location)
+                        @php
+                            $locationIds = [];
+                            if ($specialMemo && $specialMemo->location_id) {
+                                if (is_array($specialMemo->location_id)) {
+                                    $locationIds = $specialMemo->location_id;
+                                } else {
+                                    $decoded = json_decode($specialMemo->location_id, true);
+                                    if (is_array($decoded)) {
+                                        $locationIds = $decoded;
+                                    } else {
+                                        // Handle double-encoded case
+                                        $doubleDecoded = json_decode($decoded, true);
+                                        $locationIds = is_array($doubleDecoded) ? $doubleDecoded : [];
+                                    }
+                                }
+                            }
+                        @endphp
                         <option value="{{ $location->id }}" 
-                                {{ in_array($location->id, old('location_id', json_decode($specialMemo->location_id ?? '[]', true) ?? [])) ? 'selected' : '' }}>
+                                {{ in_array((string)$location->id, old('location_id', array_map('strval', $locationIds))) ? 'selected' : '' }}>
                             {{ $location->name }}
                         </option>
                     @endforeach
@@ -74,15 +109,30 @@
                 <label for="internal_participants" class="form-label fw-semibold">
                     <i class="fas fa-user-friends me-1 text-success"></i> Select Internal Participants <span class="text-danger">*</span>
                 </label>
-                <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple required>
+                <select name="internal_participants[]" id="internal_participants" class="form-select select2 border-success" multiple required>
                     @php
-                        $internalParticipants = is_string($specialMemo->internal_participants ?? null)
-                            ? json_decode($specialMemo->internal_participants, true)
-                            : ($specialMemo->internal_participants ?? []);
+                        // Use processed participants if available, otherwise fall back to raw data
+                        $selectedParticipantIds = [];
+                        if (isset($internalParticipants) && !empty($internalParticipants)) {
+                            // Extract staff_id from processed participants
+                            foreach ($internalParticipants as $participant) {
+                                if (isset($participant['staff']['staff_id'])) {
+                                    $selectedParticipantIds[] = $participant['staff']['staff_id'];
+                                } elseif (isset($participant['staff_id'])) {
+                                    $selectedParticipantIds[] = $participant['staff_id'];
+                                }
+                            }
+                        } else {
+                            // Fallback to raw data
+                            $rawParticipants = is_string($specialMemo->internal_participants ?? null)
+                                ? json_decode($specialMemo->internal_participants, true)
+                                : ($specialMemo->internal_participants ?? []);
+                            $selectedParticipantIds = array_keys($rawParticipants);
+                        }
                     @endphp
                     @foreach($divisionStaff as $member)
                         <option value="{{ $member->staff_id }}" 
-                                {{ in_array($member->staff_id, old('internal_participants', array_keys($internalParticipants))) ? 'selected' : '' }}>
+                                {{ in_array($member->staff_id, old('internal_participants', $selectedParticipantIds)) ? 'selected' : '' }}>
                             {{ $member->fname }} {{ $member->lname }}
                         </option>
                     @endforeach
@@ -101,7 +151,7 @@
                 <label for="justification" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i> Supporting Reasons for the Special Memo <span class="text-danger">*</span>
                 </label>
-                <textarea name="justification" id="justification" class="form-control" rows="3" required>{{ old('justification', $specialMemo->justification ?? '') }}</textarea>
+                <textarea name="justification" id="justification" class="form-control summernote" rows="3" required>{{ old('justification', $specialMemo->justification ?? '') }}</textarea>
             </div>
             <div class="mt-5">
                 <h6 class="fw-bold text-success mb-3"><i class="fas fa-user-plus me-2"></i> Add Participants from Other Divisions</h6>

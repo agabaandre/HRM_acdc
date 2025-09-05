@@ -93,6 +93,86 @@
         border-radius: 0.5rem;
         padding: 0.75rem;
     }
+    
+    /* Attachment Preview Modal Styles */
+    #previewModal .modal-dialog {
+        max-width: 90vw;
+        margin: 1.75rem auto;
+    }
+
+    #previewModal .modal-body {
+        min-height: 500px;
+        max-height: 80vh;
+        overflow: hidden;
+    }
+
+    #previewModal .modal-content {
+        border-radius: 0.75rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    #previewModal .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        border: none;
+    }
+
+    #previewModal .btn-close {
+        filter: invert(1);
+    }
+
+    #previewModal iframe {
+        border-radius: 0.5rem;
+    }
+
+    #previewModal img {
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .preview-attachment {
+        transition: all 0.2s ease;
+    }
+
+    .preview-attachment:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.375rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        #previewModal .modal-dialog {
+            max-width: 95vw;
+            margin: 0.5rem auto;
+        }
+        
+        #previewModal .modal-body {
+            min-height: 400px;
+            max-height: 70vh;
+        }
+        
+        #previewModalBody {
+            padding: 1rem;
+        }
+    }
 
     /* Matrix-style metadata */
     .memo-meta-row {
@@ -218,7 +298,7 @@
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
                     </a>
-                    @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id'))
+                    @if(($specialMemo->overall_status === 'draft' && $specialMemo->responsible_person_id == user_session('staff_id'))|| ($specialMemo->overall_status === 'returned' && $specialMemo->responsible_person_id == user_session('staff_id')))
                         <a href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-warning d-flex align-items-center gap-2">
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
@@ -265,6 +345,9 @@
             $budget = is_array($budget) ? $budget : [];
             $attachments = is_array($attachments) ? $attachments : [];
             $internalParticipants = is_array($internalParticipants) ? $internalParticipants : [];
+            
+            // Debug attachments
+            // dd('Attachments debug:', $specialMemo->attachment, $attachments);
 
             // Parse budget structure and organize by fund codes
             $budgetByFundCode = [];
@@ -373,10 +456,6 @@
                                 {{ optional($specialMemo->requestType)->name ?? 'Not specified' }}
                             </td>
                         </tr>
-                        <tr>
-                            <td class="field-label">Key Result Area</td>
-                            <td class="field-value" colspan="3">{{ $specialMemo->key_result_area ?? 'Not specified' }}</td>
-                        </tr>
                         
                         <!-- Location Information -->
                         <tr>
@@ -461,7 +540,7 @@
         </div>
 
         <div class="row">
-            <div class="col-lg-8">
+            <div class="col-lg-6">
                 <!-- Enhanced Memo Information Card -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -530,10 +609,6 @@
                             <h5 class="fw-bold text-dark mb-0">{{ $specialMemo->activity_title ?? 'Not specified' }}</h5>
                         </div>
                         
-                        <div class="mb-4">
-                            <label class="form-label text-muted small fw-semibold">Key Result Area</label>
-                            <div class="bg-light rounded p-3 border">{{ $specialMemo->key_result_area ?? 'Not specified' }}</div>
-                        </div>
                         
                         <div class="mb-4">
                             <label class="form-label text-muted small fw-semibold">Background</label>
@@ -791,7 +866,7 @@
                 </div>
             </div>
 
-            <div class="col-lg-4">
+            <div class="col-lg-6">
 
                 <!-- Attachments Card -->
                 <div class="card sidebar-card border-0 mb-4">
@@ -803,20 +878,52 @@
                     </div>
                     <div class="card-body">
                         @if(!empty($attachments) && count($attachments) > 0)
-                            <div class="d-flex flex-column gap-2">
-                                @foreach($attachments as $attachment)
-                                    <a href="{{ asset('storage/' . ($attachment['path'] ?? '')) }}" target="_blank" class="attachment-item text-decoration-none">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="bx bx-paperclip text-purple"></i>
-                                            <div class="flex-grow-1">
-                                                <div class="fw-semibold text-dark">{{ $attachment['name'] ?? 'File' }}</div>
-                                                <small class="text-muted">
-                                                    {{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'Unknown size' }}
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </a>
-                                @endforeach
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Type</th>
+                                            <th>File Name</th>
+                                            <th>Size</th>
+                                            <th>Uploaded</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($attachments as $index => $attachment)
+                                            @php
+                                                $originalName = $attachment['original_name'] ?? $attachment['filename'] ?? $attachment['name'] ?? 'Unknown';
+                                                $filePath = $attachment['path'] ?? $attachment['file_path'] ?? '';
+                                                $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
+                                                $fileUrl = $filePath ? url('storage/'.$filePath) : '#';
+                                                $isOffice = in_array($ext, ['ppt','pptx','xls','xlsx','doc','docx']);
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>{{ $attachment['type'] ?? 'Document' }}</td>
+                                                <td>{{ $originalName }}</td>
+                                                <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
+                                                <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
+                                                <td>
+                                                    @if($filePath)
+                                                    <button type="button" class="btn btn-sm btn-info preview-attachment" 
+                                                        data-file-url="{{ $fileUrl }}"
+                                                        data-file-ext="{{ $ext }}"
+                                                        data-file-office="{{ $isOffice ? '1' : '0' }}">
+                                                        <i class="bx bx-show"></i> Preview
+                                                    </button>
+                                                    <a href="{{ $fileUrl }}" target="_blank" class="btn btn-sm btn-success">
+                                                        <i class="bx bx-download"></i> Download
+                                                    </a>
+                                                    @else
+                                                    <span class="text-muted">File not found</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
                         @else
                             <div class="text-center text-muted py-4">
@@ -931,10 +1038,49 @@
         </div>
     </div>
 </div>
+
+{{-- Modal for preview --}}
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">Attachment Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="previewModalBody" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+        <div class="text-center w-100">Loading preview...</div>
+      </div>
+    </div>
+  </div>
+</div>
 @endsection
 
 @push('scripts')
 <script>
+    // Attachment preview functionality
+    $(document).on('click', '.preview-attachment', function() {
+        var fileUrl = $(this).data('file-url');
+        var ext = $(this).data('file-ext');
+        var isOffice = $(this).data('file-office') == '1';
+        var modalBody = $('#previewModalBody');
+        var content = '';
+        
+        if(['jpg','jpeg','png'].includes(ext)) {
+            content = '<img src="'+fileUrl+'" class="img-fluid" style="max-height:70vh;max-width:100%;margin:auto;display:block;">';
+        } else if(ext === 'pdf') {
+            content = '<iframe src="'+fileUrl+'#toolbar=1&navpanes=0&scrollbar=1" style="width:100%;height:70vh;border:none;"></iframe>';
+        } else if(isOffice) {
+            var gdocs = 'https://docs.google.com/viewer?url='+encodeURIComponent(fileUrl)+'&embedded=true';
+            content = '<iframe src="'+gdocs+'" style="width:100%;height:70vh;border:none;"></iframe>';
+        } else {
+            content = '<div class="alert alert-info">Preview not available. <a href="'+fileUrl+'" target="_blank">Download/Open file</a></div>';
+        }
+        
+        modalBody.html(content);
+        var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+        modal.show();
+    });
+
     $(document).ready(function() {
         // Setup delete confirmation
         $('#deleteMemoForm').on('submit', function(e) {

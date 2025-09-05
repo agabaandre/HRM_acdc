@@ -138,7 +138,7 @@
         @endif
 
        
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
             @foreach ($errors->all() as $error)
                 show_notification(`{!! $error !!}`, "error");
             @endforeach
