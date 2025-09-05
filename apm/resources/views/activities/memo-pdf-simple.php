@@ -564,7 +564,7 @@
     <div class="section-label mb-15"><strong>Activity Information</strong></div>
   
     <table class="form-table mb-15" role="table" aria-label="Activity Information">
-      <tr>
+    <tr>
         <th scope="row">Division</th>
         <td><?php echo htmlspecialchars($matrix->division->division_name ?? 'N/A'); ?><span class="fill line"></span></td>
       </tr>
@@ -583,9 +583,9 @@
       <tr>
         <th scope="row">Location(s)</th>
         <td>
-          <?php foreach($locations as $loc): ?>
+        <?php foreach($locations as $loc): ?>
             <span><?php echo htmlspecialchars($loc->name); ?></span>
-          <?php endforeach; ?>
+        <?php endforeach; ?>
           <span class="fill line"></span>
         </td>
       </tr>
@@ -614,8 +614,7 @@
                                 ?>
                                 <?php foreach($internalParticipants as $entry): ?>
                                     <tr><td><?php echo $count; ?></td>
-                                
-                                            <td><?php echo htmlspecialchars($entry['staff']->title.' '.$entry['staff']->fname.' '.$entry['staff']->lname.' '.$entry['staff']->oname ?? 'N/A'); ?></td>
+                                            <td><?php echo htmlspecialchars($entry['staff']->name ?? 'N/A'); ?></td>
                                              <td><?php echo htmlspecialchars($entry['staff']->division_name ?? 'N/A'); ?></td>
                                             <td><?php echo htmlspecialchars($entry['staff']->job_name ?? 'N/A'); ?></td>
                                           <td><?php echo htmlspecialchars($entry['staff']->duty_station_name ?? 'N/A'); ?></td>
@@ -627,7 +626,7 @@
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
-                  
+
 
     <div class="page-break"></div>
               <div class="section-label mb-15"><strong>Budget Details</strong></div>
@@ -691,7 +690,7 @@
                 </div>
      <div style="margin-bottom: 0; color: #006633; font-style: italic;"><strong>Request for Approval</strong></div>
      <div class="justify-text" style="padding: 10px;"><?php echo htmlspecialchars($activity->activity_request_remarks ?? 'N/A'); ?></div>
-         
+
     <?php if($fundCode->fundType->id == 1): ?>
     <div class="page-break"></div>
 
