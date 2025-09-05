@@ -447,7 +447,7 @@ $mpdf = new \Mpdf\Mpdf([
                     <br>By:'.user_session('name').'
                 </td>
             </tr>
-        </table>'.  '<p style="text-align:right;">Page {PAGENO} of {nbpg}</p>';
+        </table>'.  '<p style="text-align:right; font-size: 8pt;">Page {PAGENO} of {nbpg}</p>';
 
         $mpdf->SetHTMLFooter($footer);
 

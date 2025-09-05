@@ -25,6 +25,7 @@ class ApprovalTrail extends Model
         'action',
         'remarks',
         'approval_order',
+        'forward_workflow_id',
     ];
 
     /**
@@ -41,6 +42,7 @@ class ApprovalTrail extends Model
             'staff_id' => 'integer',
             'oic_staff_id' => 'integer',
             'approval_order' => 'integer',
+            'forward_workflow_id' => 'integer',
         ];
     }
 
@@ -82,6 +84,15 @@ class ApprovalTrail extends Model
     public function approverRole(): BelongsTo
     {
         return $this->belongsTo(WorkflowDefinition::class, 'approval_order', 'approval_order');
+    }
+
+    /**
+     * Get the workflow definition for this approval.
+     */
+    public function workflowDefinition(): BelongsTo
+    {
+        return $this->belongsTo(WorkflowDefinition::class, 'approval_order', 'approval_order')
+            ->where('workflow_id', $this->forward_workflow_id);
     }
 
     /**

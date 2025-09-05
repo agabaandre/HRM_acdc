@@ -27,6 +27,7 @@ class NonTravelMemo extends Model
         'workplan_activity_code',
         'staff_id',
         'division_id',
+        'fund_type_id',
         'memo_date',
         'location_id',
         'non_travel_memo_category_id',
@@ -57,6 +58,7 @@ class NonTravelMemo extends Model
             'next_approval_level' => 'integer',
             'staff_id' => 'integer',
             'division_id' => 'integer',
+            'fund_type_id' => 'integer',
             'memo_date' => 'date',
             'location_id' => 'array',
             'non_travel_memo_category_id' => 'integer',
@@ -80,6 +82,11 @@ class NonTravelMemo extends Model
     public function nonTravelMemoCategory(): BelongsTo
     {
         return $this->belongsTo(NonTravelMemoCategory::class, 'non_travel_memo_category_id');
+    }
+
+    public function fundType(): BelongsTo
+    {
+        return $this->belongsTo(FundType::class, 'fund_type_id');
     }
 
     public function forwardWorkflow(): BelongsTo

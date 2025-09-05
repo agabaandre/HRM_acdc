@@ -956,6 +956,106 @@ class NonTravelMemoController extends Controller
 
         return $approvalLevels;
     }
+
+    /**
+     * Get comprehensive workflow information for non-travel memo
+     */
+    private function getComprehensiveWorkflowInfo(NonTravelMemo $nonTravel)
+    {
+        $workflowInfo = [
+            'current_level' => null,
+            'workflow_steps' => [],
+            'approval_trails' => []
+        ];
+
+        if (!$nonTravel->forward_workflow_id) {
+            return $workflowInfo;
+        }
+
+        // Get workflow definitions
+        $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $nonTravel->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where(function($query) use ($nonTravel) {
+                $query->where('approval_order', '!=', 7)
+                      ->orWhere(function($subQuery) use ($nonTravel) {
+                          $subQuery->where('approval_order', 7)
+                                   ->where('category', $nonTravel->division->category ?? null);
+                      });
+            })
+            ->orderBy('approval_order')
+            ->with(['approvers.staff', 'approvers.oicStaff'])
+            ->get();
+
+        // Get approval trails
+        $approvalTrails = $nonTravel->approvalTrails()->with(['staff', 'oicStaff', 'workflowDefinition'])->get();
+
+        foreach ($workflowDefinitions as $definition) {
+            $approvers = [];
+            
+            if ($definition->is_division_specific && $nonTravel->division) {
+                $staffId = $nonTravel->division->{$definition->division_reference_column} ?? null;
+                if ($staffId) {
+                    $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                    if ($staff) {
+                        $approvers[] = [
+                            'staff' => $staff->toArray(),
+                            'oic_staff' => null
+                        ];
+                    }
+                }
+            } else {
+                foreach ($definition->approvers as $approver) {
+                    $approvers[] = [
+                        'staff' => $approver->staff ? $approver->staff->toArray() : null,
+                        'oic_staff' => $approver->oicStaff ? $approver->oicStaff->toArray() : null
+                    ];
+                }
+            }
+
+            $workflowInfo['workflow_steps'][] = [
+                'order' => $definition->approval_order,
+                'role' => $definition->role,
+                'approvers' => $approvers,
+                'is_division_specific' => $definition->is_division_specific,
+                'category' => $definition->category
+            ];
+        }
+
+        $workflowInfo['approval_trails'] = $approvalTrails;
+        $workflowInfo['current_level'] = $nonTravel->approval_level;
+
+        return $workflowInfo;
+    }
+
+    /**
+     * Organize workflow steps by section (to, through, from)
+     */
+    private function organizeWorkflowSteps($workflowInfo)
+    {
+        $organized = [
+            'to' => collect(),
+            'through' => collect(),
+            'from' => collect(),
+            'others' => collect()
+        ];
+
+        foreach ($workflowInfo['workflow_steps'] as $step) {
+            $section = 'others'; // default
+            
+            // Determine section based on approval order
+            if ($step['order'] <= 2) {
+                $section = 'to';
+            } elseif ($step['order'] <= 6) {
+                $section = 'through';
+            } elseif ($step['order'] <= 8) {
+                $section = 'from';
+            }
+
+            $organized[$section]->push($step);
+        }
+
+        return $organized;
+    }
     
     /**
      * Generate a printable PDF for a Non-Travel Memo.
@@ -963,7 +1063,15 @@ class NonTravelMemoController extends Controller
     public function print(NonTravelMemo $nonTravel)
     {
         // Eager load needed relations
-        $nonTravel->load(['staff', 'nonTravelMemoCategory']);
+        $nonTravel->load([
+            'staff', 
+            'nonTravelMemoCategory', 
+            'division', 
+            'fundType',
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'approvalTrails.workflowDefinition'
+        ]);
 
         // Decode JSON fields safely
         $locationIds = is_string($nonTravel->location_id)
@@ -990,23 +1098,36 @@ class NonTravelMemoController extends Controller
 
         // Fetch related collections
         $locations = Location::whereIn('id', $locationIds ?: [])->get();
-        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
+        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->with('fundType')->get();
 
-        // Render HTML for PDF
-        $html = view('non-travel.print', [
+        // Get approval trails (not activity approval trails)
+        $approvalTrails = $nonTravel->approvalTrails;
+
+        // Get workflow information
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($nonTravel);
+        $organizedWorkflowSteps = $this->organizeWorkflowSteps($workflowInfo);
+
+        // Use mPDF helper function
+        $print = false;
+        $pdf = mpdf_print('non-travel.memo-pdf-simple', [
             'nonTravel' => $nonTravel,
             'locations' => $locations,
             'fundCodes' => $fundCodes,
             'attachments' => $attachments,
-            'breakdown' => $breakdown,
-        ])->render();
+            'budgetBreakdown' => $breakdown,
+            'approval_trails' => $approvalTrails,
+            'workflow_info' => $workflowInfo,
+            'organized_workflow_steps' => $organizedWorkflowSteps
+        ], ['preview_html' => $print]);
 
-        // Use dompdf wrapper to generate and stream PDF
-        $pdf = app('dompdf.wrapper');
-        $pdf->loadHTML($html)->setPaper('A4', 'portrait');
+        // Generate filename
+        $filename = 'Non_Travel_Memo_' . $nonTravel->id . '_' . now()->format('Y-m-d') . '.pdf';
 
-        $filename = 'non_travel_memo_'.$nonTravel->id.'.pdf';
-        return $pdf->stream($filename);
+        // Return PDF for display in browser using mPDF Output method
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
     }
 
     /**
