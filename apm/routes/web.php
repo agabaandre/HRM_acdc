@@ -243,6 +243,13 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     // Request for Services Routes
     Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
     Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
+    Route::get('service-requests/export/my-submitted', [App\Http\Controllers\ServiceRequestController::class, 'exportMySubmitted'])->name('service-requests.export.my-submitted');
+    Route::get('service-requests/export/all', [App\Http\Controllers\ServiceRequestController::class, 'exportAll'])->name('service-requests.export.all');
+    
+    // Service Request Modal Routes
+    Route::post('service-requests/get-source-data', [App\Http\Controllers\ServiceRequestController::class, 'getSourceData'])->name('service-requests.get-source-data');
+    Route::post('service-requests/store-from-modal', [App\Http\Controllers\ServiceRequestController::class, 'storeFromModal'])->name('service-requests.store-from-modal');
+    Route::get('service-requests/cost-items', [App\Http\Controllers\ServiceRequestController::class, 'getCostItems'])->name('service-requests.cost-items');
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');

@@ -44,7 +44,7 @@ class SpecialMemo extends Model
         'justification',
         'is_special_memo',
         'is_draft',
-        'budget',
+        'budget_breakdown',
         'attachment',
         'status',
         'overall_status',
@@ -68,7 +68,7 @@ class SpecialMemo extends Model
         'budget_id' => 'array',
         
         'internal_participants' => 'array',
-        'budget' => 'array',
+        'budget_breakdown' => 'array',
         'attachment' => 'array',
         'is_special_memo' => 'boolean',
         'is_draft' => 'boolean',
@@ -295,9 +295,9 @@ class SpecialMemo extends Model
 
 
     /**
-     * Get the budget as an array.
+     * Get the budget breakdown as an array.
      */
-    public function getBudgetAttribute($value)
+    public function getBudgetBreakdownAttribute($value)
     {
         if (is_array($value)) {
             return $value;

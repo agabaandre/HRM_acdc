@@ -52,12 +52,27 @@
                                             <i class="bx bx-show me-2"></i>View ARF Request
                                         </a>
                                     @endif
-                                @else
-                                    <a href="{{ route('service-requests.create') }}?activity_id={{ $activity->id }}" 
-                                       class="btn btn-info w-20" target="_blank">
-                                        <i class="bx bx-wrench me-2"></i>Request for Services
-                                    </a>
-       
+                                @endif
+                                
+                                {{-- Service Request Button --}}
+                                @if($activity->fund_type_id == 1 && $matrix->overall_status === 'approved')
+                                    @php
+                                        // Check if Service Request already exists for this activity
+                                        $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
+                                            ->where('model_type', 'App\\Models\\Activity')
+                                            ->first();
+                                    @endphp
+                                    
+                                        @if(!$existingServiceRequest)
+                                            <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
+                                               class="btn btn-info w-20">
+                                                <i class="fas fa-tools me-2"></i>Create Service Request
+                                            </a>
+                                        @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
+                                            <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info w-20">
+                                                <i class="fas fa-eye me-2"></i>View Service Request
+                                            </a>
+                                        @endif
                                 @endif
                             
                                 <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
@@ -612,5 +627,7 @@ $(document).on('click', '.preview-attachment', function() {
                 </a>
             </div>
             @endif
+            
         @endif
+        
 @endpush

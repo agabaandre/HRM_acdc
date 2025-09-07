@@ -503,20 +503,20 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             return $sourceData->budget_breakdown ?? null;
         }
         
-        // For special memos, get from budget field and return as raw JSON string
+        // For special memos, get from budget_breakdown field and return as raw JSON string
         if ($modelType === 'App\\Models\\SpecialMemo' && $sourceData) {
             \Log::info('Special memo budget processing', [
-                'budget_type' => gettype($sourceData->budget),
-                'budget_preview' => is_string($sourceData->budget) ? substr($sourceData->budget, 0, 100) : $sourceData->budget
+                'budget_type' => gettype($sourceData->budget_breakdown),
+                'budget_preview' => is_string($sourceData->budget_breakdown) ? substr($sourceData->budget_breakdown, 0, 100) : $sourceData->budget_breakdown
             ]);
             
-            // Special memo budget is cast as array by Laravel, so we need to re-encode it to JSON
-            if (is_array($sourceData->budget)) {
-                \Log::info('Re-encoding special memo budget array to JSON string');
-                return json_encode($sourceData->budget);
+            // Special memo budget_breakdown is cast as array by Laravel, so we need to re-encode it to JSON
+            if (is_array($sourceData->budget_breakdown)) {
+                \Log::info('Re-encoding special memo budget_breakdown array to JSON string');
+                return json_encode($sourceData->budget_breakdown);
             }
             
-            return $sourceData->budget ?? null;
+            return $sourceData->budget_breakdown ?? null;
         }
         
         return null;
@@ -1078,8 +1078,8 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             'budgetBreakdown' => $sourceData['budget_breakdown'] ?? [],
         ];
         //dd($sourceData);
-        // Generate PDF using the custom mpdf_print function
-        $mpdf = mpdf_print('request-arf.arf-pdf-simple', $data);
+        // Generate PDF using the custom generate_pdf function
+        $mpdf = generate_pdf('request-arf.arf-pdf-simple', $data);
         
         $filename = 'ARF_' . $requestARF->arf_number . '_' . date('Y-m-d') . '.pdf';
         
