@@ -9,15 +9,20 @@
 @endsection
 
 @section('content')
-<div class="card shadow-sm">
-    <div class="card-header bg-light">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <h5 class="mb-0"><i class="bx bx-list-ul me-2 text-primary"></i>ARF Requests</h5>
-            </div>
-            <div class="col-md-6">
-                <form action="{{ route('request-arf.index') }}" method="GET" class="d-flex gap-2 justify-content-end">
-                    <select name="division_id" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+<div class="card shadow-sm mb-4 border-0">
+    <div class="card-body py-3 px-4 bg-light rounded-3">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
+            <h4 class="mb-0 text-success fw-bold"><i class="bx bx-file-alt me-2 text-success"></i> ARF Request Management</h4>
+        </div>
+
+        <div class="row g-3 align-items-end" id="arfFilters" autocomplete="off">
+            <form action="{{ route('request-arf.index') }}" method="GET" class="row g-3 align-items-end w-100">
+                <div class="col-md-2">
+                    <label for="division_id" class="form-label fw-semibold mb-1"><i
+                            class="bx bx-building me-1 text-success"></i> Division</label>
+                    <div class="input-group w-100">
+                        <span class="input-group-text bg-white"><i class="bx bx-building"></i></span>
+                        <select name="division_id" id="division_id" class="form-select">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -25,8 +30,14 @@
                             </option>
                         @endforeach
                     </select>
-                    
-                    <select name="staff_id" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label for="staff_id" class="form-label fw-semibold mb-1"><i
+                            class="bx bx-user me-1 text-success"></i> Staff</label>
+                    <div class="input-group w-100">
+                        <span class="input-group-text bg-white"><i class="bx bx-user"></i></span>
+                        <select name="staff_id" id="staff_id" class="form-select">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -34,40 +45,52 @@
                             </option>
                         @endforeach
                     </select>
-                    
-                    <select name="status" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-                        <option value="">All Status</option>
-                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="submitted" {{ request('status') == 'submitted' ? 'selected' : '' }}>Submitted</option>
-                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                    </select>
-                    
-                    <button type="submit" class="btn btn-sm btn-outline-primary">
-                        <i class="bx bx-filter-alt"></i> Filter
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label fw-semibold mb-1"><i
+                            class="bx bx-info-circle me-1 text-success"></i> Status</label>
+                    <div class="input-group w-100">
+                        <span class="input-group-text bg-white"><i class="bx bx-info-circle"></i></span>
+                        <select name="status" id="" class="form-select">
+                            <option value="">All Statuses</option>
+                            <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                            <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100 fw-bold" id="applyFilters">
+                        <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
-                    
-                    <a href="{{ route('request-arf.index') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="bx bx-reset"></i> Reset
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                        <i class="bx bx-reset me-1"></i> Reset
                     </a>
+                </div>
                 </form>
             </div>
         </div>
     </div>
 
+<div class="card shadow-sm">
     <div class="card-body p-0">
         <!-- Bootstrap Tabs Navigation -->
         <ul class="nav nav-tabs nav-fill" id="arfTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="myArfs-tab" data-bs-toggle="tab" data-bs-target="#myArfs" type="button" role="tab" aria-controls="myArfs" aria-selected="true">
-                    <i class="bx bx-home me-2"></i> My Requests 
-                    <span class="badge bg-success text-dark ms-2">{{ $myArfs->count() }}</span>
+                <button class="nav-link active" id="mySubmitted-tab" data-bs-toggle="tab" data-bs-target="#mySubmitted" type="button" role="tab" aria-controls="mySubmitted" aria-selected="true">
+                    <i class="bx bx-file-alt me-2"></i> My Submitted ARFs
+                    <span class="badge bg-success text-white ms-2">{{ $mySubmittedArfs->count() ?? 0 }}</span>
                 </button>
             </li>
             @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="allArfs-tab" data-bs-toggle="tab" data-bs-target="#allArfs" type="button" role="tab" aria-controls="allArfs" aria-selected="false">
-                        <i class="bx bx-grid me-2"></i> All Requests
+                        <i class="bx bx-grid me-2"></i> All ARF Requests
                         <span class="badge bg-primary text-white ms-2">{{ $allArfs->count() ?? 0 }}</span>
                     </button>
                 </li>
@@ -76,310 +99,249 @@
 
         <!-- Tab Content -->
         <div class="tab-content" id="arfTabsContent">
-            <!-- My Requests Tab -->
-            <div class="tab-pane fade show active" id="myArfs" role="tabpanel" aria-labelledby="myArfs-tab">
+            <!-- My Submitted ARFs Tab -->
+            <div class="tab-pane fade show active" id="mySubmitted" role="tabpanel" aria-labelledby="mySubmitted-tab">
                 <div class="p-3">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div>
                             <h6 class="mb-0 text-success fw-bold">
-                                <i class="bx bx-home me-2"></i> My Requests
+                                <i class="bx bx-file-alt me-2"></i> My Submitted ARF Requests
                             </h6>
-                            <small class="text-muted">All ARF requests you have created</small>
+                            <small class="text-muted">All ARF requests you have submitted</small>
                         </div>
-                        <div>
-                            <a href="{{ route('request-arf.export.my-csv') }}" class="btn btn-outline-success btn-sm">
-                                <i class="bx bx-download me-1"></i> Export to CSV
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('request-arf.export.my-submitted', request()->query()) }}" class="btn btn-outline-success btn-sm">
+                                <i class="bx bx-download me-1"></i> Export to Excel
                             </a>
                         </div>
                     </div>
                     
-                    @if($myArfs->count() > 0)
+                    @if($mySubmittedArfs && $mySubmittedArfs->count() > 0)
         <div class="table-responsive">
                             <table class="table table-hover mb-0">
-                                <thead class="table-warning">
+                                <thead class="table-success">
                                     <tr>
+                                        <th>#</th>
                                         <th>ARF Number</th>
                                         <th>Title</th>
-                                        <th>Staff</th>
                                         <th>Division</th>
+                                        <th>Request Date</th>
                                         <th>Amount</th>
                                         <th>Status</th>
                                         <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                                    @foreach($myArfs as $arf)
+                                    @php $count = 1; @endphp
+                                    @foreach($mySubmittedArfs as $arf)
                         <tr>
+                                            <td>{{ $count++ }}</td>
                             <td>
-                                <span class="badge bg-light text-dark border">
-                                    {{ $arf->arf_number }}
-                                </span>
+                                <div class="fw-bold text-primary">{{ $arf->arf_number }}</div>
                             </td>
                             <td>
                                 <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
-                                <small class="text-muted">{{ $arf->request_date->format('M d, Y') }}</small>
                             </td>
+                            <td>{{ $arf->actual_division->division_name ?? 'N/A' }}</td>
+                            <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-sm me-2 bg-light rounded-circle">
-                                        <span class="avatar-text">{{ substr($arf->staff->name ?? 'U', 0, 1) }}</span>
-                                    </div>
-                                    <span>{{ $arf->staff->name ?? 'Unknown' }}</span>
-                                </div>
-                            </td>
-                            <td>{{ $arf->division->division_name ?? 'N/A' }}</td>
-                            <td class="fw-bold">{{ number_format($arf->requested_amount, 2) }}</td>
-                            <td>
-                                @php
-                                    $statusClass = [
-                                        'draft' => 'bg-secondary',
-                                        'submitted' => 'bg-info',
-                                        'approved' => 'bg-success',
-                                        'rejected' => 'bg-danger'
-                                    ][$arf->status] ?? 'bg-secondary';
-                                @endphp
-                                <span class="badge {{ $statusClass }}">
-                                    {{ ucfirst($arf->status) }}
+                                <span class="fw-bold text-success">
+                                    ${{ number_format($arf->requested_amount, 2) }}
                                 </span>
                             </td>
-                                            <td class="text-center">
-                                <div class="d-flex justify-content-center gap-1">
-                                    <a href="{{ route('request-arf.show', $arf) }}" 
-                                       class="btn btn-sm btn-info"
-                                       data-bs-toggle="tooltip"
-                                       title="View Details">
-                                        <i class="bx bx-show-alt"></i>
-                                    </a>
-                                    <a href="{{ route('request-arf.edit', $arf) }}"
-                                       class="btn btn-sm btn-warning"
-                                       data-bs-toggle="tooltip"
-                                       title="Edit Request">
-                                        <i class="bx bx-edit"></i>
-                                    </a>
-                                    <button type="button" 
-                                            class="btn btn-sm btn-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteModal{{ $arf->id }}"
-                                            data-bs-toggle="tooltip"
-                                            title="Delete Request">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Delete Modal -->
-                                <div class="modal fade" id="deleteModal{{ $arf->id }}" tabindex="-1">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content">
-                                            <div class="modal-header bg-danger text-white">
-                                                <h5 class="modal-title"><i class="bx bx-trash me-1"></i> Delete ARF Request</h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="alert alert-warning mb-3">
-                                                    <i class="bx bx-error me-1"></i> Are you sure you want to delete this ARF request? This action cannot be undone.
-                                                </div>
-                                                <div class="card border">
-                                                    <div class="card-body p-3">
-                                                        <p class="mb-1"><strong><i class="bx bx-hash me-1 text-primary"></i> ARF Number:</strong> {{ $arf->arf_number }}</p>
-                                                        <p class="mb-1"><strong><i class="bx bx-heading me-1 text-primary"></i> Title:</strong> {{ $arf->activity_title }}</p>
-                                                        <p class="mb-0"><strong><i class="bx bx-money me-1 text-primary"></i> Amount:</strong> {{ number_format($arf->requested_amount, 2) }}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <form action="{{ route('request-arf.destroy', $arf) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">
-                                                        <i class="bx bx-trash me-1"></i> Delete
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
+                            <td>
+                                @php
+                                    $statusBadgeClass = [
+                                        'draft' => 'bg-secondary',
+                                        'pending' => 'bg-warning',
+                                        'approved' => 'bg-success',
+                                        'rejected' => 'bg-danger',
+                                        'returned' => 'bg-info',
+                                    ];
+                                    $statusClass = $statusBadgeClass[$arf->overall_status] ?? 'bg-secondary';
+                                    
+                                    // Get workflow information
+                                    $approvalLevel = $arf->approval_level ?? 'N/A';
+                                    $workflowRole = $arf->workflow_definition ? ($arf->workflow_definition->role ?? 'N/A') : 'N/A';
+                                    $actorName = $arf->current_actor ? ($arf->current_actor->fname . ' ' . $arf->current_actor->lname) : 'N/A';
+                                @endphp
+                                
+                                @if($arf->overall_status === 'pending')
+                                    <!-- Structured display for pending status -->
+                                    <div class="text-center">
+                                        <span class="badge {{ $statusClass }} mb-1">
+                                            {{ strtoupper($arf->overall_status) }}
+                                        </span>
+                                        <br>
+                                      
+                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                        @if($actorName !== 'N/A')
+                                            <small class="text-muted d-block">{{ $actorName }}</small>
+                                        @endif
                                     </div>
+                                @else
+                                    <span class="badge {{ $statusClass }}">
+                                        {{ strtoupper($arf->overall_status) }}
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ route('request-arf.show', $arf) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                        <i class="bx bx-show"></i>
+                                    </a>
+                                    @if($arf->overall_status === 'draft' || $arf->overall_status === 'returned')
+                                        <a href="{{ route('request-arf.edit', $arf) }}" class="btn btn-outline-warning btn-sm" title="Edit">
+                                            <i class="bx bx-edit"></i>
+                                        </a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
                                     @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                </tbody>
+            </table>
+        </div>
                     @else
                         <div class="text-center py-5">
-                            <div class="text-muted">
-                                <i class="bx bx-file-blank fs-1 mb-3"></i>
-                                <p class="h5 text-muted">No ARF requests found</p>
-                                <p class="small mt-2 text-muted">ARF requests will be created from activities</p>
-                            </div>
+                            <i class="bx bx-file-alt display-1 text-muted"></i>
+                            <h5 class="text-muted mt-3">No ARF Requests Found</h5>
+                            <p class="text-muted">You haven't submitted any ARF requests yet.</p>
                         </div>
                     @endif
                 </div>
             </div>
 
-            <!-- All Requests Tab (Permission 87 only) -->
+            <!-- All ARF Requests Tab -->
             @if(in_array(87, user_session('permissions', [])))
-                <div class="tab-pane fade" id="allArfs" role="tabpanel" aria-labelledby="allArfs-tab">
-                    <div class="p-3">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div>
-                                <h6 class="mb-0 text-primary fw-bold">
-                                    <i class="bx bx-grid me-2"></i> All Requests
-                                </h6>
-                                <small class="text-muted">All ARF requests across the system</small>
-                            </div>
-                            <div>
-                                <a href="{{ route('request-arf.export.all-csv') }}" class="btn btn-outline-primary btn-sm">
-                                    <i class="bx bx-download me-1"></i> Export to CSV
-                                </a>
-                            </div>
+            <div class="tab-pane fade" id="allArfs" role="tabpanel" aria-labelledby="allArfs-tab">
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-primary fw-bold">
+                                <i class="bx bx-grid me-2"></i> All ARF Requests
+                            </h6>
+                            <small class="text-muted">All ARF requests in the system</small>
                         </div>
-                        
-                        @if($allArfs->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-primary">
-                                        <tr>
-                                            <th>ARF Number</th>
-                                            <th>Title</th>
-                                            <th>Staff</th>
-                                            <th>Division</th>
-                                            <th>Amount</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($allArfs as $arf)
-                                            <tr>
-                                                <td>
-                                                    <span class="badge bg-light text-dark border">
-                                                        {{ $arf->arf_number }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
-                                                    <small class="text-muted">{{ $arf->request_date->format('M d, Y') }}</small>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-sm me-2 bg-light rounded-circle">
-                                                            <span class="avatar-text">{{ substr($arf->staff->name ?? 'U', 0, 1) }}</span>
-                                                        </div>
-                                                        <span>{{ $arf->staff->name ?? 'Unknown' }}</span>
-                                                    </div>
-                                                </td>
-                                                <td>{{ $arf->division->division_name ?? 'N/A' }}</td>
-                                                <td class="fw-bold">{{ number_format($arf->requested_amount, 2) }}</td>
-                                                <td>
-                                                    @php
-                                                        $statusClass = [
-                                                            'draft' => 'bg-secondary',
-                                                            'submitted' => 'bg-info',
-                                                            'approved' => 'bg-success',
-                                                            'rejected' => 'bg-danger'
-                                                        ][$arf->status] ?? 'bg-secondary';
-                                                    @endphp
-                                                    <span class="badge {{ $statusClass }}">
-                                                        {{ ucfirst($arf->status) }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex justify-content-center gap-1">
-                                                        <a href="{{ route('request-arf.show', $arf) }}" 
-                                                           class="btn btn-sm btn-info"
-                                                           data-bs-toggle="tooltip"
-                                                           title="View Details">
-                                                            <i class="bx bx-show-alt"></i>
-                                                        </a>
-                                                        <a href="{{ route('request-arf.edit', $arf) }}"
-                                                           class="btn btn-sm btn-warning"
-                                                           data-bs-toggle="tooltip"
-                                                           title="Edit Request">
-                                                            <i class="bx bx-edit"></i>
-                                                        </a>
-                                                        <button type="button" 
-                                                                class="btn btn-sm btn-danger"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#deleteModalAll{{ $arf->id }}"
-                                                                data-bs-toggle="tooltip"
-                                                                title="Delete Request">
-                                                            <i class="bx bx-trash"></i>
-                                                        </button>
-                                                    </div>
-
-                                                    <!-- Delete Modal -->
-                                                    <div class="modal fade" id="deleteModalAll{{ $arf->id }}" tabindex="-1">
-                                                        <div class="modal-dialog modal-dialog-centered">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header bg-danger text-white">
-                                                                    <h5 class="modal-title"><i class="bx bx-trash me-1"></i> Delete ARF Request</h5>
-                                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                    <div class="alert alert-warning mb-3">
-                                                                        <i class="bx bx-error me-1"></i> Are you sure you want to delete this ARF request? This action cannot be undone.
-                                                                    </div>
-                                                                    <div class="card border">
-                                                                        <div class="card-body p-3">
-                                                                            <p class="mb-1"><strong><i class="bx bx-hash me-1 text-primary"></i> ARF Number:</strong> {{ $arf->arf_number }}</p>
-                                                                            <p class="mb-1"><strong><i class="bx bx-heading me-1 text-primary"></i> Title:</strong> {{ $arf->activity_title }}</p>
-                                                                            <p class="mb-0"><strong><i class="bx bx-money me-1 text-primary"></i> Amount:</strong> {{ number_format($arf->requested_amount, 2) }}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                                    <form action="{{ route('request-arf.destroy', $arf) }}" method="POST" class="d-inline">
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                        <button type="submit" class="btn btn-danger">
-                                                                            <i class="bx bx-trash me-1"></i> Delete
-                                                                        </button>
-                                                                    </form>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <div class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="bx bx-file-blank fs-1 mb-3"></i>
-                                    <p class="h5 text-muted">No ARF requests found</p>
-                                    <p class="small mt-2 text-muted">No ARF requests have been created yet</p>
-                                </div>
-                            </div>
-                        @endif
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('request-arf.export.all', request()->query()) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="bx bx-download me-1"></i> Export to Excel
+                            </a>
+                        </div>
                     </div>
+                    
+                    @if($allArfs && $allArfs->count() > 0)
+        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>ARF Number</th>
+                                        <th>Title</th>
+                                        <th>Staff</th>
+                                        <th>Division</th>
+                                        <th>Request Date</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                                    @php $count = 1; @endphp
+                                    @foreach($allArfs as $arf)
+                        <tr>
+                                            <td>{{ $count++ }}</td>
+                            <td>
+                                <div class="fw-bold text-primary">{{ $arf->arf_number }}</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
+                            </td>
+                            <td>{{ $arf->staff->name ?? 'N/A' }}</td>
+                            <td>{{ $arf->actual_division->division_name ?? 'N/A' }}</td>
+                            <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
+                            <td>
+                                <span class="fw-bold text-success">
+                                    ${{ number_format($arf->requested_amount, 2) }}
+                                </span>
+                            </td>
+                            <td>
+                                @php
+                                    $statusBadgeClass = [
+                                        'draft' => 'bg-secondary',
+                                        'pending' => 'bg-warning',
+                                        'approved' => 'bg-success',
+                                        'rejected' => 'bg-danger',
+                                        'returned' => 'bg-info',
+                                    ];
+                                    $statusClass = $statusBadgeClass[$arf->overall_status] ?? 'bg-secondary';
+                                    
+                                    // Get workflow information
+                                    $approvalLevel = $arf->approval_level ?? 'N/A';
+                                    $workflowRole = $arf->workflow_definition ? ($arf->workflow_definition->role ?? 'N/A') : 'N/A';
+                                    $actorName = $arf->current_actor ? ($arf->current_actor->fname . ' ' . $arf->current_actor->lname) : 'N/A';
+                                @endphp
+                                
+                                @if($arf->overall_status === 'pending')
+                                    <!-- Structured display for pending status -->
+                                    <div class="text-center">
+                                        <span class="badge {{ $statusClass }} mb-1">
+                                            {{ strtoupper($arf->overall_status) }}
+                                        </span>
+                                        <br>
+                                      
+                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                        @if($actorName !== 'N/A')
+                                            <small class="text-muted d-block">{{ $actorName }}</small>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="badge {{ $statusClass }}">
+                                        {{ strtoupper($arf->overall_status) }}
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ route('request-arf.show', $arf) }}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                        <i class="bx bx-show"></i>
+                                    </a>
+                                    @if($arf->overall_status === 'draft' || $arf->overall_status === 'returned')
+                                        <a href="{{ route('request-arf.edit', $arf) }}" class="btn btn-outline-warning btn-sm" title="Edit">
+                                            <i class="bx bx-edit"></i>
+                                        </a>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                                    @endforeach
+                </tbody>
+            </table>
+        </div>
+                    @else
+                        <div class="text-center py-5">
+                            <i class="bx bx-file-alt display-1 text-muted"></i>
+                            <h5 class="text-muted mt-3">No ARF Requests Found</h5>
+                            <p class="text-muted">No ARF requests have been submitted yet.</p>
+                        </div>
+                    @endif
                 </div>
+            </div>
             @endif
         </div>
     </div>
-    
-    <div class="card-footer bg-white">
-        <div class="d-flex justify-content-between">
-            <div>
-                <small class="text-muted">Showing {{ $myArfs->firstItem() ?? 0 }} to {{ $myArfs->lastItem() ?? 0 }} of {{ $myArfs->total() }} results</small>
-            </div>
-            <div>
-                {{ $myArfs->links() }}
-            </div>
-        </div>
-    </div>
 </div>
+@endsection
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        // Initialize tooltips
-        $('[data-bs-toggle="tooltip"]').tooltip();
+$(document).ready(function() {
+    // Initialize Select2 for better dropdowns
+    $('#division_id, #staff_id').select2({
+        placeholder: 'Select an option',
+        allowClear: true,
+        width: '100%'
     });
+});
 </script>
 @endpush
-@endsection

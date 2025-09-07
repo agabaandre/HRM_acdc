@@ -136,11 +136,20 @@ class NonTravelMemoController extends Controller
             'budget_codes'                 => 'required|array|min:1',
             'budget_codes.*'               => 'exists:fund_codes,id',
             'budget_breakdown'             => 'required|array',
+            'fund_type_id'                 => 'nullable|exists:fund_types,id',
             //'budget.*'                     => 'array',
         ]);
 
         $data['staff_id'] = user_session('staff_id');
         $data['division_id'] = user_session('division_id');
+
+        // Extract fund_type_id from budget codes if not provided
+        if (empty($data['fund_type_id']) && !empty($data['budget_codes'])) {
+            $firstBudgetCode = \App\Models\FundCode::find($data['budget_codes'][0]);
+            if ($firstBudgetCode && $firstBudgetCode->fund_type_id) {
+                $data['fund_type_id'] = $firstBudgetCode->fund_type_id;
+            }
+        }
 
         // Handle attachments
        // Handle file uploads for attachments
@@ -197,6 +206,7 @@ class NonTravelMemoController extends Controller
             'workplan_activity_code' => $request->input('activity_code', ''),
             'staff_id' => (int)$data['staff_id'],
             'division_id' => (int)$data['division_id'],
+            'fund_type_id' => (int)($data['fund_type_id'] ?? 1),
             'memo_date' => (string)$data['date_required'],
             'location_id' => $locationJson,
             'non_travel_memo_category_id' => (int)$data['non_travel_memo_category_id'],
@@ -319,7 +329,7 @@ class NonTravelMemoController extends Controller
     public function show(NonTravelMemo $nonTravel): View
     {
        
-        $nonTravel->load(['staff', 'nonTravelMemoCategory']);
+        $nonTravel->load(['staff', 'nonTravelMemoCategory', 'fundType']);
         
         // Decode JSON fields
         $nonTravel->budget_breakdown = is_string($nonTravel->budget_breakdown) 
@@ -433,6 +443,7 @@ class NonTravelMemoController extends Controller
             'attachments.*.replace'        => 'nullable|boolean',
             'attachments.*.delete'         => 'nullable|boolean',
             'budget_breakdown'             => 'required|array|min:1',
+            'fund_type_id'                 => 'nullable|exists:fund_types,id',
         ]);
 
        // Handle file uploads for attachments
@@ -496,6 +507,21 @@ class NonTravelMemoController extends Controller
        if (empty($attachmentData)) {
            $attachments = $existingAttachments;
        }
+        // Extract fund_type_id from budget codes if not provided
+        if (empty($data['fund_type_id'])) {
+            // Get existing budget codes from the memo
+            $existingBudgetCodes = is_array($nonTravel->budget_id) 
+                ? $nonTravel->budget_id 
+                : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
+            
+            if (!empty($existingBudgetCodes)) {
+                $firstBudgetCode = \App\Models\FundCode::find($existingBudgetCodes[0]);
+                if ($firstBudgetCode && $firstBudgetCode->fund_type_id) {
+                    $data['fund_type_id'] = $firstBudgetCode->fund_type_id;
+                }
+            }
+        }
+
         // Prepare JSON columns
         $locationJson = json_encode($data['location_id']);
         $budgetBreakdownJson = json_encode($data['budget_breakdown']);
@@ -506,6 +532,7 @@ class NonTravelMemoController extends Controller
             'memo_date' => $data['memo_date'],
             'location_id' => $locationJson,
             'non_travel_memo_category_id' => $data['non_travel_memo_category_id'],
+            'fund_type_id' => (int)($data['fund_type_id'] ?? $nonTravel->fund_type_id ?? 1),
             'activity_title' => $data['activity_title'],
             'activity_request_remarks' => $data['activity_request_remarks'],
             'background' => $data['background'],
