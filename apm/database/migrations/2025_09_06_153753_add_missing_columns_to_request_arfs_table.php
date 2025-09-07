@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::table('request_arfs', function (Blueprint $table) {
             // Add missing columns if they don't exist
             if (!Schema::hasColumn('request_arfs', 'responsible_person_id')) {
-                $table->unsignedBigInteger('responsible_person_id')->nullable()->after('staff_id');
+                $table->integer('responsible_person_id')->nullable()->after('staff_id');
             }
             if (!Schema::hasColumn('request_arfs', 'total_amount')) {
-                $table->decimal('total_amount', 15, 2)->nullable()->after('requested_amount');
+                $table->decimal('total_amount', 15, 2)->nullable();
             }
         });
 
