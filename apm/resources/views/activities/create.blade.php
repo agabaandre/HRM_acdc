@@ -92,7 +92,7 @@
                 <label for="activity_request_remarks" class="form-label fw-semibold">
                     <i class="fas fa-comment-dots me-1 text-success"></i>Request for Approval  <span class="text-danger">*</span>
                 </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks', $activity->activity_request_remarks ?? '') }}</textarea>
+                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control summernote" rows="3" required>{{ old('activity_request_remarks', $activity->activity_request_remarks ?? '') }}</textarea>
             </div>
 
             
@@ -167,6 +167,26 @@ const oldParticipants = @json(old('internal_participants', []));
 const oldTravel = @json(old('international_travel', []));
 
 $(document).ready(function () {
+    // Initialize Summernote only for fields with summernote class
+    if ($('.summernote').length > 0) {
+        $('.summernote').summernote({
+            height: 150,
+            fontNames: ['Arial'],
+            fontNamesIgnoreCheck: ['Arial'],
+            defaultFontName: 'Arial',
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['fontname', ['fontname']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+        });
+    }
+
     // AJAX Form Submission
     $('#activityForm').on('submit', function(e) {
         e.preventDefault();
