@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('request_arfs', function (Blueprint $table) {
-            $table->json('internal_participants')->nullable()->after('attachment');
+            $table->json('internal_participants')->nullable();
         });
     }
 
