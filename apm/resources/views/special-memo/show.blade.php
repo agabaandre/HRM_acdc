@@ -316,6 +316,27 @@
                             <span>Print PDF</span>
                         </a>
                     @endif
+                  
+                    @if($specialMemo->fund_type_id == 2 && $specialMemo->overall_status == 'approved')
+                        @php
+                            // Check if ARF already exists for this special memo
+                            $existingArfTop = \App\Models\RequestARF::where('source_id', $specialMemo->id)
+                                ->where('model_type', 'App\\Models\\SpecialMemo')
+                                ->first();
+                        @endphp
+                        
+                        @if(!$existingArfTop)
+                            <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                                <i class="bx bx-file-plus"></i>
+                                <span>Create ARF Request</span>
+                            </button>
+                        @elseif(in_array($existingArfTop->overall_status, ['pending', 'approved', 'returned']))
+                            <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                                <i class="bx bx-show"></i>
+                                <span>View ARF Request</span>
+                            </a>
+                        @endif
+                    @endif
                 </div>
             </div>
         </div>
@@ -437,13 +458,23 @@
                             <td class="field-value" colspan="3">{{ $specialMemo->activity_title ?? 'Not specified' }}</td>
                         </tr>
                         <tr>
-                            <td class="field-label">Requestor</td>
+                            <td class="field-label">Creator</td>
                             <td class="field-value">
-                                {{ optional($specialMemo->staff)->first_name }} {{ optional($specialMemo->staff)->last_name ?? 'Not assigned' }}
+                                {{ optional($specialMemo->staff)->fname }} {{ optional($specialMemo->staff)->lname ?? 'Not assigned' }}
                             </td>
                             <td class="field-label">Division</td>
                             <td class="field-value">
                                 {{ optional($specialMemo->division)->division_name ?? 'Not assigned' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Responsible Person</td>
+                            <td class="field-value">
+                                {{ optional($specialMemo->responsiblePerson)->fname }} {{ optional($specialMemo->responsiblePerson)->lname ?? 'Not assigned' }}
+                            </td>
+                            <td class="field-label">Job Title</td>
+                            <td class="field-value">
+                                {{ optional($specialMemo->responsiblePerson)->job_name ?? 'Not specified' }}
                             </td>
                         </tr>
                         <tr>
@@ -612,17 +643,17 @@
                         
                         <div class="mb-4">
                             <label class="form-label text-muted small fw-semibold">Background</label>
-                            <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->background ?? 'Not specified' }}</div>
+                            <div class="bg-light rounded p-3 border">{!! $specialMemo->background ?? 'Not specified' !!}</div>
                         </div>
                         
                         <div class="mb-4">
                             <label class="form-label text-muted small fw-semibold">Justification</label>
-                            <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->justification ?? 'Not specified' }}</div>
+                            <div class="bg-light rounded p-3 border">{!! $specialMemo->justification ?? 'Not specified' !!}</div>
                         </div>
                         
                         <div class="mb-4">
                             <label class="form-label text-muted small fw-semibold">Supporting Reasons</label>
-                            <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->supporting_reasons ?? 'Not specified' }}</div>
+                            <div class="bg-light rounded p-3 border">{!! $specialMemo->supporting_reasons ?? 'Not specified' !!}</div>
                         </div>
                         
                         @if($specialMemo->remarks)
@@ -726,7 +757,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->activity_request_remarks }}</div>
+                            <div class="bg-light rounded p-3 border">{!! $specialMemo->activity_request_remarks !!}</div>
                         </div>
                     </div>
                 @endif
@@ -1053,6 +1084,76 @@
     </div>
   </div>
 </div>
+
+
+        @if($specialMemo->fund_type_id == 2 && $specialMemo->overall_status == 'approved')
+            @php
+                // Check if ARF already exists for this special memo
+                $existingArf = \App\Models\RequestARF::where('source_id', $specialMemo->id)
+                    ->where('model_type', 'App\\Models\\SpecialMemo')
+                    ->first();
+            @endphp
+            
+            @if(!$existingArf)
+            @include('request-arf.components.create-arf-modal', [
+            'sourceType' => 'Special Memo',
+            'sourceTitle' => $specialMemo->activity_title,
+            'fundTypeId' => $specialMemo->fundType ? $specialMemo->fundType->id : null,
+            'fundTypeName' => $specialMemo->fundType ? $specialMemo->fundType->name : 'N/A',
+            'divisionName' => $specialMemo->division ? $specialMemo->division->division_name : 'N/A',
+            'dateFrom' => $specialMemo->date_from ? \Carbon\Carbon::parse($specialMemo->date_from)->format('M d, Y') : 'N/A',
+            'dateTo' => $specialMemo->date_to ? \Carbon\Carbon::parse($specialMemo->date_to)->format('M d, Y') : 'N/A',
+            'numberOfDays' => $specialMemo->date_from && $specialMemo->date_to ? 
+                \Carbon\Carbon::parse($specialMemo->date_from)->diffInDays(\Carbon\Carbon::parse($specialMemo->date_to)) + 1 : 'N/A',
+            'location' => $specialMemo->locations() ? $specialMemo->locations()->pluck('name')->join(', ') : 'N/A',
+            'keyResultArea' => 'N/A', // Special memos don't have key result areas
+            'quarterlyLinkage' => $specialMemo->quarterly_linkage ?? 'N/A',
+            'totalParticipants' => $specialMemo->total_participants ?? 'N/A',
+            'internalParticipants' => $specialMemo->internal_participants 
+                ? (is_string($specialMemo->internal_participants) 
+                    ? count(json_decode($specialMemo->internal_participants, true) ?? []) 
+                    : (is_array($specialMemo->internal_participants) 
+                        ? count($specialMemo->internal_participants) 
+                        : 0))
+                : 0,
+            'externalParticipants' => $specialMemo->total_external_participants ?? 0,
+            'budgetCode' => $specialMemo->fundCodes ? $specialMemo->fundCodes->pluck('code')->join(', ') : 'N/A',
+            'background' => $specialMemo->background ?? 'N/A',
+            'requestForApproval' => $specialMemo->activity_request_remarks ?? 'N/A',
+            'totalBudget' => $specialMemo->total_budget ?? '0.00',
+            'headOfDivision' => $specialMemo->division && $specialMemo->division->head ? 
+                $specialMemo->division->head->fname . ' ' . $specialMemo->division->head->lname : 'N/A',
+            'focalPerson' => $specialMemo->staff ? 
+                $specialMemo->staff->fname . ' ' . $specialMemo->staff->lname : 'N/A',
+            'budgetBreakdown' => is_string($specialMemo->budget) && !empty($specialMemo->budget)
+                ? (json_decode($specialMemo->budget, true) ?? [])
+                : (is_array($specialMemo->budget) ? $specialMemo->budget : []),
+            'budgetIds' => is_string($specialMemo->budget_id) && !empty($specialMemo->budget_id)
+                ? (json_decode($specialMemo->budget_id, true) ?? [])
+                : (is_array($specialMemo->budget_id) ? $specialMemo->budget_id : []),
+            'fundCodes' => (function() use ($specialMemo) {
+                $ids = is_string($specialMemo->budget_id) && !empty($specialMemo->budget_id)
+                    ? (json_decode($specialMemo->budget_id, true) ?? [])
+                    : (is_array($specialMemo->budget_id) ? $specialMemo->budget_id : []);
+                if (!is_array($ids)) $ids = [];
+                return \App\Models\FundCode::whereIn('id', $ids)->with('fundType')->get()->keyBy('id');
+            })(),
+            'defaultTitle' => 'ARF Request - ' . $specialMemo->title,
+            'sourceId' => $specialMemo->id,
+            'modelType' => 'App\\Models\\SpecialMemo'
+        ])
+
+        
+        @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+            <div class="alert alert-info">
+                <i class="bx bx-info-circle me-2"></i>
+                An ARF request has already been created for this special memo.
+                <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                    <i class="bx bx-show me-1"></i>View ARF Request
+                </a>
+            </div>
+            @endif
+        @endif
 @endsection
 
 @push('scripts')

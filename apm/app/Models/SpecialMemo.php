@@ -90,6 +90,31 @@ class SpecialMemo extends Model
     {
         return $this->belongsTo(Division::class, 'division_id');
     }
+
+    public function locations()
+    {
+        $locationIds = $this->location_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($locationIds)) {
+            $locationIds = json_decode($locationIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($locationIds) || empty($locationIds)) {
+            return collect();
+        }
+        
+        return Location::whereIn('id', $locationIds)->get();
+    }
+    
+    /**
+     * Responsible person relationship.
+     */
+    public function responsiblePerson()
+    {
+        return $this->belongsTo(Staff::class, 'responsible_person_id', 'staff_id');
+    }
     
     /**
      * Request type relationship.
@@ -97,6 +122,11 @@ class SpecialMemo extends Model
     public function requestType(): BelongsTo
     {
         return $this->belongsTo(RequestType::class, 'request_type_id');
+    }
+
+    public function fundType(): BelongsTo
+    {
+        return $this->belongsTo(FundType::class, 'fund_type_id');
     }
 
     /**
@@ -283,6 +313,77 @@ class SpecialMemo extends Model
         }
 
         return [];
+    }
+
+    // JSON-BASED: internal_participants[] mapped to Staff
+    public function getInternalParticipantsDetailsAttribute()
+    {
+        $participantIds = $this->internal_participants ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($participantIds)) {
+            $participantIds = json_decode($participantIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($participantIds) || empty($participantIds)) {
+            return collect();
+        }
+        
+        // Recursively flatten and extract IDs
+        $flatIds = $this->flattenParticipantIds($participantIds);
+        
+        if (empty($flatIds)) {
+            return collect();
+        }
+        
+        return Staff::whereIn('staff_id', $flatIds)->get();
+    }
+    
+    /**
+     * Recursively flatten participant IDs from nested arrays
+     */
+    private function flattenParticipantIds($data)
+    {
+        $ids = [];
+        
+        if (is_array($data)) {
+            foreach ($data as $key => $item) {
+                if (is_array($item)) {
+                    // Look for staff_id or id keys within the item
+                    if (isset($item['staff_id'])) {
+                        $ids[] = $item['staff_id'];
+                    } elseif (isset($item['id'])) {
+                        $ids[] = $item['id'];
+                    } else {
+                        // If no staff_id or id found, check if the key itself is a participant ID
+                        if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                            $ids[] = $key;
+                        } else {
+                            // Recursively process nested arrays
+                            $ids = array_merge($ids, $this->flattenParticipantIds($item));
+                        }
+                    }
+                } else {
+                    // Direct value - could be the key or the value
+                    if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                        $ids[] = $key;
+                    } else {
+                        $ids[] = $item;
+                    }
+                }
+            }
+        } else {
+            // Single value
+            $ids[] = $data;
+        }
+        
+        // Clean and validate IDs
+        $ids = array_filter($ids, function($id) {
+            return !empty($id) && $id !== null && (is_numeric($id) || is_string($id));
+        });
+        
+        return array_values(array_unique($ids));
     }
 
 }

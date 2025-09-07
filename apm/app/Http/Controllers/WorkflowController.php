@@ -281,7 +281,7 @@ class WorkflowController extends Controller
             ->with(['approvers.staff', 'approvers.oicStaff'])
             ->get();
 
-        $availableStaff = Staff::where('status', 'active')
+        $availableStaff = Staff::active()
             ->orderBy('fname')
             ->get();
 

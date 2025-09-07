@@ -127,22 +127,128 @@ class Activity extends Model
         return $this->hasMany(ActivityApprovalTrail::class, 'activity_id');
     }
 
+    public function locations()
+    {
+        $locationIds = $this->location_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($locationIds)) {
+            $locationIds = json_decode($locationIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($locationIds) || empty($locationIds)) {
+            return collect();
+        }
+        
+        return Location::whereIn('id', $locationIds)->get();
+    }
+
     // JSON-BASED: location_id[] mapped to Location model
     public function getLocationsAttribute()
     {
-        return Location::whereIn('id', $this->location_id ?? [])->get();
+        $locationIds = $this->location_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($locationIds)) {
+            $locationIds = json_decode($locationIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($locationIds) || empty($locationIds)) {
+            return collect();
+        }
+        
+        return Location::whereIn('id', $locationIds)->get();
     }
 
     // JSON-BASED: budget_id[] mapped to FundCode model
     public function getFundCodesAttribute()
     {
-        return FundCode::whereIn('id', $this->budget_id ?? [])->get();
+        $budgetIds = $this->budget_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($budgetIds)) {
+            $budgetIds = json_decode($budgetIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($budgetIds) || empty($budgetIds)) {
+            return collect();
+        }
+        
+        return FundCode::whereIn('id', $budgetIds)->get();
     }
 
     // JSON-BASED: internal_participants[] mapped to Staff
     public function getInternalParticipantsDetailsAttribute()
     {
-        return Staff::whereIn('staff_id', $this->internal_participants ?? [])->get();
+        $participantIds = $this->internal_participants ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($participantIds)) {
+            $participantIds = json_decode($participantIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($participantIds) || empty($participantIds)) {
+            return collect();
+        }
+        
+        // Recursively flatten and extract IDs
+        $flatIds = $this->flattenParticipantIds($participantIds);
+        
+        if (empty($flatIds)) {
+            return collect();
+        }
+        
+        return Staff::whereIn('staff_id', $flatIds)->get();
+    }
+    
+    /**
+     * Recursively flatten participant IDs from nested arrays
+     */
+    private function flattenParticipantIds($data)
+    {
+        $ids = [];
+        
+        if (is_array($data)) {
+            foreach ($data as $key => $item) {
+                if (is_array($item)) {
+                    // Look for staff_id or id keys within the item
+                    if (isset($item['staff_id'])) {
+                        $ids[] = $item['staff_id'];
+                    } elseif (isset($item['id'])) {
+                        $ids[] = $item['id'];
+                    } else {
+                        // If no staff_id or id found, check if the key itself is a participant ID
+                        if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                            $ids[] = $key;
+                        } else {
+                            // Recursively process nested arrays
+                            $ids = array_merge($ids, $this->flattenParticipantIds($item));
+                        }
+                    }
+                } else {
+                    // Direct value - could be the key or the value
+                    if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                        $ids[] = $key;
+                    } else {
+                        $ids[] = $item;
+                    }
+                }
+            }
+        } else {
+            // Single value
+            $ids[] = $data;
+        }
+        
+        // Clean and validate IDs
+        $ids = array_filter($ids, function($id) {
+            return !empty($id) && $id !== null && (is_numeric($id) || is_string($id));
+        });
+        
+        return array_values(array_unique($ids));
     }
 
 

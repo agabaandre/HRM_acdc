@@ -215,8 +215,22 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
     Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
     
     // Request for ARF Routes
+    // ARF Export Routes  
+    Route::get('request-arf/export/my-submitted', [App\Http\Controllers\RequestARFController::class, 'exportMySubmittedCsv'])->name('request-arf.export.my-submitted');
+    Route::get('request-arf/export/all', [App\Http\Controllers\RequestARFController::class, 'exportAllCsv'])->name('request-arf.export.all');
+    
+    Route::post('request-arf/store-from-modal', [App\Http\Controllers\RequestARFController::class, 'storeFromModal'])->name('request-arf.store-from-modal');
     Route::resource('request-arf', App\Http\Controllers\RequestARFController::class);
+    Route::get('debug-arf-test', function() { return 'ARF route test successful'; });
+    Route::get('debug-arf-controller', [App\Http\Controllers\RequestARFController::class, 'debugTest']);
+    Route::post('debug-arf-post', function(\Illuminate\Http\Request $request) { 
+        return response()->json(['message' => 'POST route working', 'data' => $request->all()]); 
+    });
     Route::delete('request-arf/{requestARF}/remove-attachment', [App\Http\Controllers\RequestARFController::class, 'removeAttachment'])->name('request-arf.remove-attachment');
+    Route::post('request-arf/{requestARF}/approve', [App\Http\Controllers\RequestARFController::class, 'approve'])->name('request-arf.approve');
+    Route::post('request-arf/{requestARF}/submit-for-approval', [App\Http\Controllers\RequestARFController::class, 'submitForApproval'])->name('request-arf.submit-for-approval');
+    Route::post('request-arf/{requestARF}/update-status', [App\Http\Controllers\RequestARFController::class, 'updateStatus'])->name('request-arf.update-status');
+    Route::get('request-arf/{requestARF}/print', [App\Http\Controllers\RequestARFController::class, 'print'])->name('request-arf.print');
     
     Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
     Route::get('special-memo/{specialMemo}/print', [App\Http\Controllers\SpecialMemoController::class, 'print'])->name('special-memo.print');

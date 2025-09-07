@@ -70,7 +70,7 @@ class StaffController extends Controller
         $divisions = Division::where('is_active', 1)->orderBy('division_name')->get();
         $directorates = Directorate::where('is_active', 1)->orderBy('name')->get();
         $dutyStations = DutyStation::where('status', 1)->orderBy('name')->get();
-        $supervisors = Staff::where('active', 1)->orderBy('fname')->get();
+        $supervisors = Staff::active()->orderBy('fname')->get();
 
         return view('staff.create', compact('divisions', 'directorates', 'dutyStations', 'supervisors'));
     }

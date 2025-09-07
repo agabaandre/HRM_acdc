@@ -455,7 +455,7 @@ class SpecialMemoController extends Controller
      */
     public function show(SpecialMemo $specialMemo): View
     {
-        $specialMemo->load(['staff', 'division', 'staff.division']);
+        $specialMemo->load(['staff', 'division', 'staff.division', 'responsiblePerson']);
         
         return view('special-memo.show', compact('specialMemo'));
     }

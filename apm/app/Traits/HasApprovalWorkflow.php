@@ -263,7 +263,15 @@ trait HasApprovalWorkflow
         } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
             
             // If the model has a budget_breakdown property, check for any fund_code with fund_type_id = 1
-            $breakdown = json_decode($this->budget_breakdown, true);
+            // Handle both JSON string and PHP array formats
+            $breakdown = $this->budget_breakdown;
+            
+            // If it's a string, decode it to array
+            if (is_string($breakdown)) {
+                $breakdown = json_decode($breakdown, true);
+            }
+            
+            // If it's an array, process it
             if (is_array($breakdown)) {
                 foreach ($breakdown as $fund_code_id => $items) {
                     // Skip non-numeric keys (like 'grand_total')
@@ -290,7 +298,15 @@ trait HasApprovalWorkflow
         } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
             
             // If the model has a budget_breakdown property, check for any fund_code with fund_type_id = 2 (extramural)
-            $breakdown = json_decode($this->budget_breakdown, true);
+            // Handle both JSON string and PHP array formats
+            $breakdown = $this->budget_breakdown;
+            
+            // If it's a string, decode it to array
+            if (is_string($breakdown)) {
+                $breakdown = json_decode($breakdown, true);
+            }
+            
+            // If it's an array, process it
             if (is_array($breakdown)) {
                 foreach ($breakdown as $fund_code_id => $items) {
                     // Skip non-numeric keys (like 'grand_total')

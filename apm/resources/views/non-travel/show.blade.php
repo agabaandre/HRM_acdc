@@ -203,6 +203,26 @@
                             <span>Print PDF</span>
                         </a>
                     @endif
+                    @if($nonTravel->fundType && strtolower($nonTravel->fundType->name) === 'extramural' && $nonTravel->overall_status === 'approved')
+                        @php
+                            // Check if ARF already exists for this non-travel memo
+                            $existingArfTop = \App\Models\RequestARF::where('source_id', $nonTravel->id)
+                                ->where('model_type', 'App\\Models\\NonTravelMemo')
+                                ->first();
+                        @endphp
+                        
+                        @if(!$existingArfTop)
+                            <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                                <i class="bx bx-file-plus"></i>
+                                <span>Create ARF Request</span>
+                            </button>
+                        @elseif(in_array($existingArfTop->overall_status, ['pending', 'approved', 'returned']))
+                            <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                                <i class="bx bx-show"></i>
+                                <span>View ARF Request</span>
+                            </a>
+                        @endif
+                    @endif
                 </div>
             </div>
         </div>
@@ -252,7 +272,7 @@
             if (!empty($nonTravel->budget_id)) {
                 $budgetIds = is_array($nonTravel->budget_id) ? $nonTravel->budget_id : json_decode($nonTravel->budget_id, true);
                 if (is_array($budgetIds)) {
-                    $budgetCodes = \App\Models\FundCode::with('funder')->whereIn('id', $budgetIds)->get();
+                    $budgetCodes = \App\Models\FundCode::with(['funder', 'fundType'])->whereIn('id', $budgetIds)->get();
                 }
             }
         @endphp
@@ -334,8 +354,21 @@
                         
                         <!-- Budget Information -->
                         <tr>
+                            <td class="field-label">Fund Type</td>
+                            <td class="field-value">
+                                @if($nonTravel->fundType)
+                                    <span class="badge {{ $nonTravel->fundType->id == 1 ? 'bg-primary' : 'bg-info' }}">
+                                        {{ $nonTravel->fundType->name }}
+                                    </span>
+                                    <small class="text-muted ms-2">
+                                        ({{ $nonTravel->fundType->id == 1 ? 'Intramural' : 'Extramural' }})
+                                    </small>
+                                @else
+                                    <span class="text-muted">Not specified</span>
+                                @endif
+                            </td>
                             <td class="field-label">Budget Codes</td>
-                            <td class="field-value" colspan="3">
+                            <td class="field-value">
                                 @if($budgetCodes->count() > 0)
                                     @foreach($budgetCodes as $budget)
                                         <span class="badge bg-success me-1">
@@ -415,7 +448,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="mb-0 lh-lg text-dark">{!! nl2br(e($nonTravel->background)) !!}</p>
+                            <p class="mb-0 lh-lg text-dark">{!! $nonTravel->background !!}</p>
                         </div>
                     </div>
 
@@ -430,7 +463,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="mb-0 lh-lg text-dark">{!! nl2br(e($nonTravel->justification)) !!}</p>
+                            <p class="mb-0 lh-lg text-dark">{!! $nonTravel->justification !!}</p>
                         </div>
                     </div>
                 </div>
@@ -511,7 +544,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <p class="mb-0 lh-lg text-dark">{!! nl2br(e($nonTravel->activity_request_remarks)) !!}</p>
+                            <p class="mb-0 lh-lg text-dark">{!! $nonTravel->activity_request_remarks !!}</p>
                         </div>
                     </div>
 
@@ -679,4 +712,61 @@
         </div>
     </div>
 </div>
+
+        @if($nonTravel->fundType && strtolower($nonTravel->fundType->name) === 'extramural' && $nonTravel->overall_status === 'approved')
+            @php
+                // Check if ARF already exists for this non-travel memo
+                $existingArf = \App\Models\RequestARF::where('source_id', $nonTravel->id)
+                    ->where('model_type', 'App\\Models\\NonTravelMemo')
+                    ->first();
+            @endphp
+            
+            @if(!$existingArf)
+            @include('request-arf.components.create-arf-modal', [
+            'sourceType' => 'Non-Travel Memo',
+            'sourceTitle' => $nonTravel->title,
+            'fundTypeId' => $nonTravel->fundType ? $nonTravel->fundType->id : null,
+            'fundTypeName' => $nonTravel->fundType ? $nonTravel->fundType->name : 'N/A',
+            'divisionName' => $nonTravel->division ? $nonTravel->division->division_name : 'N/A',
+            'dateFrom' => $nonTravel->start_date ? \Carbon\Carbon::parse($nonTravel->start_date)->format('M d, Y') : 'N/A',
+            'dateTo' => $nonTravel->end_date ? \Carbon\Carbon::parse($nonTravel->end_date)->format('M d, Y') : 'N/A',
+            'numberOfDays' => $nonTravel->start_date && $nonTravel->end_date ? 
+                \Carbon\Carbon::parse($nonTravel->start_date)->diffInDays(\Carbon\Carbon::parse($nonTravel->end_date)) + 1 : 'N/A',
+            'location' => $nonTravel->locations() ? $nonTravel->locations()->pluck('name')->join(', ') : 'N/A',
+            'keyResultArea' => 'N/A', // Non-travel memos don't have key result areas
+            'quarterlyLinkage' => $nonTravel->quarterly_linkage ?? 'N/A',
+            'totalParticipants' => 'N/A', // Non-travel memos don't have participants
+            'internalParticipants' => 'N/A', // Non-travel memos don't have participants
+            'externalParticipants' => 'N/A', // Non-travel memos don't have participants
+            'budgetCode' => $nonTravel->fundCodes ? $nonTravel->fundCodes->pluck('code')->join(', ') : 'N/A',
+            'background' => $nonTravel->background ?? 'N/A',
+            'requestForApproval' => $nonTravel->activity_request_remarks ?? 'N/A',
+            'totalBudget' => $nonTravel->total_budget ?? '0.00',
+            'headOfDivision' => $nonTravel->division && $nonTravel->division->head ? 
+                $nonTravel->division->head->fname . ' ' . $nonTravel->division->head->lname : 'N/A',
+            'focalPerson' => $nonTravel->staff ? 
+                $nonTravel->staff->fname . ' ' . $nonTravel->staff->lname : 'N/A',
+            'budgetBreakdown' => is_string($nonTravel->budget_breakdown) 
+                ? json_decode($nonTravel->budget_breakdown, true) 
+                : ($nonTravel->budget_breakdown ?? []),
+            'budgetIds' => is_string($nonTravel->budget_id) 
+                ? json_decode($nonTravel->budget_id, true) 
+                : ($nonTravel->budget_id ?? []),
+            'fundCodes' => \App\Models\FundCode::whereIn('id', is_string($nonTravel->budget_id) 
+                ? json_decode($nonTravel->budget_id, true) 
+                : ($nonTravel->budget_id ?? []))->with('fundType')->get()->keyBy('id'),
+            'defaultTitle' => 'ARF Request - ' . $nonTravel->title,
+            'sourceId' => $nonTravel->id,
+            'modelType' => 'App\\Models\\NonTravelMemo'
+        ])
+            @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+            <div class="alert alert-info">
+                <i class="bx bx-info-circle me-2"></i>
+                An ARF request has already been created for this non-travel memo.
+                <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                    <i class="bx bx-show me-1"></i>View ARF Request
+                </a>
+            </div>
+            @endif
+        @endif
 @endsection
