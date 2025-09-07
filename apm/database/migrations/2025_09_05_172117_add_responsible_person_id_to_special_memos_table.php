@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (!Schema::hasColumn('special_memos', 'responsible_person_id')) {
             Schema::table('special_memos', function (Blueprint $table) {
-                $table->unsignedInteger('responsible_person_id')->nullable()->after('staff_id')->comment('ID of the responsible person for this special memo');
+                $table->integer('responsible_person_id')->nullable()->after('staff_id')->comment('ID of the responsible person for this special memo');
                 $table->foreign('responsible_person_id')->references('staff_id')->on('staff')->onDelete('set null');
             });
         }
