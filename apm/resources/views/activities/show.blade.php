@@ -185,10 +185,7 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <strong>Remarks:</strong>
-                    <div class="html-content">{!! $activity->activity_request_remarks !!}</div>
-                </div>
+               
 
                 @if($attachments && count($attachments) > 0)
                 <div class="mb-3">
@@ -303,6 +300,11 @@
                         </tfoot>
                     </table>
                      @endforeach
+                </div>
+
+                 <div class="mb-3">
+                    <strong>Request for Approval:</strong>
+                    <div class="html-content">{!! $activity->activity_request_remarks !!}</div>
                 </div>
 
             @if((can_take_action($matrix ) && can_approve_activity($activity))  && !done_approving_activty($activity))
