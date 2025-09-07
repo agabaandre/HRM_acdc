@@ -219,7 +219,10 @@
                                                             <td>{{ $item['description'] ?? 'N/A' }}</td>
                                                         </tr>
                                                     @endforeach
-                                                </tbody>
+                                  
+                                  
+                                  
+                                          </tbody>
                                                 <tfoot class="table-light">
                                                     <tr>
                                                         <th colspan="4" class="text-end">Fund Total:</th>
