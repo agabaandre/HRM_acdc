@@ -12,48 +12,48 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('service_requests', function (Blueprint $table) {
-            // Add missing columns that don't exist yet
+            // Add missing columns that don't exist yet (without after clauses to avoid conflicts)
             if (!Schema::hasColumn('service_requests', 'request_date')) {
-                $table->date('request_date')->after('request_number');
+                $table->date('request_date');
             }
             if (!Schema::hasColumn('service_requests', 'division_id')) {
-                $table->foreignId('division_id')->constrained()->after('staff_id');
+                $table->foreignId('division_id')->constrained();
             }
             if (!Schema::hasColumn('service_requests', 'service_title')) {
-                $table->string('service_title')->after('division_id');
+                $table->string('service_title');
             }
             if (!Schema::hasColumn('service_requests', 'description')) {
-                $table->text('description')->after('service_title');
+                $table->text('description');
             }
             if (!Schema::hasColumn('service_requests', 'justification')) {
-                $table->text('justification')->after('description');
+                $table->text('justification');
             }
             if (!Schema::hasColumn('service_requests', 'required_by_date')) {
-                $table->date('required_by_date')->after('justification');
+                $table->date('required_by_date');
             }
             if (!Schema::hasColumn('service_requests', 'location')) {
-                $table->string('location')->nullable()->after('required_by_date');
+                $table->string('location')->nullable();
             }
             if (!Schema::hasColumn('service_requests', 'estimated_cost')) {
-                $table->decimal('estimated_cost', 15, 2)->default(0)->after('location');
+                $table->decimal('estimated_cost', 15, 2)->default(0);
             }
             if (!Schema::hasColumn('service_requests', 'priority')) {
-                $table->enum('priority', ['low', 'medium', 'high', 'urgent'])->default('medium')->after('estimated_cost');
+                $table->enum('priority', ['low', 'medium', 'high', 'urgent'])->default('medium');
             }
             if (!Schema::hasColumn('service_requests', 'service_type')) {
-                $table->enum('service_type', ['it', 'maintenance', 'procurement', 'travel', 'other'])->default('other')->after('priority');
+                $table->enum('service_type', ['it', 'maintenance', 'procurement', 'travel', 'other'])->default('other');
             }
             if (!Schema::hasColumn('service_requests', 'specifications')) {
-                $table->json('specifications')->nullable()->after('service_type');
+                $table->json('specifications')->nullable();
             }
             if (!Schema::hasColumn('service_requests', 'attachments')) {
-                $table->json('attachments')->nullable()->after('specifications');
+                $table->json('attachments')->nullable();
             }
             if (!Schema::hasColumn('service_requests', 'status')) {
-                $table->enum('status', ['draft', 'submitted', 'in_progress', 'approved', 'rejected', 'completed'])->default('draft')->after('attachments');
+                $table->enum('status', ['draft', 'submitted', 'in_progress', 'approved', 'rejected', 'completed'])->default('draft');
             }
             if (!Schema::hasColumn('service_requests', 'remarks')) {
-                $table->text('remarks')->nullable()->after('status');
+                $table->text('remarks')->nullable();
             }
         });
     }
