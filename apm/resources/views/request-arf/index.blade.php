@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Request for ARF')
+@section('title', 'ActRF')
 
 @section('header', 'Request for ARF')
 
@@ -20,9 +20,7 @@
                 <div class="col-md-2">
                     <label for="division_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-building me-1 text-success"></i> Division</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-building"></i></span>
-                        <select name="division_id" id="division_id" class="form-select">
+                    <select name="division_id" id="division_id" class="form-select">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -30,14 +28,11 @@
                             </option>
                         @endforeach
                     </select>
-                    </div>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-4">
                     <label for="staff_id" class="form-label fw-semibold mb-1"><i
                             class="bx bx-user me-1 text-success"></i> Staff</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-user"></i></span>
-                        <select name="staff_id" id="staff_id" class="form-select">
+                    <select name="staff_id" id="staff_id" class="form-select">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -45,22 +40,17 @@
                             </option>
                         @endforeach
                     </select>
-                    </div>
                 </div>
                 <div class="col-md-2">
-                    <label for="status" class="form-label fw-semibold mb-1"><i
+                    <label for="overall_status" class="form-label fw-semibold mb-1"><i
                             class="bx bx-info-circle me-1 text-success"></i> Status</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-info-circle"></i></span>
-                        <select name="status" id="" class="form-select">
-                            <option value="">All Statuses</option>
-                            <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                            <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                            <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
-                        </select>
-                    </div>
+                    <select name="overall_status" id="overall_status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {{ request('overall_status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="approved" {{ request('overall_status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="returned" {{ request('overall_status') == 'returned' ? 'selected' : '' }}>Rejected</option>
+                    </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-success w-100 fw-bold" id="applyFilters">

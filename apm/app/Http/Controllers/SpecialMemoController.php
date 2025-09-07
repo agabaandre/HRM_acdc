@@ -340,7 +340,7 @@ class SpecialMemoController extends Controller
                 'internal_participants' => json_encode($internalParticipants),
     
                 'budget_id' => json_encode($request->input('budget_codes', [])),
-                'budget' => json_encode($request->input('budget', [])),
+                'budget_breakdown' => json_encode($request->input('budget', [])),
                 'attachment' => json_encode($attachments),
     
                 'supporting_reasons' => $request->input('supporting_reasons', null),
@@ -501,8 +501,8 @@ class SpecialMemoController extends Controller
 
         // dd($specialMemo->budget);
 
-        // Fix for potentially double-encoded or malformed JSON in budget
-        $budget = $specialMemo->budget;
+        // Fix for potentially double-encoded or malformed JSON in budget_breakdown
+        $budget = $specialMemo->budget_breakdown;
 
         if (!is_array($budget)) {
             $decoded = json_decode($budget, true);
@@ -513,7 +513,7 @@ class SpecialMemoController extends Controller
         }
 
         // Replace original budget on the model (optional, for view consistency)
-        $specialMemo->budget = $budget;
+        $specialMemo->budget_breakdown = $budget;
 
         // Process participants data for edit form - following activities pattern
         $rawParticipants = is_string($specialMemo->internal_participants)
@@ -578,9 +578,9 @@ class SpecialMemoController extends Controller
             ? json_decode($specialMemo->budget_id, true)
             : ($specialMemo->budget_id ?? []);
 
-        $budgetItems = is_string($specialMemo->budget)
-            ? json_decode($specialMemo->budget, true)
-            : ($specialMemo->budget ?? []);
+        $budgetItems = is_string($specialMemo->budget_breakdown)
+            ? json_decode($specialMemo->budget_breakdown, true)
+            : ($specialMemo->budget_breakdown ?? []);
 
         // Get fund type from special memo or from budget codes
         $fundTypeId = $specialMemo->fund_type_id ?? null;
@@ -781,7 +781,7 @@ class SpecialMemoController extends Controller
                 'internal_participants' => json_encode($internalParticipants),
     
                 'budget_id' => json_encode($request->input('budget_codes', [])),
-                'budget' => json_encode($request->input('budget', [])),
+                'budget_breakdown' => json_encode($request->input('budget', [])),
                 'attachment' => json_encode($attachments),
     
                 'supporting_reasons' => $request->input('supporting_reasons', null),
@@ -1220,7 +1220,7 @@ class SpecialMemoController extends Controller
             ? json_decode($specialMemo->budget_id, true)
             : ($specialMemo->budget_id ?? []);
 
-        $budgetBreakdown = $specialMemo->budget;
+        $budgetBreakdown = $specialMemo->budget_breakdown;
         if (!is_array($budgetBreakdown)) {
             $decoded = json_decode($budgetBreakdown, true);
             if (is_string($decoded)) {

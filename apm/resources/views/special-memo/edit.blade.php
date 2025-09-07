@@ -1259,7 +1259,7 @@ $(document).ready(function () {
         division_id: @json($specialMemo->division_id ?? null),
         fund_type_id: @json($specialMemo->fund_type_id ?? null),
         internal_participants: @json($specialMemo->internal_participants ?? null),
-        budget: @json($specialMemo->budget ?? null)
+        budget: @json($specialMemo->budget_breakdown ?? null)
     });
     
     // Debug: Log the staff data for responsible person

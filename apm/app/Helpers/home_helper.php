@@ -306,12 +306,12 @@ if (!function_exists('get_pending_service_requests_count')) {
         // For now, just return count of pending service requests
         // TODO: Implement proper approval logic when ServiceRequest approval system is added
         return ServiceRequest::where('approval_status', 'pending')
-            ->where('workflow_id', '!=', null)
+            ->where('forward_workflow_id', '!=', null)
             ->count();
     }
 }
 
-if (!function_exists('mpdf_print')) {
+if (!function_exists('generate_pdf')) {
     /**
      * Generate a PDF using mPDF, or preview the HTML in the browser for debugging.
      * Ensures all CSS from the view is included in the PDF.
@@ -322,7 +322,7 @@ if (!function_exists('mpdf_print')) {
      *        - 'preview_html' (bool): If true, output HTML to browser instead of PDF (for debug)
      * @return \Mpdf\Mpdf|string
      */
-    function mpdf_print($view, $data = [], $options = [])
+    function generate_pdf($view, $data = [], $options = [])
     {
         // Set timezone
         date_default_timezone_set("Africa/Nairobi");
@@ -461,6 +461,18 @@ $mpdf = new \Mpdf\Mpdf([
         }
 
         return $mpdf;
+    }
+}
+
+// Backward compatibility function
+if (!function_exists('mpdf_print')) {
+    /**
+     * Backward compatibility function for mpdf_print
+     * @deprecated Use generate_pdf() instead
+     */
+    function mpdf_print($view, $data = [], $options = [])
+    {
+        return generate_pdf($view, $data, $options);
     }
 }
 

@@ -222,6 +222,29 @@
                                 <span>View ARF Request</span>
                             </a>
                         @endif
+                        
+                        {{-- Service Request Button --}}
+                        @if($nonTravel->fund_type_id == 1 && $nonTravel->overall_status === 'approved')
+                            @php
+                                // Check if Service Request already exists for this memo
+                                $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $nonTravel->id)
+                                    ->where('model_type', 'App\\Models\\NonTravelMemo')
+                                    ->first();
+                            @endphp
+                            
+                            @if(!$existingServiceRequest)
+                                <a href="{{ route('service-requests.create') }}?source_type=non_travel_memo&source_id={{ $nonTravel->id }}" 
+                                   class="btn btn-info d-flex align-items-center gap-2">
+                                    <i class="fas fa-tools"></i>
+                                    <span>Create Service Request</span>
+                                </a>
+                            @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
+                                <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                                    <i class="fas fa-eye"></i>
+                                    <span>View Service Request</span>
+                                </a>
+                            @endif
+                        @endif
                     @endif
                 </div>
             </div>
@@ -768,5 +791,7 @@
                 </a>
             </div>
             @endif
+            
         @endif
+        
 @endsection

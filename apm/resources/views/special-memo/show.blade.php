@@ -336,6 +336,29 @@
                                 <span>View ARF Request</span>
                             </a>
                         @endif
+                        
+                        {{-- Service Request Button --}}
+                        @if($specialMemo->fund_type_id == 1 && $specialMemo->overall_status === 'approved')
+                            @php
+                                // Check if Service Request already exists for this memo
+                                $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $specialMemo->id)
+                                    ->where('model_type', 'App\\Models\\SpecialMemo')
+                                    ->first();
+                            @endphp
+                            
+                            @if(!$existingServiceRequest)
+                                <a href="{{ route('service-requests.create') }}?source_type=special_memo&source_id={{ $specialMemo->id }}" 
+                                   class="btn btn-info d-flex align-items-center gap-2">
+                                    <i class="fas fa-tools"></i>
+                                    <span>Create Service Request</span>
+                                </a>
+                            @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
+                                <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                                    <i class="fas fa-eye"></i>
+                                    <span>View Service Request</span>
+                                </a>
+                            @endif
+                        @endif
                     @endif
                 </div>
             </div>
@@ -345,9 +368,9 @@
     <div class="container-fluid py-4">
         @php
             // Decode JSON fields if they are strings
-            $budget = is_string($specialMemo->budget) 
-                ? json_decode(stripslashes($specialMemo->budget), true) 
-                : $specialMemo->budget;
+            $budget = is_string($specialMemo->budget_breakdown) 
+                ? json_decode(stripslashes($specialMemo->budget_breakdown), true) 
+                : $specialMemo->budget_breakdown;
             
             // Handle double-encoded JSON (sometimes happens with form submissions)
             if (is_string($budget) && !is_array($budget)) {
@@ -409,7 +432,7 @@
             // Debug logging
             if (config('app.debug')) {
                 \Log::info('Budget parsing debug:', [
-                    'raw_budget' => $specialMemo->budget,
+                    'raw_budget' => $specialMemo->budget_breakdown,
                     'parsed_budget' => $budget,
                     'budget_by_fund_code' => $budgetByFundCode,
                     'fund_codes' => $fundCodes,
@@ -1125,9 +1148,9 @@
                 $specialMemo->division->head->fname . ' ' . $specialMemo->division->head->lname : 'N/A',
             'focalPerson' => $specialMemo->staff ? 
                 $specialMemo->staff->fname . ' ' . $specialMemo->staff->lname : 'N/A',
-            'budgetBreakdown' => is_string($specialMemo->budget) && !empty($specialMemo->budget)
-                ? (json_decode($specialMemo->budget, true) ?? [])
-                : (is_array($specialMemo->budget) ? $specialMemo->budget : []),
+            'budgetBreakdown' => is_string($specialMemo->budget_breakdown) && !empty($specialMemo->budget_breakdown)
+                ? (json_decode($specialMemo->budget_breakdown, true) ?? [])
+                : (is_array($specialMemo->budget_breakdown) ? $specialMemo->budget_breakdown : []),
             'budgetIds' => is_string($specialMemo->budget_id) && !empty($specialMemo->budget_id)
                 ? (json_decode($specialMemo->budget_id, true) ?? [])
                 : (is_array($specialMemo->budget_id) ? $specialMemo->budget_id : []),
@@ -1153,7 +1176,9 @@
                 </a>
             </div>
             @endif
+            
         @endif
+        
 @endsection
 
 @push('scripts')
