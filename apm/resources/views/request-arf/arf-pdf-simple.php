@@ -300,7 +300,7 @@
 <body>
 <div class="container">
   <!-- Document Title -->
-  <h1 class="document-title">ARF Request Form</h1>
+  <h1 class="document-title">Activity Request Form</h1>
   
   <?php
     // Helper functions to safely access staff data
