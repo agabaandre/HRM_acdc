@@ -110,7 +110,7 @@ class RequestARFController extends Controller
         try {
             // Traditional form validation
         $validated = $request->validate([
-            'staff_id' => 'required|exists:staff,id',
+            'staff_id' => 'required|exists:staff,staff_id',
             'forward_workflow_id' => 'required|exists:workflows,id',
             'reverse_workflow_id' => 'required|exists:workflows,id',
             'arf_number' => 'required|string|unique:request_arfs,arf_number',
@@ -305,11 +305,11 @@ class RequestARFController extends Controller
             $internalParticipantsJson = json_encode($internalParticipants);
 
             // Set approval levels and workflow IDs for submission
-            $approvalLevel = 1; // Start at level 1 when submitted
-            $nextApprovalLevel = 2; // Next level to be approved
-            $overallStatus = 'pending';
-            $forwardWorkflowId = 2; // Set workflow IDs for approval
-            $reverseWorkflowId = 2;
+            $approvalLevel = 0; // Start at level 0 for draft
+            $nextApprovalLevel = 1; // Next level to be approved
+            $overallStatus = 'draft';
+            $forwardWorkflowId = null; // Set to null initially, will be set when submitting for approval
+            $reverseWorkflowId = null;
 
             // Get responsible person from source data
             $responsiblePersonId = null;
@@ -794,7 +794,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         }
         
         $validated = $request->validate([
-            'staff_id' => 'required|exists:staff,id',
+            'staff_id' => 'required|exists:staff,staff_id',
             'forward_workflow_id' => 'required|exists:workflows,id',
             'reverse_workflow_id' => 'required|exists:workflows,id',
             'arf_number' => 'required|string|unique:request_arfs,arf_number,' . $requestARF->id,
