@@ -44,7 +44,7 @@
                 <label for="background" class="form-label fw-semibold">
                     <i class="fas fa-align-left me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                 </label>
-                <textarea name="background" id="background" class="form-control " rows="3" required>{{ old('background', $activity->background ?? '') }}</textarea>
+                <textarea name="background" id="background" class="form-control summernote" rows="3" required>{{ old('background', $activity->background ?? '') }}</textarea>
             </div>
 
             <div class="col-md-6">
@@ -75,6 +75,7 @@
                 <input type="text" name="date_to" id="date_to" class="form-control datepicker " value="{{ old('date_to', $activity->date_to ?? '') }}" required>
             </div>
             <div class="col-md-4">
+                <label for="location_id" class="form-label fw-semibold">
                     <i class="fas fa-map-marker-alt me-1 text-success"></i> Location/Venue <span class="text-danger">*</span>
                 </label>
                 <select name="location_id[]" id="location_id" class="form-select border-success" multiple required>

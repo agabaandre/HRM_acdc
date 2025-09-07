@@ -141,13 +141,13 @@
                             
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Background</label>
-                                <p class="mb-0">{{ $activity->background ?: 'No background provided' }}</p>
+                                <div class="html-content mb-0">{!! $activity->background ?: 'No background provided' !!}</div>
                             </div>
                             
                             @if($activity->activity_request_remarks)
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Remarks</label>
-                                <p class="mb-0">{{ $activity->activity_request_remarks }}</p>
+                                <div class="html-content mb-0">{!! $activity->activity_request_remarks !!}</div>
                             </div>
                             @endif
                         </div>

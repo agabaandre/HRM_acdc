@@ -87,7 +87,7 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <strong>Background:</strong>
-                        <p>{{ $activity->background }}</p>
+                        <div class="html-content">{!! $activity->background !!}</div>
                     </div>
                     <div class="col-md-6">
                         <strong>Key Result Area:</strong>
@@ -187,7 +187,7 @@
 
                 <div class="mb-3">
                     <strong>Remarks:</strong>
-                    <p>{{ $activity->activity_request_remarks }}</p>
+                    <div class="html-content">{!! $activity->activity_request_remarks !!}</div>
                 </div>
 
                 @if($attachments && count($attachments) > 0)
@@ -451,6 +451,51 @@
     border-radius: 8px;
     font-family: 'Courier New', monospace;
     line-height: 1.5;
+}
+
+/* HTML content styling */
+.html-content {
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+.html-content p {
+    margin-bottom: 1rem;
+}
+
+.html-content ul, .html-content ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+}
+
+.html-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.html-content table th,
+.html-content table td {
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    text-align: left;
+}
+
+.html-content table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.html-content strong {
+    font-weight: bold;
+}
+
+.html-content em {
+    font-style: italic;
+}
+
+.html-content u {
+    text-decoration: underline;
 }
 
 /* Loading animation */

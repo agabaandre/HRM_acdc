@@ -221,6 +221,26 @@ console.log('Available divisions:', Object.keys(staffData));
 console.log('Existing external participants:', existingExternalParticipants);
 
 $(document).ready(function () {
+    // Initialize Summernote only for fields with summernote class
+    if ($('.summernote').length > 0) {
+        $('.summernote').summernote({
+            height: 150,
+            fontNames: ['Arial'],
+            fontNamesIgnoreCheck: ['Arial'],
+            defaultFontName: 'Arial',
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['fontname', ['fontname']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+        });
+    }
+
     // AJAX Form Submission
     $('#activityForm').on('submit', function(e) {
         e.preventDefault();
