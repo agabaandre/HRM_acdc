@@ -8,11 +8,18 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
   <!-- Add Division Form -->
   <div class="col-md-12">
     <div class="card shadow-sm">
-      <div class="card-header" style="background: linear-gradient(135deg, rgba(52, 143, 65, 1) 0%, rgba(52, 143, 65, 0.8) 100%); color: white; cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#divisionForm" aria-expanded="false" aria-controls="divisionForm">
-        <h4 class="card-title mb-0">
-          <i class="fas fa-plus-circle me-2"></i>Add New Division
-          <i class="fas fa-chevron-down float-end mt-1" id="collapseIcon"></i>
-        </h4>
+      <div class="card-header" style="background: linear-gradient(135deg, rgba(52, 143, 65, 1) 0%, rgba(52, 143, 65, 0.8) 100%); color: white;">
+        <div class="d-flex justify-content-between align-items-center">
+          <h4 class="card-title mb-0" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#divisionForm" aria-expanded="false" aria-controls="divisionForm">
+            <i class="fas fa-plus-circle me-2"></i>Add New Division
+            <i class="fas fa-chevron-down ms-2" id="collapseIcon"></i>
+          </h4>
+          <div>
+            <a href="<?= base_url('settings/generate_division_short_names') ?>" class="btn btn-light btn-sm" onclick="return confirm('This will generate short names for all divisions that don\'t have them. Continue?')">
+              <i class="fas fa-magic me-1"></i>Generate Short Names
+            </a>
+          </div>
+        </div>
       </div>
 
       <div class="collapse" id="divisionForm">
