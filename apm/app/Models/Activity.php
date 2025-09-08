@@ -46,7 +46,7 @@ class Activity extends Model
         'location_id',
         'internal_participants',
         'budget_id',
-        'budget',
+        'budget_breakdown',
         'attachment',
     ];
 
@@ -76,7 +76,7 @@ class Activity extends Model
         'location_id' => 'array',
         'internal_participants' => 'array',
         'budget_id' => 'array',
-        'budget' => 'array',
+        'budget_breakdown' => 'array',
         'attachment' => 'array',
     ];
 

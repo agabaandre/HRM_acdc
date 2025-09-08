@@ -495,7 +495,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         // For activities, get from budget JSON column and save as-is
         if ($modelType === 'App\\Models\\Activity' && $sourceData) {
             // Get budget from JSON column and return as-is to avoid breaking approval service
-            return $sourceData->budget ?? null;
+            return $sourceData->budget_breakdown ?? null;
         }
         
         // For non-travel memos, get from budget_breakdown field (already array)
@@ -670,7 +670,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                         'division' => $sourceModel->matrix->division ?? null,
                         'division_head' => $sourceModel->matrix->division->divisionHead ?? null,
                         'responsible_person' => $sourceModel->staff ?? null,
-                        'budget_breakdown' => is_string($sourceModel->budget) ? json_decode($sourceModel->budget, true) ?? [] : ($sourceModel->budget ?? []), // Use budget column JSON
+                        'budget_breakdown' => is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []), // Use budget_breakdown column JSON
                         'fund_codes' => $fundCodes, // Add fund codes for proper display
                         'internal_participants' => is_string($sourceModel->internal_participants) ? json_decode($sourceModel->internal_participants, true) ?? [] : ($sourceModel->internal_participants ?? []),
                         'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
@@ -724,7 +724,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                         'division' => $sourceModel->division ?? null,
                         'division_head' => $sourceModel->division->divisionHead ?? null,
                         'responsible_person' => $sourceModel->staff ?? null,
-                        'budget_breakdown' => is_string($sourceModel->budget) ? json_decode($sourceModel->budget, true) ?? [] : ($sourceModel->budget ?? []),
+                        'budget_breakdown' => is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []),
                         'fund_codes' => $fundCodes, // Add fund codes for proper display
                         'internal_participants' => is_string($sourceModel->internal_participants) ? json_decode($sourceModel->internal_participants, true) ?? [] : ($sourceModel->internal_participants ?? []),
                         'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
@@ -995,7 +995,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'division' => $sourceModel->matrix_id ? ($sourceModel->matrix->division ?? null) : null,
                     'division_head' => $sourceModel->matrix_id ? ($sourceModel->matrix->division->divisionHead ?? null) : null,
                     'responsible_person' => $sourceModel->staff ?? null,
-                    'budget_breakdown' => is_string($sourceModel->budget) ? json_decode($sourceModel->budget, true) ?? [] : ($sourceModel->budget ?? []),
+                    'budget_breakdown' => is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []),
                     'fund_codes' => $fundCodes,
                     'internal_participants' => is_string($sourceModel->internal_participants) ? json_decode($sourceModel->internal_participants, true) ?? [] : ($sourceModel->internal_participants ?? []),
                     'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
@@ -1055,7 +1055,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'division' => $sourceModel->division ?? null,
                     'division_head' => $sourceModel->division->divisionHead ?? null,
                     'responsible_person' => $sourceModel->staff ?? null,
-                    'budget_breakdown' => is_string($sourceModel->budget) ? json_decode($sourceModel->budget, true) ?? [] : ($sourceModel->budget ?? []),
+                    'budget_breakdown' => is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []),
                     'fund_codes' => $fundCodes, // Add fund codes for proper display
                     'internal_participants' => is_string($sourceModel->internal_participants) ? json_decode($sourceModel->internal_participants, true) ?? [] : ($sourceModel->internal_participants ?? []),
                     'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
