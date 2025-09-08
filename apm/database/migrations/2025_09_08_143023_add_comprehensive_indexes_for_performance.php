@@ -307,7 +307,6 @@ return new class extends Migration
                 'activity_budgets_activity_id_index' => 'activity_id',
                 'activity_budgets_fund_code_index' => 'fund_code',
                 'activity_budgets_fund_type_id_index' => 'fund_type_id',
-                'activity_budgets_amount_index' => 'amount',
                 'activity_budgets_activity_id_fund_type_id_index' => 'activity_id,fund_type_id',
                 'activity_budgets_fund_code_fund_type_id_index' => 'fund_code,fund_type_id',
             ],
