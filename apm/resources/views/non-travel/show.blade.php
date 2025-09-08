@@ -330,6 +330,14 @@
                             <td class="field-label">Activity Title</td>
                             <td class="field-value" colspan="3">{{ $nonTravel->activity_title ?? 'Not specified' }}</td>
                         </tr>
+                        @if($nonTravel->document_number)
+                        <tr>
+                            <td class="field-label">Document Number</td>
+                            <td class="field-value" colspan="3">
+                                <span class="text-primary fw-bold">{{ $nonTravel->document_number }}</span>
+                            </td>
+                        </tr>
+                        @endif
                         <tr>
                             <td class="field-label">Requestor</td>
                             <td class="field-value">

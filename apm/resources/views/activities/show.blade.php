@@ -99,7 +99,9 @@
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
-                <small class="text-muted">{{ $title }} Ref: {{ $activity->activity_ref }}</small>
+                @if($activity->document_number)
+                    <br><small class="text-primary fw-bold">Document Number: {{ $activity->document_number }}</small>
+                @endif
                 @if($activity->my_last_action)
                     <p> Your Action: <small class=" text-white rounded p-1 {{($activity->my_last_action->action=='passed')?'bg-success':'bg-danger'}}">{{strtoupper($activity->my_last_action->action)}}</small></p>
                 @endif

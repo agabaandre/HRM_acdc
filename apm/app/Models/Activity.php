@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
+use App\Traits\HasDocumentNumber;
 use Illuminate\Support\Str;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class Activity extends Model
 {
-    use HasFactory, HasApprovalWorkflow, Auditable;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -41,6 +42,7 @@ class Activity extends Model
         'status',
         'fund_type_id',
         'division_id',
+        'document_number',
 
         // JSON fields
         'location_id',

@@ -325,6 +325,16 @@
                                 </td>
                                 <td class="field-value">{{ $requestARF->activity_title }}</td>
                             </tr>
+                            @if($requestARF->document_number)
+                            <tr>
+                                <td class="field-label">
+                                    <i class="bx bx-hash text-success me-2"></i>Document Number
+                                </td>
+                                <td class="field-value">
+                                    <span class="text-primary fw-bold">{{ $requestARF->document_number }}</span>
+                                </td>
+                            </tr>
+                            @endif
                             <tr>
                                 <td class="field-label">
                                     <i class="bx bx-calendar text-success me-2"></i>Request Date

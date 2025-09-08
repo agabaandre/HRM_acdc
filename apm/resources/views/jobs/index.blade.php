@@ -328,6 +328,113 @@
             </div>
         </div>
 
+        <!-- Document Counter Management -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bx bx-reset me-2 text-primary"></i>Document Counter Management</h6>
+                <div class="text-muted small mt-1">
+                    <i class="bx bx-info-circle me-1"></i>Reset document counters for specific years, divisions, or document types
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Filters -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <label for="counterYear" class="form-label">Year</label>
+                        <select id="counterYear" class="form-select">
+                            <option value="2024">2024</option>
+                            <option value="2025" selected>2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="counterDivision" class="form-label">Division (Optional)</label>
+                        <select id="counterDivision" class="form-select">
+                            <option value="">All Divisions</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="counterType" class="form-label">Document Type (Optional)</label>
+                        <select id="counterType" class="form-select">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="button" class="btn btn-primary" onclick="loadDocumentCounters()">
+                                <i class="bx bx-search me-1"></i> Load Counters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Counters Table -->
+                <div id="countersTable" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Division</th>
+                                    <th>Document Type</th>
+                                    <th>Year</th>
+                                    <th>Current Counter</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="countersTableBody">
+                                <!-- Counters will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reset Form -->
+                <div class="card mt-4" id="resetForm" style="display: none;">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bx bx-warning me-2"></i>Reset Document Counters</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="bx bx-error-circle me-2"></i>
+                            <strong>Warning:</strong> This will reset the selected counters to 0. This action cannot be undone!
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Year</label>
+                                <input type="number" id="resetYear" class="form-control" min="2020" max="2030" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Division</label>
+                                <input type="text" id="resetDivision" class="form-control" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Document Type</label>
+                                <input type="text" id="resetType" class="form-control" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="syncMode">
+                            <label class="form-check-label" for="syncMode">
+                                Run synchronously (immediate execution)
+                            </label>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-danger" onclick="resetDocumentCounters()">
+                                <i class="bx bx-reset me-1"></i> Reset Counters
+                            </button>
+                            <button type="button" class="btn btn-secondary ms-2" onclick="cancelReset()">
+                                <i class="bx bx-x me-1"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Command Output -->
         <div class="card" id="outputCard" style="display: none;">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -611,6 +718,163 @@ function showAlert(message, type = 'success') {
             $(this).remove();
         });
     }, 5000);
+}
+
+// Document Counter Management Functions
+let currentFilters = {};
+
+$(document).ready(function() {
+    // Load filters for document counters
+    loadDocumentCounterFilters();
+});
+
+function loadDocumentCounterFilters() {
+    $.ajax({
+        url: '{{ route("jobs.document-counter-filters") }}',
+        type: 'GET',
+        success: function(response) {
+            if (response.success) {
+                // Populate division dropdown
+                const divisionSelect = $('#counterDivision');
+                divisionSelect.empty().append('<option value="">All Divisions</option>');
+                Object.entries(response.divisions).forEach(([id, name]) => {
+                    divisionSelect.append(`<option value="${name}">${name}</option>`);
+                });
+
+                // Populate document type dropdown
+                const typeSelect = $('#counterType');
+                typeSelect.empty().append('<option value="">All Types</option>');
+                Object.entries(response.document_types).forEach(([code, name]) => {
+                    typeSelect.append(`<option value="${code}">${code} - ${name}</option>`);
+                });
+            }
+        },
+        error: function() {
+            showAlert('Failed to load filters', 'error');
+        }
+    });
+}
+
+function loadDocumentCounters() {
+    const year = $('#counterYear').val();
+    const division = $('#counterDivision').val();
+    const type = $('#counterType').val();
+
+    currentFilters = { year, division, type };
+
+    $.ajax({
+        url: '{{ route("jobs.document-counters") }}',
+        type: 'GET',
+        data: { year, division, type },
+        success: function(response) {
+            if (response.success) {
+                displayDocumentCounters(response.counters);
+            } else {
+                showAlert('Failed to load document counters', 'error');
+            }
+        },
+        error: function() {
+            showAlert('Failed to load document counters', 'error');
+        }
+    });
+}
+
+function displayDocumentCounters(counters) {
+    const tbody = $('#countersTableBody');
+    tbody.empty();
+
+    if (counters.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="5" class="text-center text-muted">No counters found for the selected criteria</td>
+            </tr>
+        `);
+    } else {
+        counters.forEach(counter => {
+            tbody.append(`
+                <tr>
+                    <td>${counter.division_short_name}</td>
+                    <td>${counter.document_type}</td>
+                    <td>${counter.year}</td>
+                    <td><span class="badge bg-primary">${counter.counter}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="showResetForm('${counter.division_short_name}', '${counter.document_type}', ${counter.year})">
+                            <i class="bx bx-reset me-1"></i> Reset
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+    }
+
+    $('#countersTable').show();
+}
+
+function showResetForm(division, type, year) {
+    $('#resetYear').val(year);
+    $('#resetDivision').val(division);
+    $('#resetType').val(type);
+    $('#resetForm').show();
+    $('#resetForm')[0].scrollIntoView({ behavior: 'smooth' });
+}
+
+function resetDocumentCounters() {
+    const year = $('#resetYear').val();
+    const division = $('#resetDivision').val();
+    const type = $('#resetType').val();
+    const sync = $('#syncMode').is(':checked');
+
+    if (!confirm(`Are you sure you want to reset counters for ${division} - ${type} - ${year}?`)) {
+        return;
+    }
+
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Resetting...';
+    button.disabled = true;
+
+    $.ajax({
+        url: '{{ route("jobs.reset-document-counters") }}',
+        type: 'POST',
+        data: {
+            year: parseInt(year),
+            division: division,
+            type: type,
+            sync: sync,
+            _token: '{{ csrf_token() }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                showAlert(response.message, 'success');
+                if (response.execution_mode === 'synchronous') {
+                    // Reload counters if executed synchronously
+                    loadDocumentCounters();
+                }
+                cancelReset();
+            } else {
+                showAlert(response.message, 'error');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            showAlert(response?.message || 'Failed to reset counters', 'error');
+        },
+        complete: function() {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    });
+}
+
+function cancelReset() {
+    $('#resetForm').hide();
+    $('#resetYear').val('');
+    $('#resetDivision').val('');
+    $('#resetType').val('');
+    $('#syncMode').prop('checked', false);
 }
 </script>
 @endpush
