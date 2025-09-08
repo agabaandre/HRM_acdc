@@ -67,7 +67,7 @@ class ServiceRequestController extends Controller
             $allRequests = $baseQuery->get();
         }
         
-        $staff = Staff::active()->get();
+        $staff = Staff::all();
         $divisions = Division::all();
         
         return view('service-requests.index', compact('mySubmittedRequests', 'allRequests', 'staff', 'divisions'));
@@ -80,7 +80,7 @@ class ServiceRequestController extends Controller
     {
         \Log::info('ServiceRequestController::create method called');
         try {
-        $staff = Staff::active()->get();
+        $staff = Staff::all();
             
             // Ensure we have at least one staff member for the dropdown
             if ($staff->isEmpty()) {
