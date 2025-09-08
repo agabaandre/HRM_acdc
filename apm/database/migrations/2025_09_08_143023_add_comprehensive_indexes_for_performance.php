@@ -214,7 +214,6 @@ return new class extends Migration
             // Service Request Approval Trails table indexes
             'service_request_approval_trails' => [
                 'service_request_approval_trails_service_request_id_index' => 'service_request_id',
-                'service_request_approval_trails_staff_id_index' => 'staff_id',
                 'service_request_approval_trails_action_index' => 'action',
                 'service_request_approval_trails_created_at_index' => 'created_at',
                 'service_request_approval_trails_service_request_id_action_index' => 'service_request_id,action',
