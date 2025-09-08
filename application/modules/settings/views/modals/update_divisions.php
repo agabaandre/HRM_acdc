@@ -12,7 +12,7 @@
         <?= validation_errors(); ?>
         <?= form_open('settings/update_content'); ?>
         <input type="hidden" name="table" value="divisions">
-        <input type="hidden" name="redirect" value="division">
+        <input type="hidden" name="redirect" value="divisions">
         <input type="hidden" name="column_name" value="division_id">
         <input type="hidden" name="caller_value" value="<?= $division->division_id; ?>">
 
@@ -121,50 +121,40 @@
               <td class="form-cell">
                 <div class="form-group">
                   <label class="form-label fw-semibold">
-                    <i class="fas fa-user-clock me-1 text-secondary"></i>Division Head OIC <span class="text-danger">*</span>
+                    <i class="fas fa-crown me-1 text-danger"></i>Director
                   </label>
-                  <select name="head_oic_id" class="form-control select2" required>
-                    <option value="">Select Head OIC</option>
-                    <?php foreach ($lists as $staff): ?>
-                      <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == @$division->head_oic_id) ? 'selected' : '' ?>>
-                        <?= $staff->lname . ' ' . $staff->fname ?>
-                      </option>
-                    <?php endforeach; ?>
-                  </select>
-                </div>
-              </td>
-              <td class="form-cell">
-                <div class="form-group">
-                  <label class="form-label fw-semibold">
-                    <i class="fas fa-crown me-1 text-danger"></i>Director <span class="text-danger">*</span>
-                  </label>
-                  <select name="director_id" class="form-control select2" required>
-                    <option value="">Select Director</option>
+                  <select name="director_id" class="form-control select2">
+                    <option value="">Select Director (Optional)</option>
                     <?php foreach ($lists as $staff): ?>
                       <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == @$division->director_id) ? 'selected' : '' ?>>
                         <?= $staff->lname . ' ' . $staff->fname ?>
                       </option>
                     <?php endforeach; ?>
                   </select>
+                  <small class="form-text text-muted">Optional: Division director</small>
                 </div>
+              </td>
+              <td class="form-cell">
+                <!-- Empty cell for alignment -->
               </td>
             </tr>
 
-            <!-- Row 4: Director OIC -->
+            <!-- Row 4: Head OIC Information -->
             <tr>
               <td class="form-cell">
                 <div class="form-group">
                   <label class="form-label fw-semibold">
-                    <i class="fas fa-user-shield me-1 text-dark"></i>Director OIC <span class="text-danger">*</span>
+                    <i class="fas fa-user-clock me-1 text-secondary"></i>Head OIC
                   </label>
-                  <select name="director_oic_id" class="form-control select2" required>
-                    <option value="">Select Director OIC</option>
+                  <select name="head_oic_id" class="form-control select2">
+                    <option value="">Select Head OIC (Optional)</option>
                     <?php foreach ($lists as $staff): ?>
-                      <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == @$division->director_oic_id) ? 'selected' : '' ?>>
+                      <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == @$division->head_oic_id) ? 'selected' : '' ?>>
                         <?= $staff->lname . ' ' . $staff->fname ?>
                       </option>
                     <?php endforeach; ?>
                   </select>
+                  <small class="form-text text-muted">Optional: Officer in charge of division head</small>
                 </div>
               </td>
               <td class="form-cell">
@@ -173,6 +163,7 @@
                     <i class="fas fa-calendar-alt me-1 text-info"></i>Head OIC Start Date
                   </label>
                   <input type="text" class="form-control datepicker" name="head_oic_start_date" value="<?= $division->head_oic_start_date ?>" placeholder="Select start date">
+                  <small class="form-text text-muted">Optional: When OIC period started</small>
                 </div>
               </td>
               <td class="form-cell">
@@ -181,18 +172,36 @@
                     <i class="fas fa-calendar-alt me-1 text-info"></i>Head OIC End Date
                   </label>
                   <input type="text" class="form-control datepicker" name="head_oic_end_date" value="<?= $division->head_oic_end_date ?>" placeholder="Select end date">
+                  <small class="form-text text-muted">Optional: When OIC period ends</small>
                 </div>
               </td>
             </tr>
 
-            <!-- Row 5: Director OIC Dates -->
+            <!-- Row 5: Director OIC Information -->
             <tr>
+              <td class="form-cell">
+                <div class="form-group">
+                  <label class="form-label fw-semibold">
+                    <i class="fas fa-user-shield me-1 text-dark"></i>Director OIC
+                  </label>
+                  <select name="director_oic_id" class="form-control select2">
+                    <option value="">Select Director OIC (Optional)</option>
+                    <?php foreach ($lists as $staff): ?>
+                      <option value="<?= $staff->staff_id ?>" <?= ($staff->staff_id == @$division->director_oic_id) ? 'selected' : '' ?>>
+                        <?= $staff->lname . ' ' . $staff->fname ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                  <small class="form-text text-muted">Optional: Officer in charge of director</small>
+                </div>
+              </td>
               <td class="form-cell">
                 <div class="form-group">
                   <label class="form-label fw-semibold">
                     <i class="fas fa-calendar-alt me-1 text-warning"></i>Director OIC Start Date
                   </label>
                   <input type="text" class="form-control datepicker" name="director_oic_start_date" value="<?= $division->director_oic_start_date ?>" placeholder="Select start date">
+                  <small class="form-text text-muted">Optional: When OIC period started</small>
                 </div>
               </td>
               <td class="form-cell">
@@ -201,10 +210,8 @@
                     <i class="fas fa-calendar-alt me-1 text-warning"></i>Director OIC End Date
                   </label>
                   <input type="text" class="form-control datepicker" name="director_oic_end_date" value="<?= $division->director_oic_end_date ?>" placeholder="Select end date">
+                  <small class="form-text text-muted">Optional: When OIC period ends</small>
                 </div>
-              </td>
-              <td class="form-cell">
-                <!-- Empty cell for alignment -->
               </td>
             </tr>
           </tbody>

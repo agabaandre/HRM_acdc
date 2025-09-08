@@ -125,44 +125,36 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                 <td class="form-cell">
                   <div class="form-group">
                     <label class="form-label fw-semibold">
-                      <i class="fas fa-user-clock me-1 text-secondary"></i>Division Head OIC <span class="text-danger">*</span>
+                      <i class="fas fa-crown me-1 text-danger"></i>Director
                     </label>
-                    <select class="form-control select2" name="head_oic_id" required>
-                      <option value="">Select Head OIC</option>
+                    <select class="form-control select2" name="director_id">
+                      <option value="">Select Director (Optional)</option>
                       <?php foreach ($lists as $staff): ?>
                         <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
                       <?php endforeach; ?>
                     </select>
+                    <small class="form-text text-muted">Optional: Division director</small>
                   </div>
                 </td>
                 <td class="form-cell">
-                  <div class="form-group">
-                    <label class="form-label fw-semibold">
-                      <i class="fas fa-crown me-1 text-danger"></i>Director <span class="text-danger">*</span>
-                    </label>
-                    <select class="form-control select2" name="director_id" required>
-                      <option value="">Select Director</option>
-                      <?php foreach ($lists as $staff): ?>
-                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
-                      <?php endforeach; ?>
-                    </select>
-                  </div>
+                  <!-- Empty cell for alignment -->
                 </td>
               </tr>
 
-              <!-- Row 4: Director OIC -->
+              <!-- Row 4: Head OIC Information -->
               <tr>
                 <td class="form-cell">
                   <div class="form-group">
                     <label class="form-label fw-semibold">
-                      <i class="fas fa-user-shield me-1 text-dark"></i>Director OIC <span class="text-danger">*</span>
+                      <i class="fas fa-user-clock me-1 text-secondary"></i>Head OIC
                     </label>
-                    <select class="form-control select2" name="director_oic_id" required>
-                      <option value="">Select Director OIC</option>
+                    <select class="form-control select2" name="head_oic_id">
+                      <option value="">Select Head OIC (Optional)</option>
                       <?php foreach ($lists as $staff): ?>
                         <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
                       <?php endforeach; ?>
                     </select>
+                    <small class="form-text text-muted">Optional: Officer in charge of division head</small>
                   </div>
                 </td>
                 <td class="form-cell">
@@ -171,6 +163,7 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                       <i class="fas fa-calendar-alt me-1 text-info"></i>Head OIC Start Date
                     </label>
                     <input type="text" name="head_oic_start_date" class="form-control datepicker" placeholder="Select start date">
+                    <small class="form-text text-muted">Optional: When OIC period started</small>
                   </div>
                 </td>
                 <td class="form-cell">
@@ -179,18 +172,34 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                       <i class="fas fa-calendar-alt me-1 text-info"></i>Head OIC End Date
                     </label>
                     <input type="text" name="head_oic_end_date" class="form-control datepicker" placeholder="Select end date">
+                    <small class="form-text text-muted">Optional: When OIC period ends</small>
                   </div>
                 </td>
               </tr>
 
-              <!-- Row 5: Director OIC Dates -->
+              <!-- Row 5: Director OIC Information -->
               <tr>
+                <td class="form-cell">
+                  <div class="form-group">
+                    <label class="form-label fw-semibold">
+                      <i class="fas fa-user-shield me-1 text-dark"></i>Director OIC
+                    </label>
+                    <select class="form-control select2" name="director_oic_id">
+                      <option value="">Select Director OIC (Optional)</option>
+                      <?php foreach ($lists as $staff): ?>
+                        <option value="<?= $staff->staff_id ?>"><?= $staff->lname . ' ' . $staff->fname ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <small class="form-text text-muted">Optional: Officer in charge of director</small>
+                  </div>
+                </td>
                 <td class="form-cell">
                   <div class="form-group">
                     <label class="form-label fw-semibold">
                       <i class="fas fa-calendar-alt me-1 text-warning"></i>Director OIC Start Date
                     </label>
                     <input type="text" name="director_oic_start_date" class="form-control datepicker" placeholder="Select start date">
+                    <small class="form-text text-muted">Optional: When OIC period started</small>
                   </div>
                 </td>
                 <td class="form-cell">
@@ -199,10 +208,8 @@ $lists = $this->staff_mdl->get_all_staff_data([]);
                       <i class="fas fa-calendar-alt me-1 text-warning"></i>Director OIC End Date
                     </label>
                     <input type="text" name="director_oic_end_date" class="form-control datepicker" placeholder="Select end date">
+                    <small class="form-text text-muted">Optional: When OIC period ends</small>
                   </div>
-                </td>
-                <td class="form-cell">
-                  <!-- Empty cell for alignment -->
                 </td>
               </tr>
             </tbody>
