@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use App\Jobs\ResetDocumentCountersJob;
+use App\Models\DocumentCounter;
+use App\Models\Division;
 
 class JobsController extends Controller
 {
@@ -189,6 +192,142 @@ class JobsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get system information: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get document counters for display.
+     */
+    public function getDocumentCounters(Request $request): JsonResponse
+    {
+        try {
+            $year = $request->input('year', date('Y'));
+            $division = $request->input('division');
+            $type = $request->input('type');
+
+            $query = DocumentCounter::where('year', $year);
+            
+            if ($division) {
+                $query->where('division_short_name', $division);
+            }
+            
+            if ($type) {
+                $query->where('document_type', $type);
+            }
+
+            $counters = $query->orderBy('division_short_name')
+                            ->orderBy('document_type')
+                            ->get();
+
+            return response()->json([
+                'success' => true,
+                'counters' => $counters,
+                'filters' => [
+                    'year' => $year,
+                    'division' => $division,
+                    'type' => $type
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get document counters', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get document counters: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset document counters.
+     */
+    public function resetDocumentCounters(Request $request): JsonResponse
+    {
+        $request->validate([
+            'year' => 'required|integer|min:2020|max:2030',
+            'division' => 'nullable|string|max:10',
+            'type' => 'nullable|string|in:QM,NT,SPM,SM,CR,SR,ARF',
+            'sync' => 'boolean'
+        ]);
+
+        try {
+            $year = $request->input('year');
+            $division = $request->input('division');
+            $type = $request->input('type');
+            $sync = $request->input('sync', false);
+
+            // Validate division if provided
+            if ($division && !Division::where('division_short_name', $division)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Division '{$division}' not found"
+                ], 400);
+            }
+
+            if ($sync) {
+                // Run synchronously
+                $job = new ResetDocumentCountersJob($year, $division, $type);
+                $job->handle();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Document counters reset successfully!',
+                    'execution_mode' => 'synchronous'
+                ]);
+            } else {
+                // Dispatch job
+                ResetDocumentCountersJob::dispatch($year, $division, $type);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Reset job dispatched successfully! Check queue worker logs for progress.',
+                    'execution_mode' => 'asynchronous'
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to reset document counters', [
+                'error' => $e->getMessage(),
+                'year' => $request->input('year'),
+                'division' => $request->input('division'),
+                'type' => $request->input('type')
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reset document counters: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get available divisions and document types for filters.
+     */
+    public function getDocumentCounterFilters(): JsonResponse
+    {
+        try {
+            $divisions = Division::whereNotNull('division_short_name')
+                                ->orderBy('division_short_name')
+                                ->pluck('division_short_name', 'id')
+                                ->toArray();
+
+            $documentTypes = DocumentCounter::getDocumentTypes();
+
+            return response()->json([
+                'success' => true,
+                'divisions' => $divisions,
+                'document_types' => $documentTypes
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get document counter filters', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get filters: ' . $e->getMessage()
             ], 500);
         }
     }

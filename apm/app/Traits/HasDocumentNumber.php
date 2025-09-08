@@ -15,8 +15,13 @@ trait HasDocumentNumber
         // Assign document number after model is created
         static::created(function ($model) {
             if (empty($model->document_number)) {
-                // Dispatch job to assign document number asynchronously
-                AssignDocumentNumberJob::dispatch($model);
+                $documentType = DocumentNumberService::getDocumentTypeFromModel($model);
+                
+                // Only assign document numbers to models that should have them
+                if ($documentType !== null) {
+                    // Dispatch job to assign document number asynchronously
+                    AssignDocumentNumberJob::dispatch($model);
+                }
             }
         });
     }
@@ -24,7 +29,7 @@ trait HasDocumentNumber
     /**
      * Get the document type for this model
      */
-    public function getDocumentType(): string
+    public function getDocumentType(): ?string
     {
         return DocumentNumberService::getDocumentTypeFromModel($this);
     }
@@ -42,6 +47,13 @@ trait HasDocumentNumber
      */
     public function getNextDocumentNumberPreview(): string
     {
+        $documentType = $this->getDocumentType();
+        
+        // If no document type, return empty string
+        if ($documentType === null) {
+            return '';
+        }
+        
         // Load division if not already loaded
         if (!$this->relationLoaded('division') && $this->division_id) {
             $this->load('division');
@@ -49,7 +61,7 @@ trait HasDocumentNumber
         
         $division = $this->division ?? $this->division_id;
         return DocumentNumberService::getNextNumberPreview(
-            $this->getDocumentType(),
+            $documentType,
             $division
         );
     }

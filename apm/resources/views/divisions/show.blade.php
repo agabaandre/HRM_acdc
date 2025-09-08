@@ -70,25 +70,25 @@
                                         @endif
                                     </div>
                                 </div>
-                            </div>
+                        </div>
                             <div class="col-md-6">
                                 <div class="info-item">
                                     <label class="fw-bold text-muted">Status</label>
                                     <div>
                                         @if(isset($division->is_active) && $division->is_active)
                                             <span class="badge bg-success fs-6">Active</span>
-                                        @else
+                                @else
                                             <span class="badge bg-secondary fs-6">Status Unknown</span>
-                                        @endif
+                                @endif
                                     </div>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-
+            
         <!-- Staff Assignments Section -->
         <div class="row mb-4">
             <div class="col-12">
@@ -127,7 +127,7 @@
                                         @else
                                             <div class="text-muted">Not assigned</div>
                                         @endif
-                                    </div>
+                        </div>
                                 </div>
                             </div>
                             <div class="col-md-6 col-lg-3 mb-3">
@@ -143,7 +143,7 @@
                                         @else
                                             <div class="text-muted">Not assigned</div>
                                         @endif
-                                    </div>
+                        </div>
                                 </div>
                             </div>
                             <div class="col-md-6 col-lg-3 mb-3">
@@ -159,7 +159,7 @@
                                         @else
                                             <div class="text-muted">Not assigned</div>
                                         @endif
-                                    </div>
+                        </div>
                                 </div>
                             </div>
                         </div>
@@ -292,7 +292,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                    </div>
                         @endif
                     </div>
                 </div>
