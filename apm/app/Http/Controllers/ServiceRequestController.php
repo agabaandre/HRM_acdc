@@ -181,10 +181,10 @@ class ServiceRequestController extends Controller
                 \Log::info('Using fallback: all Individual Cost items (' . $costItems->count() . ' items)');
             }
             
-            // Fallback to all Other Cost items if no budget breakdown
+            // Only show Other Cost items that exist in budget breakdown
+            // No fallback - if no Other Cost items in budget, show empty list
             if ($otherCostItems->isEmpty()) {
-                $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
-                \Log::info('Using fallback: all Other Cost items (' . $otherCostItems->count() . ' items)');
+                \Log::info('No Other Cost items found in budget breakdown - showing empty list');
             }
             
             // Generate a unique request number with actual activity parameters (like ARF)
