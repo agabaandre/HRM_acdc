@@ -115,7 +115,7 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     
     // Funders Management
     Route::resource('funders', App\Http\Controllers\FunderController::class)->except(['destroy']);
-    Route::resource('divisions', App\Http\Controllers\DivisionController::class);
+    Route::resource('divisions', App\Http\Controllers\DivisionController::class)->only(['index', 'show']);
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     Route::resource('staff', App\Http\Controllers\StaffController::class);
     

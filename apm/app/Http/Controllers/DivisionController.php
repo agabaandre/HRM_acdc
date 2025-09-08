@@ -12,43 +12,46 @@ class DivisionController extends Controller
      *
      * @return \Illuminate\View\View
      */
-    public function index()
+    public function index(Request $request)
     {
-        $divisions = Division::all();
+        $query = Division::with(['divisionHead', 'focalPerson', 'adminAssistant', 'financeOfficer']);
+
+        // Search functionality
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('division_name', 'like', "%{$search}%")
+                  ->orWhere('division_short_name', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%");
+            });
+        }
+
+        // Sorting
+        $sortBy = $request->get('sort_by', 'division_name');
+        $sortDirection = $request->get('sort_direction', 'asc');
+        
+        // Validate sort direction
+        if (!in_array($sortDirection, ['asc', 'desc'])) {
+            $sortDirection = 'asc';
+        }
+        
+        // Validate sort column
+        $allowedSortColumns = ['id', 'division_name', 'division_short_name', 'category', 'created_at'];
+        if (!in_array($sortBy, $allowedSortColumns)) {
+            $sortBy = 'division_name';
+        }
+        
+        $query->orderBy($sortBy, $sortDirection);
+
+        // Pagination
+        $perPage = $request->get('per_page', 15);
+        $perPage = min(max($perPage, 5), 100); // Limit between 5 and 100
+        
+        $divisions = $query->paginate($perPage)->withQueryString();
+
         return view('divisions.index', compact('divisions'));
     }
 
-    /**
-     * Show the form for creating a new division.
-     *
-     * @return \Illuminate\View\View
-     */
-    public function create()
-    {
-        return view('divisions.create');
-    }
-
-    /**
-     * Store a newly created division in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'division_name' => 'required|string|max:150',
-            'division_head' => 'required|integer',
-            'focal_person' => 'required|integer',
-            'admin_assistant' => 'required|integer',
-            'finance_officer' => 'required|integer',
-        ]);
-
-        Division::create($validated);
-
-        return redirect()->route('divisions.index')
-            ->with('success', 'Division created successfully.');
-    }
 
     /**
      * Display the specified division.
@@ -62,55 +65,4 @@ class DivisionController extends Controller
         return view('divisions.show', compact('division'));
     }
 
-    /**
-     * Show the form for editing the specified division.
-     *
-     * @param  int  $id
-     * @return \Illuminate\View\View
-     */
-    public function edit($id)
-    {
-        $division = Division::findOrFail($id);
-        return view('divisions.edit', compact('division'));
-    }
-
-    /**
-     * Update the specified division in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function update(Request $request, $id)
-    {
-        $division = Division::findOrFail($id);
-        
-        $validated = $request->validate([
-            'division_name' => 'required|string|max:150',
-            'division_head' => 'required|integer',
-            'focal_person' => 'required|integer',
-            'admin_assistant' => 'required|integer',
-            'finance_officer' => 'required|integer',
-        ]);
-
-        $division->update($validated);
-
-        return redirect()->route('divisions.index')
-            ->with('success', 'Division updated successfully.');
-    }
-
-    /**
-     * Remove the specified division from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function destroy($id)
-    {
-        $division = Division::findOrFail($id);
-        $division->delete();
-
-        return redirect()->route('divisions.index')
-            ->with('success', 'Division deleted successfully.');
-    }
 }

@@ -99,14 +99,6 @@ class RequestARF extends Model
      */
     public function getBudgetBreakdownAttribute($value)
     {
-        // Debug logging
-        \Log::info('getBudgetBreakdownAttribute called', [
-            'model_type' => $this->model_type,
-            'value_type' => gettype($value),
-            'is_string' => is_string($value),
-            'value_preview' => is_string($value) ? substr($value, 0, 100) : $value
-        ]);
-        
         // Check if this looks like special memo budget data (has fund code keys and grand_total)
         $isSpecialMemoFormat = false;
         if (is_string($value)) {
@@ -122,12 +114,10 @@ class RequestARF extends Model
         
         // For special memos, return raw JSON string without array conversion
         if ($this->model_type === 'App\\Models\\SpecialMemo' || $isSpecialMemoFormat) {
-            \Log::info('Special memo detected, returning raw JSON', ['detected_by' => $this->model_type === 'App\\Models\\SpecialMemo' ? 'model_type' : 'data_structure']);
             return $value; // Return as-is (raw JSON string)
         }
         
         // For other types, use normal array casting
-        \Log::info('Other memo type, decoding JSON to array');
         return is_string($value) ? json_decode($value, true) : $value;
     }
 
@@ -136,15 +126,6 @@ class RequestARF extends Model
      */
     public function setBudgetBreakdownAttribute($value)
     {
-        // Debug logging
-        \Log::info('setBudgetBreakdownAttribute called', [
-            'model_type' => $this->model_type,
-            'value_type' => gettype($value),
-            'is_string' => is_string($value),
-            'is_array' => is_array($value),
-            'value_preview' => is_string($value) ? substr($value, 0, 100) : (is_array($value) ? 'Array with ' . count($value) . ' items' : $value)
-        ]);
-        
         // Check if this looks like special memo budget data (has fund code keys and grand_total)
         $isSpecialMemoFormat = false;
         if (is_array($value)) {
@@ -165,15 +146,9 @@ class RequestARF extends Model
         
         // For special memos, store as raw JSON string
         if ($this->model_type === 'App\\Models\\SpecialMemo' || $isSpecialMemoFormat) {
-            \Log::info('Special memo detected, storing as raw JSON', [
-                'detected_by' => $this->model_type === 'App\\Models\\SpecialMemo' ? 'model_type' : 'data_structure',
-                'value_type' => gettype($value),
-                'is_string' => is_string($value)
-            ]);
             $this->attributes['budget_breakdown'] = is_string($value) ? $value : json_encode($value);
         } else {
             // For other types, use normal array casting
-            \Log::info('Other memo type, encoding array to JSON');
             $this->attributes['budget_breakdown'] = is_array($value) ? json_encode($value) : $value;
         }
     }
