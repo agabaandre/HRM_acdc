@@ -164,7 +164,6 @@ return new class extends Migration
                 'special_memos_division_id_index' => 'division_id',
                 'special_memos_request_type_id_index' => 'request_type_id',
                 'special_memos_forward_workflow_id_index' => 'forward_workflow_id',
-                'special_memos_reverse_workflow_id_index' => 'reverse_workflow_id',
                 'special_memos_fund_type_id_index' => 'fund_type_id',
                 'special_memos_responsible_person_id_index' => 'responsible_person_id',
                 'special_memos_memo_date_index' => 'memo_date',
