@@ -191,19 +191,9 @@ class Settings_mdl extends CI_Model
                 'category'                => $this->input->post('category', true),
             ];
     
-            $this->db->insert($table, $data);
+            $result = $this->db->insert($table, $data);
     
-            if (!empty($data['director_id']) && !empty($data['director_oic_id'])) {
-                $update_data = [
-                    'director_oic_id'         => $data['director_oic_id'],
-                    'director_oic_start_date' => $data['director_oic_start_date'],
-                    'director_oic_end_date'   => $data['director_oic_end_date'],
-                ];
-                $this->db->where('director_id', $data['director_id']);
-                $this->db->update('divisions', $update_data);
-            }
-    
-            return true;
+            return $result;
         } elseif ($table === 'directorates') {
             $data = [
                 'name'      => $this->input->post('directorate_name', true),
@@ -303,20 +293,21 @@ class Settings_mdl extends CI_Model
                 'category'                => $this->input->post('category', true),
             ];
     
-            $this->db->where($column_name, $caller_value);
-            $this->db->update($table, $data);
+            // Debug logging
+            log_message('debug', 'Updating division with data: ' . json_encode($data));
+            log_message('debug', 'Where clause: ' . $column_name . ' = ' . $caller_value);
     
-            if (!empty($data['director_id']) && !empty($data['director_oic_id'])) {
-                $update_oic = [
-                    'director_oic_id'         => $data['director_oic_id'],
-                    'director_oic_start_date' => $data['director_oic_start_date'],
-                    'director_oic_end_date'   => $data['director_oic_end_date'],
-                ];
-                $this->db->where('director_id', $data['director_id']);
-                $this->db->update('divisions', $update_oic);
+            $this->db->where($column_name, $caller_value);
+            $result = $this->db->update($table, $data);
+    
+            // Debug logging
+            log_message('debug', 'Update result: ' . ($result ? 'true' : 'false'));
+            if (!$result) {
+                log_message('error', 'Database error: ' . $this->db->last_query());
+                log_message('error', 'Database error message: ' . $this->db->_error_message());
             }
     
-            return true;
+            return $result;
         } elseif ($table === 'directorates') {
             $data = [
                 'name'       => $this->input->post('directorate_name', true),
@@ -419,9 +410,13 @@ class Settings_mdl extends CI_Model
 	 */
 	public function generateShortCodeFromDivision($name) {
 		$ignore = ['of', 'and', 'for', 'the', 'in', 'a', 'an'];
-		$words = preg_split('/\s+/', strtolower($name));
+		$words = preg_split('/\s+/', strtolower(trim($name)));
 		$initials = array_map(function ($word) use ($ignore) {
-			return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+			// Skip empty words or ignored words
+			if (empty($word) || in_array($word, $ignore)) {
+				return '';
+			}
+			return strtoupper($word[0]);
 		}, $words);
 		return implode('', array_filter($initials));
 	}
@@ -431,6 +426,25 @@ class Settings_mdl extends CI_Model
 	 * @return array Results of the update operation
 	 */
 	public function updateDivisionsWithShortNames() {
+		// First, let's check if the column exists
+		$columns = $this->db->list_fields('divisions');
+		$hasShortNameColumn = in_array('division_short_name', $columns);
+		
+		if (!$hasShortNameColumn) {
+			return array(
+				'total_processed' => 0,
+				'updated' => 0,
+				'errors' => 1,
+				'results' => array(array(
+					'id' => 0,
+					'name' => 'System',
+					'short_name' => '',
+					'status' => 'error',
+					'error' => 'Column division_short_name does not exist in divisions table'
+				))
+			);
+		}
+		
 		// Get all divisions that don't have short names
 		$this->db->where('(division_short_name IS NULL OR division_short_name = "")');
 		$divisions = $this->db->get('divisions')->result();
@@ -438,6 +452,9 @@ class Settings_mdl extends CI_Model
 		$updated = 0;
 		$errors = 0;
 		$results = [];
+		
+		// Log the number of divisions found
+		log_message('debug', 'Found ' . count($divisions) . ' divisions without short names');
 		
 		foreach ($divisions as $division) {
 			try {
@@ -448,7 +465,8 @@ class Settings_mdl extends CI_Model
 					$shortName = 'DIV' . $division->division_id;
 				}
 				
-				// Check if short name already exists
+				// Check if short name already exists (reset query builder first)
+				$this->db->flush_cache();
 				$this->db->where('division_short_name', $shortName);
 				$this->db->where('division_id !=', $division->division_id);
 				$existing = $this->db->get('divisions')->row();
@@ -458,9 +476,16 @@ class Settings_mdl extends CI_Model
 					$shortName = $shortName . $division->division_id;
 				}
 				
-				// Update the division
+				// Log the update attempt
+				log_message('debug', 'Updating division ' . $division->division_id . ' (' . $division->division_name . ') with short name: ' . $shortName);
+				
+				// Update the division (reset query builder first)
+				$this->db->flush_cache();
 				$this->db->where('division_id', $division->division_id);
 				$updateResult = $this->db->update('divisions', array('division_short_name' => $shortName));
+				
+				// Log the SQL query for debugging
+				log_message('debug', 'Last SQL Query: ' . $this->db->last_query());
 				
 				if ($updateResult) {
 					$updated++;
@@ -470,15 +495,18 @@ class Settings_mdl extends CI_Model
 						'short_name' => $shortName,
 						'status' => 'success'
 					);
+					log_message('debug', 'Successfully updated division ' . $division->division_id);
 				} else {
 					$errors++;
+					$dbError = $this->db->error();
 					$results[] = array(
 						'id' => $division->division_id,
 						'name' => $division->division_name,
 						'short_name' => '',
 						'status' => 'error',
-						'error' => 'Database update failed'
+						'error' => 'Database update failed: ' . $dbError['message']
 					);
+					log_message('error', 'Failed to update division ' . $division->division_id . ': ' . $dbError['message']);
 				}
 			} catch (Exception $e) {
 				$errors++;
@@ -489,6 +517,7 @@ class Settings_mdl extends CI_Model
 					'status' => 'error',
 					'error' => $e->getMessage()
 				);
+				log_message('error', 'Exception updating division ' . $division->division_id . ': ' . $e->getMessage());
 			}
 		}
 		

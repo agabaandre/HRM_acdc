@@ -41,7 +41,12 @@ class Settings extends MX_Controller
 		$table = $this->input->post('table');
 		$column_name = $this->input->post('column_name');
 		$caller_value = $this->input->post('caller_value');
-		// $redirect = $this->input->post('redirect');
+		$redirect = $this->input->post('redirect');
+
+		// Debug logging
+		log_message('debug', 'Update content called for table: ' . $table);
+		log_message('debug', 'Column name: ' . $column_name . ', Caller value: ' . $caller_value);
+		log_message('debug', 'Redirect field: ' . $redirect);
 
 		$res = $this->settings_mdl->update_content($table, $column_name, $caller_value);
 		$message = "Updated";
@@ -52,15 +57,23 @@ class Settings extends MX_Controller
 				'type' => 'success'
 			);
 			Modules::run('utility/setFlash', $msg);
-			redirect('settings/' . $table);
+			
+			// Use redirect field if provided, otherwise use table
+			$redirect_url = $redirect ? 'settings/' . $redirect : 'settings/' . $table;
+			log_message('debug', 'Update successful, redirecting to ' . $redirect_url);
+			redirect($redirect_url);
 		} else {
 			$msg = array(
-				'msg' => 'Failed',
+				'msg' => 'Failed to update division',
 				'type' => 'error'
 			);
+			Modules::run('utility/setFlash', $msg);
+			log_message('error', 'Update failed for table: ' . $table);
 		}
 
-		redirect('settings/' . $table);
+		// Use redirect field if provided, otherwise use table
+		$redirect_url = $redirect ? 'settings/' . $redirect : 'settings/' . $table;
+		redirect($redirect_url);
 		
 	}
 
@@ -385,7 +398,7 @@ public function generate_division_short_names() {
         // Generate short names
         $result = $this->settings_mdl->updateDivisionsWithShortNames();
         
-        // Set flash message
+        // Set flash message with detailed results
         $message = "Processed {$result['total_processed']} divisions. ";
         $message .= "Updated: {$result['updated']}, Errors: {$result['errors']}";
         
@@ -398,23 +411,47 @@ public function generate_division_short_names() {
             }
         }
         
+        // Also show successful updates
+        if ($result['updated'] > 0) {
+            $message .= "<br><strong>Successfully Updated:</strong><br>";
+            foreach ($result['results'] as $item) {
+                if ($item['status'] == 'success') {
+                    $message .= "Division {$item['id']} ({$item['name']}): {$item['short_name']}<br>";
+                }
+            }
+        }
+        
         Modules::run('utility/setFlash', $message, $result['errors'] > 0 ? 'error' : 'success');
         redirect('settings/divisions');
     } else {
-        // Redirect to divisions page with info about short name generation
+        // Show preview page for GET requests
         $this->load->model('settings_mdl');
-        $divisions_without_short_names = $this->settings_mdl->getDivisionsWithoutShortNames();
         
-        if (!empty($divisions_without_short_names)) {
-            $count = count($divisions_without_short_names);
-            $message = "Found {$count} divisions without short names. ";
-            $message .= "<a href='" . base_url('settings/generate_division_short_names') . "' class='btn btn-sm btn-primary'>Generate Short Names</a>";
-            Modules::run('utility/setFlash', $message, 'info');
-        } else {
-            Modules::run('utility/setFlash', 'All divisions have short names!', 'success');
+        // Check if column exists
+        $columns = $this->db->list_fields('divisions');
+        $hasShortNameColumn = in_array('division_short_name', $columns);
+        
+        if (!$hasShortNameColumn) {
+            $msg = array(
+                'msg' => 'Column division_short_name does not exist in divisions table',
+                'type' => 'error'
+            );
+            Modules::run('utility/setFlash', $msg);
+            redirect('settings/divisions');
         }
         
-        redirect('settings/divisions');
+        // Get divisions without short names
+        $divisions_without_short_names = $this->settings_mdl->getDivisionsWithoutShortNames();
+        
+        $data = array(
+            'module' => $this->module,
+            'title' => 'Generate Division Short Names',
+            'has_short_name_column' => $hasShortNameColumn,
+            'divisions_without_short_names' => $divisions_without_short_names,
+            'total_divisions' => count($divisions_without_short_names)
+        );
+        
+        render('generate_short_names', $data);
     }
 }
 
@@ -443,6 +480,165 @@ public function preview_short_names() {
     
     header('Content-Type: application/json');
     echo json_encode($preview);
+}
+
+/**
+ * Debug function to check database structure and data
+ */
+public function debug_divisions() {
+    $this->load->model('settings_mdl');
+    
+    // Check if column exists
+    $columns = $this->db->list_fields('divisions');
+    $hasShortNameColumn = in_array('division_short_name', $columns);
+    
+    // Get sample data
+    $this->db->select('division_id, division_name, division_short_name');
+    $this->db->limit(5);
+    $sampleData = $this->db->get('divisions')->result();
+    
+    echo "<h3>Debug Information</h3>";
+    echo "<p><strong>Column exists:</strong> " . ($hasShortNameColumn ? 'YES' : 'NO') . "</p>";
+    echo "<p><strong>All columns:</strong> " . implode(', ', $columns) . "</p>";
+    echo "<h4>Sample Data:</h4>";
+    echo "<pre>";
+    print_r($sampleData);
+    echo "</pre>";
+    
+    // Test the generation function
+    if (!empty($sampleData)) {
+        echo "<h4>Test Generation:</h4>";
+        foreach ($sampleData as $division) {
+            $shortName = $this->settings_mdl->generateShortCodeFromDivision($division->division_name);
+            echo "<p><strong>{$division->division_name}</strong> → <strong>{$shortName}</strong></p>";
+        }
+    }
+}
+
+/**
+ * Simple test function to manually update one division
+ */
+public function test_update() {
+    $this->load->model('settings_mdl');
+    
+    // Get the first division
+    $this->db->select('division_id, division_name, division_short_name');
+    $this->db->limit(1);
+    $division = $this->db->get('divisions')->row();
+    
+    if ($division) {
+        echo "<h3>Testing Update for Division: {$division->division_name}</h3>";
+        
+        // Generate short name
+        $shortName = $this->settings_mdl->generateShortCodeFromDivision($division->division_name);
+        if (empty($shortName)) {
+            $shortName = 'DIV' . $division->division_id;
+        }
+        
+        echo "<p><strong>Current short name:</strong> " . ($division->division_short_name ?: 'NULL') . "</p>";
+        echo "<p><strong>Proposed short name:</strong> {$shortName}</p>";
+        
+        // Try to update
+        $this->db->where('division_id', $division->division_id);
+        $result = $this->db->update('divisions', array('division_short_name' => $shortName));
+        
+        echo "<p><strong>Update result:</strong> " . ($result ? 'SUCCESS' : 'FAILED') . "</p>";
+        echo "<p><strong>Last query:</strong> " . $this->db->last_query() . "</p>";
+        
+        if (!$result) {
+            $error = $this->db->error();
+            echo "<p><strong>Database error:</strong> " . $error['message'] . "</p>";
+        }
+        
+        // Check the result
+        $this->db->select('division_id, division_name, division_short_name');
+        $this->db->where('division_id', $division->division_id);
+        $updated = $this->db->get('divisions')->row();
+        
+        echo "<p><strong>After update:</strong> " . ($updated->division_short_name ?: 'NULL') . "</p>";
+    } else {
+        echo "<p>No divisions found!</p>";
+    }
+}
+
+/**
+ * Test short name generation - debug method
+ */
+public function test_short_names() {
+    $this->load->model('settings_mdl');
+    
+    // Check if column exists
+    $columns = $this->db->list_fields('divisions');
+    $hasShortNameColumn = in_array('division_short_name', $columns);
+    
+    echo "<h2>Short Name Generation Test</h2>";
+    echo "<p><strong>Column exists:</strong> " . ($hasShortNameColumn ? 'YES' : 'NO') . "</p>";
+    echo "<p><strong>All columns:</strong> " . implode(', ', $columns) . "</p>";
+    
+    if ($hasShortNameColumn) {
+        // Get divisions without short names
+        $divisions = $this->settings_mdl->getDivisionsWithoutShortNames();
+        echo "<p><strong>Divisions without short names:</strong> " . count($divisions) . "</p>";
+        
+        if (!empty($divisions)) {
+            echo "<h3>Test Generation:</h3>";
+            echo "<ul>";
+            foreach ($divisions as $division) {
+                $shortName = $this->settings_mdl->generateShortCodeFromDivision($division->division_name);
+                if (empty($shortName)) {
+                    $shortName = 'DIV' . $division->division_id;
+                }
+                echo "<li><strong>{$division->division_name}</strong> → <strong>{$shortName}</strong></li>";
+            }
+            echo "</ul>";
+            
+            echo "<h3>Test Update:</h3>";
+            $result = $this->settings_mdl->updateDivisionsWithShortNames();
+            echo "<p><strong>Result:</strong></p>";
+            echo "<pre>" . print_r($result, true) . "</pre>";
+            
+            // Check if updates actually happened
+            echo "<h3>Verification:</h3>";
+            $this->db->flush_cache();
+            $this->db->where('division_id', $divisions[0]->division_id);
+            $updated_division = $this->db->get('divisions')->row();
+            echo "<p><strong>First division after update:</strong></p>";
+            echo "<pre>" . print_r($updated_division, true) . "</pre>";
+        } else {
+            echo "<p>All divisions already have short names!</p>";
+        }
+    }
+}
+
+/**
+ * Force update short names - direct method
+ */
+public function force_update_short_names() {
+    $this->load->model('settings_mdl');
+    
+    echo "<h2>Force Update Short Names</h2>";
+    
+    // Direct database update test
+    $this->db->where('division_id', 1);
+    $test_division = $this->db->get('divisions')->row();
+    
+    if ($test_division) {
+        echo "<p><strong>Before update:</strong> " . ($test_division->division_short_name ?: 'NULL') . "</p>";
+        
+        // Try direct update
+        $this->db->where('division_id', 1);
+        $update_result = $this->db->update('divisions', array('division_short_name' => 'TEST123'));
+        
+        echo "<p><strong>Update result:</strong> " . ($update_result ? 'SUCCESS' : 'FAILED') . "</p>";
+        echo "<p><strong>Last query:</strong> " . $this->db->last_query() . "</p>";
+        
+        if ($update_result) {
+            // Check after update
+            $this->db->where('division_id', 1);
+            $after_division = $this->db->get('divisions')->row();
+            echo "<p><strong>After update:</strong> " . ($after_division->division_short_name ?: 'NULL') . "</p>";
+        }
+    }
 }
 
 	
