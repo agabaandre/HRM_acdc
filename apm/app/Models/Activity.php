@@ -43,6 +43,8 @@ class Activity extends Model
         'fund_type_id',
         'division_id',
         'document_number',
+        'approval_level',
+        'next_approval_level',
 
         // JSON fields
         'location_id',
@@ -71,6 +73,8 @@ class Activity extends Model
         'date_to' => 'date',
         'total_participants' => 'integer',
         'total_external_participants' => 'integer',
+        'approval_level' => 'integer',
+        'next_approval_level' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
 
