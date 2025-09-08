@@ -329,7 +329,6 @@ return new class extends Migration
             
             // Locations table indexes
             'locations' => [
-                'locations_name_index' => 'name',
             ],
             
             // Directorates table indexes
