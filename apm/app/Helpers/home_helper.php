@@ -261,9 +261,11 @@ if (!function_exists('get_pending_special_memo_count')) {
                         $workflowQ->where('is_division_specific', 1)
                                   ->where('approval_order', \Illuminate\Support\Facades\DB::raw('special_memos.approval_level'))
                                   ->where(function($divQ) use ($userDivisionId, $staffId) {
+
+                                    $divisionsTable = (new \App\Models\Division())->getTable();
                                       // Check division roles
                                       $divQ->whereRaw("EXISTS (
-                                          SELECT 1 FROM divisions d 
+                                          SELECT 1 FROM {$divisionsTable} d 
                                           WHERE d.id = special_memos.division_id 
                                           AND d.id = ?
                                           AND (
