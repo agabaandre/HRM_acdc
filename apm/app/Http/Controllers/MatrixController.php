@@ -30,7 +30,7 @@ class MatrixController extends Controller
             'focalPerson',
             'forwardWorkflow',
             'activities' => function ($q) {
-                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                   ->whereNotNull('matrix_id');
             }
         ]);
@@ -130,8 +130,8 @@ class MatrixController extends Controller
             $matrix->total_activities = $matrix->activities->count();
             $matrix->total_participants = $matrix->activities->sum('total_participants');
             $matrix->total_budget = $matrix->activities->sum(function ($activity) {
-                return is_array($activity->budget) && isset($activity->budget['total'])
-                    ? $activity->budget['total']
+                return is_array($activity->budget_breakdown) && isset($activity->budget_breakdown['total'])
+                    ? $activity->budget_breakdown['total']
                     : 0;
             });
             return $matrix;
@@ -146,7 +146,7 @@ class MatrixController extends Controller
             'focalPerson',
             'forwardWorkflow',
             'activities' => function ($q) {
-                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                   ->whereNotNull('matrix_id');
             }
         ])->where('division_id', user_session('division_id'));
@@ -178,7 +178,7 @@ class MatrixController extends Controller
                 'focalPerson',
                 'forwardWorkflow',
                 'activities' => function ($q) {
-                    $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                    $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                       ->whereNotNull('matrix_id');
                 }
             ]);
@@ -766,7 +766,7 @@ class MatrixController extends Controller
             'focalPerson',
             'forwardWorkflow',
             'activities' => function ($q) {
-                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                   ->whereNotNull('matrix_id');
             }
         ]);

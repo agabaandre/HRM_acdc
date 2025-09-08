@@ -78,6 +78,7 @@ class ServiceRequestController extends Controller
      */
     public function create(Request $request): View
     {
+        \Log::info('ServiceRequestController::create method called');
         try {
             $staff = Staff::active()->get();
             
@@ -93,15 +94,102 @@ class ServiceRequestController extends Controller
             $sourceData = null;
             $sourceType = $request->get('source_type');
             $sourceId = $request->get('source_id');
+            $budgetBreakdown = null;
+            $originalTotalBudget = 0;
+            $internalParticipants = [];
             
             if ($sourceType && $sourceId) {
                 $sourceData = $this->getSourceDataForForm($sourceType, $sourceId);
+                
+                // Process budget breakdown from source data
+                if ($sourceData) {
+                    \Log::info('Source data loaded', [
+                        'source_type' => $sourceType,
+                        'source_id' => $sourceId,
+                        'has_budget_breakdown' => isset($sourceData->budget_breakdown),
+                        'budget_breakdown' => $sourceData->budget_breakdown ?? 'not set',
+                        'has_internal_participants' => isset($sourceData->internal_participants),
+                        'internal_participants' => $sourceData->internal_participants ?? 'not set'
+                    ]);
+                    
+                    $budgetBreakdown = $this->processBudgetDataFromSource($sourceData, $sourceType);
+                    $originalTotalBudget = $budgetBreakdown['grand_total'] ?? 0;
+                    
+                    // Process internal participants from source data
+                    $internalParticipants = $this->processInternalParticipantsFromSource($sourceData, $sourceType);
+                    
+                    \Log::info('Processed budget breakdown', [
+                        'budget_breakdown' => $budgetBreakdown,
+                        'original_total' => $originalTotalBudget
+                    ]);
+                    
+                    \Log::info('Processed internal participants', [
+                        'internal_participants' => $internalParticipants
+                    ]);
+                } else {
+                    \Log::warning('Source data is null', [
+                        'source_type' => $sourceType,
+                        'source_id' => $sourceId
+                    ]);
+                }
+            }
+            
+            // Get cost items directly from budget breakdown
+            \Log::info('Starting cost items extraction');
+            $costItems = collect();
+            if ($budgetBreakdown && is_array($budgetBreakdown)) {
+                \Log::info('Cost items extraction - budget breakdown exists: ' . ($budgetBreakdown ? 'yes' : 'no'));
+                \Log::info('Cost items extraction - budget breakdown type: ' . gettype($budgetBreakdown));
+                
+                // Extract cost item names directly from budget breakdown
+                $costItemNames = [];
+                foreach ($budgetBreakdown as $fundCode => $items) {
+                    if (is_array($items)) {
+                        foreach ($items as $item) {
+                            if (isset($item['cost']) && !in_array($item['cost'], $costItemNames)) {
+                                $costItemNames[] = $item['cost'];
+                            }
+                        }
+                    }
+                }
+                
+                // Create cost items collection directly from budget breakdown
+                if (!empty($costItemNames)) {
+                    \Log::info('Cost item names extracted from budget breakdown: ' . json_encode($costItemNames));
+                    foreach ($costItemNames as $name) {
+                        $costItems->push((object)['name' => $name, 'id' => $name]);
+                    }
+                    \Log::info('Created ' . $costItems->count() . ' cost items from budget breakdown');
+                }
+            }
+            
+            // Fallback to all Individual Cost items if no budget breakdown
+            if ($costItems->isEmpty()) {
+                $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
+                \Log::info('Using fallback: all Individual Cost items (' . $costItems->count() . ' items)');
             }
             
             // Generate a unique request number with actual activity parameters (like ARF)
             $requestNumber = $this->generateServiceRequestNumber($sourceData, $sourceType);
             
-            return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'requestNumber', 'sourceData', 'sourceType', 'sourceId'));
+            // Get participant names from internal participants JSON
+            $participantNames = [];
+            if (!empty($internalParticipants) && is_array($internalParticipants)) {
+                foreach ($internalParticipants as $participantId => $participantData) {
+                    // Get staff member details for each participant
+                    $staffMember = Staff::where('staff_id', $participantId)->first();
+                    if ($staffMember) {
+                        $participantNames[] = [
+                            'id' => $staffMember->staff_id,
+                            'text' => $staffMember->fname . ' ' . $staffMember->lname . ' (' . ($staffMember->position ?? 'Staff') . ')',
+                            'name' => $staffMember->fname . ' ' . $staffMember->lname,
+                            'position' => $staffMember->position ?? 'Staff'
+                        ];
+                    }
+                }
+            }
+            
+            return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'costItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId', 'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames'));
         } catch (\Exception $e) {
             \Log::error('Error in ServiceRequestController::create: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
@@ -112,10 +200,15 @@ class ServiceRequestController extends Controller
                 'divisions' => collect(),
                 'workflows' => collect(),
                 'activities' => collect(),
-                'requestNumber' => 'SRV-' . date('Ymd') . '-001',
+                'costItems' => collect(),
+                'requestNumber' => 'AU/CDC/SRV-' . date('Ymd') . '-001',
                 'sourceData' => null,
                 'sourceType' => null,
-                'sourceId' => null
+                'sourceId' => null,
+                'budgetBreakdown' => null,
+                'originalTotalBudget' => 0,
+                'internalParticipants' => [],
+                'participantNames' => []
             ]);
         }
     }
@@ -309,6 +402,132 @@ class ServiceRequestController extends Controller
             'responsible_person_id' => $request->input('responsible_person_id'),
             'budget_id' => $request->input('budget_id'),
         ];
+    }
+
+    /**
+     * Process budget data from source (activity, memo, etc.)
+     */
+    private function processBudgetDataFromSource($sourceData, string $sourceType): array
+    {
+        try {
+            \Log::info('Processing budget data from source', [
+                'source_type' => $sourceType,
+                'source_data_exists' => $sourceData !== null,
+                'source_data_class' => $sourceData ? get_class($sourceData) : 'null'
+            ]);
+            
+            switch ($sourceType) {
+                case 'activity':
+                    if ($sourceData && isset($sourceData->budget_breakdown)) {
+                        \Log::info('Activity budget breakdown found', [
+                            'budget_breakdown' => $sourceData->budget_breakdown,
+                            'is_string' => is_string($sourceData->budget_breakdown)
+                        ]);
+                        
+                        $budget = is_string($sourceData->budget_breakdown) 
+                            ? json_decode($sourceData->budget_breakdown, true) 
+                            : $sourceData->budget_breakdown;
+                        
+                        \Log::info('Decoded budget data', [
+                            'decoded_budget' => $budget,
+                            'is_array' => is_array($budget)
+                        ]);
+                        
+                        if (is_array($budget)) {
+                            return $budget;
+                        }
+                    } else {
+                        \Log::warning('Activity budget breakdown not found', [
+                            'has_source_data' => $sourceData !== null,
+                            'has_budget_breakdown' => $sourceData ? isset($sourceData->budget_breakdown) : false
+                        ]);
+                    }
+                    break;
+                    
+                case 'non_travel_memo':
+                    if ($sourceData && isset($sourceData->budget_breakdown)) {
+                        $budget = is_string($sourceData->budget_breakdown) 
+                            ? json_decode($sourceData->budget_breakdown, true) 
+                            : $sourceData->budget_breakdown;
+                        
+                        if (is_array($budget)) {
+                            return $budget;
+                        }
+                    }
+                    break;
+                    
+                case 'special_memo':
+                    if ($sourceData && isset($sourceData->budget_breakdown)) {
+                        $budget = is_string($sourceData->budget_breakdown) 
+                            ? json_decode($sourceData->budget_breakdown, true) 
+                            : $sourceData->budget_breakdown;
+                        
+                        if (is_array($budget)) {
+                            return $budget;
+                        }
+                    }
+                    break;
+            }
+            
+            return [];
+        } catch (\Exception $e) {
+            Log::error('Error processing budget data from source: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Process internal participants from source (activity, memo, etc.)
+     */
+    private function processInternalParticipantsFromSource($sourceData, string $sourceType): array
+    {
+        try {
+            \Log::info('Processing internal participants from source', [
+                'source_type' => $sourceType,
+                'source_data_exists' => $sourceData !== null,
+                'source_data_class' => $sourceData ? get_class($sourceData) : 'null'
+            ]);
+            
+            switch ($sourceType) {
+                case 'activity':
+                    if ($sourceData && isset($sourceData->internal_participants)) {
+                        \Log::info('Activity internal participants found', [
+                            'internal_participants' => $sourceData->internal_participants,
+                            'is_string' => is_string($sourceData->internal_participants)
+                        ]);
+                        
+                        $participants = is_string($sourceData->internal_participants) 
+                            ? json_decode($sourceData->internal_participants, true) 
+                            : $sourceData->internal_participants;
+                        
+                        \Log::info('Decoded internal participants', [
+                            'decoded_participants' => $participants,
+                            'is_array' => is_array($participants)
+                        ]);
+                        
+                        if (is_array($participants)) {
+                            return $participants;
+                        }
+                    } else {
+                        \Log::warning('Activity internal participants not found', [
+                            'has_source_data' => $sourceData !== null,
+                            'has_internal_participants' => $sourceData ? isset($sourceData->internal_participants) : false
+                        ]);
+                    }
+                    break;
+                    
+                case 'non_travel_memo':
+                case 'special_memo':
+                    // Non-travel and special memos don't have internal participants
+                    \Log::info('Non-travel/Special memo - no internal participants expected');
+                    return [];
+            }
+            
+            return [];
+        } catch (\Exception $e) {
+            Log::error('Error processing internal participants from source: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -509,10 +728,10 @@ class ServiceRequestController extends Controller
                         }
 
                         // Get budget breakdown
-                        if ($activity->budget) {
-                            $budget = is_string($activity->budget) 
-                                ? json_decode($activity->budget, true) 
-                                : $activity->budget;
+                        if ($activity->budget_breakdown) {
+                            $budget = is_string($activity->budget_breakdown) 
+                                ? json_decode($activity->budget_breakdown, true) 
+                                : $activity->budget_breakdown;
                             
                             if (is_array($budget)) {
                                 $budgetBreakdown = $budget;
@@ -800,13 +1019,13 @@ class ServiceRequestController extends Controller
         try {
             switch ($sourceType) {
                 case 'activity':
-                    $source = Activity::with(['matrix', 'fundType', 'locations', 'internalParticipantsDetails'])->find($sourceId);
+                    $source = Activity::find($sourceId);
                     break;
                 case 'non_travel_memo':
-                    $source = NonTravelMemo::with(['fundType', 'division'])->find($sourceId);
+                    $source = NonTravelMemo::find($sourceId);
                     break;
                 case 'special_memo':
-                    $source = SpecialMemo::with(['fundType', 'division'])->find($sourceId);
+                    $source = SpecialMemo::find($sourceId);
                     break;
                 default:
                     return null;

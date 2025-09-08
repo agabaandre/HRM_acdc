@@ -110,7 +110,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                        @dd($budgetBreakdown)
+                        
                             @if($budgetBreakdown && is_array($budgetBreakdown) && !empty($budgetBreakdown))
                                 @foreach($budgetBreakdown as $fundCodeId => $items)
                                     @if($fundCodeId !== 'grand_total' && is_array($items))
@@ -162,9 +162,9 @@
                         <thead class="table-success">
                             <tr>
                                 <th>Name</th>
-                                <th>Daily Rate</th>
-                                <th>Days</th>
-                                <th>Expenses</th>
+                                @foreach($costItems as $costItem)
+                                    <th>{{ $costItem->name }}</th>
+                                @endforeach
                                 <th>Total</th>
                             </tr>
                         </thead>
@@ -180,16 +180,24 @@
                                         @endforeach
                                     </select>
                                 </td>
-                                <td><input type="number" name="internal_participants[0][daily_rate]" class="form-control border-success" value="250" step="0.01"></td>
-                                <td><input type="number" name="internal_participants[0][days]" class="form-control border-success" value="5" min="1"></td>
-                                <td><input type="number" name="internal_participants[0][expenses]" class="form-control border-success" value="200" step="0.01"></td>
-                                <td class="text-end fw-bold">$1,450.00</td>
+                                @foreach($costItems as $index => $costItem)
+                                    <td>
+                                        <input type="number" 
+                                               name="internal_participants[0][costs][{{ $costItem->id }}]" 
+                                               class="form-control border-success cost-input" 
+                                               value="0" 
+                                               step="0.01" 
+                                               data-cost-item="{{ $costItem->name }}"
+                                               placeholder="Enter {{ $costItem->name }}">
+                                    </td>
+                                @endforeach
+                                <td class="text-end fw-bold">$0.00</td>
                             </tr>
                         </tbody>
                         <tfoot class="table-success">
                             <tr>
-                                <td colspan="4" class="text-end fw-bold">Subtotal:</td>
-                                <td class="text-end fw-bold" id="internalSubtotal">$1,450.00</td>
+                                <td colspan="{{ count($costItems) + 1 }}" class="text-end fw-bold">Subtotal:</td>
+                                <td class="text-end fw-bold" id="internalSubtotal">$0.00</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -363,6 +371,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        // Clear the total cell
+        const totalCell = newRow.querySelector('td:last-child');
+        if (totalCell) {
+            totalCell.textContent = '$0.00';
+        }
+        
         tbody.appendChild(newRow);
         internalParticipantCount++;
         updateTotals();
@@ -407,6 +421,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Add event listeners for cost inputs
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('cost-input')) {
+            // Format number with thousand separators
+            formatNumberInput(e.target);
+            updateTotals();
+        }
+    });
+    
+    // Function to format number input with thousand separators
+    function formatNumberInput(input) {
+        let value = input.value.replace(/,/g, ''); // Remove existing commas
+        if (value && !isNaN(value)) {
+            let number = parseFloat(value);
+            if (number >= 0) {
+                input.value = number.toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2
+                });
+            }
+        }
+    }
+    
     // Update totals function
     function updateTotals() {
         let internalTotal = 0;
@@ -416,25 +453,29 @@ document.addEventListener('DOMContentLoaded', function() {
         // Calculate internal participants total
         const internalRows = document.querySelectorAll('#internalParticipants tr');
         internalRows.forEach(row => {
-            const dailyRate = parseFloat(row.querySelector('input[name*="[daily_rate]"]')?.value || 0);
-            const days = parseFloat(row.querySelector('input[name*="[days]"]')?.value || 0);
-            const expenses = parseFloat(row.querySelector('input[name*="[expenses]"]')?.value || 0);
-            const total = (dailyRate * days) + expenses;
+            let rowTotal = 0;
+            
+            // Calculate total for each cost item
+            const costInputs = row.querySelectorAll('input[name*="[costs]"]');
+            costInputs.forEach(input => {
+                const value = parseFloat(input.value.replace(/,/g, '') || 0);
+                rowTotal += value;
+            });
             
             const totalCell = row.querySelector('td:last-child');
             if (totalCell) {
-                totalCell.textContent = '$' + total.toFixed(2);
+                totalCell.textContent = '$' + rowTotal.toFixed(2);
             }
             
-            internalTotal += total;
+            internalTotal += rowTotal;
         });
         
         // Calculate external participants total
         const externalRows = document.querySelectorAll('#externalParticipants tr');
         externalRows.forEach(row => {
-            const dailyRate = parseFloat(row.querySelector('input[name*="[daily_rate]"]')?.value || 0);
-            const days = parseFloat(row.querySelector('input[name*="[days]"]')?.value || 0);
-            const expenses = parseFloat(row.querySelector('input[name*="[expenses]"]')?.value || 0);
+            const dailyRate = parseFloat(row.querySelector('input[name*="[daily_rate]"]')?.value.replace(/,/g, '') || 0);
+            const days = parseFloat(row.querySelector('input[name*="[days]"]')?.value.replace(/,/g, '') || 0);
+            const expenses = parseFloat(row.querySelector('input[name*="[expenses]"]')?.value.replace(/,/g, '') || 0);
             const total = (dailyRate * days) + expenses;
             
             const totalCell = row.querySelector('td:last-child');
@@ -448,8 +489,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Calculate other costs total
         const otherRows = document.querySelectorAll('#otherCosts tr');
         otherRows.forEach(row => {
-            const unitCost = parseFloat(row.querySelector('input[name*="[unit_cost]"]')?.value || 0);
-            const days = parseFloat(row.querySelector('input[name*="[days]"]')?.value || 0);
+            const unitCost = parseFloat(row.querySelector('input[name*="[unit_cost]"]')?.value.replace(/,/g, '') || 0);
+            const days = parseFloat(row.querySelector('input[name*="[days]"]')?.value.replace(/,/g, '') || 0);
             const total = unitCost * days;
             
             const totalCell = row.querySelector('td:last-child');
@@ -467,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Calculate new total
         const newTotal = internalTotal + externalTotal + otherTotal;
-        const originalTotal = parseFloat(document.getElementById('originalBudgetAmount').textContent.replace('$', '').replace(',', ''));
+        const originalTotal = parseFloat(document.getElementById('originalBudgetAmount').textContent.replace('$', '').replace(/,/g, ''));
         const difference = newTotal - originalTotal;
         
         // Update budget summary

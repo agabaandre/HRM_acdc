@@ -294,7 +294,7 @@ class ActivityController extends Controller
                     'location_id' => json_encode($request->input('location_id', [])),
                     'internal_participants' => json_encode($internalParticipants),
                     'budget_id' => json_encode($budgetCodes),
-                    'budget' => json_encode($budgetItems),
+                    'budget_breakdown' => json_encode($budgetItems),
                     'attachment' => json_encode($attachments),
                     'is_single_memo' => $request->input('is_single_memo', 0),
                     'approval_level' => 1,
@@ -379,9 +379,9 @@ class ActivityController extends Controller
             ? json_decode($activity->budget_id, true)
             : ($activity->budget_id ?? []);
     
-        $budgetItems = is_string($activity->budget)
-            ? json_decode($activity->budget, true)
-            : ($activity->budget ?? []);
+        $budgetItems = is_string($activity->budget_breakdown)
+            ? json_decode($activity->budget_breakdown, true)
+            : ($activity->budget_breakdown ?? []);
     
         $attachments = is_string($activity->attachment)
             ? json_decode($activity->attachment, true)
@@ -528,9 +528,9 @@ class ActivityController extends Controller
             ? json_decode($activity->budget_id, true)
             : ($activity->budget_id ?? []);
 
-        $budgetItems = is_string($activity->budget)
-            ? json_decode($activity->budget, true)
-            : ($activity->budget ?? []);
+        $budgetItems = is_string($activity->budget_breakdown)
+            ? json_decode($activity->budget_breakdown, true)
+            : ($activity->budget_breakdown ?? []);
 
         $attachments = is_string($activity->attachment)
             ? json_decode($activity->attachment, true)
@@ -734,7 +734,7 @@ class ActivityController extends Controller
                     'location_id' => json_encode($request->input('location_id', [])),
                     'internal_participants' => json_encode($internalParticipants),
                     'budget_id' => json_encode($budgetCodes),
-                    'budget' => json_encode($budgetItems),
+                    'budget_breakdown' => json_encode($budgetItems),
                     'attachment' => json_encode($attachments),
                 ]);
 
@@ -1500,9 +1500,9 @@ class ActivityController extends Controller
             ? json_decode($activity->budget_id, true)
             : ($activity->budget_id ?? []);
 
-        $budgetItems = is_string($activity->budget)
-            ? json_decode($activity->budget, true)
-            : ($activity->budget ?? []);
+        $budgetItems = is_string($activity->budget_breakdown)
+            ? json_decode($activity->budget_breakdown, true)
+            : ($activity->budget_breakdown ?? []);
 
         $attachments = is_string($activity->attachment)
             ? json_decode($activity->attachment, true)
