@@ -217,18 +217,10 @@ return new class extends Migration
                 'service_request_approval_trails_action_index' => 'action',
                 'service_request_approval_trails_created_at_index' => 'created_at',
                 'service_request_approval_trails_service_request_id_action_index' => 'service_request_id,action',
-                'service_request_approval_trails_staff_id_action_index' => 'staff_id,action',
+               
             ],
             
-            // Non Travel Memo Approval Trails table indexes
-            'non_travel_memo_approval_trails' => [
-                'non_travel_memo_approval_trails_non_travel_memo_id_index' => 'non_travel_memo_id',
-                'non_travel_memo_approval_trails_staff_id_index' => 'staff_id',
-                'non_travel_memo_approval_trails_action_index' => 'action',
-                'non_travel_memo_approval_trails_created_at_index' => 'created_at',
-                'non_travel_memo_approval_trails_non_travel_memo_id_action_index' => 'non_travel_memo_id,action',
-                'non_travel_memo_approval_trails_staff_id_action_index' => 'staff_id,action',
-            ],
+           
             
             // Fund Codes table indexes
             'fund_codes' => [
