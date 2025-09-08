@@ -174,7 +174,7 @@
                              <td class="px-3 py-3 text-center">
                                 @php
                                 //dd($activity);
-                                    $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
+                                    $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown , true);
                                     $totalBudget = 0;
 
                                     if (is_array($budget)) {
@@ -347,7 +347,7 @@
                         @php
                             $matrixTotalBudget = 0;
                             foreach($matrix->activities as $activity) {
-                                $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
+                                $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown, true);
                                 
                                 if (is_array($budget)) {
                                     foreach ($budget as $key => $entries) {
