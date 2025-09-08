@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Traits\HasApprovalWorkflow;
+use App\Traits\HasDocumentNumber;
 
 // Additional model imports
 use App\Models\WorkflowDefinition;
@@ -17,7 +18,7 @@ use App\Models\Funder;
 
 class RequestARF extends Model
 {
-    use HasFactory, Auditable, HasApprovalWorkflow;
+    use HasFactory, Auditable, HasApprovalWorkflow, HasDocumentNumber;
     
     /**
      * The table associated with the model.
@@ -38,6 +39,7 @@ class RequestARF extends Model
         'reverse_workflow_id',
         'arf_number',
         'request_date',
+        'document_number',
         'division_id',
         'location_id',
         'activity_title',

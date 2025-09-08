@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Models\FundType;
+use App\Traits\HasDocumentNumber;
 
 class ServiceRequest extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, HasDocumentNumber, Auditable;
 
     /**
      * The attributes that are mass assignable.
@@ -48,6 +49,7 @@ class ServiceRequest extends Model
         'fund_type_id',
         'title',
         'responsible_person_id',
+        'document_number',
         'budget_id',
         'model_type',
         'source_id',

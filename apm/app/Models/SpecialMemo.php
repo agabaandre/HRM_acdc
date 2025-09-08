@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
+use App\Traits\HasDocumentNumber;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class SpecialMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow, Auditable;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -48,6 +49,7 @@ class SpecialMemo extends Model
         'attachment',
         'status',
         'overall_status',
+        'document_number',
         'forward_workflow_id',
         'approval_level',
         'next_approval_level',

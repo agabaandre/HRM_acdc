@@ -369,7 +369,10 @@ function getFullSql($query) {
     }
     return $sql;
 }
-
+/**
+ * Generate short code from division name
+ * Used to create division short names for document numbering
+ */
 function generateShortCodeFromDivision(string $name): string
 {
     $ignore = ['of', 'and', 'for', 'the', 'in'];
@@ -379,4 +382,47 @@ function generateShortCodeFromDivision(string $name): string
     }, $words);
 
     return implode('', array_filter($initials));
+}
+
+/**
+ * Generate document number for any model
+ * This is the main function to use for generating document numbers
+ */
+function generateDocumentNumber($model, string $documentType = null): string
+{
+    return \App\Services\DocumentNumberService::generateForAnyModel($model);
+}
+
+/**
+ * Dispatch job to assign document number after model creation
+ * This prevents race conditions and ensures unique numbering
+ */
+function assignDocumentNumber($model, string $documentType = null): void
+{
+    \App\Jobs\AssignDocumentNumberJob::dispatch($model, $documentType);
+}
+
+/**
+ * Get next document number preview without incrementing counter
+ */
+function getNextDocumentNumberPreview(string $documentType, $division = null, int $year = null): string
+{
+    $divisionShortName = null;
+    $divisionId = null;
+    
+    if (is_object($division)) {
+        $divisionShortName = $division->division_short_name ?? null;
+        $divisionId = $division->id ?? null;
+    } elseif (is_string($division)) {
+        $divisionShortName = $division;
+    } elseif (is_numeric($division)) {
+        $divisionId = $division;
+    }
+    
+    return \App\Services\DocumentNumberService::getNextNumberPreview(
+        $documentType, 
+        $divisionShortName, 
+        $divisionId, 
+        $year
+    );
 }
