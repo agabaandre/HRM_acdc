@@ -151,11 +151,54 @@ class Settings extends MX_Controller
 	public function divisions()
 	{
 		$this->load->model('settings_mdl');
-		$data['divisions'] = $this->settings_mdl->get_content('divisions');
-
+		
 		$data['module'] = $this->module;
 		$data['title'] = "Divisions";
 		render('divisions', $data);
+	}
+
+	public function divisions_datatables()
+	{
+		$this->load->model('settings_mdl');
+		
+		// DataTables parameters
+		$draw = intval($this->input->post("draw"));
+		$start = intval($this->input->post("start"));
+		$length = intval($this->input->post("length"));
+		$search_value = $this->input->post("search")["value"];
+		$order_column = intval($this->input->post("order")[0]["column"]);
+		$order_dir = $this->input->post("order")[0]["dir"];
+		
+		// Column mapping for ordering
+		$columns = array(
+			0 => 'd.division_id',
+			1 => 'd.division_name',
+			2 => 'd.division_short_name',
+			3 => 'd.category',
+			4 => 'dh.fname',
+			5 => 'fp.fname',
+			6 => 'fo.fname',
+			7 => 'fa.fname'
+		);
+		
+		$order_by = isset($columns[$order_column]) ? $columns[$order_column] : 'd.division_name';
+		
+		// Get data
+		$data = $this->settings_mdl->get_divisions_datatables($start, $length, $search_value, $order_by, $order_dir);
+		$total_records = $this->settings_mdl->get_divisions_count();
+		$filtered_records = $this->settings_mdl->get_divisions_count($search_value);
+		
+		// Prepare response
+		$response = array(
+			"draw" => $draw,
+			"recordsTotal" => $total_records,
+			"recordsFiltered" => $filtered_records,
+			"data" => $data
+		);
+		
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode($response));
 	}
 	public function directorates()
 	{
@@ -329,6 +372,71 @@ public function ppa_variables()
     } else {
         echo Modules::run('templates/main', $data);
     }
+}
+
+/**
+ * Generate short names for existing divisions
+ */
+public function generate_division_short_names() {
+    $data['title'] = 'Generate Division Short Names';
+    $data['module'] = 'settings';
+    $data['view_file'] = 'generate_short_names';
+    
+    if ($this->input->post()) {
+        // Load the model
+        $this->load->model('settings_mdl');
+        
+        // Generate short names
+        $result = $this->settings_mdl->updateDivisionsWithShortNames();
+        
+        // Set flash message
+        $message = "Processed {$result['total_processed']} divisions. ";
+        $message .= "Updated: {$result['updated']}, Errors: {$result['errors']}";
+        
+        if ($result['errors'] > 0) {
+            $message .= "<br><strong>Errors:</strong><br>";
+            foreach ($result['results'] as $item) {
+                if ($item['status'] == 'error') {
+                    $message .= "Division {$item['id']} ({$item['name']}): {$item['error']}<br>";
+                }
+            }
+        }
+        
+        Modules::run('utility/setFlash', $message, $result['errors'] > 0 ? 'error' : 'success');
+        redirect('settings/generate_division_short_names');
+    } else {
+        // Load divisions without short names
+        $this->load->model('settings_mdl');
+        $data['divisions_without_short_names'] = $this->settings_mdl->getDivisionsWithoutShortNames();
+        echo Modules::run('templates/main', $data);
+    }
+}
+
+/**
+ * Preview short names before generating
+ */
+public function preview_short_names() {
+    $this->load->model('settings_mdl');
+    $divisions = $this->settings_mdl->getDivisionsWithoutShortNames();
+    
+    $preview = array();
+    foreach ($divisions as $division) {
+        $shortName = $this->settings_mdl->generateShortCodeFromDivision($division->division_name);
+        
+        // Ensure short name is not empty
+        if (empty($shortName)) {
+            $shortName = 'DIV' . $division->division_id;
+        }
+        
+        $preview[] = array(
+            'id' => $division->division_id,
+            'name' => $division->division_name,
+            'proposed_short_name' => $shortName
+        );
+    }
+    
+    header('Content-Type: application/json');
+    echo json_encode($preview);
 }
 
 	

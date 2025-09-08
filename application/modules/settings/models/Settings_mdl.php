@@ -17,6 +17,145 @@ class Settings_mdl extends CI_Model
         return $query;
     }
 
+    public function get_divisions_paginated($limit = 15, $offset = 0, $search = '') {
+        $this->db->select('d.*, 
+            dh.fname as head_fname, dh.lname as head_lname,
+            fp.fname as focal_fname, fp.lname as focal_lname,
+            fa.fname as admin_fname, fa.lname as admin_lname,
+            fo.fname as finance_fname, fo.lname as finance_lname');
+        $this->db->from('divisions d');
+        $this->db->join('staff dh', 'dh.staff_id = d.division_head', 'left');
+        $this->db->join('staff fp', 'fp.staff_id = d.focal_person', 'left');
+        $this->db->join('staff fa', 'fa.staff_id = d.admin_assistant', 'left');
+        $this->db->join('staff fo', 'fo.staff_id = d.finance_officer', 'left');
+        
+        // Search functionality
+        if (!empty($search)) {
+            $this->db->group_start();
+            $this->db->like('d.division_name', $search);
+            $this->db->or_like('d.division_short_name', $search);
+            $this->db->or_like('d.category', $search);
+            $this->db->or_like('CONCAT(dh.fname, " ", dh.lname)', $search);
+            $this->db->or_like('CONCAT(fp.fname, " ", fp.lname)', $search);
+            $this->db->group_end();
+        }
+        
+        $this->db->order_by('d.division_name', 'ASC');
+        $this->db->limit($limit, $offset);
+        
+        $query = $this->db->get();
+        return $query;
+    }
+
+    public function get_divisions_count($search = '') {
+        $this->db->from('divisions d');
+        $this->db->join('staff dh', 'dh.staff_id = d.division_head', 'left');
+        $this->db->join('staff fp', 'fp.staff_id = d.focal_person', 'left');
+        $this->db->join('staff fa', 'fa.staff_id = d.admin_assistant', 'left');
+        $this->db->join('staff fo', 'fo.staff_id = d.finance_officer', 'left');
+        
+        // Search functionality
+        if (!empty($search)) {
+            $this->db->group_start();
+            $this->db->like('d.division_name', $search);
+            $this->db->or_like('d.division_short_name', $search);
+            $this->db->or_like('d.category', $search);
+            $this->db->or_like('CONCAT(dh.fname, " ", dh.lname)', $search);
+            $this->db->or_like('CONCAT(fp.fname, " ", fp.lname)', $search);
+            $this->db->group_end();
+        }
+        
+        return $this->db->count_all_results();
+    }
+
+    public function get_divisions_for_datatables() {
+        $this->db->select('d.*, 
+            dh.fname as head_fname, dh.lname as head_lname,
+            fp.fname as focal_fname, fp.lname as focal_lname,
+            fa.fname as admin_fname, fa.lname as admin_lname,
+            fo.fname as finance_fname, fo.lname as finance_lname');
+        $this->db->from('divisions d');
+        $this->db->join('staff dh', 'dh.staff_id = d.division_head', 'left');
+        $this->db->join('staff fp', 'fp.staff_id = d.focal_person', 'left');
+        $this->db->join('staff fa', 'fa.staff_id = d.admin_assistant', 'left');
+        $this->db->join('staff fo', 'fo.staff_id = d.finance_officer', 'left');
+        $this->db->order_by('d.division_name', 'ASC');
+        
+        $query = $this->db->get();
+        return $query;
+    }
+
+    public function get_divisions_datatables($start, $length, $search_value, $order_by, $order_dir) {
+        $this->db->select('d.*, 
+            dh.fname as head_fname, dh.lname as head_lname,
+            fp.fname as focal_fname, fp.lname as focal_lname,
+            fa.fname as admin_fname, fa.lname as admin_lname,
+            fo.fname as finance_fname, fo.lname as finance_lname');
+        $this->db->from('divisions d');
+        $this->db->join('staff dh', 'dh.staff_id = d.division_head', 'left');
+        $this->db->join('staff fp', 'fp.staff_id = d.focal_person', 'left');
+        $this->db->join('staff fa', 'fa.staff_id = d.admin_assistant', 'left');
+        $this->db->join('staff fo', 'fo.staff_id = d.finance_officer', 'left');
+        
+        // Search functionality
+        if (!empty($search_value)) {
+            $this->db->group_start();
+            $this->db->like('d.division_name', $search_value);
+            $this->db->or_like('d.division_short_name', $search_value);
+            $this->db->or_like('d.category', $search_value);
+            $this->db->or_like('CONCAT(dh.fname, " ", dh.lname)', $search_value);
+            $this->db->or_like('CONCAT(fp.fname, " ", fp.lname)', $search_value);
+            $this->db->or_like('CONCAT(fa.fname, " ", fa.lname)', $search_value);
+            $this->db->or_like('CONCAT(fo.fname, " ", fo.lname)', $search_value);
+            $this->db->group_end();
+        }
+        
+        // Ordering
+        $this->db->order_by($order_by, $order_dir);
+        
+        // Pagination
+        $this->db->limit($length, $start);
+        
+        $query = $this->db->get();
+        $result = array();
+        
+        foreach ($query->result() as $row) {
+            $result[] = array(
+                $row->division_id,
+                $row->division_name,
+                !empty($row->division_short_name) ? $row->division_short_name : '-',
+                !empty($row->category) ? $row->category : '-',
+                !empty($row->head_fname) ? $row->head_fname . ' ' . $row->head_lname : 'N/A',
+                !empty($row->focal_fname) ? $row->focal_fname . ' ' . $row->focal_lname : 'N/A',
+                !empty($row->finance_fname) ? $row->finance_fname . ' ' . $row->finance_lname : 'N/A',
+                !empty($row->admin_fname) ? $row->admin_fname . ' ' . $row->admin_lname : 'N/A',
+                $this->get_action_buttons($row->division_id)
+            );
+        }
+        
+        return $result;
+    }
+
+    private function get_action_buttons($division_id) {
+        $session = $this->session->userdata('user');
+        $permissions = $session->permissions;
+        
+        $buttons = '<div class="btn-group" role="group">';
+        $buttons .= '<button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#update_divisions' . $division_id . '" title="Edit Division">';
+        $buttons .= '<i class="fa fa-edit"></i>';
+        $buttons .= '</button>';
+        
+        if (in_array('77', $permissions)) {
+            $buttons .= '<button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete_divisions' . $division_id . '" title="Delete Division">';
+            $buttons .= '<i class="fa fa-trash"></i>';
+            $buttons .= '</button>';
+        }
+        
+        $buttons .= '</div>';
+        
+        return $buttons;
+    }
+
     public function add_content($table)
     {
         if ($table === 'duty_stations') {
@@ -36,6 +175,7 @@ class Settings_mdl extends CI_Model
         } elseif ($table === 'divisions') {
             $data = [
                 'division_name'           => $this->input->post('division_name', true),
+                'division_short_name'     => $this->input->post('division_short_name', true),
                 'division_head'           => $this->input->post('division_head', true),
                 'focal_person'            => $this->input->post('focal_person', true),
                 'finance_officer'         => $this->input->post('finance_officer', true),
@@ -147,6 +287,7 @@ class Settings_mdl extends CI_Model
         } elseif ($table === 'divisions') {
             $data = [
                 'division_name'           => $this->input->post('division_name', true),
+                'division_short_name'     => $this->input->post('division_short_name', true),
                 'division_head'           => $this->input->post('division_head', true),
                 'focal_person'            => $this->input->post('focal_person', true),
                 'finance_officer'         => $this->input->post('finance_officer', true),
@@ -269,6 +410,104 @@ class Settings_mdl extends CI_Model
     public function getSettings()
 	{
 	return $this->db->get('setting')->row();
+	}
+
+	/**
+	 * Generate short code from division name
+	 * @param string $name Division name
+	 * @return string Generated short code
+	 */
+	public function generateShortCodeFromDivision($name) {
+		$ignore = ['of', 'and', 'for', 'the', 'in', 'a', 'an'];
+		$words = preg_split('/\s+/', strtolower($name));
+		$initials = array_map(function ($word) use ($ignore) {
+			return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+		}, $words);
+		return implode('', array_filter($initials));
+	}
+
+	/**
+	 * Update all divisions with generated short names
+	 * @return array Results of the update operation
+	 */
+	public function updateDivisionsWithShortNames() {
+		// Get all divisions that don't have short names
+		$this->db->where('(division_short_name IS NULL OR division_short_name = "")');
+		$divisions = $this->db->get('divisions')->result();
+		
+		$updated = 0;
+		$errors = 0;
+		$results = [];
+		
+		foreach ($divisions as $division) {
+			try {
+				$shortName = $this->generateShortCodeFromDivision($division->division_name);
+				
+				// Ensure short name is not empty
+				if (empty($shortName)) {
+					$shortName = 'DIV' . $division->division_id;
+				}
+				
+				// Check if short name already exists
+				$this->db->where('division_short_name', $shortName);
+				$this->db->where('division_id !=', $division->division_id);
+				$existing = $this->db->get('divisions')->row();
+				
+				if ($existing) {
+					// Add division ID to make it unique
+					$shortName = $shortName . $division->division_id;
+				}
+				
+				// Update the division
+				$this->db->where('division_id', $division->division_id);
+				$updateResult = $this->db->update('divisions', array('division_short_name' => $shortName));
+				
+				if ($updateResult) {
+					$updated++;
+					$results[] = array(
+						'id' => $division->division_id,
+						'name' => $division->division_name,
+						'short_name' => $shortName,
+						'status' => 'success'
+					);
+				} else {
+					$errors++;
+					$results[] = array(
+						'id' => $division->division_id,
+						'name' => $division->division_name,
+						'short_name' => '',
+						'status' => 'error',
+						'error' => 'Database update failed'
+					);
+				}
+			} catch (Exception $e) {
+				$errors++;
+				$results[] = array(
+					'id' => $division->division_id,
+					'name' => $division->division_name,
+					'short_name' => '',
+					'status' => 'error',
+					'error' => $e->getMessage()
+				);
+			}
+		}
+		
+		return array(
+			'total_processed' => count($divisions),
+			'updated' => $updated,
+			'errors' => $errors,
+			'results' => $results
+		);
+	}
+
+	/**
+	 * Get divisions without short names
+	 * @return array Divisions that need short names
+	 */
+	public function getDivisionsWithoutShortNames() {
+		$this->db->where('(division_short_name IS NULL OR division_short_name = "")');
+		$this->db->select('division_id, division_name, division_short_name');
+		return $this->db->get('divisions')->result();
 	}
 
 
