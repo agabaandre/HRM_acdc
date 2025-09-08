@@ -44,8 +44,6 @@ return new class extends Migration
                 'divisions_division_name_index' => 'division_name',
                 'divisions_division_short_name_index' => 'division_short_name',
                 'divisions_category_index' => 'category',
-                'divisions_directorate_id_is_active_index' => 'directorate_id,is_active',
-                'divisions_category_is_active_index' => 'category,is_active',
             ],
             
             // Matrices table indexes
