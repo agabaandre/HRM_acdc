@@ -279,7 +279,6 @@ return new class extends Migration
             // Notifications table indexes
             'notifications' => [
                 'notifications_staff_id_index' => 'staff_id',
-                'notifications_matrix_id_index' => 'matrix_id',
                 'notifications_type_index' => 'type',
                 'notifications_is_read_index' => 'is_read',
                 'notifications_created_at_index' => 'created_at',
