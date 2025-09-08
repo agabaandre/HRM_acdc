@@ -1,6 +1,14 @@
 @extends('layouts.app')
 
 @section('title', 'Create Service Request')
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@endpush
 @section('header', 'Service Request Form')
 
 @section('header-actions')
@@ -45,10 +53,10 @@
         <h5 class="mb-0 text-dark">
             <i class="fas fa-tools me-2"></i> Service Request Details
         </h5>
-    </div>
+                </div>
     <div class="card-body p-4">
-        <form action="{{ route('service-requests.store') }}" method="POST" enctype="multipart/form-data" id="serviceRequestForm">
-            @csrf
+                    <form action="{{ route('service-requests.store') }}" method="POST" enctype="multipart/form-data" id="serviceRequestForm">
+                        @csrf
             
             <!-- Hidden fields for source data -->
             <input type="hidden" name="source_type" value="{{ $sourceType }}">
@@ -80,20 +88,20 @@
                 <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
                     <i class="fas fa-info-circle me-2"></i> Request Information
                 </h6>
-                
-                <div class="row g-4">
+                        
+                        <div class="row g-4">
                     <!-- Service Request Number -->
                     <div class="col-md-12">
-                        <div class="form-group">
+                                                <div class="form-group">
                             <label class="form-label fw-semibold">
                                 <i class="bx bx-hash me-1 text-success"></i> Service Request Number
                             </label>
                             <input type="text" name="request_number" class="form-control border-success" value="{{ $requestNumber }}" readonly>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
             <!-- Section 2: Original Budget Breakdown -->
             <div class="mb-5">
                 <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
@@ -123,8 +131,8 @@
                                                 <td>{{ $item['cost'] ?? $item['description'] ?? 'N/A' }}</td>
                                                 <td class="text-end">${{ number_format($amount, 2) }}</td>
                                             </tr>
-                                        @endforeach
-                                    @endif
+                                                @endforeach
+                                            @endif
                                 @endforeach
                             @else
                                 <tr>
@@ -139,9 +147,9 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
-
+                                    </div>
+                                </div>
+                                
             <!-- Section 3: Individual Costs (Internal Participants) -->
             <div class="mb-5">
                 <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
@@ -155,30 +163,38 @@
                     <button type="button" class="btn btn-outline-danger btn-sm" id="removeInternal">
                         <i class="fas fa-minus me-1"></i> Remove Participant
                     </button>
-                </div>
-                
+                            </div>
+                            
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover">
                         <thead class="table-success">
                             <tr>
-                                <th>Name</th>
+                                <th style="width: 25%;">Name</th>
                                 @foreach($costItems as $costItem)
-                                    <th>{{ $costItem->name }}</th>
-                                @endforeach
-                                <th>Total</th>
+                                    <th style="width: {{ 75 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                                        @endforeach
+                                <th style="width: 25%;">Total</th>
                             </tr>
                         </thead>
                         <tbody id="internalParticipants">
                             <tr>
                                 <td>
-                                    <select name="internal_participants[0][staff_id]" class="form-select border-success">
-                                        <option value="">Select Staff Member</option>
-                                        @foreach($staff as $member)
-                                            <option value="{{ $member->staff_id }}">
-                                                {{ $member->fname }} {{ $member->lname }} ({{ $member->position ?? 'Staff' }})
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <select name="internal_participants[0][staff_id]" class="form-select border-success participant-select" style="width: 100%;">
+                                        <option value="">Select Participant</option>
+                                        @if(!empty($participantNames))
+                                            @foreach($participantNames as $participant)
+                                                <option value="{{ $participant['id'] }}">
+                                                    {{ $participant['text'] }}
+                                                </option>
+                                            @endforeach
+                                        @else
+                                            @foreach($staff as $member)
+                                                <option value="{{ $member->staff_id }}">
+                                                    {{ $member->fname }} {{ $member->lname }} ({{ $member->position ?? 'Staff' }})
+                                                            </option>
+                                                        @endforeach
+                                        @endif
+                                                    </select>
                                 </td>
                                 @foreach($costItems as $index => $costItem)
                                     <td>
@@ -190,7 +206,7 @@
                                                data-cost-item="{{ $costItem->name }}"
                                                placeholder="Enter {{ $costItem->name }}">
                                     </td>
-                                @endforeach
+                                                        @endforeach
                                 <td class="text-end fw-bold">$0.00</td>
                             </tr>
                         </tbody>
@@ -201,8 +217,8 @@
                             </tr>
                         </tfoot>
                     </table>
-                </div>
-            </div>
+                                                </div>
+                                            </div>
 
             <!-- Section 4: Individual Costs (External Participants) -->
             <div class="mb-5">
@@ -217,40 +233,48 @@
                     <button type="button" class="btn btn-outline-danger btn-sm" id="removeExternal">
                         <i class="fas fa-minus me-1"></i> Remove Participant
                     </button>
-                </div>
+                                        </div>
                 
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover">
                         <thead class="table-success">
                             <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Daily Rate</th>
-                                <th>Days</th>
-                                <th>Expenses</th>
-                                <th>Total</th>
+                                <th style="width: 13%;">Name</th>
+                                <th style="width: 13%;">Email</th>
+                                @foreach($costItems as $costItem)
+                                    <th style="width: {{ 74 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                @endforeach
+                                <th style="width: 13%;">Total</th>
                             </tr>
                         </thead>
                         <tbody id="externalParticipants">
                             <tr>
                                 <td><input type="text" name="external_participants[0][name]" class="form-control border-success" value="Consulting Experts Inc."></td>
                                 <td><input type="email" name="external_participants[0][email]" class="form-control border-success" value="contact@experts.com"></td>
-                                <td><input type="number" name="external_participants[0][daily_rate]" class="form-control border-success" value="350" step="0.01"></td>
-                                <td><input type="number" name="external_participants[0][days]" class="form-control border-success" value="3" min="1"></td>
-                                <td><input type="number" name="external_participants[0][expenses]" class="form-control border-success" value="300" step="0.01"></td>
-                                <td class="text-end fw-bold">$1,350.00</td>
+                                @foreach($costItems as $index => $costItem)
+                                    <td>
+                                        <input type="number" 
+                                               name="external_participants[0][costs][{{ $costItem->id }}]" 
+                                               class="form-control border-success cost-input" 
+                                               value="0" 
+                                               step="0.01" 
+                                               data-cost-item="{{ $costItem->name }}"
+                                               placeholder="Enter {{ $costItem->name }}">
+                                    </td>
+                                @endforeach
+                                <td class="text-end fw-bold">$0.00</td>
                             </tr>
                         </tbody>
                         <tfoot class="table-success">
                             <tr>
-                                <td colspan="5" class="text-end fw-bold">Subtotal:</td>
-                                <td class="text-end fw-bold" id="externalSubtotal">$1,350.00</td>
+                                <td colspan="{{ count($costItems) + 2 }}" class="text-end fw-bold">Subtotal:</td>
+                                <td class="text-end fw-bold" id="externalSubtotal">$0.00</td>
                             </tr>
                         </tfoot>
                     </table>
-                </div>
-            </div>
-
+                                    </div>
+                                </div>
+                                
             <!-- Section 5: Other Costs -->
             <div class="mb-5">
                 <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
@@ -269,38 +293,60 @@
                             </tr>
                         </thead>
                         <tbody id="otherCosts">
-                            @php
-                                $otherCostItems = \App\Models\CostItem::where('cost_type', 'other_cost')->get();
-                            @endphp
-                            @foreach($otherCostItems as $index => $costItem)
+                            @if($otherCostItems->isNotEmpty())
+                                @foreach($otherCostItems as $index => $costItem)
+                                    <tr>
+                                        <td>
+                                            <select name="other_costs[{{ $index }}][cost_type]" class="form-select border-success">
+                                                <option value="{{ $costItem->name }}">{{ $costItem->name }}</option>
+                                                @foreach($otherCostItems as $item)
+                                                    @if($item->id != $costItem->id)
+                                                        <option value="{{ $item->name }}">{{ $item->name }}</option>
+                                                    @endif
+                                                        @endforeach
+                                                    </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   name="other_costs[{{ $index }}][unit_cost]" 
+                                                   class="form-control border-success cost-input" 
+                                                   value="0" 
+                                                   step="0.01" 
+                                                   placeholder="Enter unit cost">
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   name="other_costs[{{ $index }}][days]" 
+                                                   class="form-control border-success" 
+                                                   value="1" 
+                                                   min="1" 
+                                                   placeholder="Enter days">
+                                        </td>
+                                        <td>
+                                            <textarea name="other_costs[{{ $index }}][description]" 
+                                                      class="form-control border-success" 
+                                                      rows="2" 
+                                                      placeholder="Enter description"></textarea>
+                                        </td>
+                                        <td class="text-end fw-bold">$0.00</td>
+                                    </tr>
+                                                        @endforeach
+                            @else
                                 <tr>
-                                    <td>
-                                        <select name="other_costs[{{ $index }}][cost_type]" class="form-select border-success">
-                                            <option value="{{ $costItem->name }}">{{ $costItem->name }}</option>
-                                            @foreach($otherCostItems as $item)
-                                                @if($item->id != $costItem->id)
-                                                    <option value="{{ $item->name }}">{{ $item->name }}</option>
-                                                @endif
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td><input type="number" name="other_costs[{{ $index }}][unit_cost]" class="form-control border-success" value="120" step="0.01"></td>
-                                    <td><input type="number" name="other_costs[{{ $index }}][days]" class="form-control border-success" value="10" min="1"></td>
-                                    <td><textarea name="other_costs[{{ $index }}][description]" class="form-control border-success" rows="2">Projector and audio equipment</textarea></td>
-                                    <td class="text-end fw-bold">$1,200.00</td>
+                                    <td colspan="5" class="text-center text-muted">No Other Cost items available</td>
                                 </tr>
-                            @endforeach
+                            @endif
                         </tbody>
                         <tfoot class="table-success">
                             <tr>
                                 <td colspan="4" class="text-end fw-bold">Subtotal:</td>
-                                <td class="text-end fw-bold" id="otherSubtotal">$1,200.00</td>
+                                <td class="text-end fw-bold" id="otherSubtotal">$0.00</td>
                             </tr>
                         </tfoot>
                     </table>
-                </div>
-            </div>
-
+                                    </div>
+                                </div>
+                                
             <!-- Section 6: Budget Summary -->
             <div class="mb-5">
                 <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
@@ -313,31 +359,31 @@
                             <div class="card-body text-center">
                                 <h6 class="card-title text-success">Original Budget</h6>
                                 <h4 class="text-success" id="originalBudgetAmount">${{ number_format($totalOriginal, 2) }}</h4>
-                            </div>
-                        </div>
-                    </div>
+                                    </div>
+                                                </div>
+                                            </div>
                     <div class="col-md-4">
                         <div class="card border-primary">
                             <div class="card-body text-center">
                                 <h6 class="card-title text-primary">New Budget</h6>
                                 <h4 class="text-primary" id="newBudgetAmount">$4,000.00</h4>
-                            </div>
-                        </div>
-                    </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                     <div class="col-md-4">
                         <div class="card border-warning">
                             <div class="card-body text-center">
                                 <h6 class="card-title text-warning">Budget Difference</h6>
                                 <h4 class="text-warning" id="budgetDifference">-$6,500.00</h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
             <!-- Action Buttons -->
             <div class="d-flex justify-content-end gap-3">
-                <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
+                                    <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-times me-1"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-success">
@@ -379,6 +425,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         tbody.appendChild(newRow);
         internalParticipantCount++;
+        
+        // Initialize Select2 for the new row
+        initializeSelect2();
+        
         updateTotals();
     });
     
@@ -403,8 +453,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (input.name) {
                 input.name = input.name.replace('[0]', '[' + externalParticipantCount + ']');
             }
-            input.value = '';
+            if (input.type === 'number' || input.type === 'text' || input.type === 'email') {
+                input.value = '';
+            }
         });
+        
+        // Clear the total cell
+        const totalCell = newRow.querySelector('td:last-child');
+        if (totalCell) {
+            totalCell.textContent = '$0.00';
+        }
         
         tbody.appendChild(newRow);
         externalParticipantCount++;
@@ -420,6 +478,18 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTotals();
         }
     });
+    
+    // Initialize Select2 for participant dropdowns
+    function initializeSelect2() {
+        $('.participant-select').select2({
+            placeholder: 'Select Participant',
+            allowClear: true,
+            width: '100%'
+        });
+    }
+    
+    // Initialize Select2 on page load
+    initializeSelect2();
     
     // Add event listeners for cost inputs
     document.addEventListener('input', function(e) {
@@ -473,22 +543,31 @@ document.addEventListener('DOMContentLoaded', function() {
         // Calculate external participants total
         const externalRows = document.querySelectorAll('#externalParticipants tr');
         externalRows.forEach(row => {
-            const dailyRate = parseFloat(row.querySelector('input[name*="[daily_rate]"]')?.value.replace(/,/g, '') || 0);
-            const days = parseFloat(row.querySelector('input[name*="[days]"]')?.value.replace(/,/g, '') || 0);
-            const expenses = parseFloat(row.querySelector('input[name*="[expenses]"]')?.value.replace(/,/g, '') || 0);
-            const total = (dailyRate * days) + expenses;
+            let rowTotal = 0;
+            
+            // Calculate total for each cost item
+            const costInputs = row.querySelectorAll('input[name*="[costs]"]');
+            costInputs.forEach(input => {
+                const value = parseFloat(input.value.replace(/,/g, '') || 0);
+                rowTotal += value;
+            });
             
             const totalCell = row.querySelector('td:last-child');
             if (totalCell) {
-                totalCell.textContent = '$' + total.toFixed(2);
+                totalCell.textContent = '$' + rowTotal.toFixed(2);
             }
             
-            externalTotal += total;
+            externalTotal += rowTotal;
         });
         
         // Calculate other costs total
         const otherRows = document.querySelectorAll('#otherCosts tr');
         otherRows.forEach(row => {
+            // Skip empty rows (like the "No items available" message)
+            if (row.querySelector('td[colspan]')) {
+                return;
+            }
+            
             const unitCost = parseFloat(row.querySelector('input[name*="[unit_cost]"]')?.value.replace(/,/g, '') || 0);
             const days = parseFloat(row.querySelector('input[name*="[days]"]')?.value.replace(/,/g, '') || 0);
             const total = unitCost * days;
@@ -539,6 +618,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial calculation
     updateTotals();
-});
+    });
 </script>
 @endsection
