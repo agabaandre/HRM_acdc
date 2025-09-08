@@ -55,9 +55,12 @@ Route::get('/home', function () {
 
 // Workflow Management Routes
 Route::middleware([CheckSessionMiddleware::class])->group(function () {
-    Route::resource('workflows', WorkflowController::class)->except(['destroy']);
+    Route::resource('workflows', WorkflowController::class);
     Route::get('workflows/{workflow}/add-definition', [WorkflowController::class, 'addDefinition'])->name('workflows.add-definition');
     Route::post('workflows/{workflow}/store-definition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
+    Route::get('workflows/{workflow}/edit-definition/{definition}', [WorkflowController::class, 'editDefinition'])->name('workflows.edit-definition');
+    Route::put('workflows/{workflow}/update-definition/{definition}', [WorkflowController::class, 'updateDefinition'])->name('workflows.update-definition');
+    Route::delete('workflows/{workflow}/delete-definition/{definition}', [WorkflowController::class, 'deleteDefinition'])->name('workflows.delete-definition');
     Route::get('workflows/{workflow}/approvers', [WorkflowController::class, 'approvers'])->name('workflows.approvers');
     Route::put('workflows/{workflow}/approvers/{approver}', [WorkflowController::class, 'updateApprover'])->name('workflows.update-approver');
     Route::post('workflows/{workflow}/approvers/bulk-assign', [WorkflowController::class, 'bulkAssignApprovers'])->name('workflows.bulk-assign-approvers');
