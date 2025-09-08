@@ -74,7 +74,6 @@ return new class extends Migration
                 'activities_forward_workflow_id_index' => 'forward_workflow_id',
                 'activities_reverse_workflow_id_index' => 'reverse_workflow_id',
                 'activities_division_id_index' => 'division_id',
-                'activities_activity_title_index' => 'activity_title',
                 'activities_date_from_index' => 'date_from',
                 'activities_date_to_index' => 'date_to',
                 'activities_total_participants_index' => 'total_participants',
