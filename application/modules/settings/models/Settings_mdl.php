@@ -173,6 +173,11 @@ class Settings_mdl extends CI_Model
                 'contract_type' => $this->input->post('contract_type'),
             ];
         } elseif ($table === 'divisions') {
+            // Helper function to clean date fields
+            $cleanDate = function($date) {
+                return (empty($date) || $date === '0000-00-00' || $date === '0000-00-00 00:00:00') ? null : $date;
+            };
+            
             $data = [
                 'division_name'           => $this->input->post('division_name', true),
                 'division_short_name'     => $this->input->post('division_short_name', true),
@@ -182,12 +187,12 @@ class Settings_mdl extends CI_Model
                 'admin_assistant'         => $this->input->post('admin_assistant', true),
                 'directorate_id'          => $this->input->post('directorate_id', true),
                 'head_oic_id'             => $this->input->post('head_oic_id', true),
-                'head_oic_start_date'     => $this->input->post('head_oic_start_date', true),
-                'head_oic_end_date'       => $this->input->post('head_oic_end_date', true),
+                'head_oic_start_date'     => $cleanDate($this->input->post('head_oic_start_date', true)),
+                'head_oic_end_date'       => $cleanDate($this->input->post('head_oic_end_date', true)),
                 'director_id'             => $this->input->post('director_id', true),
                 'director_oic_id'         => $this->input->post('director_oic_id', true),
-                'director_oic_start_date' => $this->input->post('director_oic_start_date', true),
-                'director_oic_end_date'   => $this->input->post('director_oic_end_date', true),
+                'director_oic_start_date' => $cleanDate($this->input->post('director_oic_start_date', true)),
+                'director_oic_end_date'   => $cleanDate($this->input->post('director_oic_end_date', true)),
                 'category'                => $this->input->post('category', true),
             ];
     
@@ -275,6 +280,11 @@ class Settings_mdl extends CI_Model
                 'contract_type' => $this->input->post('contract_type'),
             ];
         } elseif ($table === 'divisions') {
+            // Helper function to clean date fields
+            $cleanDate = function($date) {
+                return (empty($date) || $date === '0000-00-00' || $date === '0000-00-00 00:00:00') ? null : $date;
+            };
+            
             $data = [
                 'division_name'           => $this->input->post('division_name', true),
                 'division_short_name'     => $this->input->post('division_short_name', true),
@@ -284,12 +294,12 @@ class Settings_mdl extends CI_Model
                 'admin_assistant'         => $this->input->post('admin_assistant', true),
                 'directorate_id'          => $this->input->post('directorate_id', true),
                 'head_oic_id'             => $this->input->post('head_oic_id', true),
-                'head_oic_start_date'     => $this->input->post('head_oic_start_date', true),
-                'head_oic_end_date'       => $this->input->post('head_oic_end_date', true),
+                'head_oic_start_date'     => $cleanDate($this->input->post('head_oic_start_date', true)),
+                'head_oic_end_date'       => $cleanDate($this->input->post('head_oic_end_date', true)),
                 'director_id'             => $this->input->post('director_id', true),
                 'director_oic_id'         => $this->input->post('director_oic_id', true),
-                'director_oic_start_date' => $this->input->post('director_oic_start_date', true),
-                'director_oic_end_date'   => $this->input->post('director_oic_end_date', true),
+                'director_oic_start_date' => $cleanDate($this->input->post('director_oic_start_date', true)),
+                'director_oic_end_date'   => $cleanDate($this->input->post('director_oic_end_date', true)),
                 'category'                => $this->input->post('category', true),
             ];
     
