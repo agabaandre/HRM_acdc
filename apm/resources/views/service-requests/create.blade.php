@@ -2,13 +2,6 @@
 
 @section('title', 'Create Service Request')
 
-@push('styles')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-@endpush
-
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-@endpush
 @section('header', 'Service Request Form')
 
 @section('header-actions')
@@ -347,7 +340,36 @@
                                     </div>
                                 </div>
                                 
-            <!-- Section 6: Budget Summary -->
+            <!-- Section 6: Participants Summary -->
+            <div class="mb-5">
+                <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
+                    <i class="fas fa-users me-2"></i> Participants Summary
+                </h6>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-success">
+                            <tr>
+                                <th style="width: 5%;">#</th>
+                                <th style="width: 25%;">Name</th>
+                                <th style="width: 20%;">Type</th>
+                                <th style="width: 25%;">Email/Position</th>
+                                <th style="width: 15%;">Role</th>
+                                <th style="width: 10%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="participantsSummary">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">
+                                    <i class="fas fa-info-circle me-2"></i>Participants will be automatically added from the cost sections above
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+                                
+            <!-- Section 7: Budget Summary -->
             <div class="mb-5">
                 <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
                     <i class="fas fa-calculator me-2"></i> Budget Summary
@@ -426,10 +448,8 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.appendChild(newRow);
         internalParticipantCount++;
         
-        // Initialize Select2 for the new row
-        initializeSelect2();
-        
         updateTotals();
+        updateParticipantsSummary();
     });
     
     // Remove internal participant
@@ -439,6 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tbody.deleteRow(tbody.rows.length - 1);
             internalParticipantCount--;
             updateTotals();
+            updateParticipantsSummary();
         }
     });
     
@@ -473,6 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.appendChild(newRow);
         externalParticipantCount++;
         updateTotals();
+        updateParticipantsSummary();
     });
     
     // Remove external participant
@@ -482,20 +504,9 @@ document.addEventListener('DOMContentLoaded', function() {
             tbody.deleteRow(tbody.rows.length - 1);
             externalParticipantCount--;
             updateTotals();
+            updateParticipantsSummary();
         }
     });
-    
-    // Initialize Select2 for participant dropdowns
-    function initializeSelect2() {
-        $('.participant-select').select2({
-            placeholder: 'Select Participant',
-            allowClear: true,
-            width: '100%'
-        });
-    }
-    
-    // Initialize Select2 on page load
-    initializeSelect2();
     
     // Add event listeners for cost inputs
     document.addEventListener('input', function(e) {
@@ -503,6 +514,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Format number with thousand separators
             formatNumberInput(e.target);
             updateTotals();
+        }
+    });
+    
+    // Add event listeners for participant changes
+    document.addEventListener('change', function(e) {
+        if (e.target.matches('select[name*="[staff_id]"], input[name*="[name]"], input[name*="[email]"]')) {
+            updateParticipantsSummary();
         }
     });
     
@@ -518,6 +536,86 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         }
+    }
+    
+    // Update participants summary
+    function updateParticipantsSummary() {
+        const participantsSummary = document.getElementById('participantsSummary');
+        participantsSummary.innerHTML = '';
+        
+        let participantCount = 0;
+        
+        // Add internal participants
+        const internalRows = document.querySelectorAll('#internalParticipants tr');
+        internalRows.forEach(row => {
+            const select = row.querySelector('select[name*="[staff_id]"]');
+            if (select && select.value) {
+                participantCount++;
+                const selectedOption = select.options[select.selectedIndex];
+                const participantName = selectedOption.text;
+                const participantId = selectedOption.value;
+                
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>${participantCount}</td>
+                    <td>${participantName}</td>
+                    <td><span class="badge bg-primary">Internal</span></td>
+                    <td>Staff Member</td>
+                    <td>Participant</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipant(this)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                participantsSummary.appendChild(newRow);
+            }
+        });
+        
+        // Add external participants
+        const externalRows = document.querySelectorAll('#externalParticipants tr');
+        externalRows.forEach(row => {
+            const nameInput = row.querySelector('input[name*="[name]"]');
+            const emailInput = row.querySelector('input[name*="[email]"]');
+            
+            if (nameInput && nameInput.value.trim()) {
+                participantCount++;
+                const participantName = nameInput.value.trim();
+                const participantEmail = emailInput ? emailInput.value.trim() : '';
+                
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>${participantCount}</td>
+                    <td>${participantName}</td>
+                    <td><span class="badge bg-warning">External</span></td>
+                    <td>${participantEmail || 'N/A'}</td>
+                    <td>Participant</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipant(this)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                participantsSummary.appendChild(newRow);
+            }
+        });
+        
+        // Show message if no participants
+        if (participantCount === 0) {
+            participantsSummary.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted">
+                        <i class="fas fa-info-circle me-2"></i>No participants added yet. Add participants in the cost sections above.
+                    </td>
+                </tr>
+            `;
+        }
+    }
+    
+    // Function to remove participant (placeholder for future functionality)
+    function removeParticipant(button) {
+        // This could be enhanced to actually remove the participant from the cost sections
+        alert('To remove a participant, please use the remove buttons in the cost sections above.');
     }
     
     // Update totals function
@@ -624,6 +722,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial calculation
     updateTotals();
+    updateParticipantsSummary();
     });
 </script>
 @endsection
