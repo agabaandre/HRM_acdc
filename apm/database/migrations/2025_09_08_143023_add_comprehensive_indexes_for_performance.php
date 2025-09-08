@@ -166,7 +166,6 @@ return new class extends Migration
                 'special_memos_forward_workflow_id_index' => 'forward_workflow_id',
                 'special_memos_fund_type_id_index' => 'fund_type_id',
                 'special_memos_responsible_person_id_index' => 'responsible_person_id',
-                'special_memos_memo_date_index' => 'memo_date',
                 'special_memos_activity_title_index' => 'activity_title',
                 'special_memos_overall_status_index' => 'overall_status',
                 'special_memos_approval_level_index' => 'approval_level',
