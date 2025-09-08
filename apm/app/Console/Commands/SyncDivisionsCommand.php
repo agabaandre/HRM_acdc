@@ -68,6 +68,7 @@ class SyncDivisionsCommand extends Command
                     $divisionData = [
                         'id' => $id,
                         'division_name' => $data['name'] ?? $data['division_name'] ?? null,
+                        'division_short_name' => $data['division_short_name'] ?? null,
                         'division_head' => $data['division_head'] ?? null,
                         'focal_person' => $data['focal_person'] ?? null,
                         'admin_assistant' => $data['admin_assistant'] ?? null,

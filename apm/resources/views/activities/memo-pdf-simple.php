@@ -420,6 +420,8 @@
     $activity_refernce = 'N/A';
     if (isset($activity)) {
         $divisionName = $matrix->division->division_name ?? '';
+        $divisionShortName = $matrix->division->division_short_name ?? '';
+        
         if (!function_exists('generateShortCodeFromDivision')) {
             function generateShortCodeFromDivision(string $name): string {
                 $ignore = ['of', 'and', 'for', 'the', 'in'];
@@ -430,7 +432,14 @@
                 return implode('', array_filter($initials));
             }
         }
-        $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
+        
+        // Use division_short_name if available, otherwise generate from division_name
+        if (!empty($divisionShortName)) {
+            $shortCode = strtoupper($divisionShortName);
+        } else {
+            $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
+        }
+        
         $year = date('Y', strtotime($matrix->created_at ?? 'now'));
         $activityId = $activity->id ?? 'N/A';
         $activity_refernce = "AU/CDC/{$shortCode}/IM/{$matrix->quarter}/{$year}/{$activityId}";
