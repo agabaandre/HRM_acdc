@@ -189,7 +189,7 @@ Route::post('/audit-logs/reverse', [App\Http\Controllers\AuditLogsController::cl
     Route::get('/single-memos', [ActivityController::class, 'singlememos'])->name('activities.single-memos.index');
     Route::get('/single-memos/create', [ActivityController::class, 'createSingleMemo'])->name('activities.single-memos.create');
     Route::post('/single-memos', [ActivityController::class, 'storeSingleMemo'])->name('activities.single-memos.store');
-    Route::get('/single-memos/{activity}', [ActivityController::class, 'showSingleMemo'])->name('activities.single-memos.show');
+    Route::get('/single-memos/{activity}', [ActivityController::class, 'show'])->name('activities.single-memos.show');
     Route::post('/single-memos/{activity}/submit-for-approval', [ActivityController::class, 'submitSingleMemoForApproval'])->name('activities.single-memos.submit-for-approval');
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
     Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');

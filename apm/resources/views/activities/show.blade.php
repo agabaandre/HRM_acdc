@@ -13,14 +13,20 @@
 @section('content')
 <div class="row">
 <div class="d-flex gap-1 mb-2" style="float: right;!important">
-    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-secondary">
+
+@php
+    $is_single_memo = $activity->is_single_memo;
+    $title = $is_single_memo ? 'Single Memo' : 'Activity';
+@endphp
+
+    <a href="{{ route('matrices.show',  $matrix) }}" class="btn btn-sm btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
 
     
     @if(still_with_creator($matrix,$activity))
         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-sm btn-warning">
-            <i class="bx bx-edit"></i> Edit Activity
+            <i class="bx bx-edit"></i> Edit {{ $title }}
         </a>
     @endif
 
@@ -77,7 +83,7 @@
                             
                                 <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
                                    class="btn btn-secondary w-20" target="_blank">
-                                    <i class="bx bx-printer me-2"></i>Print Activity
+                                    <i class="bx bx-printer me-2"></i>Print {{ $title }}
                                 </a>
                           
                             </div>
@@ -93,7 +99,7 @@
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
-                <small class="text-muted">Activity Ref: {{ $activity->activity_ref }}</small>
+                <small class="text-muted">{{ $title }} Ref: {{ $activity->activity_ref }}</small>
                 @if($activity->my_last_action)
                     <p> Your Action: <small class=" text-white rounded p-1 {{($activity->my_last_action->action=='passed')?'bg-success':'bg-danger'}}">{{strtoupper($activity->my_last_action->action)}}</small></p>
                 @endif
@@ -127,7 +133,7 @@
                             //dd($activity);
 
                             if (can_approve_activity($activity)) {
-                                if ($activity->matrix->overall_status == 'approved') {
+                                if ($activity->matrix->overall_status == 'approved' && $activity->status == 'passed') {
                                     $statusText = ucwords($activity->status);
                                     $badgeClass = 'bg-success';
                                 } else {
