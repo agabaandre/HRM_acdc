@@ -65,6 +65,12 @@ class SyncDivisionsCommand extends Command
                 try {
                     // Map division_id from API to id in the model, and name to division_name
                     $id = $data['division_id'] ?? $data['id'] ?? null;
+                    
+                    // Helper function to convert '0000-00-00' to null
+                    $cleanDate = function($date) {
+                        return ($date === '0000-00-00' || $date === '0000-00-00 00:00:00' || empty($date)) ? null : $date;
+                    };
+                    
                     $divisionData = [
                         'id' => $id,
                         'division_name' => $data['name'] ?? $data['division_name'] ?? null,
@@ -75,12 +81,12 @@ class SyncDivisionsCommand extends Command
                         'finance_officer' => $data['finance_officer'] ?? null,
                         'directorate_id' => $data['directorate_id'] ?? null,
                         'head_oic_id' => $data['head_oic_id'] ?? null,
-                        'head_oic_start_date' => $data['head_oic_start_date'] ?? null,
-                        'head_oic_end_date' => $data['head_oic_end_date'] ?? null,
+                        'head_oic_start_date' => $cleanDate($data['head_oic_start_date'] ?? null),
+                        'head_oic_end_date' => $cleanDate($data['head_oic_end_date'] ?? null),
                         'director_id' => $data['director_id'] ?? null,
                         'director_oic_id' => $data['director_oic_id'] ?? null,
-                        'director_oic_start_date' => $data['director_oic_start_date'] ?? null,
-                        'director_oic_end_date' => $data['director_oic_end_date'] ?? null,
+                        'director_oic_start_date' => $cleanDate($data['director_oic_start_date'] ?? null),
+                        'director_oic_end_date' => $cleanDate($data['director_oic_end_date'] ?? null),
                         'category' => $data['category'] ?? null,
                     ];
 
