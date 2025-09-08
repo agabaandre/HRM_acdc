@@ -80,16 +80,16 @@ class ServiceRequestController extends Controller
     {
         \Log::info('ServiceRequestController::create method called');
         try {
-            $staff = Staff::active()->get();
+        $staff = Staff::active()->get();
             
             // Ensure we have at least one staff member for the dropdown
             if ($staff->isEmpty()) {
                 $staff = Staff::take(10)->get(); // Fallback to any 10 staff members
             }
-            $divisions = Division::all();
-            $workflows = Workflow::all();
-            $activities = Activity::all();
-            
+        $divisions = Division::all();
+        $workflows = Workflow::all();
+        $activities = Activity::all();
+        
             // Handle source data if provided
             $sourceData = null;
             $sourceType = $request->get('source_type');
@@ -134,14 +134,16 @@ class ServiceRequestController extends Controller
                 }
             }
             
-            // Get cost items directly from budget breakdown
+            // Get cost items that exist in budget breakdown and filter by type
             \Log::info('Starting cost items extraction');
             $costItems = collect();
+            $otherCostItems = collect();
+            
             if ($budgetBreakdown && is_array($budgetBreakdown)) {
                 \Log::info('Cost items extraction - budget breakdown exists: ' . ($budgetBreakdown ? 'yes' : 'no'));
                 \Log::info('Cost items extraction - budget breakdown type: ' . gettype($budgetBreakdown));
                 
-                // Extract cost item names directly from budget breakdown
+                // Extract cost item names from budget breakdown
                 $costItemNames = [];
                 foreach ($budgetBreakdown as $fundCode => $items) {
                     if (is_array($items)) {
@@ -153,13 +155,23 @@ class ServiceRequestController extends Controller
                     }
                 }
                 
-                // Create cost items collection directly from budget breakdown
                 if (!empty($costItemNames)) {
                     \Log::info('Cost item names extracted from budget breakdown: ' . json_encode($costItemNames));
-                    foreach ($costItemNames as $name) {
-                        $costItems->push((object)['name' => $name, 'id' => $name]);
-                    }
-                    \Log::info('Created ' . $costItems->count() . ' cost items from budget breakdown');
+                    
+                    // Get Individual Cost items that exist in budget breakdown
+                    $individualCosts = CostItem::whereIn('name', $costItemNames)
+                                              ->where('cost_type', 'Individual Cost')
+                                              ->get();
+                    \Log::info('Found ' . $individualCosts->count() . ' Individual Cost items from budget breakdown');
+                    
+                    // Get Other Cost items that exist in budget breakdown
+                    $otherCosts = CostItem::whereIn('name', $costItemNames)
+                                         ->where('cost_type', 'Other Cost')
+                                         ->get();
+                    \Log::info('Found ' . $otherCosts->count() . ' Other Cost items from budget breakdown');
+                    
+                    $costItems = $individualCosts;
+                    $otherCostItems = $otherCosts;
                 }
             }
             
@@ -167,6 +179,12 @@ class ServiceRequestController extends Controller
             if ($costItems->isEmpty()) {
                 $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
                 \Log::info('Using fallback: all Individual Cost items (' . $costItems->count() . ' items)');
+            }
+            
+            // Fallback to all Other Cost items if no budget breakdown
+            if ($otherCostItems->isEmpty()) {
+                $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
+                \Log::info('Using fallback: all Other Cost items (' . $otherCostItems->count() . ' items)');
             }
             
             // Generate a unique request number with actual activity parameters (like ARF)
@@ -189,7 +207,7 @@ class ServiceRequestController extends Controller
                 }
             }
             
-            return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'costItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId', 'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames'));
+            return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId', 'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames'));
         } catch (\Exception $e) {
             \Log::error('Error in ServiceRequestController::create: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
@@ -201,6 +219,7 @@ class ServiceRequestController extends Controller
                 'workflows' => collect(),
                 'activities' => collect(),
                 'costItems' => collect(),
+                'otherCostItems' => collect(),
                 'requestNumber' => 'AU/CDC/SRV-' . date('Ymd') . '-001',
                 'sourceData' => null,
                 'sourceType' => null,
