@@ -76,7 +76,7 @@ class Staff extends Model
      */
     public function scopeActive($query)
     {
-        return $query->whereIn('status', ['Active', 'Due']);
+        return $query->whereIn('status', ['Active', 'Due','Expired','Under Renewal']);
     }
 
     /**
