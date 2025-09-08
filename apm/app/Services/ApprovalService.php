@@ -41,6 +41,7 @@ class ApprovalService
            $current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
            ->where('workflow_id',$model->forward_workflow_id);
 
+         
            $workflow_dfns = Approver::where('staff_id',"=", $user['staff_id'])
            ->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
            ->orWhere(function ($query) use ($today, $user,$current_approval_point) {
@@ -50,6 +51,8 @@ class ApprovalService
                })
            ->orderBy('id','desc')
            ->pluck('workflow_dfn_id');
+
+           //dd($workflow_dfns);
 
           // dd($workflow_dfns);
           

@@ -60,13 +60,44 @@ trait HasApprovalWorkflow
         $staff_id = null;
 
         if ($role->is_division_specific && method_exists($this, 'division') && $this->division) {
-            $staff_id = $this->division->{$role->division_reference_column};
+            // Division-specific approver (e.g., HOD, Director)
+            if (isset($this->division->{$role->division_reference_column})) {
+                $staff_id = $this->division->{$role->division_reference_column};
+            }
         } else {
-            $approver = Approver::where('workflow_dfn_id', $role->id)->first();
+            // Regular approver from approvers table
+            $today = Carbon::today();
+            
+            // First, check for OIC (Officer in Charge) if active
+            $oicApprover = Approver::where('workflow_dfn_id', $role->id)
+                ->whereNotNull('oic_staff_id')
+                ->where('end_date', '>=', $today)
+                ->with('oicStaff')
+                ->first();
+            
+            if ($oicApprover && $oicApprover->oicStaff) {
+                return $oicApprover->oicStaff;
+            }
+            
+            // If no active OIC, get regular approver
+            $approver = Approver::where('workflow_dfn_id', $role->id)
+                ->where(function ($query) use ($today) {
+                    $query->whereNull('end_date')
+                        ->orWhere('end_date', '>=', $today);
+                })
+                ->with('staff')
+                ->first();
+            
+            if ($approver && $approver->staff) {
+                return $approver->staff;
+            }
+            
             $staff_id = $approver ? $approver->staff_id : null;
         }
 
-        return $staff_id ? Staff::select('lname', 'fname', 'staff_id')->where('staff_id', $staff_id)->first() : null;
+        return $staff_id ? Staff::select('lname', 'fname', 'staff_id', 'job_name', 'division_name')
+            ->where('staff_id', $staff_id)
+            ->first() : null;
     }
 
     /**
@@ -121,6 +152,56 @@ trait HasApprovalWorkflow
         
         // Fallback to overall_status check
         return $this->overall_status === 'draft';
+    }
+
+    /**
+     * Get approval level display with role name and approver name.
+     */
+    public function getApprovalLevelDisplayAttribute(): string
+    {
+        if ($this->isDraft() && method_exists($this, 'staff') && $this->staff) {
+            return 'Draft (' . $this->staff->fname . ' ' . $this->staff->lname . ')';
+        }
+
+        if ($this->approval_level && $this->forward_workflow_id && $this->workflow_definition) {
+            $display = $this->workflow_definition->role;
+            
+            if ($this->current_actor) {
+                $display .= ' (' . $this->current_actor->fname . ' ' . $this->current_actor->lname . ')';
+            }
+            
+            return $display;
+        }
+
+        return 'N/A';
+    }
+
+    /**
+     * Get status badge CSS class.
+     */
+    public function getStatusBadgeClassAttribute(): string
+    {
+        $statusClasses = [
+            'draft' => 'bg-secondary',
+            'pending' => 'bg-warning',
+            'approved' => 'bg-success',
+            'rejected' => 'bg-danger',
+            'returned' => 'bg-info',
+        ];
+
+        return $statusClasses[$this->overall_status] ?? 'bg-secondary';
+    }
+
+    /**
+     * Get formatted date range.
+     */
+    public function getFormattedDateRangeAttribute(): string
+    {
+        if ($this->date_from && $this->date_to) {
+            return $this->date_from->format('M d, Y') . ' - ' . $this->date_to->format('M d, Y');
+        }
+        
+        return 'N/A';
     }
 
     /**
