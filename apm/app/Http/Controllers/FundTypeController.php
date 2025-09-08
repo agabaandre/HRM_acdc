@@ -36,7 +36,8 @@ class FundTypeController extends Controller
         FundType::create($validated);
 
         return redirect()->route('fund-types.index')
-            ->with('success', 'Fund Type created successfully.');
+            ->with('msg', 'Fund Type created successfully.')
+            ->with('type', 'success');
     }
 
     /**
@@ -67,23 +68,8 @@ class FundTypeController extends Controller
         $fundType->update($validated);
 
         return redirect()->route('fund-types.index')
-            ->with('success', 'Fund Type updated successfully.');
+            ->with('msg', 'Fund Type updated successfully.')
+            ->with('type', 'success');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(FundType $fundType)
-    {
-        // Check if the fund type has any fund codes before deleting
-        if ($fundType->fundCodes()->count() > 0) {
-            return redirect()->route('fund-types.index')
-                ->with('error', 'Cannot delete Fund Type. It has associated Fund Codes.');
-        }
-
-        $fundType->delete();
-
-        return redirect()->route('fund-types.index')
-            ->with('success', 'Fund Type deleted successfully.');
-    }
 }

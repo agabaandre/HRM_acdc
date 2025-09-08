@@ -43,6 +43,11 @@
                 </div>  
             </div>
 
+            @php
+                $divisionManagedDefinitions = $workflowDefinitions->where('is_division_specific', 1);
+            @endphp
+            
+            @if($divisionManagedDefinitions->count() > 0)
             <!-- Information about hidden levels -->
             <div class="alert alert-info border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left: 4px solid #2196f3 !important;">
                 <div class="d-flex align-items-start">
@@ -55,24 +60,14 @@
                             The following approval levels are automatically managed and cannot be manually assigned:
                         </p>
                         <div class="row g-2">
+                            @foreach($divisionManagedDefinitions as $def)
                             <div class="col-md-4">
                                 <div class="d-flex align-items-center">
-                                    <span class="badge bg-secondary me-2">Level 1</span>
-                                    <span class="small fw-semibold">HOD (Division Head)</span>
+                                    <span class="badge bg-secondary me-2">Level {{ $def->approval_order }}</span>
+                                    <span class="small fw-semibold">{{ $def->role }}</span>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="d-flex align-items-center">
-                                    <span class="badge bg-secondary me-2">Level 2</span>
-                                    <span class="small fw-semibold">Director</span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="d-flex align-items-center">
-                                    <span class="badge bg-secondary me-2">Level 5</span>
-                                    <span class="small fw-semibold">Finance Officer</span>
-                                </div>
-                            </div>
+                            @endforeach
                         </div>
                         <p class="mb-0 small text-muted mt-2">
                             <i class="bx bx-info-circle me-1"></i>These roles are managed at the division level and automatically assigned based on division structure.
@@ -80,12 +75,12 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             @foreach($workflowDefinitions as $definition)
                 @php
-                    // Check if this is a division-managed level
-                    $divisionManagedLevels = [1, 2, 5]; // HOD, Director, Finance Officer
-                    $isDivisionManaged = in_array($definition->approval_order, $divisionManagedLevels);
+                    // Check if this is a division-managed level using database column
+                    $isDivisionManaged = $definition->is_division_specific == 1;
                 @endphp
                 <div class="card border-0 shadow-sm mb-4 workflow-level-card {{ $isDivisionManaged ? 'border-warning division-managed-card' : '' }}">
                     <div class="card-header {{ $isDivisionManaged ? 'bg-warning bg-opacity-10 border-warning' : 'bg-white border-bottom' }}">
@@ -115,21 +110,15 @@
                                             Staff assignments are determined by the division's organizational chart.
                                         </p>
                                         <div class="row g-2">
-                                            @if($definition->approval_order == 1)
-                                                <div class="col-md-6">
-                                                    <span class="badge bg-secondary me-2">Division Head</span>
-                                                    <span class="small">Assigned from divisions table</span>
-                                                </div>
-                                            @elseif($definition->approval_order == 2)
-                                                <div class="col-md-6">
-                                                    <span class="badge bg-secondary me-2">Director</span>
-                                                    <span class="small">Assigned from divisions table</span>
-                                                </div>
-                                            @elseif($definition->approval_order == 5)
-                                                <div class="col-md-6">
-                                                    <span class="badge bg-secondary me-2">Finance Officer</span>
-                                                    <span class="small">Assigned from divisions table</span>
-                                                </div>
+                                            <div class="col-md-6">
+                                                <span class="badge bg-secondary me-2">{{ $definition->role }}</span>
+                                                <span class="small">Assigned from divisions table</span>
+                                            </div>
+                                            @if($definition->division_reference_column)
+                                            <div class="col-md-6">
+                                                <span class="badge bg-info me-2">Column: {{ $definition->division_reference_column }}</span>
+                                                <span class="small">Division reference field</span>
+                                            </div>
                                             @endif
                                         </div>
                                     </div>

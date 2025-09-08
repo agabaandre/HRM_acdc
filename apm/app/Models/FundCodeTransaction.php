@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class FundCodeTransaction extends Model
 {
-    protected $fillable = ['fund_code_id', 'amount', 'description', 'activity_id', 'matrix_id', 'activity_budget_id', 'balance_before', 'balance_after', 'is_reversal', 'created_by'];
+    protected $fillable = ['fund_code_id', 'amount', 'description', 'activity_id', 'matrix_id', 'channel', 'activity_budget_id', 'balance_before', 'balance_after', 'is_reversal', 'created_by'];
 
     public function fundCode()
     {

@@ -41,7 +41,12 @@ class Settings extends MX_Controller
 		$table = $this->input->post('table');
 		$column_name = $this->input->post('column_name');
 		$caller_value = $this->input->post('caller_value');
-		// $redirect = $this->input->post('redirect');
+		$redirect = $this->input->post('redirect');
+
+		// Debug logging
+		log_message('debug', 'Update content called for table: ' . $table);
+		log_message('debug', 'Column name: ' . $column_name . ', Caller value: ' . $caller_value);
+		log_message('debug', 'Redirect field: ' . $redirect);
 
 		$res = $this->settings_mdl->update_content($table, $column_name, $caller_value);
 		$message = "Updated";
@@ -52,15 +57,23 @@ class Settings extends MX_Controller
 				'type' => 'success'
 			);
 			Modules::run('utility/setFlash', $msg);
-			redirect('settings/' . $table);
+			
+			// Use redirect field if provided, otherwise use table
+			$redirect_url = $redirect ? 'settings/' . $redirect : 'settings/' . $table;
+			log_message('debug', 'Update successful, redirecting to ' . $redirect_url);
+			redirect($redirect_url);
 		} else {
 			$msg = array(
-				'msg' => 'Failed',
+				'msg' => 'Failed to update division',
 				'type' => 'error'
 			);
+			Modules::run('utility/setFlash', $msg);
+			log_message('error', 'Update failed for table: ' . $table);
 		}
 
-		redirect('settings/' . $table);
+		// Use redirect field if provided, otherwise use table
+		$redirect_url = $redirect ? 'settings/' . $redirect : 'settings/' . $table;
+		redirect($redirect_url);
 		
 	}
 
@@ -151,11 +164,54 @@ class Settings extends MX_Controller
 	public function divisions()
 	{
 		$this->load->model('settings_mdl');
-		$data['divisions'] = $this->settings_mdl->get_content('divisions');
-
+		
 		$data['module'] = $this->module;
 		$data['title'] = "Divisions";
 		render('divisions', $data);
+	}
+
+	public function divisions_datatables()
+	{
+		$this->load->model('settings_mdl');
+		
+		// DataTables parameters
+		$draw = intval($this->input->post("draw"));
+		$start = intval($this->input->post("start"));
+		$length = intval($this->input->post("length"));
+		$search_value = $this->input->post("search")["value"];
+		$order_column = intval($this->input->post("order")[0]["column"]);
+		$order_dir = $this->input->post("order")[0]["dir"];
+		
+		// Column mapping for ordering
+		$columns = array(
+			0 => 'd.division_id',
+			1 => 'd.division_name',
+			2 => 'd.division_short_name',
+			3 => 'd.category',
+			4 => 'dh.fname',
+			5 => 'fp.fname',
+			6 => 'fo.fname',
+			7 => 'fa.fname'
+		);
+		
+		$order_by = isset($columns[$order_column]) ? $columns[$order_column] : 'd.division_name';
+		
+		// Get data
+		$data = $this->settings_mdl->get_divisions_datatables($start, $length, $search_value, $order_by, $order_dir);
+		$total_records = $this->settings_mdl->get_divisions_count();
+		$filtered_records = $this->settings_mdl->get_divisions_count($search_value);
+		
+		// Prepare response
+		$response = array(
+			"draw" => $draw,
+			"recordsTotal" => $total_records,
+			"recordsFiltered" => $filtered_records,
+			"data" => $data
+		);
+		
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode($response));
 	}
 	public function directorates()
 	{
@@ -329,6 +385,182 @@ public function ppa_variables()
     } else {
         echo Modules::run('templates/main', $data);
     }
+}
+
+/**
+ * Generate short names for existing divisions - Preview page
+ */
+public function generate_division_short_names() {
+    $this->load->model('settings_mdl');
+    
+    // Check if column exists
+    $columns = $this->db->list_fields('divisions');
+    $hasShortNameColumn = in_array('division_short_name', $columns);
+    
+    if (!$hasShortNameColumn) {
+        $msg = array(
+            'msg' => 'Column division_short_name does not exist in divisions table',
+            'type' => 'error'
+        );
+        Modules::run('utility/setFlash', $msg);
+        redirect('settings/divisions');
+    }
+    
+    // Get divisions without short names
+    $divisions_without_short_names = $this->settings_mdl->getDivisionsWithoutShortNames();
+    
+    $data = array(
+        'module' => $this->module,
+        'title' => 'Generate Division Short Names',
+        'has_short_name_column' => $hasShortNameColumn,
+        'divisions_without_short_names' => $divisions_without_short_names,
+        'total_divisions' => count($divisions_without_short_names)
+    );
+    
+    render('generate_short_names', $data);
+}
+
+/**
+ * Preview short names before generating
+ */
+public function preview_short_names() {
+    $this->load->model('settings_mdl');
+    $divisions = $this->settings_mdl->getDivisionsWithoutShortNames();
+    
+    $preview = array();
+    foreach ($divisions as $division) {
+        $shortName = $this->settings_mdl->generateShortCodeFromDivision($division->division_name);
+        
+        // Ensure short name is not empty
+        if (empty($shortName)) {
+            $shortName = 'DIV' . $division->division_id;
+        }
+        
+        $preview[] = array(
+            'id' => $division->division_id,
+            'name' => $division->division_name,
+            'proposed_short_name' => $shortName
+        );
+    }
+    
+    header('Content-Type: application/json');
+    echo json_encode($preview);
+}
+
+/**
+ * Debug function to check database structure and data
+ */
+public function debug_divisions() {
+    $this->load->model('settings_mdl');
+    
+    // Check if column exists
+    $columns = $this->db->list_fields('divisions');
+    $hasShortNameColumn = in_array('division_short_name', $columns);
+    
+    // Get sample data
+    $this->db->select('division_id, division_name, division_short_name');
+    $this->db->limit(5);
+    $sampleData = $this->db->get('divisions')->result();
+    
+    echo "<h3>Debug Information</h3>";
+    echo "<p><strong>Column exists:</strong> " . ($hasShortNameColumn ? 'YES' : 'NO') . "</p>";
+    echo "<p><strong>All columns:</strong> " . implode(', ', $columns) . "</p>";
+    echo "<h4>Sample Data:</h4>";
+    echo "<pre>";
+    print_r($sampleData);
+    echo "</pre>";
+    
+    // Test the generation function
+    if (!empty($sampleData)) {
+        echo "<h4>Test Generation:</h4>";
+        foreach ($sampleData as $division) {
+            $shortName = $this->settings_mdl->generateShortCodeFromDivision($division->division_name);
+            echo "<p><strong>{$division->division_name}</strong> → <strong>{$shortName}</strong></p>";
+        }
+    }
+}
+
+/**
+ * Simple test function to manually update one division
+ */
+public function test_update() {
+    $this->load->model('settings_mdl');
+    
+    // Get the first division
+    $this->db->select('division_id, division_name, division_short_name');
+    $this->db->limit(1);
+    $division = $this->db->get('divisions')->row();
+    
+    if ($division) {
+        echo "<h3>Testing Update for Division: {$division->division_name}</h3>";
+        
+        // Generate short name
+        $shortName = $this->settings_mdl->generateShortCodeFromDivision($division->division_name);
+        if (empty($shortName)) {
+            $shortName = 'DIV' . $division->division_id;
+        }
+        
+        echo "<p><strong>Current short name:</strong> " . ($division->division_short_name ?: 'NULL') . "</p>";
+        echo "<p><strong>Proposed short name:</strong> {$shortName}</p>";
+        
+        // Try to update
+        $this->db->where('division_id', $division->division_id);
+        $result = $this->db->update('divisions', array('division_short_name' => $shortName));
+        
+        echo "<p><strong>Update result:</strong> " . ($result ? 'SUCCESS' : 'FAILED') . "</p>";
+        echo "<p><strong>Last query:</strong> " . $this->db->last_query() . "</p>";
+        
+        if (!$result) {
+            $error = $this->db->error();
+            echo "<p><strong>Database error:</strong> " . $error['message'] . "</p>";
+        }
+        
+        // Check the result
+        $this->db->select('division_id, division_name, division_short_name');
+        $this->db->where('division_id', $division->division_id);
+        $updated = $this->db->get('divisions')->row();
+        
+        echo "<p><strong>After update:</strong> " . ($updated->division_short_name ?: 'NULL') . "</p>";
+    } else {
+        echo "<p>No divisions found!</p>";
+    }
+}
+
+
+/**
+ * Force generate short names - direct method without form
+ */
+public function force_generate_short_names() {
+    $this->load->model('settings_mdl');
+    
+    // Generate short names
+    $result = $this->settings_mdl->updateDivisionsWithShortNames();
+    
+    // Set flash message with detailed results
+    $message = "Processed {$result['total_processed']} divisions. ";
+    $message .= "Updated: {$result['updated']}, Errors: {$result['errors']}";
+    
+    if ($result['errors'] > 0) {
+        $message .= "<br><strong>Errors:</strong><br>";
+        foreach ($result['results'] as $item) {
+            if ($item['status'] == 'error') {
+                $message .= "Division {$item['id']} ({$item['name']}): {$item['error']}<br>";
+            }
+        }
+    }
+    
+    // Also show successful updates
+    if ($result['updated'] > 0) {
+        $message .= "<br><strong>Successfully Updated:</strong><br>";
+        foreach ($result['results'] as $item) {
+            if ($item['status'] == 'success') {
+                $message .= "Division {$item['id']} ({$item['name']}): {$item['short_name']}<br>";
+            }
+        }
+    }
+    
+    Modules::run('utility/setFlash', $message, $result['errors'] > 0 ? 'error' : 'success');
+    redirect('settings/divisions');
 }
 
 	

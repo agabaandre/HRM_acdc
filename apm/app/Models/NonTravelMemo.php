@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class NonTravelMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow;
+    use HasFactory, HasApprovalWorkflow, Auditable;
 
     /**
      * The attributes that are mass assignable.
@@ -26,6 +27,7 @@ class NonTravelMemo extends Model
         'workplan_activity_code',
         'staff_id',
         'division_id',
+        'fund_type_id',
         'memo_date',
         'location_id',
         'non_travel_memo_category_id',
@@ -56,6 +58,7 @@ class NonTravelMemo extends Model
             'next_approval_level' => 'integer',
             'staff_id' => 'integer',
             'division_id' => 'integer',
+            'fund_type_id' => 'integer',
             'memo_date' => 'date',
             'location_id' => 'array',
             'non_travel_memo_category_id' => 'integer',
@@ -79,6 +82,28 @@ class NonTravelMemo extends Model
     public function nonTravelMemoCategory(): BelongsTo
     {
         return $this->belongsTo(NonTravelMemoCategory::class, 'non_travel_memo_category_id');
+    }
+
+    public function fundType(): BelongsTo
+    {
+        return $this->belongsTo(FundType::class, 'fund_type_id');
+    }
+
+    public function locations()
+    {
+        $locationIds = $this->location_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($locationIds)) {
+            $locationIds = json_decode($locationIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($locationIds) || empty($locationIds)) {
+            return collect();
+        }
+        
+        return Location::whereIn('id', $locationIds)->get();
     }
 
     public function forwardWorkflow(): BelongsTo
@@ -166,6 +191,77 @@ class NonTravelMemo extends Model
         return Staff::select('lname', 'fname', 'staff_id')
             ->where('staff_id', $staff_id)
             ->first();
+    }
+
+    // JSON-BASED: internal_participants[] mapped to Staff
+    public function getInternalParticipantsDetailsAttribute()
+    {
+        $participantIds = $this->internal_participants ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($participantIds)) {
+            $participantIds = json_decode($participantIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($participantIds) || empty($participantIds)) {
+            return collect();
+        }
+        
+        // Recursively flatten and extract IDs
+        $flatIds = $this->flattenParticipantIds($participantIds);
+        
+        if (empty($flatIds)) {
+            return collect();
+        }
+        
+        return Staff::whereIn('staff_id', $flatIds)->get();
+    }
+    
+    /**
+     * Recursively flatten participant IDs from nested arrays
+     */
+    private function flattenParticipantIds($data)
+    {
+        $ids = [];
+        
+        if (is_array($data)) {
+            foreach ($data as $key => $item) {
+                if (is_array($item)) {
+                    // Look for staff_id or id keys within the item
+                    if (isset($item['staff_id'])) {
+                        $ids[] = $item['staff_id'];
+                    } elseif (isset($item['id'])) {
+                        $ids[] = $item['id'];
+                    } else {
+                        // If no staff_id or id found, check if the key itself is a participant ID
+                        if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                            $ids[] = $key;
+                        } else {
+                            // Recursively process nested arrays
+                            $ids = array_merge($ids, $this->flattenParticipantIds($item));
+                        }
+                    }
+                } else {
+                    // Direct value - could be the key or the value
+                    if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                        $ids[] = $key;
+                    } else {
+                        $ids[] = $item;
+                    }
+                }
+            }
+        } else {
+            // Single value
+            $ids[] = $data;
+        }
+        
+        // Clean and validate IDs
+        $ids = array_filter($ids, function($id) {
+            return !empty($id) && $id !== null && (is_numeric($id) || is_string($id));
+        });
+        
+        return array_values(array_unique($ids));
     }
 
 

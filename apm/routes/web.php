@@ -58,6 +58,9 @@ Route::middleware([CheckSessionMiddleware::class])->group(function () {
     Route::resource('workflows', WorkflowController::class);
     Route::get('workflows/{workflow}/add-definition', [WorkflowController::class, 'addDefinition'])->name('workflows.add-definition');
     Route::post('workflows/{workflow}/store-definition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
+    Route::get('workflows/{workflow}/edit-definition/{definition}', [WorkflowController::class, 'editDefinition'])->name('workflows.edit-definition');
+    Route::put('workflows/{workflow}/update-definition/{definition}', [WorkflowController::class, 'updateDefinition'])->name('workflows.update-definition');
+    Route::delete('workflows/{workflow}/delete-definition/{definition}', [WorkflowController::class, 'deleteDefinition'])->name('workflows.delete-definition');
     Route::get('workflows/{workflow}/approvers', [WorkflowController::class, 'approvers'])->name('workflows.approvers');
     Route::put('workflows/{workflow}/approvers/{approver}', [WorkflowController::class, 'updateApprover'])->name('workflows.update-approver');
     Route::post('workflows/{workflow}/approvers/bulk-assign', [WorkflowController::class, 'bulkAssignApprovers'])->name('workflows.bulk-assign-approvers');
@@ -92,18 +95,59 @@ Route::middleware([CheckSessionMiddleware::class])->group(function () {
 Route::get('/budget-codes/by-fund-type', [App\Http\Controllers\ActivityController::class, 'getBudgetCodesByFundType'])
     ->name('budget-codes.by-fund-type');
 
+// AJAX route to get fund type for a specific budget code
+Route::get('/budget-codes/get-fund-type', [App\Http\Controllers\ActivityController::class, 'getFundTypeByBudgetCode'])
+    ->name('budget-codes.get-fund-type');
+
+// Route for Summernote image upload
+Route::post('/image/upload', [App\Http\Controllers\ImageController::class, 'upload'])
+    ->name('image.upload');
+
 Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function () {
     // Resource Routes
-    Route::resource('fund-types', App\Http\Controllers\FundTypeController::class);
-    Route::resource('fund-codes', App\Http\Controllers\FundCodeController::class);
+    Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->except(['destroy']);
+    
+    // Fund Codes specific routes (must be before resource route)
+    Route::get('fund-codes/download-template', [App\Http\Controllers\FundCodeController::class, 'downloadTemplate'])->name('fund-codes.download-template');
+    Route::post('fund-codes/upload', [App\Http\Controllers\FundCodeController::class, 'upload'])->name('fund-codes.upload');
     Route::get('fund-codes/{fundCode}/transactions', [App\Http\Controllers\FundCodeController::class, 'transactions'])->name('fund-codes.transactions');
-    Route::resource('divisions', App\Http\Controllers\DivisionController::class);
+    Route::resource('fund-codes', App\Http\Controllers\FundCodeController::class)->except(['destroy']);
+    
+    // Funders Management
+    Route::resource('funders', App\Http\Controllers\FunderController::class)->except(['destroy']);
+    Route::resource('divisions', App\Http\Controllers\DivisionController::class)->only(['index', 'show']);
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     Route::resource('staff', App\Http\Controllers\StaffController::class);
+    
+    // Staff activities route for matrix view
+    Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities');
     Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
-    Route::resource('locations', App\Http\Controllers\LocationController::class);
-    Route::resource('cost-items', App\Http\Controllers\CostItemController::class);
+    Route::resource('locations', App\Http\Controllers\LocationController::class)->except(['destroy']);
+    Route::resource('cost-items', App\Http\Controllers\CostItemController::class)->except(['destroy']);
     Route::resource('non-travel-categories', App\Http\Controllers\NonTravelMemoCategoryController::class);
+    
+    // Jobs Management Routes
+    Route::get('/jobs', [App\Http\Controllers\JobsController::class, 'index'])->name('jobs.index');
+    Route::post('/jobs/execute-command', [App\Http\Controllers\JobsController::class, 'executeCommand'])->name('jobs.execute-command');
+    Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
+    Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
+    Route::get('/jobs/system-info', [App\Http\Controllers\JobsController::class, 'getSystemInfo'])->name('jobs.system-info');
+
+    // Approver Dashboard Routes
+Route::get('/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'index'])->name('approver-dashboard.index');
+Route::get('/api/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'getDashboardData'])->name('approver-dashboard.api');
+Route::get('/api/approver-dashboard/filter-options', [App\Http\Controllers\ApproverDashboardController::class, 'getFilterOptions'])->name('approver-dashboard.filter-options');
+Route::get('/api/approver-dashboard/summary-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getSummaryStats'])->name('approver-dashboard.summary-stats');
+
+// Audit Logs Routes
+Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
+Route::get('/audit-logs/cleanup-modal', [App\Http\Controllers\AuditLogsController::class, 'showCleanupModal'])->name('audit-logs.cleanup-modal');
+Route::post('/audit-logs/cleanup', [App\Http\Controllers\AuditLogsController::class, 'cleanup'])->name('audit-logs.cleanup');
+Route::get('/audit-logs/reversal-modal', [App\Http\Controllers\AuditLogsController::class, 'showReversalModal'])->name('audit-logs.reversal-modal');
+Route::post('/audit-logs/reverse', [App\Http\Controllers\AuditLogsController::class, 'reverse'])->name('audit-logs.reverse');
+
+
+
     
     // Add matrices and activities resources inside the middleware group
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
@@ -174,8 +218,22 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
     Route::resource('special-memo', App\Http\Controllers\SpecialMemoController::class);
     
     // Request for ARF Routes
+    // ARF Export Routes  
+    Route::get('request-arf/export/my-submitted', [App\Http\Controllers\RequestARFController::class, 'exportMySubmittedCsv'])->name('request-arf.export.my-submitted');
+    Route::get('request-arf/export/all', [App\Http\Controllers\RequestARFController::class, 'exportAllCsv'])->name('request-arf.export.all');
+    
+    Route::post('request-arf/store-from-modal', [App\Http\Controllers\RequestARFController::class, 'storeFromModal'])->name('request-arf.store-from-modal');
     Route::resource('request-arf', App\Http\Controllers\RequestARFController::class);
+    Route::get('debug-arf-test', function() { return 'ARF route test successful'; });
+    Route::get('debug-arf-controller', [App\Http\Controllers\RequestARFController::class, 'debugTest']);
+    Route::post('debug-arf-post', function(\Illuminate\Http\Request $request) { 
+        return response()->json(['message' => 'POST route working', 'data' => $request->all()]); 
+    });
     Route::delete('request-arf/{requestARF}/remove-attachment', [App\Http\Controllers\RequestARFController::class, 'removeAttachment'])->name('request-arf.remove-attachment');
+    Route::post('request-arf/{requestARF}/approve', [App\Http\Controllers\RequestARFController::class, 'approve'])->name('request-arf.approve');
+    Route::post('request-arf/{requestARF}/submit-for-approval', [App\Http\Controllers\RequestARFController::class, 'submitForApproval'])->name('request-arf.submit-for-approval');
+    Route::post('request-arf/{requestARF}/update-status', [App\Http\Controllers\RequestARFController::class, 'updateStatus'])->name('request-arf.update-status');
+    Route::get('request-arf/{requestARF}/print', [App\Http\Controllers\RequestARFController::class, 'print'])->name('request-arf.print');
     
     Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
     Route::get('special-memo/{specialMemo}/print', [App\Http\Controllers\SpecialMemoController::class, 'print'])->name('special-memo.print');
@@ -188,6 +246,13 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     // Request for Services Routes
     Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
     Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
+    Route::get('service-requests/export/my-submitted', [App\Http\Controllers\ServiceRequestController::class, 'exportMySubmitted'])->name('service-requests.export.my-submitted');
+    Route::get('service-requests/export/all', [App\Http\Controllers\ServiceRequestController::class, 'exportAll'])->name('service-requests.export.all');
+    
+    // Service Request Modal Routes
+    Route::post('service-requests/get-source-data', [App\Http\Controllers\ServiceRequestController::class, 'getSourceData'])->name('service-requests.get-source-data');
+    Route::post('service-requests/store-from-modal', [App\Http\Controllers\ServiceRequestController::class, 'storeFromModal'])->name('service-requests.store-from-modal');
+    Route::get('service-requests/cost-items', [App\Http\Controllers\ServiceRequestController::class, 'getCostItems'])->name('service-requests.cost-items');
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
@@ -211,6 +276,6 @@ Route::post('non-travel/{nonTravel}/update-status', [App\Http\Controllers\NonTra
 Route::get('non-travel/{nonTravel}/status', [App\Http\Controllers\NonTravelMemoController::class, 'status'])->name('non-travel.status');
 
 // Activities Routes
-Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index');
+Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index')->middleware(CheckSessionMiddleware::class);
 
 

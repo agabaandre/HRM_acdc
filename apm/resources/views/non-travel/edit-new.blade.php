@@ -42,13 +42,13 @@
                         <!-- Date Required -->
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label for="date_required" class="form-label fw-semibold">
+                                <label for="memo_date" class="form-label fw-semibold">
                                     <i class="bx bx-calendar me-1 text-success"></i> Date Required <span class="text-danger">*</span>
                                 </label>
-                                <input type="text" name="date_required" id="date_required" 
-                                       class="form-control datepicker @error('date_required') is-invalid @enderror" 
-                                       value="{{ old('date_required', $nonTravel->date_required) }}" required>
-                                @error('date_required')
+                                <input type="text" name="memo_date" id="memo_date" 
+                                       class="form-control datepicker @error('memo_date') is-invalid @enderror" 
+                                       value="{{ old('memo_date', $nonTravel->memo_date) }}" required>
+                                @error('memo_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -102,33 +102,33 @@
                 <!-- Section 2: Mission Details -->
                 <div class="mb-5">
                     <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                        <i class="fas fa-tasks me-2"></i> Mission Details
+                        <i class="fas fa-tasks me-2"></i> Details
                     </h6>
                     
                     <div class="row g-4">
                         <!-- Title -->
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
-                                <label for="title" class="form-label fw-semibold">
+                                <label for="activity_title" class="form-label fw-semibold">
                                     <i class="bx bx-heading me-1 text-success"></i> Title of Activity <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="title" id="title" 
-                                          class="form-control @error('title') is-invalid @enderror" 
-                                          rows="2" required>{{ old('title', $nonTravel->title) }}</textarea>
-                                @error('title')
+                                <textarea name="activity_title" id="activity_title" 
+                                          class="form-control  @error('activity_title') is-invalid @enderror" 
+                                          rows="2" required>{{ old('activity_title', $nonTravel->activity_title) }}</textarea>
+                                @error('activity_title')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                         
                            {{-- Background --}}
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="background" class="form-label fw-semibold">
                                     <i class="bx bx-info-circle me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                                 </label>
                                 <textarea name="background" id="background" 
-                                          class="form-control @error('background') is-invalid @enderror" 
+                                          class="form-control summernote @error('background') is-invalid @enderror" 
                                           rows="3" required>{{ old('background', $nonTravel->background) }}</textarea>
                                 @error('background')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -137,49 +137,21 @@
                         </div>
                         
                         <!-- Description -->
-                          <div class="col-md-6">
+                          <div class="col-md-12">
                             <div class="form-group">
-                                <label for="description" class="form-label fw-semibold">
-                                    <i class="bx bx-comment-detail me-1 text-success"></i> Description <span class="text-danger">*</span>
+                                    <label for="justification" class="form-label fw-semibold">
+                                    <i class="bx bx-comment-detail me-1 text-success"></i> Justification <span class="text-danger">*</span>
                                 </label>
-                                <textarea name="description" id="description" 
-                                          class="form-control @error('description') is-invalid @enderror" 
-                                          rows="5" required>{{ old('description', $nonTravel->description) }}</textarea>
-                                @error('description')
+                                <textarea name="justification" id="justification" 
+                                          class="form-control summernote @error('justification') is-invalid @enderror" 
+                                          rows="5" required>{{ old('justification', $nonTravel->justification) }}</textarea>
+                                @error('justification')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                      
-                        
-                        <!-- RA -->
-                          <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="approval" class="form-label fw-semibold">
-                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
-                                </label>
-                                <textarea name="approval" id="approval" 
-                                          class="form-control @error('approval') is-invalid @enderror" 
-                                          rows="2" required>{{ old('approval', $nonTravel->approval) }}</textarea>
-                                @error('approval')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                      
-                        
-                        <!-- Other Information -->
-                        <div class="col-12">
-                            <div class="form-group">
-                                <label for="other_information" class="form-label fw-semibold">
-                                    <i class="bx bx-info me-1 text-success"></i> Any Other Information
-                                </label>
-                                <textarea name="other_information" id="other_information" 
-                                          class="form-control" rows="2">{{ old('other_information', $nonTravel->other_information) }}</textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+         
 
             
                 <!-- Budget Section -->
@@ -211,19 +183,9 @@
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
                         <script>
-                            // Populate budget codes with existing data
-                            document.addEventListener('DOMContentLoaded', function() {
-                                const existingBudgetCodes = @json($nonTravel->budget_id ? json_decode($nonTravel->budget_id, true) : []);
-                                if (existingBudgetCodes.length > 0) {
-                                    const budgetSelect = document.getElementById('budget_codes');
-                                    existingBudgetCodes.forEach(codeId => {
-                                        const option = budgetSelect.querySelector(`option[value="${codeId}"]`);
-                                        if (option) {
-                                            option.selected = true;
-                                        }
-                                    });
-                                }
-                            });
+                            // Store existing budget data for initialization
+                            window.existingBudgetCodes = @json($selectedBudgetCodes ?? []);
+                            window.existingBudgetBreakdown = @json($budgetBreakdown ?? []);
                         </script>
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
@@ -248,25 +210,104 @@
                             <i class="fas fa-coins me-2 text-success"></i>
                             Total Budget: <span class="text-success fw-bold">$<span id="grandBudgetTotal">0.00</span></span>
                         </h5>
-                        <input type="hidden" name="budget[grand_total]" id="grandBudgetTotalInput" value="0">
+                        <input type="hidden" name="budget_breakdown[grand_total]" id="grandBudgetTotalInput" value="0">
                     </div>
                 </div>
-
+               <!-- RA -->
+                          <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="activity_request_remarks" class="form-label fw-semibold">
+                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
+                                </label>
+                                    <textarea name="activity_request_remarks" id="activity_request_remarks" 
+                                          class="form-control summernote @error('activity_request_remarks') is-invalid @enderror" 
+                                          rows="2" required>{{ old('activity_request_remarks', $nonTravel->activity_request_remarks) }}</textarea>
+                                @error('activity_request_remarks')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
                 <!-- Attachments Section -->
                 <div class="mt-5">
                     <h5 class="fw-bold text-success mb-3">
                         <i class="fas fa-paperclip me-2"></i> Attachments
                     </h5>
+                    
+                    @if($attachments && count($attachments) > 0)
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Current Attachments:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Document Name</th>
+                                            <th>File Name</th>
+                                            <th>Size</th>
+                                            <th>Uploaded</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($attachments as $index => $attachment)
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>{{ $attachment['type'] ?? 'Document' }}</td>
+                                                <td>{{ $attachment['original_name'] ?? 'Unknown' }}</td>
+                                                <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
+                                                <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
+                                                <td>
+                                                    <a href="{{ url('storage/'.$attachment['path']) }}" target="_blank" class="btn btn-sm btn-info">
+                                                        <i class="bx bx-show"></i> View
+                                                    </a>
+                                                    <a href="{{ (url('storage/'.$attachment['path'])) }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
+                                                        <i class="bx bx-download"></i> Download
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="d-flex gap-2 mb-3">
                         <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
                         <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
                     </div>
                     <div class="row g-3" id="attachmentContainer">
-                        <div class="col-md-4 attachment-block">
-                            <label class="form-label">Document Type</label>
-                            <input type="text" name="attachments[0][type]" class="form-control">
-                            <input type="file" name="attachments[0][file]" class="form-control mt-1">
-                        </div>
+                        @if($attachments && count($attachments) > 0)
+                            @foreach($attachments as $index => $attachment)
+                                <div class="col-md-4 attachment-block">
+                                    <label class="form-label">Document Type*</label>
+                                    <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}">
+                                    <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
+                                    <small class="text-muted">Current: {{ $attachment['original_name'] ?? 'No file' }}</small>
+                                    <small class="text-muted d-block">Leave empty to keep existing file</small>
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="attachments[{{ $index }}][replace]" id="replace_{{ $index }}" value="1">
+                                        <label class="form-check-label" for="replace_{{ $index }}">
+                                            <small class="text-warning">Replace existing file</small>
+                                        </label>
+                                    </div>
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" name="attachments[{{ $index }}][delete]" id="delete_{{ $index }}" value="1">
+                                        <label class="form-check-label" for="delete_{{ $index }}">
+                                            <small class="text-danger">Delete this attachment</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                                                @else
+                            <!-- No default attachment field when no attachments exist -->
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    No attachments currently. Click "Add New" to add attachments.
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -347,8 +388,30 @@
             width: '100%'
         });
 
+        // Initialize Summernote only for fields with summernote class
+        if ($('.summernote').length > 0) {
+            $('.summernote').summernote({
+                height: 150,
+                fontNames: ['Arial'],
+                fontNamesIgnoreCheck: ['Arial'],
+                defaultFontName: 'Arial',
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['fontname', ['fontname']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link']],
+                    ['view', ['fullscreen', 'codeview', 'help']]
+                ]
+            });
+        }
+
+
+
         // Populate existing budget data
-        const existingBudget = @json($nonTravel->budget ? json_decode($nonTravel->budget, true) : []);
+        const existingBudget = @json($nonTravel->budget_breakdown ? json_decode($nonTravel->budget_breakdown, true) : []);
         const existingBudgetCodes = @json($nonTravel->budget_id ? json_decode($nonTravel->budget_id, true) : []);
         
         if (existingBudgetCodes.length > 0 && existingBudget.length > 0) {
@@ -484,19 +547,19 @@
             return `
                 <tr>
                     <td>
-                        <input type="text" name="budget[${codeId}][${index}][description]" 
+                        <input type="text" name="budget_breakdown[${codeId}][${index}][description]" 
                                class="form-control description" value="${description}" required>
                     </td>
                     <td>
-                        <input type="text" name="budget[${codeId}][${index}][unit]" 
+                        <input type="text" name="budget_breakdown[${codeId}][${index}][unit]" 
                                class="form-control unit" value="${unit}" required>
                     </td>
                     <td>
-                        <input type="number" name="budget[${codeId}][${index}][quantity]" 
+                        <input type="number" name="budget_breakdown[${codeId}][${index}][quantity]" 
                                class="form-control quantity" min="1" value="${quantity}" required>
                     </td>
                     <td>
-                        <input type="number" name="budget[${codeId}][${index}][unit_cost]" 
+                        <input type="number" name="budget_breakdown[${codeId}][${index}][unit_cost]" 
                                class="form-control unit-cost" min="0" step="0.01" value="${unitCost}" required>
                     </td>
                     <td class="total text-center">${total}</td>
@@ -554,18 +617,22 @@
         }
 
         // Attachments handling
-        let attachmentIndex = 1;
-        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+        let attachmentIndex = {{ ($attachments && is_array($attachments)) ? count($attachments) : 0 }};
+        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
 
         // Add new attachment block
         $('#addAttachment').on('click', function() {
+            // Remove the info alert if it exists
+            $('.alert-info').remove();
+            
             const newField = `
                 <div class="col-md-4 attachment-block">
-                    <label class="form-label">Document Type</label>
+                    <label class="form-label">Document Type*</label>
                     <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control">
                     <input type="file" name="attachments[${attachmentIndex}][file]" 
                            class="form-control mt-1 attachment-input" 
-                           accept=".pdf, .jpg, .jpeg, .png">
+                           accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
+                    <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX</small>
                 </div>`;
             $('#attachmentContainer').append(newField);
             attachmentIndex++;
@@ -573,23 +640,169 @@
 
         // Remove attachment block
         $('#removeAttachment').on('click', function() {
-            if ($('.attachment-block').length > 1) {
+            if ($('.attachment-block').length > 0) {
                 $('.attachment-block').last().remove();
                 attachmentIndex--;
+                
+                // If no more attachment blocks, show the info message
+                if ($('.attachment-block').length === 0) {
+                    $('#attachmentContainer').html(`
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No attachments currently. Click "Add New" to add attachments.
+                            </div>
+                        </div>
+                    `);
+                }
             }
         });
 
-        // Validate file extension on upload
+        // Validate file extension on upload and handle required attribute
         $(document).on('change', '.attachment-input', function() {
             const fileInput = this;
             const fileName = fileInput.files[0]?.name || '';
             const ext = fileName.split('.').pop().toLowerCase();
+            
+            // Find the corresponding type input
+            const typeInput = $(fileInput).closest('.attachment-block').find('input[name*="[type]"]');
 
             if (!allowedExtensions.includes(ext)) {
-                alert("Only PDF, JPG, JPEG, or PNG files are allowed.");
+                alert("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
                 $(fileInput).val(''); // Clear invalid file
+                typeInput.prop('required', false);
+            } else if (fileName) {
+                // File selected, make type required
+                typeInput.prop('required', true);
+            } else {
+                // No file selected, make type not required
+                typeInput.prop('required', false);
             }
         });
+
+        // Initialize existing budget data - moved to global scope
+        window.initializeExistingBudgetData = function() {
+            console.log('Initializing existing budget data...');
+            console.log('Existing budget codes:', window.existingBudgetCodes);
+            console.log('Existing budget breakdown:', window.existingBudgetBreakdown);
+            console.log('Type of existingBudgetBreakdown:', typeof window.existingBudgetBreakdown);
+            console.log('Keys in existingBudgetBreakdown:', window.existingBudgetBreakdown ? Object.keys(window.existingBudgetBreakdown) : 'undefined');
+            
+            if (window.existingBudgetCodes && window.existingBudgetCodes.length > 0) {
+                // First, we need to get the fund type for the existing budget codes
+                // and set it automatically so the budget codes dropdown can be populated
+                const firstBudgetCode = window.existingBudgetCodes[0];
+                console.log('Getting fund type for budget code:', firstBudgetCode);
+                
+                // Get fund type from the budget code
+                $.get('{{ route("budget-codes.get-fund-type") }}', {
+                    budget_code_id: firstBudgetCode
+                }, function(fundTypeId) {
+                    console.log('Retrieved fund type ID:', fundTypeId);
+                    
+                    if (fundTypeId) {
+                        // Set the fund type
+                        $('#fund_type').val(fundTypeId).trigger('change');
+                        console.log('Set fund type to:', fundTypeId);
+                        
+                        // Wait for budget codes to load, then select existing codes
+                        setTimeout(() => {
+                            const budgetSelect = $('#budget_codes');
+                            console.log('Budget select found:', budgetSelect.length);
+                            console.log('Budget select options count:', budgetSelect.find('option').length);
+                            
+                            // Select existing budget codes
+                            window.existingBudgetCodes.forEach(codeId => {
+                                const option = budgetSelect.find(`option[value="${codeId}"]`);
+                                if (option.length) {
+                                    option.prop('selected', true);
+                                    console.log(`Selected budget code: ${codeId}`);
+                                } else {
+                                    console.log(`Budget code option not found: ${codeId}`);
+                                }
+                            });
+                            
+                            // Trigger change to create budget cards
+                            console.log('Triggering change event on budget select...');
+                            budgetSelect.trigger('change');
+                            
+                            // Load existing budget items after cards are created
+                            setTimeout(() => {
+                                console.log('About to call loadExistingBudgetItems...');
+                                window.loadExistingBudgetItems();
+                            }, 300);
+                        }, 1000); // Wait 1 second for fund type change to load budget codes
+                    } else {
+                        console.log('No fund type found for budget code:', firstBudgetCode);
+                    }
+                }).fail(function() {
+                    console.log('Failed to get fund type for budget code:', firstBudgetCode);
+                });
+            } else {
+                console.log('No existing budget codes found');
+            }
+        };
+        
+        // Load existing budget items into the cards - moved to global scope
+        window.loadExistingBudgetItems = function() {
+            console.log('loadExistingBudgetItems called');
+            console.log('window.existingBudgetBreakdown:', window.existingBudgetBreakdown);
+            console.log('Type of existingBudgetBreakdown:', typeof window.existingBudgetBreakdown);
+            console.log('Keys in existingBudgetBreakdown:', window.existingBudgetBreakdown ? Object.keys(window.existingBudgetBreakdown) : 'undefined');
+            
+            if (window.existingBudgetBreakdown && Object.keys(window.existingBudgetBreakdown).length > 0) {
+                console.log('Loading existing budget items...');
+                
+                try {
+                    Object.entries(window.existingBudgetBreakdown).forEach(([codeId, items]) => {
+                        console.log(`Processing codeId: ${codeId}, items:`, items);
+                        
+                        if (codeId === 'grand_total') {
+                            console.log('Skipping grand_total');
+                            return; // Skip grand total
+                        }
+                        
+                        const card = $(`.budget-card[data-code="${codeId}"]`);
+                        console.log(`Found card for codeId ${codeId}:`, card.length);
+                        
+                        if (card.length && items && items.length > 0) {
+                            console.log(`Loading ${items.length} items for code ${codeId}`);
+                            const tbody = card.find('.budget-items');
+                            tbody.empty(); // Clear existing rows
+                            
+                            items.forEach((item, index) => {
+                                console.log(`Creating budget row for item ${index}:`, item);
+                                console.log('createBudgetRow function exists:', typeof createBudgetRow);
+                                if (typeof createBudgetRow === 'function') {
+                                    const row = createBudgetRow(codeId, index, item);
+                                    console.log('Created row:', row);
+                                    tbody.append(row);
+                                } else {
+                                    console.error('createBudgetRow function not found!');
+                                }
+                            });
+                            
+                            // Update totals
+                            console.log('updateSubtotal function exists:', typeof updateSubtotal);
+                            console.log('updateGrandTotal function exists:', typeof updateGrandTotal);
+                            if (typeof updateSubtotal === 'function') {
+                                updateSubtotal(card);
+                            }
+                            if (typeof updateGrandTotal === 'function') {
+                                updateGrandTotal();
+                            }
+                            console.log(`Loaded ${items.length} budget items for code ${codeId}`);
+                        } else {
+                            console.log(`No card found or no items for codeId ${codeId}. Card length: ${card.length}, Items:`, items);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error loading existing budget items:', error);
+                }
+            } else {
+                console.log('No existing budget breakdown data found or empty object');
+            }
+        };
 
         // AJAX form submission
         $('#nonTravelForm').on('submit', function(e) {
@@ -617,42 +830,31 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Populate modal with memo details
-                        $('#successMessage').text(response.message);
-                        $('#memoTitle').text(response.memo.title);
-                        $('#memoCategory').text(response.memo.category);
-                        $('#memoStatus').text(response.memo.status.charAt(0).toUpperCase() + response.memo.status.slice(1));
-                        $('#memoDate').text(response.memo.date_required);
-                        $('#memoBudget').text(response.memo.total_budget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                        $('#memoId').text(response.memo.id);
-                        $('#previewMemoBtn').attr('href', response.memo.preview_url);
+                        // Show success notification
+                        show_notification(response.message, 'success');
                         
-                        // Show success modal
-                        $('#successModal').modal('show');
-                        
-                        // Reset form
-                        form[0].reset();
-                        $('.select2').val(null).trigger('change');
-                        $('#budgetCards').empty();
-                        $('#grandBudgetTotal').text('0.00');
-                        $('#grandBudgetTotalInput').val('0.00');
-                        
-                        // Reset attachments
-                        $('.attachment-block:not(:first)').remove();
-                        attachmentIndex = 1;
+                        // For edit form, redirect to the memo view instead of showing modal
+                        setTimeout(function() {
+                            window.location.href = response.memo.preview_url;
+                        }, 1500);
                     }
                 },
                 error: function(xhr) {
-                    let errorMessage = 'An error occurred while submitting the memo.';
+                    let errorMessage = 'An error occurred while updating the memo.';
                     
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         const errors = xhr.responseJSON.errors;
                         errorMessage = Object.values(errors).flat().join('\n');
+                        show_notification(errorMessage, 'error');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
+                        show_notification(errorMessage, 'error');
+                    } else if (xhr.status === 422) {
+                        errorMessage = 'Validation failed. Please check your input and try again.';
+                        show_notification(errorMessage, 'error');
+                    } else {
+                        show_notification(errorMessage, 'error');
                     }
-                    
-                    alert('Error: ' + errorMessage);
                 },
                 complete: function() {
                     // Reset button state
@@ -720,6 +922,18 @@
                 updateGrandTotal();
             }
         });
+    });
+    
+    // Initialize existing budget data when document is ready
+    $(document).ready(function() {
+        // Set fund type first if it exists
+        const fundTypeId = $('#fund_type').val();
+        if (fundTypeId) {
+            $('#fund_type').trigger('change');
+        }
+        
+        // Initialize budget data after a short delay to ensure everything is loaded
+        setTimeout(window.initializeExistingBudgetData, 800);
     });
 </script>
 @endpush

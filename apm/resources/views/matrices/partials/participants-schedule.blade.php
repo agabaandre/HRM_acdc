@@ -39,8 +39,11 @@
                                 <span class="badge bg-secondary rounded-pill">{{ $count }}</span>
                             </td>
                             <td class="px-3 py-3">
-                                <div class="fw-semibold">{{ $staff->fname . " " . $staff->lname }}</div>
-                              
+                                <div class="fw-semibold">
+                                    <a href="#" class="text-decoration-none text-primary" onclick="showStaffActivities({{ $staff->staff_id }}, '{{ $staff->fname . " " . $staff->lname }}')">
+                                        {{ $staff->title . " " . $staff->fname . " " . $staff->lname }}
+                                    </a>
+                                </div>
                             </td>
                             <td class="px-3 py-3">
                                 <div class="text-muted">{{ $staff->job_name ?? 'Not specified' }}</div>
@@ -49,10 +52,10 @@
                                 @endif
                             </td>
                             <td class="px-3 py-3 text-center">
-                                <span class="fw-semibold text-success">{{ $division_days }}</span>
+                                <span class="fw-semibold text-muted">{{ $division_days }}</span>
                             </td>
                             <td class="px-3 py-3 text-center">
-                                <span class="fw-semibold text-info">{{ $other_days }}</span>
+                                <span class="fw-semibold text-muted">{{ $other_days }}</span>
                             </td>
                             <td class="px-3 py-3 text-center">
                                 @if($isOverLimit)
@@ -61,7 +64,7 @@
                                     </span>
                                     <small class="d-block text-danger mt-1">Over limit</small>
                                 @else
-                                    <span class="fw-bold text-primary">{{ $total_days }}</span>
+                                    <span class="fw-bold text-muted">{{ $total_days }}</span>
                                 @endif
                             </td>
                         </tr>
@@ -109,7 +112,7 @@
                         <div class="d-flex align-items-center justify-content-center">
                             <i class="bx bx-exclamation-triangle text-warning me-2"></i>
                             <div>
-                                <div class="fw-bold text-warning">
+                                <div class="fw-bold text-danger">
                                     {{ $matrix->division_staff->filter(function($staff) use ($matrix) {
                                         $quarter_year = $matrix->quarter."-".$matrix->year;
                                         $division_days = (isset($staff->division_days[$quarter_year])) ? $staff->division_days[$quarter_year] : 0;

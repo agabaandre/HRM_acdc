@@ -50,6 +50,7 @@
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/export-data.js"></script>
 <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" integrity="sha512-nMNlpuaDPrqlEls3IX/Q56H36qvBASwb3ipuo3MxeWbsQB1881ox0cRv7UPTgBlriqoynt35KjEwgGUeUXIPnw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
 <!-- Global: Disable Highcharts Credits -->
 <script type="text/javascript">
@@ -118,9 +119,7 @@
         top: 50%;
         transform: translateY(-50%);
     }
-        max-height: 90vh;
-        transition: transform 0.3s ease-out;
-    }
+
 
     .modal.fade .modal-dialog.modal-bottom {
         transform: translateY(100%);
@@ -136,6 +135,100 @@
     height: 35px !important;
     user-select: none;
     -webkit-user-select: none;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.375rem !important;
+    }
+
+    .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 33px !important;
+        padding-left: 8px !important;
+        padding-right: 20px !important;
+    }
+
+    .select2-container .select2-selection--single .select2-selection__placeholder {
+        line-height: 33px !important;
+        color: #6c757d !important;
+    }
+
+    .select2-container .select2-selection--single:focus {
+        border-color: #198754 !important;
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25) !important;
+    }
+
+    .select2-container--bootstrap4 .select2-selection--single {
+        border: 1px solid #ced4da !important;
+        border-radius: 0.375rem !important;
+    }
+
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+        line-height: 33px !important;
+        padding-left: 8px !important;
+        padding-right: 20px !important;
+    }
+
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__placeholder {
+        line-height: 33px !important;
+        color: #6c757d !important;
+    }
+
+    .select2-container--bootstrap4 .select2-selection--single:focus {
+        border-color: #198754 !important;
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25) !important;
+    }
+
+    .select2-container--bootstrap5 .select2-selection--single {
+        border: 1px solid #ced4da !important;
+        border-radius: 0.375rem !important;
+    }
+
+    .select2-container--bootstrap5 .select2-selection--single .select2-selection__rendered {
+        line-height: 33px !important;
+        padding-left: 8px !important;
+        padding-right: 20px !important;
+    }
+
+    .select2-container--bootstrap5 .select2-selection--single .select2-selection__placeholder {
+        line-height: 33px !important;
+        color: #6c757d !important;
+        width: 100% !important;
+    }
+
+    .select2-container--bootstrap5 .select2-selection--single:focus {
+        border-color: #198754 !important;
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25) !important;
+    }
+
+    /* Enhanced Action Buttons Styling */
+    .action-btn {
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.2s ease-in-out !important;
+        border: none !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+    }
+
+    .action-btn.text-info:hover {
+        background-color: rgba(13, 202, 240, 0.1) !important;
+        color: #0dcaf0 !important;
+    }
+
+    .action-btn.text-primary:hover {
+        background-color: rgba(13, 110, 253, 0.1) !important;
+        color: #0d6efd !important;
+    }
+
+    .action-btn.text-success:hover {
+        background-color: rgba(25, 135, 84, 0.1) !important;
+        color: #198754 !important;
     }
 </style>
 

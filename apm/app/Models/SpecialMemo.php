@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class SpecialMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow;
+    use HasFactory, HasApprovalWorkflow, Auditable;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -26,6 +27,9 @@ class SpecialMemo extends Model
         'activity_id',
         'staff_id',
         'division_id',
+        'responsible_person_id',
+        'fund_type_id',
+        'budget_id',
         'date_from',
         'date_to',
         'location_id',
@@ -40,7 +44,7 @@ class SpecialMemo extends Model
         'justification',
         'is_special_memo',
         'is_draft',
-        'budget',
+        'budget_breakdown',
         'attachment',
         'status',
         'overall_status',
@@ -59,8 +63,12 @@ class SpecialMemo extends Model
         'date_from' => 'date',
         'date_to' => 'date',
         'location_id' => 'array',
+        'responsible_person_id' => 'integer',
+        'fund_type_id' => 'integer',
+        'budget_id' => 'array',
+        
         'internal_participants' => 'array',
-        'budget' => 'array',
+        'budget_breakdown' => 'array',
         'attachment' => 'array',
         'is_special_memo' => 'boolean',
         'is_draft' => 'boolean',
@@ -82,6 +90,31 @@ class SpecialMemo extends Model
     {
         return $this->belongsTo(Division::class, 'division_id');
     }
+
+    public function locations()
+    {
+        $locationIds = $this->location_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($locationIds)) {
+            $locationIds = json_decode($locationIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($locationIds) || empty($locationIds)) {
+            return collect();
+        }
+        
+        return Location::whereIn('id', $locationIds)->get();
+    }
+    
+    /**
+     * Responsible person relationship.
+     */
+    public function responsiblePerson()
+    {
+        return $this->belongsTo(Staff::class, 'responsible_person_id', 'staff_id');
+    }
     
     /**
      * Request type relationship.
@@ -89,6 +122,11 @@ class SpecialMemo extends Model
     public function requestType(): BelongsTo
     {
         return $this->belongsTo(RequestType::class, 'request_type_id');
+    }
+
+    public function fundType(): BelongsTo
+    {
+        return $this->belongsTo(FundType::class, 'fund_type_id');
     }
 
     /**
@@ -257,9 +295,9 @@ class SpecialMemo extends Model
 
 
     /**
-     * Get the budget as an array.
+     * Get the budget breakdown as an array.
      */
-    public function getBudgetAttribute($value)
+    public function getBudgetBreakdownAttribute($value)
     {
         if (is_array($value)) {
             return $value;
@@ -275,6 +313,77 @@ class SpecialMemo extends Model
         }
 
         return [];
+    }
+
+    // JSON-BASED: internal_participants[] mapped to Staff
+    public function getInternalParticipantsDetailsAttribute()
+    {
+        $participantIds = $this->internal_participants ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($participantIds)) {
+            $participantIds = json_decode($participantIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($participantIds) || empty($participantIds)) {
+            return collect();
+        }
+        
+        // Recursively flatten and extract IDs
+        $flatIds = $this->flattenParticipantIds($participantIds);
+        
+        if (empty($flatIds)) {
+            return collect();
+        }
+        
+        return Staff::whereIn('staff_id', $flatIds)->get();
+    }
+    
+    /**
+     * Recursively flatten participant IDs from nested arrays
+     */
+    private function flattenParticipantIds($data)
+    {
+        $ids = [];
+        
+        if (is_array($data)) {
+            foreach ($data as $key => $item) {
+                if (is_array($item)) {
+                    // Look for staff_id or id keys within the item
+                    if (isset($item['staff_id'])) {
+                        $ids[] = $item['staff_id'];
+                    } elseif (isset($item['id'])) {
+                        $ids[] = $item['id'];
+                    } else {
+                        // If no staff_id or id found, check if the key itself is a participant ID
+                        if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                            $ids[] = $key;
+                        } else {
+                            // Recursively process nested arrays
+                            $ids = array_merge($ids, $this->flattenParticipantIds($item));
+                        }
+                    }
+                } else {
+                    // Direct value - could be the key or the value
+                    if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                        $ids[] = $key;
+                    } else {
+                        $ids[] = $item;
+                    }
+                }
+            }
+        } else {
+            // Single value
+            $ids[] = $data;
+        }
+        
+        // Clean and validate IDs
+        $ids = array_filter($ids, function($id) {
+            return !empty($id) && $id !== null && (is_numeric($id) || is_string($id));
+        });
+        
+        return array_values(array_unique($ids));
     }
 
 }

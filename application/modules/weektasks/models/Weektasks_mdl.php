@@ -178,9 +178,22 @@ class Weektasks_mdl extends CI_Model {
     public function get_tasks_for_calendar($staff_id)
     {
         return $this->db
-            ->select('activity_name, start_date, end_date, status')
+            ->select('activity_name, start_date, end_date, status, comments')
             ->from('work_plan_weekly_tasks')
             ->where("FIND_IN_SET($staff_id, staff_id) >", 0)
+            ->order_by('start_date', 'ASC')
+            ->get()
+            ->result();
+    }
+
+    public function get_tasks_for_calendar_by_date_range($staff_id, $start_date, $end_date)
+    {
+        return $this->db
+            ->select('activity_name, start_date, end_date, status, comments')
+            ->from('work_plan_weekly_tasks')
+            ->where("FIND_IN_SET($staff_id, staff_id) >", 0)
+            ->where('start_date >=', $start_date)
+            ->where('start_date <=', $end_date)
             ->order_by('start_date', 'ASC')
             ->get()
             ->result();
@@ -263,6 +276,193 @@ class Weektasks_mdl extends CI_Model {
         ->result();
 }
 
+// Enhanced filtered methods for improved print functionality
+public function get_tasks_by_staff_and_filters($staff_id, $filters) {
+    // Subquery to get the latest contract ID for the staff
+    $latest_contract_subquery = $this->db
+        ->select('MAX(staff_contract_id)', false)
+        ->from('staff_contracts')
+        ->where('staff_id', $staff_id)
+        ->get_compiled_select();
+
+    $this->db
+        ->select('
+            w.*, 
+            p.activity_name AS parent_activity,
+            jobs.job_name,
+            divisions.division_name
+        ')
+        ->from('work_plan_weekly_tasks w')
+        ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
+        ->join('workplan_tasks', 'workplan_tasks.id = p.workplan_id', 'left')
+        ->join("(
+            SELECT * FROM staff_contracts 
+            WHERE staff_contract_id = ($latest_contract_subquery)
+        ) sc", "FIND_IN_SET('$staff_id', w.staff_id) > 0", 'left')
+        ->join('jobs', 'jobs.job_id = sc.job_id', 'left')
+        ->join('divisions', 'divisions.division_id = sc.division_id', 'left')
+        ->where("FIND_IN_SET('$staff_id', w.staff_id) >", 0);
+
+    // Apply filters
+    if (!empty($filters['start_date'])) {
+        $this->db->where('w.start_date >=', $filters['start_date']);
+    }
     
+    if (!empty($filters['end_date'])) {
+        $this->db->where('w.end_date <=', $filters['end_date']);
+    }
+    
+    if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        $this->db->where('w.status', $filters['status']);
+    }
+    
+    if (!empty($filters['teamlead']) && $filters['teamlead'] !== 'all') {
+        $this->db->where('p.created_by', $filters['teamlead']);
+    }
+
+    return $this->db
+        ->order_by('w.start_date', 'ASC')
+        ->get()
+        ->result();
+}
+
+public function get_combined_tasks_for_division_filtered($division_id, $filters) {
+    $this->db
+        ->select('
+            w.activity_name, 
+            w.start_date, 
+            w.end_date, 
+            w.comments, 
+            w.status, 
+            p.activity_name AS parent_activity, 
+            wp.activity_name AS workplan_activity, 
+            d.division_name
+        ')
+        ->from('work_plan_weekly_tasks w')
+        ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
+        ->join('workplan_tasks wp', 'wp.id = p.workplan_id', 'left')
+        ->join('divisions d', 'd.division_id = wp.division_id', 'left')
+        ->where('wp.division_id', $division_id);
+
+    // Apply filters
+    if (!empty($filters['start_date'])) {
+        $this->db->where('w.start_date >=', $filters['start_date']);
+    }
+    
+    if (!empty($filters['end_date'])) {
+        $this->db->where('w.end_date <=', $filters['end_date']);
+    }
+    
+    if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        $this->db->where('w.status', $filters['status']);
+    }
+    
+    if (!empty($filters['teamlead']) && $filters['teamlead'] !== 'all') {
+        $this->db->where('p.created_by', $filters['teamlead']);
+    }
+    
+    // Filter by specific staff if provided
+    if (!empty($filters['staff_ids'])) {
+        $staff_ids = explode(',', $filters['staff_ids']);
+        $this->db->group_start();
+        foreach ($staff_ids as $staff_id) {
+            $this->db->or_where("FIND_IN_SET(" . $this->db->escape($staff_id) . ", w.staff_id) >", 0);
+        }
+        $this->db->group_end();
+    }
+
+    return $this->db
+        ->group_by('w.activity_name, w.start_date, w.end_date') // ensures uniqueness
+        ->order_by('w.start_date', 'ASC')
+        ->get()
+        ->result();
+}
+
+// Method to get calendar events with filters
+public function get_tasks_for_calendar_filtered($filters = []) {
+    $this->db
+        ->select('w.activity_name, w.start_date, w.end_date, w.status')
+        ->from('work_plan_weekly_tasks w')
+        ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
+        ->join('workplan_tasks wp', 'wp.id = p.workplan_id', 'left');
+
+    // Apply filters
+    if (!empty($filters['start_date'])) {
+        $this->db->where('w.start_date >=', $filters['start_date']);
+    }
+    
+    if (!empty($filters['end_date'])) {
+        $this->db->where('w.end_date <=', $filters['end_date']);
+    }
+    
+    if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        $this->db->where('w.status', $filters['status']);
+    }
+    
+    if (!empty($filters['teamlead']) && $filters['teamlead'] !== 'all') {
+        $this->db->where('p.created_by', $filters['teamlead']);
+    }
+    
+    if (!empty($filters['division'])) {
+        $this->db->where('wp.division_id', $filters['division']);
+    }
+    
+    if (!empty($filters['staff_ids'])) {
+        $staff_ids = explode(',', $filters['staff_ids']);
+        $this->db->group_start();
+        foreach ($staff_ids as $staff_id) {
+            $this->db->or_where("FIND_IN_SET(" . $this->db->escape($staff_id) . ", w.staff_id) >", 0);
+        }
+        $this->db->group_end();
+    }
+
+    return $this->db
+        ->order_by('w.start_date', 'ASC')
+        ->get()
+        ->result();
+}
+
+// Method to get tasks for statistics calculation
+public function get_tasks_for_statistics($filters = []) {
+    $this->db
+        ->select('w.activity_id, w.start_date, w.end_date, w.status')
+        ->from('work_plan_weekly_tasks w')
+        ->join('work_planner_tasks p', 'p.activity_id = w.work_planner_tasks_id', 'left')
+        ->join('workplan_tasks wp', 'wp.id = p.workplan_id', 'left');
+
+    // Apply filters
+    if (!empty($filters['start_date'])) {
+        $this->db->where('w.start_date >=', $filters['start_date']);
+    }
+    
+    if (!empty($filters['end_date'])) {
+        $this->db->where('w.end_date <=', $filters['end_date']);
+    }
+    
+    if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        $this->db->where('w.status', $filters['status']);
+    }
+    
+    if (!empty($filters['teamlead']) && $filters['teamlead'] !== 'all') {
+        $this->db->where('p.created_by', $filters['teamlead']);
+    }
+    
+    if (!empty($filters['division'])) {
+        $this->db->where('wp.division_id', $filters['division']);
+    }
+    
+    if (!empty($filters['staff_id']) && is_array($filters['staff_id'])) {
+        $this->db->group_start();
+        foreach ($filters['staff_id'] as $staff_id) {
+            $this->db->or_where("FIND_IN_SET(" . $this->db->escape($staff_id) . ", w.staff_id) >", 0);
+        }
+        $this->db->group_end();
+    }
+
+    return $this->db
+        ->order_by('w.start_date', 'ASC')
+        ->get()
+        ->result();
+}
 
 }

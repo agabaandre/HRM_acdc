@@ -21,7 +21,7 @@ class Staff_mdl extends CI_Model
 		->get_compiled_select();
 
 		$this->db->select('
-			s.SAPNO,s.title, s.fname, 
+			s.SAPNO,s.title, s.fname, s.signature,
 			s.lname, s.oname, sc.grade_id, g.grade, s.date_of_birth, 
 			s.gender, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting, 
 			ci.contracting_institution, ci.contracting_institution_id, 

@@ -138,7 +138,7 @@
         @endif
 
        
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
             @foreach ($errors->all() as $error)
                 show_notification(`{!! $error !!}`, "error");
             @endforeach
@@ -297,6 +297,61 @@
             doGTranslate('en');
         }, 1500); // delay to let Google Translate load
     });
+</script>
+
+<script>
+  // Initialize Summernote on the textarea
+  $(document).ready(function() {
+    $('.summernote').summernote({
+      placeholder: 'Type here.................',
+      tabsize: 2,
+      height: 250,
+      toolbar: [
+        // customize the toolbar as needed
+        ['style', ['style']],
+        ['font', ['bold', 'italic', 'underline', 'clear']],
+        ['fontname', ['fontname']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol', 'paragraph']],
+        ['insert', ['link', 'picture', 'video']],
+        ['view', ['fullscreen', 'codeview', 'help']]
+      ],
+      // Remove default image upload (base64) behavior
+      callbacks: {
+        onImageUpload: function(files) {
+          for (var i = 0; i < files.length; i++) {
+            uploadImage(files[i], this);
+          }
+        }
+      }
+    });
+  });
+
+  function uploadImage(file, editor) {
+    var data = new FormData();
+    data.append("file", file);
+
+    // Append CSRF token for Laravel
+    data.append('_token', '{{ csrf_token() }}');
+
+    $.ajax({
+      url: '{{ route("image.upload") }}', // Define this route in your Laravel web.php
+      type: 'POST',
+      data: data,
+      cache: false,
+      contentType: false,
+      processData: false,
+      success: function(response) {
+        // Assuming your server returns a JSON object with the image URL as { url: "..." }
+        var imageUrl = response.url || response;
+        // Insert image at the current cursor position
+        $(editor).summernote('insertImage', imageUrl);
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        console.error("Image upload failed: " + textStatus + " " + errorThrown);
+      }
+    });
+  }
 </script>
 
 </body>

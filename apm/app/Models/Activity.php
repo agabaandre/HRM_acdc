@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
 use Illuminate\Support\Str;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class Activity extends Model
 {
-    use HasFactory, HasApprovalWorkflow;
+    use HasFactory, HasApprovalWorkflow, Auditable;
 
     const STATUS_DRAFT = 'draft';
     const STATUS_SUBMITTED = 'submitted';
@@ -39,12 +40,13 @@ class Activity extends Model
         'is_special_memo',
         'status',
         'fund_type_id',
+        'division_id',
 
         // JSON fields
         'location_id',
         'internal_participants',
         'budget_id',
-        'budget',
+        'budget_breakdown',
         'attachment',
     ];
 
@@ -61,6 +63,7 @@ class Activity extends Model
         'responsible_person_id' => 'integer',
         'request_type_id' => 'integer',
         'fund_type_id' => 'integer',
+        'division_id' => 'integer',
         'is_special_memo' => 'boolean',
         'date_from' => 'date',
         'date_to' => 'date',
@@ -73,7 +76,7 @@ class Activity extends Model
         'location_id' => 'array',
         'internal_participants' => 'array',
         'budget_id' => 'array',
-        'budget' => 'array',
+        'budget_breakdown' => 'array',
         'attachment' => 'array',
     ];
 
@@ -121,25 +124,131 @@ class Activity extends Model
 
     public function activityApprovalTrails(): HasMany
     {
-        return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', Activity::class);
+        return $this->hasMany(ActivityApprovalTrail::class, 'activity_id');
+    }
+
+    public function locations()
+    {
+        $locationIds = $this->location_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($locationIds)) {
+            $locationIds = json_decode($locationIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($locationIds) || empty($locationIds)) {
+            return collect();
+        }
+        
+        return Location::whereIn('id', $locationIds)->get();
     }
 
     // JSON-BASED: location_id[] mapped to Location model
     public function getLocationsAttribute()
     {
-        return Location::whereIn('id', $this->location_id ?? [])->get();
+        $locationIds = $this->location_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($locationIds)) {
+            $locationIds = json_decode($locationIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($locationIds) || empty($locationIds)) {
+            return collect();
+        }
+        
+        return Location::whereIn('id', $locationIds)->get();
     }
 
     // JSON-BASED: budget_id[] mapped to FundCode model
     public function getFundCodesAttribute()
     {
-        return FundCode::whereIn('id', $this->budget_id ?? [])->get();
+        $budgetIds = $this->budget_id ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($budgetIds)) {
+            $budgetIds = json_decode($budgetIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($budgetIds) || empty($budgetIds)) {
+            return collect();
+        }
+        
+        return FundCode::whereIn('id', $budgetIds)->get();
     }
 
     // JSON-BASED: internal_participants[] mapped to Staff
     public function getInternalParticipantsDetailsAttribute()
     {
-        return Staff::whereIn('staff_id', $this->internal_participants ?? [])->get();
+        $participantIds = $this->internal_participants ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($participantIds)) {
+            $participantIds = json_decode($participantIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($participantIds) || empty($participantIds)) {
+            return collect();
+        }
+        
+        // Recursively flatten and extract IDs
+        $flatIds = $this->flattenParticipantIds($participantIds);
+        
+        if (empty($flatIds)) {
+            return collect();
+        }
+        
+        return Staff::whereIn('staff_id', $flatIds)->get();
+    }
+    
+    /**
+     * Recursively flatten participant IDs from nested arrays
+     */
+    private function flattenParticipantIds($data)
+    {
+        $ids = [];
+        
+        if (is_array($data)) {
+            foreach ($data as $key => $item) {
+                if (is_array($item)) {
+                    // Look for staff_id or id keys within the item
+                    if (isset($item['staff_id'])) {
+                        $ids[] = $item['staff_id'];
+                    } elseif (isset($item['id'])) {
+                        $ids[] = $item['id'];
+                    } else {
+                        // If no staff_id or id found, check if the key itself is a participant ID
+                        if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                            $ids[] = $key;
+                        } else {
+                            // Recursively process nested arrays
+                            $ids = array_merge($ids, $this->flattenParticipantIds($item));
+                        }
+                    }
+                } else {
+                    // Direct value - could be the key or the value
+                    if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                        $ids[] = $key;
+                    } else {
+                        $ids[] = $item;
+                    }
+                }
+            }
+        } else {
+            // Single value
+            $ids[] = $data;
+        }
+        
+        // Clean and validate IDs
+        $ids = array_filter($ids, function($id) {
+            return !empty($id) && $id !== null && (is_numeric($id) || is_string($id));
+        });
+        
+        return array_values(array_unique($ids));
     }
 
 
@@ -221,6 +330,7 @@ class Activity extends Model
         $user = session('user', []);
         return ActivityApprovalTrail::where('activity_id',$this->id)
         ->where('staff_id',$user['staff_id'])
+        ->where('approval_order',$this->matrix->approval_level)
         ->orderByDesc('id')->first();
     }
 
@@ -251,5 +361,15 @@ class Activity extends Model
 
     public function activity_budget(){
         return $this->hasMany(ActivityBudget::class);
+    }
+
+    public function participantSchedules(): HasMany
+    {
+        return $this->hasMany(ParticipantSchedule::class, 'activity_id');
+    }
+
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(Division::class, 'division_id');
     }
 }

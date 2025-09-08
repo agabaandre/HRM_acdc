@@ -4,8 +4,7 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    max-height: 50vh;
-    overflow-y: auto;
+    /* Remove max-height and overflow to show all content */
 }
 .timeline:before {
     content: '';
@@ -66,6 +65,8 @@
 .timeline-remarks {
     color: #555;
     font-size: 0.95rem;
+    white-space: pre-line;
+    /* Show all remarks, allow line breaks */
 }
 </style>
 
@@ -75,15 +76,18 @@
     </div>
     <div class="card-body">
         <ul class="timeline">
-            @forelse($matrix->approvalTrails as $trail)
+        @php
+           // dd($trails);
+        @endphp
+            @forelse($trails as $trail)
                 <li class="timeline-item">
                     <div class="timeline-badge 
                         {{ strtolower($trail->action)}}">
-                        @if(strtolower($trail->action) === 'approved')
+                        @if(strtolower($trail->action) === 'approved'| strtolower($trail->action) === 'passed')
                             <i class="bx bx-check"></i>
-                        @elseif(strtolower($trail->action) === 'rejected')
+                        @elseif(strtolower($trail->action) === 'rejected'|| strtolower($trail->action) === 'flagged')
                             <i class="bx bx-x"></i>
-                       @elseif(strtolower($trail->action) === 'submitted')
+                        @elseif(strtolower($trail->action) === 'submitted')
                             <i class="bx bx-time"></i>
                         @else
                             <i class="bx bx-x"></i>
@@ -95,17 +99,15 @@
                     <div class="timeline-title">
                         {{ $trail->staff->name ?? 'N/A' }} 
                         <span class="text-muted">({{ $trail->approver_role_name ?? 'Focal Person' }})</span>
-                        <span class="badge bg-{{ strtolower($trail->action) === 'approved' ? 'success' : (strtolower($trail->action) === 'rejected' ? 'danger':'warning') }}">
+                        <span class="badge bg-{{ strtolower($trail->action) === 'approved'|| strtolower($trail->action) === 'passed' ? 'success' : (strtolower($trail->action) === 'rejected'|| strtolower($trail->action) === 'flagged' ? 'danger':'warning') }}">
                             {{ ucfirst($trail->action) }}
+                            
                         </span>
-                    </div>
-                    <div class="timeline-remarks text-muted">
-                        {{ Str::limit($trail->remarks,100) ?? 'No remarks' }} {{ (strlen($trail->remarks)>100)?'...':''}}
-                        @if(strlen($trail->remarks)>100)
-                            <a href="#trailDetail{{$trail->id}}" data-bs-toggle="modal">Read More</a>
-                            @include('matrices.partials.trail-detail-modal',['trail'=>$trail])
+                        @if($trail->action === 'returned'||$trail->action === 'flagged')
+                            <p class="text-muted">{{ $trail->comments ?? $trail->remarks ?? 'No comments' }}</p>
                         @endif
                     </div>
+                  
                 </li>
             @empty
                 <li class="timeline-item">

@@ -110,11 +110,11 @@
             </tr>
             <tr>
                 <th>Background</th>
-                <td colspan="3">{!! nl2br(e($nonTravel->background ?? '')) !!}</td>
+                <td colspan="3">{!! $nonTravel->background ?? '' !!}</td>
             </tr>
             <tr>
                 <th>Description / Justification</th>
-                <td colspan="3">{!! nl2br(e($nonTravel->justification ?? $nonTravel->activity_request_remarks ?? '')) !!}</td>
+                <td colspan="3">{!! $nonTravel->justification ?? $nonTravel->activity_request_remarks ?? '' !!}</td>
             </tr>
             @if (!empty($locations) && count($locations))
             <tr>

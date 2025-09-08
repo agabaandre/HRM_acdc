@@ -27,6 +27,7 @@ class NonTravelMemoController extends Controller
     /** List all memos with optional filters */
     public function index(Request $request): View
     {
+            //  dd(ApprovalService::canTakeAction(new NonTravelMemo(),user_session('staff_id')));
         // Cache lookup tables for 60 minutes
         $staff  = Cache::remember('non_travel_staff', 60 * 60, fn() => Staff::active()->get());
         $categories = Cache::remember('non_travel_categories', 60 * 60, fn() => NonTravelMemoCategory::all());
@@ -127,41 +128,72 @@ class NonTravelMemoController extends Controller
             'location_id.*'                => 'exists:locations,id',
             'non_travel_memo_category_id'  => 'required|exists:non_travel_memo_categories,id',
             'title'                        => 'required|string|max:255',
-            'approval'                     => 'required|string',
             'background'                   => 'required|string',
-            'description'                  => 'required|string',
-            'other_information'            => 'nullable|string',
-            //'attachments'                  => 'nullable|array',
-           // 'attachments.*'                => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+            'justification'                => 'required|string',
+            'activity_request_remarks'     => 'nullable|string',
+            'attachments.*.type'           => 'required_with:attachments.*.file|string|max:255',
+            'attachments.*.file'           => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
             'budget_codes'                 => 'required|array|min:1',
             'budget_codes.*'               => 'exists:fund_codes,id',
-            'budget'                       => 'required|array',
+            'budget_breakdown'             => 'required|array',
+            'fund_type_id'                 => 'nullable|exists:fund_types,id',
             //'budget.*'                     => 'array',
         ]);
 
         $data['staff_id'] = user_session('staff_id');
         $data['division_id'] = user_session('division_id');
 
-        // Handle attachments
-        $files = [];
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $f) {
-                $path = $f->store('non-travel/attachments', 'public');
-                $files[] = [
-                    'name' => $f->getClientOriginalName(),
-                    'path' => $path,
-                    'size' => $f->getSize(),
-                    'mime_type' => $f->getMimeType(),
-                    'uploaded_at' => now()->toDateTimeString(),
-                ];
+        // Extract fund_type_id from budget codes if not provided
+        if (empty($data['fund_type_id']) && !empty($data['budget_codes'])) {
+            $firstBudgetCode = \App\Models\FundCode::find($data['budget_codes'][0]);
+            if ($firstBudgetCode && $firstBudgetCode->fund_type_id) {
+                $data['fund_type_id'] = $firstBudgetCode->fund_type_id;
             }
         }
+
+        // Handle attachments
+       // Handle file uploads for attachments
+       $attachments = [];
+       if ($request->hasFile('attachments')) {
+           $uploadedFiles = $request->file('attachments');
+           $attachmentTypes = $request->input('attachments', []);
+           
+           foreach ($uploadedFiles as $index => $file) {
+               if ($file && $file->isValid()) {
+                   $type = $attachmentTypes[$index]['type'] ?? 'Document';
+                   
+                   // Validate file type
+                   $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+                   $extension = strtolower($file->getClientOriginalExtension());
+                   
+                   if (!in_array($extension, $allowedExtensions)) {
+                       throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
+                   }
+                   
+                   // Generate unique filename
+                   $filename = time() . '_' . uniqid() . '.' . $extension;
+                   
+                   // Store file in public/uploads/activities directory
+                   $path = $file->storeAs('uploads/non-travel', $filename, 'public');
+                   
+                   $attachments[] = [
+                       'type' => $type,
+                       'filename' => $filename,
+                       'original_name' => $file->getClientOriginalName(),
+                       'path' => $path,
+                       'size' => $file->getSize(),
+                       'mime_type' => $file->getMimeType(),
+                       'uploaded_at' => now()->toDateTimeString()
+                   ];
+               }
+           }
+       }
 
         // Prepare JSON columns
         $locationJson = json_encode($data['location_id']);
         $budgetIdJson = json_encode($data['budget_codes']);
-        $budgetBreakdownJson = json_encode($data['budget']);
-        $attachmentsJson = json_encode($files);
+        $budgetBreakdownJson = json_encode($data['budget_breakdown']);
+        $attachmentsJson = json_encode($attachments);
 
         // Determine status based on action
         $action = $request->input('action', 'draft');
@@ -174,14 +206,15 @@ class NonTravelMemoController extends Controller
             'workplan_activity_code' => $request->input('activity_code', ''),
             'staff_id' => (int)$data['staff_id'],
             'division_id' => (int)$data['division_id'],
+            'fund_type_id' => (int)($data['fund_type_id'] ?? 1),
             'memo_date' => (string)$data['date_required'],
             'location_id' => $locationJson,
             'non_travel_memo_category_id' => (int)$data['non_travel_memo_category_id'],
             'budget_id' => $budgetIdJson,
             'activity_title' => $data['title'],
             'background' => $data['background'],
-            'activity_request_remarks' => $data['approval'],
-            'justification' => $data['description'],
+            'activity_request_remarks' => $data['activity_request_remarks'] ?? '',
+            'justification' => $data['justification'],
             'budget_breakdown' => $budgetBreakdownJson,
             'attachment' => $attachmentsJson,
             'forward_workflow_id' => $isDraft ? null : 1,
@@ -192,9 +225,9 @@ class NonTravelMemoController extends Controller
         ]);
 
         // Process fund code balance reductions and create transaction records
-        if (!$isDraft && !empty($data['budget_codes']) && !empty($data['budget'])) {
+        if (!$isDraft && !empty($data['budget_codes']) && !empty($data['budget_breakdown'])) {
             $budgetCodes = $data['budget_codes'];
-            $budgetItems = $data['budget'];
+            $budgetItems = $data['budget_breakdown'];
             
             foreach ($budgetCodes as $codeId) {
                 $total = 0;
@@ -222,8 +255,9 @@ class NonTravelMemoController extends Controller
                             'fund_code_id' => $codeId,
                             'amount' => $total,
                             'description' => "Non-Travel Memo: {$data['title']} - Budget allocation",
-                            'activity_id' => null, // Non-travel memo doesn't have activity_id
-                            'matrix_id' => $memo->id,
+                            'activity_id' => $memo->id,
+                            'matrix_id' => null,
+                            'channel' => 'non_travel',
                             'activity_budget_id' => null,
                             'balance_before' => $balanceBefore,
                             'balance_after' => $balanceAfter,
@@ -263,7 +297,7 @@ class NonTravelMemoController extends Controller
                     'category' => $memo->nonTravelMemoCategory->name ?? 'N/A',
                     'status' => $memo->overall_status,
                     'date_required' => $memo->memo_date,
-                    'total_budget' => $this->calculateTotalBudget($data['budget']),
+                    'total_budget' => $this->calculateTotalBudget($data['budget_breakdown']),
                     'preview_url' => route('non-travel.show', $memo->id)
                 ]
             ]);
@@ -294,7 +328,8 @@ class NonTravelMemoController extends Controller
     /** Show one memo */
     public function show(NonTravelMemo $nonTravel): View
     {
-        $nonTravel->load(['staff', 'nonTravelMemoCategory']);
+       
+        $nonTravel->load(['staff', 'nonTravelMemoCategory', 'fundType']);
         
         // Decode JSON fields
         $nonTravel->budget_breakdown = is_string($nonTravel->budget_breakdown) 
@@ -344,6 +379,22 @@ class NonTravelMemoController extends Controller
             ? $nonTravel->budget_id 
             : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
 
+        // Decode budget breakdown data - use budget_breakdown field, not budget
+        $budgetBreakdown = is_array($nonTravel->budget_breakdown) 
+            ? $nonTravel->budget_breakdown 
+            : (is_string($nonTravel->budget_breakdown) ? json_decode($nonTravel->budget_breakdown, true) : []);
+         $attachments = is_string($nonTravel->attachment)
+            ? json_decode($nonTravel->attachment, true)
+            : ($nonTravel->attachment ?? []);
+        // Debug: Log the budget data
+        \Illuminate\Support\Facades\Log::info('NonTravelMemo Budget Debug', [
+            'memo_id' => $nonTravel->id,
+            'raw_budget_breakdown' => $nonTravel->budget_breakdown,
+            'budget_breakdown_type' => gettype($nonTravel->budget_breakdown),
+            'decoded_budget_breakdown' => $budgetBreakdown,
+            'selected_budget_codes' => $selectedBudgetCodes
+        ]);
+
         // Retrieve other necessary data
         $categories = NonTravelMemoCategory::all();
         $locations = Location::all();
@@ -357,6 +408,8 @@ class NonTravelMemoController extends Controller
             'nonTravel', 
             'budgets', 
             'selectedBudgetCodes', 
+            'attachments',
+            'budgetBreakdown',
             'categories', 
             'locations', 
             'workflows', 
@@ -365,9 +418,10 @@ class NonTravelMemoController extends Controller
         ));
     }
 
-    /** Update memo */
-    public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse
+    // /** Update memo */
+    public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse|\Illuminate\Http\JsonResponse
     {
+        //dd($request);
         // Check if memo is in draft status - only allow updating of drafts
         if ($nonTravel->overall_status !== 'draft') {
             return redirect()
@@ -381,38 +435,104 @@ class NonTravelMemoController extends Controller
             'location_id.*'                => 'exists:locations,id',
             'non_travel_memo_category_id'  => 'required|exists:non_travel_memo_categories,id',
             'activity_title'               => 'required|string|max:255',
-            'activity_request_remarks'     => 'required|string',
+            'activity_request_remarks'     => 'nullable|string',
             'background'                   => 'required|string',
             'justification'                => 'required|string',
-            'other_information'            => 'nullable|string',
+            'attachments.*.type'           => 'required_with:attachments|string|max:255',
+            'attachments.*.file'           => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
+            'attachments.*.replace'        => 'nullable|boolean',
+            'attachments.*.delete'         => 'nullable|boolean',
             'budget_breakdown'             => 'required|array|min:1',
+            'fund_type_id'                 => 'nullable|exists:fund_types,id',
         ]);
 
-        // Handle attachments
-        $files = $nonTravel->attachment ?? [];
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $f) {
-                $path = $f->store('non-travel/attachments', 'public');
-                $files[] = [
-                    'name' => $f->getClientOriginalName(),
-                    'path' => $path,
-                    'size' => $f->getSize(),
-                    'mime_type' => $f->getMimeType(),
-                    'uploaded_at' => now()->toDateTimeString(),
-                ];
+       // Handle file uploads for attachments
+       $attachments = [];
+       $existingAttachments = is_string($nonTravel->attachment) 
+           ? json_decode($nonTravel->attachment, true) 
+           : ($nonTravel->attachment ?? []);
+       
+       // Get attachment data from request
+       $attachmentData = $request->input('attachments', []);
+       
+       // Process each attachment slot
+       foreach ($attachmentData as $index => $attachmentInfo) {
+           $type = $attachmentInfo['type'] ?? 'Document';
+           $file = $request->file("attachments.{$index}.file");
+           $shouldReplace = isset($attachmentInfo['replace']) && $attachmentInfo['replace'] == '1';
+           $shouldDelete = isset($attachmentInfo['delete']) && $attachmentInfo['delete'] == '1';
+           
+           // Skip if user wants to delete this attachment
+           if ($shouldDelete) {
+               continue;
+           }
+           
+           if ($file && $file->isValid()) {
+               // New file uploaded - validate and store
+               $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+               $extension = strtolower($file->getClientOriginalExtension());
+               
+               if (!in_array($extension, $allowedExtensions)) {
+                   throw new \Exception("Invalid file type. Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
+               }
+               
+               // Generate unique filename
+               $filename = time() . '_' . uniqid() . '.' . $extension;
+               
+               // Store file in public/uploads/activities directory
+               $path = $file->storeAs('uploads/non-travel', $filename, 'public');
+               
+               $attachments[] = [
+                   'type' => $type,
+                   'filename' => $filename,
+                   'original_name' => $file->getClientOriginalName(),
+                   'path' => $path,
+                   'size' => $file->getSize(),
+                   'mime_type' => $file->getMimeType(),
+                   'uploaded_at' => now()->toDateTimeString()
+               ];
+           } else {
+               // No new file uploaded - check if user wants to replace
+               if ($shouldReplace && isset($existingAttachments[$index])) {
+                   // User wants to replace but no new file provided - skip this attachment
+                   continue;
+               } elseif (isset($existingAttachments[$index])) {
+                   // Keep existing attachment
+                   $attachments[] = $existingAttachments[$index];
+               }
+           }
+       }
+       
+       // If no attachment data was provided, keep all existing attachments
+       if (empty($attachmentData)) {
+           $attachments = $existingAttachments;
+       }
+        // Extract fund_type_id from budget codes if not provided
+        if (empty($data['fund_type_id'])) {
+            // Get existing budget codes from the memo
+            $existingBudgetCodes = is_array($nonTravel->budget_id) 
+                ? $nonTravel->budget_id 
+                : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
+            
+            if (!empty($existingBudgetCodes)) {
+                $firstBudgetCode = \App\Models\FundCode::find($existingBudgetCodes[0]);
+                if ($firstBudgetCode && $firstBudgetCode->fund_type_id) {
+                    $data['fund_type_id'] = $firstBudgetCode->fund_type_id;
+                }
             }
         }
 
         // Prepare JSON columns
         $locationJson = json_encode($data['location_id']);
         $budgetBreakdownJson = json_encode($data['budget_breakdown']);
-        $attachmentsJson = json_encode($files);
+        $attachmentsJson = json_encode($attachments);
 
         // Update the memo
         $nonTravel->update([
             'memo_date' => $data['memo_date'],
             'location_id' => $locationJson,
             'non_travel_memo_category_id' => $data['non_travel_memo_category_id'],
+            'fund_type_id' => (int)($data['fund_type_id'] ?? $nonTravel->fund_type_id ?? 1),
             'activity_title' => $data['activity_title'],
             'activity_request_remarks' => $data['activity_request_remarks'],
             'background' => $data['background'],
@@ -421,9 +541,152 @@ class NonTravelMemoController extends Controller
             'attachment' => $attachmentsJson,
         ]);
 
+        // Process fund code balance reductions and create transaction records (only for non-draft updates)
+        // if ($nonTravel->overall_status !== 'draft' && !empty($data['budget_breakdown'])) {
+        //     $budgetItems = $data['budget_breakdown'];
+            
+        //     // Get existing budget codes from the memo
+        //     $existingBudgetCodes = is_array($nonTravel->budget_id) 
+        //         ? $nonTravel->budget_id 
+        //         : (is_string($nonTravel->budget_id) ? json_decode($nonTravel->budget_id, true) : []);
+            
+        //     foreach ($existingBudgetCodes as $codeId) {
+        //         $total = 0;
+        //         if (isset($budgetItems[$codeId]) && is_array($budgetItems[$codeId])) {
+        //             foreach ($budgetItems[$codeId] as $item) {
+        //                 // Support both array and object
+        //                 $qty = isset($item['quantity']) ? $item['quantity'] : (isset($item->quantity) ? $item->quantity : 1);
+        //                 $unitCost = isset($item['unit_cost']) ? $item['unit_cost'] : (isset($item->unit_cost) ? $item->unit_cost : 0);
+        //                 $total += $qty * $unitCost;
+        //             }
+        //         }
+                
+        //         if ($total > 0) {
+        //             // Get current balance before reduction
+        //             $fundCode = FundCode::find($codeId);
+        //             if ($fundCode) {
+        //                 $balanceBefore = floatval($fundCode->budget_balance ?? 0);
+        //                 $balanceAfter = $balanceBefore - $total;
+                        
+        //                 // Reduce fund code balance using the helper
+        //                 //reduce_fund_code_balance($codeId, $total);
+                        
+        //                 // Create transaction record for audit trail
+        //                 FundCodeTransaction::updateOrCreate([
+        //                     'fund_code_id' => $codeId,
+        //                     'amount' => $total,
+        //                     'description' => "Non-Travel Memo Update: {$data['activity_title']} - Budget allocation",
+        //                     'activity_id' => $nonTravel->id,
+        //                     'matrix_id' => null,
+        //                     'channel' => 'non_travel',
+        //                     'activity_budget_id' => null,
+        //                     'balance_before' => $balanceBefore,
+        //                     'balance_after' => $balanceAfter,
+        //                     'is_reversal' => false,
+        //                     'created_by' => user_session('staff_id'),
+        //                 ]);
+
+                        
+        //                 // Log the balance change
+        //                 // \Illuminate\Support\Facades\Log::info('Fund code balance reduced for non-travel memo update', [
+        //                 //     'fund_code_id' => $codeId,
+        //                 //     'fund_code' => $fundCode->code,
+        //                 //     'non_travel_memo_id' => $nonTravel->id,
+        //                 //     'amount_reduced' => $total,
+        //                 //     'balance_before' => $balanceBefore,
+        //                 //     'balance_after' => $balanceAfter,
+        //                 //     'staff_id' => user_session('staff_id'),
+        //                 //     'activity_title' => $data['activity_title']
+        //                 // ]);
+        //             }
+        //         }
+        //     }
+        // }
+
+        // If it's an AJAX request, return JSON response
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Non-travel memo updated successfully.',
+                'memo' => [
+                    'id' => $nonTravel->id,
+                    'title' => $nonTravel->activity_title,
+                    'category' => $nonTravel->nonTravelMemoCategory->name ?? 'N/A',
+                    'status' => $nonTravel->overall_status,
+                    'date_required' => $nonTravel->memo_date,
+                    'total_budget' => $this->calculateTotalBudget($data['budget_breakdown']),
+                    'preview_url' => route('non-travel.show', $nonTravel->id)
+                ]
+            ]);
+        }
+
         return redirect()->route('non-travel.show', $nonTravel)
             ->with('success', 'Non-travel memo updated successfully.');
     }
+
+    // public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse
+    // {
+
+    //     //dd($request);
+    //     // Check if memo is in draft status - only allow updating of drafts
+    //     if ($nonTravel->overall_status !== 'draft') {
+    //         return redirect()
+    //             ->route('non-travel.show', $nonTravel)
+    //             ->with('error', 'Cannot update memo. Only draft memos can be updated.');
+    //     }
+
+    //     $data = $request->validate([
+    //         'memo_date'                    => 'required|date',
+    //         'location_id'                  => 'required|array|min:1',
+    //         'location_id.*'                => 'exists:locations,id',
+    //         'non_travel_memo_category_id'  => 'required|exists:non_travel_memo_categories,id',
+    //         'activity_title'               => 'required|string|max:255',
+    //         'activity_request_remarks'     => 'required|string',
+    //         'background'                   => 'required|string',
+    //         'justification'                => 'required|string',
+    //         'other_information'            => 'nullable|string',
+    //         'budget_breakdown'             => 'required|array|min:1',
+    //     ]);
+
+    //     // Handle attachments
+    //     // $files = $nonTravel->attachment ?? [];
+    //     // if ($request->hasFile('attachments')) {
+    //     //     foreach ($request->file('attachments') as $f) {
+    //     //         $path = $f->store('non-travel/attachments', 'public');
+    //     //         $files[] = [
+    //     //             'name' => $f->getClientOriginalName(),
+    //     //             'path' => $path,
+    //     //             'size' => $f->getSize(),
+    //     //             'mime_type' => $f->getMimeType(),
+    //     //             'uploaded_at' => now()->toDateTimeString(),
+    //     //         ];
+    //     //     }
+    //     // }
+
+    //     // Prepare JSON columns
+    //     $locationJson = json_encode($data['location_id']);
+    //     $budgetBreakdownJson = json_encode($data['budget_breakdown']);
+    //     $attachmentsJson = json_encode($nonTravel->attachment);
+
+    //     // Update the memo
+    //     $nonTravel->update([
+    //         'memo_date' => $data['memo_date'],
+    //         'location_id' => $locationJson,
+    //         'non_travel_memo_category_id' => $data['non_travel_memo_category_id'],
+    //         'activity_title' => $data['activity_title'],
+    //         'activity_request_remarks' => $data['activity_request_remarks'],
+    //         'background' => $data['background'],
+    //         'justification' => $data['justification'],
+    //         'budget_breakdown' => $budgetBreakdownJson,
+    //         'attachment' => $attachmentsJson,
+    //     ]);
+
+    //     return redirect()->route('non-travel.show', $nonTravel)
+    //         ->with('success', 'Non-travel memo updated successfully.');
+    // }
+
+    
+    
 
     /** Delete memo and its files */
     public function destroy(NonTravelMemo $nonTravel): RedirectResponse
@@ -441,12 +704,7 @@ class NonTravelMemoController extends Controller
      */
     public function submitForApproval(NonTravelMemo $nonTravel): RedirectResponse
     {
-        if ($nonTravel->overall_status !== 'draft') {
-            return redirect()->back()->with([
-                'msg' => 'Only draft non-travel memos can be submitted for approval.',
-                'type' => 'error',
-            ]);
-        }
+       
 
         $nonTravel->submitForApproval();
 
@@ -462,7 +720,9 @@ class NonTravelMemoController extends Controller
     public function updateStatus(Request $request, NonTravelMemo $nonTravel): RedirectResponse
     {
         // Debug: Log the incoming request data
-        \Log::info('NonTravelMemo updateStatus called', [
+       //dd(can_division_head_edit_generic($nonTravel));
+
+        \Illuminate\Support\Facades\Log::info('NonTravelMemo updateStatus called', [
             'request_all' => $request->all(),
             'memo_id' => $nonTravel->id,
             'current_status' => $nonTravel->overall_status,
@@ -476,7 +736,7 @@ class NonTravelMemoController extends Controller
         ]);
 
         // Debug: Log validation passed
-        \Log::info('Validation passed, calling generic approval controller');
+        \Illuminate\Support\Facades\Log::info('Validation passed, calling generic approval controller');
 
         // Use the generic approval system
         $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
@@ -723,6 +983,246 @@ class NonTravelMemoController extends Controller
 
         return $approvalLevels;
     }
+
+    /**
+     * Get comprehensive workflow information for non-travel memo
+     */
+    private function getComprehensiveWorkflowInfo(NonTravelMemo $nonTravel)
+    {
+        $workflowInfo = [
+            'current_level' => null,
+            'current_approver' => null,
+            'workflow_steps' => collect(),
+            'approval_trail' => collect(),
+            'matrix_approval_trail' => collect()
+        ];
+
+        if (!$nonTravel->forward_workflow_id) {
+            return $workflowInfo;
+        }
+
+        // Get workflow definitions with category filtering for order 7
+        $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $nonTravel->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where(function($query) use ($nonTravel) {
+                $query->where('approval_order', '!=', 7)
+                      ->orWhere(function($subQuery) use ($nonTravel) {
+                          $subQuery->where('approval_order', 7)
+                                   ->where('category', $nonTravel->division->category ?? null);
+                      });
+            })
+            ->orderBy('approval_order')
+            ->with(['approvers.staff', 'approvers.oicStaff'])
+            ->get();
+
+        $workflowInfo['workflow_steps'] = $workflowDefinitions->map(function ($definition) use ($nonTravel) {
+            $approvers = collect();
+
+            if ($definition->is_division_specific && $nonTravel->division) {
+                // Get approver from division table using division_reference_column
+                $divisionColumn = $definition->division_reference_column;
+                if ($divisionColumn && isset($nonTravel->division->$divisionColumn)) {
+                    $staffId = $nonTravel->division->$divisionColumn;
+                    if ($staffId) {
+                        $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                        if ($staff) {
+                            $approvers->push([
+                                'staff' => [
+                                    'id' => $staff->staff_id,
+                                    'staff_id' => $staff->staff_id,
+                                    'title' => $staff->title ?? 'N/A',
+                                    'fname' => $staff->fname ?? '',
+                                    'lname' => $staff->lname ?? '',
+                                    'oname' => $staff->oname ?? '',
+                                    'name' => $staff->fname . ' ' . $staff->lname,
+                                    'job_title' => $staff->job_name ?? $staff->position ?? 'N/A',
+                                    'position' => $staff->position ?? 'N/A',
+                                    'work_email' => $staff->work_email ?? 'N/A',
+                                    'personal_email' => $staff->personal_email ?? 'N/A',
+                                    'phone' => $staff->phone ?? 'N/A',
+                                    'mobile' => $staff->mobile ?? 'N/A',
+                                    'signature' => $staff->signature ?? null,
+                                    'division' => $staff->division_name ?? 'N/A',
+                                    'division_id' => $staff->division_id ?? null,
+                                    'duty_station' => $staff->duty_station_name ?? 'N/A',
+                                    'duty_station_id' => $staff->duty_station_id ?? null,
+                                    'nationality' => $staff->nationality ?? 'N/A',
+                                    'gender' => $staff->gender ?? 'N/A',
+                                    'date_of_birth' => $staff->date_of_birth ?? null,
+                                    'hire_date' => $staff->hire_date ?? null,
+                                    'contract_type' => $staff->contract_type ?? 'N/A',
+                                    'employment_status' => $staff->employment_status ?? 'N/A',
+                                    'created_at' => $staff->created_at ?? null,
+                                    'updated_at' => $staff->updated_at ?? null
+                                ],
+                                'oic_staff' => null,
+                                'start_date' => null,
+                                'end_date' => null
+                            ]);
+                        }
+                    }
+                }
+            } else {
+                // Get approvers from approvers table
+                $approvers = $definition->approvers->map(function ($approver) {
+                    return [
+                        'staff' => $approver->staff ? [
+                            'id' => $approver->staff->staff_id,
+                            'staff_id' => $approver->staff->staff_id,
+                            'title' => $approver->staff->title ?? 'N/A',
+                            'fname' => $approver->staff->fname ?? '',
+                            'lname' => $approver->staff->lname ?? '',
+                            'oname' => $approver->staff->oname ?? '',
+                            'name' => $approver->staff->fname . ' ' . $approver->staff->lname,
+                            'job_title' => $approver->staff->job_name ?? $approver->staff->position ?? 'N/A',
+                            'position' => $approver->staff->position ?? 'N/A',
+                            'work_email' => $approver->staff->work_email ?? 'N/A',
+                            'personal_email' => $approver->staff->personal_email ?? 'N/A',
+                            'phone' => $approver->staff->phone ?? 'N/A',
+                            'mobile' => $approver->staff->mobile ?? 'N/A',
+                            'signature' => $approver->staff->signature ?? null,
+                            'division' => $approver->staff->division_name ?? 'N/A',
+                            'division_id' => $approver->staff->division_id ?? null,
+                            'duty_station' => $approver->staff->duty_station_name ?? 'N/A',
+                            'duty_station_id' => $approver->staff->duty_station_id ?? null,
+                            'nationality' => $approver->staff->nationality ?? 'N/A',
+                            'gender' => $approver->staff->gender ?? 'N/A',
+                            'date_of_birth' => $approver->staff->date_of_birth ?? null,
+                            'hire_date' => $approver->staff->hire_date ?? null,
+                            'contract_type' => $approver->staff->contract_type ?? 'N/A',
+                            'employment_status' => $approver->staff->employment_status ?? 'N/A',
+                            'created_at' => $approver->staff->created_at ?? null,
+                            'updated_at' => $approver->staff->updated_at ?? null
+                        ] : null,
+                        'oic_staff' => $approver->oicStaff ? [
+                            'id' => $approver->oicStaff->staff_id,
+                            'staff_id' => $approver->oicStaff->staff_id,
+                            'title' => $approver->oicStaff->title ?? 'N/A',
+                            'fname' => $approver->oicStaff->fname ?? '',
+                            'lname' => $approver->oicStaff->lname ?? '',
+                            'oname' => $approver->oicStaff->oname ?? '',
+                            'name' => $approver->oicStaff->fname . ' ' . $approver->oicStaff->lname,
+                            'job_title' => $approver->oicStaff->job_name ?? $approver->oicStaff->position ?? 'N/A',
+                            'position' => $approver->oicStaff->position ?? 'N/A',
+                            'work_email' => $approver->oicStaff->work_email ?? 'N/A',
+                            'personal_email' => $approver->oicStaff->personal_email ?? 'N/A',
+                            'phone' => $approver->oicStaff->phone ?? 'N/A',
+                            'mobile' => $approver->oicStaff->mobile ?? 'N/A',
+                            'signature' => $approver->oicStaff->signature ?? null,
+                            'division' => $approver->oicStaff->division_name ?? 'N/A',
+                            'division_id' => $approver->oicStaff->division_id ?? null,
+                            'duty_station' => $approver->oicStaff->duty_station_name ?? 'N/A',
+                            'duty_station_id' => $approver->oicStaff->duty_station_id ?? null,
+                            'nationality' => $approver->oicStaff->nationality ?? 'N/A',
+                            'gender' => $approver->oicStaff->gender ?? 'N/A',
+                            'date_of_birth' => $approver->oicStaff->date_of_birth ?? null,
+                            'hire_date' => $approver->oicStaff->hire_date ?? null,
+                            'contract_type' => $approver->oicStaff->contract_type ?? 'N/A',
+                            'employment_status' => $approver->oicStaff->employment_status ?? 'N/A',
+                            'created_at' => $approver->oicStaff->created_at ?? null,
+                            'updated_at' => $approver->oicStaff->updated_at ?? null
+                        ] : null,
+                        'start_date' => $approver->start_date,
+                        'end_date' => $approver->end_date
+                    ];
+                });
+            }
+
+            return [
+                'order' => $definition->approval_order,
+                'role' => $definition->role,
+                'memo_print_section' => $definition->memo_print_section ?? 'through',
+                'print_order' => $definition->print_order ?? $definition->approval_order,
+                'approvers' => $approvers->toArray()
+            ];
+        })->values();
+
+        // Get current approval level
+        if ($nonTravel->approval_level) {
+            $currentDefinition = $workflowDefinitions->where('approval_order', $nonTravel->approval_level)->first();
+            if ($currentDefinition) {
+                $workflowInfo['current_level'] = $currentDefinition->role;
+
+                // Handle division-specific approvers
+                if ($currentDefinition->is_division_specific && $nonTravel->division) {
+                    $divisionColumn = $currentDefinition->division_reference_column;
+                    if ($divisionColumn && isset($nonTravel->division->$divisionColumn)) {
+                        $staffId = $nonTravel->division->$divisionColumn;
+                        if ($staffId) {
+                            $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                            if ($staff) {
+                                $workflowInfo['current_approver'] = $staff->fname . ' ' . $staff->lname;
+                            }
+                        }
+                    }
+                } else {
+                    // Handle regular approvers
+                    $currentApprover = $currentDefinition->approvers->first();
+                    if ($currentApprover) {
+                        $workflowInfo['current_approver'] = $currentApprover->staff ?
+                            $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname : ($currentApprover->oicStaff ? $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname : 'N/A');
+                    }
+                }
+            }
+        }
+
+        // Get approval trail
+        $approvalTrails = $nonTravel->approvalTrails()
+            ->orderBy('created_at')
+            ->with(['staff', 'oicStaff'])
+            ->get();
+
+        $workflowInfo['approval_trail'] = $approvalTrails->map(function ($trail) {
+            return [
+                'action' => $trail->action,
+                'remarks' => $trail->remarks,
+                'staff' => $trail->staff ? [
+                    'name' => $trail->staff->fname . ' ' . $trail->staff->lname,
+                    'job_title' => $trail->staff->job_name ?? $trail->staff->position ?? 'N/A',
+                    'work_email' => $trail->staff->work_email ?? 'N/A',
+                    'signature' => $trail->staff->signature ?? null
+                ] : null,
+                'oic_staff' => $trail->oicStaff ? [
+                    'name' => $trail->oicStaff->fname . ' ' . $trail->oicStaff->lname,
+                    'job_title' => $trail->oicStaff->job_name ?? $trail->oicStaff->position ?? 'N/A',
+                    'work_email' => $trail->oicStaff->work_email ?? 'N/A',
+                    'signature' => $trail->oicStaff->signature ?? null
+                ] : null,
+                'date' => $trail->created_at ? $trail->created_at->format('d/m/Y H:i:s') : 'N/A',
+                'approval_order' => $trail->approval_order ?? null
+            ];
+        })->values();
+
+        return $workflowInfo;
+    }
+
+    /**
+     * Organize workflow steps by memo_print_section for dynamic memo rendering
+     */
+    private function organizeWorkflowStepsBySection($workflowSteps)
+    {
+        $organizedSteps = [
+            'to' => collect(),
+            'through' => collect(),
+            'from' => collect(),
+            'others' => collect()
+        ];
+
+        foreach ($workflowSteps as $step) {
+            $section = $step['memo_print_section'] ?? 'through';
+            $organizedSteps[$section]->push($step);
+        }
+
+        // Sort each section by print_order first, then by approval order as fallback
+        foreach ($organizedSteps as $section => $steps) {
+            $organizedSteps[$section] = $steps->sortBy([
+                ['print_order', 'asc'],
+                ['order', 'asc']
+            ])->values();
+        }
+
+        return $organizedSteps;
+    }
     
     /**
      * Generate a printable PDF for a Non-Travel Memo.
@@ -730,7 +1230,15 @@ class NonTravelMemoController extends Controller
     public function print(NonTravelMemo $nonTravel)
     {
         // Eager load needed relations
-        $nonTravel->load(['staff', 'nonTravelMemoCategory']);
+        $nonTravel->load([
+            'staff', 
+            'nonTravelMemoCategory', 
+            'division', 
+            'fundType',
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'approvalTrails.workflowDefinition'
+        ]);
 
         // Decode JSON fields safely
         $locationIds = is_string($nonTravel->location_id)
@@ -757,23 +1265,37 @@ class NonTravelMemoController extends Controller
 
         // Fetch related collections
         $locations = Location::whereIn('id', $locationIds ?: [])->get();
-        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
+        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->with('fundType')->get();
 
-        // Render HTML for PDF
-        $html = view('non-travel.print', [
+        // Get approval trails (not activity approval trails)
+        $approvalTrails = $nonTravel->approvalTrails;
+
+        // Get workflow information
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($nonTravel);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+
+        // Use mPDF helper function
+        $print = false;
+        $pdf = mpdf_print('non-travel.memo-pdf-simple', [
             'nonTravel' => $nonTravel,
             'locations' => $locations,
             'fundCodes' => $fundCodes,
             'attachments' => $attachments,
-            'breakdown' => $breakdown,
-        ])->render();
+            'budgetBreakdown' => $breakdown,
+            'approval_trails' => $approvalTrails,
+            'matrix_approval_trails' => $approvalTrails, // For compatibility with activities template
+            'workflow_info' => $workflowInfo,
+            'organized_workflow_steps' => $organizedWorkflowSteps
+        ], ['preview_html' => $print]);
 
-        // Use dompdf wrapper to generate and stream PDF
-        $pdf = app('dompdf.wrapper');
-        $pdf->loadHTML($html)->setPaper('A4', 'portrait');
+        // Generate filename
+        $filename = 'Non_Travel_Memo_' . $nonTravel->id . '_' . now()->format('Y-m-d') . '.pdf';
 
-        $filename = 'non_travel_memo_'.$nonTravel->id.'.pdf';
-        return $pdf->stream($filename);
+        // Return PDF for display in browser using mPDF Output method
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
     }
 
     /**

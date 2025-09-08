@@ -45,9 +45,24 @@ if (!function_exists('is_with_creator_generic')) {
      */
     function is_with_creator_generic($model)
     {
-        return $model->forward_workflow_id === null || $model->approval_level === 0;
+         // Use the ApprovalService for consistent logic
+         $approvalService = app(\App\Services\ApprovalService::class);
+         return $approvalService->isWithCreator($model);
     }
 }
+
+if (!function_exists('can_division_head_edit_generic')) {
+    /**
+     * Check if model is still with creator.
+     */
+    function can_division_head_edit_generic($model)
+    {
+         // Use the ApprovalService for consistent logic
+         $approvalService = app(\App\Services\ApprovalService::class);
+         return $approvalService->canDivisionHeadEdit($model);
+    }
+}
+
 
 if (!function_exists('get_approval_recipient_generic')) {
     /**

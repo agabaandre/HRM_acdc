@@ -38,9 +38,12 @@ class CostItemController extends Controller
         try {
             CostItem::create($validated);
             return redirect()->route('cost-items.index')
-                ->with('success', 'Cost item created successfully.');
+                ->with('msg', 'Cost item created successfully.')
+                ->with('type', 'success');
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Error creating cost item: ' . $e->getMessage());
+            return back()->withInput()
+                ->with('msg', 'Error creating cost item: ' . $e->getMessage())
+                ->with('type', 'error');
         }
     }
 
@@ -73,23 +76,13 @@ class CostItemController extends Controller
         try {
             $costItem->update($validated);
             return redirect()->route('cost-items.index')
-                ->with('success', 'Cost item updated successfully');
+                ->with('msg', 'Cost item updated successfully.')
+                ->with('type', 'success');
         } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Error updating cost item: ' . $e->getMessage());
+            return back()->withInput()
+                ->with('msg', 'Error updating cost item: ' . $e->getMessage())
+                ->with('type', 'error');
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(CostItem $costItem)
-    {
-        try {
-            $costItem->delete();
-            return redirect()->route('cost-items.index')
-                ->with('success', 'Cost item deleted successfully');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error deleting cost item: ' . $e->getMessage());
-        }
-    }
 }

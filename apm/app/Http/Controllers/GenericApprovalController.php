@@ -36,6 +36,11 @@ class GenericApprovalController extends Controller
      */
     public function updateStatus(Request $request, string $model, int $id): RedirectResponse
     {
+        $modelInstance = $this->resolveModel($model, $id);
+        
+        //dd($modelInstance->has_extramural);
+        //dd($modelInstance->has_intramural);
+        //dd($this->approvalService->canTakeAction($modelInstance, user_session('staff_id')));
         // Debug: Log the incoming request
         Log::info('GenericApprovalController updateStatus called', [
             'request_all' => $request->all(),
@@ -61,20 +66,21 @@ class GenericApprovalController extends Controller
             'current_status' => $modelInstance->overall_status ?? 'N/A',
             'current_level' => $modelInstance->approval_level ?? 'N/A'
         ]);
-        
+       // dd($this->approvalService->canTakeAction($modelInstance, $userId));
         // Check if user can take action
-        if (!$this->approvalService->canTakeAction($modelInstance, $userId)) {
+        if (!$this->approvalService->canTakeAction($modelInstance, $userId)&&!is_with_creator_generic($modelInstance)) {
             Log::error('User not authorized', ['user_id' => $userId, 'model_id' => $modelInstance->id]);
             return redirect()->back()->with('error', 'You are not authorized to perform this action.');
         }
 
         Log::info('User authorized, processing approval', ['action' => $request->action]);
 
-        // Process the approval using the model's own approval workflow
-        if (method_exists($modelInstance, 'updateApprovalStatus')) {
-            Log::info('Using model updateApprovalStatus method');
-            $modelInstance->updateApprovalStatus($request->action, $request->comment ?? '');
-        } else {
+        // // Process the approval using the model's own approval workflow
+        // if (method_exists($modelInstance, 'updateApprovalStatus')) {
+        //     //dd('Test');
+        //     Log::info('Using model updateApprovalStatus method');
+        //     $modelInstance->updateApprovalStatus($request->action, $request->comment ?? '');
+        // } else {
             Log::info('Using approval service fallback');
             // Fallback to approval service
             $this->approvalService->processApproval(
@@ -83,7 +89,7 @@ class GenericApprovalController extends Controller
                 $request->comment ?? '', 
                 $userId
             );
-        }
+       // }
 
         // Send notifications
         $this->sendNotification($modelInstance, $request->action);
@@ -113,8 +119,8 @@ class GenericApprovalController extends Controller
         }
 
         // Check if the model is in draft status
-        if (property_exists($modelInstance, 'is_draft') && !$modelInstance->is_draft) {
-            return redirect()->back()->with('error', 'Only draft items can be submitted for approval.');
+        if (!in_array($modelInstance->overall_status,['returned','draft'])) {
+            return redirect()->back()->with('error', 'Only draft and returned items can be submitted for approval.');
         }
 
         // Submit for approval using the model's own method

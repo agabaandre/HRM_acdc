@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
 use function React\Promise\Stream\first;
 use App\Models\Staff;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class Matrix extends Model
 {
-    use HasFactory, HasApprovalWorkflow;
+    use HasFactory, HasApprovalWorkflow, Auditable;
 
     /**
      * The attributes that are mass assignable.
@@ -212,16 +213,6 @@ class Matrix extends Model
 
     public function matrixApprovalTrails(){
         return $this->hasMany(ApprovalTrail::class, 'model_id')->where('model_type', 'App\Models\Matrix');
-    }
-
-    public function getHasIntramuralAttribute(): bool
-    {
-        return $this->activities()->where('fund_type_id', 1)->exists();
-    }
-
-    public function getHasExtramuralAttribute(): bool
-    {
-        return $this->activities()->where('fund_type_id', 2)->exists();
     }
 
     public function participant_schedules(){

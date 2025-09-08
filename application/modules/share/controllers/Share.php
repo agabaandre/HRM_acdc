@@ -203,7 +203,7 @@ public function get_current_staff(){
     $limit = $filters['limit'];
     $start = $filters['start'];
     
-$data =  $this->staff_mdl->get_active_staff_data($filters = array(), $limit = FALSE, $start = FALSE);   
+$data =  $this->staff_mdl->get_all_staff_data($filters = array(), $limit = FALSE, $start = FALSE);   
 
 header('Content-Type: application/json');
 			echo json_encode($data);

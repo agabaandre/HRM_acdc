@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class Staff extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     /**
      * The attributes that are mass assignable.
@@ -75,7 +76,7 @@ class Staff extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->whereIn('status', ['Active', 'Due','Expired','Under Renewal']);
     }
 
     /**
@@ -83,7 +84,10 @@ class Staff extends Model
      */
     public function getNameAttribute()
     {
-        return "{$this->fname} {$this->lname}";
+        // Handles possible nulls and extra spaces
+        return trim(collect([$this->title, $this->fname, $this->lname, $this->oname])
+            ->filter()
+            ->implode(' '));
     }
 
     
@@ -105,6 +109,10 @@ class Staff extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(Activity::class);
+    }
+    public function activityApprovalTrails(): HasMany
+    {
+        return $this->hasMany(ActivityApprovalTrail::class,'staff_id');
     }
 
     public function nonTravelMemos(): HasMany

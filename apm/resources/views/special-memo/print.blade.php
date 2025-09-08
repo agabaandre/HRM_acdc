@@ -119,11 +119,11 @@
             </tr>
             <tr>
                 <th>Background</th>
-                <td colspan="3">{!! nl2br(e($specialMemo->background ?? '')) !!}</td>
+                <td colspan="3">{!! $specialMemo->background ?? '' !!}</td>
             </tr>
             <tr>
                 <th>Justification</th>
-                <td colspan="3">{!! nl2br(e($specialMemo->justification ?? $specialMemo->activity_request_remarks ?? '')) !!}</td>
+                <td colspan="3">{!! $specialMemo->justification ?? $specialMemo->activity_request_remarks ?? '' !!}</td>
             </tr>
             @if (!empty($locations) && count($locations))
             <tr>

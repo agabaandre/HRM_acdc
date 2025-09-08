@@ -19,6 +19,11 @@ $settingsMenuItems = [
 'title' => 'Fund Codes'
 ],
 [
+'route' => 'funders.index',
+'icon' => 'fas fa-handshake',
+'title' => 'Funders'
+],
+[
 'route' => 'divisions.index',
 'icon' => 'fas fa-building',
 'title' => 'Divisions'
@@ -48,18 +53,37 @@ $settingsMenuItems = [
 'icon' => 'fas fa-coins',
 'title' => 'Cost Items'
 ],
+[
+'route' => 'jobs.index',
+'icon' => 'fas fa-tasks',
+'title' => 'Jobs'
+],
+[
+'route' => 'audit-logs.index',
+'icon' => 'fas fa-clipboard-list',
+'title' => 'Audit Logs'
+],
 ];
 @endphp
 
 <div class="nav-container primary-menu">
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
+            <!-- Approver Dashboard -->
+            <li class="nav-item">
+                <a href="{{ route('approver-dashboard.index') }}"
+                    class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <div class="menu-title">Approver Dashboard</div>
+                </a>
+            </li>
+
             <!-- Start Page -->
             <li class="nav-item">
-                <a href="{{ str_replace('apm/', '', url('home/index')) }}"
-                    class="nav-link {{ Request::is('home/index') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-home"></i></div>
-                    <div class="menu-title">Start Page</div>
+                <a href="{{ str_replace('apm/', '', url('dashboard')) }}"
+                    class="nav-link {{ Request::is('home/index') ? 'active' : '' }}" target="_blank">
+                    <div class="parent-icon"><i class="fas fa-users"></i></div>
+                    <div class="menu-title">Staff Portal</div>
                 </a>
             </li>
 
@@ -67,7 +91,7 @@ $settingsMenuItems = [
             <li class="nav-item">
                 <a href="{{ url('home') }}"
                     class="nav-link {{ Request::is('home') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-th"></i></div>
+                    <div class="parent-icon"><i class="fas fa-sitemap"></i></div>
                     <div class="menu-title">APM Home</div>
                 </a>
             </li>
@@ -80,26 +104,33 @@ $settingsMenuItems = [
                 </a>
             </li>
 
-            <!-- Activities -->
-            <li class="nav-item">
-                <a href="{{ route('activities.index') }}" class="nav-link {{ Request::is('activities*') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-tasks"></i></div>
-                    <div class="menu-title">Matrix Activities</div>
-                </a>
-            </li>
+         
 
          
 
             <!-- Memos Menu -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('special-memo*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('activities*') || Request::is('non-travel*') || Request::is('special-memo*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-envelope-open-text"></i></div>
                     <div class="menu-title">Memos</div>
                 </a>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">Non-Travel</a></li>
-                    <li><a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">Special Travel Memo</a></li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('activities*') ? 'active' : '' }}" href="{{ route('activities.index') }}">
+                            Matrix Memos
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">
+                            Non-Travel Memos
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">
+                            Special Travel Memos
+                        </a>
+                    </li>
                 </ul>
             </li>
 
@@ -138,7 +169,7 @@ $settingsMenuItems = [
 
             <!-- Settings -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-cogs"></i></div>
                     <div class="menu-title">Settings</div>
