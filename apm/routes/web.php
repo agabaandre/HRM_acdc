@@ -132,6 +132,11 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
     Route::get('/jobs/system-info', [App\Http\Controllers\JobsController::class, 'getSystemInfo'])->name('jobs.system-info');
+    
+    // Document Counter Management
+    Route::get('/jobs/document-counters', [App\Http\Controllers\JobsController::class, 'getDocumentCounters'])->name('jobs.document-counters');
+    Route::post('/jobs/reset-document-counters', [App\Http\Controllers\JobsController::class, 'resetDocumentCounters'])->name('jobs.reset-document-counters');
+    Route::get('/jobs/document-counter-filters', [App\Http\Controllers\JobsController::class, 'getDocumentCounterFilters'])->name('jobs.document-counter-filters');
 
     // Approver Dashboard Routes
 Route::get('/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'index'])->name('approver-dashboard.index');
