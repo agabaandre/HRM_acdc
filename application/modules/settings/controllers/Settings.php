@@ -378,10 +378,6 @@ public function ppa_variables()
  * Generate short names for existing divisions
  */
 public function generate_division_short_names() {
-    $data['title'] = 'Generate Division Short Names';
-    $data['module'] = 'settings';
-    $data['view_file'] = 'generate_short_names';
-    
     if ($this->input->post()) {
         // Load the model
         $this->load->model('settings_mdl');
@@ -403,12 +399,22 @@ public function generate_division_short_names() {
         }
         
         Modules::run('utility/setFlash', $message, $result['errors'] > 0 ? 'error' : 'success');
-        redirect('settings/generate_division_short_names');
+        redirect('settings/divisions');
     } else {
-        // Load divisions without short names
+        // Redirect to divisions page with info about short name generation
         $this->load->model('settings_mdl');
-        $data['divisions_without_short_names'] = $this->settings_mdl->getDivisionsWithoutShortNames();
-        echo Modules::run('templates/main', $data);
+        $divisions_without_short_names = $this->settings_mdl->getDivisionsWithoutShortNames();
+        
+        if (!empty($divisions_without_short_names)) {
+            $count = count($divisions_without_short_names);
+            $message = "Found {$count} divisions without short names. ";
+            $message .= "<a href='" . base_url('settings/generate_division_short_names') . "' class='btn btn-sm btn-primary'>Generate Short Names</a>";
+            Modules::run('utility/setFlash', $message, 'info');
+        } else {
+            Modules::run('utility/setFlash', 'All divisions have short names!', 'success');
+        }
+        
+        redirect('settings/divisions');
     }
 }
 
