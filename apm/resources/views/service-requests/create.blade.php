@@ -249,8 +249,8 @@
                         </thead>
                         <tbody id="externalParticipants">
                             <tr>
-                                <td><input type="text" name="external_participants[0][name]" class="form-control border-success" value="Consulting Experts Inc."></td>
-                                <td><input type="email" name="external_participants[0][email]" class="form-control border-success" value="contact@experts.com"></td>
+                                <td><input type="text" name="external_participants[0][name]" class="form-control border-success" placeholder="Name" value=""></td>
+                                <td><input type="email" name="external_participants[0][email]" class="form-control border-success" placeholder="Email" value=""></td>
                                 @foreach($costItems as $index => $costItem)
                                     <td>
                                         <input type="number" 
@@ -453,8 +453,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (input.name) {
                 input.name = input.name.replace('[0]', '[' + externalParticipantCount + ']');
             }
-            if (input.type === 'number' || input.type === 'text' || input.type === 'email') {
+            if (input.type === 'number') {
                 input.value = '';
+            } else if (input.type === 'text' && input.name.includes('[name]')) {
+                input.value = '';
+                input.placeholder = 'Name';
+            } else if (input.type === 'email') {
+                input.value = '';
+                input.placeholder = 'Email';
             }
         });
         
