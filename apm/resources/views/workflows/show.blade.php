@@ -222,10 +222,10 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bx bx-x me-1"></i>Cancel
                 </button>
-                <form id="delete-definition-form" method="POST" class="d-inline">
+                <form id="delete-definition-form" method="POST" class="d-inline" action="">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-danger" id="confirm-delete-btn">
                         <i class="bx bx-trash me-1"></i>Delete Definition
                     </button>
                 </form>
@@ -256,12 +256,60 @@
             console.log('Definition ID:', definitionId);
             console.log('Definition Role:', definitionRole);
             
+            // Check if modal exists
+            if ($('#deleteDefinitionModal').length === 0) {
+                console.error('Delete modal not found!');
+                return;
+            }
+            
             // Update modal content
             $('#definition-role-name').text('"' + definitionRole + '"');
-            $('#delete-definition-form').attr('action', '{{ route("workflows.delete-definition", [$workflow->id, ":id"]) }}'.replace(':id', definitionId));
+            var actionUrl = '{{ route("workflows.delete-definition", [$workflow->id, ":id"]) }}'.replace(':id', definitionId);
+            $('#delete-definition-form').attr('action', actionUrl);
             
-            // Show modal
-            $('#deleteDefinitionModal').modal('show');
+            console.log('Action URL:', actionUrl);
+            console.log('Form action after setting:', $('#delete-definition-form').attr('action'));
+            
+            // Initialize and show modal
+            var modal = new bootstrap.Modal(document.getElementById('deleteDefinitionModal'));
+            modal.show();
+            
+            console.log('Modal should be showing now');
+        });
+        
+        // Handle form submission in the modal
+        $('#delete-definition-form').on('submit', function(e) {
+            console.log('Delete form submitted');
+            var actionUrl = $(this).attr('action');
+            console.log('Submitting to:', actionUrl);
+            
+            // Validate action URL
+            if (!actionUrl || actionUrl === '') {
+                e.preventDefault();
+                alert('Error: No action URL set for delete form');
+                console.error('No action URL set for delete form');
+                return false;
+            }
+            
+            // Show loading state
+            $('#confirm-delete-btn').prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin me-1"></i>Deleting...');
+            
+            // Let the form submit normally
+            return true;
+        });
+        
+        // Handle delete button click in modal
+        $('#confirm-delete-btn').on('click', function(e) {
+            console.log('Confirm delete button clicked');
+            var form = $(this).closest('form');
+            var actionUrl = form.attr('action');
+            console.log('Form action URL:', actionUrl);
+            
+            if (!actionUrl || actionUrl === '') {
+                e.preventDefault();
+                alert('Error: Cannot delete - no action URL set');
+                return false;
+            }
         });
     });
 </script>

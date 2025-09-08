@@ -234,24 +234,39 @@ class WorkflowController extends Controller
     public function deleteDefinition(Workflow $workflow, WorkflowDefinition $definition)
     {
         try {
+            Log::info('Attempting to delete workflow definition', [
+                'workflow_id' => $workflow->id,
+                'definition_id' => $definition->id,
+                'definition_role' => $definition->role
+            ]);
+
             // Check if definition is being used by any approvers
             $isUsed = \DB::table('approvers')
                 ->where('workflow_dfn_id', $definition->id)
                 ->exists();
 
             if ($isUsed) {
+                Log::info('Cannot delete definition - in use by approvers', [
+                    'definition_id' => $definition->id
+                ]);
                 return redirect()->route('workflows.show', $workflow->id)
                     ->with('error', 'Cannot delete workflow definition. It is currently being used by approvers.');
             }
 
             $definition->delete();
 
+            Log::info('Workflow definition deleted successfully', [
+                'definition_id' => $definition->id
+            ]);
+
             return redirect()->route('workflows.show', $workflow->id)
                 ->with('success', 'Workflow definition deleted successfully.');
         } catch (\Exception $e) {
             Log::error('Workflow definition deletion failed', [
+                'workflow_id' => $workflow->id,
                 'definition_id' => $definition->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->route('workflows.show', $workflow->id)
