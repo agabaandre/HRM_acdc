@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
+use App\Traits\HasDocumentNumber;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class NonTravelMemo extends Model
 {
-    use HasFactory, HasApprovalWorkflow, Auditable;
+    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable;
 
     /**
      * The attributes that are mass assignable.
@@ -39,6 +40,7 @@ class NonTravelMemo extends Model
         'budget_breakdown',
         'attachment',
         'is_draft',
+        'document_number',
     ];
 
     protected $appends = ['workflow_definition', 'current_actor'];
