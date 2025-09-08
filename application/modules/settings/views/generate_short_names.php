@@ -78,11 +78,9 @@
                         </div>
                         
                         <div class="text-center mt-4">
-                            <?= form_open('settings/generate_division_short_names', array('class' => 'd-inline')) ?>
-                                <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Are you sure you want to generate short names for all divisions? This action cannot be undone.')">
-                                    <i class="fas fa-magic me-2"></i>Generate Short Names Now
-                                </button>
-                            <?= form_close() ?>
+                            <a href="<?= base_url('settings/force_generate_short_names') ?>" class="btn btn-success btn-lg" onclick="return confirm('Are you sure you want to generate short names for all divisions? This action cannot be undone.')">
+                                <i class="fas fa-magic me-2"></i>Generate Short Names Now
+                            </a>
                             
                             <a href="<?= base_url('settings/divisions') ?>" class="btn btn-outline-secondary btn-lg ms-3">
                                 <i class="fas fa-arrow-left me-2"></i>Back to Divisions
