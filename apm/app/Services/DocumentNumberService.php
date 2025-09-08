@@ -49,11 +49,20 @@ class DocumentNumberService
         $divisionShortName = null;
         
         // Try to get division info from the model
-        if (method_exists($model, 'division_id') && $model->division_id) {
+        if (isset($model->division_id) && $model->division_id) {
             $divisionId = $model->division_id;
-        } elseif (method_exists($model, 'division') && $model->division) {
+        } elseif (isset($model->division) && $model->division) {
             $divisionId = $model->division->id;
             $divisionShortName = $model->division->division_short_name;
+        }
+        
+        // For Activities, try to get division through Matrix relationship
+        if (class_basename($model) === 'Activity' && isset($model->matrix_id) && $model->matrix_id) {
+            $matrix = $model->matrix ?? \App\Models\Matrix::find($model->matrix_id);
+            if ($matrix && $matrix->division_id) {
+                $divisionId = $matrix->division_id;
+                $divisionShortName = $matrix->division ? $matrix->division->division_short_name : null;
+            }
         }
         
         // If we have division_id but no short name, load the division
@@ -68,19 +77,33 @@ class DocumentNumberService
     /**
      * Get document type from model class
      */
-    public static function getDocumentTypeFromModel(Model $model): string
+    public static function getDocumentTypeFromModel(Model $model): ?string
     {
         $className = class_basename($model);
         
         return match ($className) {
-            'Matrix' => DocumentCounter::TYPE_QUARTERLY_MATRIX,
+            'Matrix' => null, // Matrix is just a container, not a document
             'NonTravelMemo' => DocumentCounter::TYPE_NON_TRAVEL_MEMO,
             'SpecialMemo' => DocumentCounter::TYPE_SPECIAL_MEMO,
-            'Activity' => DocumentCounter::TYPE_SINGLE_MEMO, // Assuming single memo is activity
+            'Activity' => self::getActivityDocumentType($model),
             'ServiceRequest' => DocumentCounter::TYPE_SERVICE_REQUEST,
             'RequestARF' => DocumentCounter::TYPE_ARF,
             default => 'UNKNOWN'
         };
+    }
+
+    /**
+     * Determine document type for Activity based on is_single_memo field
+     */
+    private static function getActivityDocumentType(Model $activity): string
+    {
+        // Check if activity is marked as single memo
+        if (isset($activity->is_single_memo) && $activity->is_single_memo == 1) {
+            return DocumentCounter::TYPE_SINGLE_MEMO; // SM
+        }
+        
+        // Activities not marked as single memo are part of quarterly matrix
+        return DocumentCounter::TYPE_QUARTERLY_MATRIX; // QM
     }
 
     /**
@@ -89,6 +112,12 @@ class DocumentNumberService
     public static function generateForAnyModel(Model $model): string
     {
         $documentType = self::getDocumentTypeFromModel($model);
+        
+        // If document type is null (e.g., Matrix), return empty string
+        if ($documentType === null) {
+            return '';
+        }
+        
         return self::generateForModel($model, $documentType);
     }
 

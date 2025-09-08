@@ -7,14 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\HasApprovalWorkflow;
-use App\Traits\HasDocumentNumber;
 use function React\Promise\Stream\first;
 use App\Models\Staff;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class Matrix extends Model
 {
-    use HasFactory, HasApprovalWorkflow, HasDocumentNumber, Auditable;
+    use HasFactory, HasApprovalWorkflow, Auditable;
 
     /**
      * The attributes that are mass assignable.
@@ -33,7 +32,6 @@ class Matrix extends Model
         'approval_level',
         'next_approval_level',
         'overall_status',
-        'document_number',
     ];
 
     protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor','division_schedule','division_staff',"intramural_budget","extramural_budget"];

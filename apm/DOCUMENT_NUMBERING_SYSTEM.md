@@ -124,15 +124,38 @@ The system automatically detects document types based on model class:
 ```php
 // In DocumentNumberService
 return match ($className) {
-    'Matrix' => DocumentCounter::TYPE_QUARTERLY_MATRIX,
+    'Matrix' => null, // No document number - just a container
     'NonTravelMemo' => DocumentCounter::TYPE_NON_TRAVEL_MEMO,
     'SpecialMemo' => DocumentCounter::TYPE_SPECIAL_MEMO,
-    'Activity' => DocumentCounter::TYPE_SINGLE_MEMO,
+    'Activity' => self::getActivityDocumentType($model), // QM or SM based on Matrix status
     'ServiceRequest' => DocumentCounter::TYPE_SERVICE_REQUEST,
     'RequestARF' => DocumentCounter::TYPE_ARF,
     default => 'UNKNOWN'
 };
 ```
+
+### Activity Document Type Logic
+
+Activities get different document types based on their `is_single_memo` field:
+
+```php
+private static function getActivityDocumentType(Model $activity): string
+{
+    // Check if activity is marked as single memo
+    if (isset($activity->is_single_memo) && $activity->is_single_memo == 1) {
+        return DocumentCounter::TYPE_SINGLE_MEMO; // SM
+    }
+    
+    // Activities not marked as single memo are part of quarterly matrix
+    return DocumentCounter::TYPE_QUARTERLY_MATRIX; // QM
+}
+```
+
+**Business Logic:**
+- **`is_single_memo = 1`** → Single Memo (`SM`)
+- **`is_single_memo = 0`** → Quarterly Matrix (`QM`)
+
+This approach is more reliable as it directly uses the database field that indicates whether an activity should be treated as a single memo or part of a quarterly matrix.
 
 ## Database Schema
 
