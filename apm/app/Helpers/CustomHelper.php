@@ -83,14 +83,12 @@ if (!function_exists('user_session')) {
         
         function can_approve_activity($activity){
 
-            // if (!can_take_action($activity->matrix))
-            //   return false;
+            if ($activity->is_single_memo==1)
+               return false;
           
             if($activity->matrix->forward_workflow_id==null)
                 return true;
-
-           // dd($activity);
-
+            
             if(count($activity->activity_budget)==0)
                 return false;
             

@@ -26,7 +26,6 @@ use App\Models\WorkflowDefinition;
 use App\Services\ApprovalService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
-
 use function PHPUnit\Framework\isEmpty;
 
 class ActivityController extends Controller
@@ -146,7 +145,8 @@ class ActivityController extends Controller
 
     public function store(Request $request, Matrix $matrix): RedirectResponse|JsonResponse
     {
- 
+      
+       // dd($request->all());
     
         $userStaffId = session('user.auth_staff_id');
     
@@ -287,7 +287,7 @@ class ActivityController extends Controller
                     'activity_title' => $request->input('activity_title'),
                     'background' => $request->input('background', ''),
                     'activity_request_remarks' => $request->input('activity_request_remarks', ''),
-                    'forward_workflow_id' => 1,
+                    'forward_workflow_id' => null,
                     'reverse_workflow_id' => 1,
                     'status' => \App\Models\Activity::STATUS_DRAFT,
                     'fund_type_id' => $request->input('fund_type', 1),
@@ -297,9 +297,12 @@ class ActivityController extends Controller
                     'budget_breakdown' => json_encode($budgetItems),
                     'attachment' => json_encode($attachments),
                     'is_single_memo' => $request->input('is_single_memo', 0),
-                    'approval_level' => 1,
+                    'approval_level' => 0,
+                    'division_id' => $matrix->division_id,
                     'overall_status' =>\App\Models\Activity::STATUS_DRAFT,
                 ]);
+
+                Log::info('Activity created', ['activity' => $activity]);
 
                 if(count($internalParticipants)>0)
                 $this->storeParticipantSchedules($internalParticipants,$activity);
@@ -413,16 +416,17 @@ class ActivityController extends Controller
         $locations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
     
-        return view('activities.show', [
-            'matrix' => $matrix,
+        return view(( $activity->is_single_memo ? 'activities.single-memos.show' : 'activities.show'), [
+            'matrix' => $activity->matrix,
             'activity' => $activity,
             'staff' => $staff,
             'locations' => $locations,
             'fundCodes' => $fundCodes,
+            'budgetCodes' => $budgetIds, // Pass budget IDs as budgetCodes for compatibility
             'internalParticipants' => $internalParticipants,
             'budgetItems' => $budgetItems,
             'attachments' => $attachments,
-            'title' => 'View Activity: ' . $activity->activity_title
+            'title' => ($activity->is_single_memo ? 'View Single Memo: ' : 'View Activity: ') . $activity->activity_title
         ]);
     }
     
@@ -736,6 +740,11 @@ class ActivityController extends Controller
                     'budget_id' => json_encode($budgetCodes),
                     'budget_breakdown' => json_encode($budgetItems),
                     'attachment' => json_encode($attachments),
+                    'overall_status' => 'draft',
+                    'approval_level' => 0,
+                    'forward_workflow_id' => null,
+                    'is_draft' => 1,
+                    'is_single_memo' => $request->input('is_single_memo', 0),
                 ]);
 
                 if (count($internalParticipants) > 0)
@@ -1150,23 +1159,32 @@ class ActivityController extends Controller
     /**
      * Submit single memo for approval.
      */
-    public function submitSingleMemoForApproval(Activity $activity): RedirectResponse
+public function submitSingleMemoForApproval(Activity $activity): RedirectResponse
     {
-        if ($activity->overall_status !== 'draft') {
+        if ($activity->overall_status != 'draft') {
             return redirect()->back()->with([
                 'msg' => 'Only draft single memos can be submitted for approval.',
                 'type' => 'error',
             ]);
         }
 
-        if ($activity->staff_id !== user_session('staff_id')) {
+        if ($activity->staff_id != user_session('staff_id')) {
             return redirect()->back()->with([
                 'msg' => 'Only the creator can submit this memo for approval.',
                 'type' => 'error',
             ]);
         }
 
-        $activity->submitForApproval();
+        // Simply set status and overall_status to 'pending'
+        $activity->update([
+            'overall_status' => 'pending',
+            'approval_level' => 1,
+            'forward_workflow_id' => 1,
+            'is_draft' => 0,
+        ]); 
+
+        // Save approval trail
+        $activity->saveApprovalTrail('Submitted for approval', 'submitted');
 
         return redirect()->route('activities.single-memos.show', $activity)->with([
             'msg' => 'Single memo submitted for approval successfully.',
@@ -1195,12 +1213,20 @@ class ActivityController extends Controller
 
         $activity->updateApprovalStatus($request->action, $request->comment);
 
-        $message = match ($request->action) {
-            'approved' => 'Single memo approved successfully.',
-            'rejected' => 'Single memo rejected.',
-            'returned' => 'Single memo returned for revision.',
-            default => 'Status updated successfully.'
-        };
+        switch ($request->action) {
+            case 'approved':
+                $message = 'Single memo approved successfully.';
+                break;
+            case 'rejected':
+                $message = 'Single memo rejected.';
+                break;
+            case 'returned':
+                $message = 'Single memo returned for revision.';
+                break;
+            default:
+                $message = 'Status updated successfully.';
+                break;
+        }
 
         return redirect()->route('activities.single-memos.show', $activity)->with([
             'msg' => $message,

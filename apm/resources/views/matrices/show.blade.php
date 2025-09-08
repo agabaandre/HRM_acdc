@@ -92,10 +92,19 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-   @if($matrix->division_id == user_session()['division_id'] )
+   @if($matrix->division_id == user_session()['division_id']  || still_with_creator($matrix))
+        @if( $matrix->overall_status=='draft')
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
-            <i class="bx bx-plus-circle me-1"></i> {{ $matrix->overall_status=='draft' ? 'Add Activity' : 'Add Single Memo' }}
+            <i class="bx bx-plus-circle me-1"></i> Add Activity
         </a>
+        @endif
+
+         @if( $matrix->overall_status=='approved')
+        <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
+            <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
+        </a>
+        @endif
+
     @endif
      @if(still_with_creator($matrix))
         <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
@@ -150,8 +159,8 @@
                         @endphp
 
                         @forelse($activities as $activity)
-                            <tr>
-                                @if(can_take_action($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
+                            <tr style="background-color: {{ $activity->is_single_memo == 1 ? '#d5f5de' : '' }};">
+                                @if(can_take_action($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $activity->is_single_memo == 0)
                                <td class="px-3 py-3">
                                     @if(can_approve_activity($activity) && !done_approving_activty($activity))
                                         <input type="checkbox" class="form-check-input activity-checkbox" value="{{ $activity->id }}" data-activity-title="{{ $activity->activity_title }}">
@@ -196,7 +205,7 @@
                                 <td class="px-3 py-3 text-center">
 
                                 @php //dd(can_approve_activity($activity)) @endphp
-                                    @if(can_approve_activity($activity))
+                                    @if(can_approve_activity($activity) && $activity->is_single_memo == 0)
                                     <span class="badge bg-{{ allow_print_activity($activity) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }} rounded-pill">
                                         @if(allow_print_activity($activity))
                                             Passed
@@ -207,11 +216,13 @@
                                         @endif
                                     </span>
                                     @else
-                                    <span class="badge bg-success rounded-pill">No Action Required</span>
+                                    <span class="badge bg-success rounded-pill">
+                                        {{ $activity->is_single_memo == 1 ? 'Single Memo - '.ucfirst($activity->status) : 'No Action Required' }}
+                                    </span>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3 text-center">
-                                    <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" class="btn btn-outline-primary btn-sm">
+                                    <a href="{{ ($activity->is_single_memo == 1) ? route('activities.single-memos.show', $activity) :route('matrices.activities.show', [$matrix, $activity]) }}" class="btn btn-outline-primary btn-sm">
                                         <i class="bx bx-show"></i>
                                     </a>
                                 </td>

@@ -48,6 +48,9 @@ class Activity extends Model
         'budget_id',
         'budget_breakdown',
         'attachment',
+        'is_single_memo',
+        'approval_level',
+        'overall_status',
     ];
 
     protected $hidden = ['created_at', 'updated_at'];

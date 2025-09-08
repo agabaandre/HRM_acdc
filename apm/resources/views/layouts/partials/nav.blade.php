@@ -122,6 +122,11 @@ $settingsMenuItems = [
                         </a>
                     </li>
                     <li>
+                        <a class="dropdown-item {{ Request::is('/single-memos*') ? 'active' : '' }}" href="{{ route('activities.single-memos.index') }}">
+                            Matrix Single Memos
+                        </a>
+                    </li>
+                    <li>
                         <a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">
                             Non-Travel Memos
                         </a>
