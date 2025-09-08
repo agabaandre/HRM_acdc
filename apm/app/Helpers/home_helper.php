@@ -308,17 +308,27 @@ if (!function_exists('get_pending_service_requests_count')) {
         // For now, just return count of pending service requests
         // TODO: Implement proper approval logic when ServiceRequest approval system is added
         return ServiceRequest::where('approval_status', 'pending')
-            ->where('workflow_id', '!=', null)
+            ->where('forward_workflow_id', '!=', null)
             ->count();
     }
 }
 
-if (!function_exists('mpdf_print')) {
-    function mpdf_print($view, $data = [], $options = [])
+if (!function_exists('generate_pdf')) {
+    /**
+     * Generate a PDF using mPDF, or preview the HTML in the browser for debugging.
+     * Ensures all CSS from the view is included in the PDF.
+     *
+     * @param string $view
+     * @param array $data
+     * @param array $options
+     *        - 'preview_html' (bool): If true, output HTML to browser instead of PDF (for debug)
+     * @return \Mpdf\Mpdf|string
+     */
+    function generate_pdf($view, $data = [], $options = [])
     {
         // Set timezone
         date_default_timezone_set("Africa/Nairobi");
-        
+
         // Load the view with data
         if (strpos($view, '.blade.php') !== false) {
             // If it's a Blade view, render it normally
@@ -329,7 +339,7 @@ if (!function_exists('mpdf_print')) {
             if (file_exists($templatePath)) {
                 // Extract variables from data array for PHP template
                 extract($data);
-                
+
                 // Start output buffering before including template
                 ob_start();
                 include $templatePath;
@@ -340,38 +350,109 @@ if (!function_exists('mpdf_print')) {
                 $html = view($view, $data)->render();
             }
         }
-        
-        // Generate PDF using mPDF - exactly like CodeIgniter
-        $mpdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'default_font' => 'Arial'
-        ]);
-        
+
+        // If preview_html option is set, output HTML directly for debugging
+        if (!empty($options['preview_html'])) {
+            // Set content type header for HTML if not already sent
+            if (!headers_sent()) {
+                header('Content-Type: text/html; charset=utf-8');
+            }
+            echo $html;
+            exit;
+        }
+
+      // mPDF font configuration with Arial + safe fallback
+$defaultConfig      = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+$fontDirs           = $defaultConfig['fontDir'];
+//dd($fontDirs);
+$defaultFontConfig  = (new \Mpdf\Config\FontVariables())->getDefaults();
+$fontData           = $defaultFontConfig['fontdata'];
+//dd($fontData);
+$arialFontDir = public_path('assets/fonts/arial');
+//dd($arialFontDir);
+$arialFiles = [
+    'R'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIAL.TTF',
+    'B'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBD.TTF',
+    'I'  => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALI.TTF',
+    'BI' => $arialFontDir . DIRECTORY_SEPARATOR . 'ARIALBI.TTF',
+];
+
+// Determine if all Arial files exist (Linux is case-sensitive)
+$haveArial =
+    is_dir($arialFontDir) &&
+    file_exists($arialFiles['R']) &&
+    file_exists($arialFiles['B']) &&
+    file_exists($arialFiles['I']) &&
+    file_exists($arialFiles['BI']);
+
+if (!$haveArial) {
+    \Log::warning('Arial fonts not found or incomplete. Falling back to DejaVuSans.', [
+        'dir_exists' => is_dir($arialFontDir),
+        'files'      => $arialFiles
+    ]);
+}
+
+$mpdf = new \Mpdf\Mpdf([
+    'mode'     => 'utf-8',
+    'format'   => 'A4',
+    'tempDir'  => storage_path('app/mpdf_tmp'), // ensure this exists & is writable
+    'fontDir'  => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
+    'fontdata' => $haveArial
+        ? $fontData + [
+            'arial' => [
+                'R'  => 'ARIAL.TTF',
+                'B'  => 'ARIALBD.TTF',
+                'I'  => 'ARIALI.TTF',
+                'BI' => 'ARIALBI.TTF',
+            ],
+        ]
+        : $fontData, // keep defaults if no Arial
+    'default_font' => $haveArial ? 'arial' : 'freesans',
+    'default_font_size' => 10,
+]);
+
         // Set PDF margins exactly like CodeIgniter
-        $mpdf->SetMargins(10, 10, 10);         // left, top, right margins
-        $mpdf->SetAutoPageBreak(true, 30);     // allow auto page break with 30mm bottom margin for footer
-        
+        $mpdf->SetMargins(10, 10, 35);         // left, top, right margins
+        $mpdf->SetAutoPageBreak(true, 30); 
+        $header = '<div style="width: 100%; text-align: center; padding-bottom: 5px;">
+            <div style="width: 100%; padding-bottom: 5px;">
+                <div style="width: 100%; padding: 10px 0;">
+                    <!-- Top Row: Logo and Tagline -->
+                    <div style="display:flex; justify-content: space-between; align-items: center;">
+                        <!-- Left: Logo -->
+                        <div style="width: 60%; text-align: left; float:left;">
+                            <img src="' . asset('assets/images/logo.png') . '" alt="Africa CDC Logo" style="height: 80px;">
+                        </div>
+                        <!-- Right: Tagline -->
+                        <div style="text-align: right; width: 35%; float:right; margin-top:10px;">
+                            <span style="font-size: 14px; color: #911C39;">Safeguarding Africa\'s Health</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>';
+        $mpdf->SetHTMLHeader($header);    // allow auto page break with 30mm bottom margin for footer
+
         // Set footer exactly like CodeIgniter
-        $footer = '
-        <table width="100%" style="font-size: 9pt; color: #911C39; border:none;">
+        $footer = ' <table width="100%" style="font-size: 8pt; color: #911C39; border:none;">
             <tr>
                 <td align="left" style="border: none;">
-                    Africa CDC, P.O. Box 3243, Addis Ababa, Ethiopia, Ring Road, 16/17<br>
-                    Tel: +251 (0) 11 551 77 00, Fax: +251 (0) 11 551 78 44<br>
-                    Website: <a href="https://africacdc.org" style="color: #911C39;">africacdc.org</a>
+                    Africa CDC Headquarters, Ring Road, 16/17,<br>
+                    Haile Garment Lafto Square, Nifas Silk-Lafto Sub City,<br>
+                    P.O Box: 200050 Addis Ababa, Tel: +251(0) 112175100/75200<br>
+                    Email: <a href="mailto:registry@africacdc.org" style="color: #911C39;">registry@africacdc.org</a>
                 </td>
                 <td align="left" style="border: none;">
-                    Source: Africa CDC - Central Business Platform<br>
+                    Source: Africa CDC  Central Business Platform<br>
                     Generated on: ' . date('d F, Y h:i A') . '<br>
                     ' . config('app.url') . '
+                    <br>By:'.user_session('name').'
                 </td>
             </tr>
-          
-        </table>'.  '<p style="text-align:right;">Page {PAGENO} of {nbpg}</p>';
-        
+        </table>'.  '<p style="text-align:right; font-size: 8pt;">Page {PAGENO} of {nbpg}</p>';
+
         $mpdf->SetHTMLFooter($footer);
-        
+
         // Write HTML content exactly like CodeIgniter with error handling
         try {
             $mpdf->WriteHTML($html);
@@ -380,8 +461,20 @@ if (!function_exists('mpdf_print')) {
             $simpleHtml = '<html><body><p>Error generating PDF. Please try again.</p></body></html>';
             $mpdf->WriteHTML($simpleHtml);
         }
-        
+
         return $mpdf;
+    }
+}
+
+// Backward compatibility function
+if (!function_exists('mpdf_print')) {
+    /**
+     * Backward compatibility function for mpdf_print
+     * @deprecated Use generate_pdf() instead
+     */
+    function mpdf_print($view, $data = [], $options = [])
+    {
+        return generate_pdf($view, $data, $options);
     }
 }
 

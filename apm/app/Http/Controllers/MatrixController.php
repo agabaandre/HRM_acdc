@@ -30,7 +30,7 @@ class MatrixController extends Controller
             'focalPerson',
             'forwardWorkflow',
             'activities' => function ($q) {
-                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                   ->whereNotNull('matrix_id');
             }
         ]);
@@ -118,7 +118,9 @@ class MatrixController extends Controller
 
        //  dd(getFullSql($query));
 
-        $matrices = $query->latest()->paginate(20);
+        $matrices = $query->orderBy('year', 'desc')
+                          ->orderBy('quarter', 'desc')
+                          ->paginate(24);
 
         //dd($matrices->toArray());
 
@@ -128,8 +130,8 @@ class MatrixController extends Controller
             $matrix->total_activities = $matrix->activities->count();
             $matrix->total_participants = $matrix->activities->sum('total_participants');
             $matrix->total_budget = $matrix->activities->sum(function ($activity) {
-                return is_array($activity->budget) && isset($activity->budget['total'])
-                    ? $activity->budget['total']
+                return is_array($activity->budget_breakdown) && isset($activity->budget_breakdown['total'])
+                    ? $activity->budget_breakdown['total']
                     : 0;
             });
             return $matrix;
@@ -137,38 +139,70 @@ class MatrixController extends Controller
 
         
        
-        // Separate matrices into actionable and actioned lists
-        $actionableMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return in_array($matrix->overall_status, ['draft', 'pending', 'returned']);
-        });
-        $myDivisionMatrices = $matrices->getCollection()->filter(function ($matrix) {
-            return $matrix->division_id == user_session('division_id');
-        });
+        // Create separate queries for each tab with proper server-side pagination
+        $myDivisionQuery = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow',
+            'activities' => function ($q) {
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
+                  ->whereNotNull('matrix_id');
+            }
+        ])->where('division_id', user_session('division_id'));
 
+        // Apply filters to my division query
+        if ($request->filled('year')) {
+            $myDivisionQuery->where('year', $request->year);
+        }
+        if ($request->filled('quarter')) {
+            $myDivisionQuery->where('quarter', $request->quarter);
+        }
+        if ($request->filled('focal_person')) {
+            $myDivisionQuery->where('focal_person_id', $request->focal_person);
+        }
+        if ($request->filled('division')) {
+            $myDivisionQuery->where('id', $request->division);
+        }
 
-        // Filter matrices based on CustomHelper functions for accurate counts
-        $filteredActionableMatrices = $actionableMatrices->filter(function ($matrix) {
-             //dd(can_take_action($matrix));
-            return can_take_action($matrix)  || still_with_creator($matrix);
-        });
-
-        $filteredActionedMatrices = $matrices->filter(function ($matrix) {
-            return done_approving($matrix) ;
-        });
+        $myDivisionMatrices = $myDivisionQuery->orderBy('year', 'desc')
+                                            ->orderBy('quarter', 'desc')
+                                            ->paginate(24, ['*'], 'my_division_page');
 
         // Get all matrices for users with permission ID 87
         $allMatrices = collect();
         if (in_array(87, user_session('permissions', []))) {
-            $allMatrices = Matrix::with([
+            $allMatricesQuery = Matrix::with([
                 'division',
                 'staff',
                 'focalPerson',
                 'forwardWorkflow',
                 'activities' => function ($q) {
-                    $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                    $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                       ->whereNotNull('matrix_id');
                 }
-            ])->latest()->paginate(20);
+            ]);
+
+            // Apply same filters to all matrices query
+            if ($request->filled('year')) {
+                $allMatricesQuery->where('year', $request->year);
+            }
+        
+            if ($request->filled('quarter')) {
+                $allMatricesQuery->where('quarter', $request->quarter);
+            }
+        
+            if ($request->filled('focal_person')) {
+                $allMatricesQuery->where('focal_person_id', $request->focal_person);
+            }
+        
+            if ($request->filled('division')) {
+                $allMatricesQuery->where('id', $request->division);
+            }
+
+            $allMatrices = $allMatricesQuery->orderBy('year', 'desc')
+                                           ->orderBy('quarter', 'desc')
+                                           ->paginate(24, ['*'], 'all_matrices_page');
         }
 
         //  dd($filteredActionedMatrices->toArray());
@@ -176,10 +210,6 @@ class MatrixController extends Controller
     
         return view('matrices.index', [
             'matrices' => $matrices,
-            'actionableMatrices' => $actionableMatrices,
-            'actionedMatrices' => $filteredActionedMatrices,
-            'filteredActionableMatrices' => $filteredActionableMatrices,
-            'filteredActionedMatrices' => $filteredActionedMatrices,
             'myDivisionMatrices' => $myDivisionMatrices,
             'allMatrices' => $allMatrices,
             'title' => user_session('division_name'),
@@ -337,10 +367,12 @@ class MatrixController extends Controller
      public function show(Matrix $matrix): View
      {
          // Load primary relationships
-         $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff']);
-     
+         //(can_take_action($matrix));
+
+         $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails']);
+     //dd($matrix);
          // Paginate related activities and eager load direct relationships
-         $activities = $matrix->activities()->with(['requestType', 'fundType'])->latest()->paginate(10);
+         $activities = $matrix->activities()->with(['requestType', 'fundType','activity_budget','activity_budget.fundcode'])->latest()->paginate(10);
      
          // Prepare additional decoded & related data per activity
          foreach ($activities as $activity) {
@@ -373,18 +405,62 @@ class MatrixController extends Controller
     {
         $divisions = Division::all();
         $staff = Staff::active()->get();
-        $focalPersons = Staff::active()->get();
+        $focalPersons = $staff;
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         $years = range(date('Y'), date('Y') + 5);
+        
+        // Calculate current and next quarter/year for one quarter ahead functionality
+        $currentYear = date('Y');
+        $currentMonth = date('n');
+        $currentQuarter = 'Q' . ceil($currentMonth / 3);
+        
+        // Calculate next quarter and year
+        $nextQuarter = '';
+        $nextYear = $currentYear;
+        
+        switch ($currentQuarter) {
+            case 'Q1':
+                $nextQuarter = 'Q2';
+                break;
+            case 'Q2':
+                $nextQuarter = 'Q3';
+                break;
+            case 'Q3':
+                $nextQuarter = 'Q4';
+                break;
+            case 'Q4':
+                $nextQuarter = 'Q1';
+                $nextYear = $currentYear + 1;
+                break;
+        }
+        
+        // Create quarters array with current and next quarter
+        $availableQuarters = [$currentQuarter];
+        if ($nextQuarter) {
+            $availableQuarters[] = $nextQuarter;
+        }
+        
+        // Add next year to years array if not already present
+        if (!in_array($nextYear, $years)) {
+            $years[] = $nextYear;
+            sort($years);
+        }
     
-        // Prepare staff and focal person mapping per division
         $staffByDivision = [];
         $divisionFocalPersons = [];
+        $existingMatrices = [];
+        $nextAvailableQuarters = [];
     
         foreach ($divisions as $division) {
-            $divisionStaff = $staff->where('division_id', $division->id);
+            $divisionStaff = Staff::active()->where('division_id', $division->id)->get();
             $staffByDivision[$division->id] = $divisionStaff->pluck('id')->toArray();
             $divisionFocalPersons[$division->id] = $division->focal_person;
+            
+            // Get existing matrices for this division
+            $existingMatrices[$division->id] = Matrix::getExistingMatricesForDivision($division->id);
+            
+            // Get next available quarter for current year
+            $nextAvailableQuarters[$division->id] = Matrix::getNextAvailableQuarter($division->id, date('Y'));
         }
     
         // Ensure key_result_area is an array
@@ -393,16 +469,28 @@ class MatrixController extends Controller
             $matrix->key_result_area = is_array($decoded) ? $decoded : [];
         }
     
-        return view('matrices.edit', compact(
-            'matrix',
-            'divisions',
-            'staff',
-            'quarters',
-            'years',
-            'focalPersons',
-            'staffByDivision',
-            'divisionFocalPersons'
-        ));
+        // Save division name in session for breadcrumb use
+        session()->put('division_name', user_session('division_name'));
+    
+        return view('matrices.create', [
+            'matrix' => $matrix, // Pass the matrix for editing
+            'editing' => true, // Flag to indicate we're editing
+            'divisions' => $divisions,
+            'title' => user_session('division_name'),
+            'module' => 'Quarterly Matrix',
+            'staff' => $staff,
+            'quarters' => $availableQuarters, // Only show current and next quarter
+            'years' => $years,
+            'focalPersons' => $focalPersons,
+            'staffByDivision' => $staffByDivision,
+            'divisionFocalPersons' => $divisionFocalPersons,
+            'existingMatrices' => $existingMatrices,
+            'nextAvailableQuarters' => $nextAvailableQuarters,
+            'currentQuarter' => $currentQuarter,
+            'nextQuarter' => $nextQuarter,
+            'currentYear' => $currentYear,
+            'nextYear' => $nextYear,
+        ]);
     }
     
     
@@ -573,9 +661,10 @@ class MatrixController extends Controller
         $matrixTrail->remarks  = $comment;
         $matrixTrail->action   = $action;
         $matrixTrail->model_id   = $matrix->id;
+        $matrixTrail->forward_workflow_id = $matrix->forward_workflow_id;
         $matrixTrail->model_type = Matrix::class;
         $matrixTrail->matrix_id   = $matrix->id; // For backward compatibility
-        $matrixTrail->approval_order   = $matrix->approval_level ?? 1;
+        $matrixTrail->approval_order   = ($matrix->approval_level==0||$action=='submitted')?0:$matrix->approval_level;
         $matrixTrail->staff_id = user_session('staff_id');
         $matrixTrail->save();
 
@@ -632,6 +721,7 @@ class MatrixController extends Controller
         }
 
         $definition = ($next_definition->count()>0)?$next_definition[0]:null;
+        //dd($definition);
         //intramural only, skip extra mural role
         if($definition  && !$matrix->has_extramural &&  $definition->fund_type==2){
           return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
@@ -676,7 +766,7 @@ class MatrixController extends Controller
             'focalPerson',
             'forwardWorkflow',
             'activities' => function ($q) {
-                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget')
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                   ->whereNotNull('matrix_id');
             }
         ]);

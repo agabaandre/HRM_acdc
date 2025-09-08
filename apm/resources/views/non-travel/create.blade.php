@@ -106,7 +106,7 @@
                     
                     <div class="row g-4">
                         <!-- Title -->
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="title" class="form-label fw-semibold">
                                     <i class="bx bx-heading me-1 text-success"></i> Title of Activity <span class="text-danger">*</span>
@@ -121,13 +121,13 @@
                         </div>
                         
                            {{-- Background --}}
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="background" class="form-label fw-semibold">
                                     <i class="bx bx-info-circle me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                                 </label>
                                 <textarea name="background" id="background" 
-                                          class="form-control @error('background') is-invalid @enderror" 
+                                          class="form-control summernote @error('background') is-invalid @enderror" 
                                           rows="3" required>{{ old('background') }}</textarea>
                                 @error('background')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -135,46 +135,19 @@
                             </div>
                         </div>
                         
-                        <!-- Description -->
-                          <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="description" class="form-label fw-semibold">
-                                    <i class="bx bx-comment-detail me-1 text-success"></i> Description <span class="text-danger">*</span>
-                                </label>
-                                <textarea name="description" id="description" 
-                                          class="form-control @error('description') is-invalid @enderror" 
-                                          rows="5" required>{{ old('description') }}</textarea>
-                                @error('description')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
+                    
                      
-                        
-                        <!-- RA -->
-                          <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="approval" class="form-label fw-semibold">
-                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
-                                </label>
-                                <textarea name="approval" id="approval" 
-                                          class="form-control @error('approval') is-invalid @enderror" 
-                                          rows="2" required>{{ old('approval') }}</textarea>
-                                @error('approval')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
+                       
                       
                         
-                        <!-- Other Information -->
+                        <!-- Justification -->
                         <div class="col-12">
                             <div class="form-group">
-                                <label for="other_information" class="form-label fw-semibold">
-                                    <i class="bx bx-info me-1 text-success"></i> Any Other Information
+                                <label for="justification" class="form-label fw-semibold">
+                                    <i class="bx bx-info me-1 text-success"></i> Justification
                                 </label>
-                                <textarea name="other_information" id="other_information" 
-                                          class="form-control" rows="2">{{ old('other_information') }}</textarea>
+                                <textarea name="justification" id="justification" 
+                                          class="form-control summernote" rows="2">{{ old('justification') }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -230,9 +203,25 @@
                             <i class="fas fa-coins me-2 text-success"></i>
                             Total Budget: <span class="text-success fw-bold">$<span id="grandBudgetTotal">0.00</span></span>
                         </h5>
-                        <input type="hidden" name="budget[grand_total]" id="grandBudgetTotalInput" value="0">
+                        <input type="hidden" name="budget_breakdown[grand_total]" id="grandBudgetTotalInput" value="0">
                     </div>
                 </div>
+
+                 
+                        <!-- RA -->
+                          <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="activity_request_remarks" class="form-label fw-semibold">
+                                    <i class="bx bx-message-detail me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="activity_request_remarks" id="activity_request_remarks" 
+                                          class="form-control summernote @error('approval') is-invalid @enderror" 
+                                          rows="2" required>{{ old('activity_request_remarks') }}</textarea>
+                                @error('activity_request_remarks')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
 
                 <!-- Attachments Section -->
                 <div class="mt-5">
@@ -244,11 +233,7 @@
                         <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
                     </div>
                     <div class="row g-3" id="attachmentContainer">
-                        <div class="col-md-4 attachment-block">
-                            <label class="form-label">Document Type</label>
-                            <input type="text" name="attachments[0][type]" class="form-control">
-                            <input type="file" name="attachments[0][file]" class="form-control mt-1">
-                        </div>
+                        <!-- No default attachment block - user can add if needed -->
                     </div>
                 </div>
 
@@ -328,6 +313,28 @@
             theme: 'bootstrap4',
             width: '100%'
         });
+
+        // Initialize Summernote only for fields with summernote class
+        if ($('.summernote').length > 0) {
+            $('.summernote').summernote({
+                height: 150,
+                fontNames: ['Arial'],
+                fontNamesIgnoreCheck: ['Arial'],
+                defaultFontName: 'Arial',
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['fontname', ['fontname']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link']],
+                    ['view', ['fullscreen', 'codeview', 'help']]
+                ]
+            });
+        }
+
+
 
         // Fund type change handler
         $('#fund_type').change(function(event) {
@@ -435,19 +442,19 @@
             return `
                 <tr>
                     <td>
-                        <input type="text" name="budget[${codeId}][${index}][description]" 
+                        <input type="text" name="budget_breakdown[${codeId}][${index}][description]" 
                                class="form-control description" required>
                     </td>
                     <td>
-                        <input type="text" name="budget[${codeId}][${index}][unit]" 
+                        <input type="text" name="budget_breakdown[${codeId}][${index}][unit]" 
                                class="form-control unit" required>
                     </td>
                     <td>
-                        <input type="number" name="budget[${codeId}][${index}][quantity]" 
+                        <input type="number" name="budget_breakdown[${codeId}][${index}][quantity]" 
                                class="form-control quantity" min="1" value="1" required>
                     </td>
                     <td>
-                        <input type="number" name="budget[${codeId}][${index}][unit_cost]" 
+                        <input type="number" name="budget_breakdown[${codeId}][${index}][unit_cost]" 
                                class="form-control unit-cost" min="0" step="0.01" required>
                     </td>
                     <td class="total text-center">0.00</td>
@@ -505,18 +512,19 @@
         }
 
         // Attachments handling
-        let attachmentIndex = 1;
-        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+        let attachmentIndex = 0;
+        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
 
         // Add new attachment block
         $('#addAttachment').on('click', function() {
             const newField = `
                 <div class="col-md-4 attachment-block">
                     <label class="form-label">Document Type</label>
-                    <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control">
+                    <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control attachment-type">
                     <input type="file" name="attachments[${attachmentIndex}][file]" 
                            class="form-control mt-1 attachment-input" 
-                           accept=".pdf, .jpg, .jpeg, .png">
+                           accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
+                    <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX</small>
                 </div>`;
             $('#attachmentContainer').append(newField);
             attachmentIndex++;
@@ -535,10 +543,18 @@
             const fileInput = this;
             const fileName = fileInput.files[0]?.name || '';
             const ext = fileName.split('.').pop().toLowerCase();
+            const typeInput = $(fileInput).closest('.attachment-block').find('.attachment-type');
 
-            if (!allowedExtensions.includes(ext)) {
-                alert("Only PDF, JPG, JPEG, or PNG files are allowed.");
+            if (fileName && !allowedExtensions.includes(ext)) {
+                alert("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, and DOCX files are allowed.");
                 $(fileInput).val(''); // Clear invalid file
+                typeInput.prop('required', false);
+            } else if (fileName) {
+                // File is valid, make type field required
+                typeInput.prop('required', true);
+            } else {
+                // No file selected, make type field not required
+                typeInput.prop('required', false);
             }
         });
 
@@ -568,42 +584,31 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Populate modal with memo details
-                        $('#successMessage').text(response.message);
-                        $('#memoTitle').text(response.memo.title);
-                        $('#memoCategory').text(response.memo.category);
-                        $('#memoStatus').text(response.memo.status.charAt(0).toUpperCase() + response.memo.status.slice(1));
-                        $('#memoDate').text(response.memo.date_required);
-                        $('#memoBudget').text(response.memo.total_budget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                        $('#memoId').text(response.memo.id);
-                        $('#previewMemoBtn').attr('href', response.memo.preview_url);
+                        // Show success notification
+                        show_notification(response.message, 'success');
                         
-                        // Show success modal
-                        $('#successModal').modal('show');
-                        
-                        // Reset form
-                        form[0].reset();
-                        $('.select2').val(null).trigger('change');
-                        $('#budgetCards').empty();
-                        $('#grandBudgetTotal').text('0.00');
-                        $('#grandBudgetTotalInput').val('0.00');
-                        
-                        // Reset attachments
-                        $('.attachment-block:not(:first)').remove();
-                        attachmentIndex = 1;
+                        // For create form, redirect to the memo view
+                        setTimeout(function() {
+                            window.location.href = response.memo.preview_url;
+                        }, 1500);
                     }
                 },
                 error: function(xhr) {
-                    let errorMessage = 'An error occurred while submitting the memo.';
+                    let errorMessage = 'An error occurred while creating the memo.';
                     
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         const errors = xhr.responseJSON.errors;
                         errorMessage = Object.values(errors).flat().join('\n');
+                        show_notification(errorMessage, 'error');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
+                        show_notification(errorMessage, 'error');
+                    } else if (xhr.status === 422) {
+                        errorMessage = 'Validation failed. Please check your input and try again.';
+                        show_notification(errorMessage, 'error');
+                    } else {
+                        show_notification(errorMessage, 'error');
                     }
-                    
-                    alert('Error: ' + errorMessage);
                 },
                 complete: function() {
                     // Reset button state
@@ -611,6 +616,33 @@
                 }
             });
         });
+
+        // Notification function (similar to activities form)
+        function show_notification(message, type = 'info') {
+            const alertClass = type === 'success' ? 'alert-success' : 
+                              type === 'error' ? 'alert-danger' : 
+                              type === 'warning' ? 'alert-warning' : 'alert-info';
+            
+            const icon = type === 'success' ? 'bx-check-circle' : 
+                        type === 'error' ? 'bx-error-circle' : 
+                        type === 'warning' ? 'bx-error' : 'bx-info-circle';
+            
+            const notification = $(`
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    <i class="bx ${icon} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `);
+            
+            // Insert notification at the top of the form
+            $('#nonTravelForm').prepend(notification);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(function() {
+                notification.alert('close');
+            }, 5000);
+        }
     });
 </script>
 @endpush

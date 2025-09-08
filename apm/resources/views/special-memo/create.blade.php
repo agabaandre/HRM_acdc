@@ -30,7 +30,7 @@
                         <label for="fund_type" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> Fund Type <span class="text-danger">*</span>
                         </label>
-                        <select name="fund_type" id="fund_type" class="form-select border-success" required >
+                        <select name="fund_type_id" id="fund_type_id" class="form-select border-success" required >
                             <option value="">Select Fund Type</option>
                             @foreach($fundTypes as $type)
                                 <option value="{{ $type->id }}">{{ ucfirst($type->name) }}</option>
@@ -45,7 +45,7 @@
                         <input name="activity_code" id="activity_code" class="form-control border-success" />
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-12">
                         <label for="budget_codes" class="form-label fw-semibold">
                             <i class="fas fa-wallet me-1 text-success"></i> Budget Code(s) <span class="text-danger">*</span>
                         </label>
@@ -54,6 +54,8 @@
                         </select>
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
+
+
 
                
                 </div>
@@ -74,7 +76,12 @@
                 <div id="externalParticipantsWrapper"></div>
 
                 <div id="budgetGroupContainer" class="mt-4"></div>
-
+                <div class="col-md-12">
+                    <label for="activity_request_remarks" class="form-label fw-semibold">
+                        <i class="fas fa-comment-dots me-1 text-success"></i> Request for Approval <span class="text-danger">*</span>
+                    </label>
+                    <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control summernote" rows="3" required>{{ old('activity_request_remarks', $specialMemo->activity_request_remarks ?? '') }}</textarea>
+                </div>
                 <!-- Attachments Section -->
                 <div class="mt-5">
                     <h5 class="fw-bold text-success mb-3">
@@ -84,13 +91,7 @@
                         <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
                         <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
                     </div>
-                    <div class="row g-3" id="attachmentContainer">
-                        <div class="col-md-4 attachment-block">
-                            <label class="form-label">Document Type*</label>
-                            <input type="text" name="attachments[0][type]" class="form-control" >
-                            <input type="file" name="attachments[0][file]" class="form-control mt-1">
-                        </div>
-                    </div>
+                    <div class="row g-3" id="attachmentContainer"></div>
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
@@ -128,8 +129,8 @@ $(document).ready(function () {
   
     
 
-    $('#fund_type').change(function(event){
-        let selectedText = $('#fund_type option:selected').text();
+    $('#fund_type_id').change(function(event){
+        let selectedText = $('#fund_type_id option:selected').text();
 
         if(selectedText.toLocaleLowerCase().indexOf("intramural")>-1){
             $('.fund_type').removeClass('col-md-4');
@@ -463,7 +464,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
 
     $('#budget_codes').select2({ maximumSelectionLength: 2, width: '100%' });
 
-     $('#fund_type').on('change', function () {
+     $('#fund_type_id').on('change', function () {
     const fundTypeId = $(this).val();
     const budgetCodesSelect = $('#budget_codes');
     budgetCodesSelect.empty().prop('disabled', true).append('<option disabled selected>Loading...</option>');
@@ -626,10 +627,30 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     toggleParticipantSelection();
 });
 
-let attachmentIndex = 1;
+// Initialize Summernote
+$(document).ready(function() {
+    // Initialize Summernote only for fields with summernote class
+    if ($('.summernote').length > 0) {
+        $('.summernote').summernote({
+            height: 150,
+            fontNames: ['Arial'],
+            fontNamesIgnoreCheck: ['Arial'],
+            defaultFontName: 'Arial',
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['fontname', ['fontname']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+        });
+    }
+});
 
-// Allowed extensions
-const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+let attachmentIndex = 1;
 
 // Add new attachment block
 $('#addAttachment').on('click', function () {
@@ -637,9 +658,9 @@ $('#addAttachment').on('click', function () {
         <div class="col-md-4 attachment-block">
             <label class="form-label">Document Type*</label>
             <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
-            <input type="file" name="attachments[${attachmentIndex}][file]" 
+            <input type="file" name="attachments[]" 
                    class="form-control mt-1 attachment-input" 
-                   accept=".pdf, .jpg, .jpeg, .png, image/*" 
+                   accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" 
                    required>
         </div>`;
     $('#attachmentContainer').append(newField);
@@ -659,9 +680,10 @@ $(document).on('change', '.attachment-input', function () {
     const fileInput = this;
     const fileName = fileInput.files[0]?.name || '';
     const ext = fileName.split('.').pop().toLowerCase();
+    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
 
     if (!allowedExtensions.includes(ext)) {
-        show_notification("Only PDF, JPG, JPEG, or PNG files are allowed.", "warning");
+        show_notification("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX files are allowed.", "warning");
         $(fileInput).val(''); // Clear invalid file
     }
 });

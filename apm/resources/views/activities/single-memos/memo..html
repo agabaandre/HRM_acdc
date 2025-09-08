@@ -1,0 +1,135 @@
+<style>
+    :root{
+      --bg:#f6f8fb;
+      --paper:#ffffff;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --border:#d8dee9;
+      --accent:#111827;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;color:var(--ink);}
+    body{font:15px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif; background:var(--bg);}
+    .page{
+      width: 210mm; min-height: 297mm; margin: 0 auto;
+      background: var(--paper); padding: 22mm 18mm;
+      box-shadow: 0 10px 36px rgba(0,0,0,.06); border-radius: 12px;
+    }
+    @media print{
+      body{background:#fff;}
+      .page{box-shadow:none; border-radius:0; width:auto; min-height:auto; padding:0; margin:0;}
+      .hard-page-break{page-break-after:always;}
+    }
+
+    p{margin:.4em 0}
+
+    /* ---------- Right-side memo meta (stacked, no borders) ---------- */
+    .topbar{display:flex; align-items:flex-start; gap:16px; margin-bottom:10px;}
+    .meta{ margin-left:auto; text-align:right; line-height:1.3; }
+    .meta .memo-id{font-weight:700; letter-spacing:.2px;}
+    .meta .date{color:var(--muted);}
+
+    /* ---------- Tables (NO BORDERS BY DEFAULT) ---------- */
+    table{border-collapse:collapse; width:100%;}
+    table, th, td { border: none; }  /* default: no borders */
+    .form-table{margin:12px 0 18px; background:#fff; overflow:clip; border-radius:10px;}
+    .form-table th, .form-table td{padding:10px; vertical-align:top;}
+    .form-table th{width:36%; font-weight:600; text-align:left; background:#f9fafb;}
+    .muted{color:var(--muted); font-size:12px;}
+    .fill{min-height:28px; display:block;}
+
+    /* Budget/Certification table wrapper (no borders by default) */
+    .budget-table{margin:12px 0 18px; background:#fff; overflow:clip; border-radius:10px;}
+    .budget-table td{padding:10px; vertical-align:top; min-height:36px;}
+    .budget-table .head{background:#f9fafb; font-weight:600;}
+
+    /* Signature table wrapper (no borders by default) */
+    .sig-table{margin-top:18px; border-radius:10px; overflow:clip;}
+    .sig-table td{padding:14px 10px; vertical-align:bottom; height:90px;}
+    .sig-table td:first-child{width:40%; font-weight:600; background:#f9fafb;}
+    .sig-table td:nth-child(2){width:30%;}
+
+    /* Helper underline */
+    .line{display:block; border-bottom:1px dashed #cbd5e1; height:22px;}
+  </style>
+</head>
+
+
+    <!-- Right-side memo meta (stacked, borderless) -->
+    <div class="topbar">
+      <div class="meta" aria-label="Memo metadata">
+        <span class="memo-id">AU/MEMO/001</span><br/>
+        <span class="date">Date: 20/08/2010</span>
+      </div>
+    </div>
+
+    <!-- Main form table (borderless by default) -->
+    <table class="form-table" role="table" aria-label="Payment details">
+      <tr>
+        <th scope="row">Payee/Staff<br/><span class="muted">(Vendors)</span></th>
+        <td><span class="fill line" aria-hidden="true"></span></td>
+      </tr>
+      <tr>
+        <th scope="row">Purpose of Payment</th>
+        <td><span class="fill line"></span></td>
+      </tr>
+      <tr>
+        <th scope="row">Department Name<br/><span class="muted">(Cost Center)</span></th>
+        <td><span class="fill line"></span></td>
+      </tr>
+      <tr>
+        <th scope="row">Project/Program<br/><span class="muted">(Fund Center)</span></th>
+        <td><span class="fill line"></span></td>
+      </tr>
+      <tr>
+        <th scope="row">Fund <span class="muted">(Member State or Partner/Donor)</span></th>
+        <td><span class="fill line"></span></td>
+      </tr>
+    </table>
+
+    <!-- Budget / Certification (table-only, borderless unless specified inline) -->
+    <table class="budget-table" role="table" aria-label="Budget and Certification">
+      <tr>
+        <td class="head">Strategic Axis Budget Balance (Certified by SFO)</td>
+        <td>USD</td>
+        <td></td>
+        <td>Date:</td>
+      </tr>
+      <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>Signature:</td>
+      </tr>
+      <tr>
+        <td class="head">Estimated cost</td>
+        <td>USD</td>
+        <td></td>
+        <td>Name: SFO</td>
+      </tr>
+    </table>
+
+    <!-- Signatures (borderless by default). Last column adds ONLY a left border inline -->
+    <table class="sig-table" role="table" aria-label="Approvals">
+      <tr>
+        <td>Signed (Prepared By)</td>
+        <td><span class="fill line"></span></td>
+        <td style="border-left:1px solid var(--border); border-top:none; border-right:none; border-bottom:none;">
+          <span class="fill"></span>
+        </td>
+      </tr>
+      <tr>
+        <td>Endorsed by</td>
+        <td><span class="fill line"></span></td>
+        <td style="border-left:1px solid var(--border); border-top:none; border-right:none; border-bottom:none;">
+          <span class="fill"></span>
+        </td>
+      </tr>
+      <tr>
+        <td>Approved</td>
+        <td><span class="fill line"></span></td>
+        <td style="border-left:1px solid var(--border); border-top:none; border-right:none; border-bottom:none;">
+          <span class="fill"></span>
+        </td>
+      </tr>
+    </table>

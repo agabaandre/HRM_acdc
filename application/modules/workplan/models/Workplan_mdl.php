@@ -59,5 +59,213 @@ class Workplan_mdl extends CI_Model {
     
         return $this->db->get()->result();
     }
+
+    // Get workplan statistics
+    public function get_workplan_statistics($division_id, $year) {
+        // Get total activities
+        $total = $this->db
+            ->where('division_id', $division_id)
+            ->where('year', $year)
+            ->count_all_results('workplan_tasks');
+
+        // Get sub-activities created (from work_planner_tasks)
+        $sub_activities_created = $this->db
+            ->select('COALESCE(COUNT(wpt.activity_id), 0) as created')
+            ->from('work_planner_tasks wpt')
+            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
+            ->where('wt.division_id', $division_id)
+            ->where('wt.year', $year)
+            ->get()
+            ->row()->created ?? 0;
+
+        // Get completed sub-activities (from weekly tasks with status = 2)
+        $sub_activities_completed = $this->db
+            ->select('COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as completed')
+            ->from('work_planner_tasks wpt')
+            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
+            ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id')
+            ->where('wt.division_id', $division_id)
+            ->where('wt.year', $year)
+            ->where('wwt.status', 2) // Completed
+            ->get()
+            ->row()->completed ?? 0;
+
+        // Get in-progress sub-activities (from weekly tasks with status = 1)
+        $sub_activities_in_progress = $this->db
+            ->select('COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as in_progress')
+            ->from('work_planner_tasks wpt')
+            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
+            ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id')
+            ->where('wt.division_id', $division_id)
+            ->where('wt.year', $year)
+            ->where('wwt.status', 1) // Pending/In Progress
+            ->get()
+            ->row()->in_progress ?? 0;
+
+        // Get overdue activities (end date < today and status != 2)
+        $overdue = $this->db
+            ->select('COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as overdue')
+            ->from('work_planner_tasks wpt')
+            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id')
+            ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id')
+            ->where('wt.division_id', $division_id)
+            ->where('wt.year', $year)
+            ->where('wwt.end_date <', date('Y-m-d'))
+            ->where('wwt.status !=', 2) // Not completed
+            ->get()
+            ->row()->overdue ?? 0;
+
+        // Ensure proper data types
+        $sub_activities_created = (int)$sub_activities_created;
+        $sub_activities_completed = (int)$sub_activities_completed;
+        $sub_activities_in_progress = (int)$sub_activities_in_progress;
+        $overdue = (int)$overdue;
+
+        // Calculate execution rate
+        $execution_rate = $sub_activities_created > 0 ? 
+            round(($sub_activities_completed / $sub_activities_created) * 100, 1) : 0.0;
+
+        // Calculate target achievement (based on cumulative targets)
+        $total_target = $this->db
+            ->select('SUM(COALESCE(CAST(cumulative_target AS UNSIGNED), 0)) as total_target')
+            ->from('workplan_tasks')
+            ->where('division_id', $division_id)
+            ->where('year', $year)
+            ->get()
+            ->row()->total_target ?? 0;
+
+        $total_target = (int)$total_target;
+        $target_achievement = $total_target > 0 ? 
+            round(($sub_activities_completed / $total_target) * 100, 1) : 0.0;
+
+        // Debug: Log the statistics values
+        log_message('debug', 'Statistics calculation: created=' . $sub_activities_created . ', completed=' . $sub_activities_completed . ', execution_rate=' . $execution_rate . ', target_achievement=' . $target_achievement);
+
+        return [
+            'total' => (int)$total,
+            'completed' => $sub_activities_completed,
+            'in_progress' => $sub_activities_in_progress,
+            'overdue' => $overdue,
+            'execution_rate' => $execution_rate,
+            'target_achievement' => $target_achievement
+        ];
+    }
+
+    // Get execution tracking data
+    public function get_execution_tracking_data($division_id, $year) {
+        $this->db
+            ->select('
+                wt.id,
+                wt.activity_name,
+                COALESCE(wt.cumulative_target, 0) as cumulative_target,
+                COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as created,
+                COALESCE(COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END), 0) as completed
+            ')
+            ->from('workplan_tasks wt')
+            ->join('work_planner_tasks wpt', 'wpt.workplan_id = wt.id', 'left')
+            ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id', 'left')
+            ->where('wt.division_id', $division_id)
+            ->where('wt.year', $year)
+            ->group_by('wt.id, wt.activity_name, wt.cumulative_target')
+            ->order_by('wt.activity_name', 'ASC');
+
+        $result = $this->db->get()->result();
+        
+        // Debug: Log the query and result
+        log_message('debug', 'Execution tracking query: ' . $this->db->last_query());
+        log_message('debug', 'Execution tracking result count: ' . count($result));
+        
+        // Process results to ensure proper data types
+        foreach ($result as $row) {
+            $row->created = (int)$row->created;
+            $row->completed = (int)$row->completed;
+            $row->cumulative_target = (int)$row->cumulative_target;
+        }
+        
+        return $result;
+    }
+
+    // Get unit score breakdown
+    public function get_unit_score_breakdown($division_id, $year) {
+        // Get unit leads for the division
+        $unit_leads = $this->db
+            ->select('
+                u.unit_id,
+                u.unit_name,
+                s.staff_id,
+                s.fname,
+                s.lname,
+                s.title
+            ')
+            ->from('units u')
+            ->join('staff s', 's.staff_id = u.staff_id')
+            ->where('u.division_id', $division_id)
+            ->get()
+            ->result();
+
+        $unit_scores = [];
+
+        foreach ($unit_leads as $unit_lead) {
+            // Get activities for this unit lead
+            $activities = $this->db
+                ->select('
+                    wt.activity_name,
+                    COALESCE(wt.cumulative_target, 0) as cumulative_target,
+                    COALESCE(COUNT(DISTINCT wpt.activity_id), 0) as sub_activities_created,
+                    COALESCE(COUNT(DISTINCT CASE WHEN wwt.status = 2 THEN wpt.activity_id END), 0) as sub_activities_completed
+                ')
+                ->from('workplan_tasks wt')
+                ->join('work_planner_tasks wpt', 'wpt.workplan_id = wt.id', 'left')
+                ->join('work_plan_weekly_tasks wwt', 'wwt.work_planner_tasks_id = wpt.activity_id', 'left')
+                ->where('wt.division_id', $division_id)
+                ->where('wt.year', $year)
+                ->where('wpt.created_by', $unit_lead->staff_id)
+                ->group_by('wt.id, wt.activity_name, wt.cumulative_target')
+                ->get()
+                ->result();
+
+            $total_target = 0;
+            $total_created = 0;
+            $total_completed = 0;
+
+            foreach ($activities as $activity) {
+                $total_target += (int)($activity->cumulative_target ?? 0);
+                $total_created += (int)($activity->sub_activities_created ?? 0);
+                $total_completed += (int)($activity->sub_activities_completed ?? 0);
+            }
+
+            $execution_rate = $total_created > 0 ? 
+                round(($total_completed / $total_created) * 100, 1) : 0.0;
+
+            $target_achievement = $total_target > 0 ? 
+                round(($total_completed / $total_target) * 100, 1) : 0.0;
+
+            // Calculate overall score (weighted average)
+            $overall_score = ($execution_rate * 0.6) + ($target_achievement * 0.4);
+
+            $unit_scores[] = [
+                'unit_id' => $unit_lead->unit_id,
+                'unit_name' => $unit_lead->unit_name,
+                'unit_lead' => $unit_lead->title . ' ' . $unit_lead->fname . ' ' . $unit_lead->lname,
+                'total_activities' => count($activities),
+                'total_target' => $total_target,
+                'sub_activities_created' => $total_created,
+                'sub_activities_completed' => $total_completed,
+                'execution_rate' => $execution_rate,
+                'target_achievement' => $target_achievement,
+                'overall_score' => round($overall_score, 1)
+            ];
+        }
+
+        // Sort by overall score descending
+        usort($unit_scores, function($a, $b) {
+            return $b['overall_score'] <=> $a['overall_score'];
+        });
+
+        // Debug: Log the unit scores data
+        log_message('debug', 'Unit scores data: ' . json_encode($unit_scores));
+
+        return $unit_scores;
+    }
     
 }

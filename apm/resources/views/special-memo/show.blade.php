@@ -93,6 +93,86 @@
         border-radius: 0.5rem;
         padding: 0.75rem;
     }
+    
+    /* Attachment Preview Modal Styles */
+    #previewModal .modal-dialog {
+        max-width: 90vw;
+        margin: 1.75rem auto;
+    }
+
+    #previewModal .modal-body {
+        min-height: 500px;
+        max-height: 80vh;
+        overflow: hidden;
+    }
+
+    #previewModal .modal-content {
+        border-radius: 0.75rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    #previewModal .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        border: none;
+    }
+
+    #previewModal .btn-close {
+        filter: invert(1);
+    }
+
+    #previewModal iframe {
+        border-radius: 0.5rem;
+    }
+
+    #previewModal img {
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .preview-attachment {
+        transition: all 0.2s ease;
+    }
+
+    .preview-attachment:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.375rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        #previewModal .modal-dialog {
+            max-width: 95vw;
+            margin: 0.5rem auto;
+        }
+        
+        #previewModal .modal-body {
+            min-height: 400px;
+            max-height: 70vh;
+        }
+        
+        #previewModalBody {
+            padding: 1rem;
+        }
+    }
 
     /* Matrix-style metadata */
     .memo-meta-row {
@@ -218,7 +298,7 @@
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
                     </a>
-                    @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id'))
+                    @if(($specialMemo->overall_status === 'draft' && $specialMemo->responsible_person_id == user_session('staff_id'))|| ($specialMemo->overall_status === 'returned' && $specialMemo->responsible_person_id == user_session('staff_id')))
                         <a href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-warning d-flex align-items-center gap-2">
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
@@ -236,6 +316,50 @@
                             <span>Print PDF</span>
                         </a>
                     @endif
+                  
+                    @if($specialMemo->fund_type_id == 2 && $specialMemo->overall_status == 'approved')
+                        @php
+                            // Check if ARF already exists for this special memo
+                            $existingArfTop = \App\Models\RequestARF::where('source_id', $specialMemo->id)
+                                ->where('model_type', 'App\\Models\\SpecialMemo')
+                                ->first();
+                        @endphp
+                        
+                        @if(!$existingArfTop)
+                            <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                                <i class="bx bx-file-plus"></i>
+                                <span>Create ARF Request</span>
+                            </button>
+                        @elseif(in_array($existingArfTop->overall_status, ['pending', 'approved', 'returned']))
+                            <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                                <i class="bx bx-show"></i>
+                                <span>View ARF Request</span>
+                            </a>
+                        @endif
+                        
+                        {{-- Service Request Button --}}
+                        @if($specialMemo->fund_type_id == 1 && $specialMemo->overall_status === 'approved')
+                            @php
+                                // Check if Service Request already exists for this memo
+                                $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $specialMemo->id)
+                                    ->where('model_type', 'App\\Models\\SpecialMemo')
+                                    ->first();
+                            @endphp
+                            
+                            @if(!$existingServiceRequest)
+                                <a href="{{ route('service-requests.create') }}?source_type=special_memo&source_id={{ $specialMemo->id }}" 
+                                   class="btn btn-info d-flex align-items-center gap-2">
+                                    <i class="fas fa-tools"></i>
+                                    <span>Create Service Request</span>
+                                </a>
+                            @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
+                                <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                                    <i class="fas fa-eye"></i>
+                                    <span>View Service Request</span>
+                                </a>
+                            @endif
+                        @endif
+                    @endif
                 </div>
             </div>
         </div>
@@ -244,9 +368,9 @@
     <div class="container-fluid py-4">
         @php
             // Decode JSON fields if they are strings
-            $budget = is_string($specialMemo->budget) 
-                ? json_decode(stripslashes($specialMemo->budget), true) 
-                : $specialMemo->budget;
+            $budget = is_string($specialMemo->budget_breakdown) 
+                ? json_decode(stripslashes($specialMemo->budget_breakdown), true) 
+                : $specialMemo->budget_breakdown;
             
             // Handle double-encoded JSON (sometimes happens with form submissions)
             if (is_string($budget) && !is_array($budget)) {
@@ -265,6 +389,9 @@
             $budget = is_array($budget) ? $budget : [];
             $attachments = is_array($attachments) ? $attachments : [];
             $internalParticipants = is_array($internalParticipants) ? $internalParticipants : [];
+            
+            // Debug attachments
+            // dd('Attachments debug:', $specialMemo->attachment, $attachments);
 
             // Parse budget structure and organize by fund codes
             $budgetByFundCode = [];
@@ -305,7 +432,7 @@
             // Debug logging
             if (config('app.debug')) {
                 \Log::info('Budget parsing debug:', [
-                    'raw_budget' => $specialMemo->budget,
+                    'raw_budget' => $specialMemo->budget_breakdown,
                     'parsed_budget' => $budget,
                     'budget_by_fund_code' => $budgetByFundCode,
                     'fund_codes' => $fundCodes,
@@ -354,13 +481,23 @@
                             <td class="field-value" colspan="3">{{ $specialMemo->activity_title ?? 'Not specified' }}</td>
                         </tr>
                         <tr>
-                            <td class="field-label">Requestor</td>
+                            <td class="field-label">Creator</td>
                             <td class="field-value">
-                                {{ optional($specialMemo->staff)->first_name }} {{ optional($specialMemo->staff)->last_name ?? 'Not assigned' }}
+                                {{ optional($specialMemo->staff)->fname }} {{ optional($specialMemo->staff)->lname ?? 'Not assigned' }}
                             </td>
                             <td class="field-label">Division</td>
                             <td class="field-value">
                                 {{ optional($specialMemo->division)->division_name ?? 'Not assigned' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Responsible Person</td>
+                            <td class="field-value">
+                                {{ optional($specialMemo->responsiblePerson)->fname }} {{ optional($specialMemo->responsiblePerson)->lname ?? 'Not assigned' }}
+                            </td>
+                            <td class="field-label">Job Title</td>
+                            <td class="field-value">
+                                {{ optional($specialMemo->responsiblePerson)->job_name ?? 'Not specified' }}
                             </td>
                         </tr>
                         <tr>
@@ -372,10 +509,6 @@
                             <td class="field-value">
                                 {{ optional($specialMemo->requestType)->name ?? 'Not specified' }}
                             </td>
-                        </tr>
-                        <tr>
-                            <td class="field-label">Key Result Area</td>
-                            <td class="field-value" colspan="3">{{ $specialMemo->key_result_area ?? 'Not specified' }}</td>
                         </tr>
                         
                         <!-- Location Information -->
@@ -461,7 +594,7 @@
         </div>
 
         <div class="row">
-            <div class="col-lg-8">
+            <div class="col-lg-6">
                 <!-- Enhanced Memo Information Card -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -530,24 +663,20 @@
                             <h5 class="fw-bold text-dark mb-0">{{ $specialMemo->activity_title ?? 'Not specified' }}</h5>
                         </div>
                         
-                        <div class="mb-4">
-                            <label class="form-label text-muted small fw-semibold">Key Result Area</label>
-                            <div class="bg-light rounded p-3 border">{{ $specialMemo->key_result_area ?? 'Not specified' }}</div>
-                        </div>
                         
                         <div class="mb-4">
                             <label class="form-label text-muted small fw-semibold">Background</label>
-                            <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->background ?? 'Not specified' }}</div>
+                            <div class="bg-light rounded p-3 border">{!! $specialMemo->background ?? 'Not specified' !!}</div>
                         </div>
                         
                         <div class="mb-4">
                             <label class="form-label text-muted small fw-semibold">Justification</label>
-                            <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->justification ?? 'Not specified' }}</div>
+                            <div class="bg-light rounded p-3 border">{!! $specialMemo->justification ?? 'Not specified' !!}</div>
                         </div>
                         
                         <div class="mb-4">
                             <label class="form-label text-muted small fw-semibold">Supporting Reasons</label>
-                            <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->supporting_reasons ?? 'Not specified' }}</div>
+                            <div class="bg-light rounded p-3 border">{!! $specialMemo->supporting_reasons ?? 'Not specified' !!}</div>
                         </div>
                         
                         @if($specialMemo->remarks)
@@ -651,7 +780,7 @@
                             </h6>
                         </div>
                         <div class="card-body">
-                            <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->activity_request_remarks }}</div>
+                            <div class="bg-light rounded p-3 border">{!! $specialMemo->activity_request_remarks !!}</div>
                         </div>
                     </div>
                 @endif
@@ -791,7 +920,7 @@
                 </div>
             </div>
 
-            <div class="col-lg-4">
+            <div class="col-lg-6">
 
                 <!-- Attachments Card -->
                 <div class="card sidebar-card border-0 mb-4">
@@ -803,20 +932,52 @@
                     </div>
                     <div class="card-body">
                         @if(!empty($attachments) && count($attachments) > 0)
-                            <div class="d-flex flex-column gap-2">
-                                @foreach($attachments as $attachment)
-                                    <a href="{{ asset('storage/' . ($attachment['path'] ?? '')) }}" target="_blank" class="attachment-item text-decoration-none">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="bx bx-paperclip text-purple"></i>
-                                            <div class="flex-grow-1">
-                                                <div class="fw-semibold text-dark">{{ $attachment['name'] ?? 'File' }}</div>
-                                                <small class="text-muted">
-                                                    {{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'Unknown size' }}
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </a>
-                                @endforeach
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Type</th>
+                                            <th>File Name</th>
+                                            <th>Size</th>
+                                            <th>Uploaded</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($attachments as $index => $attachment)
+                                            @php
+                                                $originalName = $attachment['original_name'] ?? $attachment['filename'] ?? $attachment['name'] ?? 'Unknown';
+                                                $filePath = $attachment['path'] ?? $attachment['file_path'] ?? '';
+                                                $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
+                                                $fileUrl = $filePath ? url('storage/'.$filePath) : '#';
+                                                $isOffice = in_array($ext, ['ppt','pptx','xls','xlsx','doc','docx']);
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>{{ $attachment['type'] ?? 'Document' }}</td>
+                                                <td>{{ $originalName }}</td>
+                                                <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
+                                                <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
+                                                <td>
+                                                    @if($filePath)
+                                                    <button type="button" class="btn btn-sm btn-info preview-attachment" 
+                                                        data-file-url="{{ $fileUrl }}"
+                                                        data-file-ext="{{ $ext }}"
+                                                        data-file-office="{{ $isOffice ? '1' : '0' }}">
+                                                        <i class="bx bx-show"></i> Preview
+                                                    </button>
+                                                    <a href="{{ $fileUrl }}" target="_blank" class="btn btn-sm btn-success">
+                                                        <i class="bx bx-download"></i> Download
+                                                    </a>
+                                                    @else
+                                                    <span class="text-muted">File not found</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
                         @else
                             <div class="text-center text-muted py-4">
@@ -931,10 +1092,121 @@
         </div>
     </div>
 </div>
+
+{{-- Modal for preview --}}
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">Attachment Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="previewModalBody" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+        <div class="text-center w-100">Loading preview...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+        @if($specialMemo->fund_type_id == 2 && $specialMemo->overall_status == 'approved')
+            @php
+                // Check if ARF already exists for this special memo
+                $existingArf = \App\Models\RequestARF::where('source_id', $specialMemo->id)
+                    ->where('model_type', 'App\\Models\\SpecialMemo')
+                    ->first();
+            @endphp
+            
+            @if(!$existingArf)
+            @include('request-arf.components.create-arf-modal', [
+            'sourceType' => 'Special Memo',
+            'sourceTitle' => $specialMemo->activity_title,
+            'fundTypeId' => $specialMemo->fundType ? $specialMemo->fundType->id : null,
+            'fundTypeName' => $specialMemo->fundType ? $specialMemo->fundType->name : 'N/A',
+            'divisionName' => $specialMemo->division ? $specialMemo->division->division_name : 'N/A',
+            'dateFrom' => $specialMemo->date_from ? \Carbon\Carbon::parse($specialMemo->date_from)->format('M d, Y') : 'N/A',
+            'dateTo' => $specialMemo->date_to ? \Carbon\Carbon::parse($specialMemo->date_to)->format('M d, Y') : 'N/A',
+            'numberOfDays' => $specialMemo->date_from && $specialMemo->date_to ? 
+                \Carbon\Carbon::parse($specialMemo->date_from)->diffInDays(\Carbon\Carbon::parse($specialMemo->date_to)) + 1 : 'N/A',
+            'location' => $specialMemo->locations() ? $specialMemo->locations()->pluck('name')->join(', ') : 'N/A',
+            'keyResultArea' => 'N/A', // Special memos don't have key result areas
+            'quarterlyLinkage' => $specialMemo->quarterly_linkage ?? 'N/A',
+            'totalParticipants' => $specialMemo->total_participants ?? 'N/A',
+            'internalParticipants' => $specialMemo->internal_participants 
+                ? (is_string($specialMemo->internal_participants) 
+                    ? count(json_decode($specialMemo->internal_participants, true) ?? []) 
+                    : (is_array($specialMemo->internal_participants) 
+                        ? count($specialMemo->internal_participants) 
+                        : 0))
+                : 0,
+            'externalParticipants' => $specialMemo->total_external_participants ?? 0,
+            'budgetCode' => $specialMemo->fundCodes ? $specialMemo->fundCodes->pluck('code')->join(', ') : 'N/A',
+            'background' => $specialMemo->background ?? 'N/A',
+            'requestForApproval' => $specialMemo->activity_request_remarks ?? 'N/A',
+            'totalBudget' => $specialMemo->total_budget ?? '0.00',
+            'headOfDivision' => $specialMemo->division && $specialMemo->division->head ? 
+                $specialMemo->division->head->fname . ' ' . $specialMemo->division->head->lname : 'N/A',
+            'focalPerson' => $specialMemo->staff ? 
+                $specialMemo->staff->fname . ' ' . $specialMemo->staff->lname : 'N/A',
+            'budgetBreakdown' => is_string($specialMemo->budget_breakdown) && !empty($specialMemo->budget_breakdown)
+                ? (json_decode($specialMemo->budget_breakdown, true) ?? [])
+                : (is_array($specialMemo->budget_breakdown) ? $specialMemo->budget_breakdown : []),
+            'budgetIds' => is_string($specialMemo->budget_id) && !empty($specialMemo->budget_id)
+                ? (json_decode($specialMemo->budget_id, true) ?? [])
+                : (is_array($specialMemo->budget_id) ? $specialMemo->budget_id : []),
+            'fundCodes' => (function() use ($specialMemo) {
+                $ids = is_string($specialMemo->budget_id) && !empty($specialMemo->budget_id)
+                    ? (json_decode($specialMemo->budget_id, true) ?? [])
+                    : (is_array($specialMemo->budget_id) ? $specialMemo->budget_id : []);
+                if (!is_array($ids)) $ids = [];
+                return \App\Models\FundCode::whereIn('id', $ids)->with('fundType')->get()->keyBy('id');
+            })(),
+            'defaultTitle' => 'ARF Request - ' . $specialMemo->title,
+            'sourceId' => $specialMemo->id,
+            'modelType' => 'App\\Models\\SpecialMemo'
+        ])
+
+        
+        @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+            <div class="alert alert-info">
+                <i class="bx bx-info-circle me-2"></i>
+                An ARF request has already been created for this special memo.
+                <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                    <i class="bx bx-show me-1"></i>View ARF Request
+                </a>
+            </div>
+            @endif
+            
+        @endif
+        
 @endsection
 
 @push('scripts')
 <script>
+    // Attachment preview functionality
+    $(document).on('click', '.preview-attachment', function() {
+        var fileUrl = $(this).data('file-url');
+        var ext = $(this).data('file-ext');
+        var isOffice = $(this).data('file-office') == '1';
+        var modalBody = $('#previewModalBody');
+        var content = '';
+        
+        if(['jpg','jpeg','png'].includes(ext)) {
+            content = '<img src="'+fileUrl+'" class="img-fluid" style="max-height:70vh;max-width:100%;margin:auto;display:block;">';
+        } else if(ext === 'pdf') {
+            content = '<iframe src="'+fileUrl+'#toolbar=1&navpanes=0&scrollbar=1" style="width:100%;height:70vh;border:none;"></iframe>';
+        } else if(isOffice) {
+            var gdocs = 'https://docs.google.com/viewer?url='+encodeURIComponent(fileUrl)+'&embedded=true';
+            content = '<iframe src="'+gdocs+'" style="width:100%;height:70vh;border:none;"></iframe>';
+        } else {
+            content = '<div class="alert alert-info">Preview not available. <a href="'+fileUrl+'" target="_blank">Download/Open file</a></div>';
+        }
+        
+        modalBody.html(content);
+        var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+        modal.show();
+    });
+
     $(document).ready(function() {
         // Setup delete confirmation
         $('#deleteMemoForm').on('submit', function(e) {

@@ -25,7 +25,9 @@
 
                 @includeIf('activities.form')
 
-                <div class="row g-4 mt-2">
+                <div class="card border-0 shadow-sm mb-5">
+                    <div class="card-body">
+                        <div class="row g-4">
                     <div class="col-md-4 fund_type">
                         <label for="fund_type" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> Fund Type <span class="text-danger">*</span>
@@ -55,6 +57,12 @@
                         <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $activity->workplan_activity_code) }}" />
                     </div>
 
+                    <div class="col-md-2">
+                        <!-- Empty column for spacing -->
+                    </div>
+                </div>
+{{-- 
+                <div class="row g-4">
                     <div class="col-md-4">
                         <label for="key_result_link" class="form-label fw-semibold">
                             <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
@@ -73,7 +81,7 @@
                             @endforeach
                         </select>
                     </div>
-                </div>
+                </div> --}}
 
                 <div class="row mt-3">
                     <div class="col-md-4 offset-md-8">
@@ -103,7 +111,7 @@
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                            <th>Document Type</th>
+                                            <th>Document Name</th>
                                             <th>File Name</th>
                                             <th>Size</th>
                                             <th>Uploaded</th>
@@ -119,10 +127,10 @@
                                                 <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
                                                 <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
                                                 <td>
-                                                    <a href="{{ Storage::url($attachment['path']) }}" target="_blank" class="btn btn-sm btn-info">
+                                                    <a href="{{ url('storage/'.$attachment['path']) }}" target="_blank" class="btn btn-sm btn-info">
                                                         <i class="bx bx-show"></i> View
                                                     </a>
-                                                    <a href="{{ Storage::url($attachment['path']) }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
+                                                    <a href="{{ (url('storage/'.$attachment['path'])) }}" download="{{ $attachment['original_name'] }}" class="btn btn-sm btn-success">
                                                         <i class="bx bx-download"></i> Download
                                                     </a>
                                                 </td>
@@ -144,18 +152,31 @@
                             @foreach($attachments as $index => $attachment)
                                 <div class="col-md-4 attachment-block">
                                     <label class="form-label">Document Type*</label>
-                                    <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}" required>
-                                    <input type="file" name="attachments[]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
+                                    <input type="text" name="attachments[{{ $index }}][type]" class="form-control" value="{{ $attachment['type'] ?? '' }}">
+                                    <input type="file" name="attachments[{{ $index }}][file]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
                                     <small class="text-muted">Current: {{ $attachment['original_name'] ?? 'No file' }}</small>
                                     <small class="text-muted d-block">Leave empty to keep existing file</small>
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="attachments[{{ $index }}][replace]" id="replace_{{ $index }}" value="1">
+                                        <label class="form-check-label" for="replace_{{ $index }}">
+                                            <small class="text-warning">Replace existing file</small>
+                                        </label>
+                                    </div>
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" name="attachments[{{ $index }}][delete]" id="delete_{{ $index }}" value="1">
+                                        <label class="form-check-label" for="delete_{{ $index }}">
+                                            <small class="text-danger">Delete this attachment</small>
+                                        </label>
+                                    </div>
                                 </div>
                             @endforeach
                         @else
-                            <div class="col-md-4 attachment-block">
-                                <label class="form-label">Document Type*</label>
-                                <input type="text" name="attachments[0][type]" class="form-control" required>
-                                <input type="file" name="attachments[]" class="form-control mt-1 attachment-input" accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" required>
-                                <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX</small>
+                            <!-- No default attachment field when no attachments exist -->
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    No attachments currently. Click "Add New" to add attachments.
+                                </div>
                             </div>
                         @endif
                     </div>
@@ -179,6 +200,8 @@
                         <i class="bx bx-check-circle me-1"></i> Update Activity
                     </button>
                 </div>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -190,10 +213,34 @@ const staffData = @json($allStaffGroupedByDivision);
 const oldParticipants = @json(old('internal_participants', []));
 const oldTravel = @json(old('international_travel', []));
 const existingParticipants = @json($internalParticipants);
+const existingExternalParticipants = @json($externalParticipants ?? []);
 const existingBudgetItems = @json($budgetItems);
 console.log('Budget items passed from controller:', existingBudgetItems);
+console.log('Staff data for external participants:', staffData);
+console.log('Available divisions:', Object.keys(staffData));
+console.log('Existing external participants:', existingExternalParticipants);
 
 $(document).ready(function () {
+    // Initialize Summernote only for fields with summernote class
+    if ($('.summernote').length > 0) {
+        $('.summernote').summernote({
+            height: 150,
+            fontNames: ['Arial'],
+            fontNamesIgnoreCheck: ['Arial'],
+            defaultFontName: 'Arial',
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
+                ['fontname', ['fontname']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+        });
+    }
+
     // AJAX Form Submission
     $('#activityForm').on('submit', function(e) {
         e.preventDefault();
@@ -366,6 +413,11 @@ $(document).ready(function () {
             }
         });
 
+        // Show "No participants selected yet" message if no participants
+        if (internalCount === 0) {
+            $('#participantsTableBody').html('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
+        }
+
         const externalCount = parseInt($('#total_external_participants').val()) || 0;
         const total = internalCount + externalCount;
 
@@ -403,6 +455,11 @@ $(document).ready(function () {
                                 <input type="checkbox" name="international_travel[${id}]" class="form-check-input" value="1" checked>
                                 <label class="form-check-label ms-2">Yes</label>
                             </div>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-danger btn-sm remove-participant" data-staff-id="${id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                 `);
@@ -463,14 +520,42 @@ $(document).ready(function () {
         updateTotalParticipants();
     });
 
+    // Remove participant event handler
+    $(document).on('click', '.remove-participant', function() {
+        const staffId = $(this).data('staff-id');
+        const row = $(this).closest('tr');
+        
+        // Remove from select2
+        $('#internal_participants').val(function() {
+            return $(this).val().filter(id => id != staffId);
+        }).trigger('change');
+        
+        // Remove from table
+        row.remove();
+        
+        // Update total participants
+        updateTotalParticipants();
+    });
+
     // External participants management
     $('#addDivisionBlock').click(function () {
+        console.log('Add Division Block clicked');
+        console.log('Staff data available:', staffData);
+        console.log('Available divisions:', Object.keys(staffData));
+        
         if (!isValidActivityDates()) {
             show_notification("Please select both Start Date and End Date before adding division staff.", "warning");
             return;
         }
 
         const divisions = Object.keys(staffData);
+        console.log('Creating division options for:', divisions);
+        
+        if (divisions.length === 0) {
+            show_notification("No divisions available. Please check staff data.", "error");
+            return;
+        }
+        
         let divisionOptions = '<option value="">Select Division</option>';
         divisions.forEach(div => {
             divisionOptions += `<option value="${div}">${div}</option>`;
@@ -812,6 +897,82 @@ $(document).ready(function () {
         }, 100);
     }
 
+    // Function to restore external participants division blocks
+    function restoreExternalParticipants(externalParticipants) {
+        // Group external participants by division
+        const participantsByDivision = {};
+        externalParticipants.forEach(participant => {
+            const divisionName = participant.staff.division_name;
+            if (!participantsByDivision[divisionName]) {
+                participantsByDivision[divisionName] = [];
+            }
+            participantsByDivision[divisionName].push(participant);
+        });
+
+        // Create division blocks for each division
+        Object.keys(participantsByDivision).forEach(divisionName => {
+            const participants = participantsByDivision[divisionName];
+            console.log(`Creating division block for ${divisionName} with ${participants.length} participants`);
+            
+            // Create the division block
+            const divisions = Object.keys(staffData);
+            let divisionOptions = '<option value="">Select Division</option>';
+            divisions.forEach(div => {
+                divisionOptions += `<option value="${div}" ${div === divisionName ? 'selected' : ''}>${div}</option>`;
+            });
+
+            const block = `
+                <div class="division-block border p-3 mb-3 rounded bg-light position-relative">
+                    <button type="button" class="btn btn-danger remove-division-block position-absolute end-0 top-0 m-3">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-3">
+                            <label class="form-label">Division</label>
+                            <select class="form-select division-select">${divisionOptions}</select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Division Staff By</label>
+                            <select class="form-select filter-type" disabled>
+                                <option value="title" disabled>Job Title</option>
+                                <option value="name" selected>Name</option>
+                                <option value="number" disabled>Number of Staff</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 job-title-col d-none">
+                            <label class="form-label">Job Title(s)</label>
+                            <select class="form-select job-titles" multiple disabled></select>
+                        </div>
+                        <div class="col-md-3 staff-name-col">
+                            <label class="form-label">Staff Info</label>
+                            <select class="form-select staff-names" multiple></select>
+                        </div>
+                    </div>
+                </div>`;
+
+            const $block = $(block);
+            $('#externalParticipantsWrapper').append($block);
+
+            // Initialize select2
+            $block.find('.division-select, .staff-names').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Select'
+            });
+
+            // Load staff for the division
+            const staff = staffData[divisionName] || [];
+            const staffSelect = $block.find('.staff-names');
+            staffSelect.empty().append(
+                staff.map(s => `<option value="${s.staff_id}">${s.fname} ${s.lname}</option>`)
+            );
+
+            // Select the participants
+            const participantIds = participants.map(p => p.staff.staff_id.toString());
+            staffSelect.val(participantIds).trigger('change');
+        });
+    }
+
     // Initialize form fields with existing data
     function initializeExistingData() {
         // Set activity code visibility based on fund type
@@ -903,12 +1064,36 @@ $(document).ready(function () {
             console.log('No fund type selected');
         }
 
+        // Restore external participants division blocks
+        if (existingExternalParticipants && existingExternalParticipants.length > 0) {
+            console.log('Restoring external participants...');
+            restoreExternalParticipants(existingExternalParticipants);
+        }
+
         // Update total participants display
         updateTotalParticipants();
     }
 
     // Call initialization after a short delay to ensure all elements are loaded
     setTimeout(initializeExistingData, 100);
+    
+    // Initialize attachment UI state
+    setTimeout(function() {
+        $('.attachment-block').each(function() {
+            const attachmentBlock = $(this);
+            const fileInput = attachmentBlock.find('input[type="file"]');
+            const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
+            const deleteCheckbox = attachmentBlock.find('input[name*="[delete]"]');
+            
+            // Hide replace checkbox initially (will show when file is selected)
+            replaceCheckbox.closest('.form-check').hide();
+            
+            // Show delete checkbox for existing attachments
+            if (attachmentBlock.find('small:contains("Current:")').length > 0) {
+                deleteCheckbox.closest('.form-check').show();
+            }
+        });
+    }, 200);
     
     // Fallback: Retry budget initialization if it fails
     setTimeout(() => {
@@ -935,12 +1120,20 @@ $(document).ready(function () {
         initializeExistingData();
     });
     
-    // File validation
+    // File validation and UI enhancement
     $(document).on('change', '.attachment-input', function () {
         const fileInput = this;
         const file = fileInput.files[0];
+        const attachmentBlock = $(fileInput).closest('.attachment-block');
+        const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
+        const deleteCheckbox = attachmentBlock.find('input[name*="[delete]"]');
         
         if (!file) {
+            // No file selected - hide replace checkbox and show delete option if it's an existing attachment
+            replaceCheckbox.closest('.form-check').hide();
+            if (attachmentBlock.find('small:contains("Current:")').length > 0) {
+                deleteCheckbox.closest('.form-check').show();
+            }
             return;
         }
         
@@ -954,6 +1147,7 @@ $(document).ready(function () {
         if (!allowedExtensions.includes(ext)) {
             show_notification("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, or DOCX files are allowed.", "warning");
             $(fileInput).val(''); // Clear invalid file
+            replaceCheckbox.closest('.form-check').hide();
             return;
         }
         
@@ -961,25 +1155,64 @@ $(document).ready(function () {
         if (fileSize > maxSize) {
             show_notification("File size must be less than 10MB.", "warning");
             $(fileInput).val(''); // Clear invalid file
+            replaceCheckbox.closest('.form-check').hide();
             return;
+        }
+        
+        // File is valid - show replace checkbox if it's an existing attachment
+        if (attachmentBlock.find('small:contains("Current:")').length > 0) {
+            replaceCheckbox.closest('.form-check').show();
+            deleteCheckbox.closest('.form-check').hide();
         }
         
         // Show success message
         show_notification(`File "${fileName}" selected successfully.`, "success");
     });
+    
+    // Handle delete checkbox changes
+    $(document).on('change', 'input[name*="[delete]"]', function() {
+        const deleteCheckbox = $(this);
+        const attachmentBlock = deleteCheckbox.closest('.attachment-block');
+        const fileInput = attachmentBlock.find('input[type="file"]');
+        const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
+        
+        if (deleteCheckbox.is(':checked')) {
+            // Disable file input and type input when deleting
+            fileInput.prop('disabled', true);
+            attachmentBlock.find('input[name*="[type]"]').prop('disabled', true);
+            replaceCheckbox.closest('.form-check').hide();
+            
+            // Show confirmation
+            if (!confirm('Are you sure you want to delete this attachment?')) {
+                deleteCheckbox.prop('checked', false);
+                fileInput.prop('disabled', false);
+                attachmentBlock.find('input[name*="[type]"]').prop('disabled', false);
+                replaceCheckbox.closest('.form-check').show();
+            }
+        } else {
+            // Re-enable inputs when unchecking delete
+            fileInput.prop('disabled', false);
+            attachmentBlock.find('input[name*="[type]"]').prop('disabled', false);
+            if (fileInput.val()) {
+                replaceCheckbox.closest('.form-check').show();
+            }
+        }
+    });
 
     // Attachment management
-    let attachmentIndex = {{ $attachments ? count($attachments) : 1 }};
+    let attachmentIndex = {{ $attachments ? count($attachments) : 0 }};
 
     $('#addAttachment').on('click', function () {
+        // Remove the info alert if it exists
+        $('.alert-info').remove();
+        
         const newField = `
             <div class="col-md-4 attachment-block">
                 <label class="form-label">Document Type*</label>
-                <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control" required>
-                <input type="file" name="attachments[]" 
+                <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control">
+                <input type="file" name="attachments[${attachmentIndex}][file]" 
                        class="form-control mt-1 attachment-input" 
-                       accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*" 
-                       required>
+                       accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
                 <small class="text-muted">Max size: 10MB. Allowed: PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX</small>
             </div>`;
         $('#attachmentContainer').append(newField);
@@ -987,9 +1220,21 @@ $(document).ready(function () {
     });
 
     $('#removeAttachment').on('click', function () {
-        if ($('.attachment-block').length > 1) {
+        if ($('.attachment-block').length > 0) {
             $('.attachment-block').last().remove();
             attachmentIndex--;
+            
+            // If no more attachment blocks, show the info message
+            if ($('.attachment-block').length === 0) {
+                $('#attachmentContainer').html(`
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No attachments currently. Click "Add New" to add attachments.
+                        </div>
+                    </div>
+                `);
+            }
         }
     });
 });

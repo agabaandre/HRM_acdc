@@ -46,48 +46,27 @@
                             <td>{{ $fundType->created_at->format('Y-m-d') }}</td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('fund-types.show', $fundType) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
+                                    <a href="{{ route('fund-types.show', $fundType) }}" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View">
                                         <i class="bx bx-show"></i>
                                     </a>
-                                    <a href="{{ route('fund-types.edit', $fundType) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit">
+                                    <a href="{{ route('fund-types.edit', $fundType) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit">
                                         <i class="bx bx-edit"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $fundType->id }}" data-bs-toggle="tooltip" title="Delete">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Delete Modal -->
-                                <div class="modal fade" id="deleteModal{{ $fundType->id }}" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Delete Fund Type</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p>Are you sure you want to delete <strong>{{ $fundType->name }}</strong>?</p>
-                                                <p class="text-danger"><small>This action cannot be undone. If this fund type has associated fund codes, deletion will fail.</small></p>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <form action="{{ route('fund-types.destroy', $fundType) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">Delete</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center py-4">
-                                <div class="text-muted">
-                                    <i class="bx bx-folder-open fs-1"></i>
-                                    <p class="mt-2">No fund types found</p>
+                            <td colspan="5" class="text-center py-5">
+                                <div class="d-flex flex-column align-items-center">
+                                    <div class="mb-3">
+                                        <i class="bx bx-folder-open text-muted" style="font-size: 3rem;"></i>
+                                    </div>
+                                    <h5 class="text-muted mb-3">No fund types found</h5>
+                                    <p class="text-muted mb-4">Get started by adding your first fund type</p>
+                                    <a href="{{ route('fund-types.create') }}" class="btn btn-primary">
+                                        <i class="bx bx-plus"></i> Add Fund Type
+                                    </a>
                                 </div>
                             </td>
                         </tr>

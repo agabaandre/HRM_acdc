@@ -115,9 +115,9 @@ trait HasApprovalWorkflow
     public function isDraftStatus(): bool
     {
         // Check if the model has the is_draft property and it's true
-        if (property_exists($this, 'is_draft')) {
-            return $this->is_draft === true;
-        }
+        // if (property_exists($this, 'is_draft')) {
+        //     return $this->is_draft === true;
+        // }
         
         // Fallback to overall_status check
         return $this->overall_status === 'draft';
@@ -145,12 +145,13 @@ trait HasApprovalWorkflow
         $trail = new ApprovalTrail();
         $trail->model_id = $this->id;
         $trail->model_type = get_class($this);
+        $trail->forward_workflow_id = $this->forward_workflow_id;
         $trail->remarks = $comment;
         $trail->action = $action;
         
         // For submission, use approval level 0, otherwise use the current approval level
         if ($action === 'submitted') {
-            $trail->approval_order = 0;
+            $trail->approval_order = (($this->approval_level)==1)?0:1;
         } else {
             $trail->approval_order = $approvalOrder ?? $this->approval_level ?? 1;
         }
@@ -167,11 +168,13 @@ trait HasApprovalWorkflow
         return $trail;
     }
 
+
     /**
      * Update the approval status.
      */
     public function updateApprovalStatus(string $action, string $comment = null): void
     {
+       
         $this->saveApprovalTrail($comment ?? '', $action);
 
         if ($action !== 'approved') {
@@ -199,9 +202,18 @@ trait HasApprovalWorkflow
      */
     public function submitForApproval(): void
     {
+
+        $last_approval_trail = ApprovalTrail::where('model_id',$this->id)->where('model_type', get_class($this))->whereNotIn('action',['approved','submitted'])->orderByDesc('id')->first();
+        if($last_approval_trail){
+            $workflow_defn       = WorkflowDefinition::where('approval_order', $last_approval_trail->approval_order)->first();
+            $last_workflow_id    = $workflow_defn->workflow_id;
+            $last_approval_order = $last_approval_trail->approval_order;
+        }
+        else
+            $last_approval_order=1; $last_workflow_id=1;
         $this->overall_status = 'pending';
-        $this->approval_level = 1;
-        $this->forward_workflow_id = 1;
+        $this->approval_level = $last_approval_order;
+        $this->forward_workflow_id = $last_workflow_id;
         
         // Set is_draft to false when submitting for approval
         if (property_exists($this, 'is_draft')) {
@@ -233,4 +245,85 @@ trait HasApprovalWorkflow
             ->orderBy('id')
             ->get();
     }
+    public function hasActivities(): bool
+    { 
+        if(method_exists($this, 'activities')){
+            return $this->activities()->exists();
+        }
+        return false;
+    }
+
+
+    public function getHasIntramuralAttribute()
+    {
+        if (method_exists($this, 'activities')) {
+            // If the model has activities, check for any with fund_type_id = 1 (intramural)
+            return $this->activities()->where('fund_type_id', 1)->exists();
+            
+        } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
+            
+            // If the model has a budget_breakdown property, check for any fund_code with fund_type_id = 1
+            // Handle both JSON string and PHP array formats
+            $breakdown = $this->budget_breakdown;
+            
+            // If it's a string, decode it to array
+            if (is_string($breakdown)) {
+                $breakdown = json_decode($breakdown, true);
+            }
+            
+            // If it's an array, process it
+            if (is_array($breakdown)) {
+                foreach ($breakdown as $fund_code_id => $items) {
+                    // Skip non-numeric keys (like 'grand_total')
+                    if (!is_numeric($fund_code_id)) {
+                        continue;
+                    }
+                    $fundCode = \App\Models\FundCode::find($fund_code_id);
+                    if ($fundCode && $fundCode->fund_type_id == 1) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    public function getHasExtramuralAttribute(): bool
+    {
+        if (method_exists($this, 'activities')) {
+            // If the model has activities, check for any with fund_type_id = 2 (extramural)
+            return $this->activities()->where('fund_type_id', 2)->exists();
+            
+        } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
+            
+            // If the model has a budget_breakdown property, check for any fund_code with fund_type_id = 2 (extramural)
+            // Handle both JSON string and PHP array formats
+            $breakdown = $this->budget_breakdown;
+            
+            // If it's a string, decode it to array
+            if (is_string($breakdown)) {
+                $breakdown = json_decode($breakdown, true);
+            }
+            
+            // If it's an array, process it
+            if (is_array($breakdown)) {
+                foreach ($breakdown as $fund_code_id => $items) {
+                    // Skip non-numeric keys (like 'grand_total')
+                    if (!is_numeric($fund_code_id)) {
+                        continue;
+                    }
+                    $fundCode = \App\Models\FundCode::find($fund_code_id);
+                    if ($fundCode && $fundCode->fund_type_id == 2) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+  
+    
 } 

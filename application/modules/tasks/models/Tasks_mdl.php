@@ -283,6 +283,334 @@ class Tasks_mdl extends CI_Model {
         $query = $this->db->get();
         return $query->result();
     }
+
+    // Get team members for a division
+    public function get_team_members($division_id) {
+        // Subquery: Get latest contract per staff
+        $subquery = $this->db
+            ->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+        $this->db->select('
+            s.staff_id, s.SAPNO, s.title, s.fname, s.lname, s.oname, 
+            s.gender, s.date_of_birth, s.work_email, s.tel_1, s.tel_2, 
+            s.whatsapp, s.photo, s.private_email, s.physical_location,
+            sc.division_id, sc.job_id, j.job_name, sc.job_acting_id, ja.job_acting,
+            sc.start_date, sc.end_date, sc.status_id,
+            d.division_name, ds.duty_station_name,
+            g.grade, st.status, f.funder
+        ');
+
+        $this->db->from('staff s');
+        $this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left');
+        $this->db->join('grades g', 'g.grade_id = sc.grade_id', 'left');
+        $this->db->join('funders f', 'f.funder_id = sc.funder_id', 'left');
+        $this->db->join('divisions d', 'd.division_id = sc.division_id', 'left');
+        $this->db->join('duty_stations ds', 'ds.duty_station_id = sc.duty_station_id', 'left');
+        $this->db->join('jobs j', 'j.job_id = sc.job_id', 'left');
+        $this->db->join('jobs_acting ja', 'ja.job_acting_id = sc.job_acting_id', 'left');
+        $this->db->join('status st', 'st.status_id = sc.status_id', 'left');
+
+        // Where latest contract only
+        $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+
+        // Active contracts only
+        $this->db->where_in('sc.status_id', [1, 2, 3, 7]);
+
+        // Filter by division
+        if (!empty($division_id)) {
+            $this->db->where('sc.division_id', $division_id);
+        }
+
+        // Order by name
+        $this->db->order_by('s.fname', 'ASC');
+
+        return $this->db->get()->result();
+    }
+
+    // Get work plans for a division
+    public function get_work_plans($division_id) {
+        return $this->db
+            ->select('id, activity_name, division_id')
+            ->from('workplan_tasks')
+            ->where('division_id', $division_id)
+            ->order_by('activity_name', 'ASC')
+            ->get()
+            ->result();
+    }
+
+    // Get filtered activities with server-side pagination
+    public function get_activities_filtered_paginated($division_id, $start_date = null, $end_date = null, $team_members = null, $work_plan = null, $start = 0, $length = 10, $search_value = '', $order_column = 0, $order_dir = 'asc') {
+        // Subquery: Get latest contract per staff
+        $subquery = $this->db
+            ->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+        // Column mapping for ordering
+        $columns = [
+            'wpt.activity_name',
+            'CONCAT(s.fname, " ", s.lname)',
+            'wpt.start_date',
+            'wpt.end_date',
+            'wpt.status',
+            'wpt.comments'
+        ];
+
+        // Base query
+        $this->db
+            ->select('
+                wpt.activity_id,
+                wpt.activity_name,
+                wpt.start_date,
+                wpt.end_date,
+                wpt.status,
+                wpt.comments,
+                s.fname,
+                s.lname,
+                s.title,
+                j.job_name,
+                CONCAT(s.fname, " ", s.lname) as member_name,
+                wt.activity_name as work_plan_name,
+                r.report_id,
+                r.description as report,
+                r.report_date,
+                r.status as report_status,
+                d.division_name
+            ')
+            ->from('work_planner_tasks wpt')
+            ->join('staff s', 's.staff_id = wpt.created_by', 'left')
+            ->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left')
+            ->join('jobs j', 'j.job_id = sc.job_id', 'left')
+            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id', 'left')
+            ->join('reports r', 'r.activity_id = wpt.activity_id', 'left')
+            ->join('divisions d', 'd.division_id = sc.division_id', 'left')
+            ->where("sc.staff_contract_id IN ($subquery)", null, false)
+            ->where_in('sc.status_id', [1, 2, 3, 7])
+            ->where('sc.division_id', $division_id);
+
+        // Apply filters
+        if (!empty($start_date)) {
+            $this->db->where('wpt.start_date >=', $start_date);
+        }
+        
+        if (!empty($end_date)) {
+            $this->db->where('wpt.end_date <=', $end_date);
+        }
+        
+        if (!empty($team_members) && is_array($team_members)) {
+            $this->db->where_in('wpt.created_by', $team_members);
+        }
+        
+        if (!empty($work_plan)) {
+            $this->db->where('wpt.workplan_id', $work_plan);
+        }
+
+        // Global search
+        if (!empty($search_value)) {
+            $this->db->group_start();
+            $this->db->like('wpt.activity_name', $search_value);
+            $this->db->or_like('s.fname', $search_value);
+            $this->db->or_like('s.lname', $search_value);
+            $this->db->or_like('wt.activity_name', $search_value);
+            $this->db->or_like('j.job_name', $search_value);
+            $this->db->or_like('d.division_name', $search_value);
+            $this->db->group_end();
+        }
+
+        // Get total records count (before pagination)
+        $total_records = $this->db->count_all_results('', false);
+
+        // Apply ordering
+        if (isset($columns[$order_column])) {
+            $this->db->order_by($columns[$order_column], $order_dir);
+        } else {
+            $this->db->order_by('wpt.start_date', 'DESC');
+        }
+
+        // Apply pagination
+        if ($length > 0) {
+            $this->db->limit($length, $start);
+        }
+
+        $data = $this->db->get()->result();
+
+        return [
+            'data' => $data,
+            'total_records' => $total_records,
+            'filtered_records' => $total_records // Same as total since we're not doing separate filtered count
+        ];
+    }
+
+    // Get filtered activities (legacy method for backward compatibility)
+    public function get_activities_filtered($division_id, $start_date = null, $end_date = null, $team_members = null, $work_plan = null) {
+        $result = $this->get_activities_filtered_paginated($division_id, $start_date, $end_date, $team_members, $work_plan, 0, 0);
+        return $result['data'];
+    }
+
+    // Get activity with all details for individual report
+    public function get_activity_with_details($activity_id) {
+        // Subquery: Get latest contract per staff
+        $subquery = $this->db
+            ->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+        return $this->db
+            ->select('
+                wpt.activity_id,
+                wpt.activity_name,
+                wpt.start_date,
+                wpt.end_date,
+                wpt.status,
+                wpt.comments,
+                wpt.workplan_id,
+                wpt.created_by,
+                s.fname,
+                s.lname,
+                s.title,
+                s.work_email,
+                j.job_name,
+                CONCAT(s.fname, " ", s.lname) as member_name,
+                wt.activity_name as work_plan_name,
+                d.division_name
+            ')
+            ->from('work_planner_tasks wpt')
+            ->join('staff s', 's.staff_id = wpt.created_by', 'left')
+            ->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left')
+            ->join('jobs j', 'j.job_id = sc.job_id', 'left')
+            ->join('workplan_tasks wt', 'wt.id = wpt.workplan_id', 'left')
+            ->join('divisions d', 'd.division_id = sc.division_id', 'left')
+            ->where("sc.staff_contract_id IN ($subquery)", null, false)
+            ->where_in('sc.status_id', [1, 2, 3, 7])
+            ->where('wpt.activity_id', $activity_id)
+            ->get()
+            ->row();
+    }
+
+    // Get activity report details
+    public function get_activity_report($activity_id) {
+        return $this->db
+            ->select('
+                r.report_id,
+                r.description,
+                r.report_date,
+                r.status as report_status,
+                r.created_at
+            ')
+            ->from('reports r')
+            ->where('r.activity_id', $activity_id)
+            ->get()
+            ->row();
+    }
+
+    // Get team performance data
+    public function get_team_performance_data($division_id, $start_date = null, $end_date = null, $team_members = null, $work_plan = null) {
+        // Subquery: Get latest contract per staff
+        $subquery = $this->db
+            ->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+        $this->db
+            ->select('
+                s.staff_id,
+                s.fname,
+                s.lname,
+                s.title,
+                j.job_name,
+                COUNT(wpt.activity_id) as total_activities,
+                SUM(CASE WHEN wpt.status = 2 THEN 1 ELSE 0 END) as completed_activities,
+                SUM(CASE WHEN wpt.status = 1 THEN 1 ELSE 0 END) as pending_activities,
+                SUM(CASE WHEN wpt.status = 3 THEN 1 ELSE 0 END) as carried_forward_activities,
+                SUM(CASE WHEN wpt.end_date < CURDATE() AND wpt.status = 1 THEN 1 ELSE 0 END) as overdue_activities
+            ')
+            ->from('staff s')
+            ->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left')
+            ->join('jobs j', 'j.job_id = sc.job_id', 'left')
+            ->join('work_planner_tasks wpt', 'wpt.created_by = s.staff_id', 'left')
+            ->where("sc.staff_contract_id IN ($subquery)", null, false)
+            ->where_in('sc.status_id', [1, 2, 3, 7])
+            ->where('sc.division_id', $division_id);
+
+        // Apply filters
+        if (!empty($start_date)) {
+            $this->db->where('wpt.start_date >=', $start_date);
+        }
+        
+        if (!empty($end_date)) {
+            $this->db->where('wpt.end_date <=', $end_date);
+        }
+        
+        if (!empty($team_members) && is_array($team_members)) {
+            $this->db->where_in('s.staff_id', $team_members);
+        }
+        
+        if (!empty($work_plan)) {
+            $this->db->where('wpt.workplan_id', $work_plan);
+        }
+
+        return $this->db
+            ->group_by('s.staff_id')
+            ->order_by('s.fname', 'ASC')
+            ->get()
+            ->result();
+    }
+
+    // Get activity statistics
+    public function get_activity_statistics($division_id, $start_date = null, $end_date = null, $team_members = null, $work_plan = null) {
+        // Subquery: Get latest contract per staff
+        $subquery = $this->db
+            ->select('MAX(staff_contract_id)', false)
+            ->from('staff_contracts')
+            ->group_by('staff_id')
+            ->get_compiled_select();
+
+        $this->db
+            ->select('
+                COUNT(wpt.activity_id) as total,
+                SUM(CASE WHEN wpt.status = 2 THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN wpt.status = 1 THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN wpt.end_date < CURDATE() AND wpt.status = 1 THEN 1 ELSE 0 END) as overdue
+            ')
+            ->from('work_planner_tasks wpt')
+            ->join('staff s', 's.staff_id = wpt.created_by', 'left')
+            ->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'left')
+            ->where("sc.staff_contract_id IN ($subquery)", null, false)
+            ->where_in('sc.status_id', [1, 2, 3, 7])
+            ->where('sc.division_id', $division_id);
+
+        // Apply filters
+        if (!empty($start_date)) {
+            $this->db->where('wpt.start_date >=', $start_date);
+        }
+        
+        if (!empty($end_date)) {
+            $this->db->where('wpt.end_date <=', $end_date);
+        }
+        
+        if (!empty($team_members) && is_array($team_members)) {
+            $this->db->where_in('wpt.created_by', $team_members);
+        }
+        
+        if (!empty($work_plan)) {
+            $this->db->where('wpt.workplan_id', $work_plan);
+        }
+
+        $result = $this->db->get()->row();
+        
+        return [
+            'total' => (int)$result->total,
+            'completed' => (int)$result->completed,
+            'pending' => (int)$result->pending,
+            'overdue' => (int)$result->overdue
+        ];
+    }
     
     
     

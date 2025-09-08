@@ -10,6 +10,7 @@ use App\Models\Activity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class StaffController extends Controller
 {
@@ -69,7 +70,7 @@ class StaffController extends Controller
         $divisions = Division::where('is_active', 1)->orderBy('division_name')->get();
         $directorates = Directorate::where('is_active', 1)->orderBy('name')->get();
         $dutyStations = DutyStation::where('status', 1)->orderBy('name')->get();
-        $supervisors = Staff::where('active', 1)->orderBy('fname')->get();
+        $supervisors = Staff::active()->orderBy('fname')->get();
 
         return view('staff.create', compact('divisions', 'directorates', 'dutyStations', 'supervisors'));
     }
@@ -249,5 +250,75 @@ class StaffController extends Controller
         $staff->delete();
         return redirect()->route('staff.index')
             ->with('success', 'Staff record deleted successfully.');
+    }
+
+    /**
+     * Get activities for a specific staff member in a matrix
+     */
+    public function getActivities(Request $request, $staffId)
+    {
+        Log::info('getActivities called with staffId: ' . $staffId);
+        Log::info('Request data: ' . json_encode($request->all()));
+        
+        $matrixId = $request->query('matrix_id');
+        
+        if (!$matrixId) {
+            return response()->json(['error' => 'Matrix ID is required'], 400);
+        }
+
+        // Get the staff member
+        $staff = Staff::findOrFail($staffId);
+        
+        // Get the matrix to get quarter and year
+        $matrix = \App\Models\Matrix::find($matrixId);
+        $quarter_year = $matrix->quarter . "-" . $matrix->year;
+        
+        // Get activities where this staff is a participant
+        $activities = Activity::with(['matrix', 'focalPerson', 'matrix.division', 'participantSchedules'])
+            ->where('matrix_id', $matrixId)
+            ->whereHas('participantSchedules', function($query) use ($staffId) {
+                $query->where('participant_id', $staffId);
+            })
+            ->get();
+
+        Log::info('Activities found: ' . $activities->count());
+        Log::info('First activity division: ' . ($activities->first() ? json_encode($activities->first()->division) : 'No activities'));
+
+        // Separate activities by division
+        $myDivisionActivities = [];
+        $otherDivisionsActivities = [];
+
+        foreach ($activities as $activity) {
+            // Calculate days based on staff's division_days and other_days arrays
+            $division_days = isset($staff->division_days[$quarter_year]) ? $staff->division_days[$quarter_year] : 0;
+            $other_days = isset($staff->other_days[$quarter_year]) ? $staff->other_days[$quarter_year] : 0;
+            $total_days = $division_days + $other_days;
+            
+            // For now, we'll show total days. You can modify this logic based on your needs
+            $days = $total_days;
+            
+            $activityData = [
+                'activity_title' => $activity->activity_title,
+                'focal_person' => $activity->focalPerson ? $activity->focalPerson->fname . ' ' . $activity->focalPerson->lname : 'N/A',
+                'division_name' => $activity->matrix && $activity->matrix->division ? $activity->matrix->division->division_name : 'N/A',
+                'days' => $days
+            ];
+
+            Log::info('Activity data: ' . json_encode($activityData));
+
+            // Check if activity is in staff's division
+            if ($activity->matrix && $activity->matrix->division_id == $staff->division_id) {
+                $myDivisionActivities[] = $activityData;
+            } else {
+                $otherDivisionsActivities[] = $activityData;
+            }
+            
+            Log::info('Activity ' . $activity->id . ' - Division: ' . ($activity->matrix && $activity->matrix->division ? $activity->matrix->division->division_name : 'N/A') . ', Days: ' . $days);
+        }
+
+        return response()->json([
+            'my_division' => $myDivisionActivities,
+            'other_divisions' => $otherDivisionsActivities
+        ]);
     }
 }

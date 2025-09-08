@@ -11,7 +11,27 @@ class Tasks extends MX_Controller {
 
     // Add Activity
     public function activity() {
- 
+		$data['title'] = "View Activity";
+		$data['module'] = 'tasks';
+        
+        // Get team members for the current user's division
+        $division_id = $this->session->userdata('user')->division_id;
+        $data['team_members'] = $this->tasks_mdl->get_team_members($division_id);
+        
+        // Get work plans for filtering
+        $data['work_plans'] = $this->tasks_mdl->get_work_plans($division_id);
+        
+        // Debug: Check if data is being fetched
+        // echo "Division ID: " . $division_id . "<br>";
+        // echo "Team Members Count: " . count($data['team_members']) . "<br>";
+        // echo "Work Plans Count: " . count($data['work_plans']) . "<br>";
+        // exit;
+        
+        render('view_activities', $data);
+    }
+
+    // Add Activity Form
+    public function add_activity_form() {
 		$data['module'] = 'tasks';
 		$data['title'] = "Sub-Activities";
         $formdata=$this->input->post();
@@ -90,6 +110,14 @@ class Tasks extends MX_Controller {
     public function view_activities() {
 		$data['title'] = "View Activity";
 		$data['module'] = 'tasks';
+        
+        // Get team members for the current user's division
+        $division_id = $this->session->userdata('user')->division_id;
+        $data['team_members'] = $this->tasks_mdl->get_team_members($division_id);
+        
+        // Get work plans for filtering
+        $data['work_plans'] = $this->tasks_mdl->get_work_plans($division_id);
+        
         $data['activities'] = $this->tasks_mdl->get_activities();
        render('view_activities', $data);
     }
@@ -113,14 +141,23 @@ class Tasks extends MX_Controller {
     public function submit_report($activity_id) {
 		$data['title'] = "Submit Report";
 		$data['module'] = 'tasks';
+        $data['activity_id'] = $activity_id;
+        
         if ($_POST) {
-            $data = array(
+            $report_data = array(
                 'activity_id' => $activity_id,
                 'report_date' => date('Y-m-d'),
                 'description' => $this->input->post('description'),
                 'status' => 'approved'
             );
-            $this->tasks_mdl->submit_report($data);
+            $this->tasks_mdl->submit_report($report_data);
+            
+            // Check if this is an AJAX request
+            if ($this->input->is_ajax_request()) {
+                echo json_encode(['status' => 'success', 'message' => 'Report submitted successfully!']);
+                return;
+            }
+            
             redirect('tasks/view_reports');
         }
        render('submit_report',$data);
@@ -339,6 +376,198 @@ class Tasks extends MX_Controller {
         );
     
         render('view_reports', $data);
+    }
+
+    // Fetch filtered activities for AJAX with server-side pagination
+    public function fetch_activities_filtered() {
+        $start_date = $this->input->post('start_date');
+        $end_date = $this->input->post('end_date');
+        $team_members = $this->input->post('team_members');
+        $work_plan = $this->input->post('work_plan');
+        $division_id = $this->session->userdata('user')->division_id;
+
+        // DataTables server-side processing parameters
+        $draw = intval($this->input->post('draw'));
+        $start = intval($this->input->post('start'));
+        $length = intval($this->input->post('length'));
+        $search_value = $this->input->post('search')['value'] ?? '';
+        $order_column = intval($this->input->post('order')[0]['column'] ?? 0);
+        $order_dir = $this->input->post('order')[0]['dir'] ?? 'asc';
+
+        try {
+            $result = $this->tasks_mdl->get_activities_filtered_paginated(
+                $division_id, 
+                $start_date, 
+                $end_date, 
+                $team_members, 
+                $work_plan,
+                $start,
+                $length,
+                $search_value,
+                $order_column,
+                $order_dir
+            );
+            
+            echo json_encode([
+                'draw' => $draw,
+                'recordsTotal' => $result['total_records'],
+                'recordsFiltered' => $result['filtered_records'],
+                'data' => $result['data']
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'draw' => $draw,
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Error loading activities: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // Get team performance data
+    public function get_team_performance() {
+        $start_date = $this->input->post('start_date');
+        $end_date = $this->input->post('end_date');
+        $team_members = $this->input->post('team_members');
+        $work_plan = $this->input->post('work_plan');
+        $division_id = $this->session->userdata('user')->division_id;
+
+        try {
+            $team_performance = $this->tasks_mdl->get_team_performance_data($division_id, $start_date, $end_date, $team_members, $work_plan);
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $team_performance
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error loading team performance: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // Get activity statistics
+    public function get_activity_statistics() {
+        $start_date = $this->input->post('start_date');
+        $end_date = $this->input->post('end_date');
+        $team_members = $this->input->post('team_members');
+        $work_plan = $this->input->post('work_plan');
+        $division_id = $this->session->userdata('user')->division_id;
+
+        try {
+            $statistics = $this->tasks_mdl->get_activity_statistics($division_id, $start_date, $end_date, $team_members, $work_plan);
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $statistics
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error loading statistics: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // Print activity report as PDF
+    public function print_activity_report() {
+        $start_date = $this->input->get('start_date');
+        $end_date = $this->input->get('end_date');
+        $team_members = $this->input->get('team_members');
+        $work_plan = $this->input->get('work_plan');
+        $division_id = $this->session->userdata('user')->division_id;
+
+        try {
+            // Get division information
+            $division = $this->db->where('division_id', $division_id)->get('divisions')->row();
+            
+            // Get activities data
+            $activities = $this->tasks_mdl->get_activities_filtered($division_id, $start_date, $end_date, $team_members, $work_plan);
+            
+            // Get team performance data
+            $team_performance = $this->tasks_mdl->get_team_performance_data($division_id, $start_date, $end_date, $team_members, $work_plan);
+            
+            // Get statistics
+            $statistics = $this->tasks_mdl->get_activity_statistics($division_id, $start_date, $end_date, $team_members, $work_plan);
+
+            $data = [
+                'module' => 'tasks',
+                'division' => $division,
+                'activities' => $activities,
+                'team_performance' => $team_performance,
+                'statistics' => $statistics,
+                'date_range' => $this->get_date_range_label($start_date, $end_date),
+                'filters' => [
+                    'start_date' => $start_date,
+                    'end_date' => $end_date,
+                    'team_members' => $team_members,
+                    'work_plan' => $work_plan
+                ]
+            ];
+
+            $log_message = "Printed activity report for division: " . ($division->division_name ?? 'Unknown');
+            log_user_action($log_message);
+
+            pdf_print_data($data, 'Activity_Report.pdf', 'L', 'pdfs/activity_report');
+
+        } catch (Exception $e) {
+            log_message('error', 'Print activity report error: ' . $e->getMessage());
+            show_error('Error generating activity report: ' . $e->getMessage());
+        }
+    }
+
+    // Print individual activity report as PDF
+    public function print_individual_activity_report($activity_id) {
+        try {
+            // Get activity details with all related information
+            $activity = $this->tasks_mdl->get_activity_with_details($activity_id);
+            
+            if (!$activity) {
+                show_error('Activity not found');
+                return;
+            }
+
+            // Get report details if exists
+            $report = $this->tasks_mdl->get_activity_report($activity_id);
+            
+            // Get work plan details
+            $work_plan = null;
+            if ($activity->workplan_id) {
+                $work_plan = $this->db->where('id', $activity->workplan_id)->get('workplan_tasks')->row();
+            }
+
+            $data = [
+                'module' => 'tasks',
+                'activity' => $activity,
+                'report' => $report,
+                'work_plan' => $work_plan,
+                'generated_date' => date('M d, Y H:i:s')
+            ];
+
+            $log_message = "Printed individual activity report for activity ID: $activity_id";
+            log_user_action($log_message);
+
+            pdf_print_data($data, 'Activity_Report_' . $activity_id . '.pdf', 'P', 'pdfs/individual_activity_report');
+
+        } catch (Exception $e) {
+            log_message('error', 'Print individual activity report error: ' . $e->getMessage());
+            show_error('Error generating individual activity report: ' . $e->getMessage());
+        }
+    }
+
+    // Helper method to generate date range label
+    private function get_date_range_label($start_date, $end_date) {
+        if (!empty($start_date) && !empty($end_date)) {
+            return date('M d, Y', strtotime($start_date)) . ' - ' . date('M d, Y', strtotime($end_date));
+        } elseif (!empty($start_date)) {
+            return 'From ' . date('M d, Y', strtotime($start_date));
+        } elseif (!empty($end_date)) {
+            return 'Until ' . date('M d, Y', strtotime($end_date));
+        } else {
+            return 'All Time';
+        }
     }
     
 

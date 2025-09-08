@@ -8,7 +8,7 @@
                 </label>
                 <input type="text" name="activity_title" id="activity_title" class="form-control " value="{{ old('activity_title', $activity->activity_title ?? '') }}" required>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <label for="request_type_id" class="form-label fw-semibold">
                     <i class="fas fa-tags me-1 text-success"></i> Request Type <span class="text-danger">*</span>
                 </label>
@@ -19,20 +19,39 @@
                     @endforeach
                 </select>
             </div>
+             <div class="col-md-3">
+                        <label for="key_result_area" class="form-label fw-semibold">
+                            <i class="fas fa-link me-1 text-success"></i> Link to Key Result <span class="text-danger">*</span>
+                        </label>
+                        <select name="key_result_area" id="key_result_area" class="form-select border-success" required>
+                            <option value="">Select Key Result</option>
+                            @php
+                                $keyResults = is_array($matrix->key_result_area) 
+                                            ? $matrix->key_result_area 
+                                            : json_decode($matrix->key_result_area ?? '[]', true);
+                                $selectedKeyResult = old('key_result_area', $activity->key_result_area ?? '');
+                            @endphp
+                            @foreach($keyResults as $index => $kr)
+                                <option value="{{ $index }}" {{ $selectedKeyResult == $index ? 'selected' : '' }}>
+                                    {{ $kr['description'] ?? 'No Description' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
           
             <div class="col-md-12">
                 <label for="background" class="form-label fw-semibold">
                     <i class="fas fa-align-left me-1 text-success"></i> Background/Context <span class="text-danger">*</span>
                 </label>
-                <textarea name="background" id="background" class="form-control " rows="3" required>{{ old('background', $activity->background ?? '') }}</textarea>
+                <textarea name="background" id="background" class="form-control summernote" rows="3" required>{{ old('background', $activity->background ?? '') }}</textarea>
             </div>
 
             <div class="col-md-6">
                 <label for="responsible_person" class="form-label fw-semibold">
                     <i class="fas fa-user-tie me-1 text-success"></i> Responsible Person <span class="text-danger">*</span>
                 </label>
-                <select name="responsible_person_id" id="responsible_person_id" class="form-select select2 " required>
+                <select name="responsible_person_id" id="responsible_person_id" class="form-select select2 " required style="width: 100%;">
                     <option value="">Select</option>
                     @foreach($staff as $member)
                     <option value="{{ $member->staff_id }}" {{ old('responsible_person_id', $activity->responsible_person_id ?? '') == $member->staff_id ? 'selected' : '' }}>
@@ -56,6 +75,7 @@
                 <input type="text" name="date_to" id="date_to" class="form-control datepicker " value="{{ old('date_to', $activity->date_to ?? '') }}" required>
             </div>
             <div class="col-md-4">
+                <label for="location_id" class="form-label fw-semibold">
                     <i class="fas fa-map-marker-alt me-1 text-success"></i> Location/Venue <span class="text-danger">*</span>
                 </label>
                 <select name="location_id[]" id="location_id" class="form-select border-success" multiple required>
@@ -90,7 +110,7 @@
                 <label for="internal_participants" class="form-label fw-semibold">
                     <i class="fas fa-user-friends me-1 text-success"></i> Select Internal Participants <span class="text-danger">*</span>
                 </label>
-                <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple required>
+                <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple style="width: 100%;">
                     @foreach($divisionStaff as $member)
                         @php
                             $participantIds = [];
@@ -138,22 +158,15 @@
                 <th>End Date</th>
                 <th>No. of Days</th>
                 <th>International Travel</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody id="participantsTableBody">
-            <tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>
+            <tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>
         </tbody>
     </table>
 
 </div>
-
-
-            <div class="col-md-12">
-                <label for="activity_request_remarks" class="form-label fw-semibold">
-                    <i class="fas fa-comment-dots me-1 text-success"></i>Justification / Request for Approval <span class="text-danger">*</span>
-                </label>
-                <textarea name="activity_request_remarks" id="activity_request_remarks" class="form-control" rows="3" required>{{ old('activity_request_remarks', $activity->activity_request_remarks ?? '') }}</textarea>
-            </div>
 
             
 

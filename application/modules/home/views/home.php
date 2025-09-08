@@ -102,19 +102,19 @@ body {
       $settings[] = [
         $hrPath,
         'Staff Portal',
-        'fa-user',
+        'fa-users',
         false,
         'Manage staff details, contracts, appraisals and access HR services efficiently.'
       ];
     }
 
-    // BMS
+    // ap
     if (in_array('85', $permissions)) {
       $token = urlencode(base64_encode(json_encode($session)));
       $settings[] = [
         $session['base_url'] . 'apm?token=' . $token,
         'Approvals Management (APM)',
-        'fa-building-columns',
+        'fa-sitemap',
         true,
         'Tracks submissions, reviews, and approvals ie requests for Travel Matrix, Single and Special Memos, Change, DSA and ARF requests'
       ];

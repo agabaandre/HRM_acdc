@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Workflow;
 use App\Models\WorkflowDefinition;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\Staff;
 use App\Models\Approver;
 use Illuminate\Http\Request;
@@ -113,21 +114,37 @@ class WorkflowController extends Controller
      */
     public function destroy(Workflow $workflow)
     {
-        // Check if there are any memos using this workflow
-        if ($workflow->memos()->count() > 0) {
+        try {
+            // Check if workflow is being used by any requests
+            $isUsed = DB::table('request_arfs')
+                ->where('forward_workflow_id', $workflow->id)
+                ->orWhere('reverse_workflow_id', $workflow->id)
+                ->exists();
+
+            if ($isUsed) {
+                return redirect()->route('workflows.index')
+                    ->with('error', 'Cannot delete workflow. It is currently being used by ARF requests.');
+            }
+
+            // Delete workflow definitions first (cascade)
+            $workflow->workflowDefinitions()->delete();
+            
+            // Delete the workflow
+            $workflow->delete();
+
             return redirect()->route('workflows.index')
-                ->with('error', 'Cannot delete workflow. It is currently being used by memos.');
+                ->with('success', 'Workflow deleted successfully.');
+        } catch (\Exception $e) {
+            Log::error('Workflow deletion failed', [
+                'workflow_id' => $workflow->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return redirect()->route('workflows.index')
+                ->with('error', 'Failed to delete workflow. Please try again.');
         }
-
-        // Delete workflow definitions first
-        $workflow->workflowDefinitions()->delete();
-
-        // Delete workflow
-        $workflow->delete();
-
-        return redirect()->route('workflows.index')
-            ->with('success', 'Workflow deleted successfully.');
     }
+
 
     /**
      * Add workflow definition form
@@ -163,6 +180,98 @@ class WorkflowController extends Controller
 
         return redirect()->route('workflows.show', $workflow->id)
             ->with('success', 'Workflow definition added successfully.');
+    }
+
+    /**
+     * Show the form for editing a workflow definition.
+     *
+     * @param  \App\Models\Workflow  $workflow
+     * @param  \App\Models\WorkflowDefinition  $definition
+     * @return \Illuminate\View\View
+     */
+    public function editDefinition(Workflow $workflow, WorkflowDefinition $definition)
+    {
+        return view('workflows.edit_definition', compact('workflow', 'definition'));
+    }
+
+    /**
+     * Update the specified workflow definition in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Workflow  $workflow
+     * @param  \App\Models\WorkflowDefinition  $definition
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateDefinition(Request $request, Workflow $workflow, WorkflowDefinition $definition)
+    {
+        $validated = $request->validate([
+            'role' => 'required|string|max:100',
+            'approval_order' => 'required|integer|min:1',
+            'is_enabled' => 'boolean',
+            'is_division_specific' => 'boolean',
+            'fund_type' => 'nullable|string|in:intramural,extramural,both',
+            'memo_print_section' => 'nullable|string|in:through,to,from',
+            'print_order' => 'nullable|integer|min:1',
+        ]);
+
+        // Set default values for checkboxes if not provided
+        $validated['is_enabled'] = $request->has('is_enabled') ? 1 : 0;
+        $validated['is_division_specific'] = $request->has('is_division_specific') ? 1 : 0;
+
+        $definition->update($validated);
+
+        return redirect()->route('workflows.show', $workflow->id)
+            ->with('success', 'Workflow definition updated successfully.');
+    }
+
+    /**
+     * Remove the specified workflow definition from storage.
+     *
+     * @param  \App\Models\Workflow  $workflow
+     * @param  \App\Models\WorkflowDefinition  $definition
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function deleteDefinition(Workflow $workflow, WorkflowDefinition $definition)
+    {
+        try {
+            Log::info('Attempting to delete workflow definition', [
+                'workflow_id' => $workflow->id,
+                'definition_id' => $definition->id,
+                'definition_role' => $definition->role
+            ]);
+
+            // Check if definition is being used by any approvers
+            $isUsed = \DB::table('approvers')
+                ->where('workflow_dfn_id', $definition->id)
+                ->exists();
+
+            if ($isUsed) {
+                Log::info('Cannot delete definition - in use by approvers', [
+                    'definition_id' => $definition->id
+                ]);
+                return redirect()->route('workflows.show', $workflow->id)
+                    ->with('error', 'Cannot delete workflow definition. It is currently being used by approvers.');
+            }
+
+            $definition->delete();
+
+            Log::info('Workflow definition deleted successfully', [
+                'definition_id' => $definition->id
+            ]);
+
+            return redirect()->route('workflows.show', $workflow->id)
+                ->with('success', 'Workflow definition deleted successfully.');
+        } catch (\Exception $e) {
+            Log::error('Workflow definition deletion failed', [
+                'workflow_id' => $workflow->id,
+                'definition_id' => $definition->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('workflows.show', $workflow->id)
+                ->with('error', 'Failed to delete workflow definition. Please try again.');
+        }
     }
 
     /**
@@ -304,7 +413,7 @@ class WorkflowController extends Controller
             ->with(['approvers.staff', 'approvers.oicStaff'])
             ->get();
 
-        $availableStaff = Staff::where('status', 'active')
+        $availableStaff = Staff::active()
             ->orderBy('fname')
             ->get();
 
@@ -359,7 +468,7 @@ class WorkflowController extends Controller
     {
         try {
             // Log the incoming request data for debugging
-            \Log::info('Workflow store-staff request data:', $request->all());
+            Log::info('Workflow store-staff request data:', $request->all());
             
             $validated = $request->validate([
                 'workflow_dfn_id' => 'required|exists:workflow_definition,id',
@@ -384,11 +493,11 @@ class WorkflowController extends Controller
                 );
             }
 
-            \Log::info('Validation passed, creating approver with data:', $validated);
+            Log::info('Validation passed, creating approver with data:', $validated);
 
             // Delete existing approvers for this workflow definition (replace logic)
             Approver::where('workflow_dfn_id', $validated['workflow_dfn_id'])->delete();
-            \Log::info('Deleted existing approvers for workflow definition ID: ' . $validated['workflow_dfn_id']);
+            Log::info('Deleted existing approvers for workflow definition ID: ' . $validated['workflow_dfn_id']);
 
             $approver = Approver::create([
                 'workflow_dfn_id' => $validated['workflow_dfn_id'],
@@ -400,7 +509,7 @@ class WorkflowController extends Controller
 
             $approver->load(['staff', 'oicStaff']);
 
-            \Log::info('Approver created successfully:', $approver->toArray());
+            Log::info('Approver created successfully:', $approver->toArray());
 
             return response()->json([
                 'success' => true,
@@ -408,7 +517,7 @@ class WorkflowController extends Controller
                 'approver' => $approver
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Validation failed:', [
+            Log::error('Validation failed:', [
                 'errors' => $e->errors(),
                 'request_data' => $request->all()
             ]);
@@ -419,7 +528,7 @@ class WorkflowController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('Exception in ajaxStoreStaff:', [
+            Log::error('Exception in ajaxStoreStaff:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'request_data' => $request->all()

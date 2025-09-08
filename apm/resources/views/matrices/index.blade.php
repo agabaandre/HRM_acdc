@@ -131,6 +131,16 @@
                         </div>
                         
                         @if($myDivisionMatrices->count() > 0)
+                            <!-- Pagination Info -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="pagination-info text-muted small">
+                                    Showing {{ $myDivisionMatrices->firstItem() ?? 0 }} to {{ $myDivisionMatrices->lastItem() ?? 0 }} of {{ $myDivisionMatrices->total() }} results
+                                </div>
+                                <div class="text-muted small">
+                                    Page {{ $myDivisionMatrices->currentPage() }} of {{ $myDivisionMatrices->lastPage() }}
+                                </div>
+                            </div>
+                            
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-warning">
@@ -148,10 +158,9 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($myDivisionMatrices as $matrix)
+                                        @foreach($myDivisionMatrices as $index => $matrix)
                                             <tr>    
-                                                <td>{{ $count }}</td>
+                                                <td>{{ $myDivisionMatrices->firstItem() + $index }}</td>
                                                 <td>{{ $matrix->year }}</td>
                                                 <td>{{ $matrix->quarter }}</td>
                                                 <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
@@ -163,18 +172,18 @@
                                                             : $matrix->key_result_area;
                                                     @endphp
                                                     <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal"  
-                                                        data-bs-target="#kraModal{{ $matrix->id }}">
+                                                        data-bs-target="#kraModalMyDiv{{ $matrix->id }}">
                                                         <i class="bx bx-list-check me-1"></i> {{ is_array($kras) ? count($kras) : 0 }}
                                                         Area(s)
                                                     </button>
 
                                                     <!-- Modal -->
-                                                    <div class="modal fade" id="kraModal{{ $matrix->id }}" tabindex="-1"
-                                                        aria-labelledby="kraModalLabel{{ $matrix->id }}" aria-hidden="true">
+                                                    <div class="modal fade" id="kraModalMyDiv{{ $matrix->id }}" tabindex="-1"
+                                                        aria-labelledby="kraModalLabelMyDiv{{ $matrix->id }}" aria-hidden="true">
                                                         <div class="modal-dialog modal-md modal-dialog-centered">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
-                                                                    <h5 class="modal-title" id="kraModalLabel{{ $matrix->id }}">
+                                                                    <h5 class="modal-title" id="kraModalLabelMyDiv{{ $matrix->id }}">
                                                                         Key Result Areas - {{ $matrix->year }} {{ $matrix->quarter }}
                                                                     </h5>
                                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"
@@ -203,16 +212,16 @@
                                                         $activities = $matrix->activities;
                                                     @endphp
                                                     <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#activitiesModal{{ $matrix->id }}">
+                                                        data-bs-target="#activitiesModalMyDiv{{ $matrix->id }}">
                                                         <i class="bx bx-list-ul me-1"></i> {{ $activities->count() }} Activity(ies)
                                                     </button>
                                                     <!-- Modal -->
-                                                    <div class="modal fade" id="activitiesModal{{ $matrix->id }}" tabindex="-1"
-                                                        aria-labelledby="activitiesModalLabel{{ $matrix->id }}" aria-hidden="true">
+                                                    <div class="modal fade" id="activitiesModalMyDiv{{ $matrix->id }}" tabindex="-1"
+                                                        aria-labelledby="activitiesModalLabelMyDiv{{ $matrix->id }}" aria-hidden="true">
                                                         <div class="modal-dialog modal-md modal-dialog-centered">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
-                                                                    <h5 class="modal-title" id="activitiesModalLabel{{ $matrix->id }}">
+                                                                    <h5 class="modal-title" id="activitiesModalLabelMyDiv{{ $matrix->id }}">
                                                                         Activities - {{ $matrix->year }} {{ $matrix->quarter }}
                                                                     </h5>
                                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"
@@ -239,7 +248,7 @@
                                                     </div>
                                                 </td>
                     
-                                                <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : ($matrix->workflow_definition ? $matrix->workflow_definition->role : 'Focal Person') }}
+                                                <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : (($matrix->workflow_definition && $matrix->approval_level>0) ? $matrix->workflow_definition->role : 'Focal Person') }}
                                                     <small
                                                         class="text-muted">{{ $matrix->current_actor ? '(' . $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname . ')' : '' }}</small>
                                                 </td>
@@ -261,7 +270,6 @@
                                                     </div>
                                                 </td>
                                             </tr>
-                                            @php $count++; @endphp
                                         @endforeach
                                     </tbody>
                                 </table>
@@ -270,7 +278,7 @@
                             <!-- Pagination -->
                             @if($myDivisionMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $myDivisionMatrices->hasPages())
                                 <div class="d-flex justify-content-center mt-3">
-                                    {{ $myDivisionMatrices->appends(request()->query())->links() }}
+                                    {{ $myDivisionMatrices->appends(request()->except('my_division_page'))->links() }}
                                 </div>
                             @endif
                         @else
@@ -302,6 +310,16 @@
                         </div>
                         
                         @if($allMatrices->count() > 0)
+                            <!-- Pagination Info -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="pagination-info text-muted small">
+                                    Showing {{ $allMatrices->firstItem() ?? 0 }} to {{ $allMatrices->lastItem() ?? 0 }} of {{ $allMatrices->total() }} results
+                                </div>
+                                <div class="text-muted small">
+                                    Page {{ $allMatrices->currentPage() }} of {{ $allMatrices->lastPage() }}
+                                </div>
+                            </div>
+                            
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">
                                     <thead class="table-primary">
@@ -319,10 +337,9 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($allMatrices as $matrix)
+                                        @foreach($allMatrices as $index => $matrix)
                                                 <tr>
-                                                    <td>{{ $count }}</td>
+                                                    <td>{{ $allMatrices->firstItem() + $index }}</td>
                                                     <td>{{ $matrix->year }}</td>
                                                     <td>{{ $matrix->quarter }}</td>
                                                     <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
@@ -334,18 +351,18 @@
                                                                 : $matrix->key_result_area;
                                                         @endphp
                                                         <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal"
-                                                            data-bs-target="#kraModal{{ $matrix->id }}">
+                                                            data-bs-target="#kraModalAll{{ $matrix->id }}">
                                                             <i class="bx bx-list-check me-1"></i> {{ is_array($kras) ? count($kras) : 0 }}
                                                             Area(s)
                                                         </button>
 
                                                         <!-- Modal -->
-                                                        <div class="modal fade" id="kraModal{{ $matrix->id }}" tabindex="-1"
-                                                            aria-labelledby="kraModalLabel{{ $matrix->id }}" aria-hidden="true">
+                                                        <div class="modal fade" id="kraModalAll{{ $matrix->id }}" tabindex="-1"
+                                                            aria-labelledby="kraModalLabelAll{{ $matrix->id }}" aria-hidden="true">
                                                             <div class="modal-dialog modal-md modal-dialog-centered">
                                                                 <div class="modal-content">
                                                                     <div class="modal-header">
-                                                                        <h5 class="modal-title" id="kraModalLabel{{ $matrix->id }}">
+                                                                        <h5 class="modal-title" id="kraModalLabelAll{{ $matrix->id }}">
                                                                             Key Result Areas - {{ $matrix->year }} {{ $matrix->quarter }}
                                                                         </h5>
                                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"
@@ -374,16 +391,16 @@
                                                             $activities = $matrix->activities;
                                                         @endphp
                                                         <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-                                                            data-bs-target="#activitiesModal{{ $matrix->id }}">
+                                                            data-bs-target="#activitiesModalAll{{ $matrix->id }}">
                                                             <i class="bx bx-list-ul me-1"></i> {{ $activities->count() }} Activity(ies)
                                                         </button>
                                                         <!-- Modal -->
-                                                        <div class="modal fade" id="activitiesModal{{ $matrix->id }}" tabindex="-1"
-                                                            aria-labelledby="activitiesModalLabel{{ $matrix->id }}" aria-hidden="true">
+                                                        <div class="modal fade" id="activitiesModalAll{{ $matrix->id }}" tabindex="-1"
+                                                            aria-labelledby="activitiesModalLabelAll{{ $matrix->id }}" aria-hidden="true">
                                                             <div class="modal-dialog modal-md modal-dialog-centered">
                                                                 <div class="modal-content">
                                                                     <div class="modal-header">
-                                                                        <h5 class="modal-title" id="activitiesModalLabel{{ $matrix->id }}">
+                                                                        <h5 class="modal-title" id="activitiesModalLabelAll{{ $matrix->id }}">
                                                                             Activities - {{ $matrix->year }} {{ $matrix->quarter }}
                                                                         </h5>
                                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"
@@ -432,7 +449,6 @@
                                                         </div>
                                                     </td>
                                                 </tr>
-                                                @php $count++; @endphp
                                         @endforeach
                                     </tbody>
                                 </table>
@@ -441,7 +457,7 @@
                             <!-- Pagination -->
                             @if($allMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMatrices->hasPages())
                                 <div class="d-flex justify-content-center mt-3">
-                                    {{ $allMatrices->appends(request()->query())->links() }}
+                                    {{ $allMatrices->appends(request()->except('all_matrices_page'))->links() }}
                                 </div>
                             @endif
                         @else
@@ -481,8 +497,47 @@
                     if (val) url.searchParams.set(id, val);
                     else url.searchParams.delete(id);
                 });
+                
+                // Clear pagination parameters when applying filters
+                url.searchParams.delete('my_division_page');
+                url.searchParams.delete('all_matrices_page');
+                
                 window.location.href = url.toString();
             });
+
+            // Handle tab switching to preserve pagination state
+            $('#matrixTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const target = $(e.target).attr('data-bs-target');
+                const url = new URL(window.location.href);
+                
+                // Clear the other tab's pagination parameter
+                if (target === '#myDivision') {
+                    url.searchParams.delete('all_matrices_page');
+                } else if (target === '#allMatrices') {
+                    url.searchParams.delete('my_division_page');
+                }
+                
+                // Update URL without reloading
+                window.history.replaceState({}, '', url.toString());
+            });
+
+            // Show pagination info
+            function updatePaginationInfo() {
+                $('.pagination-info').each(function() {
+                    const $pagination = $(this).closest('.tab-pane').find('.pagination');
+                    if ($pagination.length > 0) {
+                        const $paginationLinks = $pagination.find('a, span');
+                        const currentPage = $paginationLinks.filter('.active').text();
+                        const totalPages = $paginationLinks.filter('.page-link').length;
+                        
+                        if (currentPage && totalPages > 1) {
+                            $(this).text(`Page ${currentPage} of ${totalPages}`);
+                        }
+                    }
+                });
+            }
+            
+            updatePaginationInfo();
         });
     </script>
 @endpush

@@ -1,91 +1,83 @@
 @extends('layouts.app')
 
 @section('title', 'Edit Cost Item')
-
 @section('header', 'Edit Cost Item')
 
 @section('header-actions')
-    <div class="d-flex gap-2">
-        <a href="{{ route('cost-items.show', $costItem->id) }}" class="btn btn-outline-secondary">
-            <i class="bx bx-arrow-back"></i> Back to Details
-        </a>
-        <form action="{{ route('cost-items.destroy', $costItem->id) }}" 
-              method="POST" 
-              class="d-inline"
-              onsubmit="return confirm('Are you sure you want to delete this cost item? This action cannot be undone.');">
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="btn btn-danger">
-                <i class="bx bx-trash"></i> Delete
-            </button>
-        </form>
-    </div>
+<a href="{{ route('cost-items.index') }}" class="btn btn-outline-secondary">
+    <i class="bx bx-arrow-back me-1 text-success"></i> Back to List
+</a>
 @endsection
 
 @section('content')
-<div class="card shadow-sm">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="bx bx-edit me-2 text-primary"></i>Edit Cost Item: {{ $costItem->name }}</h5>
+<div class="card shadow-sm border-0 mb-5">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 text-dark">
+            <i class="bx bx-edit me-2"></i> Edit Cost Item: {{ $costItem->name }}
+        </h5>
     </div>
     <div class="card-body p-4">
-        @if ($errors->any())
-            <div class="alert alert-danger">
-                <ul class="mb-0">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
         <form action="{{ route('cost-items.update', $costItem->id) }}" method="POST" id="editCostItemForm">
             @csrf
             @method('PUT')
-            
-            <div class="row g-4">
-                <div class="col-md-12">
-                    <div class="form-group position-relative">
-                        <label for="name" class="form-label fw-semibold">
-                            <i class="bx bx-purchase-tag me-1 text-primary"></i>Name <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" 
-                               class="form-control form-control-lg @error('name') is-invalid @enderror" 
-                               id="name" 
-                               name="name" 
-                               value="{{ old('name', $costItem->name) }}" 
-                               placeholder="Enter cost item name"
-                               required>
-                        @error('name')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
+            <input type="hidden" name="_token" value="{{ csrf_token() }}">
 
-                <div class="col-md-12">
-                    <div class="form-group position-relative">
-                        <label for="cost_type" class="form-label fw-semibold">
-                            <i class="bx bx-category me-1 text-primary"></i>Cost Type <span class="text-danger">*</span>
-                        </label>
-                        <select class="form-select form-select-lg @error('cost_type') is-invalid @enderror" 
-                                id="cost_type" 
-                                name="cost_type" 
-                                required>
-                            <option value="" disabled>Select Cost Type</option>
-                            <option value="Individual Cost" {{ (old('cost_type', $costItem->cost_type) == 'Individual Cost') ? 'selected' : '' }}>Individual Cost</option>
-                            <option value="Other Cost" {{ (old('cost_type', $costItem->cost_type) == 'Other Cost') ? 'selected' : '' }}>Other Cost</option>
-                        </select>
-                        @error('cost_type')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+            <!-- Section 1: Basic Information -->
+            <div class="mb-5">
+                <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
+                    <i class="fas fa-info-circle me-2"></i> Basic Information
+                </h6>
+                
+                <div class="row g-4">
+                    <!-- Cost Item Name -->
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="name" class="form-label fw-semibold">
+                                <i class="bx bx-purchase-tag me-1 text-success"></i> Cost Item Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control border-success @error('name') is-invalid @enderror" 
+                                   id="name" 
+                                   name="name" 
+                                   value="{{ old('name', $costItem->name) }}" 
+                                   placeholder="Enter cost item name"
+                                   required>
+                            <small class="text-muted mt-1 d-block">Name of the cost item</small>
+                            @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Cost Type -->
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="cost_type" class="form-label fw-semibold">
+                                <i class="bx bx-category me-1 text-success"></i> Cost Type <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select border-success @error('cost_type') is-invalid @enderror" 
+                                    id="cost_type" 
+                                    name="cost_type" 
+                                    required>
+                                <option value="" disabled>Select Cost Type</option>
+                                <option value="Individual Cost" {{ (old('cost_type', $costItem->cost_type) == 'Individual Cost') ? 'selected' : '' }}>Individual Cost</option>
+                                <option value="Other Cost" {{ (old('cost_type', $costItem->cost_type) == 'Other Cost') ? 'selected' : '' }}>Other Cost</option>
+                            </select>
+                            <small class="text-muted mt-1 d-block">Type of cost item</small>
+                            @error('cost_type')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between mt-4">
-                <a href="{{ route('cost-items.show', $costItem->id) }}" class="btn btn-light">
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-end gap-3 mt-5 pt-4 border-top">
+                <a href="{{ route('cost-items.index') }}" class="btn btn-light px-4">
                     <i class="bx bx-x me-1"></i> Cancel
                 </a>
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-success px-4">
                     <i class="bx bx-save me-1"></i> Update Cost Item
                 </button>
             </div>

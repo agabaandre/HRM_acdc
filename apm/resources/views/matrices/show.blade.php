@@ -127,7 +127,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
-                            @if(!activities_approved_by_me($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
+                            @if(can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
                                 <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">
                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                 </th>
@@ -136,6 +136,7 @@
                             <th class="border-0 px-3 py-3 text-muted fw-semibold">Title</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold">Date Range</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Participants</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Fund Type</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Budget (USD)</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Status</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Actions</th>
@@ -144,10 +145,13 @@
                     <tbody>
                         @php
                           $count=1;
+                          //dd($activities[0]->activity_budget);
+                        //  dd($activities[1]->activity_budget->fundcode);
                         @endphp
+
                         @forelse($activities as $activity)
                             <tr>
-                                @if(!activities_approved_by_me($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
+                                @if(can_take_action($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
                                <td class="px-3 py-3">
                                     @if(can_approve_activity($activity) && !done_approving_activty($activity))
                                         <input type="checkbox" class="form-check-input activity-checkbox" value="{{ $activity->id }}" data-activity-title="{{ $activity->activity_title }}">
@@ -164,9 +168,13 @@
                                 <td class="px-3 py-3 text-center">
                                     <span class="badge bg-info rounded-pill">{{ $activity->total_participants }}</span>
                                 </td>
+                                <td class="px-3 py-3 text-center">
+                                    <span class="badge bg-info rounded-pill">{{ $activity->fundType->name }}</span>
+                                </td>
                              <td class="px-3 py-3 text-center">
                                 @php
-                                    $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
+                                //dd($activity);
+                                    $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown , true);
                                     $totalBudget = 0;
 
                                     if (is_array($budget)) {
@@ -186,9 +194,17 @@
                             </td>
 
                                 <td class="px-3 py-3 text-center">
+
+                                @php //dd(can_approve_activity($activity)) @endphp
                                     @if(can_approve_activity($activity))
-                                    <span class="badge bg-{{ ($activity->status === 'approved' || ($activity->my_last_action && $activity->my_last_action->action=='passed')) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }} rounded-pill">
-                                        {{ ucfirst(($activity->my_last_action)?$activity->my_last_action->action : 'Pending' ) }}
+                                    <span class="badge bg-{{ allow_print_activity($activity) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }} rounded-pill">
+                                        @if(allow_print_activity($activity))
+                                            Passed
+                                        @elseif(!empty($activity->my_last_action))
+                                            {{ ucfirst($activity->my_last_action->action) }}
+                                        @else
+                                            Pending
+                                        @endif
                                     </span>
                                     @else
                                     <span class="badge bg-success rounded-pill">No Action Required</span>
@@ -227,9 +243,9 @@
                         <button type="button" class="btn btn-success btn-lg shadow-sm" id="approveSelectedBtn" data-bs-toggle="modal" data-bs-target="#approveSelectedModal">
                             <i class="bx bx-check me-2"></i> Pass Selected Activities
                         </button>
-                        <button type="button" class="btn btn-danger btn-lg shadow-sm" id="rejectSelectedBtn" data-bs-toggle="modal" data-bs-target="#rejectSelectedModal">
-                            <i class="bx bx-x me-2"></i> Reject Activities
-                        </button>
+                        {{-- <button type="button" class="btn btn-danger btn-lg shadow-sm" id="rejectSelectedBtn" data-bs-toggle="modal" data-bs-target="#rejectSelectedModal">
+                            <i class="bx bx-x me-2"></i> N
+                        </button> --}}
                     </div>
                 </div>
             </div>
@@ -262,10 +278,10 @@
 
     <div class="col-lg-3">
         @if(count($matrix->matrixApprovalTrails) > 0)
-            @include('matrices.partials.approval-trail')
+            @include('matrices.partials.approval-trail',['trails'=>$matrix->matrixApprovalTrails])
         @else
             <div class="card shadow-sm border-0">
-                <div class="card-body text-center py-5">
+                <div class="card-body text-center ">
                     <i class="bx bx-history fs-1 text-muted mb-3"></i>
                     <h5 class="text-muted">No Approval History</h5>
                     <p class="text-muted mb-0">Approval trail will appear here once actions are taken on this matrix.</p>
@@ -279,11 +295,18 @@
 <div class="row mt-4">
     <div class="col-12">
         <div class="d-flex justify-content-end gap-3">
-            @if(can_take_action($matrix))
+            @if(can_take_action($matrix) || (can_division_head_edit($matrix) && $matrix->overall_status === 'returned'))
                 <div class="d-flex align-items-center">
                     @include('matrices.partials.approval-actions', ['matrix' => $matrix])
                 </div>
             @endif
+             
+            {{-- @if($matrix->overall_status === 'returned')
+              <button type="button" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#returnMatrixModal">
+                    <i class="bx bx-save me-2"></i> Return to Focal Person
+                </button>
+            
+            @endif --}}
 
             @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
                 <button type="button" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
@@ -299,9 +322,11 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
+           
                 <h5 class="modal-title text-white" id="submitMatrixModalLabel">
                     <i class="bx bx-save me-2"></i> Submit Matrix for Approval
                 </h5>
+
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -322,7 +347,7 @@
                         @php
                             $matrixTotalBudget = 0;
                             foreach($matrix->activities as $activity) {
-                                $budget = is_array($activity->budget) ? $activity->budget : json_decode($activity->budget, true);
+                                $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown, true);
                                 
                                 if (is_array($budget)) {
                                     foreach ($budget as $key => $entries) {
@@ -353,8 +378,8 @@
         </div>
     </div>
 </div>
- 
-</div>
+
+
 
 <!-- Approve Selected Activities Confirmation Modal -->
 <div class="modal fade" id="approveSelectedModal" tabindex="-1" aria-labelledby="approveSelectedModalLabel" aria-hidden="true">
@@ -431,6 +456,99 @@
         </div>
     </div>
 </div>
+
+<!-- Staff Activities Modal -->
+<div class="modal fade" id="staffActivitiesModal" tabindex="-1" aria-labelledby="staffActivitiesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #119A48 !important;">
+                <h5 class="modal-title text-white" id="staffActivitiesModalLabel">
+                    <i class="bx bx-user me-2"></i> Staff Activities
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <h4 id="staffNameDisplay" class="mb-2" style="color: #119A48 !important;"></h4>
+                    <p class="text-muted">Activity details for {{ $matrix->quarter }} {{ $matrix->year }}</p>
+                </div>
+                
+                <!-- Tabs -->
+                <ul class="nav nav-tabs" id="staffActivitiesTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="my-division-tab" data-bs-toggle="tab" data-bs-target="#my-division" type="button" role="tab" aria-controls="my-division" aria-selected="true" style="border-color: #119A48 !important; color: #119A48 !important;">
+                            <i class="bx bx-building me-1"></i> My Division
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="other-divisions-tab" data-bs-toggle="tab" data-bs-target="#other-divisions" type="button" role="tab" aria-controls="other-divisions" aria-selected="false">
+                            <i class="bx bx-globe me-1"></i> Other Divisions
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content mt-3" id="staffActivitiesTabContent">
+                    <!-- My Division Tab -->
+                    <div class="tab-pane fade show active" id="my-division" role="tabpanel" aria-labelledby="my-division-tab">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Activity Title</th>
+                                        <th>Focal Person</th>
+                                        <th>Division</th>
+                                        <th class="text-center">Days</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="myDivisionActivities">
+                                    <!-- Content will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Other Divisions Tab -->
+                    <div class="tab-pane fade" id="other-divisions" role="tabpanel" aria-labelledby="other-divisions-tab">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Activity Title</th>
+                                        <th>Focal Person</th>
+                                        <th>Division</th>
+                                        <th class="text-center">Days</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="otherDivisionsActivities">
+                                    <!-- Content will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bx bx-x me-1"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+
+
+#staffActivitiesModal .nav-tabs .nav-link:hover {
+    border-color: #119A48 !important;
+    color: #119A48 !important;
+}
+
+#staffActivitiesModal .nav-tabs {
+    border-bottom-color: #119A48 !important;
+}
+</style>
 
 @push('scripts')
 <script>
@@ -523,6 +641,69 @@ document.addEventListener('DOMContentLoaded', function() {
     updateSelectAllState();
     updateApproveSection();
 });
+
+// Staff Activities Modal Function
+function showStaffActivities(staffId, staffName) {
+    // Set staff name in modal
+    document.getElementById('staffNameDisplay').textContent = staffName;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('staffActivitiesModal'));
+    modal.show();
+    
+    // Load activities data
+    loadStaffActivities(staffId);
+}
+
+function loadStaffActivities(staffId) {
+    // Show loading state
+    document.getElementById('myDivisionActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3"><i class="bx bx-loader-alt bx-spin me-2"></i>Loading...</td></tr>';
+    document.getElementById('otherDivisionsActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3"><i class="bx bx-loader-alt bx-spin me-2"></i>Loading...</td></tr>';
+    
+    const url = `${window.location.origin}/staff/apm/staff/${staffId}/activities?matrix_id={{ $matrix->id }}`;
+    console.log('Fetching from URL:', url);
+    
+    // Fetch activities data via AJAX
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            // Populate My Division tab
+            populateActivitiesTable('myDivisionActivities', data.my_division || []);
+            
+            // Populate Other Divisions tab
+            populateActivitiesTable('otherDivisionsActivities', data.other_divisions || []);
+        })
+        .catch(error => {
+            console.error('Error loading staff activities:', error);
+            document.getElementById('myDivisionActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger">Error loading data</td></tr>';
+            document.getElementById('otherDivisionsActivities').innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger">Error loading data</td></tr>';
+        });
+}
+
+function populateActivitiesTable(tableId, activities) {
+    const tbody = document.getElementById(tableId);
+    
+    if (activities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No activities found</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    activities.forEach(activity => {
+        html += `
+            <tr>
+                <td class="fw-semibold">${activity.activity_title || 'N/A'}</td>
+                <td>${activity.focal_person || 'N/A'}</td>
+                <td>${activity.division_name || 'N/A'}</td>
+                <td class="text-center">
+                    <span class="badge bg-primary rounded-pill">${activity.days || 0}</span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
 </script>
 @endpush
 @endsection

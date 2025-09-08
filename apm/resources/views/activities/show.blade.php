@@ -16,12 +16,77 @@
     <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
+
     
     @if(still_with_creator($matrix,$activity))
         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-sm btn-warning">
             <i class="bx bx-edit"></i> Edit Activity
         </a>
     @endif
+
+    
+</div>
+<div class="col-md-12 d-flex justify-content-end">
+  {{-- Activity Operations Buttons --}}
+            @if(allow_print_activity($activity))
+            <div class="col-md-12 mb-3">
+                <div class="card border-primary">
+                
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-2 d-flex justify-content-end gap-2">
+                                @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $matrix->overall_status === 'approved')
+                                    @php
+                                        // Check if ARF already exists for this activity
+                                        $existingArfTop = \App\Models\RequestARF::where('source_id', $activity->id)
+                                            ->where('model_type', 'App\\Models\\Activity')
+                                            ->first();
+                                    @endphp
+                                    
+                                    @if(!$existingArfTop)
+                                        <button type="button" class="btn btn-success w-20" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                                            <i class="bx bx-file-plus me-2"></i>Create ARF Request
+                                        </button>
+                                    @elseif(in_array($existingArfTop->overall_status, ['pending', 'approved', 'returned']))
+                                        <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary w-20">
+                                            <i class="bx bx-show me-2"></i>View ARF Request
+                                        </a>
+                                    @endif
+                                @endif
+                                
+                                {{-- Service Request Button --}}
+                                @if($activity->fund_type_id == 1 && $matrix->overall_status === 'approved')
+                                    @php
+                                        // Check if Service Request already exists for this activity
+                                        $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
+                                            ->where('model_type', 'App\\Models\\Activity')
+                                            ->first();
+                                    @endphp
+                                    
+                                        @if(!$existingServiceRequest)
+                                            <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
+                                               class="btn btn-info w-20">
+                                                <i class="fas fa-tools me-2"></i>Create Service Request
+                                            </a>
+                                        @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
+                                            <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info w-20">
+                                                <i class="fas fa-eye me-2"></i>View Service Request
+                                            </a>
+                                        @endif
+                                @endif
+                            
+                                <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
+                                   class="btn btn-secondary w-20" target="_blank">
+                                    <i class="bx bx-printer me-2"></i>Print Activity
+                                </a>
+                          
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+    
 </div>
 
     <div class="col-md-12">
@@ -37,7 +102,7 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <strong>Background:</strong>
-                        <p>{{ $activity->background }}</p>
+                        <div class="html-content">{!! $activity->background !!}</div>
                     </div>
                     <div class="col-md-6">
                         <strong>Key Result Area:</strong>
@@ -54,8 +119,26 @@
                     </div>
                     <div class="col-md-4">
                         <strong>Status: </strong>
+                        @php
+                            // Determine the status and badge color
+                            $statusText = '';
+                            $badgeClass = 'bg-secondary';
+
+                            //dd($activity);
+
+                            if (can_approve_activity($activity)) {
+                                if ($activity->matrix->overall_status == 'approved') {
+                                    $statusText = ucwords($activity->status);
+                                    $badgeClass = 'bg-success';
+                                } else {
+                                    $statusText = ucwords($activity->status);
+                                    $badgeClass = ($activity->status == 'passed') ? 'bg-success' : 'bg-danger';
+                                }
+                            }
+                        @endphp
+
                         @if(can_approve_activity($activity))
-                            <span badge class="badge {{((($activity->my_last_action)?$activity->my_last_action->action:$activity->status)=='passed')?'bg-success':'bg-danger'}}">{{ucwords(($activity->my_last_action)?$activity->my_last_action->action:$activity->status)}}</span>
+                            <span class="badge {{ $badgeClass }}">{{ $statusText }}</span>
                         @else
                             <span class="badge bg-success">No Action Required</span>
                         @endif
@@ -117,10 +200,7 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <strong>Remarks:</strong>
-                    <p>{{ $activity->activity_request_remarks }}</p>
-                </div>
+               
 
                 @if($attachments && count($attachments) > 0)
                 <div class="mb-3">
@@ -182,10 +262,10 @@
                 <h5 class="mb-0">Budget Details</h5>
             </div>
             <div class="card-body">
-            
+        
              @foreach($fundCodes ?? [] as $fundCode )
              
-                 <h6  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} </h6>
+                 <h6  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }}) </h6>
 
                 <div class="table-responsive">
                     <table class="table table-bordered">
@@ -237,6 +317,11 @@
                      @endforeach
                 </div>
 
+                 <div class="mb-3">
+                    <strong>Request for Approval:</strong>
+                    <div class="html-content">{!! $activity->activity_request_remarks !!}</div>
+                </div>
+
             @if((can_take_action($matrix ) && can_approve_activity($activity))  && !done_approving_activty($activity))
             <div class="col-md-4 mb-2 px-2 ms-auto">
               @include('activities.partials.approval-actions',['activity'=>$activity,'matrix'=>$matrix])
@@ -245,7 +330,7 @@
 
             {{-- Debug Information (Temporary) --}}
             @if(allow_activity_operations())
-            <div class="col-md-12 mb-3">
+            {{-- <div class="col-md-12 mb-3">
                 <div class="card border-warning">
                     <div class="card-header bg-warning text-dark">
                         <h6 class="mb-0"><i class="bx bx-bug me-2"></i>Debug Info (Remove after testing)</h6>
@@ -287,50 +372,20 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> --}}
             @endif
 
-            {{-- Activity Operations Buttons --}}
-            @if(allow_activity_operations())
-            <div class="col-md-12 mb-3">
-                <div class="card border-primary">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0"><i class="bx bx-cog me-2"></i>Activity Operations (OVERRIDE MODE)</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-2">
-                                @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural')
-                                    <a href="{{ route('request-arf.create') }}?activity_id={{ $activity->id }}" 
-                                       class="btn btn-success w-100">
-                                        <i class="bx bx-file-plus me-2"></i>Create ARF Request
-                                    </a>
-                                    <small class="text-muted d-block mt-1">Extramural activity - Create ARF for external funding</small>
-                                @else
-                                    <a href="{{ route('service-requests.create') }}?activity_id={{ $activity->id }}" 
-                                       class="btn btn-info w-100">
-                                        <i class="bx bx-wrench me-2"></i>Request for Services
-                                    </a>
-                                    <small class="text-muted d-block mt-1">Intramural activity - Request internal services</small>
-                                @endif
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
-                                   class="btn btn-secondary w-100">
-                                    <i class="bx bx-printer me-2"></i>Print Activity
-                                </a>
-                                <small class="text-muted d-block mt-1">Print activity details and budget</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endif
+          
      
 
             </div>
         </div>
     </div>
+    @php
+    //dd($activity->activityApprovalTrails);
+    @endphp
+
+    @include('matrices.partials.approval-trail',['trails'=>$activity->activityApprovalTrails])
 
     {{-- <div class="col-md-3">
         <div class="card shadow-sm">
@@ -415,6 +470,51 @@
     line-height: 1.5;
 }
 
+/* HTML content styling */
+.html-content {
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+.html-content p {
+    margin-bottom: 1rem;
+}
+
+.html-content ul, .html-content ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+}
+
+.html-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.html-content table th,
+.html-content table td {
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    text-align: left;
+}
+
+.html-content table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.html-content strong {
+    font-weight: bold;
+}
+
+.html-content em {
+    font-style: italic;
+}
+
+.html-content u {
+    text-decoration: underline;
+}
+
 /* Loading animation */
 .spinner-border {
     width: 3rem;
@@ -464,4 +564,70 @@ $(document).on('click', '.preview-attachment', function() {
     modal.show();
 });
 </script>
+
+        @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $matrix->overall_status === 'approved')
+            @php
+                // Check if ARF already exists for this activity
+                $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                    ->where('model_type', 'App\\Models\\Activity')
+                    ->first();
+            @endphp
+            
+            @if(!$existingArf)
+            @include('request-arf.components.create-arf-modal', [
+            'sourceType' => 'Activity',
+            'sourceTitle' => $activity->activity_title,
+            'fundTypeId' => $activity->fundType ? $activity->fundType->id : null,
+            'fundTypeName' => $activity->fundType ? $activity->fundType->name : 'N/A',
+            'divisionName' => $activity->matrix && $activity->matrix->division ? $activity->matrix->division->division_name : 'N/A',
+            'dateFrom' => $activity->date_from ? \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') : 'N/A',
+            'dateTo' => $activity->date_to ? \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') : 'N/A',
+            'numberOfDays' => $activity->date_from && $activity->date_to ? 
+                \Carbon\Carbon::parse($activity->date_from)->diffInDays(\Carbon\Carbon::parse($activity->date_to)) + 1 : 'N/A',
+            'location' => $activity->locations() ? $activity->locations()->pluck('name')->join(', ') : 'N/A',
+            'keyResultArea' => $activity->matrix && $activity->matrix->key_result_area ? 
+                collect($activity->matrix->key_result_area)->pluck('description')->join(', ') : 'N/A',
+            'quarterlyLinkage' => $activity->quarterly_linkage ?? 'N/A',
+            'totalParticipants' => $activity->total_participants ?? 'N/A',
+            'internalParticipants' => $activity->internal_participants 
+                ? (is_string($activity->internal_participants) 
+                    ? count(json_decode($activity->internal_participants, true) ?? []) 
+                    : count($activity->internal_participants)) 
+                : 0,
+            'externalParticipants' => $activity->total_participants ? ($activity->total_participants - ($activity->internal_participants 
+                ? (is_string($activity->internal_participants) 
+                    ? count(json_decode($activity->internal_participants, true) ?? []) 
+                    : count($activity->internal_participants)) 
+                : 0)) : 0,
+            'budgetCode' => $activity->fundCodes ? $activity->fundCodes->pluck('code')->join(', ') : 'N/A',
+            'background' => $activity->background ?? 'N/A',
+            'requestForApproval' => $activity->activity_request_remarks ?? 'N/A',
+            'totalBudget' => $activity->total_budget ?? '0.00',
+            'headOfDivision' => $activity->matrix && $activity->matrix->division && $activity->matrix->division->head ? 
+                $activity->matrix->division->head->fname . ' ' . $activity->matrix->division->head->lname : 'N/A',
+            'focalPerson' => $activity->staff ? 
+                $activity->staff->fname . ' ' . $activity->staff->lname : 'N/A',
+            'budgetBreakdown' => $activity->activity_budget ?? [],
+            'budgetIds' => is_string($activity->budget_id) 
+                ? json_decode($activity->budget_id, true) 
+                : ($activity->budget_id ?? []),
+            'fundCodes' => \App\Models\FundCode::whereIn('id', is_string($activity->budget_id) 
+                ? json_decode($activity->budget_id, true) 
+                : ($activity->budget_id ?? []))->with('fundType')->get()->keyBy('id'),
+            'defaultTitle' => 'ARF Request - ' . $activity->activity_title,
+            'sourceId' => $activity->id,
+            'modelType' => 'App\\Models\\Activity'
+        ])
+            @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+            <div class="alert alert-info">
+                <i class="bx bx-info-circle me-2"></i>
+                An ARF request has already been created for this activity.
+                <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                    <i class="bx bx-show me-1"></i>View ARF Request
+                </a>
+            </div>
+            @endif
+            
+        @endif
+        
 @endpush
