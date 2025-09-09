@@ -38,9 +38,21 @@ php artisan queue:work --once
 php artisan queue:work --tries=3 --timeout=60 --memory=512
 ```
 
-### Option 2: Production (Supervisor)
+### Option 2: Production (Supervisor) - RECOMMENDED
 
-For production servers, use Supervisor to keep the queue worker running:
+For production servers, you have two approaches:
+
+#### Approach A: Supervisor + Cron (RECOMMENDED)
+Use Supervisor for queue workers and cron for scheduled commands:
+
+```bash
+# Quick setup
+cd /var/www/html/staff/apm
+./setup-supervisor-cron.sh
+```
+
+#### Approach B: Supervisor Only
+Use Supervisor for both queue workers and scheduled commands:
 
 #### 1. Install Supervisor
 ```bash
@@ -51,16 +63,24 @@ sudo apt-get install supervisor
 sudo yum install supervisor
 ```
 
-#### 2. Create Configuration
+#### 2. Quick Setup (Automated)
+```bash
+# Run the automated setup script
+cd /var/www/html/staff/apm
+./setup-supervisor.sh
+```
+
+#### 3. Manual Setup (Alternative)
+
+**Queue Worker Configuration:**
 ```bash
 sudo nano /etc/supervisor/conf.d/laravel-worker.conf
 ```
 
-Add this configuration:
 ```ini
 [program:laravel-worker]
 process_name=%(program_name)s_%(process_num)02d
-command=php /opt/homebrew/var/www/staff/apm/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+command=php /var/www/html/staff/apm/artisan queue:work --sleep=3 --tries=3 --max-time=3600
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -68,15 +88,36 @@ killasgroup=true
 user=www-data
 numprocs=2
 redirect_stderr=true
-stdout_logfile=/opt/homebrew/var/www/staff/apm/storage/logs/worker.log
+stdout_logfile=/var/www/html/staff/apm/storage/logs/worker.log
 stopwaitsecs=3600
 ```
 
-#### 3. Start Supervisor
+**Scheduler Configuration:**
+```bash
+sudo nano /etc/supervisor/conf.d/laravel-scheduler.conf
+```
+
+```ini
+[program:laravel-scheduler]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/html/staff/apm/artisan schedule:run --verbose
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/html/staff/apm/storage/logs/scheduler.log
+stopwaitsecs=60
+```
+
+#### 4. Start Services
 ```bash
 sudo supervisorctl reread
 sudo supervisorctl update
 sudo supervisorctl start laravel-worker:*
+sudo supervisorctl start laravel-scheduler:*
 ```
 
 ### Option 3: Systemd Service
@@ -113,6 +154,15 @@ sudo systemctl status laravel-worker
 ```
 
 ## Monitoring Commands
+
+### Quick Status Check
+```bash
+# Use the monitoring script (recommended)
+./monitor-supervisor.sh
+
+# Or check manually
+sudo supervisorctl status
+```
 
 ### Check Queue Status
 ```bash
