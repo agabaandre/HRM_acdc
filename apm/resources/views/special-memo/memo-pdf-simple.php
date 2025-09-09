@@ -674,7 +674,7 @@
                            
                             <?php foreach($budgetBreakdown[$fundCode->id] ?? [] as $item): ?>
                                 <?php
-                                    $total = ($item['unit_cost'] ?? 0) * ($item['units'] ?? 0) * ($item['days'] ?? 0);
+                                    $total = ($item['unit_cost'] ?? 0) * ($item['units'] ?? 0);
                                     $grandTotal+=$total;
                                 ?>
                                 <tr>

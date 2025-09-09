@@ -131,7 +131,7 @@
                                                 @foreach($budgetBreakdown as $item)
                                                     @if($item->fund_code == $fundCode->id)
                                                         @php
-                                                            $total = $item->unit_cost * $item->units * $item->days;
+                                                            $total = $item->unit_cost * $item->units;
                                                             $fundTotal += $total;
                                                         @endphp
                                                         <tr>

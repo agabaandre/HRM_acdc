@@ -124,12 +124,36 @@
 <div class="col-md-12">
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
-            <h5 class="mb-0 fw-bold text-dark">
-                <i class="bx bx-calendar-event me-2 text-primary"></i>Activities
-            </h5>
-            <small class="text-muted d-block mt-1">
-                {{ $matrix->activities->count() }} activities in this matrix
-            </small>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark">
+                        <i class="bx bx-calendar-event me-2 text-primary"></i>Activities
+                    </h5>
+                    <small class="text-muted d-block mt-1">
+                        {{ $matrix->activities->count() }} activities in this matrix
+                    </small>
+                </div>
+                <div class="col-md-3">
+                    <form method="GET" action="{{ route('matrices.show', $matrix) }}" class="d-flex">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">
+                                <i class="bx bx-search text-muted"></i>
+                            </span>
+                            <input type="text" name="document_number" class="form-control" 
+                                   placeholder="Filter by Document #" 
+                                   value="{{ request('document_number') }}">
+                        </div>
+                        <button type="submit" class="btn btn-primary ms-2">
+                            <i class="bx bx-search"></i>
+                        </button>
+                        @if(request('document_number'))
+                            <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary ms-1">
+                                <i class="bx bx-x"></i>
+                            </a>
+                        @endif
+                    </form>
+                </div>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -142,13 +166,15 @@
                                 </th>
                             @endif
                             <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">#</th>
-                            <th class="border-0 px-3 py-3 text-muted fw-semibold">Title</th>
-                            <th class="border-0 px-3 py-3 text-muted fw-semibold">Date Range</th>
-                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Participants</th>
-                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Fund Type</th>
-                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Budget (USD)</th>
-                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Status</th>
-                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Actions</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 8%;">Document #</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 25%;">Title</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 12%;">Date Range</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 12%;">Responsible Person</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Participants</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Fund Type</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Budget (USD)</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Status</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -170,10 +196,30 @@
                                <td class="px-3 py-3">
                                     <span class="badge bg-secondary rounded-pill">{{ $count }}</span>
                                </td>
-                                <td class="px-3 py-3 text-wrap" style="max-width: 350px;">
+                                <td class="px-3 py-3">
+                                    <span class="badge bg-info text-dark">
+                                        {{ $activity->document_number ?? 'N/A' }}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-3 text-wrap" style="max-width: 250px;">
                                     {{ $activity->activity_title }}
                                 </td>
-                                <td class="px-3 py-3">{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }} - {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</td>
+                                <td class="px-3 py-3">
+                                    <div class="small text-wrap" style="max-width: 120px;">
+                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') }}</div>
+                                        <div class="text-muted">to {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}</div>
+                                    </div>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <div class="text-wrap" style="max-width: 120px;">
+                                        @if($activity->responsiblePerson)
+                                            <div class="fw-semibold">{{ $activity->responsiblePerson->fname }} {{ $activity->responsiblePerson->lname }}</div>
+                                            <small class="text-muted">{{ $activity->responsiblePerson->job_name ?? 'N/A' }}</small>
+                                        @else
+                                            <span class="text-muted">Not assigned</span>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="px-3 py-3 text-center">
                                     <span class="badge bg-info rounded-pill">{{ $activity->total_participants }}</span>
                                 </td>
@@ -232,7 +278,7 @@
                         @endphp
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center py-5">
+                                <td colspan="10" class="text-center py-5">
                                     <i class="bx bx-calendar-x fs-1 text-muted mb-3 d-block"></i>
                                     <div class="text-muted">No activities found for this matrix.</div>
                                     <small class="text-muted">Activities will appear here once they are added.</small>
@@ -275,7 +321,7 @@
 <div class="row mt-4">
     <div class="col-lg-9">
         @if(count($matrix->division_staff) > 0)
-            @include('matrices.partials.participants-schedule')
+            @include('matrices.partials.participants-schedule', ['divisionStaff' => $divisionStaff ?? $matrix->division_staff])
         @else
             <div class="card shadow-sm border-0">
                 <div class="card-body text-center py-5">

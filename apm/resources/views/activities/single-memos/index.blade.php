@@ -21,7 +21,14 @@
 
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
             <form action="{{ route('activities.single-memos.index') }}" method="GET" class="row g-3 align-items-end w-100">
-                <div class="col-md-4">
+                <div class="col-md-2">
+                    <label for="document_number" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-file me-1 text-success"></i> Document #
+                    </label>
+                    <input type="text" name="document_number" id="document_number" class="form-control" 
+                           value="{{ request('document_number') }}" placeholder="Enter document number">
+                </div>
+                <div class="col-md-2">
                     <label for="staff_id" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff
                     </label>
@@ -51,7 +58,7 @@
                     <label for="status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
-                    <select name="status" id="statusFilter" class="form-select">
+                    <select name="status" id="statusFilter" class="form-select select2" style="width: 100%;">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -193,7 +200,7 @@
                                                 
                                                 @if($memo->overall_status === 'pending')
                                                     <!-- Structured display for pending status -->
-                                                    <div class="text-center">
+                                                    <div class="text-start">
                                                         <span class="badge {{ $statusClass }} mb-1">
                                                             {{ strtoupper($memo->overall_status) }}
                                                         </span>
@@ -342,7 +349,7 @@
                                                 
                                                 @if($memo->overall_status === 'pending')
                                                     <!-- Structured display for pending status -->
-                                                    <div class="text-center">
+                                                    <div class="text-start">
                                                         <span class="badge {{ $statusClass }} mb-1">
                                                             {{ strtoupper($memo->overall_status) }}
                                                         </span>
@@ -407,8 +414,33 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Form is now properly wrapped, so no need for auto-submit
-    // Users can use the Filter button to apply filters
+    // Document number filter - submit on Enter key
+    if (document.getElementById('document_number')) {
+        document.getElementById('document_number').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                this.form.submit();
+            }
+        });
+    }
+    
+    // Auto-submit for select filters
+    if (document.getElementById('staff_id')) {
+        document.getElementById('staff_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('division_id')) {
+        document.getElementById('division_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('statusFilter')) {
+        document.getElementById('statusFilter').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
 });
 </script>
 @endsection

@@ -7,6 +7,32 @@
 @endsection
 
 @section('content')
+<style>
+.table-responsive {
+    font-size: 0.875rem;
+}
+.table th, .table td {
+    padding: 0.5rem 0.25rem;
+    vertical-align: middle;
+}
+.table th {
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.text-wrap {
+    word-wrap: break-word;
+    word-break: break-word;
+}
+.badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+</style>
     @if(isset($matrix))
         <!-- Matrix-specific activities view -->
         <div class="card shadow-sm mb-4 border-0">
@@ -142,54 +168,69 @@
                 <div class="row g-3 align-items-end" id="activityFilters" autocomplete="off">
                     <form action="{{ route('activities.index') }}" method="GET" class="row g-3 align-items-end w-100">
                     <div class="col-md-2">
-                        <label for="year" class="form-label fw-semibold mb-1"><i
-                                class="bx bx-calendar me-1 text-success"></i> Year</label>
-                        <div class="input-group w-100">
-                            <span class="input-group-text bg-white"><i class="bx bx-calendar"></i></span>
-                            <select name="year" id="year" class="form-select">
-                                @foreach($years as $year)
-                                    <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>
-                                        {{ $year }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                        <label for="document_number" class="form-label fw-semibold mb-1">
+                            <i class="bx bx-file me-1 text-success"></i> Document #
+                        </label>
+                        <input type="text" name="document_number" id="document_number" class="form-control" 
+                               value="{{ request('document_number') }}" placeholder="Enter document number">
                     </div>
                     <div class="col-md-2">
-                        <label for="quarter" class="form-label fw-semibold mb-1"><i
-                                class="bx bx-time-five me-1 text-success"></i> Quarter</label>
-                        <div class="input-group w-100">
-                            <span class="input-group-text bg-white"><i class="bx bx-time-five"></i></span>
-                            <select name="quarter" id="quarter" class="form-select">
-                                @foreach($quarters as $quarter)
-                                    <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>
-                                        {{ $quarter }}
-                                    </option>
+                        <label for="staff_id" class="form-label fw-semibold mb-1">
+                            <i class="bx bx-user me-1 text-success"></i> Staff
+                        </label>
+                        <select name="staff_id" id="staff_id" class="form-select select2" style="width: 100%;">
+                            <option value="">All Staff</option>
+                            @foreach($staff as $staffMember)
+                                <option value="{{ $staffMember->id }}" {{ request('staff_id') == $staffMember->id ? 'selected' : '' }}>
+                                    {{ $staffMember->fname }} {{ $staffMember->lname }}
+                                </option>
                             @endforeach
                         </select>
-                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label for="division_id" class="form-label fw-semibold mb-1"><i
-                                class="bx bx-building me-1 text-success"></i> Division</label>
-                        <div class="input-group select2-flex w-100">
-                            <select name="division_id" id="division_id" class="form-select select2">
-                                <option value="">All Divisions</option>
-                                @foreach($divisions as $division)
-                                    <option value="{{ $division->id }}" {{ $selectedDivisionId == $division->id ? 'selected' : '' }}>
-                                        {{ $division->division_name }}
-                                    </option>
-                                @endforeach
+                    <div class="col-md-1">
+                        <label for="year" class="form-label fw-semibold mb-1">
+                            <i class="bx bx-calendar me-1 text-success"></i> Year
+                        </label>
+                        <select name="year" id="year" class="form-select select2" style="width: 100%;">
+                            @foreach($years as $year)
+                                <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>
+                                    {{ $year }}
+                                </option>
+                            @endforeach
                         </select>
-                        </div>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-success w-100 fw-bold" id="applyFilters">
+                    <div class="col-md-1">
+                        <label for="quarter" class="form-label fw-semibold mb-1">
+                            <i class="bx bx-time-five me-1 text-success"></i> Quarter
+                        </label>
+                        <select name="quarter" id="quarter" class="form-select select2" style="width: 100%;">
+                            @foreach($quarters as $quarter)
+                                <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>
+                                    {{ $quarter }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="division_id" class="form-label fw-semibold mb-1">
+                            <i class="bx bx-building me-1 text-success"></i> Division
+                        </label>
+                        <select name="division_id" id="division_id" class="form-select select2" style="width: 100%;">
+                            <option value="">All Divisions</option>
+                            @foreach($divisions as $division)
+                                <option value="{{ $division->id }}" {{ $selectedDivisionId == $division->id ? 'selected' : '' }}>
+                                    {{ $division->division_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
                             <i class="bx bx-search-alt-2 me-1"></i> Filter
                         </button>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <a href="{{ route('activities.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                        <a href="{{ route('activities.index') }}" class="btn btn-outline-secondary btn-sm w-100">
                             <i class="bx bx-reset me-1"></i> Reset
                         </a>
                     </div>
@@ -244,14 +285,16 @@
                                     <table class="table table-hover mb-0">
                                         <thead class="table-primary">
                                             <tr>
-                                                <th>#</th>
-                                                <th>Activity Title</th>
-                                                <th>Matrix</th>
-                                                <th>Division</th>
-                                                <th>Responsible Person</th>
-                                                <th>Date Range</th>
-                                                <th>Status</th>
-                                                <th class="text-center">Actions</th>
+                                                <th style="width: 5%;">#</th>
+                                                <th style="width: 20%;">Activity Title</th>
+                                                <th style="width: 8%;">Matrix</th>
+                                                <th style="width: 12%;">Division</th>
+                                                <th style="width: 10%;">Document #</th>
+                                                <th style="width: 10%;">Responsible Person</th>
+                                                <th style="width: 10%;">Date Range</th>
+                                                <th style="width: 8%;">Fund Type</th>
+                                                <th style="width: 7%;">Status</th>
+                                                <th style="width: 10%;" class="text-center">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -260,23 +303,36 @@
                                                 <tr>
                                                     <td>{{ $actCount++ }}</td>
                                                     <td>
-                                                        <strong>{{ $activity->activity_title ?? 'Untitled Activity' }}</strong>
-                                                        @if($activity->is_single_memo)
-                                                            <span class="badge bg-warning text-dark ms-2">Single Memo</span>
-                                                        @endif
+                                                        <div class="text-wrap" style="max-width: 200px;">
+                                                            <strong>{{ Str::limit($activity->activity_title ?? 'Untitled Activity', 50) }}</strong>
+                                                            @if($activity->is_single_memo)
+                                                                <span class="badge bg-warning text-dark ms-1">SM</span>
+                                                            @endif
+                                                        </div>
                                                     </td>
                                                     <td>
                                                         <a href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
                                                             {{ $activity->matrix->year }} {{ $activity->matrix->quarter }}
                                                         </a>
                                                     </td>
-                                                    <td>{{ $activity->matrix->division->division_name ?? 'N/A' }}</td>
                                                     <td>
-                                                        @if($activity->responsiblePerson)
-                                                            {{ $activity->responsiblePerson->fname }} {{ $activity->responsiblePerson->lname }}
-                                                        @else
-                                                            <span class="text-muted">Not assigned</span>
-                                                        @endif
+                                                        <div class="text-wrap" style="max-width: 150px;">
+                                                            {{ Str::limit($activity->matrix->division->division_name ?? 'N/A', 20) }}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info text-white">
+                                                            {{ $activity->document_number ?? 'N/A' }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="text-wrap" style="max-width: 120px;">
+                                                            @if($activity->responsiblePerson)
+                                                                {{ Str::limit($activity->responsiblePerson->fname . ' ' . $activity->responsiblePerson->lname, 15) }}
+                                                            @else
+                                                                <span class="text-muted">Not assigned</span>
+                                                            @endif
+                                                        </div>
                                                     </td>
                                                     <td>
                                                         @if($activity->date_from && $activity->date_to)
@@ -285,6 +341,12 @@
                                                         @else
                                                             <span class="text-muted">Dates not set</span>
                                                         @endif
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-warning text-dark">
+                                                            <i class="bx bx-money me-1"></i>
+                                                            {{ $activity->fundType->name ?? 'N/A' }}
+                                                        </span>
                                                     </td>
                                                     <td>
                                                         <span class="badge {{ $activity->matrix->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
@@ -351,14 +413,16 @@
             <table class="table table-hover mb-0">
                                     <thead class="table-success">
                                         <tr>
-                                            <th>#</th>
-                                            <th>Activity Title</th>
-                                            <th>Matrix</th>
-                                            <th>Responsible Person</th>
-                        <th>Date Range</th>
-                        <th>Status</th>
-                                            <th class="text-center">Actions</th>
-                    </tr>
+                                            <th style="width: 5%;">#</th>
+                                            <th style="width: 25%;">Activity Title</th>
+                                            <th style="width: 10%;">Matrix</th>
+                                            <th style="width: 12%;">Document #</th>
+                                            <th style="width: 15%;">Responsible Person</th>
+                                            <th style="width: 12%;">Date Range</th>
+                                            <th style="width: 8%;">Fund Type</th>
+                                            <th style="width: 8%;">Status</th>
+                                            <th style="width: 10%;" class="text-center">Actions</th>
+                                        </tr>
                 </thead>
                 <tbody>
                                         @php $actCount = 1; @endphp
@@ -366,10 +430,12 @@
                                             <tr>
                                                 <td>{{ $actCount++ }}</td>
                                                 <td>
-                                                    <strong>{{ $activity->activity_title ?? 'Untitled Activity' }}</strong>
-                                                    @if($activity->is_single_memo)
-                                                        <span class="badge bg-warning text-dark ms-2">Single Memo</span>
-                                                    @endif
+                                                    <div class="text-wrap" style="max-width: 250px;">
+                                                        <strong>{{ Str::limit($activity->activity_title ?? 'Untitled Activity', 60) }}</strong>
+                                                        @if($activity->is_single_memo)
+                                                            <span class="badge bg-warning text-dark ms-1">SM</span>
+                                                        @endif
+                                                    </div>
                             </td>
                             <td>
                                                     <a href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
@@ -377,11 +443,18 @@
                                                     </a>
                             </td>
                             <td>
-                                                    @if($activity->responsiblePerson)
-                                                        {{ $activity->responsiblePerson->fname }} {{ $activity->responsiblePerson->lname }}
-                                                    @else
-                                                        <span class="text-muted">Not assigned</span>
-                                                    @endif
+                                                    <span class="badge bg-info text-white">
+                                                        {{ $activity->document_number ?? 'N/A' }}
+                                                    </span>
+                            </td>
+                            <td>
+                                                    <div class="text-wrap" style="max-width: 150px;">
+                                                        @if($activity->responsiblePerson)
+                                                            {{ Str::limit($activity->responsiblePerson->fname . ' ' . $activity->responsiblePerson->lname, 20) }}
+                                                        @else
+                                                            <span class="text-muted">Not assigned</span>
+                                                        @endif
+                                                    </div>
                             </td>
                             <td>
                                                     @if($activity->date_from && $activity->date_to)
@@ -390,6 +463,12 @@
                                 @else
                                                         <span class="text-muted">Dates not set</span>
                                 @endif
+                            </td>
+                            <td>
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="bx bx-money me-1"></i>
+                                                        {{ $activity->fundType->name ?? 'N/A' }}
+                                                    </span>
                             </td>
                             <td>
                                                     <span class="badge {{ $activity->matrix->overall_status === 'approved' ? 'bg-success' : ($activity->matrix->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
@@ -455,14 +534,16 @@
                                 <table class="table table-hover mb-0">
                                     <thead class="table-info">
                                         <tr>
-                                            <th>#</th>
-                                            <th>Activity Title</th>
-                                            <th>Matrix</th>
-                                            <th>Division</th>
-                                            <th>Date Range</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
-                        </tr>
+                                            <th style="width: 5%;">#</th>
+                                            <th style="width: 20%;">Activity Title</th>
+                                            <th style="width: 8%;">Matrix</th>
+                                            <th style="width: 12%;">Division</th>
+                                            <th style="width: 10%;">Document #</th>
+                                            <th style="width: 10%;">Date Range</th>
+                                            <th style="width: 8%;">Fund Type</th>
+                                            <th style="width: 7%;">Status</th>
+                                            <th style="width: 10%;" class="text-center">Actions</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         @php $actCount = 1; @endphp
@@ -470,17 +551,28 @@
                                             <tr>
                                                 <td>{{ $actCount++ }}</td>
                                                 <td>
-                                                    <strong>{{ $activity->activity_title ?? 'Untitled Activity' }}</strong>
-                                                    @if($activity->is_single_memo)
-                                                        <span class="badge bg-warning text-dark ms-2">Single Memo</span>
-                                                    @endif
+                                                    <div class="text-wrap" style="max-width: 200px;">
+                                                        <strong>{{ Str::limit($activity->activity_title ?? 'Untitled Activity', 50) }}</strong>
+                                                        @if($activity->is_single_memo)
+                                                            <span class="badge bg-warning text-dark ms-1">SM</span>
+                                                        @endif
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <a href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
                                                         {{ $activity->matrix->year }} {{ $activity->matrix->quarter }}
                                                     </a>
                                                 </td>
-                                                <td>{{ $activity->matrix->division->division_name ?? 'N/A' }}</td>
+                                                <td>
+                                                    <div class="text-wrap" style="max-width: 150px;">
+                                                        {{ Str::limit($activity->matrix->division->division_name ?? 'N/A', 20) }}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info text-white">
+                                                        {{ $activity->document_number ?? 'N/A' }}
+                                                    </span>
+                                                </td>
                                                 <td>
                                                     @if($activity->date_from && $activity->date_to)
                                                         {{ \Carbon\Carbon::parse($activity->date_from)->format('M d') }} - 
@@ -488,6 +580,12 @@
                                                     @else
                                                         <span class="text-muted">Dates not set</span>
                                                     @endif
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="bx bx-money me-1"></i>
+                                                        {{ $activity->fundType->name ?? 'N/A' }}
+                                                    </span>
                                                 </td>
                                                 <td>
                                                     <span class="badge {{ $activity->matrix->overall_status === 'approved' ? 'bg-success' : ($activity->matrix->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
@@ -553,6 +651,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('division_id')) {
         document.getElementById('division_id').addEventListener('change', function() {
             this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('staff_id')) {
+        document.getElementById('staff_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    // Document number filter - submit on Enter key
+    if (document.getElementById('document_number')) {
+        document.getElementById('document_number').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                this.form.submit();
+            }
         });
     }
 });

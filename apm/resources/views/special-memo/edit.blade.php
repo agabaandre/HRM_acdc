@@ -604,7 +604,7 @@ $(document).ready(function () {
             <td><input type="number" name="budget[${codeId}][${index}][unit_cost]" class="form-control unit-cost" step="0.01" min="0" value="${item.unit_cost || 0}"></td>
             <td><input type="number" name="budget[${codeId}][${index}][units]" class="form-control units" min="0" value="${item.units || 0}"></td>
             <td><input type="number" name="budget[${codeId}][${index}][days]" class="form-control days" min="0" value="${item.days || 0}"></td>
-            <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="${((item.unit_cost || 0) * (item.units || 0) * (item.days || 0)).toFixed(2)}"></td>
+            <td><input type="text" class="form-control-plaintext total fw-bold text-success text-center" readonly value="${((item.unit_cost || 0) * (item.units || 0)).toFixed(2)}"></td>
             <td><button type="button" class="btn btn-danger remove-row"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     }

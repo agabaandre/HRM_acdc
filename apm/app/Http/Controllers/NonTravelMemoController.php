@@ -42,6 +42,7 @@ class NonTravelMemoController extends Controller
             'staff', 
             'division', 
             'nonTravelMemoCategory', 
+            'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
             ->where('staff_id', $currentStaffId);
@@ -56,6 +57,9 @@ class NonTravelMemoController extends Controller
         if ($request->filled('status')) {
             $mySubmittedQuery->where('overall_status', $request->status);
         }
+        if ($request->filled('document_number')) {
+            $mySubmittedQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
 
         $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
 
@@ -66,6 +70,7 @@ class NonTravelMemoController extends Controller
                 'staff', 
                 'division', 
                 'nonTravelMemoCategory', 
+                'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ]);
 
@@ -81,6 +86,9 @@ class NonTravelMemoController extends Controller
             }
             if ($request->filled('status')) {
                 $allMemosQuery->where('overall_status', $request->status);
+            }
+            if ($request->filled('document_number')) {
+                $allMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
             }
 
             $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();

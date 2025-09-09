@@ -1126,6 +1126,10 @@ class ActivityController extends Controller
             $query->where('overall_status', $request->status);
         }
 
+        if ($request->has('document_number') && $request->document_number) {
+            $query->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+
         // Check if user is division approver or has specific approval workflow
         if (isDivisionApprover() || !empty(user_session('division_id'))) {
             $query->where('division_id', user_session('division_id'));
@@ -1261,6 +1265,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $selectedYear = $request->get('year', $nextYear);
         $selectedQuarter = $request->get('quarter', 'Q' . $nextQuarter);
         $selectedDivisionId = $request->get('division_id', '');
+        $selectedDocumentNumber = $request->get('document_number', '');
+        $selectedStaffId = $request->get('staff_id', '');
         
         // Ensure quarter is in correct format (Q1, Q2, Q3, Q4)
         if (!str_starts_with($selectedQuarter, 'Q')) {
@@ -1271,12 +1277,22 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $baseQuery = Activity::with([
             'matrix.division',
             'responsiblePerson',
-            'staff'
+            'staff',
+            'fundType'
         ])->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter) {
             $query->where('year', $selectedYear)
                   ->where('quarter', $selectedQuarter)
                   ->where('overall_status', 'approved'); // Only show activities from approved matrices
         });
+
+        // Apply additional filters
+        if ($selectedDocumentNumber) {
+            $baseQuery->where('document_number', 'like', '%' . $selectedDocumentNumber . '%');
+        }
+        
+        if ($selectedStaffId) {
+            $baseQuery->where('staff_id', $selectedStaffId);
+        }
         
         // Debug: Check what matrices are found
         $debugMatrices = \App\Models\Matrix::where('year', $selectedYear)
@@ -1387,6 +1403,9 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $years = range($currentYear - 2, $currentYear + 2);
         $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         
+        // Get staff data for filter
+        $staff = \App\Models\Staff::orderBy('fname')->orderBy('lname')->get();
+        
         // Debug logging
         Log::info('Activities Index Debug', [
             'selectedYear' => $selectedYear,
@@ -1406,11 +1425,14 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'myDivisionActivities', 
             'sharedActivities',
             'divisions',
+            'staff',
             'years',
             'quarters',
             'selectedYear',
             'selectedQuarter',
             'selectedDivisionId',
+            'selectedDocumentNumber',
+            'selectedStaffId',
             'userDivisionId'
         ));
     }

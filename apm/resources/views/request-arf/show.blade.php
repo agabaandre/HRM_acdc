@@ -216,7 +216,7 @@
             if (is_array($budgetItems)) {
                 foreach ($budgetItems as $item) {
                     if (is_object($item)) {
-                        $totalBudget += $item->unit_cost * $item->units * $item->days;
+                        $totalBudget += $item->unit_cost * $item->units;
                     }
                 }
             } elseif (is_object($budgetItems) && method_exists($budgetItems, 'each')) {
