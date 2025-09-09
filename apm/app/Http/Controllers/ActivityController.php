@@ -1107,7 +1107,7 @@ class ActivityController extends Controller
      */
     public function singlememos(Request $request): View
     {
-        $query = Activity::with(['staff', 'matrix.division'])
+        $query = Activity::with(['staff', 'matrix.division', 'fundType', 'requestType'])
             ->where('is_single_memo', true)
             ->latest();
         
