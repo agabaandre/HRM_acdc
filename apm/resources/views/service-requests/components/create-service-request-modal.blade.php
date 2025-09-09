@@ -384,7 +384,7 @@ $(document).ready(function() {
                         html += '<td>$' + (parseFloat(item.unit_cost) || 0).toFixed(2) + '</td>';
                         html += '<td>' + (item.units || item.quantity || 0) + '</td>';
                         html += '<td>' + (item.days || 0) + '</td>';
-                        html += '<td>$' + (parseFloat(item.total) || (parseFloat(item.unit_cost) || 0) * (parseFloat(item.units || item.quantity) || 0) * (parseFloat(item.days) || 1)).toFixed(2) + '</td>';
+                        html += '<td>$' + (parseFloat(item.total) || (parseFloat(item.unit_cost) || 0) * (parseFloat(item.units || item.quantity) || 0)).toFixed(2) + '</td>';
                         html += '</tr>';
                     });
                 }

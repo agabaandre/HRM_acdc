@@ -364,36 +364,55 @@ class MatrixController extends Controller
      */
 
 
-     public function show(Matrix $matrix): View
-     {
-         // Load primary relationships
-         //(can_take_action($matrix));
+    public function show(Matrix $matrix, Request $request): View
+    {
+        // Load primary relationships
+        //(can_take_action($matrix));
 
-         $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails']);
-     //dd($matrix);
-         // Paginate related activities and eager load direct relationships
-         $activities = $matrix->activities()->with(['requestType', 'fundType','activity_budget','activity_budget.fundcode'])->latest()->paginate(10);
+        $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails']);
+    //dd($matrix);
+        // Paginate related activities and eager load direct relationships
+        $activitiesQuery = $matrix->activities()->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
+        
+        // Apply document number filter if provided
+        if ($request->filled('document_number')) {
+            $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+        
+        $activities = $activitiesQuery->latest()->paginate(10);
      
-         // Prepare additional decoded & related data per activity
-         foreach ($activities as $activity) {
-             // Decode JSON arrays
-             $locationIds = is_array($activity->location_id)
-                 ? $activity->location_id
-                 : json_decode($activity->location_id ?? '[]', true);
-     
-             $internalRaw = is_string($activity->internal_participants)
-                 ? json_decode($activity->internal_participants ?? '[]', true)
-                 : ($activity->internal_participants ?? []);
-     
-             $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
-     
-             // Attach related models
-             $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
-             $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
-         }
-         //dd($matrix);
-     
-         return view('matrices.show', compact('matrix', 'activities'));
+        // Prepare additional decoded & related data per activity
+        foreach ($activities as $activity) {
+            // Decode JSON arrays
+            $locationIds = is_array($activity->location_id)
+                ? $activity->location_id
+                : json_decode($activity->location_id ?? '[]', true);
+    
+            $internalRaw = is_string($activity->internal_participants)
+                ? json_decode($activity->internal_participants ?? '[]', true)
+                : ($activity->internal_participants ?? []);
+    
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+    
+            // Attach related models
+            $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+        }
+        
+        // Filter division staff by name if provided
+        $divisionStaff = $matrix->division_staff;
+        if ($request->filled('staff_name')) {
+            $staffName = $request->staff_name;
+            $divisionStaff = $divisionStaff->filter(function ($staff) use ($staffName) {
+                $fullName = strtolower($staff->fname . ' ' . $staff->lname);
+                $searchTerm = strtolower($staffName);
+                return str_contains($fullName, $searchTerm);
+            });
+        }
+        
+        //dd($matrix);
+    
+        return view('matrices.show', compact('matrix', 'activities', 'divisionStaff'));
      }
     
     

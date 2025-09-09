@@ -652,6 +652,51 @@
                                         </div>
                                     @endif
                                 </div>
+                                
+                                @if($specialMemo->overall_status !== 'draft' && $specialMemo->current_actor)
+                                    <div class="mt-3 p-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 0.5rem; border: 1px solid #bae6fd;">
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <i class="bx bx-user text-primary"></i>
+                                            <span class="fw-semibold text-primary">Current Approver</span>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-2">
+                                                    <strong class="text-muted small">Name:</strong>
+                                                    <div class="fw-bold text-primary">{{ $specialMemo->current_actor->fname . ' ' . $specialMemo->current_actor->lname }}</div>
+                                                </div>
+                                                @if($specialMemo->current_actor->job_name)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Job Title:</strong>
+                                                        <div class="fw-semibold">{{ $specialMemo->current_actor->job_name }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div class="col-md-6">
+                                                @if($specialMemo->current_actor->division_name)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Division:</strong>
+                                                        <div class="fw-semibold">{{ $specialMemo->current_actor->division_name }}</div>
+                                                    </div>
+                                                @endif
+                                                @if($specialMemo->workflow_definition)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Approval Role:</strong>
+                                                        <div>
+                                                            <span class="badge bg-info">{{ $specialMemo->workflow_definition->role ?? 'Not specified' }}</span>
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 p-2 bg-primary bg-opacity-10 rounded">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bx bx-info-circle text-primary"></i>
+                                                <span class="text-primary fw-medium small">This special memo is currently awaiting approval from the supervisor above.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>

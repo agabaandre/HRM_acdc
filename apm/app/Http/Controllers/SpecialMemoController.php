@@ -43,6 +43,7 @@ class SpecialMemoController extends Controller
             'staff', 
             'division', 
             'requestType', 
+            'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
             ->where('staff_id', $currentStaffId);
@@ -57,6 +58,9 @@ class SpecialMemoController extends Controller
         if ($request->filled('status')) {
             $mySubmittedQuery->where('overall_status', $request->status);
         }
+        if ($request->filled('document_number')) {
+            $mySubmittedQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
 
         $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
 
@@ -67,6 +71,7 @@ class SpecialMemoController extends Controller
                 'staff', 
                 'division', 
                 'requestType', 
+                'fundType',
                 'forwardWorkflow.workflowDefinitions.approvers.staff'
             ]);
 
@@ -83,6 +88,9 @@ class SpecialMemoController extends Controller
             if ($request->filled('status')) {
                 $allMemosQuery->where('overall_status', $request->status);
             }
+            if ($request->filled('document_number')) {
+                $allMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+            }
 
             $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
         }
@@ -92,6 +100,7 @@ class SpecialMemoController extends Controller
             'staff', 
             'division', 
             'requestType', 
+            'fundType',
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
             ->where('staff_id', '!=', $currentStaffId) // Not created by current user
@@ -109,6 +118,9 @@ class SpecialMemoController extends Controller
         }
         if ($request->filled('staff_id')) {
             $sharedMemosQuery->where('staff_id', $request->staff_id);
+        }
+        if ($request->filled('document_number')) {
+            $sharedMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
         }
 
         $sharedMemos = $sharedMemosQuery->latest()->paginate(20)->withQueryString();

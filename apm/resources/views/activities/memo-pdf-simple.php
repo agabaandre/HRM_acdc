@@ -667,7 +667,7 @@
                            
                             <?php foreach($activity->activity_budget as $item): ?>
                                 <?php
-                                    $total = $item->unit_cost * $item->units * $item->days;
+                                    $total = $item->unit_cost * $item->units;
                                     $grandTotal+=$total;
                                 ?>
                                 <tr>

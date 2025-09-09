@@ -107,7 +107,7 @@
                                                     @if($fundCodeId !== 'grand_total' && is_array($items))
                                                         @foreach($items as $item)
                                                             @php
-                                                                $amount = ($item['unit_cost'] ?? 0) * ($item['units'] ?? 0) * ($item['days'] ?? 1);
+                                                                $amount = ($item['unit_cost'] ?? 0) * ($item['units'] ?? 0);
                                                                 $totalOriginal += $amount;
                                                             @endphp
                                                             <tr>

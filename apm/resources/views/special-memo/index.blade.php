@@ -19,6 +19,32 @@
 @endsection
 
 @section('content')
+<style>
+.table-responsive {
+    font-size: 0.875rem;
+}
+.table th, .table td {
+    padding: 0.5rem 0.25rem;
+    vertical-align: middle;
+}
+.table th {
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.text-wrap {
+    word-wrap: break-word;
+    word-break: break-word;
+}
+.badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+</style>
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body py-3 px-4 bg-light rounded-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
@@ -28,69 +54,68 @@
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
             <form action="{{ route('special-memo.index') }}" method="GET" class="row g-3 align-items-end w-100">
                 <div class="col-md-2">
-                    <label for="request_type_id" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-category me-1 text-success"></i> Request Type</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-category"></i></span>
-                        <select name="request_type_id" id="request_type_id" class="form-select">
-                            <option value="">All Request Types</option>
-                            @foreach($requestTypes as $requestType)
-                                <option value="{{ $requestType->id }}" {{ request('request_type_id') == $requestType->id ? 'selected' : '' }}>
-                                    {{ $requestType->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <label for="document_number" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-file me-1 text-success"></i> Document #
+                    </label>
+                    <input type="text" name="document_number" id="document_number" class="form-control" 
+                           value="{{ request('document_number') }}" placeholder="Doc #">
                 </div>
                 <div class="col-md-2">
-                    <label for="staff_id" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-user me-1 text-success"></i> Staff</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-user"></i></span>
-                        <select name="staff_id" id="staff_id" class="form-select">
-                                    <option value="">All Staff</option>
-                            @foreach($staff as $member)
-                                <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
-                                    {{ $member->fname }} {{ $member->lname }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+                    <label for="request_type_id" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-category me-1 text-success"></i> Request Type
+                    </label>
+                    <select name="request_type_id" id="request_type_id" class="form-select select2" style="width: 100%;">
+                        <option value="">All Request Types</option>
+                        @foreach($requestTypes as $requestType)
+                            <option value="{{ $requestType->id }}" {{ request('request_type_id') == $requestType->id ? 'selected' : '' }}>
+                                {{ $requestType->name }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="division_id" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-building me-1 text-success"></i> Division</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-building"></i></span>
-                        <select name="division_id" id="division_id" class="form-select">
-                                    <option value="">All Divisions</option>
-                                    @foreach($divisions as $division)
-                                        <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
-                                    {{ $division->division_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            </div>
-                            <div class="col-md-2">
-                    <label for="status" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-info-circle me-1 text-success"></i> Status</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-info-circle"></i></span>
-                        <select name="status" id="" class="form-select">
-                                    <option value="">All Statuses</option>
-                                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                                    <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                    <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
-                                </select>
-                    </div>
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success w-100 fw-bold" id="applyFilters">
+                    <label for="staff_id" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-user me-1 text-success"></i> Staff
+                    </label>
+                    <select name="staff_id" id="staff_id" class="form-select select2" style="width: 100%;">
+                        <option value="">All Staff</option>
+                        @foreach($staff as $member)
+                            <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
+                                {{ $member->fname }} {{ $member->lname }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="division_id" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-building me-1 text-success"></i> Division
+                    </label>
+                    <select name="division_id" id="division_id" class="form-select select2" style="width: 100%;">
+                        <option value="">All Divisions</option>
+                        @foreach($divisions as $division)
+                            <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
+                                {{ $division->division_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-info-circle me-1 text-success"></i> Status
+                    </label>
+                    <select name="status" id="status" class="form-select select2" style="width: 100%;">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                        <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
-                                    </button>
+                    </button>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
@@ -152,14 +177,16 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-success">
                                     <tr>
-                                        <th>#</th>
-                                        <th>Title</th>
-                                        <th>Request Type</th>
-                                    <th>Division</th>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Actions</th>
-                                </tr>
+                                        <th style="width: 5%;">#</th>
+                                        <th style="width: 6%;">Document #</th>
+                                        <th style="width: 22%;">Title</th>
+                                        <th style="width: 8%;">Request Type</th>
+                                        <th style="width: 10%;">Division</th>
+                                        <th style="width: 7%;">Fund Type</th>
+                                        <th style="width: 8%;">Date</th>
+                                        <th style="width: 8%;">Status</th>
+                                        <th style="width: 8%;" class="text-center">Actions</th>
+                                    </tr>
                             </thead>
                             <tbody>
                                     @php $count = 1; @endphp
@@ -167,17 +194,47 @@
                                         <tr>
                                             <td>{{ $count++ }}</td>
                                             <td>
-                                                <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                              
-                                        </td>
+                                                <span class="badge bg-info text-dark">
+                                                    {{ $memo->document_number ?? 'N/A' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="text-wrap" style="max-width: 200px;">
+                                                    <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 50) }}</div>
+                                                </div>
+                                            </td>
                                             <td>
                                                 <span class="badge bg-info text-dark">
                                                     <i class="bx bx-category me-1"></i>
                                                     {{ $memo->requestType->name ?? 'N/A' }}
-                                            </span>
-                                        </td>
-                                            <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
-                                            <td>{{ $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') : 'N/A' }}</td>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="text-wrap" style="max-width: 150px;">
+                                                    {{ Str::limit($memo->division->division_name ?? 'N/A', 20) }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="bx bx-money me-1"></i>
+                                                    {{ $memo->fundType->name ?? 'N/A' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if($memo->date_from && $memo->date_to)
+                                                    <div class="small">
+                                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                                        <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
+                                                    </div>
+                                                @elseif($memo->date_from)
+                                                    <div class="small">
+                                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                                        <div class="text-muted">to N/A</div>
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted">N/A</span>
+                                                @endif
+                                            </td>
                                         <td>
                                             @php
                                                 $statusBadgeClass = [
@@ -280,14 +337,16 @@
                                 <table class="table table-hover mb-0">
                                     <thead class="table-primary">
                                         <tr>
-                                            <th>#</th>
-                                            <th>Title</th>
-                                            <th>Request Type</th>
-                                            <th>Responsible Staff</th>
-                                            <th>Division</th>
-                                            <th>Date</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
+                                            <th style="width: 5%;">#</th>
+                                            <th style="width: 6%;">Document #</th>
+                                            <th style="width: 20%;">Title</th>
+                                            <th style="width: 7%;">Request Type</th>
+                                            <th style="width: 10%;">Responsible Staff</th>
+                                            <th style="width: 8%;">Division</th>
+                                            <th style="width: 7%;">Fund Type</th>
+                                            <th style="width: 7%;">Date</th>
+                                            <th style="width: 8%;">Status</th>
+                                            <th style="width: 8%;" class="text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -296,8 +355,14 @@
                                             <tr>
                                                 <td>{{ $count++ }}</td>
                                                 <td>
-                                                    <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                                   
+                                                    <span class="badge bg-info text-dark">
+                                                        {{ $memo->document_number ?? 'N/A' }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="text-wrap" style="max-width: 180px;">
+                                                        <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 45) }}</div>
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-info text-dark">
@@ -306,14 +371,40 @@
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    @if($memo->staff)
-                                                        {{ $memo->staff->fname }} {{ $memo->staff->lname }}
+                                                    <div class="text-wrap" style="max-width: 120px;">
+                                                        @if($memo->staff)
+                                                            {{ Str::limit($memo->staff->fname . ' ' . $memo->staff->lname, 15) }}
+                                                        @else
+                                                            <span class="text-muted">Not assigned</span>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-wrap" style="max-width: 120px;">
+                                                        {{ Str::limit($memo->division->division_name ?? 'N/A', 15) }}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="bx bx-money me-1"></i>
+                                                        {{ $memo->fundType->name ?? 'N/A' }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    @if($memo->date_from && $memo->date_to)
+                                                        <div class="small">
+                                                            <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                                            <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
+                                                        </div>
+                                                    @elseif($memo->date_from)
+                                                        <div class="small">
+                                                            <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                                            <div class="text-muted">to N/A</div>
+                                                        </div>
                                                     @else
-                                                        <span class="text-muted">Not assigned</span>
+                                                        <span class="text-muted">N/A</span>
                                                     @endif
                                                 </td>
-                                                <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
-                                                <td>{{ $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') : 'N/A' }}</td>
                                                 <td>
                                                     @php
                                                         $statusBadgeClass = [
@@ -416,14 +507,16 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-info">
                                     <tr>
-                                        <th>#</th>
-                                        <th>Title</th>
-                                        <th>Request Type</th>
-                                        <th>Created By</th>
-                                        <th>Division</th>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Actions</th>
+                                        <th style="width: 5%;">#</th>
+                                        <th style="width: 6%;">Document #</th>
+                                        <th style="width: 20%;">Title</th>
+                                        <th style="width: 7%;">Request Type</th>
+                                        <th style="width: 10%;">Created By</th>
+                                        <th style="width: 8%;">Division</th>
+                                        <th style="width: 7%;">Fund Type</th>
+                                        <th style="width: 7%;">Date</th>
+                                        <th style="width: 8%;">Status</th>
+                                        <th style="width: 8%;" class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -432,8 +525,14 @@
                                         <tr>
                                             <td>{{ $count++ }}</td>
                                             <td>
-                                                <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                                <small class="text-muted">{{ $memo->requestType->name ?? 'N/A' }}</small>
+                                                <span class="badge bg-info text-dark">
+                                                    {{ $memo->document_number ?? 'N/A' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="text-wrap" style="max-width: 180px;">
+                                                    <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 45) }}</div>
+                                                </div>
                                             </td>
                                             <td>
                                                 <span class="badge bg-info text-dark">
@@ -442,14 +541,40 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                @if($memo->staff)
-                                                    {{ $memo->staff->fname }} {{ $memo->staff->lname }}
+                                                <div class="text-wrap" style="max-width: 120px;">
+                                                    @if($memo->staff)
+                                                        {{ Str::limit($memo->staff->fname . ' ' . $memo->staff->lname, 15) }}
+                                                    @else
+                                                        <span class="text-muted">Not assigned</span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-wrap" style="max-width: 120px;">
+                                                    {{ Str::limit($memo->division->division_name ?? 'N/A', 15) }}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="bx bx-money me-1"></i>
+                                                    {{ $memo->fundType->name ?? 'N/A' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if($memo->date_from && $memo->date_to)
+                                                    <div class="small">
+                                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                                        <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
+                                                    </div>
+                                                @elseif($memo->date_from)
+                                                    <div class="small">
+                                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                                        <div class="text-muted">to N/A</div>
+                                                    </div>
                                                 @else
-                                                    <span class="text-muted">Not assigned</span>
+                                                    <span class="text-muted">N/A</span>
                                                 @endif
                                             </td>
-                                            <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
-                                            <td>{{ $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') : 'N/A' }}</td>
                                             <td>
                                                 @php
                                                     $statusBadgeClass = [
@@ -528,8 +653,39 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Form is now properly wrapped, so no need for auto-submit
-    // Users can use the Filter button to apply filters
-    });
+    // Document number filter - submit on Enter key
+    if (document.getElementById('document_number')) {
+        document.getElementById('document_number').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                this.form.submit();
+            }
+        });
+    }
+    
+    // Auto-submit for select filters
+    if (document.getElementById('request_type_id')) {
+        document.getElementById('request_type_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('staff_id')) {
+        document.getElementById('staff_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('division_id')) {
+        document.getElementById('division_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('status')) {
+        document.getElementById('status').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+});
 </script>
 @endsection

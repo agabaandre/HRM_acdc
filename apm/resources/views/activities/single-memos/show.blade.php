@@ -129,6 +129,250 @@
         transform: translateY(-1px);
         transition: all 0.2s ease;
     }
+    
+    .meta-card {
+        background: #f8fafc;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .content-section {
+        border-left: 4px solid;
+        background: #fafafa;
+    }
+    
+    .content-section.bg-blue { border-left-color: #3b82f6; }
+    .content-section.bg-green { border-left-color: #10b981; }
+    .content-section.bg-purple { border-left-color: #8b5cf6; }
+    
+    .sidebar-card {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
+    
+    .location-badge, .budget-item {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .budget-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .budget-table td {
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+    
+    .budget-total-row {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        font-weight: 700;
+    }
+    
+    .fund-code-header {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 0.5rem;
+    }
+    
+    .fund-code-header h6 {
+        color: #0369a1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .fund-code-header .small {
+        color: #64748b;
+    }
+    
+    .attachment-item {
+        background: #faf5ff;
+        border: 1px solid #e9d5ff;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    /* Attachment Preview Modal Styles */
+    #previewModal .modal-dialog {
+        max-width: 90vw;
+        margin: 1.75rem auto;
+    }
+
+    #previewModal .modal-body {
+        min-height: 500px;
+        max-height: 80vh;
+        overflow: hidden;
+    }
+
+    #previewModal .modal-content {
+        border-radius: 0.75rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    #previewModal .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        border: none;
+    }
+
+    #previewModal .btn-close {
+        filter: invert(1);
+    }
+
+    #previewModal iframe {
+        border-radius: 0.5rem;
+    }
+
+    #previewModal img {
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .preview-attachment {
+        transition: all 0.2s ease;
+    }
+
+    .preview-attachment:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.375rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        #previewModal .modal-dialog {
+            max-width: 95vw;
+            margin: 0.5rem auto;
+        }
+        
+        #previewModal .modal-body {
+            min-height: 400px;
+            max-height: 70vh;
+        }
+        
+        #previewModalBody {
+            padding: 1rem;
+        }
+    }
+
+    /* Matrix-style metadata */
+    .memo-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+        font-size: 0.92rem;
+        line-height: 1.1;
+        margin-bottom: 0.5rem;
+    }
+    .memo-meta-item {
+        display: flex;
+        align-items: center;
+        min-width: 120px;
+        margin-bottom: 0;
+    }
+    .memo-meta-item i {
+        font-size: 1rem;
+        margin-right: 0.3rem;
+        color: #007bff;
+    }
+    .memo-meta-label {
+        color: #888;
+        font-size: 0.85em;
+        margin-right: 0.2em;
+    }
+    .memo-meta-value {
+        font-weight: 500;
+    }
+
+    .approval-level-badge {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    /* Summary table styles */
+    .summary-table {
+        background: white;
+        border-radius: 0.75rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .summary-table .table {
+        margin-bottom: 0;
+    }
+    
+    .summary-table .table th {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border: none;
+        font-weight: 600;
+        color: #374151;
+        padding: 1rem;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .summary-table .table td {
+        border: none;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem;
+        vertical-align: middle;
+    }
+    
+    .summary-table .table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .summary-table .table tr:hover {
+        background-color: #f9fafb;
+    }
+    
+    .field-label {
+        font-weight: 600;
+        color: #374151;
+        min-width: 150px;
+    }
+    
+    .field-value {
+        color: #1f2937;
+        font-weight: 500;
+    }
+    
+    .field-value.null {
+        color: #9ca3af;
+        font-style: italic;
+    }
 </style>
 @endsection
 
@@ -148,186 +392,74 @@
 @endsection
 
 @section('content')
-<div class="container-fluid px-0">
-    <div class="row justify-content-center">
-        <div class="col-12 col-xl-10">
+<div class="min-h-screen bg-gray-50">
+    <!-- Enhanced Header -->
+    <div class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center py-4">
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">View Single Memo</h1>
+                    <p class="text-muted mb-0">Review and manage single memo details</p>
+                </div>
+                <div class="d-flex gap-3">
+                    <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                        <i class="bx bx-arrow-back"></i>
+                        <span>Back to List</span>
+                    </a>
+                    @if($activity->overall_status === 'draft' && $activity->staff_id === user_session('staff_id'))
+                        <a href="{{ route('activities.single-memos.edit', $activity) }}" class="btn btn-warning d-flex align-items-center gap-2">
+                            <i class="bx bx-edit"></i>
+                            <span>Edit Memo</span>
+                        </a>
+                    @endif
+                    @if($activity->overall_status === 'pending')
+                        <a href="{{ route('activities.single-memos.status', $activity) }}" class="btn btn-info d-flex align-items-center gap-2">
+                            <i class="bx bx-info-circle"></i>
+                            <span>Approval Status</span>
+                        </a>
+                    @endif
+                    @if($activity->overall_status === 'approved')
+                        <a href="{{ route('activities.single-memos.print', $activity) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
+                            <i class="bx bx-printer"></i>
+                            <span>Print PDF</span>
+                        </a>
+                    @endif
+                </div>
+                        </div>
+                        </div>
+                    </div>
+
+    <div class="container-fluid py-4">
+        @php
+            // Decode JSON fields if they are strings
+            $budget = is_string($activity->budget_breakdown) 
+                ? json_decode(stripslashes($activity->budget_breakdown), true) 
+                : $activity->budget_breakdown;
             
-            <!-- Metadata Section -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">{{ $activity->activity_title }}</h5>
-                    <small class="text-muted">Single Memo Ref: {{ $activity->activity_ref }}</small>
-                    @if($activity->my_last_action)
-                        <p> Your Action: <small class=" text-white rounded p-1 {{($activity->my_last_action->action=='passed')?'bg-success':'bg-danger'}}">{{strtoupper($activity->my_last_action->action)}}</small></p>
-                    @endif
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <strong>Background:</strong>
-                            <div class="html-content">{!! $activity->background !!}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Key Result Area:</strong>
-                            <p>{{ $activity->matrix->key_result_area[intval($activity->key_result_area)]['description'] ?? '' }}</p>
-                        </div>
-                    </div>
+            // Handle double-encoded JSON (sometimes happens with form submissions)
+            if (is_string($budget) && !is_array($budget)) {
+                $budget = json_decode($budget, true);
+            }
 
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <strong>Status: </strong>
-                            <span class="badge {{ $activity->status_badge_class }}">{{ ucwords($activity->overall_status) }}</span>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Request Type: </strong>{{ $activity->requestType->name ?? '-' }}
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Fund Type: </strong>{{ $activity->fundType->name ?? '-' }}
-                        </div>
-                    </div>
+            $attachments = is_string($activity->attachment) 
+                ? json_decode($activity->attachment, true) 
+                : $activity->attachment;
 
-                    @if($activity->overall_status != 'approved')
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <strong>Current Approval Level: </strong>{{ $activity->approval_level_display }}
-                        </div>
-                        <div class="col-md-8"></div>
-                    </div>
-                    @endif
+            $internalParticipants = is_string($activity->internal_participants)
+                ? json_decode($activity->internal_participants, true)
+                : $activity->internal_participants;
 
-                    @if($activity->overall_status == 'draft' && $activity->staff_id == user_session('staff_id'))
-                        <div class="mt-3">
-                        <form action="{{ route('activities.single-memos.submit-for-approval', $activity) }}" method="POST" class="d-inline">
-                            @csrf
-                            <button type="submit" class="btn btn-success">
-                                <i class="bx bx-send me-1"></i>Submit for Approval
-                            </button>
-                        </form>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-
-            <!-- Main Content -->
-            <div class="row">
-                <div class="col-md-8">
-                    <!-- Basic Information -->
-                    <div class="card matrix-card mb-4">
-                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                            <h6 class="m-0 fw-semibold text-primary"><i class="bx bx-info-circle me-2"></i>Basic Information</h6>
-                        </div>
-                        <div class="card-body p-4">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Activity Title</label>
-                                    <p class="mb-0">{{ $activity->activity_title }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Request Type </label>
-                                    <p class="mb-0">{{ $activity->requestType->name ?? 'N/A' }}</p>
-                                </div>
-                            </div>
-                            
-
-                            <div class=" row mb-3">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Fund Type</label>
-                                <p class="mb-0">{{ $activity->fundType->fund_type_name ?? 'N/A' }}</p>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Key Result Area</label>
-                                <p class="mb-0">{{ $activity->key_result_area ?: 'N/A' }}</p>
-                            </div>
-
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Start Date</label>
-                                    <p class="mb-0">{{ $activity->date_from->format('F d, Y') }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">End Date</label>
-                                    <p class="mb-0">{{ $activity->date_to->format('F d, Y') }}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">Total Participants</label>
-                                    <p class="mb-0">{{ $activity->total_participants }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">External Participants</label>
-                                    <p class="mb-0">{{ $activity->total_external_participants }}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Background</label>
-                                <div class="html-content mb-0">{!! $activity->background ?: 'No background provided' !!}</div>
-                            </div>
-                            
-                            @if($activity->activity_request_remarks)
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Remarks</label>
-                                <div class="html-content mb-0">{!! $activity->activity_request_remarks !!}</div>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Participants -->
-                    @if(count($internalParticipants) > 0)
-                    <div class="card matrix-card mb-4">
-                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                            <h6 class="m-0 fw-semibold text-info"><i class="bx bx-users me-2"></i>Internal Participants</h6>
-                        </div>
-                        <div class="card-body p-4">
-                            <div class="table-responsive">
-                                <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Division</th>
-                                            <th>Start Date</th>
-                                            <th>End Date</th>
-                                            <th>Days</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($internalParticipants as $participant)
-                                        <tr>
-                                            <td>{{ $participant['staff']->fname }} {{ $participant['staff']->lname }}</td>
-                                            <td>{{ $participant['staff']->division_name }}</td>
-                                            <td>{{ $participant['participant_start'] ? \Carbon\Carbon::parse($participant['participant_start'])->format('M d, Y') : 'N/A' }}</td>
-                                            <td>{{ $participant['participant_end'] ? \Carbon\Carbon::parse($participant['participant_end'])->format('M d, Y') : 'N/A' }}</td>
-                                            <td>{{ $participant['participant_days'] ?? 'N/A' }}</td>
-                                        </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-
-                    <!-- Budget Information -->
-                    @if($activity->activity_budget && count($activity->activity_budget) > 0)
-                    <div class="card matrix-card mb-4">
-                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-money me-2"></i>Budget Information</h6>
-                        </div>
-                        <div class="card-body p-4">
-                            @php
+            // Ensure variables are arrays
+            $budget = is_array($budget) ? $budget : [];
+            $attachments = is_array($attachments) ? $attachments : [];
+            $internalParticipants = is_array($internalParticipants) ? $internalParticipants : [];
+            
                                 // Parse budget structure and organize by fund codes
                                 $budgetByFundCode = [];
                                 $totalBudget = 0;
                                 
-                                if (!empty($budgetItems)) {
-                                    foreach ($budgetItems as $key => $item) {
+            if (!empty($budget)) {
+                foreach ($budget as $key => $item) {
                                         if ($key === 'grand_total') {
                                             $totalBudget = floatval($item);
                                         } elseif (is_array($item)) {
@@ -338,6 +470,13 @@
                                             $totalBudget += floatval($item);
                                         }
                                     }
+                                }
+            
+            // Fetch fund code details for display
+            $fundCodes = [];
+            if (!empty($budgetByFundCode)) {
+                $fundCodeIds = array_keys($budgetByFundCode);
+                $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
                                 }
                                 
                                 // If no grand_total found, calculate from items
@@ -352,10 +491,382 @@
                                 }
                             @endphp
                             
+        <!-- Summary Table -->
+        <div class="summary-table mb-4">
+            <div class="card-header bg-light border-0 py-3">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bx bx-table me-2 text-primary"></i>Single Memo Summary
+                </h5>
+                        </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <tbody>
+                        <!-- Basic Information -->
+                        <tr>
+                            <td class="field-label">Memo ID</td>
+                            <td class="field-value">#{{ $activity->id }}</td>
+                            <td class="field-label">Status</td>
+                            <td class="field-value">
+                                @php
+                                    $statusBadgeClass = [
+                                        'draft' => 'status-draft',
+                                        'pending' => 'status-pending',
+                                        'approved' => 'status-approved',
+                                        'rejected' => 'status-rejected',
+                                        'returned' => 'status-returned',
+                                    ][$activity->overall_status] ?? 'status-draft';
+                                @endphp
+                                <span class="status-badge {{ $statusBadgeClass }}">
+                                    {{ ucfirst($activity->overall_status ?? 'draft') }}
+                                </span>
+                                @if($activity->overall_status === 'pending')
+                                    <a href="{{ route('activities.single-memos.status', $activity) }}" class="btn btn-sm btn-outline-info ms-2">
+                                        <i class="bx bx-info-circle me-1"></i>View Status
+                                    </a>
+                    @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Activity Title</td>
+                            <td class="field-value" colspan="3">{{ $activity->activity_title ?? 'Not specified' }}</td>
+                        </tr>
+                        @if($activity->document_number)
+                        <tr>
+                            <td class="field-label">Document Number</td>
+                            <td class="field-value" colspan="3">
+                                <span class="text-primary fw-bold">{{ $activity->document_number }}</span>
+                            </td>
+                        </tr>
+                        @endif
+                        <tr>
+                            <td class="field-label">Creator</td>
+                            <td class="field-value">
+                                {{ optional($activity->staff)->fname }} {{ optional($activity->staff)->lname ?? 'Not assigned' }}
+                            </td>
+                            <td class="field-label">Division</td>
+                            <td class="field-value">
+                                {{ optional($activity->matrix->division)->division_name ?? 'Not assigned' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Responsible Person</td>
+                            <td class="field-value">
+                                {{ optional($activity->responsiblePerson)->fname }} {{ optional($activity->responsiblePerson)->lname ?? 'Not assigned' }}
+                            </td>
+                            <td class="field-label">Job Title</td>
+                            <td class="field-value">
+                                {{ optional($activity->responsiblePerson)->job_name ?? 'Not specified' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">Date Range</td>
+                            <td class="field-value">
+                                {{ $activity->date_from ? \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') : 'N/A' }} - {{ $activity->date_to ? \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') : 'N/A' }}
+                            </td>
+                            <td class="field-label">Request Type</td>
+                            <td class="field-value">
+                                {{ optional($activity->requestType)->name ?? 'Not specified' }}
+                            </td>
+                        </tr>
+                        
+                        <!-- Location Information -->
+                        <tr>
+                            <td class="field-label">Location(s)</td>
+                            <td class="field-value" colspan="3">
+                                @if($activity->locations && $activity->locations->count() > 0)
+                                    @foreach($activity->locations as $location)
+                                        <span class="badge bg-primary me-1">{{ $location->name }}</span>
+                                    @endforeach
+                                @else
+                                    <span class="text-muted">No locations specified</span>
+                    @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Participants Information -->
+                        <tr>
+                            <td class="field-label">Total Participants</td>
+                            <td class="field-value fw-bold text-success">{{ $activity->total_participants ?? 0 }}</td>
+                            <td class="field-label">Internal Participants</td>
+                            <td class="field-value">
+                                @if(is_array($internalParticipants) && count($internalParticipants) > 0)
+                                    {{ count($internalParticipants) }} staff member(s)
+                                @else
+                                    <span class="text-muted">No internal participants</span>
+                                @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Budget Information -->
+                        <tr>
+                            <td class="field-label">Total Budget</td>
+                            <td class="field-value fw-bold text-success">${{ number_format($totalBudget, 2) }}</td>
+                            <td class="field-label">Fund Type</td>
+                            <td class="field-value">
+                                {{ optional($activity->fundType)->name ?? 'Not specified' }}
+                            </td>
+                        </tr>
+                        
+                        <!-- Attachments -->
+                        <tr>
+                            <td class="field-label">Attachments</td>
+                            <td class="field-value" colspan="3">
+                                @if(!empty($attachments) && count($attachments) > 0)
+                                    {{ count($attachments) }} file(s) attached
+                                @else
+                                    <span class="text-muted">No attachments</span>
+                                @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Last Updated -->
+                        <tr>
+                            <td class="field-label">Created Date</td>
+                            <td class="field-value">
+                                {{ $activity->created_at ? $activity->created_at->format('M d, Y H:i') : 'Not available' }}
+                            </td>
+                            <td class="field-label">Last Updated</td>
+                            <td class="field-value">
+                                {{ $activity->updated_at ? $activity->updated_at->format('M d, Y H:i') : 'Not available' }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                </div>
+            </div>
+
+
+            <div class="row">
+            <div class="col-lg-6">
+                <!-- Enhanced Memo Information Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bx bx-info-circle me-2 text-primary"></i>Single Memo Information
+                        </h6>
+                        </div>
+                    <div class="card-body">
+                        <div class="memo-meta-row">
+                            <div class="memo-meta-item">
+                                <i class="bx bx-calendar-alt"></i>
+                                <span class="memo-meta-label">Date Range:</span>
+                                <span class="memo-meta-value">{{ $activity->date_from ? \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') : 'N/A' }} - {{ $activity->date_to ? \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') : 'N/A' }}</span>
+                                </div>
+                            <div class="memo-meta-item">
+                                <i class="bx bx-user"></i>
+                                <span class="memo-meta-label">Requestor:</span>
+                                <span class="memo-meta-value">{{ optional($activity->staff)->fname }} {{ optional($activity->staff)->lname ?? 'Not assigned' }}</span>
+                            </div>
+                            <div class="memo-meta-item">
+                                <i class="bx bx-building"></i>
+                                <span class="memo-meta-label">Division:</span>
+                                <span class="memo-meta-value">{{ optional($activity->matrix->division)->division_name ?? 'Not assigned' }}</span>
+                            </div>
+                            <div class="memo-meta-item">
+                                <i class="bx bx-cube"></i>
+                                <span class="memo-meta-label">Request Type:</span>
+                                <span class="memo-meta-value">{{ optional($activity->requestType)->name ?? 'Not specified' }}</span>
+                                </div>
+                            </div>
+                            
+                        @if($activity->overall_status !== 'approved')
+                            <div class="mt-3 p-3" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 0.5rem; border: 1px solid #bfdbfe;">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="bx bx-user-check text-blue-600"></i>
+                                    <span class="fw-semibold text-blue-900">Current Status</span>
+                                </div>
+                                <div class="memo-meta-row">
+                                    <div class="memo-meta-item">
+                                        <i class="bx bx-badge-check"></i>
+                                        <span class="memo-meta-value">{{ ucfirst($activity->overall_status ?? 'draft') }}</span>
+                                    </div>
+                                    @if($activity->overall_status === 'pending')
+                                        <div class="memo-meta-item">
+                                            <i class="bx bx-time"></i>
+                                            <span class="memo-meta-value">Awaiting Approval</span>
+                                        </div>
+                                    @endif
+                                </div>
+                                
+                                @if($activity->overall_status !== 'draft' && $activity->current_actor)
+                                    <div class="mt-3 p-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 0.5rem; border: 1px solid #bae6fd;">
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <i class="bx bx-user text-primary"></i>
+                                            <span class="fw-semibold text-primary">Current Approver</span>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-2">
+                                                    <strong class="text-muted small">Name:</strong>
+                                                    <div class="fw-bold text-primary">{{ $activity->current_actor->fname . ' ' . $activity->current_actor->lname }}</div>
+                                                </div>
+                                                @if($activity->current_actor->job_name)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Job Title:</strong>
+                                                        <div class="fw-semibold">{{ $activity->current_actor->job_name }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div class="col-md-6">
+                                                @if($activity->current_actor->division_name)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Division:</strong>
+                                                        <div class="fw-semibold">{{ $activity->current_actor->division_name }}</div>
+                                                    </div>
+                                                @endif
+                                                @if($activity->workflow_definition)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Approval Role:</strong>
+                                                        <div>
+                                                            <span class="badge bg-info">{{ $activity->workflow_definition->role ?? 'Not specified' }}</span>
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 p-2 bg-primary bg-opacity-10 rounded">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bx bx-info-circle text-primary"></i>
+                                                <span class="text-primary fw-medium small">This single memo is currently awaiting approval from the supervisor above.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Activity Details -->
+                <div class="card content-section bg-blue border-0 mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
+                            <i class="bx bx-detail"></i>
+                            Activity Details
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-semibold">Activity Title</label>
+                            <h5 class="fw-bold text-dark mb-0">{{ $activity->activity_title ?? 'Not specified' }}</h5>
+                            </div>
+                            
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-semibold">Background</label>
+                            <div class="bg-light rounded p-3 border">{!! $activity->background ?? 'Not specified' !!}</div>
+                            </div>
+
+                        @if($activity->activity_request_remarks)
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-semibold">Remarks</label>
+                            <div class="bg-light rounded p-3 border">{!! $activity->activity_request_remarks !!}</div>
+                        </div>
+                        @endif
+                    </div>
+                            </div>
+
+                <!-- Participants & Location -->
+                <div class="card content-section bg-green border-0 mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                            <i class="bx bx-group"></i>
+                            Participants & Location
+                        </h6>
+                                </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label text-muted small fw-semibold">Location(s)</label>
+                                <div class="location-badge">
+                                    <i class="bx bx-map text-primary"></i>
+                                    <span>
+                                        @if($activity->locations && $activity->locations->count() > 0)
+                                            {{ $activity->locations->pluck('name')->join(', ') }}
+                                        @else
+                                            No locations specified
+                                        @endif
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label text-muted small fw-semibold">Total Participants</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bx bx-user text-success"></i>
+                                    <span class="fw-bold">{{ $activity->total_participants ?? 0 }}</span>
+                                    <span class="text-muted">participants</span>
+                                </div>
+                                </div>
+                            </div>
+                            
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label text-muted small fw-semibold">Internal Participants</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-info">{{ count($internalParticipants) }}</span>
+                                    <span class="text-muted">staff members</span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label text-muted small fw-semibold">External Participants</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-secondary">{{ $activity->total_external_participants ?? 0 }}</span>
+                                    <span class="text-muted">external</span>
+                            </div>
+                        </div>
+                    </div>
+
+                        @if(!empty($internalParticipants))
+                            <div class="mt-4">
+                                <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
+                            <div class="table-responsive">
+                                    <table class="table table-bordered table-sm mb-0">
+                                        <thead class="table-light">
+                                        <tr>
+                                                <th>Staff</th>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Days</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($internalParticipants as $participant)
+                                        <tr>
+                                                    <td>
+                                                        @if(isset($participant['staff']) && $participant['staff'])
+                                                            {{ $participant['staff']->fname ?? '' }} {{ $participant['staff']->lname ?? '' }}
+                                                        @else
+                                                            <span class="text-muted">Unknown Staff</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>{{ $participant['participant_start'] ?? '-' }}</td>
+                                                    <td>{{ $participant['participant_end'] ?? '-' }}</td>
+                                                    <td>{{ $participant['participant_days'] ?? '-' }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                        </div>
+                    </div>
+                    @endif
+                    </div>
+                </div>
+
+                    <!-- Budget Information -->
+                <div class="card content-section bg-blue border-0 mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
+                            <i class="bx bx-money"></i>
+                            Budget Information
+                        </h6>
+                        </div>
+                    <div class="card-body">
+                        @if(!empty($budget))
                             @if(!empty($budgetByFundCode))
                                 @foreach($budgetByFundCode as $fundCodeId => $items)
                                     @php
-                                        $fundCode = $fundCodes->where('id', $fundCodeId)->first();
+                                        $fundCode = $fundCodes[$fundCodeId] ?? null;
                                         $fundCodeTotal = 0;
                                         foreach ($items as $item) {
                                             if (isset($item['unit_cost']) && isset($item['units'])) {
@@ -365,19 +876,23 @@
                                     @endphp
                                     
                                     <div class="mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-3 p-3" 
-                                             style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd; border-radius: 0.5rem;">
+                                        <div class="d-flex justify-content-between align-items-center mb-3 p-3 fund-code-header">
                                             <div>
                                                 <h6 class="mb-1 fw-bold text-primary">
                                                     @if($fundCode)
-                                                        Fund Code: {{ $fundCode->fund_code }}
+                                                        Fund Code: {{ $fundCode->code }}
                                                     @else
                                                         Fund Code ID: {{ $fundCodeId }}
                                                     @endif
                                                 </h6>
-                                                @if($fundCode && $fundCode->fundType)
+                                                @if($fundCode)
                                                     <div class="small text-muted">
-                                                        Type: {{ $fundCode->fundType->fund_type_name ?? 'N/A' }}
+                                                        @if($fundCode->fundType)
+                                                            <span class="me-3">Type: {{ $fundCode->fundType->name ?? 'N/A' }}</span>
+                                                        @endif
+                                                        @if($fundCode->funder)
+                                                            <span>Funder: {{ $fundCode->funder->name ?? 'N/A' }}</span>
+                                                        @endif
                                                     </div>
                                                 @endif
                                             </div>
@@ -388,13 +903,14 @@
                                         </div>
                                         
                             <div class="table-responsive">
-                                            <table class="table table-sm table-bordered">
-                                                <thead class="table-light">
+                                            <table class="table table-bordered table-sm mb-0 budget-table">
+                                                <thead>
                                                     <tr>
                                                         <th>Cost Item</th>
                                                         <th>Description</th>
                                                         <th>Unit Cost</th>
                                                         <th>Units</th>
+                                                        <th>Days</th>
                                                         <th>Total</th>
                                         </tr>
                                     </thead>
@@ -411,6 +927,7 @@
                                                             <td>{{ $item['description'] ?? 'N/A' }}</td>
                                                             <td class="text-end">${{ number_format(floatval($item['unit_cost'] ?? 0), 2) }}</td>
                                                             <td class="text-end">{{ $item['units'] ?? 'N/A' }}</td>
+                                                            <td class="text-end">{{ $item['days'] ?? 'N/A' }}</td>
                                                             <td class="text-end fw-bold">${{ number_format($itemTotal, 2) }}</td>
                                         </tr>
                                         @endforeach
@@ -421,34 +938,30 @@
                                 @endforeach
                                 
                                 <!-- Grand Total Row -->
-                                @if($totalBudget > 0)
-                                    <div class="mt-4 p-3 rounded" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+                                <div class="mt-4 p-3 budget-total-row rounded">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <h6 class="mb-0 fw-bold">Grand Total (All Fund Codes)</h6>
                                             <span class="fw-bold fs-5">${{ number_format($totalBudget, 2) }}</span>
                                         </div>
                                     </div>
-                                @endif
                             @else
                                 <!-- Fallback: Show budget as key-value pairs if structure is different -->
                                 <div class="table-responsive">
-                                    <table class="table table-sm table-bordered">
-                                        <thead class="table-light">
+                                    <table class="table table-bordered table-sm mb-0">
+                                        <thead>
                                             <tr>
                                                 <th>Budget Item</th>
                                                 <th>Value</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach($budgetItems as $key => $value)
+                                            @foreach($budget as $key => $value)
                                                 @if($key !== 'grand_total')
                                                     <tr>
                                                         <td>{{ $key }}</td>
                                                         <td>
                                                             @if(is_array($value))
                                                                 <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                            @elseif(is_numeric($value))
-                                                                ${{ number_format(floatval($value), 2) }}
                                                             @else
                                                                 {{ $value }}
                                                             @endif
@@ -460,53 +973,68 @@
                                     </table>
                                 </div>
                             @endif
-                        </div>
+                        @else
+                            <div class="text-center text-muted py-4">
+                                <i class="bx bx-money bx-lg mb-3"></i>
+                                <p class="mb-0">No budget details</p>
                     </div>
                     @endif
+                    </div>
+                </div>
+            </div>
 
-                    <!-- Attachments -->
-                    @if(count($attachments) > 0)
-                    <div class="card matrix-card mb-4">
-                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                            <h6 class="m-0 fw-semibold text-warning"><i class="bx bx-paperclip me-2"></i>Attachments</h6>
+            <div class="col-lg-6">
+
+                <!-- Attachments Card -->
+                <div class="card sidebar-card border-0 mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-info d-flex align-items-center gap-2">
+                            <i class="bx bx-paperclip"></i>
+                            Attachments
+                        </h6>
                         </div>
-                        <div class="card-body p-4">
+                    <div class="card-body">
+                        @if(!empty($attachments) && count($attachments) > 0)
                             <div class="table-responsive">
-                                <table class="table table-sm">
+                                <table class="table table-sm table-bordered">
                                     <thead>
                                         <tr>
                                             <th>#</th>
                                             <th>Type</th>
                                             <th>File Name</th>
                                             <th>Size</th>
+                                            <th>Uploaded</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($attachments as $index => $attachment)
                                         @php
-                                            $ext = strtolower(pathinfo($attachment['original_name'] ?? $attachment['filename'] ?? '', PATHINFO_EXTENSION));
-                                            $fileUrl = url('storage/'.($attachment['path'] ?? $attachment['file_path'] ?? ''));
+                                                $originalName = $attachment['original_name'] ?? $attachment['filename'] ?? $attachment['name'] ?? 'Unknown';
+                                                $filePath = $attachment['path'] ?? $attachment['file_path'] ?? '';
+                                                $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
+                                                $fileUrl = $filePath ? url('storage/'.$filePath) : '#';
                                             $isOffice = in_array($ext, ['ppt','pptx','xls','xlsx','doc','docx']);
                                         @endphp
                                         <tr>
                                             <td>{{ $index + 1 }}</td>
                                             <td>{{ $attachment['type'] ?? 'Document' }}</td>
-                                            <td>{{ $attachment['original_name'] ?? $attachment['filename'] ?? $attachment['name'] ?? 'Unknown' }}</td>
+                                                <td>{{ $originalName }}</td>
                                             <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
-                                            <td>
-                                                @if($attachment['path'] ?? $attachment['file_path'])
-                                                    @if($isOffice)
-                                                        <a href="{{ $fileUrl }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
+                                                <td>
+                                                    @if($filePath)
+                                                    <button type="button" class="btn btn-sm btn-info preview-attachment" 
+                                                        data-file-url="{{ $fileUrl }}"
+                                                        data-file-ext="{{ $ext }}"
+                                                        data-file-office="{{ $isOffice ? '1' : '0' }}">
+                                                        <i class="bx bx-show"></i> Preview
+                                                    </button>
+                                                    <a href="{{ $fileUrl }}" target="_blank" class="btn btn-sm btn-success">
                                                             <i class="bx bx-download"></i> Download
                                                         </a>
                                                     @else
-                                                        <a href="{{ $fileUrl }}" class="btn btn-sm btn-outline-info" target="_blank">
-                                                            <i class="bx bx-show"></i> View
-                                                        </a>
-                                                    @endif
-                                                @else
-                                                    <span class="text-muted">File not available</span>
+                                                    <span class="text-muted">File not found</span>
                                                 @endif
                                             </td>
                                         </tr>
@@ -514,79 +1042,41 @@
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                        @else
+                            <div class="text-center text-muted py-4">
+                                <i class="bx bx-paperclip bx-lg mb-3"></i>
+                                <p class="mb-0">No attachments</p>
                     </div>
                     @endif
-
-                    <!-- Current Supervisor Information -->
-                    @if($activity->overall_status !== 'approved' && $activity->overall_status !== 'rejected' && $activity->current_actor)
-                        <div class="card matrix-card mb-4" style="border-left: 4px solid #3b82f6;">
-                            <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                                <h6 class="m-0 fw-semibold text-primary"><i class="bx bx-user-check me-2"></i>Current Approver Information</h6>
                             </div>
-                            <div class="card-body p-4">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <strong class="text-muted">Name:</strong> 
-                                            <span class="fw-bold text-primary fs-5">{{ $activity->current_actor->fname . ' ' . $activity->current_actor->lname }}</span>
                                         </div>
-                                        @if($activity->current_actor->job_name)
-                                            <div class="mb-3">
-                                                <strong class="text-muted">Job Title:</strong> 
-                                                <span class="fw-bold">{{ $activity->current_actor->job_name }}</span>
+
+                <!-- Approval Trail Section -->
+                @if(isset($activity->approvalTrails) && $activity->approvalTrails->count() > 0)
+                    @include('partials.approval-trail', ['resource' => $activity])
+                @else
+                    <div class="card sidebar-card border-0 mb-4">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
+                                <i class="bx bx-history"></i>
+                                Approval Trail
+                            </h6>
                                             </div>
+                        <div class="card-body">
+                            <div class="text-center text-muted py-4">
+                                <i class="bx bx-time bx-lg mb-3"></i>
+                                <p class="mb-0">No approval actions have been taken yet.</p>
+                                @if($activity->overall_status === 'draft')
+                                    <small>Submit this single memo for approval to start the approval trail.</small>
                                         @endif
                                     </div>
-                                    <div class="col-md-6">
-                                        @if($activity->current_actor->division_name)
-                                            <div class="mb-3">
-                                                <strong class="text-muted">Division:</strong> 
-                                                <span class="fw-bold">{{ $activity->current_actor->division_name }}</span>
-                                            </div>
-                                        @endif
-                                        @if($activity->workflow_definition)
-                                            <div class="mb-3">
-                                                <strong class="text-muted">Approval Role:</strong> 
-                                                <span class="badge bg-info">{{ $activity->workflow_definition->role ?? 'Not specified' }}</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                                <div class="mt-3 p-3 bg-primary bg-opacity-10 rounded">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="bx bx-info-circle text-primary"></i>
-                                        <span class="text-primary fw-medium">This single memo is currently awaiting approval from the supervisor above.</span>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     @endif
 
                     <!-- Enhanced Approval Actions -->
-                    @php
-                        $approvalService = app(\App\Services\ApprovalService::class);
-                        $canTakeAction = $approvalService->canTakeAction($activity, user_session('staff_id'));
-                        
-                        // Debug information
-                        $debugInfo = [
-                            'activity_status' => $activity->overall_status,
-                            'approval_level' => $activity->approval_level,
-                            'forward_workflow_id' => $activity->forward_workflow_id,
-                            'user_staff_id' => user_session('staff_id'),
-                            'can_take_action' => $canTakeAction
-                        ];
-                    @endphp
-                    
-                    {{-- Debug info (remove in production) --}}
-                    @if(config('app.debug'))
-                    <div class="alert alert-info mb-3">
-                        <small><strong>Debug Info:</strong> {{ json_encode($debugInfo) }}</small>
-                    </div>
-                    @endif
-                    
-                    @if($canTakeAction)
-                        <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                @if(can_take_action_generic($activity))
+                    <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                             <div class="card-header bg-transparent border-0 py-3">
                                 <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
                                     <i class="bx bx-check-circle"></i>
@@ -600,16 +1090,11 @@
                                     @if($activity->workflow_definition)
                                         - <strong>Role:</strong> {{ $activity->workflow_definition->role ?? 'Not specified' }}
                                     @endif
-                                    @if($activity->current_actor)
-                                        <br><strong>Name:</strong> {{ $activity->current_actor->fname . ' ' . $activity->current_actor->lname }}
-                                        @if($activity->current_actor->job_name)
-                                            ({{ $activity->current_actor->job_name }})
-                                        @endif
-                                    @endif
                                 </div>
                                 
-                                <form action="{{ route('activities.single-memos.update-status', $activity) }}" method="POST" id="singleMemoApprovalForm">
+                            <form action="{{ route('activities.single-memos.update-status', $activity) }}" method="POST" id="approvalForm">
                                     @csrf
+                                <input type="hidden" name="debug_approval" value="1">
                                     <div class="row">
                                         <div class="col-md-8">
                                             <div class="mb-3">
@@ -625,11 +1110,11 @@
                                                 </button>
                                                 <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
                                                     <i class="bx bx-undo"></i>
-                                                    Return for Revision
+                                                Return
                                                 </button>
                                                 <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
                                                     <i class="bx bx-x"></i>
-                                                    Reject
+                                                Cancel
                                                 </button>
                                             </div>
                                         </div>
@@ -637,41 +1122,11 @@
                                 </form>
                             </div>
                         </div>
-                    @else
-                        {{-- Show why approval actions are not available --}}
-                        <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);">
-                            <div class="card-header bg-transparent border-0 py-3">
-                                <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
-                                    <i class="bx bx-info-circle"></i>
-                                    Approval Status Information
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                @if($activity->overall_status === 'draft')
-                                    <p class="mb-2">📝 This single memo is still in <span class="badge bg-secondary">Draft</span> status.</p>
-                                    @if($activity->staff_id === user_session('staff_id'))
-                                        <p class="mb-0">You can submit it for approval using the "Submit for Approval" button above.</p>
-                                    @else
-                                        <p class="mb-0">Only the creator can submit this memo for approval.</p>
-                                    @endif
-                                @elseif($activity->overall_status === 'approved')
-                                    <p class="mb-0">✅ This single memo has been <span class="badge bg-success">Approved</span>. No further actions are needed.</p>
-                                @elseif($activity->overall_status === 'pending')
-                                    <p class="mb-0">⏳ This single memo is <span class="badge bg-info">Pending</span> approval.</p>
-                                @elseif($activity->overall_status === 'returned')
-                                    <p class="mb-0">🔄 This single memo has been <span class="badge bg-warning">Returned</span> for revision.</p>
-                                @elseif(!$activity->forward_workflow_id)
-                                    <p class="mb-0">⚠️ No approval workflow is configured for this memo.</p>
-                                @else
-                                    <p class="mb-0">ℹ️ You are not authorized to take approval actions on this memo at this time.</p>
-                                @endif
-                            </div>
-                        </div>
                     @endif
 
-                    <!-- Enhanced Submit for Approval Section -->
-                    @if($activity->overall_status == 'draft' && $activity->staff_id == user_session('staff_id'))
-                        <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                <!-- Submit for Approval Section -->
+                @if($activity->overall_status === 'draft' && $activity->staff_id == user_session('staff_id'))
+                    <div class="card sidebar-card border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
                             <div class="card-header bg-transparent border-0 py-3">
                                 <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
                                     <i class="bx bx-send"></i>
@@ -698,31 +1153,79 @@
                     @endif
 
                 </div>
-
-                <!-- Sidebar -->
-                <div class="col-md-4">
-                    <!-- Enhanced Approval Trail -->
-                    @if($activity->approvalTrails && $activity->approvalTrails->count() > 0)
-                                @include('partials.approval-trail', ['resource' => $activity])
-                    @else
-                        <div class="card matrix-card mb-4">
-                            <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                                <h6 class="m-0 fw-semibold text-warning"><i class="bx bx-history me-2"></i>Approval Trail</h6>
                             </div>
-                            <div class="card-body p-4">
-                                <div class="text-center text-muted py-4">
-                                    <i class="bx bx-time bx-lg mb-3"></i>
-                                    <p class="mb-0">No approval actions have been taken yet.</p>
-                                    @if($activity->overall_status == 'draft')
-                                        <small>Submit this single memo for approval to start the approval trail.</small>
-                                    @endif
                                 </div>
                             </div>
+
+{{-- Modal for preview --}}
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">Attachment Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-                    @endif
+      <div class="modal-body" id="previewModalBody" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+        <div class="text-center w-100">Loading preview...</div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+
 @endsection
+
+@push('scripts')
+<script>
+    // Attachment preview functionality
+    $(document).on('click', '.preview-attachment', function() {
+        var fileUrl = $(this).data('file-url');
+        var ext = $(this).data('file-ext');
+        var isOffice = $(this).data('file-office') == '1';
+        var modalBody = $('#previewModalBody');
+        var content = '';
+        
+        if(['jpg','jpeg','png'].includes(ext)) {
+            content = '<img src="'+fileUrl+'" class="img-fluid" style="max-height:70vh;max-width:100%;margin:auto;display:block;">';
+        } else if(ext === 'pdf') {
+            content = '<iframe src="'+fileUrl+'#toolbar=1&navpanes=0&scrollbar=1" style="width:100%;height:70vh;border:none;"></iframe>';
+        } else if(isOffice) {
+            var gdocs = 'https://docs.google.com/viewer?url='+encodeURIComponent(fileUrl)+'&embedded=true';
+            content = '<iframe src="'+gdocs+'" style="width:100%;height:70vh;border:none;"></iframe>';
+        } else {
+            content = '<div class="alert alert-info">Preview not available. <a href="'+fileUrl+'" target="_blank">Download/Open file</a></div>';
+        }
+        
+        modalBody.html(content);
+        var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+        modal.show();
+    });
+
+    $(document).ready(function() {
+        // Setup delete confirmation
+        $('#deleteMemoForm').on('submit', function(e) {
+            e.preventDefault();
+            const form = this;
+            
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This will permanently delete this single memo.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="bx bx-trash me-1"></i> Yes, delete it!',
+                cancelButtonText: '<i class="bx bx-x me-1"></i> Cancel',
+                reverseButtons: true,
+                customClass: {
+                    confirmButton: 'btn btn-danger',
+                    cancelButton: 'btn btn-secondary'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+@endpush

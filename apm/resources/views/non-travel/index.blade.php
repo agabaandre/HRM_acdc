@@ -13,6 +13,32 @@
 @endsection
 
 @section('content')
+<style>
+.table-responsive {
+    font-size: 0.875rem;
+}
+.table th, .table td {
+    padding: 0.5rem 0.25rem;
+    vertical-align: middle;
+}
+.table th {
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.text-wrap {
+    word-wrap: break-word;
+    word-break: break-word;
+}
+.badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+</style>
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body py-3 px-4 bg-light rounded-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
@@ -22,11 +48,17 @@
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
             <form action="{{ route('non-travel.index') }}" method="GET" class="row g-3 align-items-end w-100">
                 <div class="col-md-2">
-                    <label for="category_id" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-category me-1 text-success"></i> Category</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-category"></i></span>
-                        <select name="category_id" id="category_id" class="form-select">
+                    <label for="document_number" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-file me-1 text-success"></i> Document #
+                    </label>
+                    <input type="text" name="document_number" id="document_number" class="form-control" 
+                           value="{{ request('document_number') }}" placeholder="Doc #" style="width: 100%;">
+                </div>
+                <div class="col-md-2">
+                    <label for="category_id" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-category me-1 text-success"></i> Category
+                    </label>
+                    <select name="category_id" id="category_id" class="form-select select2" style="width: 100%;">
                         <option value="">All Categories</option>
                         @foreach($categories as $category)
                             <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
@@ -34,17 +66,15 @@
                             </option>
                         @endforeach
                     </select>
-                    </div>
                 </div>
                  {{-- @php
                     dd($divisions);
                 @endphp --}}
                 <div class="col-md-2">
-                    <label for="staff_id" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-user me-1 text-success"></i> Staff</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-user"></i></span>
-                        <select name="staff_id" id="staff_id" class="form-select">
+                    <label for="staff_id" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-user me-1 text-success"></i> Staff
+                    </label>
+                    <select name="staff_id" id="staff_id" class="form-select select2" style="width: 100%;">
                         <option value="">All Staff</option>
                         @foreach($staff as $member)
                             <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -52,45 +82,40 @@
                             </option>
                         @endforeach
                     </select>
-                    </div>
                 </div>
                 <div class="col-md-2">
-                    <label for="division_id" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-building me-1 text-success"></i> Division</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-building"></i></span>
-                        <select name="division_id" id="division_id" class="form-select" select2>
+                    <label for="division_id" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-building me-1 text-success"></i> Division
+                    </label>
+                    <select name="division_id" id="division_id" class="form-select select2" style="width: 100%;">
                         <option value="">All Divisions</option>
                         @foreach($divisions as $division)
                             <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
-                                    {{ $division->division_name }}
+                                {{ $division->division_name }}
                             </option>
                         @endforeach
                     </select>
-                    </div>
                 </div>
                 <div class="col-md-2">
-                    <label for="status" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-info-circle me-1 text-success"></i> Status</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-info-circle"></i></span>
-                        <select name="status" id="" class="form-select">
-                            <option value="">All Statuses</option>
-                            <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                            <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                            <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
-                        </select>
-                    </div>
+                    <label for="status" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-info-circle me-1 text-success"></i> Status
+                    </label>
+                    <select name="status" id="status" class="form-select select2" style="width: 100%;">
+                        <option value="">All Statuses</option>
+                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
+                        <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
+                    </select>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success w-100 fw-bold" id="applyFilters">
+                <div class="col-auto d-flex align-items-end">
+                    <button type="submit" class="btn btn-success btn-sm" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
+                <div class="col-auto d-flex align-items-end">
+                    <a href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
@@ -143,14 +168,15 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-success">
                                     <tr>
-                                        <th>#</th>
-                                        <th>Title</th>
-                                        <th>Category</th>
-                                        <th>Division</th>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Actions</th>
-                    </tr>
+                                        <th style="width: 5%;">#</th>
+                                        <th style="width: 25%;">Title</th>
+                                        <th style="width: 10%;">Category</th>
+                                        <th style="width: 12%;">Division</th>
+                                        <th style="width: 8%;">Fund Type</th>
+                                        <th style="width: 10%;">Date</th>
+                                        <th style="width: 10%;">Status</th>
+                                        <th style="width: 10%;" class="text-center">Actions</th>
+                                    </tr>
                 </thead>
                 <tbody>
                                     @php $count = 1; @endphp
@@ -158,7 +184,9 @@
                         <tr>
                                             <td>{{ $count++ }}</td>
                             <td>
-                                <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                                <div class="text-wrap" style="max-width: 250px;">
+                                    <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 60) }}</div>
+                                </div>
                             </td>
                             <td>
                                 <span class="badge bg-info text-dark">
@@ -166,7 +194,17 @@
                                     {{ $memo->nonTravelMemoCategory->name ?? 'N/A' }}
                                 </span>
                             </td>
-                                            <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
+                            <td>
+                                <div class="text-wrap" style="max-width: 150px;">
+                                    {{ Str::limit($memo->division->division_name ?? 'N/A', 20) }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bx bx-money me-1"></i>
+                                    {{ $memo->fundType->name ?? 'N/A' }}
+                                </span>
+                            </td>
                                             <td>{{ $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('M d, Y') : 'N/A' }}</td>
                                             <td>
                                                 @php
@@ -187,7 +225,7 @@
                                                 
                                                 @if($memo->overall_status === 'pending')
                                                     <!-- Structured display for pending status -->
-                                                    <div class="text-center">
+                                                    <div class="text-start">
                                                         <span class="badge {{ $statusClass }} mb-1">
                                                             {{ strtoupper($memo->overall_status) }}
                                                         </span>
@@ -197,7 +235,7 @@
                                                         @if($actorName !== 'N/A')
                                                             <small class="text-muted d-block">{{ $actorName }}</small>
                                                         @endif
-                                </div>
+                                                    </div>
                                                 @else
                                                     <!-- Standard badge for other statuses -->
                                                     <span class="badge {{ $statusClass }}">
@@ -270,15 +308,16 @@
                                 <table class="table table-hover mb-0">
                                     <thead class="table-primary">
                                         <tr>
-                                            <th>#</th>
-                                            <th>Title</th>
-                                            <th>Category</th>
-                                            <th>Responsible Staff</th>
-                                            <th>Division</th>
-                                            <th>Date</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
-                        </tr>
+                                            <th style="width: 5%;">#</th>
+                                            <th style="width: 20%;">Title</th>
+                                            <th style="width: 8%;">Category</th>
+                                            <th style="width: 12%;">Responsible Staff</th>
+                                            <th style="width: 10%;">Division</th>
+                                            <th style="width: 8%;">Fund Type</th>
+                                            <th style="width: 8%;">Date</th>
+                                            <th style="width: 9%;">Status</th>
+                                            <th style="width: 10%;" class="text-center">Actions</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         @php $count = 1; @endphp
@@ -286,7 +325,9 @@
                                             <tr>
                                                 <td>{{ $count++ }}</td>
                                                 <td>
-                                                    <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                                                    <div class="text-wrap" style="max-width: 200px;">
+                                                        <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 50) }}</div>
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-info text-dark">
@@ -295,13 +336,25 @@
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    @if($memo->staff)
-                                                        {{ $memo->staff->fname }} {{ $memo->staff->lname }}
-                                                    @else
-                                                        <span class="text-muted">Not assigned</span>
-                                                    @endif
+                                                    <div class="text-wrap" style="max-width: 120px;">
+                                                        @if($memo->staff)
+                                                            {{ Str::limit($memo->staff->fname . ' ' . $memo->staff->lname, 15) }}
+                                                        @else
+                                                            <span class="text-muted">Not assigned</span>
+                                                        @endif
+                                                    </div>
                                                 </td>
-                                                <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
+                                                <td>
+                                                    <div class="text-wrap" style="max-width: 120px;">
+                                                        {{ Str::limit($memo->division->division_name ?? 'N/A', 15) }}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="bx bx-money me-1"></i>
+                                                        {{ $memo->fundType->name ?? 'N/A' }}
+                                                    </span>
+                                                </td>
                                                 <td>{{ $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('M d, Y') : 'N/A' }}</td>
                                                 <td>
                                                     @php
@@ -322,12 +375,12 @@
                                                     
                                                     @if($memo->overall_status === 'pending')
                                                         <!-- Structured display for pending status -->
-                                                        <div class="text-center">
+                                                        <div class="text-start">
                                                             <span class="badge {{ $statusClass }} mb-1">
                                                                 {{ strtoupper($memo->overall_status) }}
                                                             </span>
                                                             <br>
-                                                            <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
+                                                        
                                                             <small class="text-muted d-block">{{ $workflowRole }}</small>
                                                             @if($actorName !== 'N/A')
                                                                 <small class="text-muted d-block">{{ $actorName }}</small>
@@ -388,8 +441,39 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Form is now properly wrapped, so no need for auto-submit
-    // Users can use the Filter button to apply filters
+    // Document number filter - submit on Enter key
+    if (document.getElementById('document_number')) {
+        document.getElementById('document_number').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                this.form.submit();
+            }
+        });
+    }
+    
+    // Auto-submit for select filters
+    if (document.getElementById('category_id')) {
+        document.getElementById('category_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('staff_id')) {
+        document.getElementById('staff_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('division_id')) {
+        document.getElementById('division_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (document.getElementById('status')) {
+        document.getElementById('status').addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
     });
 </script>
 @endsection

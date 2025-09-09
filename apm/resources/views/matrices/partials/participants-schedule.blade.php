@@ -1,12 +1,37 @@
 <div class="card shadow-sm border-0">
     <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
-        <h5 class="card-title mb-0 fw-bold text-dark">
-            <i class="bx bx-calendar-event me-2 text-primary"></i>
-            Division Schedule - {{ strtoupper($matrix->quarter) }} {{ $matrix->year }}
-        </h5>
-        <small class="text-muted d-block mt-1">
-            Staff schedule for {{ $matrix->division->division_name ?? 'Division' }} in {{ strtoupper($matrix->quarter) }} {{ $matrix->year }}
-        </small>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bx bx-calendar-event me-2 text-primary"></i>
+                    Division Schedule - {{ strtoupper($matrix->quarter) }} {{ $matrix->year }}
+                </h5>
+                <small class="text-muted d-block mt-1">
+                    Staff schedule for {{ $matrix->division->division_name ?? 'Division' }} in {{ strtoupper($matrix->quarter) }} {{ $matrix->year }}
+                </small>
+            </div>
+            <div class="col-md-3">
+                <form method="GET" action="{{ route('matrices.show', $matrix) }}" class="d-flex">
+                    <input type="hidden" name="document_number" value="{{ request('document_number') }}">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="bx bx-user text-muted"></i>
+                        </span>
+                        <input type="text" name="staff_name" class="form-control" 
+                               placeholder="Filter by name" 
+                               value="{{ request('staff_name') }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary ms-2">
+                        <i class="bx bx-search"></i>
+                    </button>
+                    @if(request('staff_name'))
+                        <a href="{{ route('matrices.show', $matrix) }}?document_number={{ request('document_number') }}" class="btn btn-outline-secondary ms-1">
+                            <i class="bx bx-x"></i>
+                        </a>
+                    @endif
+                </form>
+            </div>
+        </div>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -25,7 +50,7 @@
                     @php
                         $count = 0;
                     @endphp
-                    @forelse($matrix->division_staff as $staff)
+                    @forelse($divisionStaff as $staff)
                         @php
                          $quarter_year = $matrix->quarter."-".$matrix->year;
                          $count++;
