@@ -185,8 +185,8 @@
                         @endphp
 
                         @forelse($activities as $activity)
-                            <tr style="background-color: {{ $activity->is_single_memo == 1 ? '#d5f5de' : '' }};">
-                                @if(can_take_action($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $activity->is_single_memo == 0)
+                            <tr>
+                                @if(can_take_action($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
                                <td class="px-3 py-3">
                                     @if(can_approve_activity($activity) && !done_approving_activty($activity))
                                         <input type="checkbox" class="form-check-input activity-checkbox" value="{{ $activity->id }}" data-activity-title="{{ $activity->activity_title }}">
@@ -240,7 +240,7 @@
                                                 $unitCost = floatval($item['unit_cost'] ?? 0);
                                                 $units = floatval($item['units'] ?? 0);
                                                 $days = floatval($item['days'] ?? 1);
-                                                $totalBudget += $unitCost * $units * $days;
+                                                $totalBudget += $unitCost * $units;
                                             }
                                         }
                                     }
@@ -249,9 +249,7 @@
                             </td>
 
                                 <td class="px-3 py-3 text-center">
-
-                                @php //dd(can_approve_activity($activity)) @endphp
-                                    @if(can_approve_activity($activity) && $activity->is_single_memo == 0)
+                                    @if(can_approve_activity($activity))
                                     <span class="badge bg-{{ allow_print_activity($activity) ? 'success' : ($activity->status === 'rejected' ? 'danger' : 'secondary') }} rounded-pill">
                                         @if(allow_print_activity($activity))
                                             Passed
@@ -263,12 +261,12 @@
                                     </span>
                                     @else
                                     <span class="badge bg-success rounded-pill">
-                                        {{ $activity->is_single_memo == 1 ? 'Single Memo - '.ucfirst($activity->status) : 'No Action Required' }}
+                                        No Action Required
                                     </span>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3 text-center">
-                                    <a href="{{ ($activity->is_single_memo == 1) ? route('activities.single-memos.show', $activity) :route('matrices.activities.show', [$matrix, $activity]) }}" class="btn btn-outline-primary btn-sm">
+                                    <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" class="btn btn-outline-primary btn-sm">
                                         <i class="bx bx-show"></i>
                                     </a>
                                 </td>
@@ -317,9 +315,155 @@
     </div>
 </div>
 
+<!-- Single Memos Section -->
+@if($singleMemos->count() > 0)
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0 fw-bold text-dark">
+                            <i class="bx bx-file-text me-2 text-primary"></i>Single Memos
+                        </h5>
+                        <small class="text-muted d-block mt-1">
+                            {{ $singleMemos->total() }} single memos in this matrix
+                        </small>
+                    </div>
+                    <div class="col-md-3">
+                        <form method="GET" action="{{ route('matrices.show', $matrix) }}" class="d-flex">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white">
+                                    <i class="bx bx-search text-muted"></i>
+                                </span>
+                                <input type="text" name="single_memo_search" class="form-control" 
+                                       placeholder="Filter by Document #" 
+                                       value="{{ request('single_memo_search') }}">
+                            </div>
+                            <button type="submit" class="btn btn-primary ms-2">
+                                <i class="bx bx-search"></i>
+                            </button>
+                            @if(request('single_memo_search'))
+                                <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary ms-1">
+                                    <i class="bx bx-x"></i>
+                                </a>
+                            @endif
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 5%;">#</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 10%;">Document #</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 25%;">Title</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 12%;">Date Range</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 15%;">Responsible Person</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 8%;">Participants</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 10%;">Fund Type</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 10%;">Budget</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 10%;">Status</th>
+                                <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 5%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php $memoCount = 1; @endphp
+                            @forelse($singleMemos as $memo)
+                                <tr style="background-color: #d5f5de;">
+                                    <td class="px-3 py-3 text-center">
+                                        <span class="badge bg-secondary rounded-pill">{{ $memoCount }}</span>
+                                    </td>
+                                    <td class="px-3 py-3 text-center">
+                                        <span class="badge bg-info text-dark">
+                                            {{ $memo->document_number ?? 'N/A' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-3 py-3 text-wrap" style="max-width: 250px;">
+                                        {{ $memo->activity_title }}
+                                    </td>
+                                    <td class="px-3 py-3">
+                                        <div class="small text-wrap" style="max-width: 120px;">
+                                            <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                            <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-3">
+                                        <div class="text-wrap" style="max-width: 120px;">
+                                            @if($memo->responsiblePerson)
+                                                <div class="fw-semibold">{{ $memo->responsiblePerson->fname }} {{ $memo->responsiblePerson->lname }}</div>
+                                                <small class="text-muted">{{ $memo->responsiblePerson->job_name ?? 'N/A' }}</small>
+                                            @else
+                                                <span class="text-muted">Not assigned</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-3 text-center">
+                                        <span class="badge bg-info rounded-pill">{{ $memo->total_participants }}</span>
+                                    </td>
+                                    <td class="px-3 py-3 text-center">
+                                        <span class="badge bg-info rounded-pill">{{ $memo->fundType->name }}</span>
+                                    </td>
+                                    <td class="px-3 py-3 text-center">
+                                        @php
+                                            $budget = is_array($memo->budget_breakdown) ? $memo->budget_breakdown : json_decode($memo->budget_breakdown , true);
+                                            $totalBudget = 0;
+
+                                            if (is_array($budget)) {
+                                                foreach ($budget as $key => $entries) {
+                                                    if ($key === 'grand_total') continue;
+
+                                                    foreach ($entries as $item) {
+                                                        $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                        $units = floatval($item['units'] ?? 0);
+                                                        $totalBudget += $unitCost * $units;
+                                                    }
+                                                }
+                                            }
+                                        @endphp
+                                        <span class="fw-bold text-success">{{ number_format($totalBudget, 2) }} USD</span>
+                                    </td>
+                                    <td class="px-3 py-3 text-center">
+                                        <span class="badge bg-success rounded-pill">
+                                            Single Memo - {{ ucfirst($memo->status) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-3 py-3 text-center">
+                                        <a href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm">
+                                            <i class="bx bx-show"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @php $memoCount++; @endphp
+                            @empty
+                                <tr>
+                                    <td colspan="10" class="text-center py-5">
+                                        <i class="bx bx-file-text fs-1 text-muted mb-3 d-block"></i>
+                                        <div class="text-muted">No single memos found for this matrix.</div>
+                                        <small class="text-muted">Single memos will appear here once they are added.</small>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="p-4 bg-light border-top">
+                    <div class="d-flex justify-content-center">
+                        {{ $singleMemos->withQueryString()->links() }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Division Schedule and Approval Trail Section -->
 <div class="row mt-4">
-    <div class="col-lg-9">
+    <div class="col-lg-7">
         @if(count($matrix->division_staff) > 0)
             @include('matrices.partials.participants-schedule', ['divisionStaff' => $divisionStaff ?? $matrix->division_staff])
         @else
@@ -333,7 +477,22 @@
         @endif
     </div>
 
-    <div class="col-lg-3">
+    <div class="col-lg-5">
+        <!-- Approval Actions Section -->
+        @if(can_take_action($matrix) || (can_division_head_edit($matrix) && $matrix->overall_status === 'returned'))
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
+                    <h5 class="card-title mb-0 fw-bold text-dark">
+                        <i class="bx bx-check-circle me-2 text-primary"></i>Approval Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @include('matrices.partials.approval-actions', ['matrix' => $matrix])
+                </div>
+            </div>
+        @endif
+
+        <!-- Approval Trail Section -->
         @if(count($matrix->matrixApprovalTrails) > 0)
             @include('matrices.partials.approval-trail',['trails'=>$matrix->matrixApprovalTrails])
         @else
@@ -352,19 +511,6 @@
 <div class="row mt-4">
     <div class="col-12">
         <div class="d-flex justify-content-end gap-3">
-            @if(can_take_action($matrix) || (can_division_head_edit($matrix) && $matrix->overall_status === 'returned'))
-                <div class="d-flex align-items-center">
-                    @include('matrices.partials.approval-actions', ['matrix' => $matrix])
-                </div>
-            @endif
-             
-            {{-- @if($matrix->overall_status === 'returned')
-              <button type="button" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#returnMatrixModal">
-                    <i class="bx bx-save me-2"></i> Return to Focal Person
-                </button>
-            
-            @endif --}}
-
             @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
                 <button type="button" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
                     <i class="bx bx-save me-2"></i> Submit Matrix for Approval
