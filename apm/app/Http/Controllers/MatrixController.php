@@ -371,15 +371,22 @@ class MatrixController extends Controller
 
         $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails']);
     //dd($matrix);
-        // Paginate related activities and eager load direct relationships
-        $activitiesQuery = $matrix->activities()->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
+        // Separate regular activities and single memos
+        $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
+        $singleMemosQuery = $matrix->activities()->where('is_single_memo', 1)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
         
         // Apply document number filter if provided
         if ($request->filled('document_number')) {
             $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
         }
         
-        $activities = $activitiesQuery->latest()->paginate(10);
+        // Apply single memo document number filter if provided
+        if ($request->filled('single_memo_search')) {
+            $singleMemosQuery->where('document_number', 'like', '%' . $request->single_memo_search . '%');
+        }
+        
+        $activities = $activitiesQuery->latest()->paginate(20);
+        $singleMemos = $singleMemosQuery->latest()->paginate(20);
      
         // Prepare additional decoded & related data per activity
         foreach ($activities as $activity) {
@@ -399,6 +406,24 @@ class MatrixController extends Controller
             $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
         }
         
+        // Prepare additional decoded & related data per single memo
+        foreach ($singleMemos as $memo) {
+            // Decode JSON arrays
+            $locationIds = is_array($memo->location_id)
+                ? $memo->location_id
+                : json_decode($memo->location_id ?? '[]', true);
+    
+            $internalRaw = is_string($memo->internal_participants)
+                ? json_decode($memo->internal_participants ?? '[]', true)
+                : ($memo->internal_participants ?? []);
+    
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+    
+            // Attach related models
+            $memo->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+        }
+        
         // Filter division staff by name if provided
         $divisionStaff = $matrix->division_staff;
         if ($request->filled('staff_name')) {
@@ -412,7 +437,7 @@ class MatrixController extends Controller
         
         //dd($matrix);
     
-        return view('matrices.show', compact('matrix', 'activities', 'divisionStaff'));
+        return view('matrices.show', compact('matrix', 'activities', 'singleMemos', 'divisionStaff'));
      }
     
     

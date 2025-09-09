@@ -64,16 +64,16 @@
                                 <span class="badge bg-secondary rounded-pill">{{ $count }}</span>
                             </td>
                             <td class="px-3 py-3">
-                                <div class="fw-semibold">
+                                <div class="fw-semibold text-wrap" style="max-width: 200px;">
                                     <a href="#" class="text-decoration-none text-primary" onclick="showStaffActivities({{ $staff->staff_id }}, '{{ $staff->fname . " " . $staff->lname }}')">
                                         {{ $staff->title . " " . $staff->fname . " " . $staff->lname }}
                                     </a>
                                 </div>
                             </td>
                             <td class="px-3 py-3">
-                                <div class="text-muted">{{ $staff->job_name ?? 'Not specified' }}</div>
+                                <div class="text-muted text-wrap" style="max-width: 200px;">{{ $staff->job_name ?? 'Not specified' }}</div>
                                   @if($staff->duty_station_name)
-                                    <small class="text-muted">{{ $staff->duty_station_name }}</small>
+                                    <small class="text-muted text-wrap" style="max-width: 200px;">{{ $staff->duty_station_name }}</small>
                                 @endif
                             </td>
                             <td class="px-3 py-3 text-center">
