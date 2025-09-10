@@ -80,7 +80,7 @@
         @endif
       </h1>
 
-      <p>Dear <strong>>{{ $recipient->title }} {{ $recipient->fname }} {{ $recipient->lname }}</strong>,</p>
+      <p>Dear <strong>{{ $recipient->title }} {{ $recipient->fname }} {{ $recipient->lname }}</strong>,</p>
 
       <p>{{ $message }}</p>
 
