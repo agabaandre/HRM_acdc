@@ -242,6 +242,8 @@ class SpecialMemoController extends Controller
         // Calculate total budget from budget items
         $totalBudget = 0;
         $budgetItems = $request->input('budget', []);
+        $fundTypeId = (int) $request->input('fund_type_id', 1);
+        
         if (!empty($budgetItems)) {
             foreach ($budgetItems as $codeId => $items) {
                 if (is_array($items)) {
@@ -254,7 +256,8 @@ class SpecialMemoController extends Controller
             }
         }
 
-        if ($totalBudget <= 0) {
+        // Allow zero budget only for external source (fund_type_id = 3)
+        if ($totalBudget <= 0 && $fundTypeId !== 3) {
             $errorMessage = 'Cannot create special memo with zero or negative total budget.';
             
             if ($request->ajax()) {
@@ -672,6 +675,8 @@ class SpecialMemoController extends Controller
         // Calculate total budget from budget items
         $totalBudget = 0;
         $budgetItems = $request->input('budget', []);
+        $fundTypeId = (int) $request->input('fund_type_id', 1);
+        
         if (!empty($budgetItems)) {
             foreach ($budgetItems as $codeId => $items) {
                 if (is_array($items)) {
@@ -684,7 +689,8 @@ class SpecialMemoController extends Controller
             }
         }
 
-        if ($totalBudget <= 0) {
+        // Allow zero budget only for external source (fund_type_id = 3)
+        if ($totalBudget <= 0 && $fundTypeId !== 3) {
             $errorMessage = 'Cannot update special memo with zero or negative total budget.';
             
             return redirect()->back()->withInput()->with([

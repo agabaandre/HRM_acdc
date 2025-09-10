@@ -418,12 +418,21 @@
                 $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
             }
             
-            // If no grand_total found, calculate from items
+            // If no grand_total found, calculate from items with proper days logic
             if ($totalBudget == 0 && !empty($budgetByFundCode)) {
                 foreach ($budgetByFundCode as $fundCodeId => $items) {
                     foreach ($items as $item) {
                         if (isset($item['unit_cost']) && isset($item['units'])) {
-                            $totalBudget += floatval($item['unit_cost']) * floatval($item['units']);
+                            $unitCost = floatval($item['unit_cost']);
+                            $units = floatval($item['units']);
+                            $days = floatval($item['days'] ?? 1);
+                            
+                            // Use days when greater than 1, otherwise just unit_cost * units
+                            if ($days > 1) {
+                                $totalBudget += $unitCost * $units * $days;
+                            } else {
+                                $totalBudget += $unitCost * $units;
+                            }
                         }
                     }
                 }
@@ -853,85 +862,89 @@
                           
                             
                             @if(!empty($budgetByFundCode))
+                                @php
+                                    $count = 1;
+                                    $grandTotal = 0;
+                                @endphp
+                                
                                 @foreach($budgetByFundCode as $fundCodeId => $items)
                                     @php
                                         $fundCode = $fundCodes[$fundCodeId] ?? null;
-                                        $fundCodeTotal = 0;
-                                        foreach ($items as $item) {
-                                            if (isset($item['unit_cost']) && isset($item['units'])) {
-                                                $fundCodeTotal += floatval($item['unit_cost']) * floatval($item['units']);
-                                            }
-                                        }
+                                        $groupTotal = 0;
+                                        $itemCount = 1; // Reset counter for each budget code
                                     @endphp
                                     
-                                    <div class="mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-3 p-3 fund-code-header">
-                                            <div>
-                                                <h6 class="mb-1 fw-bold text-primary">
-                                                    @if($fundCode)
-                                                        Fund Code: {{ $fundCode->code }}
-                                                     
-                                                    @else
-                                                        Fund Code ID: {{ $fundCodeId }}
-                                                    @endif
-                                                </h6>
-                                                @if($fundCode)
-                                                    <div class="small text-muted">
-                                                        @if($fundCode->fundType)
-                                                            <span class="me-3">Type: {{ $fundCode->fundType->name ?? 'N/A' }}</span>
-                                                        @endif
-                                                        @if($fundCode->funder)
-                                                            <span>Funder: {{ $fundCode->funder->name ?? 'N/A' }}</span>
-                                                        @endif
-                                                    </div>
-                                                @endif
-                                            </div>
-                                            <div class="text-end">
-                                                <span class="fw-bold text-success fs-6">${{ number_format($fundCodeTotal, 2) }}</span>
-                                                <small class="text-muted d-block">Fund Total</small>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered table-sm mb-0 budget-table">
-                                                <thead>
+                                    {{-- Budget Code Title --}}
+                                    <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
+                                        @if($fundCode)
+                                            {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name ?? 'N/A' }})
+                                        @else
+                                            Budget Code: {{ $fundCodeId }}
+                                        @endif
+                                    </h6>
+
+                                    {{-- Individual Table for this Budget Code --}}
+                                    <div class="table-responsive mb-4">
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Cost Item</th>
+                                                    <th class="text-end">Unit Cost</th>
+                                                    <th class="text-end">Units</th>
+                                                    <th class="text-end">Days</th>
+                                                    <th class="text-end">Total</th>
+                                                    <th>Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($items as $item)
+                                                    @php
+                                                        $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                        $units = floatval($item['units'] ?? 0);
+                                                        $days = floatval($item['days'] ?? 1);
+                                                        
+                                                        // Use days when greater than 1, otherwise just unit_cost * units
+                                                        if ($days > 1) {
+                                                            $total = $unitCost * $units * $days;
+                                                        } else {
+                                                            $total = $unitCost * $units;
+                                                        }
+                                                        
+                                                        $groupTotal += $total;
+                                                        $grandTotal += $total;
+                                                    @endphp
                                                     <tr>
-                                                        <th>Cost Item</th>
-                                                        <th>Description</th>
-                                                        <th>Unit Cost</th>
-                                                        <th>Units</th>
-                                                        <th>Days</th>
-                                                        <th>Total</th>
+                                                        <td>{{$itemCount}}</td>
+                                                        <td>{{ $item['cost'] ?? 'N/A' }}</td>
+                                                        <td class="text-end">{{ number_format($unitCost, 2) }}</td>
+                                                        <td class="text-end">{{ $units }}</td>
+                                                        <td class="text-end">{{ $days }}</td>
+                                                        <td class="text-end">{{ number_format($total, 2) }}</td>
+                                                        <td>{{ $item['description'] ?? '' }}</td>
                                                     </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($items as $item)
-                                                        @php
-                                                            $itemTotal = 0;
-                                                            if (isset($item['unit_cost']) && isset($item['units'])) {
-                                                                $itemTotal = floatval($item['unit_cost']) * floatval($item['units']);
-                                                            }
-                                                        @endphp
-                                                        <tr>
-                                                            <td>{{ $item['cost'] ?? 'N/A' }}</td>
-                                                            <td>{{ $item['description'] ?? 'N/A' }}</td>
-                                                            <td class="text-end">${{ number_format(floatval($item['unit_cost'] ?? 0), 2) }}</td>
-                                                            <td class="text-end">{{ $item['units'] ?? 'N/A' }}</td>
-                                                            <td class="text-end">{{ $item['days'] ?? 'N/A' }}</td>
-                                                            <td class="text-end fw-bold">${{ number_format($itemTotal, 2) }}</td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    @php
+                                                        $itemCount++;
+                                                    @endphp
+                                                @endforeach
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <th colspan="5" class="text-end">Sub Total</th>
+                                                    <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
+                                                    <th></th>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
                                     </div>
                                 @endforeach
                                 
-                                <!-- Grand Total Row -->
-                                <div class="mt-4 p-3 budget-total-row rounded">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0 fw-bold">Grand Total (All Fund Codes)</h6>
-                                        <span class="fw-bold fs-5">${{ number_format($totalBudget, 2) }}</span>
+                                {{-- Overall Grand Total --}}
+                                <div class="row mt-3">
+                                    <div class="col-md-12">
+                                        <div class="alert alert-success">
+                                            <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }} USD</strong></h6>
+                                        </div>
                                     </div>
                                 </div>
                             @else
