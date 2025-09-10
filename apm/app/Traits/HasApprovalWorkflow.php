@@ -303,6 +303,8 @@ trait HasApprovalWorkflow
         
         $this->save();
 
+        send_matrix_email_notification($this, 'approval');
+
         $this->saveApprovalTrail('Submitted for approval', 'submitted');
     }
 
