@@ -23,8 +23,9 @@
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
 
-    
+   
     @if(still_with_creator($matrix,$activity))
+    
         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-sm btn-warning">
             <i class="bx bx-edit"></i> Edit {{ $title }}
         </a>

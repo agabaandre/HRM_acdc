@@ -390,6 +390,27 @@
             $attachments = is_array($attachments) ? $attachments : [];
             $internalParticipants = is_array($internalParticipants) ? $internalParticipants : [];
             
+            // Process internal participants to load staff details
+            $processedInternalParticipants = [];
+            if (!empty($internalParticipants)) {
+                // Get staff IDs from the keys of the internal participants array and convert to integers
+                $staffIds = array_map('intval', array_keys($internalParticipants));
+                
+                $staffDetails = \App\Models\Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
+                
+                foreach ($internalParticipants as $staffId => $participantData) {
+                    $staffIdInt = (int) $staffId; // Convert to integer for lookup
+                    if (isset($staffDetails[$staffIdInt])) {
+                        $processedInternalParticipants[] = [
+                            'staff' => $staffDetails[$staffIdInt],
+                            'participant_start' => $participantData['participant_start'] ?? null,
+                            'participant_end' => $participantData['participant_end'] ?? null,
+                            'participant_days' => $participantData['participant_days'] ?? null,
+                        ];
+                    }
+                }
+            }
+            
             // Debug attachments
             // dd('Attachments debug:', $specialMemo->attachment, $attachments);
 
@@ -543,11 +564,11 @@
                         <!-- Participants Information -->
                         <tr>
                             <td class="field-label">Total Participants</td>
-                            <td class="field-value fw-bold text-success">{{ $specialMemo->total_participants ?? 0 }}</td>
+                            <td class="field-value fw-bold text-success">{{ count($processedInternalParticipants) + ($specialMemo->total_external_participants ?? 0) }}</td>
                             <td class="field-label">Internal Participants</td>
                             <td class="field-value">
-                                @if(is_array($internalParticipants) && count($internalParticipants) > 0)
-                                    {{ count($internalParticipants) }} staff member(s)
+                                @if(is_array($processedInternalParticipants) && count($processedInternalParticipants) > 0)
+                                    {{ count($processedInternalParticipants) }} staff member(s)
                                 @else
                                     <span class="text-muted">No internal participants</span>
                                 @endif
@@ -772,7 +793,7 @@
                                 <label class="form-label text-muted small fw-semibold">Total Participants</label>
                                 <div class="d-flex align-items-center gap-2">
                                     <i class="bx bx-user text-success"></i>
-                                    <span class="fw-bold">{{ $specialMemo->total_participants ?? 0 }}</span>
+                                    <span class="fw-bold">{{ count($processedInternalParticipants) + ($specialMemo->total_external_participants ?? 0) }}</span>
                                     <span class="text-muted">participants</span>
                                 </div>
                             </div>
@@ -782,7 +803,7 @@
                             <div class="col-md-6 mb-4">
                                 <label class="form-label text-muted small fw-semibold">Internal Participants</label>
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-info">{{ count($internalParticipants) }}</span>
+                                    <span class="badge bg-info">{{ count($processedInternalParticipants) }}</span>
                                     <span class="text-muted">staff members</span>
                                 </div>
                             </div>
@@ -796,22 +817,24 @@
                             </div>
                         </div>
                         
-                        @if(!empty($internalParticipants))
-                            <div class="mt-4">
-                                <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-sm mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Staff</th>
-                                                <th>Start Date</th>
-                                                <th>End Date</th>
-                                                <th>Days</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($internalParticipants as $participant)
+                        <div class="mt-4">
+                            <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Staff</th>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Days</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if(!empty($processedInternalParticipants))
+                                            @foreach($processedInternalParticipants as $index => $participant)
                                                 <tr>
+                                                    <td>{{ $index + 1 }}</td>
                                                     <td>
                                                         @if(isset($participant['staff']) && $participant['staff'])
                                                             {{ $participant['staff']->fname ?? '' }} {{ $participant['staff']->lname ?? '' }}
@@ -824,11 +847,47 @@
                                                     <td>{{ $participant['participant_days'] ?? '-' }}</td>
                                                 </tr>
                                             @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        @else
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted py-3">
+                                                    <i class="bx bx-user-x bx-lg mb-2"></i>
+                                                    <div>No internal participants</div>
+                                                </td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
                             </div>
-                        @endif
+                        </div>
+                        
+                        <!-- Participants Summary Table -->
+                        <div class="mt-4">
+                            <label class="form-label text-muted small fw-semibold">Participants Summary</label>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Participant Type</th>
+                                            <th>Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Internal Participants</td>
+                                            <td class="text-end fw-bold">{{ count($processedInternalParticipants) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>External Participants</td>
+                                            <td class="text-end fw-bold">{{ $specialMemo->total_external_participants ?? 0 }}</td>
+                                        </tr>
+                                        <tr class="table-success">
+                                            <td class="fw-bold">Total Participants</td>
+                                            <td class="text-end fw-bold">{{ count($processedInternalParticipants) + ($specialMemo->total_external_participants ?? 0) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

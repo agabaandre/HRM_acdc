@@ -454,6 +454,23 @@
             $attachments = is_array($attachments) ? $attachments : [];
             $internalParticipants = is_array($internalParticipants) ? $internalParticipants : [];
             
+            // Process internal participants to load staff details
+            $processedInternalParticipants = [];
+            if (!empty($internalParticipants)) {
+                $staffDetails = \App\Models\Staff::whereIn('staff_id', array_keys($internalParticipants))->get()->keyBy('staff_id');
+                
+                foreach ($internalParticipants as $staffId => $participantData) {
+                    if (isset($staffDetails[$staffId])) {
+                        $processedInternalParticipants[] = [
+                            'staff' => $staffDetails[$staffId],
+                            'participant_start' => $participantData['participant_start'] ?? null,
+                            'participant_end' => $participantData['participant_end'] ?? null,
+                            'participant_days' => $participantData['participant_days'] ?? null,
+                        ];
+                    }
+                }
+            }
+            
                                 // Parse budget structure and organize by fund codes
                                 $budgetByFundCode = [];
                                 $totalBudget = 0;
@@ -595,11 +612,11 @@
                         <!-- Participants Information -->
                         <tr>
                             <td class="field-label">Total Participants</td>
-                            <td class="field-value fw-bold text-success">{{ $activity->total_participants ?? 0 }}</td>
+                            <td class="field-value fw-bold text-success">{{ count($processedInternalParticipants) + ($activity->total_external_participants ?? 0) }}</td>
                             <td class="field-label">Internal Participants</td>
                             <td class="field-value">
-                                @if(is_array($internalParticipants) && count($internalParticipants) > 0)
-                                    {{ count($internalParticipants) }} staff member(s)
+                                @if(is_array($processedInternalParticipants) && count($processedInternalParticipants) > 0)
+                                    {{ count($processedInternalParticipants) }} staff member(s)
                                 @else
                                     <span class="text-muted">No internal participants</span>
                                 @endif
@@ -802,7 +819,7 @@
                                 <label class="form-label text-muted small fw-semibold">Total Participants</label>
                                 <div class="d-flex align-items-center gap-2">
                                     <i class="bx bx-user text-success"></i>
-                                    <span class="fw-bold">{{ $activity->total_participants ?? 0 }}</span>
+                                    <span class="fw-bold">{{ count($processedInternalParticipants) + ($activity->total_external_participants ?? 0) }}</span>
                                     <span class="text-muted">participants</span>
                                 </div>
                                 </div>
@@ -812,7 +829,7 @@
                             <div class="col-md-6 mb-4">
                                 <label class="form-label text-muted small fw-semibold">Internal Participants</label>
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-info">{{ count($internalParticipants) }}</span>
+                                    <span class="badge bg-info">{{ count($processedInternalParticipants) }}</span>
                                     <span class="text-muted">staff members</span>
                                 </div>
                             </div>
@@ -826,13 +843,14 @@
                         </div>
                     </div>
 
-                        @if(!empty($internalParticipants))
+                        @if(!empty($processedInternalParticipants))
                             <div class="mt-4">
                                 <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
                             <div class="table-responsive">
                                     <table class="table table-bordered table-sm mb-0">
                                         <thead class="table-light">
                                         <tr>
+                                                <th>#</th>
                                                 <th>Staff</th>
                                             <th>Start Date</th>
                                             <th>End Date</th>
@@ -840,8 +858,9 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($internalParticipants as $participant)
+                                        @foreach($processedInternalParticipants as $index => $participant)
                                         <tr>
+                                                    <td>{{ $index + 1 }}</td>
                                                     <td>
                                                         @if(isset($participant['staff']) && $participant['staff'])
                                                             {{ $participant['staff']->fname ?? '' }} {{ $participant['staff']->lname ?? '' }}
@@ -859,6 +878,35 @@
                         </div>
                     </div>
                     @endif
+                    
+                    <!-- Participants Summary Table -->
+                    <div class="mt-4">
+                        <label class="form-label text-muted small fw-semibold">Participants Summary</label>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Participant Type</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Internal Participants</td>
+                                        <td class="text-end fw-bold">{{ count($processedInternalParticipants) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>External Participants</td>
+                                        <td class="text-end fw-bold">{{ $activity->total_external_participants ?? 0 }}</td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td class="fw-bold">Total Participants</td>
+                                        <td class="text-end fw-bold">{{ count($processedInternalParticipants) + ($activity->total_external_participants ?? 0) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                     </div>
                 </div>
 
@@ -876,8 +924,8 @@
                                 @php
                                     $count = 1;
                                     $grandTotal = 0;
-                                @endphp
-                                
+                            @endphp
+                            
                                 @foreach($budgetByFundCode as $fundCodeId => $items)
                                     @php
                                         $fundCode = $fundCodes[$fundCodeId] ?? null;
@@ -887,12 +935,12 @@
                                     
                                     {{-- Budget Code Title --}}
                                     <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
-                                        @if($fundCode)
+                                                    @if($fundCode)
                                             {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name ?? 'N/A' }})
-                                        @else
+                                                    @else
                                             Budget Code: {{ $fundCodeId }}
-                                        @endif
-                                    </h6>
+                                                    @endif
+                                                </h6>
 
                                     {{-- Individual Table for this Budget Code --}}
                                     <div class="table-responsive mb-4">
@@ -900,17 +948,17 @@
                                             <thead>
                                                 <tr>
                                                     <th>#</th>
-                                                    <th>Cost Item</th>
+                                                        <th>Cost Item</th>
                                                     <th class="text-end">Unit Cost</th>
                                                     <th class="text-end">Units</th>
                                                     <th class="text-end">Days</th>
                                                     <th class="text-end">Total</th>
-                                                    <th>Description</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($items as $item)
-                                                    @php
+                                                        <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                                    @foreach($items as $item)
+                                                        @php
                                                         $unitCost = floatval($item['unit_cost'] ?? 0);
                                                         $units = floatval($item['units'] ?? 0);
                                                         $days = floatval($item['days'] ?? 1);
@@ -924,21 +972,21 @@
                                                         
                                                         $groupTotal += $total;
                                                         $grandTotal += $total;
-                                                    @endphp
-                                                    <tr>
+                                                        @endphp
+                                                        <tr>
                                                         <td>{{$itemCount}}</td>
-                                                        <td>{{ $item['cost'] ?? 'N/A' }}</td>
+                                                            <td>{{ $item['cost'] ?? 'N/A' }}</td>
                                                         <td class="text-end">{{ number_format($unitCost, 2) }}</td>
                                                         <td class="text-end">{{ $units }}</td>
                                                         <td class="text-end">{{ $days }}</td>
                                                         <td class="text-end">{{ number_format($total, 2) }}</td>
                                                         <td>{{ $item['description'] ?? '' }}</td>
-                                                    </tr>
+                                        </tr>
                                                     @php
                                                         $itemCount++;
                                                     @endphp
-                                                @endforeach
-                                            </tbody>
+                                        @endforeach
+                                    </tbody>
                                             <tfoot>
                                                 <tr>
                                                     <th colspan="5" class="text-end">Sub Total</th>
@@ -946,7 +994,7 @@
                                                     <th></th>
                                                 </tr>
                                             </tfoot>
-                                        </table>
+                                </table>
                                     </div>
                                 @endforeach
                                 
