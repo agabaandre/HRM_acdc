@@ -74,6 +74,10 @@ if (!function_exists('get_approval_recipient_generic')) {
             return null;
         }
 
+        if (!$model->forward_workflow_id || !$model->approval_level) {
+            return Staff::where('staff_id', $model->staff_id)->first();
+        }
+
         $today = Carbon::today();
         $current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
             ->where('workflow_id', $model->forward_workflow_id)
