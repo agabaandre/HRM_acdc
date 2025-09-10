@@ -94,7 +94,7 @@
       <p>You can access the PPA form by logging into the staff portal:</p>
 
       <p>
-        <a href="https://tools.africacdc.org/staff/performance" class="btn">Submit My PPA</a>
+        <a href="https://cbp.africacdc.org/staff/performance" class="btn">Submit My PPA</a>
       </p>
 
       <p>If you have already submitted your PPA, kindly ignore this reminder.</p>
