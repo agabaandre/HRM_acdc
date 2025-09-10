@@ -37,7 +37,7 @@
         border-radius: 9999px;
         text-transform: capitalize;
     }
-
+    
     .status-approved {
         background: #d1fae5;
         color: #059669;
@@ -67,7 +67,7 @@
         color: #2563eb;
         border: 1px solid #93c5fd;
     }
-
+    
     .gradient-header {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     }
@@ -164,19 +164,19 @@
         transform: translateY(-1px);
         transition: all 0.2s ease;
     }
-
+    
     .meta-card {
         background: #f8fafc;
         border-radius: 0.75rem;
         padding: 1rem;
         border: 1px solid #e2e8f0;
     }
-
+    
     .content-section {
         border-left: 4px solid;
         background: #fafafa;
     }
-
+    
     .content-section.bg-blue {
         border-left-color: #3b82f6;
     }
@@ -188,13 +188,13 @@
     .content-section.bg-purple {
         border-left-color: #8b5cf6;
     }
-
+    
     .sidebar-card {
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
         border-radius: 0.75rem;
         overflow: hidden;
     }
-
+    
     .location-badge,
     .budget-item {
         background: #f0f9ff;
@@ -205,7 +205,7 @@
         align-items: center;
         gap: 0.5rem;
     }
-
+    
     .budget-table th {
         background: #f8f9fa;
         font-weight: 600;
@@ -213,39 +213,39 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-
+    
     .budget-table td {
         vertical-align: middle;
         font-size: 0.9rem;
     }
-
+    
     .budget-total-row {
         background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
         font-weight: 700;
     }
-
+    
     .fund-code-header {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         border: 1px solid #bae6fd;
         border-radius: 0.5rem;
     }
-
+    
     .fund-code-header h6 {
         color: #0369a1;
         margin-bottom: 0.25rem;
     }
-
+    
     .fund-code-header .small {
         color: #64748b;
     }
-
+    
     .attachment-item {
         background: #faf5ff;
         border: 1px solid #e9d5ff;
         border-radius: 0.5rem;
         padding: 0.75rem;
     }
-
+    
     /* Attachment Preview Modal Styles */
     #previewModal .modal-dialog {
         max-width: 90vw;
@@ -315,12 +315,12 @@
             max-width: 95vw;
             margin: 0.5rem auto;
         }
-
+        
         #previewModal .modal-body {
             min-height: 400px;
             max-height: 70vh;
         }
-
+        
         #previewModalBody {
             padding: 1rem;
         }
@@ -375,11 +375,11 @@
         overflow: hidden;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-
+    
     .summary-table .table {
         margin-bottom: 0;
     }
-
+    
     .summary-table .table th {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         border: none;
@@ -390,38 +390,38 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-
+    
     .summary-table .table td {
         border: none;
         border-bottom: 1px solid #e5e7eb;
         padding: 1rem;
         vertical-align: middle;
     }
-
+    
     .summary-table .table tr:last-child td {
         border-bottom: none;
     }
-
+    
     .summary-table .table tr:hover {
         background-color: #f9fafb;
     }
-
+    
     .field-label {
         font-weight: 600;
         color: #374151;
         min-width: 150px;
     }
-
+    
     .field-value {
         color: #1f2937;
         font-weight: 500;
     }
-
+    
     .field-value.null {
         color: #9ca3af;
         font-style: italic;
     }
-
+    
     /* Enhanced Summary Table Styling */
     .summary-table .field-label {
         font-weight: 600;
@@ -485,26 +485,26 @@
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
                     </a>
-                    @if(($specialMemo->overall_status === 'draft' && $specialMemo->responsible_person_id == user_session('staff_id'))|| ($specialMemo->overall_status === 'returned' && $specialMemo->responsible_person_id == user_session('staff_id')))
+                    @if(can_edit_memo($specialMemo))
                         <a href="{{ route('special-memo.edit', $specialMemo) }}" class="btn btn-warning d-flex align-items-center gap-2">
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
                         </a>
                     @endif
-                    @if($specialMemo->overall_status === 'pending')
+                 
                         <a href="{{ route('special-memo.status', $specialMemo) }}" class="btn btn-info d-flex align-items-center gap-2">
                             <i class="bx bx-info-circle"></i>
                             <span>Approval Status</span>
                         </a>
-                    @endif
-                    @if($specialMemo->overall_status === 'approved')
+                
+                    @if(can_print_memo($specialMemo))
                         <a href="{{ route('special-memo.print', $specialMemo) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
                             <i class="bx bx-printer"></i>
                             <span>Print PDF</span>
                         </a>
                     @endif
                   
-                    @if($specialMemo->fund_type_id == 2 && $specialMemo->overall_status == 'approved')
+                    @if(can_request_arf($specialMemo))
                         @php
                             // Check if ARF already exists for this special memo
                             $existingArfTop = \App\Models\RequestARF::where('source_id', $specialMemo->id)
@@ -525,7 +525,7 @@
                         @endif
                         
                         {{-- Service Request Button --}}
-                        @if($specialMemo->fund_type_id == 1 && $specialMemo->overall_status === 'approved')
+                        @if(can_request_services($specialMemo))
                             @php
                                 // Check if Service Request already exists for this memo
                                 $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $specialMemo->id)
@@ -714,11 +714,21 @@
                             </td>
                         </tr>
                         @endif
+                        @if($specialMemo->workplan_activity_code && $specialMemo->fund_type_id == 1)
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-code-block me-2 text-warning"></i>AMERT Code
+                            </td>
+                            <td class="field-value" colspan="3">
+                                <span class="text-warning fw-bold">{{ $specialMemo->workplan_activity_code }}</span>
+                            </td>
+                        </tr>
+                        @endif
                         <tr>
                             <td class="field-label">
                                 <i class="bx bx-user me-2 text-primary"></i>Creator
                             </td>
-                            <td class="field-value">    
+                            <td class="field-value">
                                 {{ optional($specialMemo->staff)->fname }}
                                 {{ optional($specialMemo->staff)->lname ?? 'Not assigned' }}
                             </td>
@@ -758,7 +768,7 @@
                                 {{ optional($specialMemo->requestType)->name ?? 'Not specified' }}
                             </td>
                         </tr>
-
+                        
                         <!-- Location Information -->
                         <tr>
                             <td class="field-label">
@@ -772,7 +782,7 @@
                                 @endif
                             </td>
                         </tr>
-
+                        
                         <!-- Budget Information -->
                         <tr>
                             <td class="field-label">
@@ -786,7 +796,7 @@
                                 {{ optional($specialMemo->fundType)->name ?? 'Not specified' }}
                             </td>
                         </tr>
-
+                        
                         <!-- Attachments -->
                         <tr>
                             <td class="field-label">
@@ -800,7 +810,7 @@
                                 @endif
                             </td>
                         </tr>
-
+                        
                         <!-- Last Updated -->
                         <tr>
                             <td class="field-label">
@@ -828,59 +838,59 @@
                     <h6 class="mb-0 fw-bold  d-flex align-items-center gap-2">
                         <i class="bx bx-info-circle"></i>
                         Background
-                    </h6>
-                </div>
-                <div class="card-body">
+                        </h6>
+                    </div>
+                    <div class="card-body">
                     <div class="html-content">{!! $specialMemo->background !!}</div>
-                </div>
-            </div>
-        @endif
+                            </div>
+                                        </div>
+                                    @endif
 
         <div class="row">
          
-            
-            <!-- Participants & Location -->
+
+                <!-- Participants & Location -->
             <div class="card content-section bg-green border-0 mb-4 w-100">
-                <div class="card-header bg-transparent border-0 py-3">
-                    <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                        <i class="bx bx-group"></i>
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                            <i class="bx bx-group"></i>
                         Participants
-                    </h6>
-                </div>
-              
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label text-muted small fw-semibold">Internal Participants</label>
-                            <div class="d-flex align-items-center gap-2">
+                        </h6>
+                            </div>
+                            
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label text-muted small fw-semibold">Internal Participants</label>
+                                <div class="d-flex align-items-center gap-2">
                                 <span class="badge bg-info">{{ count($processedInternalParticipants) }}</span>
-                                <span class="text-muted">staff members</span>
+                                    <span class="text-muted">staff members</span>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label text-muted small fw-semibold">External Participants</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-secondary">{{ $specialMemo->total_external_participants ?? 0 }}</span>
+                                    <span class="text-muted">external</span>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label text-muted small fw-semibold">External Participants</label>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-secondary">{{ $specialMemo->total_external_participants ?? 0 }}</span>
-                                <span class="text-muted">external</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                        <div class="mt-4">
-                            <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm mb-0">
-                                    <thead class="table-light">
-                                        <tr>
+                            <div class="mt-4">
+                                <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm mb-0">
+                                        <thead class="table-light">
+                                            <tr>
                                             <th>#</th>
-                                            <th>Staff</th>
-                                            <th>Start Date</th>
-                                            <th>End Date</th>
-                                            <th>Days</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                                                <th>Staff</th>
+                                                <th>Start Date</th>
+                                                <th>End Date</th>
+                                                <th>Days</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
                                         @if(!empty($processedInternalParticipants))
                                             @foreach($processedInternalParticipants as $index => $participant)
                                                 <tr>
@@ -905,11 +915,11 @@
                                                 </td>
                                             </tr>
                                         @endif
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    
+                                        </tbody>
+                                    </table>
+                    </div>
+                </div>
+
                     <!-- Participants Summary Table -->
                     <div class="mt-4">
                         <label class="form-label text-muted small fw-semibold">Participants Summary</label>
@@ -937,19 +947,19 @@
                                 </tbody>
                             </table>
                         </div>
+                        </div>
                     </div>
-                </div>
             </div>
 
-            <!-- Budget Information -->
+                <!-- Budget Information -->
             <div class="card content-section bg-blue border-0 mb-4 w-100">
-                <div class="card-header bg-transparent border-0 py-3">
-                    <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
-                        <i class="bx bx-money"></i>
-                        Budget Information
-                    </h6>
-                </div>
-                <div class="card-body">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
+                            <i class="bx bx-money"></i>
+                            Budget Information
+                        </h6>
+                    </div>
+                    <div class="card-body">
                     @if (!empty($budget))
                         @if (!empty($budgetByFundCode))
                             @php
@@ -958,37 +968,37 @@
                             @endphp
 
                             @foreach ($budgetByFundCode as $fundCodeId => $items)
-                                @php
-                                    $fundCode = $fundCodes[$fundCodeId] ?? null;
+                                    @php
+                                        $fundCode = $fundCodes[$fundCodeId] ?? null;
                                     $groupTotal = 0;
                                     $itemCount = 1; // Reset counter for each budget code
-                                @endphp
-
+                                    @endphp
+                                    
                                 {{-- Budget Code Title --}}
                                 <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
                                     @if ($fundCode)
                                         {{ $fundCode->activity }} - {{ $fundCode->code }} -
                                         ({{ $fundCode->fundType->name ?? 'N/A' }})
-                                    @else
+                                                    @else
                                         Budget Code: {{ $fundCodeId }}
-                                    @endif
-                                </h6>
+                                                    @endif
+                                                </h6>
 
                                 {{-- Individual Table for this Budget Code --}}
                                 <div class="table-responsive mb-4">
                                     <table class="table table-bordered">
-                                        <thead>
-                                            <tr>
+                                                <thead>
+                                                    <tr>
                                                 <th>#</th>
-                                                <th>Cost Item</th>
+                                                        <th>Cost Item</th>
                                                 <th class="text-end">Unit Cost</th>
                                                 <th class="text-end">Units</th>
                                                 <th class="text-end">Days</th>
                                                 <th class="text-end">Total</th>
-                                                <th>Description</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
+                                                        <th>Description</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
                                             @foreach ($items as $item)
                                                 @php
                                                     $unitCost = floatval($item['unit_cost'] ?? 0);
@@ -1004,21 +1014,21 @@
 
                                                     $groupTotal += $total;
                                                     $grandTotal += $total;
-                                                @endphp
-                                                <tr>
+                                                        @endphp
+                                                        <tr>
                                                     <td>{{ $itemCount }}</td>
-                                                    <td>{{ $item['cost'] ?? 'N/A' }}</td>
+                                                            <td>{{ $item['cost'] ?? 'N/A' }}</td>
                                                     <td class="text-end">{{ number_format($unitCost, 2) }}</td>
                                                     <td class="text-end">{{ $units }}</td>
                                                     <td class="text-end">{{ $days }}</td>
                                                     <td class="text-end">{{ number_format($total, 2) }}</td>
                                                     <td>{{ $item['description'] ?? '' }}</td>
-                                                </tr>
+                                                        </tr>
                                                 @php
                                                     $itemCount++;
                                                 @endphp
-                                            @endforeach
-                                        </tbody>
+                                                    @endforeach
+                                                </tbody>
                                         <tfoot>
                                             <tr>
                                                 <th colspan="5" class="text-end">Sub Total</th>
@@ -1026,10 +1036,10 @@
                                                 <th></th>
                                             </tr>
                                         </tfoot>
-                                    </table>
-                                </div>
-                            @endforeach
-
+                                            </table>
+                                    </div>
+                                @endforeach
+                                
                             {{-- Overall Grand Total --}}
                             <div class="row mt-3">
                                 <div class="col-md-12">
@@ -1037,45 +1047,45 @@
                                         <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }}
                                                 USD</strong></h6>
                                     </div>
+                                    </div>
                                 </div>
-                            </div>
-                        @else
-                            <!-- Fallback: Show budget as key-value pairs if structure is different -->
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Budget Item</th>
-                                            <th>Value</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                            @else
+                                <!-- Fallback: Show budget as key-value pairs if structure is different -->
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Budget Item</th>
+                                                <th>Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
                                         @foreach ($budget as $key => $value)
                                             @if ($key !== 'grand_total')
-                                                <tr>
-                                                    <td>{{ $key }}</td>
-                                                    <td>
+                                                    <tr>
+                                                        <td>{{ $key }}</td>
+                                                        <td>
                                                         @if (is_array($value))
-                                                            <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                        @else
-                                                            {{ $value }}
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endif
-                                        @endforeach
-                                    </tbody>
-                                </table>
+                                                                <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
+                                                            @else
+                                                                {{ $value }}
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endif
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+                        @else
+                            <div class="text-center text-muted py-4">
+                                <i class="bx bx-money bx-lg mb-3"></i>
+                                <p class="mb-0">No budget details</p>
                             </div>
                         @endif
-                    @else
-                        <div class="text-center text-muted py-4">
-                            <i class="bx bx-money bx-lg mb-3"></i>
-                            <p class="mb-0">No budget details</p>
-                        </div>
-                    @endif
+                    </div>
                 </div>
-            </div>
 
             <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
                 <!-- Request for Approval Card -->
@@ -1106,19 +1116,19 @@
                         </h6>
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Type</th>
-                                        <th>File Name</th>
-                                        <th>Size</th>
-                                        <th>Uploaded</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Type</th>
+                                            <th>File Name</th>
+                                            <th>Size</th>
+                                            <th>Uploaded</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                     @foreach ($attachments as $index => $attachment)
                                         @php
                                             $originalName =
@@ -1137,11 +1147,11 @@
                                                 'doc',
                                                 'docx',
                                             ]);
-                                        @endphp
-                                        <tr>
-                                            <td>{{ $index + 1 }}</td>
-                                            <td>{{ $attachment['type'] ?? 'Document' }}</td>
-                                            <td>{{ $originalName }}</td>
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>{{ $attachment['type'] ?? 'Document' }}</td>
+                                                <td>{{ $originalName }}</td>
                                             <td>{{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'N/A' }}
                                             </td>
                                             <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}
@@ -1159,24 +1169,24 @@
                                                         class="btn btn-sm btn-success">
                                                         <i class="bx bx-download"></i> Download
                                                     </a>
-                                                @else
+                                                    @else
                                                     <span class="text-muted">File not found</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                     </div>
-                </div>
-                @endif
+                            </div>
+                        @endif
 
 
                 
 
             
-            </div>
+                    </div>
                <div class="col-lg-12">
                 <!-- Enhanced Memo Information Card -->
                 <div class="card shadow-sm mb-4">
@@ -1184,7 +1194,7 @@
                         <h6 class="mb-0 fw-bold">
                             <i class="bx bx-info-circle me-2 text-success"></i>Approval Information
                         </h6>
-                    </div>
+                </div>
                     <div class="card-body">
 
                         @if($specialMemo->overall_status == 'approved' || $specialMemo->overall_status == 'rejected' || $specialMemo->overall_status == 'returned' || $specialMemo->overall_status == 'draft')

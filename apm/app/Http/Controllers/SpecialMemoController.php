@@ -343,6 +343,7 @@ class SpecialMemoController extends Controller
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type_id', 1),
+                'workplan_activity_code' => $request->input('activity_code', ''),
                 'forward_workflow_id' => $isDraft ? null : 1, // Set workflow ID only when submitting
                 'reverse_workflow_id' => $isDraft ? null : 1,
                 'overall_status' => $overallStatus,
@@ -790,6 +791,7 @@ class SpecialMemoController extends Controller
                 'key_result_area' => $request->input('key_result_link', '-'),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type_id', 1),
+                'workplan_activity_code' => $request->input('activity_code', ''),
                 'is_draft' => $isDraft,
                 'overall_status' => $overallStatus,
                 'total_participants' => (int) $request->input('total_participants', 0),

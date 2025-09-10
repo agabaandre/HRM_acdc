@@ -31,6 +31,7 @@ class SpecialMemo extends Model
         'responsible_person_id',
         'fund_type_id',
         'budget_id',
+        'workplan_activity_code',
         'date_from',
         'date_to',
         'location_id',

@@ -90,7 +90,7 @@
                         <label for="activity_code" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
                         </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $specialMemo->activity_code ?? '') }}" />
+                        <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $specialMemo->workplan_activity_code ?? '') }}" />
                     </div>
 
                     <div class="col-md-4">

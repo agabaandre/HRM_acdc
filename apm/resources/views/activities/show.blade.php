@@ -22,9 +22,10 @@
     <a href="{{ route('matrices.show',  $matrix) }}" class="btn btn-sm btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
+  
 
    
-    @if(still_with_creator($matrix,$activity))
+    @if (can_edit_memo($activity))
     
         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-sm btn-warning">
             <i class="bx bx-edit"></i> Edit {{ $title }}
@@ -35,14 +36,15 @@
 </div>
 <div class="col-md-12 d-flex justify-content-end">
   {{-- Activity Operations Buttons --}}
-            @if(allow_print_activity($activity))
+        
             <div class="col-md-12 mb-3">
                 <div class="card border-primary">
                 
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-12 mb-2 d-flex justify-content-end gap-2">
-                                @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $matrix->overall_status === 'approved')
+                             
+                                @if(can_request_arf($activity))
                                     @php
                                         // Check if ARF already exists for this activity
                                         $existingArfTop = \App\Models\RequestARF::where('source_id', $activity->id)
@@ -62,7 +64,8 @@
                                 @endif
                                 
                                 {{-- Service Request Button --}}
-                                @if($activity->fund_type_id == 1 && $matrix->overall_status === 'approved')
+                               
+                                @if(can_request_services($activity))
                                     @php
                                         // Check if Service Request already exists for this activity
                                         $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
@@ -81,18 +84,19 @@
                                             </a>
                                         @endif
                                 @endif
-                            
+                            @if(can_print_memo($activity))
                                 <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
                                    class="btn btn-secondary w-20" target="_blank">
                                     <i class="bx bx-printer me-2"></i>Print {{ $title }}
                                 </a>
+                            @endif
                           
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            @endif
+            
     
 </div>
 
@@ -102,6 +106,9 @@
                 <h5 class="mb-0">{{ $activity->activity_title }}</h5>
                 @if($activity->document_number)
                     <br><small class="text-primary fw-bold">Document Number: {{ $activity->document_number }}</small>
+                @endif
+                @if($activity->workplan_activity_code && $activity->fund_type_id == 1)
+                    <br><h6 class="text-dark fw-bold">World Bank Activity Code: {{ ucwords($activity->workplan_activity_code) }}</h6>
                 @endif
                 @if($activity->my_last_action)
                     <p> Your Action: <small class=" text-white rounded p-1 {{($activity->my_last_action->action=='passed')?'bg-success':'bg-danger'}}">{{strtoupper($activity->my_last_action->action)}}</small></p>

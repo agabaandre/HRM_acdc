@@ -10,6 +10,16 @@
 @endsection
 
 @section('content')
+    @php
+        // Decode JSON fields if they are strings
+        $attachments = is_string($nonTravel->attachment) 
+            ? json_decode($nonTravel->attachment, true) 
+            : $nonTravel->attachment;
+        
+        // Ensure variables are arrays
+        $attachments = is_array($attachments) ? $attachments : [];
+    @endphp
+    
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
             <h5 class="mb-0 text-dark">

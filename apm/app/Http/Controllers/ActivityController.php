@@ -1982,4 +1982,76 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
 
         return $workflowInfo;
     }
+
+    /**
+     * Display pending approvals for single memos.
+     */
+    public function singleMemoPendingApprovals(Request $request): View
+    {
+        $currentStaffId = user_session('staff_id');
+        
+        // Get pending memos at current user's approval level
+        $pendingQuery = Activity::with(['staff', 'division', 'requestType', 'fundType'])
+            ->where('is_single_memo', true)
+            ->where('overall_status', 'pending')
+            ->latest();
+
+        // Get approved memos by current user
+        $approvedQuery = Activity::with(['staff', 'division', 'requestType', 'fundType'])
+            ->where('is_single_memo', true)
+            ->whereHas('approvalTrails', function ($query) use ($currentStaffId) {
+                $query->where('staff_id', $currentStaffId)
+                      ->where('action', 'approved');
+            })
+            ->latest();
+
+        // Apply approval level filtering for pending memos
+        if (isDivisionApprover() || !empty(user_session('division_id'))) {
+            $pendingQuery->where('division_id', user_session('division_id'));
+        } else {
+            // Check approval workflow
+            $approvers = Approver::where('staff_id', $currentStaffId)->get();
+            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
+            $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
+            $pendingQuery->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
+        }
+
+        $pendingMemos = $pendingQuery->paginate(10);
+        $approvedByMe = $approvedQuery->paginate(10);
+
+        // Get filter data
+        $requestTypes = RequestType::all();
+        $divisions = Staff::select('division_id', 'division_name')
+            ->whereNotNull('division_id')
+            ->distinct()
+            ->orderBy('division_name')
+            ->get();
+
+        // Helper function for workflow info
+        $getWorkflowInfo = function ($memo) {
+            $workflowInfo = [
+                'approvalLevel' => $memo->approval_level ?? 0,
+                'workflowRole' => 'N/A',
+                'actorName' => 'N/A'
+            ];
+
+            if ($memo->current_actor) {
+                $workflowInfo['actorName'] = $memo->current_actor->fname . ' ' . $memo->current_actor->lname;
+            }
+
+            if ($memo->workflow_definition) {
+                $workflowInfo['workflowRole'] = $memo->workflow_definition->role ?? 'N/A';
+            }
+
+            return $workflowInfo;
+        };
+
+        return view('activities.single-memos.pending-approvals', compact(
+            'pendingMemos', 
+            'approvedByMe', 
+            'requestTypes', 
+            'divisions',
+            'getWorkflowInfo'
+        ));
+    }
 }
