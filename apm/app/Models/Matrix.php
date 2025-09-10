@@ -290,4 +290,9 @@ class Matrix extends Model
             ->sum('total');
     }
 
+    public function getResourceUrlAttribute()
+    {
+        return route('matrices.show', $this->id);
+    }
+
 }

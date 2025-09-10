@@ -71,16 +71,16 @@
     <!-- Main Content -->
     <div class="content">
       <h1>
-        @if($type === 'matrix_approval')
+        @if($type == 'approval')
           Resource Approval Request
-        @elseif($type === 'matrix_returned')
+        @elseif($type == 'returned')
           Resource Returned for Revision
         @else
           Resource Notification
         @endif
       </h1>
 
-      <p>Dear <strong>{{ $recipient->fname }} {{ $recipient->lname }}</strong>,</p>
+      <p>Dear <strong>>{{ $recipient->title }} {{ $recipient->fname }} {{ $recipient->lname }}</strong>,</p>
 
       <p>{{ $message }}</p>
 
@@ -92,7 +92,7 @@
         <li>Status: {{ ucfirst($resource->overall_status) }}</li>
       </ul>
 
-      <a href="{{ config('app.url') }}/matrices/{{ $resource->id }}" class="btn">View Matrix</a>
+      <a href="{{ $resource->resource_url }}" class="btn">View Details</a>
 
       <p style="margin-top: 20px;">
         Best regards,<br>
