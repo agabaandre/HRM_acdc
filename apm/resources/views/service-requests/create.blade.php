@@ -86,6 +86,7 @@
             <!-- Hidden fields for source data -->
             <input type="hidden" name="source_type" value="{{ $sourceType }}">
             <input type="hidden" name="source_id" value="{{ $sourceId }}">
+            <input type="hidden" name="activity_id" value="{{ $sourceData->id ?? 0 }}">
                 <input type="hidden" name="model_type"
                     value="{{ $sourceType ? 'App\\Models\\' . ucfirst(str_replace('_', '', $sourceType)) : '' }}">
                 <input type="hidden" name="fund_type_id" value="{{ $sourceData->fund_type_id ?? 1 }}">
@@ -96,6 +97,7 @@
                     value="{{ $originalTotalBudget ?? 0 }}">
             <input type="hidden" name="new_total_budget" id="newTotalBudget" value="0">
             <input type="hidden" name="budget_breakdown" id="budgetBreakdown" value="">
+             <input type="hidden" name="division_id" id="divisionId" value="{{ $sourceData->division_id ?? 0 }}">
             <input type="hidden" name="internal_participants_cost" id="internalParticipantsCost" value="">
             <input type="hidden" name="external_participants_cost" id="externalParticipantsCost" value="">
             <input type="hidden" name="other_costs" id="otherCosts" value="">
@@ -360,11 +362,13 @@
                     <table class="table table-bordered table-hover">
                             <thead class="table-secondary">
                             <tr>
-                                <th style="width: 25%;">Name</th>
+                                <th style="width: 20%;">Name</th>
+                                <th style="width: 15%;">Cost Type</th>
+                                <th style="width: 10%;">Description</th>
                                     @foreach ($costItems as $costItem)
-                                    <th style="width: {{ 75 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                    <th style="width: {{ 45 / count($costItems) }}%;">{{ $costItem->name }}</th>
                                                         @endforeach
-                                <th style="width: 25%;">Total</th>
+                                <th style="width: 10%;">Total</th>
                             </tr>
                         </thead>
                         <tbody id="internalParticipants">
@@ -388,6 +392,20 @@
                                                         @endforeach
                                         @endif
                                                     </select>
+                                </td>
+                                <td>
+                                    <select name="internal_participants[0][cost_type]" class="form-select border-success">
+                                        <option value="Daily Rate">Daily Rate</option>
+                                        <option value="Conference">Conference</option>
+                                        <option value="Training">Training</option>
+                                        <option value="Workshop">Workshop</option>
+                                        <option value="Meeting">Meeting</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" name="internal_participants[0][description]" 
+                                           class="form-control border-success" placeholder="Description" value="">
                                 </td>
                                     @foreach ($costItems as $index => $costItem)
                                     <td>
@@ -433,12 +451,14 @@
                         <table class="table table-bordered table-hover">
                             <thead class="table-secondary">
                                 <tr>
-                                    <th style="width: 13%;">Name</th>
-                                <th style="width: 13%;">Email</th>
+                                    <th style="width: 15%;">Name</th>
+                                <th style="width: 15%;">Email</th>
+                                <th style="width: 15%;">Cost Type</th>
+                                <th style="width: 10%;">Description</th>
                                     @foreach ($costItems as $costItem)
-                                    <th style="width: {{ 74 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                    <th style="width: {{ 35 / count($costItems) }}%;">{{ $costItem->name }}</th>
                                 @endforeach
-                                <th style="width: 13%;">Total</th>
+                                <th style="width: 10%;">Total</th>
                             </tr>
                         </thead>
                         <tbody id="externalParticipants">
@@ -447,6 +467,20 @@
                                             class="form-control border-success" placeholder="Name" value=""></td>
                                     <td><input type="email" name="external_participants[0][email]"
                                             class="form-control border-success" placeholder="Email" value=""></td>
+                                    <td>
+                                        <select name="external_participants[0][cost_type]" class="form-select border-success">
+                                            <option value="Daily Rate">Daily Rate</option>
+                                            <option value="Conference">Conference</option>
+                                            <option value="Training">Training</option>
+                                            <option value="Workshop">Workshop</option>
+                                            <option value="Meeting">Meeting</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="external_participants[0][description]" 
+                                               class="form-control border-success" placeholder="Description" value="">
+                                    </td>
                                     @foreach ($costItems as $index => $costItem)
                                         <td>
                                             <input type="text"
@@ -664,6 +698,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (input.type === 'number' || input.type === 'text' || input.type ===
                         'email') {
                 input.value = '';
+                if (input.name.includes('[description]')) {
+                    input.placeholder = 'Description';
+                }
             } else if (input.tagName === 'SELECT') {
                 input.selectedIndex = 0;
             }
@@ -699,20 +736,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const newRow = tbody.rows[0].cloneNode(true);
         
         // Update input names and clear values
-        const inputs = newRow.querySelectorAll('input');
+        const inputs = newRow.querySelectorAll('input, select');
         inputs.forEach(input => {
             if (input.name) {
                         input.name = input.name.replace('[0]', '[' + externalParticipantCount +
                         ']');
             }
-            if (input.type === 'number') {
+            if (input.type === 'number' || input.type === 'text' || input.type === 'email') {
                 input.value = '';
-            } else if (input.type === 'text' && input.name.includes('[name]')) {
-                input.value = '';
-                input.placeholder = 'Name';
-            } else if (input.type === 'email') {
-                input.value = '';
-                input.placeholder = 'Email';
+                if (input.name.includes('[name]')) {
+                    input.placeholder = 'Name';
+                } else if (input.name.includes('[email]')) {
+                    input.placeholder = 'Email';
+                } else if (input.name.includes('[description]')) {
+                    input.placeholder = 'Description';
+                }
+            } else if (input.tagName === 'SELECT') {
+                input.selectedIndex = 0;
             }
         });
         

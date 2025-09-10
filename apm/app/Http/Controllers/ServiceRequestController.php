@@ -239,17 +239,11 @@ class ServiceRequestController extends Controller
     {
         $validated = $request->validate([
             'request_date' => 'required|date',
-            'staff_id' => 'required|exists:staff,staff_id',
-            'division_id' => 'required|exists:divisions,id',
             'service_title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'justification' => 'required|string',
-            'required_by_date' => 'required|date|after_or_equal:request_date',
             'location' => 'nullable|string|max:255',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'service_type' => 'required|in:it,maintenance,procurement,travel,other',
             'status' => 'sometimes|in:draft,submitted,in_progress,approved,rejected,completed',
             'remarks' => 'nullable|string',
+            'activity_id' => 'nullable|integer',
             // New budget fields
             'source_type' => 'required|string',
             'source_id' => 'required|integer',
@@ -262,11 +256,13 @@ class ServiceRequestController extends Controller
             'budget_breakdown' => 'nullable|string',
             'internal_participants_cost' => 'nullable|string',
             'external_participants_cost' => 'nullable|string',
-            'other_costs' => 'nullable|string',
+            'other_costs' => 'nullable|array',
             'internal_participants' => 'nullable|array',
             'external_participants' => 'nullable|array',
         ]);
         $validated['staff_id'] = user_session('staff_id');
+        $validated['division_id'] = user_session('division_id');
+        $validated['request_number'] = ServiceRequest::generateRequestNumber();
         
         // Process budget data
         $budgetData = $this->processBudgetData($request);
@@ -305,16 +301,22 @@ class ServiceRequestController extends Controller
         
         foreach ($internalParticipants as $participant) {
             if (!empty($participant['staff_id'])) {
-                $dailyRate = floatval($participant['daily_rate'] ?? 0);
-                $days = intval($participant['days'] ?? 0);
-                $expenses = floatval($participant['expenses'] ?? 0);
-                $total = ($dailyRate * $days) + $expenses;
+                $staffId = $participant['staff_id'];
+                $costs = $participant['costs'] ?? [];
+                $costType = $participant['cost_type'] ?? 'Daily Rate';
+                $description = $participant['description'] ?? '';
+                
+                // Calculate total from costs array
+                $total = 0;
+                foreach ($costs as $costValue) {
+                    $total += floatval($costValue);
+                }
                 
                 $internalCosts[] = [
-                    'staff_id' => $participant['staff_id'],
-                    'daily_rate' => $dailyRate,
-                    'days' => $days,
-                    'expenses' => $expenses,
+                    'staff_id' => $staffId,
+                    'cost_type' => $costType,
+                    'costs' => $costs,
+                    'description' => $description,
                     'total' => $total
                 ];
                 
@@ -329,17 +331,24 @@ class ServiceRequestController extends Controller
         
         foreach ($externalParticipants as $participant) {
             if (!empty($participant['name'])) {
-                $dailyRate = floatval($participant['daily_rate'] ?? 0);
-                $days = intval($participant['days'] ?? 0);
-                $expenses = floatval($participant['expenses'] ?? 0);
-                $total = ($dailyRate * $days) + $expenses;
+                $name = $participant['name'];
+                $email = $participant['email'] ?? '';
+                $costs = $participant['costs'] ?? [];
+                $costType = $participant['cost_type'] ?? 'Daily Rate';
+                $description = $participant['description'] ?? '';
+                
+                // Calculate total from costs array
+                $total = 0;
+                foreach ($costs as $costValue) {
+                    $total += floatval($costValue);
+                }
                 
                 $externalCosts[] = [
-                    'name' => $participant['name'],
-                    'email' => $participant['email'] ?? '',
-                    'daily_rate' => $dailyRate,
-                    'days' => $days,
-                    'expenses' => $expenses,
+                    'name' => $name,
+                    'email' => $email,
+                    'cost_type' => $costType,
+                    'costs' => $costs,
+                    'description' => $description,
                     'total' => $total
                 ];
                 
