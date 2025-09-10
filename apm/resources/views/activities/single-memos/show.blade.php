@@ -513,8 +513,9 @@
                                 <span>Approval Status</span>
                             </a>
                         @endif
+                        
                         @if ($activity->overall_status === 'approved')
-                            <a href="{{ route('activities.single-memos.print', $activity) }}" target="_blank"
+                            <a href="{{ route('matrices.activities.memo-pdf', [$activity->matrix, $activity]) }}" target="_blank"
                                 class="btn btn-primary d-flex align-items-center gap-2">
                                 <i class="bx bx-printer"></i>
                                 <span>Print PDF</span>
@@ -662,6 +663,16 @@
                                     </td>
                                         </tr>
                                 @endif
+                            @if ($activity->workplan_activity_code && $activity->fund_type_id == 1)
+                                <tr>
+                                    <td class="field-label">
+                                        <i class="bx bx-code-block me-2 text-info"></i>World Bank Activity Code
+                                    </td>
+                                    <td class="field-value" colspan="3">
+                                        <span class="text-black fw-bold">{{ ucwords($activity->workplan_activity_code) }}</span>
+                                    </td>
+                                </tr>
+                            @endif
                             <tr>
                                 <td class="field-label">
                                     <i class="bx bx-user me-2 text-primary"></i>Creator

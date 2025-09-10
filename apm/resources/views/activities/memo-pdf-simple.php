@@ -511,7 +511,7 @@
                   <div>
                     <br><br>
                                 <strong class="section-label">File No:</strong><br>
-                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($activity_refernce); ?></span>
+                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($activity->document_number); ?></span>
           </div>
         </div>
       </td>
@@ -667,7 +667,7 @@
                            
                             <?php foreach($activity->activity_budget as $item): ?>
                                 <?php
-                                    $total = $item->unit_cost * $item->units;
+                                    $total = $item->unit_cost * $item->units*$item->days;
                                     $grandTotal+=$total;
                                 ?>
                                 <tr>

@@ -129,6 +129,115 @@ if (!function_exists('user_session')) {
         }
      }
 
+     if (!function_exists('can_print_memo')) {
+        function can_print_memo($memo) {
+            $user = (object) session('user', []);
+            // Must be owner or responsible person
+            $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
+            $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
+
+            // Only allow if status is approved
+            $isApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
+
+            // If this is a matrix memo, check matrix approval and activity approval
+            $isMatrixApproved = true;
+            $isActivityApproved = true;
+            if (isset($memo->matrix)) {
+                $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'approved';
+                if (isset($memo->activity)) {
+                    $isActivityApproved = isset($memo->activity->overall_status) && $memo->activity->overall_status === 'approved';
+                }
+            }
+
+            return ($isOwner || $isResponsible) && $isApproved && $isMatrixApproved && $isActivityApproved;
+        }
+     }
+
+     if (!function_exists('can_request_memo_action')) {
+        /**
+         * Helper to determine if a user can request a specific action (services or ARF) on a memo.
+         * 
+         * @param object $memo
+         * @param string $type 'services' for intramural, 'arf' for extramural
+         * @return bool
+         */
+        function can_request_memo_action($memo, $type) {
+            $user = (object) session('user', []);
+            // Must be owner or responsible person
+            $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
+            $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
+            //@dd($isOwner,$isResponsible,$memo);
+            // Only allow if status is approved
+            $isApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
+            
+            // If this is a matrix memo, check matrix approval and activity approval
+            $isMatrixApproved = true;
+            $isActivityApproved = true;
+            if (isset($memo->matrix)) {
+                $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'approved';
+              
+            }
+            //dd($isMatrixApproved);
+
+            // Fund type check
+            $fundTypeId = isset($memo->fundType->id) ? $memo->fundType->id : null;
+
+            $isTypeAllowed = false;
+            //dd($type);
+            if ($type === 'services') {
+                
+                $isTypeAllowed = $fundTypeId == 1; // intramural
+            } elseif ($type === 'arf') {
+                $isTypeAllowed = $fundTypeId == 2; // extramural
+            }
+            //dd($isTypeAllowed);
+           // dd($type);
+
+            return ($isOwner || $isResponsible) && ($isApproved || $isMatrixApproved)  && $isTypeAllowed;
+        }
+     }
+
+     // For backward compatibility, keep the old function names as wrappers
+     if (!function_exists('can_request_services')) {
+        function can_request_services($memo) {
+            return can_request_memo_action($memo, 'services');
+        }
+     }
+
+     if (!function_exists('can_request_arf')) {
+        function can_request_arf($memo) {
+            return can_request_memo_action($memo, 'arf');
+        }
+     }
+
+    
+ 
+
+     if (!function_exists('can_edit_memo')) {
+        function can_edit_memo($memo) {
+            $user = (object) session('user', []);
+            // Must be owner or responsible person
+            $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
+            $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
+
+            // Only allow if status is approved
+            $isApproved = isset($memo->overall_status) && $memo->overall_status === 'draft';
+
+            // If this is a matrix memo, check matrix approval and activity approval
+            $isMatrixApproved = true;
+            $isActivityApproved = true;
+            if (isset($memo->matrix)) {
+                $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'draft';
+                if (isset($memo->activity)) {
+                    $isActivityApproved = isset($memo->activity->overall_status) && $memo->activity->overall_status === 'draft';
+                }
+            }
+
+            return ($isOwner || $isResponsible) && $isApproved && $isMatrixApproved && $isActivityApproved;
+        }
+     }
+     
+
     
     if (!function_exists('done_approving')) {
         /**

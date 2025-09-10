@@ -318,12 +318,12 @@
             <a href="{{ route('activities.single-memos.index') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('single-memo') > 0)
-            <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-primary btn-sm position-relative">
+        
+            <a href="{{ route('activities.single-memos.pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="single-memo-pending-count">{{ get_staff_pending_action_count('single-memo') }}</span>
             </a>
-            @endif
+        
             <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-primary btn-sm">
               <i class="fas fa-file-alt"></i> My Submitted
             </a>

@@ -187,7 +187,7 @@
                         <span>Back to List</span>
                     </a>
 
-                    @if($nonTravel->overall_status === 'draft' && $nonTravel->staff_id == user_session('staff_id'))
+                    @if(can_edit_memo($nonTravel))
                         <a href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning d-flex align-items-center gap-2">
                             <i class="bx bx-edit"></i>
                             <span>Edit Memo</span>
@@ -197,13 +197,14 @@
                         <i class="bx bx-info-circle"></i>
                         <span>Approval Status</span>
                     </a>
-                    @if($nonTravel->overall_status === 'approved')
+                   
+                   @if(can_print_memo($nonTravel))
                         <a href="{{ route('non-travel.print', $nonTravel) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
                             <i class="bx bx-printer"></i>
                             <span>Print PDF</span>
                         </a>
                     @endif
-                    @if($nonTravel->fundType && strtolower($nonTravel->fundType->name) === 'extramural' && $nonTravel->overall_status === 'approved')
+                    @if(can_request_arf($nonTravel))
                         @php
                             // Check if ARF already exists for this non-travel memo
                             $existingArfTop = \App\Models\RequestARF::where('source_id', $nonTravel->id)
@@ -224,7 +225,7 @@
                         @endif
                         
                         {{-- Service Request Button --}}
-                        @if($nonTravel->fund_type_id == 1 && $nonTravel->overall_status === 'approved')
+                        @if(can_request_services($nonTravel))
                             @php
                                 // Check if Service Request already exists for this memo
                                 $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $nonTravel->id)
@@ -304,7 +305,7 @@
         <div class="summary-table mb-4">
             <div class="card-header bg-light border-0 py-3">
                 <h5 class="mb-0 fw-bold text-dark">
-                    <i class="bx bx-table me-2 text-primary"></i>Memo Summary
+                    <i class="bx bx-table me-2 text-primary"></i>{{ $nonTravel->activity_title ?? 'Non-Travel Memo Summary' }}
                 </h5>
             </div>
             <div class="table-responsive">
@@ -312,9 +313,9 @@
                     <tbody>
                         <!-- Basic Information -->
                         <tr>
-                            <td class="field-label">Memo ID</td>
-                            <td class="field-value">#{{ $nonTravel->id }}</td>
-                            <td class="field-label">Status</td>
+                            <td class="field-label">
+                                <i class="bx bx-badge-check me-2 text-success"></i>Status
+                            </td>
                             <td class="field-value">
                                 <span class="badge bg-{{ $nonTravel->overall_status === 'approved' ? 'success' : ($nonTravel->overall_status === 'pending' ? 'warning' : ($nonTravel->overall_status === 'rejected' ? 'danger' : 'secondary')) }} fs-6">
                                     {{ ucfirst($nonTravel->overall_status ?? 'draft') }}
@@ -325,45 +326,57 @@
                                     </a>
                                 @endif
                             </td>
-                        </tr>
-                        <tr>
-                            <td class="field-label">Activity Title</td>
-                            <td class="field-value" colspan="3">{{ $nonTravel->activity_title ?? 'Not specified' }}</td>
+                            <td class="field-label">
+                                <i class="bx bx-calendar me-2 text-info"></i>Memo Date
+                            </td>
+                            <td class="field-value">
+                                {{ $nonTravel->memo_date ? \Carbon\Carbon::parse($nonTravel->memo_date)->format('M d, Y') : 'Not set' }}
+                            </td>
                         </tr>
                         @if($nonTravel->document_number)
                         <tr>
-                            <td class="field-label">Document Number</td>
+                            <td class="field-label">
+                                <i class="bx bx-hash me-2 text-info"></i>Document Number
+                            </td>
                             <td class="field-value" colspan="3">
                                 <span class="text-primary fw-bold">{{ $nonTravel->document_number }}</span>
                             </td>
                         </tr>
                         @endif
+                        @if($nonTravel->workplan_activity_code && $nonTravel->fund_type_id == 1)
                         <tr>
-                            <td class="field-label">Requestor</td>
+                            <td class="field-label">
+                                <i class="bx bx-code-block me-2 text-warning"></i>World Bank Activity Code
+                            </td>
+                            <td class="field-value" colspan="3">
+                                <span class="text-dark fw-bold">{{ $nonTravel->workplan_activity_code }}</span>
+                            </td>
+                        </tr>
+                        @endif
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-user me-2 text-primary"></i>Requestor
+                            </td>
                             <td class="field-value">
                                 {{ $nonTravel->staff ? ($nonTravel->staff->fname . ' ' . $nonTravel->staff->lname) : 'Not assigned' }}
                             </td>
-                            <td class="field-label">Division</td>
+                            <td class="field-label">
+                                <i class="bx bx-buildings me-2 text-secondary"></i>Division
+                            </td>
                             <td class="field-value">
                                 {{ $nonTravel->division ? $nonTravel->division->division_name : 'Not assigned' }}
                             </td>
                         </tr>
                         <tr>
-                            <td class="field-label">Memo Date</td>
-                            <td class="field-value">
-                                {{ $nonTravel->memo_date ? \Carbon\Carbon::parse($nonTravel->memo_date)->format('M d, Y') : 'Not set' }}
+                            <td class="field-label">
+                                <i class="bx bx-category me-2 text-warning"></i>Category
                             </td>
-                            <td class="field-label">Category</td>
                             <td class="field-value">
                                 {{ $nonTravel->nonTravelMemoCategory ? $nonTravel->nonTravelMemoCategory->name : 'Not categorized' }}
                             </td>
-                        </tr>
-                        <tr>
-                            <td class="field-label">Activity Code</td>
-                            <td class="field-value">
-                                {{ $nonTravel->id ?? 'Not specified' }}
+                            <td class="field-label">
+                                <i class="bx bx-time me-2 text-success"></i>Created Date
                             </td>
-                            <td class="field-label">Created Date</td>
                             <td class="field-value">
                                 {{ $nonTravel->created_at ? $nonTravel->created_at->format('M d, Y H:i') : 'Not available' }}
                             </td>
@@ -371,7 +384,9 @@
                         
                         <!-- Locations -->
                         <tr>
-                            <td class="field-label">Locations</td>
+                            <td class="field-label">
+                                <i class="bx bx-map me-2 text-danger"></i>Locations
+                            </td>
                             <td class="field-value" colspan="3">
                                 @if($locations->count() > 0)
                                     @foreach($locations as $location)
@@ -385,7 +400,9 @@
                         
                         <!-- Budget Information -->
                         <tr>
-                            <td class="field-label">Fund Type</td>
+                            <td class="field-label">
+                                <i class="bx bx-wallet me-2 text-success"></i>Fund Type
+                            </td>
                             <td class="field-value">
                                 @if($nonTravel->fundType)
                                     <span class="badge {{ $nonTravel->fundType->id == 1 ? 'bg-primary' : 'bg-info' }}">
@@ -398,7 +415,9 @@
                                     <span class="text-muted">Not specified</span>
                                 @endif
                             </td>
-                            <td class="field-label">Budget Codes</td>
+                            <td class="field-label">
+                                <i class="bx bx-credit-card me-2 text-info"></i>Budget Codes
+                            </td>
                             <td class="field-value">
                                 @if($budgetCodes->count() > 0)
                                     @foreach($budgetCodes as $budget)
@@ -415,9 +434,13 @@
                             </td>
                         </tr>
                         <tr>
-                            <td class="field-label">Total Budget</td>
+                            <td class="field-label">
+                                <i class="bx bx-dollar me-2 text-success"></i>Total Budget
+                            </td>
                             <td class="field-value fw-bold text-success">${{ number_format($totalBudget, 2) }}</td>
-                            <td class="field-label">Budget Items</td>
+                            <td class="field-label">
+                                <i class="bx bx-list-ul me-2 text-warning"></i>Budget Items
+                            </td>
                             <td class="field-value">
                                 @php
                                     $itemCount = 0;
@@ -465,105 +488,8 @@
         </div>
 
         <div class="row">
-            <div class="col-lg-6">
-                <!-- Enhanced Memo Information Card -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 fw-bold">
-                            <i class="bx bx-info-circle me-2 text-primary"></i>Non-Travel Memo Information
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="memo-meta-row">
-                            <div class="memo-meta-item">
-                                <i class="bx bx-calendar-alt"></i>
-                                <span class="memo-meta-label">Memo Date:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->memo_date ? \Carbon\Carbon::parse($nonTravel->memo_date)->format('M d, Y') : 'Not set' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-user"></i>
-                                <span class="memo-meta-label">Requestor:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->staff ? ($nonTravel->staff->fname . ' ' . $nonTravel->staff->lname) : 'Not assigned' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-building"></i>
-                                <span class="memo-meta-label">Division:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->division ? $nonTravel->division->division_name : 'Not assigned' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-cube"></i>
-                                <span class="memo-meta-label">Category:</span>
-                                <span class="memo-meta-value">{{ $nonTravel->nonTravelMemoCategory ? $nonTravel->nonTravelMemoCategory->name : 'Not categorized' }}</span>
-                            </div>
-                        </div>
-                        
-                        @if($nonTravel->overall_status !== 'approved')
-                            <div class="mt-3 p-3" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 0.5rem; border: 1px solid #bfdbfe;">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <i class="bx bx-user-check text-blue-600"></i>
-                                    <span class="fw-semibold text-blue-900">Current Status</span>
-                                </div>
-                                <div class="memo-meta-row">
-                                    <div class="memo-meta-item">
-                                        <i class="bx bx-badge-check"></i>
-                                        <span class="memo-meta-value">{{ ucfirst($nonTravel->overall_status ?? 'draft') }}</span>
-                                    </div>
-                                    @if($nonTravel->overall_status === 'pending')
-                                        <div class="memo-meta-item">
-                                            <i class="bx bx-time"></i>
-                                            <span class="memo-meta-value">Awaiting Approval</span>
-                                        </div>
-                                    @endif
-                                </div>
-                                
-                                @if($nonTravel->overall_status !== 'draft' && $nonTravel->current_actor)
-                                    <div class="mt-3 p-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 0.5rem; border: 1px solid #bae6fd;">
-                                        <div class="d-flex align-items-center gap-2 mb-2">
-                                            <i class="bx bx-user text-primary"></i>
-                                            <span class="fw-semibold text-primary">Current Approver</span>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="mb-2">
-                                                    <strong class="text-muted small">Name:</strong>
-                                                    <div class="fw-bold text-primary">{{ $nonTravel->current_actor->fname . ' ' . $nonTravel->current_actor->lname }}</div>
-                                                </div>
-                                                @if($nonTravel->current_actor->job_name)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Job Title:</strong>
-                                                        <div class="fw-semibold">{{ $nonTravel->current_actor->job_name }}</div>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                            <div class="col-md-6">
-                                                @if($nonTravel->current_actor->division_name)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Division:</strong>
-                                                        <div class="fw-semibold">{{ $nonTravel->current_actor->division_name }}</div>
-                                                    </div>
-                                                @endif
-                                                @if($nonTravel->workflow_definition)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Approval Role:</strong>
-                                                        <div>
-                                                            <span class="badge bg-info">{{ $nonTravel->workflow_definition->role ?? 'Not specified' }}</span>
-                                                        </div>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="mt-2 p-2 bg-primary bg-opacity-10 rounded">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <i class="bx bx-info-circle text-primary"></i>
-                                                <span class="text-primary fw-medium small">This non-travel memo is currently awaiting approval from the supervisor above.</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-                        @endif
-                    </div>
-                </div>
+            <div class="col-lg-12">
+       
 
                 <!-- Content Sections -->
                 <div class="mb-5">
@@ -680,7 +606,7 @@
             </div>
 
             <!-- Enhanced Sidebar -->
-            <div class="col-lg-6">
+            <div class="col-lg-12">
   
                 <!-- Attachments Card -->
                 @if(!empty($attachments) && count($attachments) > 0)
@@ -764,7 +690,7 @@
                 </div>
    <!-- Enhanced Approval Actions -->
 
-                @if(can_take_action_generic($nonTravel)|| is_with_creator_generic($nonTravel))
+                @if(can_take_action_generic($nonTravel)|| is_with_creator_generic($nonTravel) && $nonTravel->overall_status != 'draft')
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
