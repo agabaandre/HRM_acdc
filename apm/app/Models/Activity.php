@@ -381,4 +381,9 @@ class Activity extends Model
     {
         return $this->belongsTo(Division::class, 'division_id');
     }
+
+    public function getResourceUrlAttribute()
+    {
+        return route(( $this->is_single_memo ? 'single-memos.show' : 'activities.show'), $this->id);
+    }
 }

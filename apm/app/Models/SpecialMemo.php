@@ -389,4 +389,9 @@ class SpecialMemo extends Model
         return array_values(array_unique($ids));
     }
 
+    public function getResourceUrlAttribute()
+    {
+        return route('special-memos.show', $this->id);
+    }
+
 }

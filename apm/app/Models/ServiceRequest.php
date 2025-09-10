@@ -195,4 +195,9 @@ class ServiceRequest extends Model
         
         return implode('', array_filter($initials));
     }
+
+    public function getResourceUrlAttribute()
+    {
+        return route('service-requests.show', $this->id);
+    }
 }

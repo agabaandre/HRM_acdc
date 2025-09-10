@@ -266,5 +266,10 @@ class NonTravelMemo extends Model
         return array_values(array_unique($ids));
     }
 
+    public function getResourceUrlAttribute()
+    {
+        return route('non-travel-memos.show', $this->id);
+    }
+
 
 }
