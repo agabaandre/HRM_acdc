@@ -29,7 +29,7 @@ class SendMatrixNotificationJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($model, Staff $recipient, string $type, string $message)
+    public function __construct($model,  $recipient, string $type, string $message)
     {
         $this->model = $model;
         $this->recipient = $recipient;
@@ -42,10 +42,22 @@ class SendMatrixNotificationJob implements ShouldQueue
      */
     public function handle(): void
     {
+       if(is_array($this->recipient)) {
+            foreach($this->recipient as $recipient) {
+                $this->processNotification($recipient);
+            }
+       } else {
+            $this->processNotification($this->recipient);
+       }
+    }
+
+
+    private function processNotification($recipient): void
+    {
         try {
             // Create notification record first
             Notification::create([
-                'staff_id' => $this->recipient->staff_id,
+                'staff_id' => $recipient->staff_id,
                 'model_id' => $this->model->id,
                 'message' => $this->message,
                 'type' => $this->type,
@@ -57,21 +69,20 @@ class SendMatrixNotificationJob implements ShouldQueue
             
             Log::info('Resource notification email sent successfully', [
                 'model_id' => $this->model->id,
-                'recipient_id' => $this->recipient->staff_id,
+                'recipient_id' => $recipient->staff_id,
                 'type' => $this->type
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to send resource notification email in job', [
                 'model_id' => $this->model->id,
-                'recipient_id' => $this->recipient->staff_id,
+                'recipient_id' => $recipient->staff_id,
                 'error' => $e->getMessage()
             ]);
             
             throw $e; // Re-throw to trigger retry
         }
     }
-
     /**
      * Send matrix notification email using custom PHPMailer
      */

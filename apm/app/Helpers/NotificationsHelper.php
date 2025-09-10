@@ -73,9 +73,9 @@ if (!function_exists('send_matrix_notification')) {
      * @param string $type The type of notification (e.g., 'matrix_approval', 'matrix_returned', etc.)
      * @return Notification|null
      */
-    function send_matrix_notification( $model, $type = 'approval')
+    function send_matrix_notification( $model, $type = 'approval',$recipients = null)
     {
-        $recipient = get_matrix_notification_recipient($model);
+        $recipient = $recipients ? $recipients : get_matrix_notification_recipient($model);
 
         if (!$recipient) {
             return null;
@@ -93,6 +93,15 @@ if (!function_exists('send_matrix_notification')) {
                         $model->staff->fname,
                         $model->staff->lname
                     );
+                    break;
+                case 'created':
+                        $message = sprintf(
+                            '%s #%d has been created by %s %s.',
+                            $resource,
+                            $model->id,
+                            $model->staff->fname,
+                            $model->staff->lname
+                        );
                     break;
                 case 'returned':
                     $message = sprintf(
