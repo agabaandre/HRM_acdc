@@ -235,7 +235,7 @@ class ApprovalService
 
         // Update model status
         if ($action !== 'approved') {
-            $model->forward_workflow_id = NULL;
+            $model->forward_workflow_id = intval($model->approval_level)==1?NULL:$model->forward_workflow_id;
             $model->approval_level = intval($model->approval_level)==1?0:1;
             //dd($model->approval_level);
             $model->overall_status = 'returned';
