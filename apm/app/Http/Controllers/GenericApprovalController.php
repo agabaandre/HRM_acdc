@@ -221,18 +221,7 @@ class GenericApprovalController extends Controller
      */
     protected function sendNotification(Model $model, string $action): void
     {
-        $modelType = class_basename($model);
-        $notificationType = $action;
-
-        // Get notification recipient
-        $recipient = $this->approvalService->getNotificationRecipient($model);
-
-        if ($recipient) {
-            // Send email notification
-            if (function_exists('send_matrix_email_notification')) {
-                send_matrix_email_notification($model, $notificationType);
-            }
-        }
+        send_matrix_email_notification($model, $action);
     }
 
     /**
