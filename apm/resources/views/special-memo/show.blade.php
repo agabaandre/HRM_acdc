@@ -4,6 +4,32 @@
 
 @section('styles')
 <style>
+    .matrix-card {
+        background: #fff;
+        border-radius: 1.25rem;
+        box-shadow: 0 4px 24px rgba(17, 154, 72, 0.08);
+        border: none;
+    }
+
+    .matrix-card .card-header {
+        border-radius: 1.25rem 1.25rem 0 0;
+        background: linear-gradient(90deg, #e9f7ef 0%, #fff 100%);
+        border-bottom: 1px solid #e9f7ef;
+    }
+
+    .matrix-card .card-body {
+        border-radius: 0 0 1.25rem 1.25rem;
+    }
+
+    .approval-level-badge {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
     .status-badge {
         font-size: 0.875rem;
         font-weight: 600;
@@ -11,40 +37,166 @@
         border-radius: 9999px;
         text-transform: capitalize;
     }
-    
-    .status-approved { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
-    .status-rejected { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
-    .status-pending { background: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
-    .status-draft { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
-    .status-returned { background: #dbeafe; color: #2563eb; border: 1px solid #93c5fd; }
-    
+
+    .status-approved {
+        background: #d1fae5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #d97706;
+        border: 1px solid #fcd34d;
+    }
+
+    .status-draft {
+        background: #f3f4f6;
+        color: #6b7280;
+        border: 1px solid #d1d5db;
+    }
+
+    .status-returned {
+        background: #dbeafe;
+        color: #2563eb;
+        border: 1px solid #93c5fd;
+    }
+
     .gradient-header {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     }
-    
+
+    /* Timeline Styles */
+    .timeline {
+        position: relative;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: 30px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+        padding-left: 60px;
+    }
+
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .timeline-badge {
+        position: absolute;
+        left: 18px;
+        top: 0;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #28a745;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .timeline-badge.approved {
+        border-color: #28a745;
+        color: #28a745;
+    }
+
+    .timeline-badge.rejected {
+        border-color: #dc3545;
+        color: #dc3545;
+    }
+
+    .timeline-badge.returned {
+        border-color: rgb(217, 136, 15);
+        color: rgb(208, 149, 12);
+    }
+
+    .timeline-badge.submitted {
+        border-color: rgb(17, 166, 211);
+        color: rgb(27, 143, 216);
+    }
+
+    .timeline-time {
+        font-size: 0.9rem;
+        color: #888;
+        margin-bottom: 2px;
+    }
+
+    .timeline-title {
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .timeline-remarks {
+        color: #555;
+        font-size: 0.95rem;
+    }
+
+    /* Hover effects */
+    .card:hover {
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+
+    /* Button hover effects */
+    .btn:hover {
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+
     .meta-card {
         background: #f8fafc;
         border-radius: 0.75rem;
         padding: 1rem;
         border: 1px solid #e2e8f0;
     }
-    
+
     .content-section {
         border-left: 4px solid;
         background: #fafafa;
     }
-    
-    .content-section.bg-blue { border-left-color: #3b82f6; }
-    .content-section.bg-green { border-left-color: #10b981; }
-    .content-section.bg-purple { border-left-color: #8b5cf6; }
-    
+
+    .content-section.bg-blue {
+        border-left-color: #3b82f6;
+    }
+
+    .content-section.bg-green {
+        border-left-color: #10b981;
+    }
+
+    .content-section.bg-purple {
+        border-left-color: #8b5cf6;
+    }
+
     .sidebar-card {
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
         border-radius: 0.75rem;
         overflow: hidden;
     }
-    
-    .location-badge, .budget-item {
+
+    .location-badge,
+    .budget-item {
         background: #f0f9ff;
         border: 1px solid #bae6fd;
         border-radius: 0.5rem;
@@ -53,7 +205,7 @@
         align-items: center;
         gap: 0.5rem;
     }
-    
+
     .budget-table th {
         background: #f8f9fa;
         font-weight: 600;
@@ -61,39 +213,39 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-    
+
     .budget-table td {
         vertical-align: middle;
         font-size: 0.9rem;
     }
-    
+
     .budget-total-row {
         background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
         font-weight: 700;
     }
-    
+
     .fund-code-header {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         border: 1px solid #bae6fd;
         border-radius: 0.5rem;
     }
-    
+
     .fund-code-header h6 {
         color: #0369a1;
         margin-bottom: 0.25rem;
     }
-    
+
     .fund-code-header .small {
         color: #64748b;
     }
-    
+
     .attachment-item {
         background: #faf5ff;
         border: 1px solid #e9d5ff;
         border-radius: 0.5rem;
         padding: 0.75rem;
     }
-    
+
     /* Attachment Preview Modal Styles */
     #previewModal .modal-dialog {
         max-width: 90vw;
@@ -163,12 +315,12 @@
             max-width: 95vw;
             margin: 0.5rem auto;
         }
-        
+
         #previewModal .modal-body {
             min-height: 400px;
             max-height: 70vh;
         }
-        
+
         #previewModalBody {
             padding: 1rem;
         }
@@ -183,22 +335,26 @@
         line-height: 1.1;
         margin-bottom: 0.5rem;
     }
+
     .memo-meta-item {
         display: flex;
         align-items: center;
         min-width: 120px;
         margin-bottom: 0;
     }
+
     .memo-meta-item i {
         font-size: 1rem;
         margin-right: 0.3rem;
         color: #007bff;
     }
+
     .memo-meta-label {
         color: #888;
         font-size: 0.85em;
         margin-right: 0.2em;
     }
+
     .memo-meta-value {
         font-weight: 500;
     }
@@ -219,11 +375,11 @@
         overflow: hidden;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    
+
     .summary-table .table {
         margin-bottom: 0;
     }
-    
+
     .summary-table .table th {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         border: none;
@@ -234,51 +390,82 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-    
+
     .summary-table .table td {
         border: none;
         border-bottom: 1px solid #e5e7eb;
         padding: 1rem;
         vertical-align: middle;
     }
-    
+
     .summary-table .table tr:last-child td {
         border-bottom: none;
     }
-    
+
     .summary-table .table tr:hover {
         background-color: #f9fafb;
     }
-    
+
     .field-label {
         font-weight: 600;
         color: #374151;
         min-width: 150px;
     }
-    
+
     .field-value {
         color: #1f2937;
         font-weight: 500;
     }
-    
+
     .field-value.null {
         color: #9ca3af;
         font-style: italic;
     }
-    
-    .matrix-card {
-        background: #fff;
-        border-radius: 1.25rem;
-        box-shadow: 0 4px 24px rgba(17,154,72,0.08);
-        border: none;
+
+    /* Enhanced Summary Table Styling */
+    .summary-table .field-label {
+        font-weight: 600;
+        color: #374151;
+        min-width: 150px;
+        padding: 1rem 1rem 1rem 1.5rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-right: 3px solid #e2e8f0;
+        position: relative;
     }
-    .matrix-card .card-header {
-        border-radius: 1.25rem 1.25rem 0 0;
-        background: linear-gradient(90deg, #e9f7ef 0%, #fff 100%);
-        border-bottom: 1px solid #e9f7ef;
+
+    .summary-table .field-label i {
+        font-size: 1.1rem;
+        margin-right: 0.5rem;
+        vertical-align: middle;
     }
-    .matrix-card .card-body {
-        border-radius: 0 0 1.25rem 1.25rem;
+
+    .summary-table .field-value {
+        color: #1f2937;
+        font-weight: 500;
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .summary-table .table tr:hover .field-label {
+        background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+        transition: all 0.3s ease;
+    }
+
+    .summary-table .table tr:hover .field-value {
+        background-color: #f9fafb;
+        transition: all 0.3s ease;
+    }
+
+    .summary-table .table tr {
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .summary-table .table tr:last-child {
+        border-bottom: none;
+    }
+
+    .summary-table .table tr:nth-child(even) .field-label {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     }
 </style>
 @endsection
@@ -393,20 +580,31 @@
             // Process internal participants to load staff details
             $processedInternalParticipants = [];
             if (!empty($internalParticipants)) {
-                // Get staff IDs from the keys of the internal participants array and convert to integers
-                $staffIds = array_map('intval', array_keys($internalParticipants));
-                
-                $staffDetails = \App\Models\Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
-                
-                foreach ($internalParticipants as $staffId => $participantData) {
-                    $staffIdInt = (int) $staffId; // Convert to integer for lookup
-                    if (isset($staffDetails[$staffIdInt])) {
-                        $processedInternalParticipants[] = [
-                            'staff' => $staffDetails[$staffIdInt],
-                            'participant_start' => $participantData['participant_start'] ?? null,
-                            'participant_end' => $participantData['participant_end'] ?? null,
-                            'participant_days' => $participantData['participant_days'] ?? null,
-                        ];
+                // Check if participants are already processed (have staff objects) or raw JSON
+                if (isset($internalParticipants[0]) && isset($internalParticipants[0]['staff'])) {
+                    // Participants are already processed - use them directly
+                    $processedInternalParticipants = $internalParticipants;
+                } else {
+                    // Participants are raw JSON - need to process them
+                    // Get staff IDs from the keys of the internal participants array
+                    $staffIds = array_map('intval', array_keys($internalParticipants));
+                    
+                    // Fetch staff details using the converted integer IDs
+                    $staffDetails = \App\Models\Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
+                    
+                    foreach ($internalParticipants as $staffId => $participantData) {
+                        // Convert string key to integer for database lookup
+                        $staffIdInt = (int) $staffId;
+                        
+                        // Check if staff exists in our fetched data
+                        if (isset($staffDetails[$staffIdInt])) {
+                            $processedInternalParticipants[] = [
+                                'staff' => $staffDetails[$staffIdInt],
+                                'participant_start' => $participantData['participant_start'] ?? null,
+                                'participant_end' => $participantData['participant_end'] ?? null,
+                                'participant_days' => $participantData['participant_days'] ?? null,
+                            ];
+                        }
                     }
                 }
             }
@@ -475,7 +673,7 @@
         <div class="summary-table mb-4">
             <div class="card-header bg-light border-0 py-3">
                 <h5 class="mb-0 fw-bold text-dark">
-                    <i class="bx bx-table me-2 text-primary"></i>Special Memo Summary
+                    <i class="bx bx-file-text me-2 text-primary"></i>{{ $specialMemo->activity_title ?? 'Special Memo Summary' }}
                 </h5>
             </div>
             <div class="table-responsive">
@@ -483,10 +681,10 @@
                     <tbody>
                         <!-- Basic Information -->
                         <tr>
-                            <td class="field-label">Memo ID</td>
-                            <td class="field-value">#{{ $specialMemo->id }}</td>
-                            <td class="field-label">Status</td>
-                            <td class="field-value">
+                            <td class="field-label">
+                                <i class="bx bx-check-circle me-2 text-success"></i>Status
+                            </td>
+                            <td class="field-value" colspan="3">
                                 @php
                                     $statusBadgeClass = [
                                         'draft' => 'status-draft',
@@ -506,122 +704,114 @@
                                 @endif
                             </td>
                         </tr>
-                        <tr>
-                            <td class="field-label">Activity Title</td>
-                            <td class="field-value" colspan="3">{{ $specialMemo->activity_title ?? 'Not specified' }}</td>
-                        </tr>
                         @if($specialMemo->document_number)
                         <tr>
-                            <td class="field-label">Document Number</td>
+                            <td class="field-label">
+                                <i class="bx bx-hash me-2 text-info"></i>Document Number
+                            </td>
                             <td class="field-value" colspan="3">
-                                <span class="text-primary fw-bold">{{ $specialMemo->document_number }}</span>
+                                <span class="text-success fw-bold">{{ $specialMemo->document_number }}</span>
                             </td>
                         </tr>
                         @endif
                         <tr>
-                            <td class="field-label">Creator</td>
-                            <td class="field-value">
-                                {{ optional($specialMemo->staff)->fname }} {{ optional($specialMemo->staff)->lname ?? 'Not assigned' }}
+                            <td class="field-label">
+                                <i class="bx bx-user me-2 text-primary"></i>Creator
                             </td>
-                            <td class="field-label">Division</td>
+                            <td class="field-value">    
+                                {{ optional($specialMemo->staff)->fname }}
+                                {{ optional($specialMemo->staff)->lname ?? 'Not assigned' }}
+                            </td>
+                            <td class="field-label">
+                                <i class="bx bx-building me-2 text-secondary"></i>Division
+                            </td>
                             <td class="field-value">
                                 {{ optional($specialMemo->division)->division_name ?? 'Not assigned' }}
                             </td>
                         </tr>
                         <tr>
-                            <td class="field-label">Responsible Person</td>
-                            <td class="field-value">
-                                {{ optional($specialMemo->responsiblePerson)->fname }} {{ optional($specialMemo->responsiblePerson)->lname ?? 'Not assigned' }}
+                            <td class="field-label">
+                                <i class="bx bx-user-check me-2 text-success"></i>Responsible Person
                             </td>
-                            <td class="field-label">Job Title</td>
+                            <td class="field-value">
+                                {{ optional($specialMemo->responsiblePerson)->fname }}
+                                {{ optional($specialMemo->responsiblePerson)->lname ?? 'Not assigned' }}
+                            </td>
+                            <td class="field-label">
+                                <i class="bx bx-briefcase me-2 text-info"></i>Job Title
+                            </td>
                             <td class="field-value">
                                 {{ optional($specialMemo->responsiblePerson)->job_name ?? 'Not specified' }}
                             </td>
                         </tr>
                         <tr>
-                            <td class="field-label">Date Range</td>
+                            <td class="field-label">
+                                <i class="bx bx-calendar me-2 text-danger"></i>Date Range
+                            </td>
                             <td class="field-value">
                                 {{ $specialMemo->formatted_dates ?? 'Not specified' }}
                             </td>
-                            <td class="field-label">Request Type</td>
+                            <td class="field-label">
+                                <i class="bx bx-category me-2 text-purple"></i>Request Type
+                            </td>
                             <td class="field-value">
                                 {{ optional($specialMemo->requestType)->name ?? 'Not specified' }}
                             </td>
                         </tr>
-                        
+
                         <!-- Location Information -->
                         <tr>
-                            <td class="field-label">Location(s)</td>
+                            <td class="field-label">
+                                <i class="bx bx-map me-2 text-success"></i>Location(s)
+                            </td>
                             <td class="field-value" colspan="3">
                                 @if($specialMemo->locations)
-                                    <span class="badge bg-primary me-1">{{ $specialMemo->locations }}</span>
+                                    <span class="badge bg-success me-1">{{ $specialMemo->locations }}</span>
                                 @else
                                     <span class="text-muted">No locations specified</span>
                                 @endif
                             </td>
                         </tr>
-                        
-                        <!-- Participants Information -->
-                        <tr>
-                            <td class="field-label">Total Participants</td>
-                            <td class="field-value fw-bold text-success">{{ count($processedInternalParticipants) + ($specialMemo->total_external_participants ?? 0) }}</td>
-                            <td class="field-label">Internal Participants</td>
-                            <td class="field-value">
-                                @if(is_array($processedInternalParticipants) && count($processedInternalParticipants) > 0)
-                                    {{ count($processedInternalParticipants) }} staff member(s)
-                                @else
-                                    <span class="text-muted">No internal participants</span>
-                                @endif
-                            </td>
-                        </tr>
-                        
+
                         <!-- Budget Information -->
                         <tr>
-                            <td class="field-label">Total Budget</td>
+                            <td class="field-label">
+                                <i class="bx bx-dollar me-2 text-success"></i>Total Budget
+                            </td>
                             <td class="field-value fw-bold text-success">${{ number_format($totalBudget, 2) }}</td>
-                            <td class="field-label">Fund Codes</td>
+                            <td class="field-label">
+                                <i class="bx bx-credit-card me-2 text-warning"></i>Fund Type
+                            </td>
                             <td class="field-value">
-                                @if(!empty($budgetByFundCode))
-                                    @foreach($budgetByFundCode as $fundCodeId => $items)
-                                        @php
-                                            $fundCode = $fundCodes[$fundCodeId] ?? null;
-                                        @endphp
-                                        <div class="mb-1">
-                                            @if($fundCode)
-                                                <span class="badge bg-primary me-1">{{ $fundCode->code }}</span>
-                                                @if($fundCode->fundType)
-                                                    <small class="text-muted">({{ $fundCode->fundType->name ?? 'N/A' }})</small>
-                                                @endif
-                                            @else
-                                                <span class="badge bg-secondary me-1">ID: {{ $fundCodeId }}</span>
-                                            @endif
-                                        </div>
-                                    @endforeach
-                                @else
-                                    <span class="text-muted">No budget codes</span>
-                                @endif
+                                {{ optional($specialMemo->fundType)->name ?? 'Not specified' }}
                             </td>
                         </tr>
-                        
+
                         <!-- Attachments -->
                         <tr>
-                            <td class="field-label">Attachments</td>
+                            <td class="field-label">
+                                <i class="bx bx-paperclip me-2 text-info"></i>Attachments
+                            </td>
                             <td class="field-value" colspan="3">
                                 @if(!empty($attachments) && count($attachments) > 0)
-                                    {{ count($attachments) }} file(s) attached
+                                    <span class="badge bg-info">{{ count($attachments) }} file(s) attached</span>
                                 @else
                                     <span class="text-muted">No attachments</span>
                                 @endif
                             </td>
                         </tr>
-                        
+
                         <!-- Last Updated -->
                         <tr>
-                            <td class="field-label">Created Date</td>
+                            <td class="field-label">
+                                <i class="bx bx-plus-circle me-2 text-primary"></i>Created Date
+                            </td>
                             <td class="field-value">
                                 {{ $specialMemo->created_at ? $specialMemo->created_at->format('M d, Y H:i') : 'Not available' }}
                             </td>
-                            <td class="field-label">Last Updated</td>
+                            <td class="field-label">
+                                <i class="bx bx-edit me-2 text-secondary"></i>Last Updated
+                            </td>
                             <td class="field-value">
                                 {{ $specialMemo->updated_at ? $specialMemo->updated_at->format('M d, Y H:i') : 'Not available' }}
                             </td>
@@ -631,192 +821,52 @@
             </div>
         </div>
 
+        <!-- Background Card -->
+        @if($specialMemo->background)
+            <div class="card content-section border-0 mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold  d-flex align-items-center gap-2">
+                        <i class="bx bx-info-circle"></i>
+                        Background
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="html-content">{!! $specialMemo->background !!}</div>
+                </div>
+            </div>
+        @endif
+
         <div class="row">
-            <div class="col-lg-6">
-                <!-- Enhanced Memo Information Card -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 fw-bold">
-                            <i class="bx bx-info-circle me-2 text-primary"></i>Special Memo Information
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="memo-meta-row">
-                            <div class="memo-meta-item">
-                                <i class="bx bx-calendar-alt"></i>
-                                <span class="memo-meta-label">Date Range:</span>
-                                <span class="memo-meta-value">{{ $specialMemo->formatted_dates ?? 'Not set' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-user"></i>
-                                <span class="memo-meta-label">Requestor:</span>
-                                <span class="memo-meta-value">{{ optional($specialMemo->staff)->first_name }} {{ optional($specialMemo->staff)->last_name ?? 'Not assigned' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-building"></i>
-                                <span class="memo-meta-label">Division:</span>
-                                <span class="memo-meta-value">{{ optional($specialMemo->division)->division_name ?? 'Not assigned' }}</span>
-                            </div>
-                            <div class="memo-meta-item">
-                                <i class="bx bx-cube"></i>
-                                <span class="memo-meta-label">Request Type:</span>
-                                <span class="memo-meta-value">{{ optional($specialMemo->requestType)->name ?? 'Not specified' }}</span>
-                            </div>
-                        </div>
-                        
-                        @if($specialMemo->overall_status !== 'approved')
-                            <div class="mt-3 p-3" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 0.5rem; border: 1px solid #bfdbfe;">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <i class="bx bx-user-check text-blue-600"></i>
-                                    <span class="fw-semibold text-blue-900">Current Status</span>
-                                </div>
-                                <div class="memo-meta-row">
-                                    <div class="memo-meta-item">
-                                        <i class="bx bx-badge-check"></i>
-                                        <span class="memo-meta-value">{{ ucfirst($specialMemo->overall_status ?? 'draft') }}</span>
-                                    </div>
-                                    @if($specialMemo->overall_status === 'pending')
-                                        <div class="memo-meta-item">
-                                            <i class="bx bx-time"></i>
-                                            <span class="memo-meta-value">Awaiting Approval</span>
-                                        </div>
-                                    @endif
-                                </div>
-                                
-                                @if($specialMemo->overall_status !== 'draft' && $specialMemo->current_actor)
-                                    <div class="mt-3 p-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 0.5rem; border: 1px solid #bae6fd;">
-                                        <div class="d-flex align-items-center gap-2 mb-2">
-                                            <i class="bx bx-user text-primary"></i>
-                                            <span class="fw-semibold text-primary">Current Approver</span>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="mb-2">
-                                                    <strong class="text-muted small">Name:</strong>
-                                                    <div class="fw-bold text-primary">{{ $specialMemo->current_actor->fname . ' ' . $specialMemo->current_actor->lname }}</div>
-                                                </div>
-                                                @if($specialMemo->current_actor->job_name)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Job Title:</strong>
-                                                        <div class="fw-semibold">{{ $specialMemo->current_actor->job_name }}</div>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                            <div class="col-md-6">
-                                                @if($specialMemo->current_actor->division_name)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Division:</strong>
-                                                        <div class="fw-semibold">{{ $specialMemo->current_actor->division_name }}</div>
-                                                    </div>
-                                                @endif
-                                                @if($specialMemo->workflow_definition)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Approval Role:</strong>
-                                                        <div>
-                                                            <span class="badge bg-info">{{ $specialMemo->workflow_definition->role ?? 'Not specified' }}</span>
-                                                        </div>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="mt-2 p-2 bg-primary bg-opacity-10 rounded">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <i class="bx bx-info-circle text-primary"></i>
-                                                <span class="text-primary fw-medium small">This special memo is currently awaiting approval from the supervisor above.</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-                        @endif
-                    </div>
+         
+            
+            <!-- Participants & Location -->
+            <div class="card content-section bg-green border-0 mb-4 w-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                        <i class="bx bx-group"></i>
+                        Participants
+                    </h6>
                 </div>
-
-                <!-- Activity Details -->
-                <div class="card content-section bg-blue border-0 mb-4">
-                    <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
-                            <i class="bx bx-detail"></i>
-                            Activity Details
-                        </h6>
+              
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label text-muted small fw-semibold">Internal Participants</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-info">{{ count($processedInternalParticipants) }}</span>
+                                <span class="text-muted">staff members</span>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label text-muted small fw-semibold">External Participants</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-secondary">{{ $specialMemo->total_external_participants ?? 0 }}</span>
+                                <span class="text-muted">external</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="mb-4">
-                            <label class="form-label text-muted small fw-semibold">Activity Title</label>
-                            <h5 class="fw-bold text-dark mb-0">{{ $specialMemo->activity_title ?? 'Not specified' }}</h5>
-                        </div>
-                        
-                        
-                        <div class="mb-4">
-                            <label class="form-label text-muted small fw-semibold">Background</label>
-                            <div class="bg-light rounded p-3 border">{!! $specialMemo->background ?? 'Not specified' !!}</div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label class="form-label text-muted small fw-semibold">Justification</label>
-                            <div class="bg-light rounded p-3 border">{!! $specialMemo->justification ?? 'Not specified' !!}</div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label class="form-label text-muted small fw-semibold">Supporting Reasons</label>
-                            <div class="bg-light rounded p-3 border">{!! $specialMemo->supporting_reasons ?? 'Not specified' !!}</div>
-                        </div>
-                        
-                        @if($specialMemo->remarks)
-                            <div class="mb-4">
-                                <label class="form-label text-muted small fw-semibold">Remarks</label>
-                                <div class="bg-light rounded p-3 border" style="white-space: pre-line;">{{ $specialMemo->remarks }}</div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Participants & Location -->
-                <div class="card content-section bg-green border-0 mb-4">
-                    <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                            <i class="bx bx-group"></i>
-                            Participants & Location
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label text-muted small fw-semibold">Location(s)</label>
-                                <div class="location-badge">
-                                    <i class="bx bx-map text-primary"></i>
-                                    <span>{{ $specialMemo->locations ?? 'No locations specified' }}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label text-muted small fw-semibold">Total Participants</label>
-                                <div class="d-flex align-items-center gap-2">
-                                    <i class="bx bx-user text-success"></i>
-                                    <span class="fw-bold">{{ count($processedInternalParticipants) + ($specialMemo->total_external_participants ?? 0) }}</span>
-                                    <span class="text-muted">participants</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label text-muted small fw-semibold">Internal Participants</label>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-info">{{ count($processedInternalParticipants) }}</span>
-                                    <span class="text-muted">staff members</span>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label text-muted small fw-semibold">External Participants</label>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-secondary">{{ $specialMemo->total_external_participants ?? 0 }}</span>
-                                    <span class="text-muted">external</span>
-                                </div>
-                            </div>
-                        </div>
-                        
+                    
                         <div class="mt-4">
                             <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
                             <div class="table-responsive">
@@ -859,261 +909,367 @@
                                 </table>
                             </div>
                         </div>
-                        
-                        <!-- Participants Summary Table -->
-                        <div class="mt-4">
-                            <label class="form-label text-muted small fw-semibold">Participants Summary</label>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Participant Type</th>
-                                            <th>Count</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>Internal Participants</td>
-                                            <td class="text-end fw-bold">{{ count($processedInternalParticipants) }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>External Participants</td>
-                                            <td class="text-end fw-bold">{{ $specialMemo->total_external_participants ?? 0 }}</td>
-                                        </tr>
-                                        <tr class="table-success">
-                                            <td class="fw-bold">Total Participants</td>
-                                            <td class="text-end fw-bold">{{ count($processedInternalParticipants) + ($specialMemo->total_external_participants ?? 0) }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                    
+                    <!-- Participants Summary Table -->
+                    <div class="mt-4">
+                        <label class="form-label text-muted small fw-semibold">Participants Summary</label>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Participant Type</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Internal Participants</td>
+                                        <td class="text-end fw-bold">{{ count($processedInternalParticipants) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>External Participants</td>
+                                        <td class="text-end fw-bold">{{ $specialMemo->total_external_participants ?? 0 }}</td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td class="fw-bold">Total Participants</td>
+                                        <td class="text-end fw-bold">{{ count($processedInternalParticipants) + ($specialMemo->total_external_participants ?? 0) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Activity Request Remarks -->
-                @if($specialMemo->activity_request_remarks)
-                    <div class="card content-section bg-purple border-0 mb-4">
-                        <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-purple d-flex align-items-center gap-2">
-                                <i class="bx bx-comment-detail"></i>
-                                Activity Request Remarks
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="bg-light rounded p-3 border">{!! $specialMemo->activity_request_remarks !!}</div>
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Budget Information -->
-                <div class="card content-section bg-blue border-0 mb-4">
-                    <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
-                            <i class="bx bx-money"></i>
-                            Budget Information
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        @if(!empty($budget))
-                          
-                            
-                          
-                            
-                            @if(!empty($budgetByFundCode))
-                                @php
-                                    $count = 1;
-                                    $grandTotal = 0;
-                                @endphp
-                                
-                                @foreach($budgetByFundCode as $fundCodeId => $items)
-                                    @php
-                                        $fundCode = $fundCodes[$fundCodeId] ?? null;
-                                        $groupTotal = 0;
-                                        $itemCount = 1; // Reset counter for each budget code
-                                    @endphp
-                                    
-                                    {{-- Budget Code Title --}}
-                                    <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
-                                        @if($fundCode)
-                                            {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name ?? 'N/A' }})
-                                        @else
-                                            Budget Code: {{ $fundCodeId }}
-                                        @endif
-                                    </h6>
-
-                                    {{-- Individual Table for this Budget Code --}}
-                                    <div class="table-responsive mb-4">
-                                        <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Cost Item</th>
-                                                    <th class="text-end">Unit Cost</th>
-                                                    <th class="text-end">Units</th>
-                                                    <th class="text-end">Days</th>
-                                                    <th class="text-end">Total</th>
-                                                    <th>Description</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($items as $item)
-                                                    @php
-                                                        $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                        $units = floatval($item['units'] ?? 0);
-                                                        $days = floatval($item['days'] ?? 1);
-                                                        
-                                                        // Use days when greater than 1, otherwise just unit_cost * units
-                                                        if ($days > 1) {
-                                                            $total = $unitCost * $units * $days;
-                                                        } else {
-                                                            $total = $unitCost * $units;
-                                                        }
-                                                        
-                                                        $groupTotal += $total;
-                                                        $grandTotal += $total;
-                                                    @endphp
-                                                    <tr>
-                                                        <td>{{$itemCount}}</td>
-                                                        <td>{{ $item['cost'] ?? 'N/A' }}</td>
-                                                        <td class="text-end">{{ number_format($unitCost, 2) }}</td>
-                                                        <td class="text-end">{{ $units }}</td>
-                                                        <td class="text-end">{{ $days }}</td>
-                                                        <td class="text-end">{{ number_format($total, 2) }}</td>
-                                                        <td>{{ $item['description'] ?? '' }}</td>
-                                                    </tr>
-                                                    @php
-                                                        $itemCount++;
-                                                    @endphp
-                                                @endforeach
-                                            </tbody>
-                                            <tfoot>
-                                                <tr>
-                                                    <th colspan="5" class="text-end">Sub Total</th>
-                                                    <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
-                                                    <th></th>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                @endforeach
-                                
-                                {{-- Overall Grand Total --}}
-                                <div class="row mt-3">
-                                    <div class="col-md-12">
-                                        <div class="alert alert-success">
-                                            <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }} USD</strong></h6>
-                                        </div>
-                                    </div>
-                                </div>
-                            @else
-                                <!-- Fallback: Show budget as key-value pairs if structure is different -->
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-sm mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>Budget Item</th>
-                                                <th>Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($budget as $key => $value)
-                                                @if($key !== 'grand_total')
-                                                    <tr>
-                                                        <td>{{ $key }}</td>
-                                                        <td>
-                                                            @if(is_array($value))
-                                                                <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                            @else
-                                                                {{ $value }}
-                                                            @endif
-                                                        </td>
-                                                    </tr>
-                                                @endif
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center text-muted py-4">
-                                <i class="bx bx-money bx-lg mb-3"></i>
-                                <p class="mb-0">No budget details</p>
-                            </div>
-                        @endif
                     </div>
                 </div>
             </div>
 
-            <div class="col-lg-6">
+            <!-- Budget Information -->
+            <div class="card content-section bg-blue border-0 mb-4 w-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
+                        <i class="bx bx-money"></i>
+                        Budget Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if (!empty($budget))
+                        @if (!empty($budgetByFundCode))
+                            @php
+                                $count = 1;
+                                $grandTotal = 0;
+                            @endphp
+
+                            @foreach ($budgetByFundCode as $fundCodeId => $items)
+                                @php
+                                    $fundCode = $fundCodes[$fundCodeId] ?? null;
+                                    $groupTotal = 0;
+                                    $itemCount = 1; // Reset counter for each budget code
+                                @endphp
+
+                                {{-- Budget Code Title --}}
+                                <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
+                                    @if ($fundCode)
+                                        {{ $fundCode->activity }} - {{ $fundCode->code }} -
+                                        ({{ $fundCode->fundType->name ?? 'N/A' }})
+                                    @else
+                                        Budget Code: {{ $fundCodeId }}
+                                    @endif
+                                </h6>
+
+                                {{-- Individual Table for this Budget Code --}}
+                                <div class="table-responsive mb-4">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Cost Item</th>
+                                                <th class="text-end">Unit Cost</th>
+                                                <th class="text-end">Units</th>
+                                                <th class="text-end">Days</th>
+                                                <th class="text-end">Total</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($items as $item)
+                                                @php
+                                                    $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                    $units = floatval($item['units'] ?? 0);
+                                                    $days = floatval($item['days'] ?? 1);
+
+                                                    // Use days when greater than 1, otherwise just unit_cost * units
+                                                    if ($days > 1) {
+                                                        $total = $unitCost * $units * $days;
+                                                    } else {
+                                                        $total = $unitCost * $units;
+                                                    }
+
+                                                    $groupTotal += $total;
+                                                    $grandTotal += $total;
+                                                @endphp
+                                                <tr>
+                                                    <td>{{ $itemCount }}</td>
+                                                    <td>{{ $item['cost'] ?? 'N/A' }}</td>
+                                                    <td class="text-end">{{ number_format($unitCost, 2) }}</td>
+                                                    <td class="text-end">{{ $units }}</td>
+                                                    <td class="text-end">{{ $days }}</td>
+                                                    <td class="text-end">{{ number_format($total, 2) }}</td>
+                                                    <td>{{ $item['description'] ?? '' }}</td>
+                                                </tr>
+                                                @php
+                                                    $itemCount++;
+                                                @endphp
+                                            @endforeach
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <th colspan="5" class="text-end">Sub Total</th>
+                                                <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            @endforeach
+
+                            {{-- Overall Grand Total --}}
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <div class="alert alert-success">
+                                        <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }}
+                                                USD</strong></h6>
+                                    </div>
+                                </div>
+                            </div>
+                        @else
+                            <!-- Fallback: Show budget as key-value pairs if structure is different -->
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Budget Item</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($budget as $key => $value)
+                                            @if ($key !== 'grand_total')
+                                                <tr>
+                                                    <td>{{ $key }}</td>
+                                                    <td>
+                                                        @if (is_array($value))
+                                                            <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
+                                                        @else
+                                                            {{ $value }}
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @endif
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    @else
+                        <div class="text-center text-muted py-4">
+                            <i class="bx bx-money bx-lg mb-3"></i>
+                            <p class="mb-0">No budget details</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
+                <!-- Request for Approval Card -->
+                @if($specialMemo->activity_request_remarks)
+                    <div class="card content-section bg-purple border-0 mb-4">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-file-text"></i>
+                                Request For Approval
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="html-content">{!! $specialMemo->activity_request_remarks !!}</div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <div class="col-lg-12">
 
                 <!-- Attachments Card -->
+                @if (!empty($attachments) && count($attachments) > 0)
                 <div class="card sidebar-card border-0 mb-4">
                     <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-info d-flex align-items-center gap-2">
+                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
                             <i class="bx bx-paperclip"></i>
                             Attachments
                         </h6>
                     </div>
                     <div class="card-body">
-                        @if(!empty($attachments) && count($attachments) > 0)
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered">
-                                    <thead>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Type</th>
+                                        <th>File Name</th>
+                                        <th>Size</th>
+                                        <th>Uploaded</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($attachments as $index => $attachment)
+                                        @php
+                                            $originalName =
+                                                $attachment['original_name'] ??
+                                                ($attachment['filename'] ?? ($attachment['name'] ?? 'Unknown'));
+                                            $filePath = $attachment['path'] ?? ($attachment['file_path'] ?? '');
+                                            $ext = $filePath
+                                                ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION))
+                                                : '';
+                                            $fileUrl = $filePath ? url('storage/' . $filePath) : '#';
+                                            $isOffice = in_array($ext, [
+                                                'ppt',
+                                                'pptx',
+                                                'xls',
+                                                'xlsx',
+                                                'doc',
+                                                'docx',
+                                            ]);
+                                        @endphp
                                         <tr>
-                                            <th>#</th>
-                                            <th>Type</th>
-                                            <th>File Name</th>
-                                            <th>Size</th>
-                                            <th>Uploaded</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($attachments as $index => $attachment)
-                                            @php
-                                                $originalName = $attachment['original_name'] ?? $attachment['filename'] ?? $attachment['name'] ?? 'Unknown';
-                                                $filePath = $attachment['path'] ?? $attachment['file_path'] ?? '';
-                                                $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
-                                                $fileUrl = $filePath ? url('storage/'.$filePath) : '#';
-                                                $isOffice = in_array($ext, ['ppt','pptx','xls','xlsx','doc','docx']);
-                                            @endphp
-                                            <tr>
-                                                <td>{{ $index + 1 }}</td>
-                                                <td>{{ $attachment['type'] ?? 'Document' }}</td>
-                                                <td>{{ $originalName }}</td>
-                                                <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
-                                                <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
-                                                <td>
-                                                    @if($filePath)
-                                                    <button type="button" class="btn btn-sm btn-info preview-attachment" 
+                                            <td>{{ $index + 1 }}</td>
+                                            <td>{{ $attachment['type'] ?? 'Document' }}</td>
+                                            <td>{{ $originalName }}</td>
+                                            <td>{{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'N/A' }}
+                                            </td>
+                                            <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}
+                                            </td>
+                                            <td>
+                                                @if ($filePath)
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-success preview-attachment"
                                                         data-file-url="{{ $fileUrl }}"
                                                         data-file-ext="{{ $ext }}"
                                                         data-file-office="{{ $isOffice ? '1' : '0' }}">
                                                         <i class="bx bx-show"></i> Preview
                                                     </button>
-                                                    <a href="{{ $fileUrl }}" target="_blank" class="btn btn-sm btn-success">
+                                                    <a href="{{ $fileUrl }}" target="_blank"
+                                                        class="btn btn-sm btn-success">
                                                         <i class="bx bx-download"></i> Download
                                                     </a>
-                                                    @else
+                                                @else
                                                     <span class="text-muted">File not found</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <div class="text-center text-muted py-4">
-                                <i class="bx bx-paperclip bx-lg mb-3"></i>
-                                <p class="mb-0">No attachments</p>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+
+                
+
+            
+            </div>
+               <div class="col-lg-12">
+                <!-- Enhanced Memo Information Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bx bx-info-circle me-2 text-success"></i>Approval Information
+                        </h6>
+                    </div>
+                    <div class="card-body">
+
+                        @if($specialMemo->overall_status == 'approved' || $specialMemo->overall_status == 'rejected' || $specialMemo->overall_status == 'returned' || $specialMemo->overall_status == 'draft')
+                            <div class="mt-3 p-3"
+                                style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 0.5rem; border: 1px solid #bbf7d0;">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="bx bx-user-check text-green-600"></i>
+                                    <span class="fw-semibold text-green-900">Current Status</span>
+                                </div>
+                                <div class="memo-meta-row">
+                                    <div class="memo-meta-item">
+                                        <i class="bx bx-badge-check"></i>
+                                        <span
+                                            class="memo-meta-value">{{ ucfirst($specialMemo->overall_status ?? 'draft') }}</span>
+                                    </div>
+                                    @if($specialMemo->overall_status === 'pending')
+                                        <div class="memo-meta-item">
+                                            <i class="bx bx-time"></i>
+                                            <span class="memo-meta-value">Awaiting Approval</span>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                @if($specialMemo->overall_status !== 'draft' && $specialMemo->current_actor)
+                                    <div class="mt-3 p-3"
+                                        style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 0.5rem; border: 1px solid #bbf7d0;">
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <i class="bx bx-user text-success"></i>
+                                            <span class="fw-semibold text-success">Current Approver</span>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-2">
+                                                    <strong class="text-muted small">Name:</strong>
+                                                    <div class="fw-bold text-success">
+                                                        {{ $specialMemo->current_actor->fname . ' ' . $specialMemo->current_actor->lname }}
+                                                    </div>
+                                                </div>
+                                                @if($specialMemo->current_actor->job_name)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Job Title:</strong>
+                                                        <div class="fw-semibold">
+                                                            {{ $specialMemo->current_actor->job_name }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div class="col-md-6">
+                                                @if($specialMemo->current_actor->division_name)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Division:</strong>
+                                                        <div class="fw-semibold">
+                                                            {{ $specialMemo->current_actor->division_name }}</div>
+                                                    </div>
+                                                @endif
+                                                @if($specialMemo->workflow_definition)
+                                                    <div class="mb-2">
+                                                        <strong class="text-muted small">Approval Role:</strong>
+                                                        <div>
+                                                            <span
+                                                                class="badge bg-info">{{ $specialMemo->workflow_definition->role ?? 'Not specified' }}</span>
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bx bx-info-circle text-success"></i>
+                                                <span class="text-success fw-medium small">This special memo is
+                                                    currently awaiting approval from the supervisor above.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>
                 </div>
 
+            </div> 
+            <!-- End container-fluid -->
+
+            <div class="col-lg-12">
                 <!-- Approval Trail Section -->
+            
                 @if(isset($specialMemo->approvalTrails) && $specialMemo->approvalTrails->count() > 0)
                     @include('partials.approval-trail', ['resource' => $specialMemo])
                 @else
@@ -1166,18 +1322,18 @@
                                     </div>
                                     <div class="col-md-4">
                                         <div class="d-grid gap-2">
-                                            <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
+                                            <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
                                                 <i class="bx bx-check"></i>
                                                 Approve
                                             </button>
-                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
+                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
                                                 <i class="bx bx-undo"></i>
                                                 Return
                                             </button>
-                                            <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                            {{-- <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-x"></i>
                                                 Cancel
-                                            </button>
+                                            </button> --}}
                                         </div>
                                     </div>
                                 </div>
@@ -1188,9 +1344,10 @@
 
                 <!-- Submit for Approval Section -->
                 @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id'))
-                    <div class="card sidebar-card border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                    <div class="card sidebar-card border-0"
+                        style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
                                 <i class="bx bx-send"></i>
                                 Submit for Approval
                             </h6>
@@ -1199,7 +1356,8 @@
                             <p class="text-muted mb-3">Ready to submit this special memo for approval?</p>
                             <form action="{{ route('special-memo.submit-for-approval', $specialMemo) }}" method="POST">
                                 @csrf
-                                <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
+                                <button type="submit"
+                                    class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
                                     <i class="bx bx-send"></i>
                                     Submit for Approval
                                 </button>
@@ -1207,7 +1365,8 @@
                             <div class="mt-3 p-3 bg-light rounded">
                                 <small class="text-muted">
                                     <i class="bx bx-info-circle me-1"></i>
-                                    <strong>Note:</strong> Once submitted, you won't be able to edit this memo until it's returned for revision.
+                                    <strong>Note:</strong> Once submitted, you won't be able to edit this memo until
+                                    it's returned for revision.
                                 </small>
                             </div>
                         </div>
