@@ -24,7 +24,7 @@ class ServiceRequestController extends Controller
 {
     protected ApprovalService $approvalService;
 
-    public function __construct(ApprovalService $approvalService = null)
+    public function __construct(?ApprovalService $approvalService = null)
     {
         $this->approvalService = $approvalService ?? app(ApprovalService::class);
     }
@@ -238,7 +238,6 @@ class ServiceRequestController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'request_number' => 'required|string|unique:service_requests,request_number',
             'request_date' => 'required|date',
             'staff_id' => 'required|exists:staff,staff_id',
             'division_id' => 'required|exists:divisions,id',
@@ -249,9 +248,6 @@ class ServiceRequestController extends Controller
             'location' => 'nullable|string|max:255',
             'priority' => 'required|in:low,medium,high,urgent',
             'service_type' => 'required|in:it,maintenance,procurement,travel,other',
-            'specifications' => 'nullable|array',
-            'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
             'status' => 'sometimes|in:draft,submitted,in_progress,approved,rejected,completed',
             'remarks' => 'nullable|string',
             // New budget fields
@@ -270,21 +266,7 @@ class ServiceRequestController extends Controller
             'internal_participants' => 'nullable|array',
             'external_participants' => 'nullable|array',
         ]);
-        
-        // Handle file attachments
-        $attachments = [];
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('service-request-attachments', $filename, 'public');
-                $attachments[] = [
-                    'name' => $file->getClientOriginalName(),
-                    'path' => $path,
-                    'type' => $file->getClientMimeType(),
-                    'size' => $file->getSize(),
-                ];
-            }
-        }
+        $validated['staff_id'] = user_session('staff_id');
         
         // Process budget data
         $budgetData = $this->processBudgetData($request);
@@ -301,8 +283,7 @@ class ServiceRequestController extends Controller
         
         // Merge budget data with validated data
         $validated = array_merge($validated, $budgetData);
-        $validated['attachments'] = $attachments;
-        
+       
         ServiceRequest::create($validated);
         
         return redirect()
