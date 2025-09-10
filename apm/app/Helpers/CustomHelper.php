@@ -37,17 +37,74 @@ if (!function_exists('user_session')) {
 
     if (!function_exists('still_with_creator')) {
         /**
-         * Get a value from session('user') using dot notation
+         * Determine if the activity/matrix is still with the creator or focal person for editing.
+         * Returns true if:
+         *   - The division head can edit (returned to division head), OR
+         *   - The current user is the staff, focal person, or responsible staff (if activity given),
+         *     and the matrix is in 'draft' or 'returned' status, and
+         *     (the matrix has not been forwarded OR is in draft and with focal person)
          */
-        function still_with_creator($matrix,$activity=null)
+        function still_with_creator($matrix, $activity = null)
         {
-            //dd(session('user'));
-            //dd((can_division_head_edit($matrix)));
-           // dd( ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id,$activity?$activity->responsible_staff_id:null]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
-            return  (can_division_head_edit($matrix) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id,$activity?$activity->responsible_staff_id:null]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
-        }
+            $user = session('user', []);
+            $staffId = $user['staff_id'] ?? null;
 
+            //dd($staffId);
+
+            // If division head can edit, allow
+            if (can_division_head_edit($matrix)) {
+                //dd("here");
+                return true;
+            }
+
+            // If matrix is in draft or returned
+            if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
+                //dd("here");
+                return false;
+            }
+
+            // If matrix is in draft, allow staff, focal person, or responsible staff to edit
+            if ($matrix->overall_status === 'draft') {
+                    //dd("here");//  dd($activity);
+                $allowedIds = [$matrix->staff_id, $matrix->focal_person_id];
+   
+                if ($activity && isset($activity->responsible_person_id)) {
+                    $allowedIds[] = $activity->responsible_person_id;
+                }
+                //dd($activity->responsible_person_id);
+                return in_array($staffId, $allowedIds);
+            }
+
+            // If matrix is returned and not forwarded, allow staff, focal person, or responsible staff to edit
+            if ($matrix->overall_status === 'returned' && $matrix->forward_workflow_id === null) {
+                $allowedIds = [$matrix->staff_id, $matrix->focal_person_id];
+                if ($activity && isset($activity->responsible_person_id)) {
+                    $allowedIds[] = $activity->responsible_person_id;
+                }
+                return in_array($staffId, $allowedIds);
+            }
+
+            return false;
+        }
     }
+
+
+
+    // if (!function_exists('still_with_creator')) {
+    //     /**
+    //      * Get a value from session('user') using dot notation
+    //      */
+    //     function still_with_creator($matrix,$activity=null)
+    //     {
+    //         //dd(session('user'));
+    //         //dd((can_division_head_edit($matrix)));
+    //        // dd( ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id,$activity?$activity->responsible_staff_id:null]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
+    //         return  (can_division_head_edit($matrix) ||  ((in_array(session('user')['staff_id'],[$matrix->staff_id,$matrix->focal_person_id,$activity?$activity->responsible_staff_id:null]) && ($matrix->forward_workflow_id==null)))) && in_array($matrix->overall_status,['draft','returned']);
+    //     }
+
+        
+
+    // }
 
 
     if (!function_exists('can_division_head_edit')) {
