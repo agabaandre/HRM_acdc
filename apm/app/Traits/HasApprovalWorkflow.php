@@ -275,6 +275,7 @@ trait HasApprovalWorkflow
             }
         }
 
+        send_matrix_email_notification($this, $action);
         $this->update();
     }
 
