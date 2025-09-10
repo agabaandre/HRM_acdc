@@ -4,6 +4,7 @@ use App\Models\Approver;
 use App\Models\ApprovalTrail;
 use App\Models\WorkflowDefinition;
 use Carbon\Carbon;
+use App\Models\Division;
 use Illuminate\Support\Facades\DB;
 
 if (!function_exists('user_session')) {
@@ -23,13 +24,27 @@ if (!function_exists('user_session')) {
             $user = session('user', []);
             return $key == null ? $user : data_get($user, $key, $default);
         }
+        
+
         function isfocal_person()
         {
-            $user = session('user'); // get the full user array
-        
+            $user = session('user');
             $staff_id = $user['staff_id'] ?? null;
-            $division_fp_id = $user['focal_person'] ?? null;
-        
+            $division_id = $user['division_id'] ?? null;
+
+            if (!$staff_id || !$division_id) {
+                return false;
+            }
+
+            $division = Division::find($division_id);
+            //dd($division);
+            if (!$division) {
+                return false;
+            }
+            //dd($division->focal_person);
+
+            $division_fp_id = $division->focal_person ?? null;
+
             return $staff_id == $division_fp_id;
         }
         
