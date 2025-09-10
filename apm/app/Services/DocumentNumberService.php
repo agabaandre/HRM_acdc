@@ -157,7 +157,7 @@ class DocumentNumberService
     public static function getNextNumberPreview(
         string $documentType,
         $division = null,
-        int $year = null
+        ?int $year = null
     ): string {
         $year = $year ?? date('Y');
         
