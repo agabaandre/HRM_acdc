@@ -268,7 +268,7 @@ class NonTravelMemo extends Model
 
     public function getResourceUrlAttribute()
     {
-        return route('non-travel-memos.show', $this->id);
+        return route('non-travel.show', $this->id);
     }
 
 
