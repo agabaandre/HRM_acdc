@@ -353,7 +353,7 @@
                                                             </a>
                                                         @endif
                                                         @if($memo->overall_status === 'approved')
-                                                            <a href="{{ route('activities.single-memos.print', $memo) }}" 
+                                                            <a href="{{ route('matrices.activities.memo-pdf', [$memo->matrix, $memo]) }}" 
                                                                class="btn btn-sm btn-outline-success" title="Print" target="_blank">
                                                                 <i class="bx bx-printer"></i>
                                                             </a>
