@@ -129,7 +129,10 @@ class NonTravelMemoController extends Controller
     {
         //dd($request->all());
 
-        $data = $request->validate([
+        // Get fund type to determine validation rules
+        $fundTypeId = (int) $request->input('fund_type_id', 1);
+        
+        $validationRules = [
             //'staff_id'                     => 'required|exists:staff,id',
             'date_required'                => 'required|date',
             'location_id'                  => 'required|array|min:1',
@@ -141,12 +144,22 @@ class NonTravelMemoController extends Controller
             'activity_request_remarks'     => 'nullable|string',
             'attachments.*.type'           => 'required_with:attachments.*.file|string|max:255',
             'attachments.*.file'           => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
-            'budget_codes'                 => 'required|array|min:1',
-            'budget_codes.*'               => 'exists:fund_codes,id',
-            'budget_breakdown'             => 'required|array',
             'fund_type_id'                 => 'nullable|exists:fund_types,id',
             //'budget.*'                     => 'array',
-        ]);
+        ];
+        
+        // Only require budget for non-external source fund types
+        if ($fundTypeId !== 3) {
+            $validationRules['budget_codes'] = 'required|array|min:1';
+            $validationRules['budget_codes.*'] = 'exists:fund_codes,id';
+            $validationRules['budget_breakdown'] = 'required|array';
+        } else {
+            $validationRules['budget_codes'] = 'nullable|array';
+            $validationRules['budget_codes.*'] = 'exists:fund_codes,id';
+            $validationRules['budget_breakdown'] = 'nullable|array';
+        }
+        
+        $data = $request->validate($validationRules);
 
         $data['staff_id'] = user_session('staff_id');
         $data['division_id'] = user_session('division_id');
@@ -437,7 +450,10 @@ class NonTravelMemoController extends Controller
                 ->with('error', 'Cannot update memo. Only draft memos can be updated.');
         }
 
-        $data = $request->validate([
+        // Get fund type to determine validation rules
+        $fundTypeId = (int) $request->input('fund_type_id', 1);
+        
+        $validationRules = [
             'memo_date'                    => 'required|date',
             'location_id'                  => 'required|array|min:1',
             'location_id.*'                => 'exists:locations,id',
@@ -450,9 +466,17 @@ class NonTravelMemoController extends Controller
             'attachments.*.file'           => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
             'attachments.*.replace'        => 'nullable|boolean',
             'attachments.*.delete'         => 'nullable|boolean',
-            'budget_breakdown'             => 'required|array|min:1',
             'fund_type_id'                 => 'nullable|exists:fund_types,id',
-        ]);
+        ];
+        
+        // Only require budget for non-external source fund types
+        if ($fundTypeId !== 3) {
+            $validationRules['budget_breakdown'] = 'required|array|min:1';
+        } else {
+            $validationRules['budget_breakdown'] = 'nullable|array';
+        }
+        
+        $data = $request->validate($validationRules);
 
        // Handle file uploads for attachments
        $attachments = [];

@@ -231,21 +231,38 @@
                                 //dd($activity);
                                     $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown , true);
                                     $totalBudget = 0;
-
-                                    if (is_array($budget)) {
-                                        foreach ($budget as $key => $entries) {
-                                            if ($key === 'grand_total') continue;
-
+                                    
+                                    // Always recalculate from individual items to avoid JSON grand_total issues
+                                    foreach ($budget as $key => $entries) {
+                                        if ($key === 'grand_total') continue;
+                                        
+                                        if (is_array($entries)) {
                                             foreach ($entries as $item) {
                                                 $unitCost = floatval($item['unit_cost'] ?? 0);
                                                 $units = floatval($item['units'] ?? 0);
                                                 $days = floatval($item['days'] ?? 1);
-                                                $totalBudget += $unitCost * $units;
+                                                
+                                                // Use days when greater than 1, otherwise just unit_cost * units
+                                                if ($days > 1) {
+                                                    $itemTotal = $unitCost * $units * $days;
+                                                } else {
+                                                    $itemTotal = $unitCost * $units;
+                                                }
+                                                
+                                                $totalBudget += $itemTotal;
+                                                
+                                                // Debug: Show each calculation
+                                                if ($days > 1) {
+                                                    echo "<!-- Budget Code $key: {$item['cost']} = $unitCost × $units × $days = $itemTotal (including days) -->";
+                                                } else {
+                                                    echo "<!-- Budget Code $key: {$item['cost']} = $unitCost × $units = $itemTotal (no days) -->";
+                                                }
                                             }
                                         }
                                     }
                                 @endphp
                                 <span class="fw-bold text-success">{{ number_format($totalBudget, 2) }} USD</span>
+                              
                             </td>
 
                                 <td class="px-3 py-3 text-center">
@@ -412,13 +429,25 @@
                                             $totalBudget = 0;
 
                                             if (is_array($budget)) {
+                                                // Always recalculate from individual items to avoid JSON grand_total issues
                                                 foreach ($budget as $key => $entries) {
                                                     if ($key === 'grand_total') continue;
 
-                                                    foreach ($entries as $item) {
-                                                        $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                        $units = floatval($item['units'] ?? 0);
-                                                        $totalBudget += $unitCost * $units;
+                                                    if (is_array($entries)) {
+                                                        foreach ($entries as $item) {
+                                                            $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                            $units = floatval($item['units'] ?? 0);
+                                                            $days = floatval($item['days'] ?? 1);
+                                                            
+                                                            // Use days when greater than 1, otherwise just unit_cost * units
+                                                            if ($days > 1) {
+                                                                $itemTotal = $unitCost * $units * $days;
+                                                            } else {
+                                                                $itemTotal = $unitCost * $units;
+                                                            }
+                                                            
+                                                            $totalBudget += $itemTotal;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -553,14 +582,25 @@
                                 $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown, true);
                                 
                                 if (is_array($budget)) {
+                                    // Always recalculate from individual items to avoid JSON grand_total issues
                                     foreach ($budget as $key => $entries) {
                                         if ($key === 'grand_total') continue;
                                         
-                                        foreach ($entries as $item) {
-                                            $unitCost = floatval($item['unit_cost'] ?? 0);
-                                            $units = floatval($item['units'] ?? 0);
-                                            $days = floatval($item['days'] ?? 1);
-                                            $matrixTotalBudget += $unitCost * $units * $days;
+                                        if (is_array($entries)) {
+                                            foreach ($entries as $item) {
+                                                $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                $units = floatval($item['units'] ?? 0);
+                                                $days = floatval($item['days'] ?? 1);
+                                                
+                                                // Use days when greater than 1, otherwise just unit_cost * units
+                                                if ($days > 1) {
+                                                    $itemTotal = $unitCost * $units * $days;
+                                                } else {
+                                                    $itemTotal = $unitCost * $units;
+                                                }
+                                                
+                                                $matrixTotalBudget += $itemTotal;
+                                            }
                                         }
                                     }
                                 }

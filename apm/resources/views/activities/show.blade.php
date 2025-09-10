@@ -271,59 +271,168 @@
             </div>
             <div class="card-body">
         
-             @foreach($fundCodes ?? [] as $fundCode )
-             
-                 <h6  style="color: #911C39; font-weight: 600;"> {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }}) </h6>
+            @php
+                $count = 1;
+                $grandTotal = 0;
+                
+                // Parse budget breakdown JSON
+                $budgetBreakdown = is_string($activity->budget_breakdown) 
+                    ? json_decode($activity->budget_breakdown, true) 
+                    : $activity->budget_breakdown;
+                
+                // Get fund codes for display
+                $fundCodes = [];
+                if (!empty($budgetBreakdown)) {
+                    $fundCodeIds = array_keys(array_filter($budgetBreakdown, function($key) {
+                        return $key !== 'grand_total';
+                    }, ARRAY_FILTER_USE_KEY));
+                    $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+                }
+            @endphp
 
+            @if(!empty($budgetBreakdown))
+                {{-- Group items by budget code and display each group in its own table --}}
+                @php
+                    $budgetGroups = [];
+                    foreach($budgetBreakdown as $budgetCodeId => $items) {
+                        if($budgetCodeId === 'grand_total') continue;
+                        if(is_array($items)) {
+                            $budgetGroups[$budgetCodeId] = $items;
+                        }
+                    }
+                @endphp
+                
+                @foreach($budgetGroups as $budgetCodeId => $items)
+                    @php
+                        $fundCode = $fundCodes[$budgetCodeId] ?? null;
+                        $groupTotal = 0;
+                        $itemCount = 1; // Reset counter for each budget code
+                    @endphp
+                    
+                    {{-- Budget Code Title --}}
+                    <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
+                        @if($fundCode)
+                            {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }})
+                        @else
+                            Budget Code: {{ $budgetCodeId }}
+                        @endif
+                    </h6>
+
+                    {{-- Individual Table for this Budget Code --}}
+                    <div class="table-responsive mb-4">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Cost Item</th>
+                                    <th class="text-end">Unit Cost</th>
+                                    <th class="text-end">Units</th>
+                                    <th class="text-end">Days</th>
+                                    <th class="text-end">Total</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($items as $item)
+                                    @php
+                                        $unitCost = floatval($item['unit_cost'] ?? 0);
+                                        $units = floatval($item['units'] ?? 0);
+                                        $days = floatval($item['days'] ?? 1);
+                                        
+                                        // Use days when greater than 1, otherwise just unit_cost * units
+                                        if ($days > 1) {
+                                            $total = $unitCost * $units * $days;
+                                        } else {
+                                            $total = $unitCost * $units;
+                                        }
+                                        
+                                        $groupTotal += $total;
+                                        $grandTotal += $total;
+                                        
+                                        // Debug: Show calculation
+                                        if ($days > 1) {
+                                            echo "<!-- Debug: {$item['cost']} = $unitCost × $units × $days = $total (including days) -->";
+                                        } else {
+                                            echo "<!-- Debug: {$item['cost']} = $unitCost × $units = $total (no days) -->";
+                                        }
+                                    @endphp
+                                    <tr>
+                                        <td>{{$itemCount}}</td>
+                                        <td>{{ $item['cost'] }}</td>
+                                        <td class="text-end">{{ number_format($unitCost, 2) }}</td>
+                                        <td class="text-end">{{ $units }}</td>
+                                        <td class="text-end">{{ $item['days'] ?? 1 }}</td>
+                                        <td class="text-end">{{ number_format($total, 2) }}</td>
+                                        <td>{{ $item['description'] ?? '' }}</td>
+                                    </tr>
+                                    @php
+                                        $itemCount++;
+                                    @endphp
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="5" class="text-end">Sub Total</th>
+                                    <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                @endforeach
+                
+                {{-- Overall Grand Total --}}
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="alert alert-success">
+                            <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }} USD</strong></h6>
+                        </div>
+                    </div>
+                </div>
+            @else
+                {{-- Fallback to activity_budget if no JSON data --}}
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
                                 <th>#</th>
                                 <th>Cost Item</th>
-                                <th>Unit Cost</th>
-                                <th>Units</th>
-                                <th>Days</th>
-                                <th>Total</th>
+                                <th class="text-end">Unit Cost</th>
+                                <th class="text-end">Units</th>
+                                <th class="text-end">Days</th>
+                                <th class="text-end">Total</th>
                                 <th>Description</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @php
-                              $count = 1;
-                              $grandTotal = 0;
-                            @endphp
-                           
                             @foreach($activity->activity_budget as $item)
                                 @php
                                     $total = $item->unit_cost * $item->units;
-                                    $grandTotal+=$total;
+                                    $grandTotal += $total;
                                 @endphp
                                 <tr>
                                     <td>{{$count}}</td>
-                                    <td class="text-end">{{ $item->cost }}</td>
+                                    <td>{{ $item->cost }}</td>
                                     <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
                                     <td class="text-end">{{ $item->units }}</td>
                                     <td class="text-end">{{ $item->days }}</td>
-                                    <td class="text-end">{{ number_format($item->total, 2) }}</td>
+                                    <td class="text-end">{{ number_format($total, 2) }}</td>
                                     <td>{{ $item->description }}</td>
                                 </tr>
+                                @php
+                                    $count++;
+                                @endphp
                             @endforeach
-
-                            @php
-                                $count++;
-                            @endphp
-                            
                         </tbody>
                         <tfoot>
                             <tr>
                                 <th colspan="5" class="text-end">Grand Total</th>
-                                <th class="text-end">{{  number_format($grandTotal?? 0, 2)}}</th>
+                                <th class="text-end">{{ number_format($grandTotal, 2) }}</th>
                             </tr>
                         </tfoot>
                     </table>
-                     @endforeach
                 </div>
+            @endif
 
                  <div class="mb-3">
                     <strong>Request for Approval:</strong>

@@ -185,6 +185,8 @@ class ActivityController extends Controller
                 // Calculate total budget from budget items
                 $totalBudget = 0;
                 $budgetItems = $request->input('budget', []);
+                $fundTypeId = (int) $request->input('fund_type', 1);
+                
                 if (!empty($budgetItems)) {
                     foreach ($budgetItems as $codeId => $items) {
                         if (is_array($items)) {
@@ -197,7 +199,8 @@ class ActivityController extends Controller
                     }
                 }
 
-                if ($totalBudget <= 0) {
+                // Allow zero budget only for external source (fund_type_id = 3)
+                if ($totalBudget <= 0 && $fundTypeId !== 3) {
                     $errorMessage = 'Cannot create activity with zero or negative total budget.';
                     
                     if ($request->ajax()) {
@@ -657,6 +660,39 @@ class ActivityController extends Controller
 
                 $budgetCodes = $request->input('budget_codes', []);
                 $budgetItems = $request->input('budget', []);
+                
+                // Calculate total budget from budget items
+                $totalBudget = 0;
+                $fundTypeId = (int) $request->input('fund_type', 1);
+                
+                if (!empty($budgetItems)) {
+                    foreach ($budgetItems as $codeId => $items) {
+                        if (is_array($items)) {
+                            foreach ($items as $item) {
+                                $qty = isset($item['units']) ? floatval($item['units']) : 1;
+                                $unitCost = isset($item['unit_cost']) ? floatval($item['unit_cost']) : 0;
+                                $totalBudget += $qty * $unitCost;
+                            }
+                        }
+                    }
+                }
+
+                // Allow zero budget only for external source (fund_type_id = 3)
+                if ($totalBudget <= 0 && $fundTypeId !== 3) {
+                    $errorMessage = 'Cannot update activity with zero or negative total budget.';
+                    
+                    if ($request->ajax()) {
+                        return response()->json([
+                            'success' => false,
+                            'msg' => $errorMessage
+                        ], 422);
+                    }
+                    
+                    return redirect()->back()->withInput()->with([
+                        'msg' => $errorMessage,
+                        'type' => 'error'
+                    ]);
+                }
                 
                 // Handle file uploads for attachments
                 $attachments = [];

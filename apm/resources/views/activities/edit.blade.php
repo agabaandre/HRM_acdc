@@ -48,6 +48,9 @@
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
                         <small class="text-muted">Select up to 2 codes</small>
+                        <small class="text-info d-block" id="external-source-note" style="display: none;">
+                            <i class="fas fa-info-circle me-1"></i>External source activities can have zero budget as budgets are defined outside the system
+                        </small>
                     </div>
 
                     <div class="col-md-2 activity_code" style="display: none;">
@@ -394,16 +397,22 @@ $(document).ready(function () {
                 $('.activity_code').hide();
                 // Hide and disable budget codes, remove required
                 $('#budget_codes').val("").prop('disabled', true).prop('required', false).closest('.col-md-4').hide();
+                // Show external source note
+                $('#external-source-note').show();
             } else {
             $('.activity_code').show();
                 // Show and enable budget codes, add required
                 $('#budget_codes').prop('disabled', false).prop('required', true).closest('.col-md-4').show();
+                // Hide external source note
+                $('#external-source-note').hide();
         }
         } else {
             $('#activity_code').val(""); // clear value
             $('.activity_code').hide();
             // Hide and disable budget codes, remove required
             $('#budget_codes').val("").prop('disabled', true).prop('required', false).closest('.col-md-4').hide();
+            // Hide external source note
+            $('#external-source-note').hide();
         }
     });
 
@@ -800,6 +809,7 @@ $(document).ready(function () {
     function updateAllTotals() {
         let grand = 0;
         let hasExceededBudget = false;
+        const fundTypeId = parseInt($('#fund_type').val()) || 0;
         
         $('.budget-body').each(function () {
             const code = $(this).data('code');
@@ -812,8 +822,8 @@ $(document).ready(function () {
             const balanceElement = $(`#budget_codes option[value="${code}"]`);
             const budgetBalance = parseFloat(balanceElement.data('balance')) || 0;
             
-            // Check if subtotal exceeds budget balance
-            if (subtotal > budgetBalance) {
+            // Check if subtotal exceeds budget balance (skip for external source)
+            if (subtotal > budgetBalance && fundTypeId !== 3) {
                 hasExceededBudget = true;
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                     .addClass('text-danger fw-bold');
@@ -849,8 +859,9 @@ $(document).ready(function () {
             submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
                 .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
         } else {
+            const buttonText = fundTypeId === 3 ? 'Update Activity (External Source)' : 'Update Activity';
             submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
-                .html('<i class="bx bx-check-circle me-1"></i> Update Activity');
+                .html('<i class="bx bx-check-circle me-1"></i> ' + buttonText);
         }
     }
 
