@@ -230,5 +230,19 @@
         background-color: rgba(25, 135, 84, 0.1) !important;
         color: #198754 !important;
     }
+    .MsoListParagraphCxSpFirst{
+        text-indent:2pt !important;mso-list:l0 level1 lfo1;
+        text-align:justify !important;
+
+    }
+    .MsoListParagraphCxSpLast{
+        text-indent:2pt !important;mso-list:l0 level1 lfo1;
+        text-align:justify !important;
+    }
+    .MsoListParagraph{
+        text-indent:2pt !important;mso-list:l0 level1 lfo1;
+        text-align:justify !important;
+    }
+   
 </style>
 

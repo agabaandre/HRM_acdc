@@ -521,11 +521,11 @@
                                 <span>Print PDF</span>
                             </a>
                     @endif
-                </div>
-            </div>
-                                </div>
-                            </div>
-                            
+                        </div>
+                        </div>
+                        </div>
+                    </div>
+
         <div class="container-fluid py-4">
             @php
                 // Decode JSON fields if they are strings
@@ -622,7 +622,7 @@
                     <h5 class="mb-0 fw-bold text-dark">
                         <i class="bx bx-file-text me-2 text-primary"></i>{{ $activity->activity_title ?? 'Single Memo Summary' }}
                     </h5>
-                                                    </div>
+                        </div>
                             <div class="table-responsive">
                     <table class="table table-hover">
                                     <tbody>
@@ -650,7 +650,7 @@
                                              class="btn btn-sm btn-outline-info ms-2">
                                              <i class="bx bx-info-circle me-1"></i>View Status
                                          </a>
-                                     @endif
+                    @endif
                                  </td>
                              </tr>
                             @if ($activity->document_number)
@@ -732,7 +732,7 @@
                                             @endforeach
                                                     @else
                                         <span class="text-muted">No locations specified</span>
-                                                    @endif
+                    @endif
                                 </td>
                             </tr>
 
@@ -782,8 +782,27 @@
                                         </tr>
                                     </tbody>
                                 </table>
-                                            </div>
-                                            </div>
+                            </div>
+                            </div>
+
+            <!-- Key Result Area Card -->
+            @if($activity->key_result_area && $matrix->key_result_area)
+                <div class="card content-section border-0 mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                            <i class="bx bx-target-lock"></i>
+                            Key Result Area
+                        </h6>
+                            </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p>{{ $matrix->key_result_area[intval($activity->key_result_area)]['description'] ?? '' }}</p>
+                                </div>
+                                </div>
+                            </div>
+                </div>
+            @endif
 
             <!-- Background Card -->
             @if($activity->background)
@@ -793,11 +812,11 @@
                             <i class="bx bx-info-circle"></i>
                             Background
                         </h6>
-                                        </div>
+                                </div>
                     <div class="card-body">
                         <div class="html-content">{!! $activity->background !!}</div>
-                    </div>
-                </div>
+                                </div>
+                            </div>
             @endif
 
             <div class="row">
@@ -811,7 +830,7 @@
                             <i class="bx bx-paperclip"></i>
                             Attachments
                         </h6>
-                    </div>
+                            </div>
                     <div class="card-body">
                             <div class="table-responsive">
                                             <table class="table table-sm table-bordered">
@@ -868,14 +887,14 @@
                                                     </a>
                     @else
                                                     <span class="text-muted">File not found</span>
-                                                @endif
+                            @endif
                                             </td>
                                         </tr>
                                         @endforeach
                                     </tbody>
                                 </table>
-                            </div>
-                                        </div>
+                        </div>
+                    </div>
                                     </div>
                                 @endif
 
@@ -888,25 +907,25 @@
                             <i class="bx bx-group"></i>
                             Participants
                         </h6>
-                                </div>
+                        </div>
                     <div class="card-body">
                      
                         @if (!empty($processedInternalParticipants))
                             <div class="mt-4">
                                 <label class="form-label text-muted small fw-semibold">Internal Participants
                                     Details</label>
-                                <div class="table-responsive">
+                            <div class="table-responsive">
                                     <table class="table table-bordered table-sm mb-0">
                                         <thead class="table-light">
-                                            <tr>
+                                        <tr>
                                                 <th>#</th>
                                                 <th>Staff</th>
-                                                <th>Start Date</th>
-                                                <th>End Date</th>
-                                                <th>Days</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Days</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                             @foreach ($processedInternalParticipants as $index => $participant)
                                                 <tr>
                                                     <td>{{ $index + 1 }}</td>
@@ -921,13 +940,13 @@
                                                     <td>{{ $participant['participant_start'] ?? '-' }}</td>
                                                     <td>{{ $participant['participant_end'] ?? '-' }}</td>
                                                     <td>{{ $participant['participant_days'] ?? '-' }}</td>
-                                                    </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                            </div>
-                                </div>
-                            @endif
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                        </div>
+                    </div>
+                    @endif
 
                         <!-- Participants Summary Table -->
                         <div class="mt-4">
@@ -963,7 +982,7 @@
         </div>
     </div>
 
-                <!-- Budget Information -->
+                    <!-- Budget Information -->
                 <div class="card content-section bg-blue border-0 mb-4 w-100">
                     <div class="card-header bg-transparent border-0 py-3">
                         <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
@@ -977,24 +996,24 @@
                                 @php
                                     $count = 1;
                                     $grandTotal = 0;
-                                @endphp
-
+                            @endphp
+                            
                                 @foreach ($budgetByFundCode as $fundCodeId => $items)
                                     @php
                                         $fundCode = $fundCodes[$fundCodeId] ?? null;
                                         $groupTotal = 0;
                                         $itemCount = 1; // Reset counter for each budget code
                                     @endphp
-
+                                    
                                     {{-- Budget Code Title --}}
                                     <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
                                         @if ($fundCode)
                                             {{ $fundCode->activity }} - {{ $fundCode->code }} -
                                             ({{ $fundCode->fundType->name ?? 'N/A' }})
-                                        @else
+                                                    @else
                                             Budget Code: {{ $fundCodeId }}
-                                        @endif
-                                    </h6>
+                                                    @endif
+                                                </h6>
 
                                     {{-- Individual Table for this Budget Code --}}
                                     <div class="table-responsive mb-4">
@@ -1002,12 +1021,12 @@
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                                    <th>Cost Item</th>
+                                                        <th>Cost Item</th>
                                                     <th class="text-end">Unit Cost</th>
                                                     <th class="text-end">Units</th>
                                                     <th class="text-end">Days</th>
                                                     <th class="text-end">Total</th>
-                                                    <th>Description</th>
+                                                        <th>Description</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1026,21 +1045,21 @@
 
                                                         $groupTotal += $total;
                                                         $grandTotal += $total;
-                                        @endphp
-                                        <tr>
+                                                        @endphp
+                                                        <tr>
                                                         <td>{{ $itemCount }}</td>
-                                                        <td>{{ $item['cost'] ?? 'N/A' }}</td>
+                                                            <td>{{ $item['cost'] ?? 'N/A' }}</td>
                                                         <td class="text-end">{{ number_format($unitCost, 2) }}</td>
                                                         <td class="text-end">{{ $units }}</td>
                                                         <td class="text-end">{{ $days }}</td>
                                                         <td class="text-end">{{ number_format($total, 2) }}</td>
                                                         <td>{{ $item['description'] ?? '' }}</td>
-                                                    </tr>
+                                        </tr>
                                                     @php
                                                         $itemCount++;
                                                     @endphp
-                                                @endforeach
-                                            </tbody>
+                                        @endforeach
+                                    </tbody>
                                             <tfoot>
                                                 <tr>
                                                     <th colspan="5" class="text-end">Sub Total</th>
@@ -1048,10 +1067,10 @@
                                                     <th></th>
                                                 </tr>
                                             </tfoot>
-                                        </table>
+                                </table>
                                     </div>
                                 @endforeach
-
+                                
                                 {{-- Overall Grand Total --}}
                                 <div class="row mt-3">
                                     <div class="col-md-12">
@@ -1079,23 +1098,23 @@
                                                         <td>
                                                             @if (is_array($value))
                                                                 <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                    @else
+                                                            @else
                                                                 {{ $value }}
+                                                            @endif
+                                                        </td>
+                                                    </tr>
                                                 @endif
-                                            </td>
-                                        </tr>
-                                                @endif
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
                             @endif
                         @else
                             <div class="text-center text-muted py-4">
                                 <i class="bx bx-money bx-lg mb-3"></i>
                                 <p class="mb-0">No budget details</p>
-                        </div>
-                        @endif
+                    </div>
+                    @endif
                     </div>
                 </div>
 
@@ -1110,8 +1129,8 @@
                         </div>
                         <div class="card-body">
                             <div class="html-content">{!! $activity->activity_request_remarks !!}</div>
+                            </div>
                         </div>
-                    </div>
                 </div>
 
                    <div class="col-lg-12">

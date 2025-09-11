@@ -10,7 +10,7 @@
         </div>
     </div>
     <nav class="navbar navbar-expand-xl w-100">
-        <ul class="navbar-nav justify-content-start flex-grow-1 gap-1">
+        <ul class="navbar-nav justify-content-start">
             <!-- APM -->
             <?php if (in_array('85', $permissions)) : ?>
                 <li class="nav-item">
