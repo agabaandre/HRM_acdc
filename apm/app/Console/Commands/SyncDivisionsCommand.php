@@ -45,7 +45,7 @@ class SyncDivisionsCommand extends Command
             }
 
             $response = Http::withBasicAuth($username, $password)
-                ->get('http://localhost/staff/share/divisions/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
+                ->get('https://cbp.africacdc.org/staff/share/divisions/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
             //dd($response);
 
             if (!$response->successful()) {
