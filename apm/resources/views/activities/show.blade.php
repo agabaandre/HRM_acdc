@@ -22,8 +22,8 @@
     <a href="{{ route('matrices.show',  $matrix) }}" class="btn btn-sm btn-outline-secondary">
         <i class="bx bx-arrow-back"></i> Back to Matrix
     </a>
-  
 
+    
    
     @if (can_edit_memo($activity))
     
@@ -427,9 +427,9 @@
                                     <td class="text-end">{{ number_format($total, 2) }}</td>
                                     <td>{{ $item->description }}</td>
                                 </tr>
-                                @php
-                                    $count++;
-                                @endphp
+                            @php
+                                $count++;
+                            @endphp
                             @endforeach
                         </tbody>
                         <tfoot>

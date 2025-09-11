@@ -17,7 +17,7 @@
     <div class="card-body py-3 px-4 bg-light rounded-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
             <h4 class="mb-0 text-success fw-bold"><i class="bx bx-file-doc me-2 text-success"></i> Single Memo Management</h4>
-        </div>
+                    </div>
 
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
             <form action="{{ route('activities.single-memos.index') }}" method="GET" class="row g-3 align-items-end w-100">
@@ -77,28 +77,28 @@
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
-            </form>
+                </form>
         </div>
-    </div>
-</div>
-
+            </div>
+        </div>
+        
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <!-- Bootstrap Tabs Navigation -->
         <ul class="nav nav-tabs nav-fill" id="memoTabs" role="tablist">
-            <li class="nav-item" role="presentation">
+                <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="mySubmitted-tab" data-bs-toggle="tab" data-bs-target="#mySubmitted" type="button" role="tab" aria-controls="mySubmitted" aria-selected="true">
                     <i class="bx bx-file-doc me-2"></i> My Single Memos
                     <span class="badge bg-success text-white ms-2">{{ $singleMemos->where('staff_id', user_session('staff_id'))->count() }}</span>
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
                 <button class="nav-link" id="allMemos-tab" data-bs-toggle="tab" data-bs-target="#allMemos" type="button" role="tab" aria-controls="allMemos" aria-selected="false">
                     <i class="bx bx-grid me-2"></i> All Single Memos
                     <span class="badge bg-primary text-white ms-2">{{ $singleMemos->count() }}</span>
-                </button>
-            </li>
-        </ul>
+                    </button>
+                </li>
+            </ul>
     <div class="card-body p-0">
         @if(session('success'))
             <div class="alert alert-success m-3">
@@ -131,57 +131,57 @@
                     @endphp
                     
                     @if($myMemos->count() > 0)
-                        <div class="table-responsive">
+                <div class="table-responsive">
                             <table class="table table-hover mb-0">
                                 <thead class="table-success">
-                                    <tr>
-                                        <th>#</th>
+                            <tr>
+                                <th>#</th>
                                         <th>Document #</th>
-                                        <th>Title</th>
-                                        <th>Division</th>
-                                        <th>Date Range</th>
-                                        <th>Request Type</th>
+                                <th>Title</th>
+                                <th>Division</th>
+                                <th>Date Range</th>
+                                <th>Request Type</th>
                                         <th>Fund Type</th>
-                                        <th>Status</th>
+                                <th>Status</th>
                                         <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            </tr>
+                        </thead>
+                        <tbody>
                                     @php $count = 1; @endphp
                                     @foreach($myMemos as $memo)
-                                        <tr>
-                                            <td>{{ $count++ }}</td>
-                                            <td>
+                                <tr>
+                                    <td>{{ $count++ }}</td>
+                                    <td>
                                                 <span class="badge bg-primary text-white">
                                                     <i class="bx bx-hash me-1"></i>
                                                     {{ $memo->document_number ?? 'N/A' }}
-                                                </span>
-                                            </td>
+                                        </span>
+                                    </td>
                                             <td>
                                                 <div class="fw-bold text-primary">{!! $memo->activity_title !!}</div>
                                                 <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
                                             </td>
                                             <td>{{ $memo->matrix->division->division_name ?? 'N/A' }}</td>
-                                            <td>
-                                                <small>
-                                                    {{ $memo->date_from ? $memo->date_from->format('M d, Y') : 'N/A' }}<br>
-                                                    <span class="text-muted">to</span><br>
-                                                    {{ $memo->date_to ? $memo->date_to->format('M d, Y') : 'N/A' }}
-                                                </small>
-                                            </td>
-                                            <td>
+                                    <td>
+                                        <small>
+                                            {{ $memo->date_from ? $memo->date_from->format('M d, Y') : 'N/A' }}<br>
+                                            <span class="text-muted">to</span><br>
+                                            {{ $memo->date_to ? $memo->date_to->format('M d, Y') : 'N/A' }}
+                                        </small>
+                                    </td>
+                                    <td>
                                                 <span class="badge bg-info text-dark">
                                                     <i class="bx bx-category me-1"></i>
                                                     {{ $memo->requestType->name ?? 'N/A' }}
                                                 </span>
-                                            </td>
-                                            <td>
+                                    </td>
+                                    <td>
                                                 <span class="badge bg-warning text-dark">
                                                     <i class="bx bx-money me-1"></i>
                                                     {{ $memo->fundType->name ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
+                                        </span>
+                                    </td>
+                                    <td>
                                                 @php
                                                     $statusBadgeClass = [
                                                         'draft' => 'bg-secondary',
@@ -216,31 +216,31 @@
                                                         {{ strtoupper($memo->overall_status ?? 'draft') }}
                                                     </span>
                                                 @endif
-                                            </td>
+                                    </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ route('activities.single-memos.show', $memo) }}" 
+                                            <a href="{{ route('activities.single-memos.show', $memo) }}" 
                                                        class="btn btn-sm btn-outline-info" title="View">
-                                                        <i class="bx bx-show"></i>
-                                                    </a>
-                                                    @if($memo->overall_status === 'draft')
-                                                        <a href="{{ route('activities.single-memos.edit', $memo,$memo->matrix) }}" 
+                                                <i class="bx bx-show"></i>
+                                            </a>
+                                            @if($memo->overall_status === 'draft')
+                                                <a href="{{ route('activities.single-memos.edit', $memo,$memo->matrix) }}" 
                                                            class="btn btn-sm btn-outline-warning" title="Edit">
-                                                            <i class="bx bx-edit"></i>
-                                                        </a>
+                                                    <i class="bx bx-edit"></i>
+                                                </a>
                                                     @endif
                                                     @if($memo->overall_status === 'approved')
                                                         <a href="{{ route('activities.single-memos.show', $memo) }}" 
                                                            class="btn btn-sm btn-outline-success" title="Print" target="_blank">
                                                             <i class="bx bx-printer"></i>
                                                         </a>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
                                     @endforeach
-                                </tbody>
-                            </table>
+                        </tbody>
+                    </table>
                         </div>
                         
                         <!-- Pagination -->
@@ -272,37 +272,37 @@
                     </div>
                     
                     @if($singleMemos->count() > 0)
-                        <div class="table-responsive">
+                <div class="table-responsive">
                             <table class="table table-hover mb-0">
                                 <thead class="table-primary">
-                                    <tr>
-                                        <th>#</th>
+                            <tr>
+                                <th>#</th>
                                         <th>Document #</th>
-                                        <th>Title</th>
-                                        <th>Staff</th>
-                                        <th>Division</th>
-                                        <th>Date Range</th>
-                                        <th>Request Type</th>
+                                <th>Title</th>
+                                <th>Staff</th>
+                                <th>Division</th>
+                                <th>Date Range</th>
+                                <th>Request Type</th>
                                         <th>Fund Type</th>
-                                        <th>Status</th>
+                                <th>Status</th>
                                         <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @php $count = 1; @endphp
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php $count = 1; @endphp
                                     @foreach($singleMemos as $memo)
-                                        <tr>
-                                            <td>{{ $count++ }}</td>
-                                            <td>
+                                <tr>
+                                    <td>{{ $count++ }}</td>
+                                    <td>
                                                 <span class="badge bg-primary text-white">
                                                     <i class="bx bx-hash me-1"></i>
                                                     {{ $memo->document_number ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
+                                        </span>
+                                    </td>
+                                    <td>
                                                 <div class="fw-bold text-primary">{!! $memo->activity_title !!}</div>
                                                 <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
-                                            </td>
+                                    </td>
                                             <td>
                                                 @if($memo->staff)
                                                     {{ $memo->staff->fname }} {{ $memo->staff->lname }}
@@ -311,26 +311,26 @@
                                                 @endif
                                             </td>
                                             <td>{{ $memo->matrix->division->division_name ?? 'N/A' }}</td>
-                                            <td>
-                                                <small>
-                                                    {{ $memo->date_from ? $memo->date_from->format('M d, Y') : 'N/A' }}<br>
-                                                    <span class="text-muted">to</span><br>
-                                                    {{ $memo->date_to ? $memo->date_to->format('M d, Y') : 'N/A' }}
-                                                </small>
-                                            </td>
-                                            <td>
+                                    <td>
+                                        <small>
+                                            {{ $memo->date_from ? $memo->date_from->format('M d, Y') : 'N/A' }}<br>
+                                            <span class="text-muted">to</span><br>
+                                            {{ $memo->date_to ? $memo->date_to->format('M d, Y') : 'N/A' }}
+                                        </small>
+                                    </td>
+                                    <td>
                                                 <span class="badge bg-info text-dark">
                                                     <i class="bx bx-category me-1"></i>
                                                     {{ $memo->requestType->name ?? 'N/A' }}
                                                 </span>
-                                            </td>
-                                            <td>
+                                    </td>
+                                    <td>
                                                 <span class="badge bg-warning text-dark">
                                                     <i class="bx bx-money me-1"></i>
                                                     {{ $memo->fundType->name ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
+                                        </span>
+                                    </td>
+                                    <td>
                                                 @php
                                                     $statusBadgeClass = [
                                                         'draft' => 'bg-secondary',
@@ -366,31 +366,31 @@
                                                         {{ strtoupper($memo->overall_status ?? 'draft') }}
                                                     </span>
                                                 @endif
-                                            </td>
+                                    </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
-                                                    <a href="{{ route('activities.single-memos.show', $memo) }}" 
+                                            <a href="{{ route('activities.single-memos.show', $memo) }}" 
                                                        class="btn btn-sm btn-outline-info" title="View">
-                                                        <i class="bx bx-show"></i>
-                                                    </a>
-                                                    @if($memo->overall_status === 'draft' && $memo->staff_id === user_session('staff_id'))
-                                                        <a href="{{ route('activities.single-memos.edit', $memo,$memo->matrix) }}" 
+                                                <i class="bx bx-show"></i>
+                                            </a>
+                                            @if($memo->overall_status === 'draft' && $memo->staff_id === user_session('staff_id'))
+                                                <a href="{{ route('activities.single-memos.edit', $memo,$memo->matrix) }}" 
                                                            class="btn btn-sm btn-outline-warning" title="Edit">
-                                                            <i class="bx bx-edit"></i>
-                                                        </a>
+                                                    <i class="bx bx-edit"></i>
+                                                </a>
                                                     @endif
                                                     @if($memo->overall_status === 'approved')
                                                         <a href="{{ route('activities.single-memos.show', $memo) }}" 
                                                            class="btn btn-sm btn-outline-success" title="Print" target="_blank">
                                                             <i class="bx bx-printer"></i>
                                                         </a>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
                                     @endforeach
-                                </tbody>
-                            </table>
+                        </tbody>
+                    </table>
                         </div>
                         
                         <!-- Pagination -->
