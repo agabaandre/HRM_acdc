@@ -19,6 +19,59 @@ use Illuminate\Support\Facades\DB;
 
 
 
+if (!function_exists('user_info')) {
+   function user_info() {
+        // Get user as array from session, fallback to empty array
+        $user = session('user', []);
+        // Convert to object for property access
+        $user = (object) $user;
+
+        $firstName = $user->fname ?? '';
+        $lastName = $user->lname ?? '';
+        $otherName = $user->other_name ?? '';
+
+        // Define a set of professional color classes
+        $avatarColors = [
+            'bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-danger', 'bg-secondary'
+        ];
+        // Pick color based on first letter of first name
+        $firstLetter = strtoupper($firstName[0] ?? 'A');
+        $colorIndex = (ord($firstLetter) - 65) % count($avatarColors);
+        if ($colorIndex < 0) $colorIndex = 0;
+        $avatarColor = $avatarColors[$colorIndex];
+
+        $photo = $user->photo ?? '';
+        $baseUrl = $user->base_url ?? '';
+        $photoPath = function_exists('public_path') ? public_path('uploads/staff/' . $photo) : __DIR__ . '/../../../public/uploads/staff/' . $photo;
+
+        $showImage = false;
+        if ($photo && file_exists($photoPath) && filesize($photoPath) > 100) { // 0.1kb = 100 bytes
+            $showImage = true;
+        }
+
+        ob_start();
+        if ($showImage) {
+            ?>
+            <img src="<?php echo htmlspecialchars($baseUrl . 'uploads/staff/' . $photo); ?>"
+                class="user-img" alt="user avatar">
+            <?php
+        } else {
+            ?>
+            <div class="user-avatar <?php echo $avatarColor; ?> text-white d-flex align-items-center justify-content-center" style="font-weight:600; font-size:1.1rem; width:40px; height:40px; border-radius:50%;">
+                <?php if ($firstName && $lastName): ?>
+                    <span><?php echo strtoupper(substr($firstName,0,1)) . strtoupper(substr($lastName,0,1)); ?></span>
+                <?php elseif ($firstName): ?>
+                    <span><?php echo strtoupper(substr($firstName,0,2)); ?></span>
+                <?php else: ?>
+                    <span>U</span>
+                <?php endif; ?>
+            </div>
+            <?php
+        }
+        return ob_get_clean();
+    }
+}
+
 if (!function_exists('get_staff_pending_action_count')) {
     /**
      * Get the count of pending actions for a specific module for the current staff member

@@ -1,9 +1,9 @@
 body {
     font-size: 14px;
-    color: #4c5258;
+    color: #1a1a1a;
     letter-spacing: 0.5px;
-    background-color: #f7f7ff;
-    font-family: 'Roboto', sans-serif;
+    background-color: #f8f9fa;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 a {
@@ -23,10 +23,23 @@ a {
     background-color: #E4E5E5;
     z-index: 200;
 }
-/* AU green colors */
+/* System theme colors */
 :root {
     --au-green: #119A48;
     --au-green-light: rgba(17, 154, 72, 0.3);
+    --primary-color: #119a48;
+    --primary-dark: #0d7a3a;
+    --primary-light: #1bb85a;
+    --secondary-color: #9f2240;
+    --accent-black: #2c3e50;
+    --light-grey: #f8f9fa;
+    --medium-grey: #e9ecef;
+    --dark-grey: #6c757d;
+    --text-dark: #1a1a1a;
+    --text-muted: #4a4a4a;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+    --transition: all 0.2s ease;
   }
   
   /* Search input box style */
@@ -127,7 +140,7 @@ a {
     align-items: center;
     padding: 0 30px 0 0;
     height: 60px;
-    border-right: 1px solid #f0f0f0;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .logo-icon {
@@ -144,13 +157,15 @@ a {
     margin-left: 10px;
     margin-bottom: 0;
     letter-spacing: 1px;
-    color: #9F2241;
+    color: #119a48;
+    font-weight: 600;
 }
 
 .toggle-icon {
     font-size: 26px;
-    color: #9F2241;
+    color: #119a48;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 
@@ -162,10 +177,11 @@ a {
     left: 0;
     right: 0;
     height: 60px;
-    background: rgba(52, 143, 65, 1);
+    background: #119a48;
     color: #fff !important;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid rgba(17, 154, 72, 0.2);
     z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .topbar .navbar {
@@ -199,11 +215,7 @@ a {
 .dropup,
 .dropup-center {
     position: relative;
-    border: 1px solid #d3d3c2 !important;
-    border-top-right-radius: 3px !important;
-    border-top-left-radius: 3px !important;
-    border-bottom-right-radius: 3px !important;
-    border-bottom-left-radius: 3px !important;
+   
 }
 
 .page-footer {
@@ -228,18 +240,16 @@ a {
     right: 0;
     left: 0;
     z-index: 9;
-    border-bottom: 1px solid #b26f6f;
-    box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075) !important;
+    border-bottom: 1px solid rgba(17, 154, 72, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     background-clip: border-box;
-    background: #030303;
+    background: #2c3e50;
     width: 100%;
     height: 60px;
     padding: 0px 30px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-bottom-left-radius: 5px;
-    border-bottom-right-radius: 5px;
 }
 
 .nav-container.primary-menu a .parent-icon {
@@ -252,41 +262,48 @@ a {
 }
 
 .nav-container.primary-menu .navbar-nav a.nav-link {
-    color: #b5a0a0 !important;
-    font-size: 11px;
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 12px;
     height: auto;
     display: flex;
     align-items: center;
     padding-right: 1rem;
     padding-left: 1rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .nav-container.primary-menu .navbar-nav a.nav-link:hover,
 .nav-container.primary-menu .navbar-nav a.nav-link:focus,
 .nav-container.primary-menu .nav-link.active,
 .nav-container.primary-menu .show>.nav-link {
-    color: #ffffff;
-    background-color: #9F2241;
+    color: #ffffff !important;
+    background-color: rgba(17, 154, 72, 0.2);
+    border-radius: 4px;
 }
 
 .nav-container.primary-menu .dropdown-menu .dropdown-item.active,
 .nav-container.primary-menu .dropdown-menu .dropdown-item:active {
     color: #fff;
     text-decoration: none;
-    background-color: #9F2241
+    background-color: rgba(17, 154, 72, 0.2);
 }
 
 .nav-container .secondary-menu.navbar-nav a.nav-link {
-    color: #fff;
+    color: rgba(255, 255, 255, 0.9);
     font-size: 14px;
     text-transform: capitalize;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .nav-container .navbar .dropdown-menu {
-    border: 0;
-    border-radius: 0;
+    border: 1px solid rgba(17, 154, 72, 0.2);
+    border-radius: 4px;
     font-size: 14px;
     text-transform: capitalize;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    background: white;
 }
 
 @-webkit-keyframes animdropdown {
