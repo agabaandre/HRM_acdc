@@ -4,104 +4,207 @@
 
 @section('content')
 <style>
-  body {
-    font-family: "Segoe UI", sans-serif;
-  }
+:root {
+  --primary-color: #119a48;
+  --primary-dark: #0d7a3a;
+  --primary-light: #1bb85a;
+  --secondary-color: #9f2240;
+  --secondary-light: #c44569;
+  --accent-black: #2c3e50;
+  --light-grey: #f8f9fa;
+  --medium-grey: #e9ecef;
+  --dark-grey: #6c757d;
+  --text-dark: #1a1a1a;
+  --text-muted: #4a4a4a;
+  --border-color: #e9ecef;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --transition: all 0.2s ease;
+}
 
-  .dashboard-title {
-    font-size: 1.5rem;
-    color: #119A48;
-    font-weight: bold;
-    text-align: center;
-    margin: 1rem 0 0.5rem;
-  }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-  .dashboard-card {
-    height: 310px;
-    padding: 1.2rem;
-    transition: all 0.3s ease-in-out;
-    font-size: 0.85rem;
-    display: flex;
-    flex-direction: column;
-    border-radius: 1rem;
-    background: white;
-    border: 1px solid #ddd;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-  }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-image: url('{{ asset("images/bg_login.jpg") }}');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding: 20px;
+}
 
-  .dashboard-card:hover {
-    box-shadow: 0 0 12px #911c3966;
-    transform: translateY(-4px);
-  }
+.dashboard-title {
+  font-size: 2rem;
+  color: var(--primary-color);
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 2rem;
+  position: relative;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-  .dashboard-card h6 {
-    font-weight: 700;
-    font-size: 1rem;
-    color: #911C39;
-    margin-bottom: 0.3rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
+.dashboard-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: var(--primary-color);
+}
 
-  .dashboard-card p {
-    font-size: 0.8rem;
-    color: #5F5F5F;
-    margin: 0 0 0.6rem 0;
-    line-height: 1.3;
-  }
+.dashboard-card {
+  height: 320px;
+  border-radius: 10px;
+  padding: 2rem;
+  transition: var(--transition);
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid var(--medium-grey);
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
 
-  .dashboard-container .col-lg-3 {
-    margin-bottom: 1.5rem;
-  }
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--primary-color);
+  transform: scaleX(0);
+  transition: var(--transition);
+}
 
-  .dashboard-icon {
-    width: 35px;
-    height: 35px;
-    background-color: #f4f4f4;
-    color: #C3A366;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    flex-shrink: 0;
-  }
+.dashboard-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
 
-  .pending-badge {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.5rem;
-  }
+.dashboard-card:hover::before {
+  transform: scaleX(1);
+}
 
-  .btn-sm {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8rem;
-    margin-bottom: 0.4rem;
-    width: 100%;
-    text-align: left;
-  }
+.dashboard-card h6 {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-dark);
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
 
-  .menu-section {
-    margin-top: 0.8rem;
-  }
+.dashboard-card p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem 0;
+  line-height: 1.5;
+  flex-grow: 1;
+  font-weight: 500;
+}
 
-  .menu-section h6 {
-    font-size: 0.8rem;
-    color: #666;
-    margin-bottom: 0.4rem;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.2rem;
-  }
+.dashboard-container .col-lg-3 {
+  margin-bottom: 1.5rem;
+}
 
-  .menu-links {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
+.dashboard-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, rgba(17, 154, 72, 0.05) 0%, rgba(17, 154, 72, 0.02) 100%);
+  color: rgba(17, 154, 72, 0.4);
+  border: 1px solid rgba(17, 154, 72, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+
+.dashboard-card:hover .dashboard-icon {
+  background: rgba(17, 154, 72, 0.1);
+  color: rgba(17, 154, 72, 0.7);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-lg);
+}
+
+.pending-badge {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.5rem;
+  background: rgba(17, 154, 72, 0.1);
+  color: rgba(17, 154, 72, 0.9);
+  border: 1px solid rgba(17, 154, 72, 0.2);
+  font-weight: 600;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  width: 100%;
+  text-align: left;
+  background: rgba(17, 154, 72, 0.1);
+  color: rgba(17, 154, 72, 0.9);
+  border: 1px solid rgba(17, 154, 72, 0.2);
+  transition: var(--transition);
+  font-weight: 600;
+}
+
+.btn-sm:hover {
+  background: rgba(17, 154, 72, 0.15);
+  color: rgba(17, 154, 72, 1);
+  transform: translateX(2px);
+}
+
+.btn-outline-primary {
+  background: transparent;
+  color: rgba(17, 154, 72, 0.8);
+  border: 1px solid rgba(17, 154, 72, 0.4);
+  transition: var(--transition);
+  font-weight: 600;
+}
+
+.btn-outline-primary:hover {
+  background: rgba(17, 154, 72, 0.1);
+  color: rgba(17, 154, 72, 1);
+  border-color: rgba(17, 154, 72, 0.6);
+}
+
+.menu-section {
+  margin-top: 1rem;
+}
+
+.menu-section h6 {
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  margin-bottom: 0.6rem;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.4rem;
+  font-weight: 700;
+}
+
+.menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 
   .pending-action-badge {
     position: absolute;
@@ -116,24 +219,23 @@
   .pending-action-badge .bell-icon {
     width: 40px;
     height: 40px;
-    background-color: #ffc107;
-    color: #212529;
-    border-radius: 50%;
+    background-color: rgba(17, 154, 72, 0.1);
+    color: rgba(17, 154, 72, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow);
     position: relative;
+    border: 1px solid rgba(17, 154, 72, 0.2);
   }
 
   .pending-action-badge .notification-count {
     position: absolute;
     top: -8px;
     right: -8px;
-    background-color: #dc3545;
+    background-color: rgba(17, 154, 72, 0.8);
     color: white;
-    border-radius: 50%;
     width: 20px;
     height: 20px;
     display: flex;
@@ -142,11 +244,71 @@
     font-size: 0.7rem;
     font-weight: bold;
     border: 2px solid white;
+    box-shadow: var(--shadow);
   }
+
+/* Loading animation for cards */
+.dashboard-card {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+.col-lg-3:nth-child(1) .dashboard-card { animation-delay: 0.1s; }
+.col-lg-3:nth-child(2) .dashboard-card { animation-delay: 0.2s; }
+.col-lg-3:nth-child(3) .dashboard-card { animation-delay: 0.3s; }
+.col-lg-3:nth-child(4) .dashboard-card { animation-delay: 0.4s; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 767px) {
+  .dashboard-card {
+    height: auto;
+    min-height: 280px;
+  }
+  
+  .dashboard-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* Accessibility improvements */
+.dashboard-card:focus-within {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .dashboard-card {
+    border-width: 3px;
+  }
+  
+  .dashboard-icon {
+    border-width: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 </style>
 
 <div class="container-fluid">
-  <h2 class="dashboard-title">Approvals Management</h2>
+  <h2 class="dashboard-title text-muted">Approvals Management</h2>
   
   <div class="row justify-content-center dashboard-container">
     
@@ -163,7 +325,7 @@
           <div class="dashboard-icon me-2"><i class="fas fa-calendar-alt"></i></div>
           <h6>Quarterly Travel Matrix (QM)</h6>
         </div>
-        <p>Plan and track quarterly travel for all staff.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">Plan and track quarterly travel for all staff.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>
@@ -190,7 +352,7 @@
           <div class="dashboard-icon me-2"><i class="fas fa-file-alt"></i></div>
           <h6>Non-Travel Memo (NT)</h6>
         </div>
-        <p>Manage activities that are not related to travel logistics.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">Manage activities that are not related to travel logistics.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>
@@ -218,7 +380,7 @@
           <div class="dashboard-icon me-2"><i class="fas fa-envelope-open-text"></i></div>
           <h6>Special Memo (SPM)</h6>
         </div>
-        <p>Create and send special memos for specific activities.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">Create and send special memos for specific activities.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>
@@ -246,7 +408,7 @@
           <div class="dashboard-icon me-2"><i class="fas fa-tools"></i></div>
           <h6>Request for Services <br>(RQS)</h6>
         </div>
-        <p>Submit requests for tickets, DSA, procurement, or imprest.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">Submit requests for tickets, DSA, procurement, or imprest.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>
@@ -276,7 +438,7 @@
           <div class="dashboard-icon me-2"><i class="fas fa-file-signature"></i></div>
           <h6>Request for ARF</h6>
         </div>
-        <p>Submit your Activity Request Form for approvals.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">Submit your Activity Request Form for approvals.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>
@@ -284,18 +446,13 @@
             <a href="{{ url('request-arf') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('request-arf') > 0)
+            @if(get_staff_pending_action_count('request-arf') >= 0)
             <a href="{{ url('request-arf') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="arf-pending-count">{{ get_staff_pending_action_count('request-arf') }}</span>
             </a>
             @endif
-            <a href="{{ url('request-arf') }}" class="btn btn-outline-primary btn-sm">
-              <i class="fas fa-file-alt"></i> My Submitted
-            </a>
-            <a href="{{ url('request-arf') }}" class="btn btn-outline-info btn-sm">
-              <i class="fas fa-list"></i> All ARFs
-            </a>
+           
           </div>
         </div>
 
@@ -310,7 +467,7 @@
           <div class="dashboard-icon me-2"><i class="fas fa-file-alt"></i></div>
           <h6>Single Memo (SM)</h6>
         </div>
-        <p>View Submitted Single Memos.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">View Submitted Single Memos.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>
@@ -324,15 +481,6 @@
               <span class="alert-count" id="single-memo-pending-count">{{ get_staff_pending_action_count('single-memo') }}</span>
             </a>
         
-            <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-primary btn-sm">
-              <i class="fas fa-file-alt"></i> My Submitted
-            </a>
-            <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-info btn-sm">
-              <i class="fas fa-handshake"></i> Shared SMs
-            </a>
-            <a href="{{ route('activities.single-memos.index') }}" class="btn btn-outline-secondary btn-sm">
-              <i class="fas fa-list"></i> All Single Memos
-            </a>
           </div>
         </div>
 
@@ -346,7 +494,7 @@
           <div class="dashboard-icon me-2"><i class="fas fa-edit"></i></div>
           <h6>Change Request (CR)</h6>
         </div>
-        <p>View Submitted Change Requests.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">View Submitted Change Requests.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>
@@ -354,21 +502,13 @@
             <a href="#" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('change-request') > 0)
+            @if(get_staff_pending_action_count('change-request') >= 0)
             <a href="#" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="change-request-pending-count">{{ get_staff_pending_action_count('change-request') }}</span>
             </a>
             @endif
-            <a href="#" class="btn btn-outline-primary btn-sm">
-              <i class="fas fa-file-alt"></i> My Change Requests (CR)
-            </a>
-            <a href="#" class="btn btn-outline-info btn-sm">
-              <i class="fas fa-handshake"></i> Shared CR
-            </a>
-            <a href="#" class="btn btn-outline-secondary btn-sm">
-              <i class="fas fa-list"></i> All CRs
-            </a>
+           
           </div>
         </div>
 
@@ -382,7 +522,7 @@
           <div class="dashboard-icon me-2"><i class="fas fa-chart-bar"></i></div>
           <h6>Reports</h6>
         </div>
-        <p>View and download performance reports.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">View and download performance reports.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>

@@ -512,8 +512,8 @@
                                 <i class="bx bx-info-circle"></i>
                                 <span>Approval Status</span>
                             </a>
-                        @endif
-                        
+                    @endif
+
                         @if ($activity->overall_status === 'approved')
                             <a href="{{ route('matrices.activities.memo-pdf', [$activity->matrix, $activity]) }}" target="_blank"
                                 class="btn btn-primary d-flex align-items-center gap-2">
@@ -610,12 +610,12 @@
                                 } else {
                                     $totalBudget += $unitCost * $units;
                                 }
-                            }
-                        }
                                             }
                                         }
-                                    @endphp
-                                    
+                                    }
+                                }
+                            @endphp
+                            
             <!-- Summary Table -->
             <div class="summary-table mb-4">
                 <div class="card-header bg-light border-0 py-3">
@@ -641,7 +641,7 @@
                                                  'rejected' => 'status-rejected',
                                                  'returned' => 'status-returned',
                                              ][$activity->overall_status] ?? 'status-draft';
-                                                        @endphp
+                                    @endphp
                                      <span class="status-badge {{ $statusBadgeClass }}">
                                          {{ ucfirst($activity->overall_status ?? 'draft') }}
                                      </span>
@@ -730,9 +730,9 @@
                                         @foreach ($activity->locations as $location)
                                             <span class="badge bg-success me-1">{{ $location->name }}</span>
                                             @endforeach
-                                    @else
+                                                    @else
                                         <span class="text-muted">No locations specified</span>
-                            @endif
+                                                    @endif
                                 </td>
                             </tr>
 
@@ -782,8 +782,8 @@
                                         </tr>
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
+                                            </div>
+                                            </div>
 
             <!-- Background Card -->
             @if($activity->background)
@@ -793,7 +793,7 @@
                             <i class="bx bx-info-circle"></i>
                             Background
                         </h6>
-                    </div>
+                                        </div>
                     <div class="card-body">
                         <div class="html-content">{!! $activity->background !!}</div>
                     </div>
@@ -813,8 +813,8 @@
                         </h6>
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered">
+                            <div class="table-responsive">
+                                            <table class="table table-sm table-bordered">
                                 <thead>
                                     <tr>
                                         <th>#</th>
@@ -823,9 +823,9 @@
                                         <th>Size</th>
                                         <th>Uploaded</th>
                                         <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                     @foreach ($attachments as $index => $attachment)
                                         @php
                                             $originalName =
@@ -844,8 +844,8 @@
                                                 'doc',
                                                 'docx',
                                             ]);
-                                        @endphp
-                                        <tr>
+                                                        @endphp
+                                                        <tr>
                                             <td>{{ $index + 1 }}</td>
                                             <td>{{ $attachment['type'] ?? 'Document' }}</td>
                                             <td>{{ $originalName }}</td>
@@ -871,13 +871,13 @@
                                                 @endif
                                             </td>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
-                    </div>
-                </div>
-                                    @endif
+                                        </div>
+                                    </div>
+                                @endif
 
                 <!-- Participants & Location -->
                 <div class="card content-section bg-green border-0 mb-4 w-100">
@@ -914,20 +914,20 @@
                                                         @if (isset($participant['staff']) && $participant['staff'])
                                                             {{ $participant['staff']->fname ?? '' }}
                                                             {{ $participant['staff']->lname ?? '' }}
-                                                        @else
+                                                            @else
                                                             <span class="text-muted">Unknown Staff</span>
-                    @endif
-                                                    </td>
+                                                            @endif
+                                                        </td>
                                                     <td>{{ $participant['participant_start'] ?? '-' }}</td>
                                                     <td>{{ $participant['participant_end'] ?? '-' }}</td>
                                                     <td>{{ $participant['participant_days'] ?? '-' }}</td>
-                                                </tr>
+                                                    </tr>
                                             @endforeach
                                         </tbody>
                                     </table>
                             </div>
-                        </div>
-                    @endif
+                                </div>
+                            @endif
 
                         <!-- Participants Summary Table -->
                         <div class="mt-4">
@@ -958,8 +958,8 @@
                                         </tr>
                                     </tbody>
                                 </table>
-                </div>
-            </div>
+                        </div>
+                    </div>
         </div>
     </div>
 
@@ -970,7 +970,7 @@
                             <i class="bx bx-money"></i>
                             Budget Information
                         </h6>
-</div>
+                        </div>
                     <div class="card-body">
                         @if (!empty($budget))
                             @if (!empty($budgetByFundCode))
@@ -999,18 +999,18 @@
                                     {{-- Individual Table for this Budget Code --}}
                                     <div class="table-responsive mb-4">
                                         <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>#</th>
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
                                                     <th>Cost Item</th>
                                                     <th class="text-end">Unit Cost</th>
                                                     <th class="text-end">Units</th>
                                                     <th class="text-end">Days</th>
                                                     <th class="text-end">Total</th>
                                                     <th>Description</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                                 @foreach ($items as $item)
                                                     @php
                                                         $unitCost = floatval($item['unit_cost'] ?? 0);
@@ -1026,8 +1026,8 @@
 
                                                         $groupTotal += $total;
                                                         $grandTotal += $total;
-                                                    @endphp
-                                                    <tr>
+                                        @endphp
+                                        <tr>
                                                         <td>{{ $itemCount }}</td>
                                                         <td>{{ $item['cost'] ?? 'N/A' }}</td>
                                                         <td class="text-end">{{ number_format($unitCost, 2) }}</td>
@@ -1079,22 +1079,22 @@
                                                         <td>
                                                             @if (is_array($value))
                                                                 <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                            @else
+                                                    @else
                                                                 {{ $value }}
-                                                            @endif
-                                                        </td>
-                                                    </tr>
                                                 @endif
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            </td>
+                                        </tr>
+                                                @endif
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                             @endif
                         @else
                             <div class="text-center text-muted py-4">
                                 <i class="bx bx-money bx-lg mb-3"></i>
                                 <p class="mb-0">No budget details</p>
-                            </div>
+                        </div>
                         @endif
                     </div>
                 </div>
@@ -1327,9 +1327,9 @@
                 </div>
 
 
-            </div>
-        </div>
-    </div>
+                            </div>
+                                </div>
+                            </div>
 
     {{-- Modal for preview --}}
     <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
@@ -1338,7 +1338,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="previewModalLabel">Attachment Preview</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
+                        </div>
                 <div class="modal-body" id="previewModalBody"
                     style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
                     <div class="text-center w-100">Loading preview...</div>
