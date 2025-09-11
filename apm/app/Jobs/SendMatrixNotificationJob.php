@@ -29,7 +29,7 @@ class SendMatrixNotificationJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct($model, Staff $recipient, string $type, string $message)
+    public function __construct($model, $recipient, string $type, string $message)
     {
         $this->model = $model;
         $this->recipient = $recipient;
@@ -101,13 +101,13 @@ class SendMatrixNotificationJob implements ShouldQueue
             $prefix  = env('MAIL_SUBJECT_PREFIX','Approval Management sytem').": ";
             switch($this->type) {
                 case 'approval':
-                    $subject = 'Resource Approval Request';
+                    $subject = ucfirst(class_basename($this->model)).' Approval Request';
                     break;
                 case 'returned':
-                    $subject = 'Resource Returned for Revision';
+                    $subject = ucfirst(class_basename($this->model)).' Returned for Revision';
                     break;
                 default:
-                    $subject = 'Resource Notification';
+                    $subject = ucfirst(class_basename($this->model)).' Notification';
             }
 
             $mail->Subject = $prefix.$subject;
