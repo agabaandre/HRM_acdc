@@ -17,6 +17,152 @@ class Share extends MX_Controller
 
 	echo "Welcome to the staff Tracker API";
 	}
+
+	/**
+	 * Validate session endpoint for Laravel app integration
+	 */
+	public function validate_session()
+	{
+		try {
+			// Get the authorization header
+			$headers = $this->input->request_headers();
+			$authHeader = $headers['Authorization'] ?? '';
+			
+			if (empty($authHeader) || !str_starts_with($authHeader, 'Bearer ')) {
+				http_response_code(401);
+				echo json_encode([
+					'success' => false,
+					'message' => 'No valid authorization token provided',
+					'session_expired' => true
+				]);
+				return;
+			}
+			
+			$token = substr($authHeader, 7); // Remove 'Bearer ' prefix
+			
+			// Decode and validate the token
+			$decodedToken = base64_decode($token);
+			$userData = json_decode($decodedToken, true);
+			
+			if (!$userData || !isset($userData['staff_id'])) {
+				http_response_code(401);
+				echo json_encode([
+					'success' => false,
+					'message' => 'Invalid token format',
+					'session_expired' => true
+				]);
+				return;
+			}
+			
+			// Check if user exists and is active
+			$staffId = $userData['staff_id'];
+			$query = $this->db->get_where('staff', ['staff_id' => $staffId]);
+			
+			if ($query->num_rows() === 0) {
+				http_response_code(401);
+				echo json_encode([
+					'success' => false,
+					'message' => 'User not found',
+					'session_expired' => true
+				]);
+				return;
+			}
+			
+			$staff = $query->row_array();
+			
+			// Check if staff is active
+			if ($staff['status'] !== 'active') {
+				http_response_code(401);
+				echo json_encode([
+					'success' => false,
+					'message' => 'User account is not active',
+					'session_expired' => true
+				]);
+				return;
+			}
+			
+			// Session is valid
+			http_response_code(200);
+			echo json_encode([
+				'success' => true,
+				'message' => 'Session is valid',
+				'session_expired' => false,
+				'user' => [
+					'staff_id' => $staff['staff_id'],
+					'name' => $staff['fname'] . ' ' . $staff['lname'],
+					'email' => $staff['work_email']
+				]
+			]);
+			
+		} catch (Exception $e) {
+			log_message('error', 'Session validation failed: ' . $e->getMessage());
+			http_response_code(500);
+			echo json_encode([
+				'success' => false,
+				'message' => 'Session validation failed',
+				'session_expired' => true
+			]);
+		}
+	}
+
+	/**
+	 * Refresh token endpoint for Laravel app integration
+	 */
+	public function refresh_token()
+	{
+		try {
+			// Get the authorization header
+			$headers = $this->input->request_headers();
+			$authHeader = $headers['Authorization'] ?? '';
+			
+			if (empty($authHeader) || !str_starts_with($authHeader, 'Bearer ')) {
+				http_response_code(401);
+				echo json_encode([
+					'success' => false,
+					'message' => 'No valid authorization token provided'
+				]);
+				return;
+			}
+			
+			$token = substr($authHeader, 7); // Remove 'Bearer ' prefix
+			
+			// Decode and validate the token
+			$decodedToken = base64_decode($token);
+			$userData = json_decode($decodedToken, true);
+			
+			if (!$userData || !isset($userData['staff_id'])) {
+				http_response_code(401);
+				echo json_encode([
+					'success' => false,
+					'message' => 'Invalid token format'
+				]);
+				return;
+			}
+			
+			// Generate new token with extended expiry
+			$newUserData = $userData;
+			$newUserData['token_issued_at'] = time();
+			$newUserData['token_expires_at'] = time() + (2 * 60 * 60); // 2 hours from now
+			
+			$newToken = base64_encode(json_encode($newUserData));
+			
+			http_response_code(200);
+			echo json_encode([
+				'success' => true,
+				'message' => 'Token refreshed successfully',
+				'token' => $newToken,
+				'expires_at' => date('c', $newUserData['token_expires_at'])
+			]);
+			
+		} catch (Exception $e) {
+			log_message('error', 'Token refresh failed: ' . $e->getMessage());
+			http_response_code(500);
+			echo json_encode([
+				'success' => false,
+				'message' => 'Token refresh failed'
+			]);
+		}
+	}
 	
 
 

@@ -11,6 +11,7 @@ use App\Http\Controllers\MemoController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\GenericApprovalController;
 use App\Http\Controllers\DivisionController;
+use App\Http\Controllers\Api\SessionController;
 
 // The root route that handles token decoding and user session management
 Route::get('/', function (Request $request) {
@@ -283,5 +284,11 @@ Route::get('non-travel/{nonTravel}/status', [App\Http\Controllers\NonTravelMemoC
 
 // Activities Routes
 Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index')->middleware(CheckSessionMiddleware::class);
+
+
+// Test route for session expiry (remove in production)
+Route::get('/test-session', function () {
+    return view('test-session');
+})->name('test-session');
 
 

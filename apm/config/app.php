@@ -123,4 +123,15 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | CI Application Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for the CodeIgniter application integration
+    |
+    */
+
+    'ci_base_url' => env('CI_BASE_URL', 'http://localhost/staff'),
+
 ];

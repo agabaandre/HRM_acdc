@@ -2,49 +2,500 @@
 
 @section('title', 'View Activity')
 
-@section('header', 'Activity Details')
+@section('styles')
+<style>
+    .matrix-card {
+        background: #fff;
+        border-radius: 1.25rem;
+        box-shadow: 0 4px 24px rgba(17, 154, 72, 0.08);
+        border: none;
+    }
 
-@section('header-actions')
+    .matrix-card .card-header {
+        border-radius: 1.25rem 1.25rem 0 0;
+        background: linear-gradient(90deg, #e9f7ef 0%, #fff 100%);
+        border-bottom: 1px solid #e9f7ef;
+    }
 
+    .matrix-card .card-body {
+        border-radius: 0 0 1.25rem 1.25rem;
+    }
+    
+    .approval-level-badge {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    
+    .status-badge {
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        text-transform: capitalize;
+    }
+    
+    .status-approved {
+        background: #d1fae5;
+        color: #059669;
+        border: 1px solid #a7f3d0;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #d97706;
+        border: 1px solid #fcd34d;
+    }
+
+    .status-draft {
+        background: #f3f4f6;
+        color: #6b7280;
+        border: 1px solid #d1d5db;
+    }
+
+    .status-returned {
+        background: #dbeafe;
+        color: #2563eb;
+        border: 1px solid #93c5fd;
+    }
+    
+    .gradient-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    
+    /* Timeline Styles */
+    .timeline {
+        position: relative;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: 30px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+        padding-left: 60px;
+    }
+
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .timeline-badge {
+        position: absolute;
+        left: 18px;
+        top: 0;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #28a745;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .timeline-badge.approved {
+        border-color: #28a745;
+        color: #28a745;
+    }
+
+    .timeline-badge.rejected {
+        border-color: #dc3545;
+        color: #dc3545;
+    }
+
+    .timeline-badge.returned {
+        border-color: rgb(217, 136, 15);
+        color: rgb(208, 149, 12);
+    }
+
+    .timeline-badge.submitted {
+        border-color: rgb(17, 166, 211);
+        color: rgb(27, 143, 216);
+    }
+
+    .timeline-time {
+        font-size: 0.9rem;
+        color: #888;
+        margin-bottom: 2px;
+    }
+
+    .timeline-title {
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .timeline-remarks {
+        color: #555;
+        font-size: 0.95rem;
+    }
+    
+    /* Hover effects */
+    .card:hover {
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+    
+    /* Button hover effects */
+    .btn:hover {
+        transform: translateY(-1px);
+        transition: all 0.2s ease;
+    }
+
+    .meta-card {
+        background: #f8fafc;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .content-section {
+        border-left: 4px solid;
+        background: #fafafa;
+    }
+
+    .content-section.bg-blue {
+        border-left-color: #3b82f6;
+    }
+
+    .content-section.bg-green {
+        border-left-color: #10b981;
+    }
+
+    .content-section.bg-purple {
+        border-left-color: #8b5cf6;
+    }
+
+    .sidebar-card {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
+
+    .location-badge,
+    .budget-item {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .budget-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .budget-table td {
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+
+    .budget-total-row {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        font-weight: 700;
+    }
+
+    .fund-code-header {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 0.5rem;
+    }
+
+    .fund-code-header h6 {
+        color: #0369a1;
+        margin-bottom: 0.25rem;
+    }
+
+    .fund-code-header .small {
+        color: #64748b;
+    }
+
+    .attachment-item {
+        background: #faf5ff;
+        border: 1px solid #e9d5ff;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+    }
+
+    /* Attachment Preview Modal Styles */
+    #previewModal .modal-dialog {
+        max-width: 90vw;
+        margin: 1.75rem auto;
+    }
+
+    #previewModal .modal-body {
+        min-height: 500px;
+        max-height: 80vh;
+        overflow: hidden;
+    }
+
+    #previewModal .modal-content {
+        border-radius: 0.75rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    #previewModal .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        border: none;
+    }
+
+    #previewModal .btn-close {
+        filter: invert(1);
+    }
+
+    #previewModal iframe {
+        border-radius: 0.5rem;
+    }
+
+    #previewModal img {
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .preview-attachment {
+        transition: all 0.2s ease;
+    }
+
+    .preview-attachment:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.375rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        #previewModal .modal-dialog {
+            max-width: 95vw;
+            margin: 0.5rem auto;
+        }
+
+        #previewModal .modal-body {
+            min-height: 400px;
+            max-height: 70vh;
+        }
+
+        #previewModalBody {
+            padding: 1rem;
+        }
+    }
+
+    /* Matrix-style metadata */
+    .memo-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+        font-size: 0.92rem;
+        line-height: 1.1;
+        margin-bottom: 0.5rem;
+    }
+
+    .memo-meta-item {
+        display: flex;
+        align-items: center;
+        min-width: 120px;
+        margin-bottom: 0;
+    }
+
+    .memo-meta-item i {
+        font-size: 1rem;
+        margin-right: 0.3rem;
+        color: #007bff;
+    }
+
+    .memo-meta-label {
+        color: #888;
+        font-size: 0.85em;
+        margin-right: 0.2em;
+    }
+
+    .memo-meta-value {
+        font-weight: 500;
+    }
+
+    .approval-level-badge {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    /* Summary table styles */
+    .summary-table {
+        background: white;
+        border-radius: 0.75rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .summary-table .table {
+        margin-bottom: 0;
+    }
+
+    .summary-table .table th {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border: none;
+        font-weight: 600;
+        color: #374151;
+        padding: 1rem;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .summary-table .table td {
+        border: none;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .summary-table .table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .summary-table .table tr:hover {
+        background-color: #f9fafb;
+    }
+
+    .field-label {
+        font-weight: 600;
+        color: #374151;
+        min-width: 150px;
+    }
+
+    .field-value {
+        color: #1f2937;
+        font-weight: 500;
+    }
+
+    .field-value.null {
+        color: #9ca3af;
+        font-style: italic;
+    }
+
+    /* Enhanced Summary Table Styling */
+    .summary-table .field-label {
+        font-weight: 600;
+        color: #374151;
+        min-width: 150px;
+        padding: 1rem 1rem 1rem 1.5rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-right: 3px solid #e2e8f0;
+        position: relative;
+    }
+
+    .summary-table .field-label i {
+        font-size: 1.1rem;
+        margin-right: 0.5rem;
+        vertical-align: middle;
+    }
+
+    .summary-table .field-value {
+        color: #1f2937;
+        font-weight: 500;
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .summary-table .table tr:hover .field-label {
+        background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+        transition: all 0.3s ease;
+    }
+
+    .summary-table .table tr:hover .field-value {
+        background-color: #f9fafb;
+        transition: all 0.3s ease;
+    }
+
+    .summary-table .table tr {
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .summary-table .table tr:last-child {
+        border-bottom: none;
+    }
+
+    .summary-table .table tr:nth-child(even) .field-label {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    }
+</style>
 @endsection
 
 
 
 @section('content')
-<div class="row">
-<div class="d-flex gap-1 mb-2" style="float: right;!important">
-
-@php
-    $is_single_memo = $activity->is_single_memo;
-    $title = $is_single_memo ? 'Single Memo' : 'Activity';
-@endphp
-
-    <a href="{{ route('matrices.show',  $matrix) }}" class="btn btn-sm btn-outline-secondary">
-        <i class="bx bx-arrow-back"></i> Back to Matrix
-    </a>
-
-    
-   
-    @if (can_edit_memo($activity))
-    
-        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-sm btn-warning">
-            <i class="bx bx-edit"></i> Edit {{ $title }}
-        </a>
-    @endif
-
-    
+<div class="min-h-screen bg-gray-50">
+    <!-- Enhanced Header -->
+    <div class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center py-4">
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">View Activity</h1>
+                    <p class="text-muted mb-0">Review and manage activity details</p>
 </div>
-<div class="col-md-12 d-flex justify-content-end">
-  {{-- Activity Operations Buttons --}}
-        
-            <div class="col-md-12 mb-3">
-                <div class="card border-primary">
-                
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-12 mb-2 d-flex justify-content-end gap-2">
-                             
-                                @if(can_request_arf($activity))
+                <div class="d-flex gap-3">
+                    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                        <i class="bx bx-arrow-back"></i>
+                        <span>Back to Matrix</span>
+                    </a>
+                    
+                    @if (can_edit_memo($activity))
+                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning d-flex align-items-center gap-2">
+                            <i class="bx bx-edit"></i>
+                            <span>Edit Activity</span>
+                        </a>
+                    @endif
+                    
+                    @if(can_request_arf($activity))
                                     @php
                                         // Check if ARF already exists for this activity
                                         $existingArfTop = \App\Models\RequestARF::where('source_id', $activity->id)
@@ -53,19 +504,20 @@
                                     @endphp
                                     
                                     @if(!$existingArfTop)
-                                        <button type="button" class="btn btn-success w-20" data-bs-toggle="modal" data-bs-target="#createArfModal">
-                                            <i class="bx bx-file-plus me-2"></i>Create ARF Request
+                            <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                                <i class="bx bx-file-plus"></i>
+                                <span>Create ARF Request</span>
                                         </button>
                                     @elseif(in_array($existingArfTop->overall_status, ['pending', 'approved', 'returned']))
-                                        <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary w-20">
-                                            <i class="bx bx-show me-2"></i>View ARF Request
+                            <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                                <i class="bx bx-show"></i>
+                                <span>View ARF Request</span>
                                         </a>
                                     @endif
                                 @endif
                                 
                                 {{-- Service Request Button --}}
-                               
-                                @if(can_request_services($activity))
+                    @if(can_request_services($activity))
                                     @php
                                         // Check if Service Request already exists for this activity
                                         $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
@@ -75,158 +527,459 @@
                                     
                                         @if(!$existingServiceRequest)
                                             <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
-                                               class="btn btn-info w-20">
-                                                <i class="fas fa-tools me-2"></i>Create Service Request
+                               class="btn btn-info d-flex align-items-center gap-2">
+                                <i class="fas fa-tools"></i>
+                                <span>Create Service Request</span>
                                             </a>
                                         @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
-                                            <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info w-20">
-                                                <i class="fas fa-eye me-2"></i>View Service Request
+                            <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                                <i class="fas fa-eye"></i>
+                                <span>View Service Request</span>
                                             </a>
                                         @endif
                                 @endif
-                            @if(can_print_memo($activity))
+                            
+                    @if(can_print_memo($activity))
                                 <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
-                                   class="btn btn-secondary w-20" target="_blank">
-                                    <i class="bx bx-printer me-2"></i>Print {{ $title }}
+                           class="btn btn-primary d-flex align-items-center gap-2" target="_blank">
+                            <i class="bx bx-printer"></i>
+                            <span>Print Activity</span>
                                 </a>
-                            @endif
-                          
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-    
+            @endif
 </div>
-
-    <div class="col-md-12">
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">{{ $activity->activity_title }}</h5>
-                @if($activity->document_number)
-                    <br><small class="text-primary fw-bold">Document Number: {{ $activity->document_number }}</small>
-                @endif
-                @if($activity->workplan_activity_code && $activity->fund_type_id == 1)
-                    <br><h6 class="text-dark fw-bold">World Bank Activity Code: {{ ucwords($activity->workplan_activity_code) }}</h6>
-                @endif
-                @if($activity->my_last_action)
-                    <p> Your Action: <small class=" text-white rounded p-1 {{($activity->my_last_action->action=='passed')?'bg-success':'bg-danger'}}">{{strtoupper($activity->my_last_action->action)}}</small></p>
-                @endif
             </div>
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Background:</strong>
-                        <div class="html-content">{!! $activity->background !!}</div>
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Key Result Area:</strong>
-                        <p>{{ $matrix->key_result_area[intval($activity->key_result_area)]['description'] ?? '' }}</p>
                     </div>
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <strong>Date From: </strong>{{ $activity->date_from->format('Y-m-d') }}
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Date To: </strong>{{ $activity->date_to->format('Y-m-d') }}
-                    </div>
-                    <div class="col-md-4">
-                        <strong>Status: </strong>
-                        @php
-                            // Determine the status and badge color
-                            $statusText = '';
-                            $badgeClass = 'bg-secondary';
+    <div class="container-fluid py-4">
 
-                            //dd($activity);
+        @php
+            // Decode JSON fields if they are strings
+            $budget = is_string($activity->budget_breakdown) 
+                ? json_decode(stripslashes($activity->budget_breakdown), true) 
+                : $activity->budget_breakdown;
+            
+            // Handle double-encoded JSON (sometimes happens with form submissions)
+            if (is_string($budget) && !is_array($budget)) {
+                $budget = json_decode($budget, true);
+            }
 
-                            if (can_approve_activity($activity)) {
-                                if ($activity->matrix->overall_status == 'approved' && $activity->status == 'passed') {
-                                    $statusText = ucwords($activity->status);
-                                    $badgeClass = 'bg-success';
+            $attachments = is_string($activity->attachment) 
+                ? json_decode($activity->attachment, true) 
+                : $activity->attachment;
+
+            $internalParticipants = is_string($activity->internal_participants)
+                ? json_decode($activity->internal_participants, true)
+                : $activity->internal_participants;
+
+            // Ensure variables are arrays
+            $budget = is_array($budget) ? $budget : [];
+            $attachments = is_array($attachments) ? $attachments : [];
+            $internalParticipants = is_array($internalParticipants) ? $internalParticipants : [];
+            
+            // Process internal participants to load staff details
+            $processedInternalParticipants = [];
+            if (!empty($internalParticipants)) {
+                $staffDetails = \App\Models\Staff::whereIn('staff_id', array_keys($internalParticipants))
+                    ->get()
+                    ->keyBy('staff_id');
+
+                foreach ($internalParticipants as $staffId => $participantData) {
+                    if (isset($staffDetails[$staffId])) {
+                        $processedInternalParticipants[] = [
+                            'staff' => $staffDetails[$staffId],
+                            'participant_start' => $participantData['participant_start'] ?? null,
+                            'participant_end' => $participantData['participant_end'] ?? null,
+                            'participant_days' => $participantData['participant_days'] ?? null,
+                        ];
+                    }
+                }
+            }
+
+            // Parse budget structure and organize by fund codes
+            $budgetByFundCode = [];
+            $totalBudget = 0;
+            
+            if (!empty($budget)) {
+                foreach ($budget as $key => $item) {
+                    if ($key === 'grand_total') {
+                        $totalBudget = floatval($item);
+                    } elseif (is_array($item)) {
+                        // Handle array of budget items (like "29" => [{...}])
+                        $fundCodeId = $key;
+                        $budgetByFundCode[$fundCodeId] = $item;
+                    } elseif (is_numeric($item)) {
+                        $totalBudget += floatval($item);
+                    }
+                }
+            }
+            
+            // Fetch fund code details for display
+            $fundCodes = [];
+            if (!empty($budgetByFundCode)) {
+                $fundCodeIds = array_keys($budgetByFundCode);
+                $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+            }
+
+            // If no grand_total found, calculate from items with proper days logic
+            if ($totalBudget == 0 && !empty($budgetByFundCode)) {
+                foreach ($budgetByFundCode as $fundCodeId => $items) {
+                    foreach ($items as $item) {
+                        if (isset($item['unit_cost']) && isset($item['units'])) {
+                            $unitCost = floatval($item['unit_cost']);
+                            $units = floatval($item['units']);
+                            $days = floatval($item['days'] ?? 1);
+                            
+                            // Use days when greater than 1, otherwise just unit_cost * units
+                            if ($days > 1) {
+                                $totalBudget += $unitCost * $units * $days;
                                 } else {
-                                    $statusText = ucwords($activity->status);
-                                    $badgeClass = ($activity->status == 'passed') ? 'bg-success' : 'bg-danger';
+                                $totalBudget += $unitCost * $units;
+                            }
+                        }
+                    }
                                 }
                             }
                         @endphp
 
-                        @if(can_approve_activity($activity))
-                            <span class="badge {{ $badgeClass }}">{{ $statusText }}</span>
+        <!-- Summary Table -->
+        <div class="summary-table mb-4">
+            <div class="card-header bg-light border-0 py-3">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bx bx-file-text me-2 text-primary"></i>{{ $activity->activity_title ?? 'Activity Summary' }}
+                </h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <tbody>
+                        <!-- Basic Information -->
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-check-circle me-2 text-success"></i>Status
+                            </td>
+                            <td class="field-value" colspan="3">
+                                @php
+                                    $statusBadgeClass = [
+                                        'draft' => 'status-draft',
+                                        'pending' => 'status-pending',
+                                        'approved' => 'status-approved',
+                                        'rejected' => 'status-rejected',
+                                        'returned' => 'status-returned',
+                                    ][$activity->overall_status] ?? 'status-draft';
+                                @endphp
+                                <span class="status-badge {{ $statusBadgeClass }}">
+                                    {{ ucfirst($activity->overall_status ?? 'draft') }}
+                                </span>
+                                @if($activity->overall_status === 'pending')
+                                    <a href="{{ route('matrices.activities.status', [$matrix, $activity]) }}" class="btn btn-sm btn-outline-info ms-2">
+                                        <i class="bx bx-info-circle me-1"></i>View Status
+                                    </a>
+                                @endif
+                            </td>
+                        </tr>
+                @if($activity->document_number)
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-hash me-2 text-info"></i>Document Number
+                            </td>
+                            <td class="field-value" colspan="3">
+                                <span class="text-success fw-bold">{{ $activity->document_number }}</span>
+                            </td>
+                        </tr>
+                @endif
+                        @if($activity->workplan_activity_code && $activity->fund_type_id == 1)
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-code-block me-2 text-warning"></i>World Bank Activity Code
+                            </td>
+                            <td class="field-value" colspan="3">
+                                <span class="text-warning fw-bold">{{ ucwords($activity->workplan_activity_code) }}</span>
+                            </td>
+                        </tr>
+                @endif
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-user me-2 text-primary"></i>Creator
+                            </td>
+                            <td class="field-value">
+                                {{ optional($activity->staff)->fname }}
+                                {{ optional($activity->staff)->lname ?? 'Not assigned' }}
+                            </td>
+                            <td class="field-label">
+                                <i class="bx bx-building me-2 text-secondary"></i>Division
+                            </td>
+                            <td class="field-value">
+                                {{ optional($activity->matrix->division)->division_name ?? 'Not assigned' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-user-check me-2 text-success"></i>Responsible Person
+                            </td>
+                            <td class="field-value">
+                                {{ optional($activity->focalPerson)->fname }}
+                                {{ optional($activity->focalPerson)->lname ?? 'Not assigned' }}
+                            </td>
+                            <td class="field-label">
+                                <i class="bx bx-briefcase me-2 text-info"></i>Job Title
+                            </td>
+                            <td class="field-value">
+                                {{ optional($activity->focalPerson)->job_name ?? 'Not specified' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-calendar me-2 text-danger"></i>Date Range
+                            </td>
+                            <td class="field-value">
+                                {{ $activity->date_from ? \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') : 'N/A' }}
+                                -
+                                {{ $activity->date_to ? \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') : 'N/A' }}
+                            </td>
+                            <td class="field-label">
+                                <i class="bx bx-category me-2 text-purple"></i>Request Type
+                            </td>
+                            <td class="field-value">
+                                {{ optional($activity->requestType)->name ?? 'Not specified' }}
+                            </td>
+                        </tr>
+                        
+                        <!-- Location Information -->
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-map me-2 text-success"></i>Location(s)
+                            </td>
+                            <td class="field-value" colspan="3">
+                                @if($activity->locations && $activity->locations->count() > 0)
+                                    @foreach($activity->locations as $location)
+                                        <span class="badge bg-success me-1">{{ $location->name }}</span>
+                                    @endforeach
                         @else
-                            <span class="badge bg-success">No Action Required</span>
+                                    <span class="text-muted">No locations specified</span>
                         @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Budget Information -->
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-dollar me-2 text-success"></i>Total Budget
+                            </td>
+                            <td class="field-value fw-bold text-success">${{ number_format($totalBudget, 2) }}</td>
+                            <td class="field-label">
+                                <i class="bx bx-credit-card me-2 text-warning"></i>Fund Type
+                            </td>
+                            <td class="field-value">
+                                {{ optional($activity->fundType)->name ?? 'Not specified' }}
+                            </td>
+                        </tr>
+                        
+                        <!-- Attachments -->
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-paperclip me-2 text-info"></i>Attachments
+                            </td>
+                            <td class="field-value" colspan="3">
+                                @if(!empty($attachments) && count($attachments) > 0)
+                                    <span class="badge bg-info">{{ count($attachments) }} file(s) attached</span>
+                                @else
+                                    <span class="text-muted">No attachments</span>
+                                @endif
+                            </td>
+                        </tr>
+                        
+                        <!-- Last Updated -->
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-plus-circle me-2 text-primary"></i>Created Date
+                            </td>
+                            <td class="field-value">
+                                {{ $activity->created_at ? $activity->created_at->format('M d, Y H:i') : 'Not available' }}
+                            </td>
+                            <td class="field-label">
+                                <i class="bx bx-edit me-2 text-secondary"></i>Last Updated
+                            </td>
+                            <td class="field-value">
+                                {{ $activity->updated_at ? $activity->updated_at->format('M d, Y H:i') : 'Not available' }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
                     </div>
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <strong>Request Type: </strong>{{ $activity->requestType->name ?? '-' }}
+        <!-- Key Result Area Card -->
+        @if($activity->key_result_area && $matrix->key_result_area)
+            <div class="card content-section border-0 mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                        <i class="bx bx-target-lock"></i>
+                        Key Result Area
+                    </h6>
                     </div>
-                    <div class="col-md-4">
-                        <strong>Fund Type: </strong>{{ $activity->fundType->name ?? '-' }}
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>{{ $matrix->key_result_area[intval($activity->key_result_area)]['description'] ?? '' }}</p>
                     </div>
-                    <div class="col-md-4">
-                        <strong>Responsible Staff: </strong>{{ $activity->focalPerson ? ($activity->focalPerson->fname." ".$activity->focalPerson->lname): 'Not assigned' }}
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Background Card -->
+        @if($activity->background)
+            <div class="card content-section border-0 mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                        <i class="bx bx-info-circle"></i>
+                        Background
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="html-content">{!! $activity->background !!}</div>
+                </div>
+            </div>
+        @endif
+
+        <div class="row">
+            <!-- Participants & Location -->
+            <div class="card content-section bg-green border-0 mb-4 w-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                        <i class="bx bx-group"></i>
+                        Participants
+                    </h6>
+                    </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label text-muted small fw-semibold">Internal Participants</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-info">{{ count($processedInternalParticipants) }}</span>
+                                <span class="text-muted">staff members</span>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <strong>Locations:</strong><br>
-                    @foreach($locations as $loc)
-                        <span class="badge bg-info">{{ $loc->name }}</span>
-                    @endforeach
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label text-muted small fw-semibold">External Participants</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-secondary">{{ $activity->total_external_participants ?? 0 }}</span>
+                                <span class="text-muted">external</span>
+                            </div>
+                        </div>
                 </div>
 
-                <div class="mb-3">
-                    <strong>Internal Participants ({{ count($internalParticipants) }})</strong>
-                    <div class="table-responsive mt-2">
-                        <table class="table table-sm table-bordered">
-                            <thead>
-                                <tr>
-                                    <td>#</td>
-                                    <th>Name</th>
-                                    <th>Division</th>
+                    @if (!empty($processedInternalParticipants))
+                        <div class="mt-4">
+                            <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Staff</th>
                                     <th>Job Title</th>
+                                            <th>Division</th>
                                     <th>Duty Station</th>
-                                  
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
                                     <th>Days</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                $count = 1;
-                                @endphp
-                                @foreach($internalParticipants as $entry)
-                                    <tr><td>{{$count}}</td>
-                                            <td>{{ $entry['staff']->name ?? 'N/A' }}</td>
-                                             <td>{{ $entry['staff']->division_name ?? 'N/A' }}</td>
-                                            <td>{{ $entry['staff']->job_name ?? 'N/A' }}</td>
-                                          <td>{{ $entry['staff']->duty_station_name ?? 'N/A' }}</td>
-                                        <td>{{ $entry['participant_days'] ?? '-' }}</td>
+                                        @foreach ($processedInternalParticipants as $index => $participant)
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>
+                                                    @if (isset($participant['staff']) && $participant['staff'])
+                                                        {{ $participant['staff']->fname ?? '' }} {{ $participant['staff']->lname ?? '' }}
+                                                    @else
+                                                        <span class="text-muted">Unknown Staff</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if (isset($participant['staff']) && $participant['staff'])
+                                                        {{ $participant['staff']->job_name ?? '-' }}
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if (isset($participant['staff']) && $participant['staff'])
+                                                        {{ $participant['staff']->division_name ?? '-' }}
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if (isset($participant['staff']) && $participant['staff'])
+                                                        {{ $participant['staff']->duty_station_name ?? '-' }}
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $participant['participant_start'] ?? '-' }}</td>
+                                                <td>{{ $participant['participant_end'] ?? '-' }}</td>
+                                                <td>{{ $participant['participant_days'] ?? '-' }}</td>
                                     </tr>
-                                    @php
-                                        $count++;
-                                    @endphp
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
                 </div>
+                    @endif
+
+                    <!-- Participants Summary Table -->
+                    <div class="mt-4">
+                        <label class="form-label text-muted small fw-semibold">Participants Summary</label>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Participant Type</th>
+                                        <th>Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Internal Participants</td>
+                                        <td class="text-end fw-bold">{{ count($processedInternalParticipants) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>External Participants</td>
+                                        <td class="text-end fw-bold">{{ $activity->total_external_participants ?? 0 }}</td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td class="fw-bold">Total Participants</td>
+                                        <td class="text-end fw-bold">{{ count($processedInternalParticipants) + ($activity->total_external_participants ?? 0) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
                
 
-                @if($attachments && count($attachments) > 0)
-                <div class="mb-3">
-                    <strong>Attachments:</strong>
-                    <div class="table-responsive mt-2">
+        <!-- Attachments Card -->
+        @if (!empty($attachments) && count($attachments) > 0)
+        <div class="card sidebar-card border-0 mb-4">
+            <div class="card-header bg-transparent border-0 py-3">
+                <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                    <i class="bx bx-paperclip"></i>
+                    Attachments
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
                         <table class="table table-sm table-bordered">
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Document Type</th>
+                                <th>Type</th>
                                     <th>File Name</th>
                                     <th>Size</th>
                                     <th>Uploaded</th>
@@ -234,218 +987,214 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($attachments as $index => $attachment)
-                                    @php
-                                        $originalName = $attachment['original_name'] ?? $attachment['filename'] ?? $attachment['name'] ?? 'Unknown';
-                                        $filePath = $attachment['path'] ?? $attachment['file_path'] ?? '';
-                                        $ext = $filePath ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION)) : '';
-                                        $fileUrl = $filePath ? url('storage/'.$filePath) : '#';
-                                        $isOffice = in_array($ext, ['ppt','pptx','xls','xlsx','doc','docx']);
+                        @foreach ($attachments as $index => $attachment)
+                            @php
+                                $originalName =
+                                    $attachment['original_name'] ??
+                                    ($attachment['filename'] ?? ($attachment['name'] ?? 'Unknown'));
+                                $filePath = $attachment['path'] ?? ($attachment['file_path'] ?? '');
+                                $ext = $filePath
+                                    ? strtolower(pathinfo($originalName, PATHINFO_EXTENSION))
+                                    : '';
+                                $fileUrl = $filePath ? url('storage/' . $filePath) : '#';
+                                $isOffice = in_array($ext, [
+                                    'ppt',
+                                    'pptx',
+                                    'xls',
+                                    'xlsx',
+                                    'doc',
+                                    'docx',
+                                ]);
                                     @endphp
                                     <tr>
                                         <td>{{ $index + 1 }}</td>
                                         <td>{{ $attachment['type'] ?? 'Document' }}</td>
                                         <td>{{ $originalName }}</td>
-                                        <td>{{ isset($attachment['size']) ? round($attachment['size']/1024, 2).' KB' : 'N/A' }}</td>
-                                        <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}</td>
-                                        <td>
-                                            @if($filePath)
-                                            <button type="button" class="btn btn-sm btn-info preview-attachment" 
+                                <td>{{ isset($attachment['size']) ? round($attachment['size'] / 1024, 2) . ' KB' : 'N/A' }}
+                                </td>
+                                <td>{{ isset($attachment['uploaded_at']) ? \Carbon\Carbon::parse($attachment['uploaded_at'])->format('Y-m-d H:i') : 'N/A' }}
+                                </td>
+                                <td>
+                                    @if ($filePath)
+                                        <button type="button"
+                                            class="btn btn-sm btn-success preview-attachment"
                                                 data-file-url="{{ $fileUrl }}"
                                                 data-file-ext="{{ $ext }}"
                                                 data-file-office="{{ $isOffice ? '1' : '0' }}">
                                                 <i class="bx bx-show"></i> Preview
                                             </button>
-                                            <a href="{{ $fileUrl }}" download="{{ $originalName }}" class="btn btn-sm btn-success">
+                                        <a href="{{ $fileUrl }}" target="_blank"
+                                            class="btn btn-sm btn-success">
                                                 <i class="bx bx-download"></i> Download
                                             </a>
                                             @else
-                                            <span class="text-muted">File not available</span>
+                                        <span class="text-muted">File not found</span>
                                             @endif
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
+                </div>
                     </div>
                 </div>
                 @endif
             </div>
         </div>
 
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Budget Details</h5>
+        <!-- Budget Information -->
+        <div class="card content-section bg-blue border-0 mb-4 w-100">
+            <div class="card-header bg-transparent border-0 py-3">
+                <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
+                    <i class="bx bx-money"></i>
+                    Budget Information
+                </h6>
             </div>
             <div class="card-body">
         
-            @php
-                $count = 1;
-                $grandTotal = 0;
-                
-                // Parse budget breakdown JSON
-                $budgetBreakdown = is_string($activity->budget_breakdown) 
-                    ? json_decode($activity->budget_breakdown, true) 
-                    : $activity->budget_breakdown;
-                
-                // Get fund codes for display
-                $fundCodes = [];
-                if (!empty($budgetBreakdown)) {
-                    $fundCodeIds = array_keys(array_filter($budgetBreakdown, function($key) {
-                        return $key !== 'grand_total';
-                    }, ARRAY_FILTER_USE_KEY));
-                    $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
-                }
-            @endphp
+                @if (!empty($budget))
+                    @if (!empty($budgetByFundCode))
+                        @php
+                            $count = 1;
+                            $grandTotal = 0;
+                        @endphp
 
-            @if(!empty($budgetBreakdown))
-                {{-- Group items by budget code and display each group in its own table --}}
-                @php
-                    $budgetGroups = [];
-                    foreach($budgetBreakdown as $budgetCodeId => $items) {
-                        if($budgetCodeId === 'grand_total') continue;
-                        if(is_array($items)) {
-                            $budgetGroups[$budgetCodeId] = $items;
-                        }
-                    }
-                @endphp
-                
-                @foreach($budgetGroups as $budgetCodeId => $items)
-                    @php
-                        $fundCode = $fundCodes[$budgetCodeId] ?? null;
-                        $groupTotal = 0;
-                        $itemCount = 1; // Reset counter for each budget code
-                    @endphp
-                    
-                    {{-- Budget Code Title --}}
-                    <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
-                        @if($fundCode)
-                            {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }})
-                        @else
-                            Budget Code: {{ $budgetCodeId }}
-                        @endif
-                    </h6>
+                        @foreach ($budgetByFundCode as $fundCodeId => $items)
+                            @php
+                                $fundCode = $fundCodes[$fundCodeId] ?? null;
+                                $groupTotal = 0;
+                                $itemCount = 1; // Reset counter for each budget code
+                            @endphp
+                            
+                            {{-- Budget Code Title --}}
+                            <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
+                                @if ($fundCode)
+                                    {{ $fundCode->activity }} - {{ $fundCode->code }} -
+                                    ({{ $fundCode->fundType->name ?? 'N/A' }})
+                                @else
+                                    Budget Code: {{ $fundCodeId }}
+                                @endif
+                            </h6>
 
-                    {{-- Individual Table for this Budget Code --}}
-                    <div class="table-responsive mb-4">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Cost Item</th>
-                                    <th class="text-end">Unit Cost</th>
-                                    <th class="text-end">Units</th>
-                                    <th class="text-end">Days</th>
-                                    <th class="text-end">Total</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($items as $item)
-                                    @php
-                                        $unitCost = floatval($item['unit_cost'] ?? 0);
-                                        $units = floatval($item['units'] ?? 0);
-                                        $days = floatval($item['days'] ?? 1);
-                                        
-                                        // Use days when greater than 1, otherwise just unit_cost * units
-                                        if ($days > 1) {
-                                            $total = $unitCost * $units * $days;
-                                        } else {
-                                            $total = $unitCost * $units;
-                                        }
-                                        
-                                        $groupTotal += $total;
-                                        $grandTotal += $total;
-                                        
-                                        // Debug: Show calculation
-                                        if ($days > 1) {
-                                            echo "<!-- Debug: {$item['cost']} = $unitCost × $units × $days = $total (including days) -->";
-                                        } else {
-                                            echo "<!-- Debug: {$item['cost']} = $unitCost × $units = $total (no days) -->";
-                                        }
-                                    @endphp
-                                    <tr>
-                                        <td>{{$itemCount}}</td>
-                                        <td>{{ $item['cost'] }}</td>
-                                        <td class="text-end">{{ number_format($unitCost, 2) }}</td>
-                                        <td class="text-end">{{ $units }}</td>
-                                        <td class="text-end">{{ $item['days'] ?? 1 }}</td>
-                                        <td class="text-end">{{ number_format($total, 2) }}</td>
-                                        <td>{{ $item['description'] ?? '' }}</td>
-                                    </tr>
-                                    @php
-                                        $itemCount++;
-                                    @endphp
-                                @endforeach
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="5" class="text-end">Sub Total</th>
-                                    <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
-                                    <th></th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                @endforeach
-                
-                {{-- Overall Grand Total --}}
-                <div class="row mt-3">
-                    <div class="col-md-12">
-                        <div class="alert alert-success">
-                            <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }} USD</strong></h6>
-                        </div>
-                    </div>
-                </div>
-            @else
-                {{-- Fallback to activity_budget if no JSON data --}}
-                <div class="table-responsive">
+                            {{-- Individual Table for this Budget Code --}}
+                            <div class="table-responsive mb-4">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
                                 <th>#</th>
                                 <th>Cost Item</th>
-                                <th class="text-end">Unit Cost</th>
-                                <th class="text-end">Units</th>
-                                <th class="text-end">Days</th>
-                                <th class="text-end">Total</th>
+                                            <th class="text-end">Unit Cost</th>
+                                            <th class="text-end">Units</th>
+                                            <th class="text-end">Days</th>
+                                            <th class="text-end">Total</th>
                                 <th>Description</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($activity->activity_budget as $item)
-                                @php
-                                    $total = $item->unit_cost * $item->units;
-                                    $grandTotal += $total;
+                                        @foreach ($items as $item)
+                                            @php
+                                                $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                $units = floatval($item['units'] ?? 0);
+                                                $days = floatval($item['days'] ?? 1);
+
+                                                // Use days when greater than 1, otherwise just unit_cost * units
+                                                if ($days > 1) {
+                                                    $total = $unitCost * $units * $days;
+                                                } else {
+                                                    $total = $unitCost * $units;
+                                                }
+
+                                                $groupTotal += $total;
+                                                $grandTotal += $total;
                                 @endphp
                                 <tr>
-                                    <td>{{$count}}</td>
-                                    <td>{{ $item->cost }}</td>
-                                    <td class="text-end">{{ number_format($item->unit_cost, 2) }}</td>
-                                    <td class="text-end">{{ $item->units }}</td>
-                                    <td class="text-end">{{ $item->days }}</td>
-                                    <td class="text-end">{{ number_format($total, 2) }}</td>
-                                    <td>{{ $item->description }}</td>
+                                                <td>{{ $itemCount }}</td>
+                                                <td>{{ $item['cost'] ?? 'N/A' }}</td>
+                                                <td class="text-end">{{ number_format($unitCost, 2) }}</td>
+                                                <td class="text-end">{{ $units }}</td>
+                                                <td class="text-end">{{ $days }}</td>
+                                                <td class="text-end">{{ number_format($total, 2) }}</td>
+                                                <td>{{ $item['description'] ?? '' }}</td>
                                 </tr>
                             @php
-                                $count++;
+                                                $itemCount++;
                             @endphp
-                            @endforeach
+                                        @endforeach
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="5" class="text-end">Grand Total</th>
-                                <th class="text-end">{{ number_format($grandTotal, 2) }}</th>
+                                            <th colspan="5" class="text-end">Sub Total</th>
+                                            <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
+                                            <th></th>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-            @endif
-
-                 <div class="mb-3">
-                    <strong>Request for Approval:</strong>
-                    <div class="html-content">{!! $activity->activity_request_remarks !!}</div>
+                        @endforeach
+                        
+                        {{-- Overall Grand Total --}}
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <div class="alert alert-success">
+                                    <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }}
+                                            USD</strong></h6>
                 </div>
+            </div>
+                        </div>
+                    @else
+                        <!-- Fallback: Show budget as key-value pairs if structure is different -->
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Budget Item</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach ($budget as $key => $value)
+                                    @if ($key !== 'grand_total')
+                                        <tr>
+                                            <td>{{ $key }}</td>
+                                            <td>
+                                                @if (is_array($value))
+                                                    <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
+                                                @else
+                                                    {{ $value }}
+            @endif
+                                            </td>
+                                        </tr>
+                                    @endif
+                                @endforeach
+                                </tbody>
+                            </table>
+                    </div>
+                    @endif
+                @else
+                    <div class="text-center text-muted py-4">
+                        <i class="bx bx-money bx-lg mb-3"></i>
+                        <p class="mb-0">No budget details</p>
+                            </div>
+                @endif
+                            </div>
+                            </div>
+
+        <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
+            <!-- Request for Approval Card -->
+            @if($activity->activity_request_remarks)
+                <div class="card content-section bg-purple border-0 mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                            <i class="bx bx-file-text"></i>
+                            Request For Approval
+                        </h6>
+                        </div>
+                    <div class="card-body">
+                        <div class="html-content">{!! $activity->activity_request_remarks !!}</div>
+                            </div>
+                            </div>
+                                @endif
+                            </div>
 
             @if((can_take_action($matrix ) && can_approve_activity($activity))  && !done_approving_activty($activity))
             <div class="col-md-4 mb-2 px-2 ms-auto">
@@ -453,86 +1202,10 @@
             </div>
             @endif
 
-            {{-- Debug Information (Temporary) --}}
-            @if(allow_activity_operations())
-            {{-- <div class="col-md-12 mb-3">
-                <div class="card border-warning">
-                    <div class="card-header bg-warning text-dark">
-                        <h6 class="mb-0"><i class="bx bx-bug me-2"></i>Debug Info (Remove after testing)</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <strong>allow_activity_operations():</strong> {{ allow_activity_operations() ? 'true' : 'false' }}
-                            </div>
-                            <div class="col-md-4">
-                                <strong>Activity Status (DB):</strong> {{ $activity->status ?? 'NULL' }}
-                            </div>
-                            <div class="col-md-4">
-                                <strong>Matrix Status:</strong> {{ $matrix->overall_status ?? 'NULL' }}
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-4">
-                                <strong>Final Approval Status:</strong> {{ $activity->final_approval_status ?? 'NULL' }}
-                            </div>
-                            <div class="col-md-4">
-                                <strong>Fund Type:</strong> {{ $activity->fundType->name ?? 'NULL' }}
-                            </div>
-                            <div class="col-md-4">
-                                <strong>Should Show Buttons:</strong> 
-                                {{ allow_activity_operations() ? 'YES (OVERRIDE)' : 'NO' }}
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-12">
-                                <strong>Latest Approval Trail:</strong> 
-                                @if($activity->my_last_action)
-                                    {{ $activity->my_last_action->action ?? 'NULL' }} 
-                                    ({{ $activity->my_last_action->created_at ?? 'NULL' }})
-                                @else
-                                    No approval trail found
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> --}}
-            @endif
 
-          
-     
+            @include('matrices.partials.approval-trail',['trails'=>$activity->activityApprovalTrails])
 
             </div>
-        </div>
-    </div>
-    @php
-    //dd($activity->activityApprovalTrails);
-    @endphp
-
-    @include('matrices.partials.approval-trail',['trails'=>$activity->activityApprovalTrails])
-
-    {{-- <div class="col-md-3">
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Service Requests</h5>
-            </div>
-            <div class="card-body">
-                @forelse($activity->serviceRequests as $request)
-                    <div class="mb-3">
-                        <strong>{{ $request->service_type }}</strong><br>
-                        <small>{{ $request->created_at->format('Y-m-d H:i') }}</small><br>
-                        <span class="badge bg-{{ $request->status === 'approved' ? 'success' : ($request->status === 'rejected' ? 'danger' : 'warning') }}">
-                            {{ ucfirst($request->status) }}
-                        </span>
-                    </div>
-                @empty
-                    <div class="text-muted">No service requests found.</div>
-                @endforelse
-            </div>
-        </div>
-      
-    </div> --}}
 </div>
 
 {{-- Modal for preview --}}
@@ -554,6 +1227,118 @@
 
 @push('styles')
 <style>
+/* Activity Summary Table Styles */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table tbody tr:hover {
+    background-color: rgba(17, 154, 72, 0.05);
+}
+
+.table tbody td {
+    vertical-align: middle;
+    padding: 1rem;
+}
+
+.table tbody td:first-child {
+    background-color: #f8f9fa !important;
+    border-right: 2px solid #119a48;
+    font-weight: 600;
+    color: #2c3e50;
+    width: 30%;
+}
+
+.table tbody td:last-child {
+    background-color: #ffffff;
+}
+
+/* Badge styling in table */
+.table .badge {
+    font-size: 0.8rem;
+    padding: 0.4em 0.8em;
+}
+
+/* Background section styling */
+.bg-light.rounded.border {
+    border: 1px solid #dee2e6 !important;
+    background-color: #f8f9fa !important;
+}
+
+/* Enhanced card styling */
+.card-header.bg-light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-bottom: 2px solid #119a48;
+}
+
+.card-header h5 {
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+/* Status badges enhancement */
+.badge.fs-6 {
+    font-size: 0.9rem !important;
+    padding: 0.5em 1em;
+    font-weight: 600;
+}
+
+/* Background content styling */
+.bg-light.rounded {
+    border: 1px solid #e9ecef;
+    background-color: #f8f9fa !important;
+}
+
+/* Table enhancements for data tables */
+.table-hover tbody tr:hover {
+    background-color: rgba(17, 154, 72, 0.05);
+}
+
+.table thead th {
+    border-bottom: 2px solid #119a48;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Button group styling */
+.btn-group .btn {
+    border-radius: 0;
+}
+
+.btn-group .btn:first-child {
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+.btn-group .btn:last-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .info-item {
+        margin-bottom: 1.5rem;
+    }
+    
+    .info-label {
+        font-size: 0.8rem;
+    }
+    
+    .info-value {
+        font-size: 0.9rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+
 /* Attachment Preview Modal Styles */
 #attachmentPreviewModal .modal-dialog {
     max-width: 90vw;

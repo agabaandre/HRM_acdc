@@ -831,20 +831,39 @@
             </div>
         </div>
 
+        <!-- Key Result Area Card -->
+        @if($specialMemo->key_result_area && $matrix->key_result_area)
+            <div class="card content-section border-0 mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                        <i class="bx bx-target-lock"></i>
+                        Key Result Area
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>{{ $matrix->key_result_area[intval($specialMemo->key_result_area)]['description'] ?? '' }}</p>
+                            </div>
+                            </div>
+                            </div>
+                                        </div>
+                                    @endif
+
         <!-- Background Card -->
         @if($specialMemo->background)
             <div class="card content-section border-0 mb-4">
-                <div class="card-header bg-transparent border-0 py-3">
-                    <h6 class="mb-0 fw-bold  d-flex align-items-center gap-2">
+                    <div class="card-header bg-transparent border-0 py-3">
+                    <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                         <i class="bx bx-info-circle"></i>
                         Background
                         </h6>
                     </div>
                     <div class="card-body">
                     <div class="html-content">{!! $specialMemo->background !!}</div>
-                            </div>
-                                        </div>
-                                    @endif
+                        </div>
+                        </div>
+        @endif
 
         <div class="row">
          
