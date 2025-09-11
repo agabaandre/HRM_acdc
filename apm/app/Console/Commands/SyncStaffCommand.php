@@ -42,7 +42,7 @@ class SyncStaffCommand extends Command
             }
 
             $response = Http::withBasicAuth($username, $password)
-                ->get('https://cbp.africacdc.org/staff/share/get_current_staff/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
+                ->get('http://localhost/staff/staff/share/get_current_staff/YWZyY2FjZGNzdGFmZnRyYWNrZXIh');
 
             if (!$response->successful()) {
                 throw new Exception('Failed to fetch data from API: ' . $response->status());
