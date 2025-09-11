@@ -197,13 +197,14 @@
                         <i class="bx bx-info-circle"></i>
                         <span>Approval Status</span>
                     </a>
-                   
+                  
                    @if(can_print_memo($nonTravel))
                         <a href="{{ route('non-travel.print', $nonTravel) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
                             <i class="bx bx-printer"></i>
                             <span>Print PDF</span>
                         </a>
                     @endif
+                    
                     @if(can_request_arf($nonTravel))
                         @php
                             // Check if ARF already exists for this non-travel memo
@@ -225,13 +226,15 @@
                         @endif
                         
                         {{-- Service Request Button --}}
-                        @if(can_request_services($nonTravel))
+                       
+                        @dd(can_request_memo_action($nonTravel,'services'))
+                        @if(can_request_memo_action($nonTravel,'services'))
                             @php
                                 // Check if Service Request already exists for this memo
                                 $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $nonTravel->id)
                                     ->where('model_type', 'App\\Models\\NonTravelMemo')
                                     ->first();
-                            @endphp
+                            @endphp   @dd($existingServiceRequest);
                             
                             @if(!$existingServiceRequest)
                                 <a href="{{ route('service-requests.create') }}?source_type=non_travel_memo&source_id={{ $nonTravel->id }}" 

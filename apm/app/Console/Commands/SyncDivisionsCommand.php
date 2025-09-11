@@ -37,13 +37,16 @@ class SyncDivisionsCommand extends Command
             $username = config('services.staff_api.username');
             $password = config('services.staff_api.password');
 
+            //dd($username, $password);
+
             // Validate credentials
             if (empty($username) || empty($password)) {
                 throw new Exception('STAFF_API_USERNAME and STAFF_API_PASSWORD must be set in .env file');
             }
 
             $response = Http::withBasicAuth($username, $password)
-                ->get('https://cbp.africacdc.org/staff/share/divisions/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
+                ->get('http://localhost/staff/share/divisions/YWZyY2FjZGNzdGFmZnRyYWNrZXI');
+            //dd($response);
 
             if (!$response->successful()) {
                 throw new Exception('Failed to fetch data from API: ' . $response->status());
