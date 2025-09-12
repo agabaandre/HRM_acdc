@@ -1,6 +1,6 @@
  <!-- Trail comment modal -->
         <div class="modal fade" id="trailDetail{{$trail->id}}" tabindex="-1" aria-labelledby="trailDetail{{$trail->id}}" aria-hidden="true">
-            <div class="modal-dialog modal-md modal-dialog-centered">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h6 class="modal-title" id="trailDetail{{$trail->id}}">Comment by {{ $trail->staff->name ?? 'N/A' }} </h6>
