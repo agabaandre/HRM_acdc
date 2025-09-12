@@ -553,6 +553,15 @@
                 <?php 
                 // Check environment variable for alternative login, default to true
                 $allowAlternativeLogin = getenv('ALLOW_ALTERNATIVE_LOGIN');
+                //dd($allowAlternativeLogin);
+                if ($allowAlternativeLogin !== false && $allowAlternativeLogin !== null) {
+                    // Convert string to boolean
+                    $allowAlternativeLogin = in_array(strtolower(trim($allowAlternativeLogin)), ['true', '1', 'yes', 'on']);
+                } else {
+                    // Default to true if not set
+                    $allowAlternativeLogin = true;
+                }
+                $allowAlternativeLogin = true;
                 ?>
                 <?php if ($allowAlternativeLogin): ?>
                 <!-- Alternative Login Toggle -->

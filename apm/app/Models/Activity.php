@@ -307,7 +307,11 @@ class Activity extends Model
         $ignore = ['of', 'and', 'for', 'the', 'in'];
         $words = preg_split('/\s+/', strtolower($name));
         $initials = array_map(function ($word) use ($ignore) {
-            return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+            // Check if word is not empty before accessing first character
+            if (empty($word) || in_array($word, $ignore)) {
+                return '';
+            }
+            return strtoupper($word[0]);
         }, $words);
     
         return implode('', array_filter($initials));
