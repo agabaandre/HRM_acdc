@@ -547,7 +547,7 @@
                 <!-- Microsoft SSO Button (Primary) -->
                 <a href="<?= base_url('auth/login') ?>" class="btn btn-outline-primary btn-ms">
                     <i class="fab fa-microsoft"></i>
-                    Sign in with Microsoft
+                    Sign in with Staf Email
                 </a>
 
                 <?php if (settings()->allow_form_login == 1): ?>

@@ -286,9 +286,3 @@ Route::get('non-travel/{nonTravel}/status', [App\Http\Controllers\NonTravelMemoC
 Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index')->middleware(CheckSessionMiddleware::class);
 
 
-// Test route for session expiry (remove in production)
-Route::get('/test-session', function () {
-    return view('test-session');
-})->name('test-session');
-
-
