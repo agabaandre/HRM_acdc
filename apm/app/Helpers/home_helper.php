@@ -35,7 +35,7 @@ if (!function_exists('user_info')) {
             'bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-danger', 'bg-secondary'
         ];
         // Pick color based on first letter of first name
-        $firstLetter = strtoupper($firstName[0] ?? 'A');
+        $firstLetter = strtoupper((!empty($firstName) ? $firstName[0] : 'A'));
         $colorIndex = (ord($firstLetter) - 65) % count($avatarColors);
         if ($colorIndex < 0) $colorIndex = 0;
         $avatarColor = $avatarColors[$colorIndex];
