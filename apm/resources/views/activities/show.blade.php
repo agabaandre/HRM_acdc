@@ -665,15 +665,13 @@
                             $statusText = '';
                             $badgeClass = 'bg-secondary';
 
-                            //dd($activity);
-
                             if (can_approve_activity($activity)) {
-                                if ($activity->matrix->overall_status == 'approved' && $activity->status == 'passed') {
+                                if ($activity->status == 'passed') {
                                     $statusText = ucwords($activity->status);
                                     $badgeClass = 'bg-success';
                                 } else {
                                     $statusText = ucwords($activity->status);
-                                    $badgeClass = ($activity->status == 'passed') ? 'bg-success' : 'bg-danger';
+                                    $badgeClass = 'bg-danger';
                                 }
                             }
                         @endphp

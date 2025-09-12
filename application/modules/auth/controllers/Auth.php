@@ -175,10 +175,6 @@ private function handle_login($user_data, $email) {
   $users['is_admin'] = false;
 
   $this->session->set_userdata('user', (object)$users);
-  //log_user_action("User Logged in Successfully using MS SSO: $email");
-
-  // Debugging line — check logs
-  //log_message('debug', 'Redirecting with session: ' . json_encode($this->session->userdata('user')));
 
 
   if ($users['role']) {
@@ -407,7 +403,6 @@ public function revert()
     $page = ($this->uri->segment(3)) ? $this->uri->segment(3) : 0; //default starting point for limits 
     $data['links'] = $this->pagination->create_links();
     $data['users'] = $this->auth_mdl->getAll($config['per_page'], $page, $searchkey);
-   // dd($this->db->last_query());
     $data['divisions'] = $this->db->get('divisions')->result();
     $data['module'] = "auth";
     $data['title'] = "User Management";
@@ -433,9 +428,6 @@ public function revert()
       if ($status !== '' && $status !== null) $filters['status'] = $status;
       
       try {
-          // Debug: Log the filters being received
-          log_message('debug', 'Filters received in fetch_users_ajax: ' . json_encode($filters));
-          
           // Get total count for pagination
           $totalUsers = $this->auth_mdl->countFilteredUsers($filters);
           
@@ -455,9 +447,6 @@ public function revert()
               'totalPages' => ceil($totalUsers / $pageSize)
           ]);
       } catch (Exception $e) {
-          // Log the error for debugging
-          log_message('error', 'Error in fetch_users_ajax: ' . $e->getMessage());
-          
           // Return error response
           http_response_code(500);
           header('Content-Type: application/json; charset=utf-8');
@@ -538,9 +527,6 @@ public function revert()
       fclose($output);
       exit;
       } catch (Exception $e) {
-          // Log the error for debugging
-          log_message('error', 'Error in export_users_excel: ' . $e->getMessage());
-          
           // Return error response
           http_response_code(500);
           echo 'Error exporting users: ' . $e->getMessage();
@@ -605,6 +591,7 @@ public function revert()
   }
   public function addUser()
   {
+    
     $postdata = $this->input->post();
     $res = $this->auth_mdl->addUser($postdata);
     echo $res;
@@ -620,12 +607,6 @@ public function revert()
   }
   public function updateUser()
   {
-    // Verify CSRF token
-    if (!$this->security->get_csrf_hash() || $this->input->post($this->security->get_csrf_hash()) !== $this->security->get_csrf_hash()) {
-        http_response_code(403);
-        echo json_encode(['error' => 'CSRF token validation failed']);
-        return;
-    }
     
     $postdata = $this->input->post();
     
@@ -663,12 +644,10 @@ public function revert()
 
   public function changePass()
 {
+    
     $postdata = $this->input->post();
 
-    // Attempt password change
     $res = $this->auth_mdl->changePass($postdata);
-
-    //dd($postdata);
 
     // Set flash message based on result
     if ($res) {
@@ -689,71 +668,26 @@ public function revert()
   }
   public function resetPass()
   {
-    // Debug: Log CSRF validation details
-    log_message('debug', 'resetPass called - POST data: ' . json_encode($this->input->post()));
-    log_message('debug', 'CSRF hash: ' . $this->security->get_csrf_hash());
-    log_message('debug', 'CSRF token name: ' . $this->security->get_csrf_token_name());
-    log_message('debug', 'Posted CSRF token: ' . $this->input->post($this->security->get_csrf_token_name()));
-    
-    // Verify CSRF token
-    if (!$this->security->get_csrf_hash() || $this->input->post($this->security->get_csrf_hash()) !== $this->security->get_csrf_hash()) {
-        log_message('error', 'CSRF token validation failed in resetPass');
-        http_response_code(403);
-        echo json_encode(['error' => 'CSRF token validation failed']);
-        return;
-    }
-    
     $postdata = $this->input->post();
-    //print_r ($postdata);
     $res = $this->auth_mdl->resetPass($postdata);
     echo json_encode(['message' => $res]);
   }
   public function blockUser()
   {
-    // Debug: Log CSRF validation details
-    log_message('debug', 'blockUser called - POST data: ' . json_encode($this->input->post()));
-    log_message('debug', 'CSRF hash: ' . $this->security->get_csrf_hash());
-    log_message('debug', 'CSRF token name: ' . $this->security->get_csrf_token_name());
-    log_message('debug', 'Posted CSRF token: ' . $this->input->post($this->security->get_csrf_token_name()));
-    
-    // Verify CSRF token
-    if (!$this->security->get_csrf_hash() || $this->input->post($this->security->get_csrf_token_name()) !== $this->security->get_csrf_hash()) {
-        log_message('error', 'CSRF token validation failed in blockUser');
-        http_response_code(403);
-        echo json_encode(['error' => 'CSRF token validation failed']);
-        return;
-    }
-    
     $postdata = $this->input->post();
-    //print_r ($postdata);
     $res = $this->auth_mdl->blockUser($postdata);
     echo json_encode(['message' => $res]);
   }
-  public function unblockUser()                                                                                                                                                                                                                                                              
+  public function unblockUser()
   {
-    // Debug: Log CSRF validation details
-    log_message('debug', 'unblockUser called - POST data: ' . json_encode($this->input->post()));
-    log_message('debug', 'CSRF hash: ' . $this->security->get_csrf_hash());
-    log_message('debug', 'CSRF token name: ' . $this->security->get_csrf_token_name());
-    log_message('debug', 'Posted CSRF token: ' . $this->input->post($this->security->get_csrf_token_name()));
-    
-    // Verify CSRF token
-    if (!$this->security->get_csrf_hash() || $this->input->post($this->security->get_csrf_hash()) !== $this->security->get_csrf_hash()) {
-        log_message('error', 'CSRF token validation failed in unblockUser');
-        http_response_code(403);
-        echo json_encode(['error' => 'CSRF token validation failed']);
-        return;
-    }
-    
     $postdata = $this->input->post();
     $res = $this->auth_mdl->unblockUser($postdata);
     echo json_encode(['message' => $res]);
   }
   public function update_profile()
   {
+    
     $data = $this->input->post();
- 
-    //dd($postdata);
     $is_error = false;
     // Load the Upload library
     $this->load->library('upload');
