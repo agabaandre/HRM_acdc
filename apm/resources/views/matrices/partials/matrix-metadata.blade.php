@@ -26,6 +26,37 @@
 .matrix-meta-value {
     font-weight: 500;
 }
+
+/* Modal content wrapping styles for Key Result Areas */
+.modal-body .list-group-item {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+.modal-body .list-group-item p {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    line-height: 1.5;
+}
+
+.modal-body .list-group-item h6 {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+/* Ensure modal content doesn't exceed width */
+.modal-body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
 </style>
 
 <div class="card shadow-sm mb-3">
@@ -98,7 +129,7 @@
 
 <!-- Key Result Areas Modal -->
 <div class="modal fade" id="keyResultAreasModal" tabindex="-1" aria-labelledby="keyResultAreasModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title" id="keyResultAreasModalLabel">

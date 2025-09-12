@@ -3,6 +3,66 @@
 @section('title', 'Quarterly Travel Matrices')
 @section('header', 'Quarterly Travel Matrices')
 
+@push('styles')
+<style>
+/* Modal content wrapping styles */
+.modal-body .list-group-item {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+.modal-body .list-group-item p {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Ensure modal content doesn't exceed width */
+.modal-body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Better spacing for modal content */
+.modal-body .list-group {
+    margin-bottom: 0;
+}
+
+.modal-body .list-group-item {
+    border-left: none;
+    border-right: none;
+    padding: 0.75rem 1rem;
+}
+
+.modal-body .list-group-item:first-child {
+    border-top: none;
+}
+
+.modal-body .list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* Key result area descriptions */
+.modal-body .fw-bold {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* Activity titles */
+.modal-body .list-group-item span {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+</style>
+@endpush
+
 @section('header-actions')
     @php $isFocal = isfocal_person(); @endphp
 
@@ -180,7 +240,7 @@
                                                     <!-- Modal -->
                                                     <div class="modal fade" id="kraModalMyDiv{{ $matrix->id }}" tabindex="-1"
                                                         aria-labelledby="kraModalLabelMyDiv{{ $matrix->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog modal-md modal-dialog-centered">
+                                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
                                                                     <h5 class="modal-title" id="kraModalLabelMyDiv{{ $matrix->id }}">
@@ -218,7 +278,7 @@
                                                     <!-- Modal -->
                                                     <div class="modal fade" id="activitiesModalMyDiv{{ $matrix->id }}" tabindex="-1"
                                                         aria-labelledby="activitiesModalLabelMyDiv{{ $matrix->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog modal-md modal-dialog-centered">
+                                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
                                                                     <h5 class="modal-title" id="activitiesModalLabelMyDiv{{ $matrix->id }}">
@@ -359,7 +419,7 @@
                                                         <!-- Modal -->
                                                         <div class="modal fade" id="kraModalAll{{ $matrix->id }}" tabindex="-1"
                                                             aria-labelledby="kraModalLabelAll{{ $matrix->id }}" aria-hidden="true">
-                                                            <div class="modal-dialog modal-md modal-dialog-centered">
+                                                            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                                                                 <div class="modal-content">
                                                                     <div class="modal-header">
                                                                         <h5 class="modal-title" id="kraModalLabelAll{{ $matrix->id }}">
@@ -397,7 +457,7 @@
                                                         <!-- Modal -->
                                                         <div class="modal fade" id="activitiesModalAll{{ $matrix->id }}" tabindex="-1"
                                                             aria-labelledby="activitiesModalLabelAll{{ $matrix->id }}" aria-hidden="true">
-                                                            <div class="modal-dialog modal-md modal-dialog-centered">
+                                                            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                                                                 <div class="modal-content">
                                                                     <div class="modal-header">
                                                                         <h5 class="modal-title" id="activitiesModalLabelAll{{ $matrix->id }}">
