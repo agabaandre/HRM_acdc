@@ -87,7 +87,7 @@
 
     <!-- Submit for Approval Modal -->
     <div class="modal fade" id="submitForApprovalModal" tabindex="-1" aria-labelledby="submitForApprovalModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="submitForApprovalModalLabel">Submit for Approval</h5>

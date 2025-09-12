@@ -188,7 +188,7 @@
                                                     <!-- Modal -->
                                                     <div class="modal fade" id="kraModal{{ $matrix->id }}" tabindex="-1"
                                                         aria-labelledby="kraModalLabel{{ $matrix->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog modal-md modal-dialog-centered">
+                                                        <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
                                                                     <h5 class="modal-title" id="kraModalLabel{{ $matrix->id }}">
@@ -226,7 +226,7 @@
                                                     <!-- Modal -->
                                                     <div class="modal fade" id="activitiesModal{{ $matrix->id }}" tabindex="-1"
                                                         aria-labelledby="activitiesModalLabel{{ $matrix->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog modal-md modal-dialog-centered">
+                                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
                                                                     <h5 class="modal-title" id="activitiesModalLabel{{ $matrix->id }}">
@@ -367,7 +367,7 @@
                                                     <!-- Modal -->
                                                     <div class="modal fade" id="kraModalApproved{{ $matrix->id }}" tabindex="-1"
                                                         aria-labelledby="kraModalApprovedLabel{{ $matrix->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog modal-md modal-dialog-centered">
+                                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
                                                                     <h5 class="modal-title" id="kraModalApprovedLabel{{ $matrix->id }}">
@@ -405,7 +405,7 @@
                                                     <!-- Modal -->
                                                     <div class="modal fade" id="activitiesModalApproved{{ $matrix->id }}" tabindex="-1"
                                                         aria-labelledby="activitiesModalApprovedLabel{{ $matrix->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog modal-md modal-dialog-centered">
+                                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                                                             <div class="modal-content">
                                                                 <div class="modal-header">
                                                                     <h5 class="modal-title" id="activitiesModalApprovedLabel{{ $matrix->id }}">
