@@ -154,6 +154,7 @@ $settingsMenuItems = [
             </li>
 
             <!-- Workflow Management -->
+            @if(in_array(89, user_session('permissions', [])))
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle {{ Request::is('workflows*') || Request::is('approvals*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
@@ -170,9 +171,11 @@ $settingsMenuItems = [
                     @endforeach
                 </ul>
             </li>
+            @endif
 
 
             <!-- Settings -->
+            @if(in_array(89, user_session('permissions', [])))
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
@@ -189,6 +192,7 @@ $settingsMenuItems = [
                     @endforeach
                 </ul>
             </li>
+            @endif
         </ul>
     </nav>
 </div>

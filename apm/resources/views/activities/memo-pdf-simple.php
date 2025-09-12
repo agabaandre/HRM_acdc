@@ -427,7 +427,11 @@
                 $ignore = ['of', 'and', 'for', 'the', 'in'];
                 $words = preg_split('/\s+/', strtolower($name));
                 $initials = array_map(function ($word) use ($ignore) {
-                    return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+                    // Check if word is not empty before accessing first character
+                    if (empty($word) || in_array($word, $ignore)) {
+                        return '';
+                    }
+                    return strtoupper($word[0]);
                 }, $words);
                 return implode('', array_filter($initials));
             }
@@ -540,7 +544,7 @@
                 <div>
                                 <br><br>
                                 <strong class="section-label">File No:</strong><br>
-                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($activity_refernce); ?></span>
+                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($activity->document_number ?? 'N/A'); ?></span>
                 </div>
               </div>
             </td>
@@ -706,7 +710,7 @@
     <!-- Right-side memo meta (stacked, borderless) -->
     <div class="topbar">
       <div class="meta" aria-label="Memo metadata">
-        <span class="memo-id"><?php echo $activity_refernce; ?></span><br/>
+        <span class="memo-id"><?php echo $activity->document_number ?? 'N/A'; ?></span><br/>
         <span class="date">Date: <?php echo $activity->created_at->format('j F Y'); ?></span>
       </div>
     </div>

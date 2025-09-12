@@ -506,7 +506,7 @@
                   <div>
                     <br><br>
                                 <strong class="section-label">File No:</strong><br>
-                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($special_memo_reference); ?></span>
+                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($specialMemo->document_number ?? 'N/A'); ?></span>
           </div>
         </div>
       </td>
@@ -535,7 +535,7 @@
                 <div>
                                 <br><br>
                                 <strong class="section-label">File No:</strong><br>
-                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($special_memo_reference); ?></span>
+                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($specialMemo->document_number ?? 'N/A'); ?></span>
                 </div>
               </div>
             </td>
@@ -713,7 +713,7 @@
     <!-- Right-side memo meta (stacked, borderless) -->
     <div class="topbar">
       <div class="meta" aria-label="Memo metadata">
-        <span class="memo-id"><?php echo $special_memo_reference; ?></span><br/>
+        <span class="memo-id"><?php echo $specialMemo->document_number ?? 'N/A'; ?></span><br/>
         <span class="date">Date: <?php echo $specialMemo->created_at->format('j F Y'); ?></span>
       </div>
     </div>
