@@ -518,11 +518,6 @@ $(document).ready(function() {
   function loadUsers(page = 1) {
     currentPage = page;
     
-    console.log('loadUsers called with page:', page);
-    console.log('Current page set to:', currentPage);
-    console.log('Table element check:', $('#usersTable').length);
-    console.log('Table tbody check:', $('#usersTable tbody').length);
-    
     // Show loading
     $('#usersTable tbody').html('<tr class="loading-row"><td colspan="4" class="text-center py-4"><i class="fa fa-spinner fa-spin fa-2x"></i><br>Loading users...</td></tr>');
     
@@ -534,10 +529,6 @@ $(document).ready(function() {
       page: page,
       pageSize: pageSize
     };
-    
-    console.log('Sending AJAX request with data:', data);
-    console.log('Status filter value:', $('#statuses').val());
-    console.log('Status filter type:', typeof $('#statuses').val());
     
     $.ajax({
       url: '<?php echo base_url("auth/fetch_users_ajax"); ?>',
@@ -626,24 +617,10 @@ $(document).ready(function() {
   
   // Render users in table
   function renderUsers(users) {
-    console.log('Rendering users:', users);
-    
-    // Check for duplicate user IDs
-    const userIds = users.map(u => u.user_id);
-    const uniqueIds = [...new Set(userIds)];
-    if (userIds.length !== uniqueIds.length) {
-      console.warn('Duplicate user IDs detected!', {
-        total: userIds.length,
-        unique: uniqueIds.length,
-        duplicates: userIds.filter((id, index) => userIds.indexOf(id) !== index)
-      });
-    }
-    
     let html = '';
     
     try {
       users.forEach(function(user) {
-        console.log('Processing user:', user);
         
         // Construct full name from title, fname, lname, oname
         let fullName = '';
