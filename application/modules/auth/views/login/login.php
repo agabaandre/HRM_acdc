@@ -553,7 +553,6 @@
                 <?php 
                 // Check environment variable for alternative login, default to true
                 $allowAlternativeLogin = getenv('ALLOW_ALTERNATIVE_LOGIN');
-                $allowAlternativeLogin = $allowAlternativeLogin !== false ? filter_var($allowAlternativeLogin, FILTER_VALIDATE_BOOLEAN) : true;
                 ?>
                 <?php if ($allowAlternativeLogin): ?>
                 <!-- Alternative Login Toggle -->
