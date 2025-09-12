@@ -546,8 +546,8 @@
                             <span>Print Activity</span>
                                 </a>
             @endif
-</div>
-            </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -648,7 +648,7 @@
                 <h5 class="mb-0 fw-bold text-dark">
                     <i class="bx bx-file-text me-2 text-primary"></i>{{ $activity->activity_title ?? 'Activity Summary' }}
                 </h5>
-            </div>
+                    </div>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <tbody>
@@ -658,9 +658,9 @@
                                 <i class="bx bx-check-circle me-2 text-success"></i>Status
                             </td>
                             <td class="field-value" colspan="3">
-                                <strong>Status: </strong>
+                        <strong>Status: </strong>
                                 
-                             @php
+                        @php
                             // Determine the status and badge color
                             $statusText = '';
                             $badgeClass = 'bg-secondary';
@@ -1205,11 +1205,11 @@
             @if((can_take_action($matrix ) && can_approve_activity($activity))  && !done_approving_activty($activity))
             <div class="col-md-4 mb-2 px-2 ms-auto">
               @include('activities.partials.approval-actions',['activity'=>$activity,'matrix'=>$matrix])
-            </div>
+                        </div>
             @endif
 
 
-            @include('matrices.partials.approval-trail',['trails'=>$activity->activityApprovalTrails])
+    @include('matrices.partials.approval-trail',['trails'=>$activity->activityApprovalTrails])
 
             </div>
 </div>

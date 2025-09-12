@@ -23,6 +23,9 @@
             <div class="col-md-3">
                 <div class="card border-primary">
                     <div class="card-body text-center">
+                        <div class="mb-2">
+                            <i class="fas fa-list-alt fa-2x text-primary"></i>
+                        </div>
                         <h6 class="card-title text-primary">Total Logs</h6>
                         <h3 class="text-primary">{{ number_format($stats['total_logs']) }}</h3>
                         <small class="text-muted">All Time</small>
@@ -32,6 +35,9 @@
             <div class="col-md-3">
                 <div class="card border-success">
                     <div class="card-body text-center">
+                        <div class="mb-2">
+                            <i class="fas fa-clock fa-2x text-success"></i>
+                        </div>
                         <h6 class="card-title text-success">Recent Activity</h6>
                         <h3 class="text-success">{{ number_format($stats['recent_activity']) }}</h3>
                         <small class="text-muted">Last 24 Hours</small>
@@ -41,6 +47,9 @@
             <div class="col-md-3">
                 <div class="card border-info">
                     <div class="card-body text-center">
+                        <div class="mb-2">
+                            <i class="fas fa-chart-line fa-2x text-info"></i>
+                        </div>
                         <h6 class="card-title text-info">Top Action</h6>
                         <h3 class="text-info">{{ $stats['actions_count']->keys()->first() ?? 'N/A' }}</h3>
                         <small class="text-muted">{{ $stats['actions_count']->first() ?? 0 }} times</small>
@@ -50,8 +59,11 @@
             <div class="col-md-3">
                 <div class="card border-warning">
                     <div class="card-body text-center">
-                        <h6 class="card-title text-warning">Top Table</h6>
-                        <h3 class="text-warning">{{ $stats['tables_count']->keys()->first() ?? 'N/A' }}</h3>
+                        <div class="mb-2">
+                            <i class="fas fa-database fa-2x text-warning"></i>
+                        </div>
+                        <h6 class="card-title text-dark">Top Table</h6>
+                        <h4 class="text-dark">{{ str_replace('audit_', '', $stats['tables_count']->keys()->first()) ?? 'N/A' }}</h4>
                         <small class="text-muted">{{ $stats['tables_count']->first() ?? 0 }} records</small>
                     </div>
                 </div>
@@ -598,6 +610,94 @@
     word-wrap: break-word;
     word-break: break-word;
     white-space: normal;
+}
+
+/* Causer column - reduce width by 5% and add text wrapping */
+.audit-logs-table td:nth-child(5) {
+    width: 15%; /* Reduced from ~20% to 15% (5% reduction) */
+    max-width: 150px;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* Source column - make much smaller and add text wrapping */
+.audit-logs-table td:nth-child(7) {
+    width: 8%; /* Much smaller width */
+    max-width: 80px;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    padding: 0.5rem 0.25rem; /* Reduce padding */
+}
+
+/* Ensure badges in source column wrap properly */
+.audit-logs-table td:nth-child(7) .badge {
+    display: block;
+    margin-bottom: 2px;
+    white-space: normal;
+    word-wrap: break-word;
+    word-break: break-word;
+    font-size: 0.7rem; /* Smaller font size */
+    padding: 0.25rem 0.4rem; /* Smaller padding */
+    line-height: 1.2; /* Tighter line height */
+    text-align: center; /* Center the text */
+}
+
+/* Ensure causer content wraps properly */
+.audit-logs-table td:nth-child(5) .fw-semibold,
+.audit-logs-table td:nth-child(5) .text-muted {
+    display: block;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* Source column header styling */
+.audit-logs-table th:nth-child(7) {
+    width: 8%;
+    max-width: 80px;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+/* Summary cards text size and color improvements */
+.card-body h6.card-title {
+    font-size: 0.9rem !important;
+    font-weight: 600;
+    color: #2c3e50 !important;
+    margin-bottom: 0.5rem;
+}
+
+.card-body h3 {
+    font-size: 1.8rem !important;
+    font-weight: 700;
+    color: #2c3e50 !important;
+    margin-bottom: 0.25rem;
+}
+
+.card-body small.text-muted {
+    font-size: 0.75rem !important;
+    color: #6c757d !important;
+    font-weight: 500;
+}
+
+/* Improve card border colors for better contrast */
+.card.border-primary {
+    border-color: #0d6efd !important;
+}
+
+.card.border-success {
+    border-color: #198754 !important;
+}
+
+.card.border-info {
+    border-color: #0dcaf0 !important;
+}
+
+.card.border-warning {
+    border-color: #ffc107 !important;
 }
 
 .audit-logs-table .division-duty-station .badge {
