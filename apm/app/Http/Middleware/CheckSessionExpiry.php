@@ -34,7 +34,7 @@ class CheckSessionExpiry
         // Get session data
         $userSession = session('user', []);
         $lastActivity = session('last_activity', now());
-        $sessionTimeout = config('session.lifetime', 2) * 60; // Convert to seconds (2 minutes for testing)
+        $sessionTimeout = config('session.lifetime', 120) * 60; // Convert to seconds
 
         // Check if session has expired
         if (now()->diffInSeconds($lastActivity) > $sessionTimeout) {

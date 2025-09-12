@@ -658,23 +658,31 @@
                                 <i class="bx bx-check-circle me-2 text-success"></i>Status
                             </td>
                             <td class="field-value" colspan="3">
-                                @php
-                                    $statusBadgeClass = [
-                                        'draft' => 'status-draft',
-                                        'pending' => 'status-pending',
-                                        'approved' => 'status-approved',
-                                        'rejected' => 'status-rejected',
-                                        'returned' => 'status-returned',
-                                    ][$activity->overall_status] ?? 'status-draft';
-                                @endphp
-                                <span class="status-badge {{ $statusBadgeClass }}">
-                                    {{ ucfirst($activity->overall_status ?? 'draft') }}
-                                </span>
-                                @if($activity->overall_status === 'pending')
-                                    <a href="{{ route('matrices.activities.status', [$matrix, $activity]) }}" class="btn btn-sm btn-outline-info ms-2">
-                                        <i class="bx bx-info-circle me-1"></i>View Status
-                                    </a>
-                                @endif
+                                <strong>Status: </strong>
+                                
+                             @php
+                            // Determine the status and badge color
+                            $statusText = '';
+                            $badgeClass = 'bg-secondary';
+
+                            //dd($activity);
+
+                            if (can_approve_activity($activity)) {
+                                if ($activity->matrix->overall_status == 'approved' && $activity->status == 'passed') {
+                                    $statusText = ucwords($activity->status);
+                                    $badgeClass = 'bg-success';
+                                } else {
+                                    $statusText = ucwords($activity->status);
+                                    $badgeClass = ($activity->status == 'passed') ? 'bg-success' : 'bg-danger';
+                                }
+                            }
+                        @endphp
+
+                        @if(can_approve_activity($activity))
+                            <span class="badge {{ $badgeClass }}">{{ $statusText }}</span>
+                        @else
+                            <span class="badge bg-success">No Action Required</span>
+                        @endif
                             </td>
                         </tr>
                 @if($activity->document_number)
@@ -693,7 +701,7 @@
                                 <i class="bx bx-code-block me-2 text-warning"></i>World Bank Activity Code
                             </td>
                             <td class="field-value" colspan="3">
-                                <span class="text-warning fw-bold">{{ ucwords($activity->workplan_activity_code) }}</span>
+                                <span class="text-dark fw-bold">{{ ucwords($activity->workplan_activity_code) }}</span>
                             </td>
                         </tr>
                 @endif

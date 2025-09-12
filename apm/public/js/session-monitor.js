@@ -4,11 +4,11 @@
  */
 class SessionMonitor {
     constructor() {
-        this.warningTime = 30; // 30 seconds before expiry (for testing)
-        this.checkInterval = 5; // Check every 5 seconds (for testing)
+        this.warningTime = 300; // 5 minutes before expiry
+        this.checkInterval = 30; // Check every 30 seconds
         this.countdownInterval = null;
         this.warningShown = false;
-        this.sessionLifetime = 2 * 60; // 2 minutes in seconds (for testing)
+        this.sessionLifetime = 120 * 60; // 120 minutes in seconds
         this.lastActivity = Date.now();
         this.apiBaseUrl = document.querySelector('meta[name="api-base-url"]')?.getAttribute('content') || '/api';
         
@@ -16,9 +16,6 @@ class SessionMonitor {
     }
 
     init() {
-        // Show test mode indicator
-        this.showTestModeIndicator();
-        
         // Track user activity
         this.trackActivity();
         
@@ -27,26 +24,6 @@ class SessionMonitor {
         
         // Bind event listeners
         this.bindEvents();
-    }
-
-    showTestModeIndicator() {
-        // Create a test mode indicator
-        const indicator = document.createElement('div');
-        indicator.id = 'session-test-indicator';
-        indicator.innerHTML = `
-            <div style="position: fixed; top: 10px; right: 10px; background: #ff6b6b; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
-                🧪 SESSION TEST MODE<br>
-                <small>Expires in 2 minutes</small>
-            </div>
-        `;
-        document.body.appendChild(indicator);
-        
-        // Remove indicator after 10 seconds
-        setTimeout(() => {
-            if (indicator.parentNode) {
-                indicator.parentNode.removeChild(indicator);
-            }
-        }, 10000);
     }
 
     trackActivity() {
