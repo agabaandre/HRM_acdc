@@ -315,7 +315,7 @@
 
 <!-- Audit Log Details Modal -->
 <div class="modal fade" id="auditLogModal" tabindex="-1" aria-labelledby="auditLogModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="auditLogModalLabel">
@@ -620,6 +620,43 @@
     0% { opacity: 1; }
     50% { opacity: 0.7; }
     100% { opacity: 1; }
+}
+
+/* Modal centering improvements */
+.modal-dialog-centered {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 1rem);
+}
+
+@media (min-width: 576px) {
+    .modal-dialog-centered {
+        min-height: calc(100% - 3.5rem);
+    }
+}
+
+/* Ensure modal content doesn't exceed viewport height */
+.modal-dialog-scrollable .modal-content {
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+.modal-dialog-scrollable .modal-body {
+    overflow-y: auto;
+    max-height: calc(90vh - 120px); /* Account for header and footer */
+}
+
+/* Better spacing for modal content */
+#auditLogModal .modal-body {
+    padding: 1.5rem;
+}
+
+#auditLogModal .card {
+    margin-bottom: 1rem;
+}
+
+#auditLogModal .card:last-child {
+    margin-bottom: 0;
 }
 </style>
 @endpush
