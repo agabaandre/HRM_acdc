@@ -550,7 +550,12 @@
                     Sign in with Staf Email
                 </a>
 
-                <?php if (settings()->allow_form_login == 1): ?>
+                <?php 
+                // Check environment variable for alternative login, default to true
+                $allowAlternativeLogin = getenv('ALLOW_ALTERNATIVE_LOGIN');
+                $allowAlternativeLogin = $allowAlternativeLogin !== false ? filter_var($allowAlternativeLogin, FILTER_VALIDATE_BOOLEAN) : true;
+                ?>
+                <?php if ($allowAlternativeLogin): ?>
                 <!-- Alternative Login Toggle -->
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="toggleForm">
