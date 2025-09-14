@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\FundType;
 use App\Models\FundCode;
 use App\Models\CostItem;
+use App\Models\WorkflowModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -221,6 +222,17 @@ class NonTravelMemoController extends Controller
         $isDraft = ($action === 'draft');
         $overallStatus = $isDraft ? 'draft' : 'pending';
 
+        // Get assigned workflow ID for NonTravelMemo model
+        $assignedWorkflowId = null;
+        if (!$isDraft) {
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('NonTravelMemo');
+            // Fallback to default workflow ID if no assignment found
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 1; // Default workflow ID
+                Log::warning('No workflow assignment found for NonTravelMemo model, using default workflow ID: 1');
+            }
+        }
+
         // Save to DB
         $memo = NonTravelMemo::create([
             'reverse_workflow_id' => (int)($request->input('reverse_workflow_id', 1)),
@@ -238,7 +250,7 @@ class NonTravelMemoController extends Controller
             'justification' => $data['justification'],
             'budget_breakdown' => $budgetBreakdownJson,
             'attachment' => $attachmentsJson,
-            'forward_workflow_id' => $isDraft ? null : 1,
+            'forward_workflow_id' => $assignedWorkflowId,
             'approval_level' => $isDraft ? 0 : 1,
                             'next_approval_level' => $isDraft ? 1 : 2,
             'overall_status' => $overallStatus,

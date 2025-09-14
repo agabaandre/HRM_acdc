@@ -62,11 +62,11 @@
                             </td>
                             <td class="text-end">
                                 <div class="d-flex gap-1 justify-content-end">
-                                    <a href="{{ route('workflows.show', $workflow->id) }}" class="btn btn-sm btn-light action-btn text-info" data-bs-toggle="tooltip" title="View Details">
-                                        <i class="bx bx-show fs-6"></i>
+                                    <a href="{{ route('workflows.show', $workflow->id) }}" class="btn btn-md btn-light action-btn text-info" data-bs-toggle="tooltip" title="View Details">
+                                        <i class="bx bx-show fs-6"></i> Edit
                                     </a>
-                                    <a href="{{ route('workflows.edit', $workflow->id) }}" class="btn btn-sm btn-light action-btn text-primary" data-bs-toggle="tooltip" title="Edit Workflow">
-                                        <i class="bx bx-edit fs-6"></i>
+                                    <a href="{{ route('workflows.edit', $workflow->id) }}" class="btn btn-md btn-light action-btn text-primary" data-bs-toggle="tooltip" title="Edit Workflow">
+                                        <i class="bx bx-edit fs-6"></i> Edit
                                     </a>
                                 </div>
                             </td>

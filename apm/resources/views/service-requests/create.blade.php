@@ -82,7 +82,7 @@
             <form action="{{ route('service-requests.store') }}" method="POST" enctype="multipart/form-data"
                 id="serviceRequestForm">
                         @csrf
-            
+        
             <!-- Hidden fields for source data -->
             <input type="hidden" name="source_type" value="{{ $sourceType }}">
             <input type="hidden" name="source_id" value="{{ $sourceId }}">
@@ -301,7 +301,7 @@
                             {{-- Overall Grand Total --}}
                             <div class="row mt-3">
                                 <div class="col-md-12">
-                                    <div class="total-card bg-dark text-white p-3 rounded text-center">
+                                    <div class="total-card text-white p-3 rounded text-center" style="background-color: #2c3d50;">
                                         <h5 class="mb-0 text-white"><strong>Grand Total: ${{ number_format($grandTotal, 2) }} USD</strong></h5>
                                     </div>
                                 </div>
