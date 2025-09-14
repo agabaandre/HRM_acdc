@@ -714,13 +714,35 @@ $(document).ready(function () {
         const container = $('#budgetGroupContainer');
         console.log('Budget codes changed. Selected:', selected.map(function() { return $(this).val(); }).get());
         
-        container.empty();
+        // Get currently existing budget cards
+        const existingCards = container.find('.card');
+        const existingCodeIds = existingCards.map(function() {
+            return $(this).find('.budget-body').data('code');
+        }).get();
+        
+        // Get newly selected code IDs
+        const selectedCodeIds = selected.map(function() { return $(this).val(); }).get();
+        
+        // Remove cards for codes that are no longer selected
+        existingCards.each(function() {
+            const cardCodeId = $(this).find('.budget-body').data('code');
+            if (!selectedCodeIds.includes(cardCodeId)) {
+                $(this).remove();
+            }
+        });
 
+        // Add cards for newly selected codes
         selected.each(function () {
             const codeId = $(this).val();
             const label = $(this).text();
             const balance = $(this).data('balance');
             console.log('Creating budget card for code:', codeId, 'with balance:', balance);
+            
+            // Check if card already exists for this code
+            if (existingCodeIds.includes(codeId)) {
+                console.log('Card already exists for code:', codeId);
+                return; // Skip creating duplicate card
+            }
             
             // Extract the budget code from the label (format: "CODE | Funder | $Balance")
             const codeMatch = label.match(/^([^|]+)/);
@@ -992,6 +1014,9 @@ $(document).ready(function () {
         });
     }
 
+    // Flag to prevent multiple restoration attempts
+    let budgetDataRestored = false;
+
     // Initialize form fields with existing data
     function initializeExistingData() {
         // Set activity code visibility based on fund type
@@ -1010,8 +1035,9 @@ $(document).ready(function () {
             $('#fund_type').trigger('change');
             
             // If there are existing budget items, ensure they're properly loaded
-            if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0) {
+            if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0 && !budgetDataRestored) {
                 console.log('Existing budget items found:', existingBudgetItems);
+                budgetDataRestored = true; // Set flag to prevent multiple restorations
                 
                 // Wait for budget codes to load, then restore existing selections
                 setTimeout(() => {
@@ -1038,27 +1064,37 @@ $(document).ready(function () {
                             console.log(`Looking for tbody with data-code="${codeId}":`, tbody.length);
                             
                     if (tbody.length && items.length > 0) {
-                        tbody.empty();
-                        items.forEach((item, index) => {
-                                    console.log(`Creating budget row for item:`, item);
-                            const row = createBudgetRow(codeId, index);
-                            tbody.append(row);
+                        // Check if data is already populated (has input fields with values)
+                        const hasExistingData = tbody.find('input[type="number"]').length > 0 && 
+                                               tbody.find('input[type="number"]').first().val() !== '';
+                        
+                        if (!hasExistingData) {
+                            // Only clear and restore if no existing data
+                            tbody.empty();
                             
-                            // Set values
-                            const newRow = tbody.find('tr').last();
-                            newRow.find('select[name*="[cost]"]').val(item.cost).trigger('change');
-                            newRow.find('input[name*="[unit_cost]"]').val(item.unit_cost);
-                            newRow.find('input[name*="[units]"]').val(item.units);
-                            newRow.find('input[name*="[days]"]').val(item.days);
-                            newRow.find('input[name*="[description]"]').val(item.description);
-                            
-                            // Calculate total
-                            const unitCost = parseFloat(item.unit_cost) || 0;
-                            const units = parseFloat(item.units) || 0;
-                            const days = parseFloat(item.days) || 0;
-                            const total = (unitCost * units * days).toFixed(2);
-                            newRow.find('.total').val(total);
-                        });
+                            items.forEach((item, index) => {
+                                        console.log(`Creating budget row for item:`, item);
+                                const row = createBudgetRow(codeId, index);
+                                tbody.append(row);
+                                
+                                // Set values
+                                const newRow = tbody.find('tr').last();
+                                newRow.find('select[name*="[cost]"]').val(item.cost).trigger('change');
+                                newRow.find('input[name*="[unit_cost]"]').val(item.unit_cost);
+                                newRow.find('input[name*="[units]"]').val(item.units);
+                                newRow.find('input[name*="[days]"]').val(item.days);
+                                newRow.find('input[name*="[description]"]').val(item.description);
+                                
+                                // Calculate total
+                                const unitCost = parseFloat(item.unit_cost) || 0;
+                                const units = parseFloat(item.units) || 0;
+                                const days = parseFloat(item.days) || 0;
+                                const total = (unitCost * units * days).toFixed(2);
+                                newRow.find('.total').val(total);
+                            });
+                        } else {
+                            console.log(`Budget data already exists for code ${codeId}, skipping restoration`);
+                        }
                                 
                                 // Initialize select2 for cost items
                                 tbody.find('.select-cost-item').select2({

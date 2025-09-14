@@ -761,12 +761,34 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     $('#budget_codes').on('change', function () {
     const selected = $(this).find('option:selected');
     const container = $('#budgetGroupContainer');
-    container.empty();
+    
+    // Get currently existing budget cards
+    const existingCards = container.find('.card');
+    const existingCodeIds = existingCards.map(function() {
+        return $(this).find('.budget-body').data('code');
+    }).get();
+    
+    // Get newly selected code IDs
+    const selectedCodeIds = selected.map(function() { return $(this).val(); }).get();
+    
+    // Remove cards for codes that are no longer selected
+    existingCards.each(function() {
+        const cardCodeId = $(this).find('.budget-body').data('code');
+        if (!selectedCodeIds.includes(cardCodeId)) {
+            $(this).remove();
+        }
+    });
 
+    // Add cards for newly selected codes
     selected.each(function () {
         const codeId = $(this).val();
         const label = $(this).text();
         const balance = $(this).data('balance');
+        
+        // Check if card already exists for this code
+        if (existingCodeIds.includes(codeId)) {
+            return; // Skip creating duplicate card
+        }
         
         // Extract the budget code from the label (format: "CODE | Funder | $Balance")
         const codeMatch = label.match(/^([^|]+)/);
