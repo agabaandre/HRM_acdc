@@ -1012,7 +1012,7 @@ class ActivityController extends Controller
     private function storeParticipantSchedules($schedules, $activity)
     {
         try {
-            // Delete existing participant schedules for this activity
+            // Delete existing participant schedules for this specific activity only
             ParticipantSchedule::where('activity_id', $activity->id)->delete();
 
             foreach ($schedules as $participantId => $details) {
@@ -1032,7 +1032,7 @@ class ActivityController extends Controller
                 ]);
             }
         } catch (Exception $exception) {
-            Log::error("Error ocurred saving particiapnt schedule " . $exception->getMessage());
+            Log::error("Error occurred saving participant schedule " . $exception->getMessage());
         }
     }
 
