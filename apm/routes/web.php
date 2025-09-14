@@ -56,6 +56,10 @@ Route::get('/home', function () {
 
 // Workflow Management Routes
 Route::middleware([CheckSessionMiddleware::class])->group(function () {
+    // Model Workflow Assignment Routes (must be before resource routes)
+    Route::get('workflows/assign-models', [WorkflowController::class, 'assignModels'])->name('workflows.assign-models');
+    Route::post('workflows/assign-models', [WorkflowController::class, 'storeModelAssignments'])->name('workflows.store-model-assignments');
+    
     Route::resource('workflows', WorkflowController::class);
     Route::get('workflows/{workflow}/add-definition', [WorkflowController::class, 'addDefinition'])->name('workflows.add-definition');
     Route::post('workflows/{workflow}/store-definition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
@@ -79,6 +83,7 @@ Route::middleware([CheckSessionMiddleware::class])->group(function () {
             'headers' => $request->headers->all()
         ]);
     })->name('workflows.ajax-store-staff-debug');
+    
     Route::get('workflows/{workflow}/remove-staff/{approverId}', [WorkflowController::class, 'ajaxRemoveStaff'])->name('workflows.ajax-remove-staff');
   
     // Memo Management Routes

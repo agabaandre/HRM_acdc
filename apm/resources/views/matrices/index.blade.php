@@ -60,6 +60,46 @@
     word-break: break-word;
     white-space: normal;
 }
+
+/* Table column wrapping for better fit */
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    max-width: 150px;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Focal Person column wrapping */
+.table th:nth-child(5),
+.table td:nth-child(5) {
+    max-width: 120px;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Ensure table fits without horizontal scroll */
+.table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+/* Better spacing for table cells */
+.table td {
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+}
+
+.table th {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
 </style>
 @endpush
 

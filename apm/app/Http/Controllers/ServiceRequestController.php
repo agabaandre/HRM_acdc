@@ -11,6 +11,7 @@ use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
 use App\Models\CostItem;
 use App\Models\FundType;
+use App\Models\WorkflowModel;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -892,13 +893,20 @@ class ServiceRequestController extends Controller
             // Generate request number
             $requestNumber = ServiceRequest::generateRequestNumber();
 
+            // Get assigned workflow ID for ServiceRequest model
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 3; // Default workflow ID
+                Log::warning('No workflow assignment found for ServiceRequest model, using default workflow ID: 3');
+            }
+
             // Create service request
             $serviceRequest = ServiceRequest::create([
                 'request_number' => $requestNumber,
                 'request_date' => now()->toDateString(),
                 'staff_id' => user_session('staff_id'),
-                'forward_workflow_id' => 3, // Service request workflow
-                'reverse_workflow_id' => 3,
+                'forward_workflow_id' => $assignedWorkflowId,
+                'reverse_workflow_id' => $assignedWorkflowId,
                 'division_id' => $source->division_id,
                 'service_title' => $validated['title'],
                 'description' => $validated['description'],

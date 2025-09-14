@@ -7,6 +7,7 @@ use App\Models\Staff;
 use App\Models\Workflow;
 use App\Models\Division;
 use App\Models\Location;
+use App\Models\WorkflowModel;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1126,13 +1127,20 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         }
 
         try {
+            // Get assigned workflow ID for RequestARF model
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('RequestARF');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 2; // Default workflow ID
+                Log::warning('No workflow assignment found for RequestARF model, using default workflow ID: 2');
+            }
+
             // Update status to pending and set workflow
             $requestARF->update([
                 'overall_status' => 'pending',
                 'approval_level' => 1,
                 'next_approval_level' => 2,
-                'forward_workflow_id' => 2, // Set appropriate workflow ID
-                'reverse_workflow_id' => 2,
+                'forward_workflow_id' => $assignedWorkflowId,
+                'reverse_workflow_id' => $assignedWorkflowId,
             ]);
 
             return redirect()->back()->with('success', 'ARF request submitted for approval successfully!');

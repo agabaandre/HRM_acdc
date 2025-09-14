@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Workflow;
 use App\Models\WorkflowDefinition;
+use App\Models\WorkflowModel;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\Staff;
@@ -155,6 +156,72 @@ class WorkflowController extends Controller
     public function addDefinition(Workflow $workflow)
     {
         return view('workflows.add_definition', compact('workflow'));
+    }
+
+    /**
+     * Show the form for assigning models to workflows.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function assignModels()
+    {
+        $workflows = Workflow::where('is_active', 1)->get();
+        
+        $models = [
+            'Matrix' => 'Matrix',
+            'Activity' => 'Activity', 
+            'NonTravelMemo' => 'Non Travel Memo',
+            'SpecialMemo' => 'Special Memo',
+            'RequestARF' => 'Request ARF',
+            'ServiceRequest' => 'Service Request'
+        ];
+        
+        // Get current assignments
+        $currentAssignments = WorkflowModel::with('workflow')->get()->keyBy('model_name');
+        
+        return view('workflows.assign-models', compact('workflows', 'models', 'currentAssignments'));
+    }
+
+    /**
+     * Store model workflow assignments.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeModelAssignments(Request $request)
+    {
+        $validated = $request->validate([
+            'assignments' => 'required|array',
+            'assignments.*.model' => 'required|string|in:Matrix,Activity,NonTravelMemo,SpecialMemo,RequestARF,ServiceRequest',
+            'assignments.*.workflow_id' => 'required|integer|exists:workflows,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            
+            foreach ($validated['assignments'] as $assignment) {
+                WorkflowModel::setWorkflowIdForModel(
+                    $assignment['model'],
+                    $assignment['workflow_id'],
+                    "Auto-assigned workflow for {$assignment['model']} model"
+                );
+            }
+            
+            DB::commit();
+
+            return redirect()->route('workflows.assign-models')
+                ->with('success', 'Model workflow assignments updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Model workflow assignment failed', [
+                'error' => $e->getMessage(),
+                'assignments' => $validated['assignments']
+            ]);
+            
+            return redirect()->route('workflows.assign-models')
+                ->with('error', 'Failed to update model workflow assignments. Please try again.');
+        }
     }
 
     /**

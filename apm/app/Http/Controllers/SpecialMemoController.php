@@ -13,6 +13,7 @@ use App\Models\Location;
 use App\Models\Staff;
 use App\Models\CostItem;
 use App\Models\SpecialMemo;
+use App\Models\WorkflowModel;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -24,6 +25,7 @@ use App\Models\Workflow;
 use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Models\FundCodeTransaction;
+use Illuminate\Support\Facades\Log;
 
 class SpecialMemoController extends Controller
 {
@@ -328,6 +330,17 @@ class SpecialMemoController extends Controller
             $isDraft = ($action === 'draft');
             $overallStatus = $isDraft ? 'draft' : 'pending';
 
+            // Get assigned workflow ID for SpecialMemo model
+            $assignedWorkflowId = null;
+            if (!$isDraft) {
+                $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('SpecialMemo');
+                // Fallback to default workflow ID if no assignment found
+                if (!$assignedWorkflowId) {
+                    $assignedWorkflowId = 1; // Default workflow ID
+                    Log::warning('No workflow assignment found for SpecialMemo model, using default workflow ID: 1');
+                }
+            }
+
             $specialMemo = SpecialMemo::create([
                 'is_special_memo' => 1,
                 'is_draft' => $isDraft,
@@ -344,8 +357,8 @@ class SpecialMemoController extends Controller
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type_id', 1),
                 'workplan_activity_code' => $request->input('activity_code', ''),
-                'forward_workflow_id' => $isDraft ? null : 1, // Set workflow ID only when submitting
-                'reverse_workflow_id' => $isDraft ? null : 1,
+                'forward_workflow_id' => $assignedWorkflowId, // Use assigned workflow ID
+                'reverse_workflow_id' => $isDraft ? null : $assignedWorkflowId,
                 'overall_status' => $overallStatus,
                 'approval_level' => $isDraft ? 0 : 1, // Set approval level only when submitting
                 'next_approval_level' => $isDraft ? 1 : 2, // Set next level only when submitting
@@ -810,7 +823,13 @@ class SpecialMemoController extends Controller
            // dd($updateData);
             // Add workflow fields only when submitting for approval
             if (!$isDraft) {
-                $updateData['forward_workflow_id'] = 1;
+                // Get assigned workflow ID for SpecialMemo model
+                $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('SpecialMemo');
+                if (!$assignedWorkflowId) {
+                    $assignedWorkflowId = 1; // Default workflow ID
+                    Log::warning('No workflow assignment found for SpecialMemo model in update, using default workflow ID: 1');
+                }
+                $updateData['forward_workflow_id'] = $assignedWorkflowId;
                 $updateData['approval_level'] = 1;
                 $updateData['next_approval_level'] = 2;
             } else {
@@ -832,7 +851,13 @@ class SpecialMemoController extends Controller
                 // Update the memo status for approval
                 $specialMemo->overall_status = 'pending';
                 $specialMemo->approval_level = 1;
-                $specialMemo->forward_workflow_id = 1;
+                // Get assigned workflow ID for SpecialMemo model
+                $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('SpecialMemo');
+                if (!$assignedWorkflowId) {
+                    $assignedWorkflowId = 1; // Default workflow ID
+                    Log::warning('No workflow assignment found for SpecialMemo model in submission, using default workflow ID: 1');
+                }
+                $specialMemo->forward_workflow_id = $assignedWorkflowId;
                 $specialMemo->next_approval_level = 2;
                 $specialMemo->is_draft = 0; // Set is_draft to 0 (false) when submitting for approval
                 $specialMemo->save();
@@ -948,7 +973,13 @@ class SpecialMemoController extends Controller
         // Update the memo status directly
         $specialMemo->overall_status = 'pending';
         $specialMemo->approval_level = 1;
-        $specialMemo->forward_workflow_id = 1;
+        // Get assigned workflow ID for SpecialMemo model
+        $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('SpecialMemo');
+        if (!$assignedWorkflowId) {
+            $assignedWorkflowId = 1; // Default workflow ID
+            Log::warning('No workflow assignment found for SpecialMemo model in submitForApproval, using default workflow ID: 1');
+        }
+        $specialMemo->forward_workflow_id = $assignedWorkflowId;
         $specialMemo->next_approval_level = 2;
         $specialMemo->is_draft = 0; // Set is_draft to 0 (false) when submitting for approval
         

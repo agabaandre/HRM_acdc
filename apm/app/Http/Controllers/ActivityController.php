@@ -12,6 +12,7 @@ use App\Models\FundCode;
 use App\Models\Location;
 use App\Models\Staff;
 use App\Models\CostItem;
+use App\Models\WorkflowModel;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -1064,7 +1065,13 @@ class ActivityController extends Controller
         $matrix = $activity->matrix;
 
         if ($activityTrail->action !== 'passed') {
-            $matrix->forward_workflow_id = 1;
+            // Get assigned workflow ID for Matrix model
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 1; // Default workflow ID
+                Log::warning('No workflow assignment found for Matrix model in activity update, using default workflow ID: 1');
+            }
+            $matrix->forward_workflow_id = $assignedWorkflowId;
             $matrix->overall_status = 'pending';
             $matrix->update();
         }
@@ -1215,11 +1222,18 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ]);
         }
 
+        // Get assigned workflow ID for Activity model
+        $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Activity');
+        if (!$assignedWorkflowId) {
+            $assignedWorkflowId = 1; // Default workflow ID
+            Log::warning('No workflow assignment found for Activity model, using default workflow ID: 1');
+        }
+
         // Simply set status and overall_status to 'pending'
         $activity->update([
             'overall_status' => 'pending',
             'approval_level' => 1,
-            'forward_workflow_id' => 1,
+            'forward_workflow_id' => $assignedWorkflowId,
             'is_draft' => 0,
         ]); 
 

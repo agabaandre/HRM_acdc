@@ -4,6 +4,11 @@ $workflowMenuItems = [
 'route' => 'workflows.index',
 'icon' => 'fas fa-project-diagram',
 'title' => 'Workflows'
+],
+[
+'route' => 'workflows.assign-models',
+'icon' => 'fas fa-link',
+'title' => 'Assign Models to Workflows'
 ]
 ];
 

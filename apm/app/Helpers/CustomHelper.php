@@ -568,6 +568,30 @@ function generateShortCodeFromDivision(string $name): string
 }
 
 /**
+ * Get the assigned workflow ID for a model
+ * 
+ * @param string $modelName The model name (e.g., 'Matrix', 'Activity', etc.)
+ * @return int|null The workflow ID or null if not assigned
+ */
+function getModelWorkflowId(string $modelName): ?int
+{
+    return \App\Models\WorkflowModel::getWorkflowIdForModel($modelName);
+}
+
+/**
+ * Set the assigned workflow ID for a model
+ * 
+ * @param string $modelName The model name
+ * @param int $workflowId The workflow ID to assign
+ * @param string|null $description Optional description
+ * @return \App\Models\WorkflowModel
+ */
+function setModelWorkflowId(string $modelName, int $workflowId, ?string $description = null): \App\Models\WorkflowModel
+{
+    return \App\Models\WorkflowModel::setWorkflowIdForModel($modelName, $workflowId, $description);
+}
+
+/**
  * Generate document number for any model
  * This is the main function to use for generating document numbers
  */

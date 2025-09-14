@@ -6,6 +6,7 @@ use App\Models\Approver;
 use App\Models\Division;
 use App\Models\ApprovalTrail;
 use App\Models\WorkflowDefinition;
+use App\Models\WorkflowModel;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +16,7 @@ use App\Models\Staff;
 use App\Models\FundCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Log;
 // use Illuminate\Support\Facades\View as ViewFacade;
 
 class MatrixController extends Controller
@@ -607,9 +609,19 @@ class MatrixController extends Controller
             $this->saveMatrixTrail($matrix,'Submitted for approval','submitted');
         }
 
+        // Get assigned workflow ID for Matrix model when submitting for approval
+        $assignedWorkflowId = $last_workflow_id;
+        if ($request->action == 'approvals' && $last_workflow_id == null) {
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 1; // Default workflow ID
+                Log::warning('No workflow assignment found for Matrix model, using default workflow ID: 1');
+            }
+        }
+
         $update_data = [
             'staff_id'            => $matrix->staff_id ?? user_session('staff_id'),
-            'forward_workflow_id' => ($request->action == 'approvals' && $last_workflow_id==null)?1:$last_workflow_id,
+            'forward_workflow_id' => $assignedWorkflowId,
             'approval_level' => $last_approval_order ?? 1,
             'overall_status' => $overall_status
         ];
@@ -744,8 +756,15 @@ class MatrixController extends Controller
         if($matrix->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)
             $nextStepIncrement = 2;
 
-         if(!$matrix->forward_workflow_id)// null
-            $matrix->forward_workflow_id = 1;
+         if(!$matrix->forward_workflow_id) { // null
+            // Get assigned workflow ID for Matrix model
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 1; // Default workflow ID
+                Log::warning('No workflow assignment found for Matrix model in workflow processing, using default workflow ID: 1');
+            }
+            $matrix->forward_workflow_id = $assignedWorkflowId;
+        }
    
         $next_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
            ->where('is_enabled',1)
