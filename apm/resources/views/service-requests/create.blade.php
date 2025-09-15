@@ -492,7 +492,7 @@
                         <table class="table table-bordered table-hover">
                             <thead class="table-secondary">
                                 <tr>
-                                    <th>Cost Type</th>
+                                <th>Cost Type</th>
                                 <th>Unit Cost</th>
                                 <th>No. of Days</th>
                                 <th>Description</th>
