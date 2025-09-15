@@ -124,7 +124,7 @@ $settingsMenuItems = [
 
             <!-- Memos Menu -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('activities*') || Request::is('non-travel*') || Request::is('special-memo*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('activities*') || Request::is('non-travel*') || Request::is('special-memo*') || Request::is('single-memos*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-envelope-open-text"></i></div>
                     <div class="menu-title">Memos</div>
@@ -136,7 +136,7 @@ $settingsMenuItems = [
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item {{ Request::is('/single-memos*') ? 'active' : '' }}" href="{{ route('activities.single-memos.index') }}">
+                        <a class="dropdown-item {{ Request::is('single-memos*') ? 'active' : '' }}" href="{{ route('activities.single-memos.index') }}">
                             Matrix Single Memos
                         </a>
                     </li>
@@ -155,7 +155,7 @@ $settingsMenuItems = [
 
                <!-- Requests Menu -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('service-requests*') || Request::is('request-arf*') || Request::is('non-travel*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('service-requests*') || Request::is('request-arf*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-boxes"></i></div>
                     <div class="menu-title">Request for Services</div>
