@@ -362,11 +362,9 @@
                     <table class="table table-bordered table-hover">
                             <thead class="table-secondary">
                             <tr>
-                                <th style="width: 20%;">Name</th>
-                                <th style="width: 15%;">Cost Type</th>
-                                <th style="width: 10%;">Description</th>
+                                <th style="width: 30%;">Name</th>
                                     @foreach ($costItems as $costItem)
-                                    <th style="width: {{ 45 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                    <th style="width: {{ 60 / count($costItems) }}%;">{{ $costItem->name }}</th>
                                                         @endforeach
                                 <th style="width: 10%;">Total</th>
                             </tr>
@@ -384,28 +382,12 @@
                                                 </option>
                                             @endforeach
                                         @else
-                                                @foreach ($staff as $member)
-                                                <option value="{{ $member->staff_id }}">
-                                                        {{ $member->fname }} {{ $member->lname }}
-                                                        ({{ $member->position ?? 'Staff' }})
-                                                            </option>
-                                                        @endforeach
+                                            <option value="" disabled>No participants available from source activity</option>
                                         @endif
                                                     </select>
-                                </td>
-                                <td>
-                                    <select name="internal_participants[0][cost_type]" class="form-select border-success">
-                                        <option value="Daily Rate">Daily Rate</option>
-                                        <option value="Conference">Conference</option>
-                                        <option value="Training">Training</option>
-                                        <option value="Workshop">Workshop</option>
-                                        <option value="Meeting">Meeting</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <input type="text" name="internal_participants[0][description]" 
-                                           class="form-control border-success" placeholder="Description" value="">
+                                    <!-- Hidden fields for cost type and description -->
+                                    <input type="hidden" name="internal_participants[0][cost_type]" value="Daily Rate">
+                                    <input type="hidden" name="internal_participants[0][description]" value="">
                                 </td>
                                     @foreach ($costItems as $index => $costItem)
                                     <td>
@@ -451,36 +433,24 @@
                         <table class="table table-bordered table-hover">
                             <thead class="table-secondary">
                                 <tr>
-                                    <th style="width: 15%;">Name</th>
-                                <th style="width: 15%;">Email</th>
-                                <th style="width: 15%;">Cost Type</th>
-                                <th style="width: 10%;">Description</th>
+                                    <th style="width: 200px; max-width: 200px;">Name</th>
+                                <th style="width: 200px; max-width: 200px;">Email</th>
                                     @foreach ($costItems as $costItem)
-                                    <th style="width: {{ 35 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                    <th style="width: {{ 40 / count($costItems) }}%;">{{ $costItem->name }}</th>
                                 @endforeach
                                 <th style="width: 10%;">Total</th>
                             </tr>
                         </thead>
                         <tbody id="externalParticipants">
                             <tr>
-                                    <td><input type="text" name="external_participants[0][name]"
-                                            class="form-control border-success" placeholder="Name" value=""></td>
-                                    <td><input type="email" name="external_participants[0][email]"
+                                    <td style="width: 200px; max-width: 200px;"><input type="text" name="external_participants[0][name]"
+                                            class="form-control border-success" placeholder="Name" value="">
+                                        <!-- Hidden fields for cost type and description -->
+                                        <input type="hidden" name="external_participants[0][cost_type]" value="Daily Rate">
+                                        <input type="hidden" name="external_participants[0][description]" value="">
+                                    </td>
+                                    <td style="width: 200px; max-width: 200px;"><input type="email" name="external_participants[0][email]"
                                             class="form-control border-success" placeholder="Email" value=""></td>
-                                    <td>
-                                        <select name="external_participants[0][cost_type]" class="form-select border-success">
-                                            <option value="Daily Rate">Daily Rate</option>
-                                            <option value="Conference">Conference</option>
-                                            <option value="Training">Training</option>
-                                            <option value="Workshop">Workshop</option>
-                                            <option value="Meeting">Meeting</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <input type="text" name="external_participants[0][description]" 
-                                               class="form-control border-success" placeholder="Description" value="">
-                                    </td>
                                     @foreach ($costItems as $index => $costItem)
                                         <td>
                                             <input type="text"
@@ -676,9 +646,29 @@
          .card:hover .info-icon {
              transform: scale(1.1);
          }
+         
+         /* External participants table styling */
+         #externalParticipants table {
+             table-layout: fixed;
+         }
+         
+         #externalParticipants th:first-child,
+         #externalParticipants td:first-child {
+             width: 200px !important;
+             max-width: 200px !important;
+         }
+         
+         #externalParticipants th:nth-child(2),
+         #externalParticipants td:nth-child(2) {
+             width: 200px !important;
+             max-width: 200px !important;
+         }
     </style>
 
 <script>
+// Make participant names available to JavaScript
+const participantNames = @json($participantNames ?? []);
+
 document.addEventListener('DOMContentLoaded', function() {
     let internalParticipantCount = 1;
     let externalParticipantCount = 1;
@@ -698,13 +688,40 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (input.type === 'number' || input.type === 'text' || input.type ===
                         'email') {
                 input.value = '';
-                if (input.name.includes('[description]')) {
-                    input.placeholder = 'Description';
-                }
             } else if (input.tagName === 'SELECT') {
                 input.selectedIndex = 0;
             }
         });
+        
+        // Populate the participant dropdown with the correct options
+        const participantSelect = newRow.querySelector('select[name*="[staff_id]"]');
+        if (participantSelect) {
+            // Clear existing options
+            participantSelect.innerHTML = '<option value="">Select Participant</option>';
+            
+            if (participantNames.length > 0) {
+                // Add participant options from source activity
+                participantNames.forEach(participant => {
+                    const option = document.createElement('option');
+                    option.value = participant.id;
+                    option.textContent = participant.text;
+                    participantSelect.appendChild(option);
+                });
+            } else {
+                // No participants available from source activity
+                const option = document.createElement('option');
+                option.value = '';
+                option.disabled = true;
+                option.textContent = 'No participants available from source activity';
+                participantSelect.appendChild(option);
+            }
+        }
+        
+        // Set default values for hidden fields
+        const costTypeInput = newRow.querySelector('input[name*="[cost_type]"]');
+        const descriptionInput = newRow.querySelector('input[name*="[description]"]');
+        if (costTypeInput) costTypeInput.value = 'Daily Rate';
+        if (descriptionInput) descriptionInput.value = '';
         
         // Clear the total cell
                 const totalCell = newRow.querySelector('.total-cell');
@@ -748,13 +765,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     input.placeholder = 'Name';
                 } else if (input.name.includes('[email]')) {
                     input.placeholder = 'Email';
-                } else if (input.name.includes('[description]')) {
-                    input.placeholder = 'Description';
                 }
             } else if (input.tagName === 'SELECT') {
                 input.selectedIndex = 0;
             }
         });
+        
+        // Set default values for hidden fields
+        const costTypeInput = newRow.querySelector('input[name*="[cost_type]"]');
+        const descriptionInput = newRow.querySelector('input[name*="[description]"]');
+        if (costTypeInput) costTypeInput.value = 'Daily Rate';
+        if (descriptionInput) descriptionInput.value = '';
+        
+        // Ensure Name and Email columns have fixed width
+        const nameCell = newRow.cells[0];
+        const emailCell = newRow.cells[1];
+        if (nameCell) {
+            nameCell.style.width = '200px';
+            nameCell.style.maxWidth = '200px';
+        }
+        if (emailCell) {
+            emailCell.style.width = '200px';
+            emailCell.style.maxWidth = '200px';
+        }
         
         // Clear the total cell
                 const totalCell = newRow.querySelector('.total-cell');

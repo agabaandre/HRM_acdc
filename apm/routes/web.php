@@ -157,6 +157,15 @@ Route::post('/audit-logs/cleanup', [App\Http\Controllers\AuditLogsController::cl
 Route::get('/audit-logs/reversal-modal', [App\Http\Controllers\AuditLogsController::class, 'showReversalModal'])->name('audit-logs.reversal-modal');
 Route::post('/audit-logs/reverse', [App\Http\Controllers\AuditLogsController::class, 'reverse'])->name('audit-logs.reverse');
 
+// Pending Approvals Routes
+Route::get('/pending-approvals', [App\Http\Controllers\PendingApprovalsController::class, 'index'])->name('pending-approvals.index');
+Route::get('/api/pending-approvals', [App\Http\Controllers\PendingApprovalsController::class, 'getPendingApprovals'])->name('pending-approvals.api');
+Route::get('/api/pending-approvals/category/{category}', [App\Http\Controllers\PendingApprovalsController::class, 'getByCategory'])->name('pending-approvals.by-category');
+Route::get('/api/pending-approvals/summary', [App\Http\Controllers\PendingApprovalsController::class, 'getSummary'])->name('pending-approvals.summary');
+Route::get('/api/pending-approvals/recent', [App\Http\Controllers\PendingApprovalsController::class, 'getRecentPending'])->name('pending-approvals.recent');
+Route::post('/api/pending-approvals/mark-viewed', [App\Http\Controllers\PendingApprovalsController::class, 'markAsViewed'])->name('pending-approvals.mark-viewed');
+Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\PendingApprovalsController::class, 'sendNotification'])->name('pending-approvals.send-notification');
+
 
 
     
@@ -202,6 +211,7 @@ Route::post('/audit-logs/reverse', [App\Http\Controllers\AuditLogsController::cl
     Route::get('/single-memos/create', [ActivityController::class, 'createSingleMemo'])->name('activities.single-memos.create');
     Route::post('/single-memos', [ActivityController::class, 'storeSingleMemo'])->name('activities.single-memos.store');
     Route::get('/single-memos/{activity}', [ActivityController::class, 'show'])->name('activities.single-memos.show');
+    Route::get('/single-memos/{activity}/edit/{matrix}', [ActivityController::class, 'edit'])->name('activities.single-memos.edit');
     Route::post('/single-memos/{activity}/submit-for-approval', [ActivityController::class, 'submitSingleMemoForApproval'])->name('activities.single-memos.submit-for-approval');
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
     Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');
@@ -265,6 +275,7 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::post('service-requests/get-source-data', [App\Http\Controllers\ServiceRequestController::class, 'getSourceData'])->name('service-requests.get-source-data');
     Route::post('service-requests/store-from-modal', [App\Http\Controllers\ServiceRequestController::class, 'storeFromModal'])->name('service-requests.store-from-modal');
     Route::get('service-requests/cost-items', [App\Http\Controllers\ServiceRequestController::class, 'getCostItems'])->name('service-requests.cost-items');
+    Route::get('service-requests/{serviceRequest}/print', [App\Http\Controllers\ServiceRequestController::class, 'print'])->name('service-requests.print');
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
@@ -286,6 +297,11 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
 Route::post('non-travel/{nonTravel}/submit-for-approval', [App\Http\Controllers\NonTravelMemoController::class, 'submitForApproval'])->name('non-travel.submit-for-approval');
 Route::post('non-travel/{nonTravel}/update-status', [App\Http\Controllers\NonTravelMemoController::class, 'updateStatus'])->name('non-travel.update-status');
 Route::get('non-travel/{nonTravel}/status', [App\Http\Controllers\NonTravelMemoController::class, 'status'])->name('non-travel.status');
+
+// Service Request Approval Routes
+Route::post('service-requests/{serviceRequest}/submit-for-approval', [App\Http\Controllers\ServiceRequestController::class, 'submitForApproval'])->name('service-requests.submit-for-approval');
+Route::post('service-requests/{serviceRequest}/update-status', [App\Http\Controllers\ServiceRequestController::class, 'updateStatus'])->name('service-requests.update-status');
+Route::get('service-requests/{serviceRequest}/status', [App\Http\Controllers\ServiceRequestController::class, 'status'])->name('service-requests.status');
 
 // Activities Routes
 Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index')->middleware(CheckSessionMiddleware::class);

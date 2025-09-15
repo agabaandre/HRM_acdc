@@ -208,11 +208,7 @@ class RequestARFController extends Controller
      */
     public function storeFromModal(Request $request)
     {
-        Log::info('=== STOREFROMMODAL METHOD REACHED ===');
-        Log::info('ARF Modal Submission Started', [
-            'request_data' => $request->all(),
-            'user_id' => user_session('staff_id')
-        ]);
+      
 
         // Check if user session is valid
         $sessionStaffId = user_session('staff_id');
@@ -305,12 +301,27 @@ class RequestARFController extends Controller
             // Encode internal participants as JSON (budget is already in correct format)
             $internalParticipantsJson = json_encode($internalParticipants);
 
-            // Set approval levels and workflow IDs for submission
-            $approvalLevel = 0; // Start at level 0 for draft
-            $nextApprovalLevel = 1; // Next level to be approved
-            $overallStatus = 'draft';
-            $forwardWorkflowId = null; // Set to null initially, will be set when submitting for approval
-            $reverseWorkflowId = null;
+            // Get assigned workflow ID for RequestARF model
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('RequestARF');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 2; // Default workflow ID
+                Log::warning('No workflow assignment found for RequestARF model, using default workflow ID: 2');
+            }
+            
+            // Set approval levels and workflow IDs for immediate submission
+            $approvalLevel = 1; // Start at level 1 for pending
+            $nextApprovalLevel = 2; // Next level to be approved
+            $overallStatus = 'pending'; // Set to pending immediately
+            $forwardWorkflowId = $assignedWorkflowId; // Set the assigned workflow ID
+            $reverseWorkflowId = $assignedWorkflowId; // Set the same for reverse workflow
+            
+            // Debug: Check what workflow would be assigned
+            Log::info('ARF Creation Debug - Workflow Assignment', [
+                'model_name' => 'RequestARF',
+                'assigned_workflow_id' => $assignedWorkflowId,
+                'forward_workflow_id_set_to' => $forwardWorkflowId,
+                'workflow_assignments' => WorkflowModel::where('model_name', 'RequestARF')->get()->toArray()
+            ]);
 
             // Get responsible person from source data
             $responsiblePersonId = null;
@@ -359,12 +370,21 @@ class RequestARFController extends Controller
             
             $arf = RequestARF::create($arfData);
             
-            // Save approval trail for ARF creation
+            // Save approval trail for ARF creation and submission
             $arf->saveApprovalTrail('ARF request created and submitted for approval', 'submitted');
             
-            Log::info('ARF Created Successfully', ['arf_id' => $arf->id, 'arf_number' => $arf->arf_number]);
+            // Send email notification for approval request
+            send_matrix_email_notification($arf, 'approval');
+            
+            Log::info('ARF Created and Submitted Successfully', [
+                'arf_id' => $arf->id, 
+                'arf_number' => $arf->arf_number,
+                'forward_workflow_id' => $arf->forward_workflow_id,
+                'overall_status' => $arf->overall_status,
+                'approval_level' => $arf->approval_level
+            ]);
 
-            $message = 'ARF request submitted for final approval successfully! Status: Pending';
+            $message = 'ARF request created and submitted for approval successfully! Status: Pending';
 
             // Check if this is an AJAX request
             if ($request->ajax()) {
@@ -761,7 +781,59 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             ]);
         }
         
-        return view('request-arf.show', compact('requestARF', 'sourceModel', 'sourceData'));
+        // Get approval levels for progress bar
+        $approvalLevels = $this->getApprovalLevels($requestARF);
+        
+        return view('request-arf.show', compact('requestARF', 'sourceModel', 'sourceData', 'approvalLevels'));
+    }
+
+    /**
+     * Get approval levels for progress bar calculation.
+     */
+    private function getApprovalLevels(RequestARF $requestARF): array
+    {
+        if (!$requestARF->forward_workflow_id) {
+            return [];
+        }
+
+        $levels = \App\Models\WorkflowDefinition::where('workflow_id', $requestARF->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'asc')
+            ->get();
+
+        $approvalLevels = [];
+        foreach ($levels as $level) {
+            $isCurrentLevel = $level->approval_order == $requestARF->approval_level;
+            $isCompleted = $requestARF->approval_level > $level->approval_order;
+            $isPending = $requestARF->approval_level == $level->approval_order && $requestARF->overall_status === 'pending';
+            
+            $approver = null;
+            if ($level->is_division_specific && $requestARF->division) {
+                $staffId = $requestARF->division->{$level->division_reference_column} ?? null;
+                if ($staffId) {
+                    $approver = \App\Models\Staff::where('staff_id', $staffId)->first();
+                }
+            } else {
+                $approverRecord = \App\Models\Approver::where('workflow_dfn_id', $level->id)->first();
+                if ($approverRecord) {
+                    $approver = \App\Models\Staff::where('staff_id', $approverRecord->staff_id)->first();
+                }
+            }
+
+            $approvalLevels[] = [
+                'order' => $level->approval_order,
+                'role' => $level->role,
+                'approver' => $approver,
+                'is_current' => $isCurrentLevel,
+                'is_completed' => $isCompleted,
+                'is_pending' => $isPending,
+                'is_division_specific' => $level->is_division_specific,
+                'division_reference' => $level->division_reference_column,
+                'category' => $level->category,
+            ];
+        }
+
+        return $approvalLevels;
     }
 
     /**
@@ -1129,6 +1201,14 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         try {
             // Get assigned workflow ID for RequestARF model
             $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('RequestARF');
+            
+            // Debug logging
+            Log::info('ARF Workflow Debug', [
+                'assigned_workflow_id' => $assignedWorkflowId,
+                'model_name' => 'RequestARF',
+                'workflow_assignments' => WorkflowModel::where('model_name', 'RequestARF')->get()->toArray()
+            ]);
+            
             if (!$assignedWorkflowId) {
                 $assignedWorkflowId = 2; // Default workflow ID
                 Log::warning('No workflow assignment found for RequestARF model, using default workflow ID: 2');

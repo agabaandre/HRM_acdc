@@ -142,7 +142,7 @@ function sendMatrixNotificationCustom( $matrix, string $type = 'matrix_approval'
  * @param string $message The notification message
  * @return void
  */
-function dispatchMatrixNotificationJob( $matrix, Staff $recipient, string $type, string $message)
+function dispatchMatrixNotificationJob( $matrix, $recipient, string $type, string $message)
 {
     SendMatrixNotificationJob::dispatch($matrix, $recipient, $type, $message);
 }

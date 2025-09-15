@@ -352,6 +352,9 @@ class MatrixController extends Controller
             'forward_workflow_id' => null,
             'overall_status' => 'draft'
         ]);
+        $recipients = Staff::where('division_id', $validated['division_id'])->get();
+       
+        send_matrix_notification( $matrix,  'created',$recipients);
 
         return Redirect::route('matrices.index')
                          ->with([

@@ -1006,7 +1006,7 @@
                                     @endphp
                                     
                                     {{-- Budget Code Title --}}
-                                    <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
+                                    <h6 style="color: #2c3d50; font-weight: 600; margin-top: 20px;">
                                         @if ($fundCode)
                                             {{ $fundCode->activity }} - {{ $fundCode->code }} -
                                             ({{ $fundCode->fundType->name ?? 'N/A' }})

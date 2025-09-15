@@ -86,13 +86,13 @@
         
         .label {
             font-weight: bold;
-            width: 25%;
+            width: 15%;
             background-color: #f8f9fa !important;
             color: #007e33;
         }
         
         .content {
-            width: 75%;
+            width: 85%;
         }
         
         /* Section labels */
@@ -607,7 +607,7 @@
                 <td class="label">Date:</td>
                 <td class="content"><?php echo $requestARF->request_date ? $requestARF->request_date->format('d/m/Y g:i A') : date('d/m/Y g:i A'); ?></td>
                 <td class="label">REF:</td>
-                <td class="content"><?php echo htmlspecialchars($requestARF->arf_number); ?></td>
+                <td class="content"><?php echo htmlspecialchars($requestARF->document_number ?? $requestARF->arf_number); ?></td>
             </tr>
             <tr>
                 <td class="label">Payee:</td>

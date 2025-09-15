@@ -194,18 +194,94 @@ class ServiceRequestController extends Controller
             // Get participant names from internal participants JSON
             $participantNames = [];
             if (!empty($internalParticipants) && is_array($internalParticipants)) {
-                foreach ($internalParticipants as $participantId => $participantData) {
-                    // Get staff member details for each participant
-                    $staffMember = Staff::where('staff_id', $participantId)->first();
-                    if ($staffMember) {
-                        $participantNames[] = [
-                            'id' => $staffMember->staff_id,
-                            'text' => $staffMember->fname . ' ' . $staffMember->lname . ' (' . ($staffMember->position ?? 'Staff') . ')',
-                            'name' => $staffMember->fname . ' ' . $staffMember->lname,
-                            'position' => $staffMember->position ?? 'Staff'
-                        ];
+                \Log::info('Processing participant names from internal participants', [
+                    'internal_participants' => $internalParticipants,
+                    'count' => count($internalParticipants),
+                    'keys' => array_keys($internalParticipants)
+                ]);
+                
+                // Check if participants are already processed (have staff objects) or raw JSON
+                if (isset($internalParticipants[0]) && isset($internalParticipants[0]['staff'])) {
+                    // Participants are already processed - use them directly (same as special memo)
+                    \Log::info('Participants are already processed with staff objects');
+                    
+                    foreach ($internalParticipants as $index => $participant) {
+                        if (isset($participant['staff']) && $participant['staff']) {
+                            $staffMember = $participant['staff'];
+                            $divisionName = $staffMember->division_name ?? 'No Division';
+                            
+                            $participantNames[] = [
+                                'id' => $staffMember->staff_id,
+                                'text' => $staffMember->fname . ' ' . $staffMember->lname . ' (' . ($staffMember->job_name ?? 'Staff') . ') - ' . $divisionName,
+                                'name' => $staffMember->fname . ' ' . $staffMember->lname,
+                                'position' => $staffMember->job_name ?? 'Staff',
+                                'division' => $divisionName
+                            ];
+                            
+                            \Log::info('Added processed participant to names list', [
+                                'staff_id' => $staffMember->staff_id,
+                                'name' => $staffMember->fname . ' ' . $staffMember->lname,
+                                'division' => $divisionName
+                            ]);
+                        }
+                    }
+                } else {
+                    // Participants are raw JSON - need to process them (original logic)
+                    \Log::info('Participants are raw JSON - processing them');
+                    
+                    // Get staff IDs from the keys of the internal participants array
+                    $staffIds = array_map('intval', array_keys($internalParticipants));
+                    \Log::info('Staff IDs extracted from keys', ['staff_ids' => $staffIds]);
+                    
+                    // Fetch staff details using the converted integer IDs
+                    $staffDetails = Staff::with('division')->whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
+                    \Log::info('Staff details fetched', [
+                        'staff_count' => $staffDetails->count(),
+                        'staff_ids_found' => $staffDetails->keys()->toArray()
+                    ]);
+                    
+                    foreach ($internalParticipants as $participantId => $participantData) {
+                        // Convert string key to integer for database lookup
+                        $staffIdInt = (int) $participantId;
+                        
+                        \Log::info('Processing participant', [
+                            'participant_id' => $participantId,
+                            'staff_id_int' => $staffIdInt,
+                            'participant_data' => $participantData
+                        ]);
+                        
+                        // Check if staff exists in our fetched data
+                        if (isset($staffDetails[$staffIdInt])) {
+                            $staffMember = $staffDetails[$staffIdInt];
+                            $divisionName = $staffMember->division ? ($staffMember->division->name ?? $staffMember->division->division_name ?? 'No Division') : 'No Division';
+                            
+                            $participantNames[] = [
+                                'id' => $staffMember->staff_id,
+                                'text' => $staffMember->fname . ' ' . $staffMember->lname . ' (' . ($staffMember->position ?? 'Staff') . ') - ' . $divisionName,
+                                'name' => $staffMember->fname . ' ' . $staffMember->lname,
+                                'position' => $staffMember->position ?? 'Staff',
+                                'division' => $divisionName
+                            ];
+                            
+                            \Log::info('Added participant to names list', [
+                                'staff_id' => $staffMember->staff_id,
+                                'name' => $staffMember->fname . ' ' . $staffMember->lname,
+                                'division' => $divisionName
+                            ]);
+                        } else {
+                            \Log::warning('Staff member not found in fetched data', [
+                                'staff_id' => $staffIdInt,
+                                'participant_id' => $participantId,
+                                'available_staff_ids' => $staffDetails->keys()->toArray()
+                            ]);
+                        }
                     }
                 }
+                
+                \Log::info('Final participant names', [
+                    'participant_names' => $participantNames,
+                    'count' => count($participantNames)
+                ]);
             }
             
             return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId', 'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames'));
@@ -238,6 +314,7 @@ class ServiceRequestController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        
         $validated = $request->validate([
             'request_date' => 'required|date',
             'service_title' => 'required|string|max:255',
@@ -267,25 +344,67 @@ class ServiceRequestController extends Controller
         
         // Process budget data
         $budgetData = $this->processBudgetData($request);
+
+        // Get assigned workflow ID for ServiceRequest model
+        $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
+        if (!$assignedWorkflowId) {
+            $assignedWorkflowId = 1; // Default workflow ID
+            \Log::warning('No workflow assignment found for ServiceRequest model, using default workflow ID: 1');
+        }
+        
+        // Set approval levels and workflow IDs for immediate submission
+        $approvalLevel = 1; // Start at level 1 for pending
+        $nextApprovalLevel = 2; // Next level to be approved
+        $overallStatus = 'pending'; // Set to pending immediately
+        $forwardWorkflowId = $assignedWorkflowId; // Set the assigned workflow ID
+        $reverseWorkflowId = $assignedWorkflowId; // Set the same for reverse workflow
+        
+        // Debug: Check what workflow would be assigned
+        \Log::info('ServiceRequest Creation Debug - Workflow Assignment', [
+            'model_name' => 'ServiceRequest',
+            'assigned_workflow_id' => $assignedWorkflowId,
+            'forward_workflow_id_set_to' => $forwardWorkflowId,
+            'workflow_assignments' => WorkflowModel::where('model_name', 'ServiceRequest')->get()->toArray()
+        ]);
         
         // Process specifications array if provided
         if (!isset($validated['specifications']) || !is_array($validated['specifications'])) {
             $validated['specifications'] = [];
         }
         
-        // Set default status if not provided
-        if (!isset($validated['status'])) {
-            $validated['status'] = 'draft';
-        }
-        
         // Merge budget data with validated data
         $validated = array_merge($validated, $budgetData);
-       
-        ServiceRequest::create($validated);
+        
+        // Add approval and workflow fields
+        $validated['approval_level'] = $approvalLevel;
+        $validated['next_approval_level'] = $nextApprovalLevel;
+        $validated['overall_status'] = $overallStatus;
+        $validated['forward_workflow_id'] = $forwardWorkflowId;
+        $validated['reverse_workflow_id'] = $reverseWorkflowId;
+        
+        \Log::info('Creating ServiceRequest with data', ['service_request_data' => $validated]);
+        
+        $serviceRequest = ServiceRequest::create($validated);
+        
+        // Save approval trail for ServiceRequest creation and submission
+        $serviceRequest->saveApprovalTrail('Service request created and submitted for approval', 'submitted');
+        
+        // Send email notification for approval request (if function exists)
+        if (function_exists('send_service_request_email_notification')) {
+            send_service_request_email_notification($serviceRequest, 'approval');
+        }
+        
+        \Log::info('ServiceRequest Created and Submitted Successfully', [
+            'service_request_id' => $serviceRequest->id, 
+            'request_number' => $serviceRequest->request_number,
+            'forward_workflow_id' => $serviceRequest->forward_workflow_id,
+            'overall_status' => $serviceRequest->overall_status,
+            'approval_level' => $serviceRequest->approval_level
+        ]);
         
         return redirect()
             ->route('service-requests.index')
-            ->with('success', 'Service request created successfully.');
+            ->with('success', 'Service request created and submitted for approval successfully! Status: Pending');
     }
 
     /**
@@ -295,10 +414,25 @@ class ServiceRequestController extends Controller
     {
         $budgetData = [];
         
+        // Get cost items mapping (ID to name)
+        $costItems = CostItem::where('cost_type', 'Individual Cost')->get()->keyBy('id');
+        $costItemMapping = $costItems->mapWithKeys(function ($item) {
+            return [$item->id => $item->name];
+        })->toArray();
+        
         // Process internal participants
         $internalParticipants = $request->input('internal_participants', []);
         $internalCosts = [];
         $internalTotal = 0;
+        
+        // Ensure internalParticipants is an array
+        if (!is_array($internalParticipants)) {
+            \Log::warning('Internal participants is not an array', [
+                'type' => gettype($internalParticipants),
+                'value' => $internalParticipants
+            ]);
+            $internalParticipants = [];
+        }
         
         foreach ($internalParticipants as $participant) {
             if (!empty($participant['staff_id'])) {
@@ -307,16 +441,19 @@ class ServiceRequestController extends Controller
                 $costType = $participant['cost_type'] ?? 'Daily Rate';
                 $description = $participant['description'] ?? '';
                 
-                // Calculate total from costs array
+                // Convert cost IDs to cost names and calculate total
+                $costsWithNames = [];
                 $total = 0;
-                foreach ($costs as $costValue) {
+                foreach ($costs as $costId => $costValue) {
+                    $costName = $costItemMapping[$costId] ?? "Unknown Cost (ID: $costId)";
+                    $costsWithNames[$costName] = floatval($costValue);
                     $total += floatval($costValue);
                 }
                 
                 $internalCosts[] = [
                     'staff_id' => $staffId,
                     'cost_type' => $costType,
-                    'costs' => $costs,
+                    'costs' => $costsWithNames,
                     'description' => $description,
                     'total' => $total
                 ];
@@ -330,6 +467,15 @@ class ServiceRequestController extends Controller
         $externalCosts = [];
         $externalTotal = 0;
         
+        // Ensure externalParticipants is an array
+        if (!is_array($externalParticipants)) {
+            \Log::warning('External participants is not an array', [
+                'type' => gettype($externalParticipants),
+                'value' => $externalParticipants
+            ]);
+            $externalParticipants = [];
+        }
+        
         foreach ($externalParticipants as $participant) {
             if (!empty($participant['name'])) {
                 $name = $participant['name'];
@@ -338,9 +484,12 @@ class ServiceRequestController extends Controller
                 $costType = $participant['cost_type'] ?? 'Daily Rate';
                 $description = $participant['description'] ?? '';
                 
-                // Calculate total from costs array
+                // Convert cost IDs to cost names and calculate total
+                $costsWithNames = [];
                 $total = 0;
-                foreach ($costs as $costValue) {
+                foreach ($costs as $costId => $costValue) {
+                    $costName = $costItemMapping[$costId] ?? "Unknown Cost (ID: $costId)";
+                    $costsWithNames[$costName] = floatval($costValue);
                     $total += floatval($costValue);
                 }
                 
@@ -348,7 +497,7 @@ class ServiceRequestController extends Controller
                     'name' => $name,
                     'email' => $email,
                     'cost_type' => $costType,
-                    'costs' => $costs,
+                    'costs' => $costsWithNames,
                     'description' => $description,
                     'total' => $total
                 ];
@@ -361,6 +510,15 @@ class ServiceRequestController extends Controller
         $otherCosts = $request->input('other_costs', []);
         $otherCostsData = [];
         $otherTotal = 0;
+        
+        // Ensure otherCosts is an array
+        if (!is_array($otherCosts)) {
+            \Log::warning('Other costs is not an array', [
+                'type' => gettype($otherCosts),
+                'value' => $otherCosts
+            ]);
+            $otherCosts = [];
+        }
         
         foreach ($otherCosts as $cost) {
             if (!empty($cost['cost_type'])) {
@@ -528,9 +686,38 @@ class ServiceRequestController extends Controller
                     
                 case 'non_travel_memo':
                 case 'special_memo':
-                    // Non-travel and special memos don't have internal participants
-                    \Log::info('Non-travel/Special memo - no internal participants expected');
-                    return [];
+                    if ($sourceData && isset($sourceData->internal_participants)) {
+                        \Log::info('Memo internal participants found', [
+                            'source_type' => $sourceType,
+                            'internal_participants' => $sourceData->internal_participants,
+                            'is_string' => is_string($sourceData->internal_participants)
+                        ]);
+                        
+                        $participants = is_string($sourceData->internal_participants) 
+                            ? json_decode($sourceData->internal_participants, true) 
+                            : $sourceData->internal_participants;
+                        
+                        \Log::info('Decoded memo internal participants', [
+                            'decoded_participants' => $participants,
+                            'is_array' => is_array($participants),
+                            'keys' => is_array($participants) ? array_keys($participants) : 'not_array'
+                        ]);
+                        
+                        if (is_array($participants) && !empty($participants)) {
+                            // Process participants the same way as special memo show
+                            $staffIds = array_map('intval', array_keys($participants));
+                            \Log::info('Staff IDs extracted', ['staff_ids' => $staffIds]);
+                            
+                            return $participants; // Return the raw participants data
+                        }
+                    } else {
+                        \Log::warning('Memo internal participants not found', [
+                            'source_type' => $sourceType,
+                            'has_source_data' => $sourceData !== null,
+                            'has_internal_participants' => $sourceData ? isset($sourceData->internal_participants) : false
+                        ]);
+                    }
+                    break;
             }
             
             return [];
@@ -545,9 +732,15 @@ class ServiceRequestController extends Controller
      */
     public function show(ServiceRequest $serviceRequest): View
     {
-        $serviceRequest->load(['staff', 'division', 'activity', 'workflow', 'reverseWorkflow']);
+        $serviceRequest->load(['staff', 'division', 'activity', 'forwardWorkflow', 'reverseWorkflow', 'serviceRequestApprovalTrails.staff', 'serviceRequestApprovalTrails.approverRole']);
         
-        return view('service-requests.show', compact('serviceRequest'));
+        // Load source data if available
+        $sourceData = null;
+        if ($serviceRequest->source_type && $serviceRequest->source_id) {
+            $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
+        }
+        
+        return view('service-requests.show', compact('serviceRequest', 'sourceData'));
     }
 
     /**
@@ -1215,5 +1408,118 @@ class ServiceRequestController extends Controller
         };
         
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Submit service request for approval.
+     */
+    public function submitForApproval(ServiceRequest $serviceRequest): RedirectResponse
+    {
+        $serviceRequest->submitForApproval();
+
+        return redirect()->route('service-requests.show', $serviceRequest)->with([
+            'msg' => 'Service request submitted for approval successfully.',
+            'type' => 'success',
+        ]);
+    }
+
+    /**
+     * Update approval status using generic approval system.
+     */
+    public function updateStatus(Request $request, ServiceRequest $serviceRequest): RedirectResponse
+    {
+        \Illuminate\Support\Facades\Log::info('ServiceRequest updateStatus called', [
+            'request_all' => $request->all(),
+            'service_request_id' => $serviceRequest->id,
+            'current_status' => $serviceRequest->overall_status,
+            'current_level' => $serviceRequest->approval_level,
+            'user_id' => user_session('staff_id')
+        ]);
+
+        $request->validate([
+            'action' => 'required|in:approved,rejected,returned',
+            'comment' => 'nullable|string|max:1000',
+        ]);
+
+        \Illuminate\Support\Facades\Log::info('Validation passed, calling generic approval controller');
+
+        // Use the generic approval system
+        $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
+        return $genericController->updateStatus($request, 'ServiceRequest', $serviceRequest->id);
+    }
+
+    /**
+     * Show approval status page.
+     */
+    public function status(ServiceRequest $serviceRequest): View
+    {
+        $serviceRequest->load(['staff', 'division', 'forwardWorkflow', 'activity']);
+        
+        return view('service-requests.status', compact('serviceRequest'));
+    }
+
+    /**
+     * Print service request as PDF.
+     */
+    public function print(ServiceRequest $serviceRequest)
+    {
+        // Eager load needed relations
+        $serviceRequest->load([
+            'staff', 
+            'division', 
+            'activity',
+            'forwardWorkflow',
+            'reverseWorkflow',
+            'serviceRequestApprovalTrails.staff',
+            'serviceRequestApprovalTrails.approverRole'
+        ]);
+
+        // Decode JSON fields safely
+        $specifications = is_string($serviceRequest->specifications)
+            ? json_decode($serviceRequest->specifications, true)
+            : ($serviceRequest->specifications ?? []);
+        $specifications = is_array($specifications) ? $specifications : [];
+
+        $attachments = is_string($serviceRequest->attachments)
+            ? json_decode($serviceRequest->attachments, true)
+            : ($serviceRequest->attachments ?? []);
+        $attachments = is_array($attachments) ? $attachments : [];
+
+        $budgetBreakdown = $serviceRequest->budget_breakdown;
+        if (!is_array($budgetBreakdown)) {
+            $decoded = json_decode($budgetBreakdown, true);
+            $budgetBreakdown = is_array($decoded) ? $decoded : [];
+        }
+
+        $internalParticipantsCost = $serviceRequest->internal_participants_cost;
+        if (!is_array($internalParticipantsCost)) {
+            $decoded = json_decode($internalParticipantsCost, true);
+            $internalParticipantsCost = is_array($decoded) ? $decoded : [];
+        }
+
+        $externalParticipantsCost = $serviceRequest->external_participants_cost;
+        if (!is_array($externalParticipantsCost)) {
+            $decoded = json_decode($externalParticipantsCost, true);
+            $externalParticipantsCost = is_array($decoded) ? $decoded : [];
+        }
+
+        $otherCosts = $serviceRequest->other_costs;
+        if (!is_array($otherCosts)) {
+            $decoded = json_decode($otherCosts, true);
+            $otherCosts = is_array($decoded) ? $decoded : [];
+        }
+
+        // Generate PDF using the service request print view
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('service-requests.print', [
+            'serviceRequest' => $serviceRequest,
+            'specifications' => $specifications,
+            'attachments' => $attachments,
+            'budgetBreakdown' => $budgetBreakdown,
+            'internalParticipantsCost' => $internalParticipantsCost,
+            'externalParticipantsCost' => $externalParticipantsCost,
+            'otherCosts' => $otherCosts,
+        ]);
+
+        return $pdf->download('service-request-' . $serviceRequest->request_number . '.pdf');
     }
 }

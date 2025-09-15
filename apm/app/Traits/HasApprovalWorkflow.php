@@ -259,7 +259,14 @@ trait HasApprovalWorkflow
         $this->saveApprovalTrail($comment ?? '', $action);
 
         if ($action !== 'approved') {
-            $this->forward_workflow_id = 1;
+            // Get the assigned workflow ID for this model
+            $modelName = class_basename($this);
+            $assignedWorkflowId = \App\Models\WorkflowModel::getWorkflowIdForModel($modelName);
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 1; // Default fallback
+            }
+            
+            $this->forward_workflow_id = $assignedWorkflowId;
             $this->approval_level = 1;
             $this->overall_status = 'returned';
         } else {
@@ -291,8 +298,16 @@ trait HasApprovalWorkflow
             $last_workflow_id    = $workflow_defn->workflow_id;
             $last_approval_order = $last_approval_trail->approval_order;
         }
-        else
-            $last_approval_order=1; $last_workflow_id=1;
+        else {
+            // Get the assigned workflow ID for this model
+            $modelName = class_basename($this);
+            $assignedWorkflowId = \App\Models\WorkflowModel::getWorkflowIdForModel($modelName);
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 1; // Default fallback
+            }
+            $last_approval_order = 1; 
+            $last_workflow_id = $assignedWorkflowId;
+        }
         $this->overall_status = 'pending';
         $this->approval_level = $last_approval_order;
         $this->forward_workflow_id = $last_workflow_id;
