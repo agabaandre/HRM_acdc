@@ -94,7 +94,7 @@
                     value="{{ user_session('staff_id') }}">
                 <input type="hidden" name="budget_id" value="{{ $sourceData->budget_id ?? '[]' }}">
                 <input type="hidden" name="original_total_budget" id="originalTotalBudget"
-                    value="{{ $originalTotalBudget ?? 0 }}">
+                    value="{{ $totalOriginal ?? 0 }}">
             <input type="hidden" name="new_total_budget" id="newTotalBudget" value="0">
             <input type="hidden" name="budget_breakdown" id="budgetBreakdown" value="">
              <input type="hidden" name="division_id" id="divisionId" value="{{ $sourceData->division_id ?? 0 }}">
@@ -396,8 +396,8 @@
                                                 class="form-control border-success cost-input" value="0"
                                                data-cost-item="{{ $costItem->name }}"
                                                 placeholder="Enter {{ $costItem->name }}"
-                                                pattern="[0-9]+(\.[0-9]{1,2})?"
-                                                title="Enter a valid number (e.g., 1000.50)">
+                                                pattern="[0-9,]+(\.[0-9]{1,2})?"
+                                                title="Enter a valid number (e.g., 1,000.50)">
                                     </td>
                                                         @endforeach
                                     <td class="text-end fw-bold total-cell">$0.00</td>
@@ -458,8 +458,8 @@
                                                 class="form-control border-success cost-input" value="0"
                                                data-cost-item="{{ $costItem->name }}"
                                                 placeholder="Enter {{ $costItem->name }}"
-                                                pattern="[0-9]+(\.[0-9]{1,2})?"
-                                                title="Enter a valid number (e.g., 1000.50)">
+                                                pattern="[0-9,]+(\.[0-9]{1,2})?"
+                                                title="Enter a valid number (e.g., 1,000.50)">
                                     </td>
                                 @endforeach
                                     <td class="text-end fw-bold total-cell">$0.00</td>
@@ -512,8 +512,8 @@
                                                 <input type="text" name="other_costs[{{ $index }}][unit_cost]"
                                                     class="form-control border-success cost-input" value="0"
                                                     placeholder="Enter unit cost"
-                                                    pattern="[0-9]+(\.[0-9]{1,2})?"
-                                                    title="Enter a valid number (e.g., 1000.50)">
+                                                    pattern="[0-9,]+(\.[0-9]{1,2})?"
+                                                    title="Enter a valid number (e.g., 1,000.50)">
                                         </td>
                                         <td>
                                                 <input type="number" name="other_costs[{{ $index }}][days]"
@@ -815,8 +815,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listeners for cost inputs
     document.addEventListener('input', function(e) {
         if (e.target.classList.contains('cost-input')) {
-                    // Validate and format number with thousand separators
-                    validateAndFormatNumberInput(e.target);
+            // Validate and format number with thousand separators
+            validateAndFormatNumberInput(e.target);
             updateTotals();
         }
     });
@@ -861,6 +861,49 @@ document.addEventListener('DOMContentLoaded', function() {
                     input.value = '';
         }
     }
+    
+    // Form submission handler - strip commas from numeric inputs
+    document.getElementById('serviceRequestForm').addEventListener('submit', function(e) {
+        // Strip commas from all cost inputs before submission
+        const costInputs = document.querySelectorAll('.cost-input');
+        costInputs.forEach(input => {
+            if (input.value) {
+                input.value = input.value.replace(/,/g, '');
+            }
+        });
+        
+        // Strip commas from number inputs
+        const numberInputs = document.querySelectorAll('input[type="number"]');
+        numberInputs.forEach(input => {
+            if (input.value && input.value.includes(',')) {
+                input.value = input.value.replace(/,/g, '');
+            }
+        });
+        
+        // Strip commas from any other numeric text inputs
+        const numericInputs = document.querySelectorAll('input[type="text"][pattern*="[0-9]"]');
+        numericInputs.forEach(input => {
+            if (input.value && input.value.includes(',')) {
+                input.value = input.value.replace(/,/g, '');
+            }
+        });
+        
+        // Strip commas from budget total inputs (hidden inputs)
+        const budgetInputs = document.querySelectorAll('input[name="original_total_budget"], input[name="new_total_budget"]');
+        budgetInputs.forEach(input => {
+            if (input.value && input.value.includes(',')) {
+                input.value = input.value.replace(/,/g, '');
+            }
+        });
+        
+        // Strip commas from all inputs that might contain numeric values
+        const allInputs = document.querySelectorAll('input[type="hidden"], input[type="text"]');
+        allInputs.forEach(input => {
+            if (input.value && input.value.includes(',') && !isNaN(input.value.replace(/,/g, ''))) {
+                input.value = input.value.replace(/,/g, '');
+            }
+        });
+    });
     
     // Update participants summary
     function updateParticipantsSummary() {

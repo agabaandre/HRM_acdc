@@ -1323,16 +1323,21 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             $selectedQuarter = 'Q' . $selectedQuarter;
         }
         
-        // Base query for activities - only show activities from approved matrices
+        // Base query for activities - show activities from approved matrices OR where user is responsible
         $baseQuery = Activity::with([
             'matrix.division',
             'responsiblePerson',
             'staff',
             'fundType'
-        ])->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter) {
+        ])->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter, $userStaffId) {
             $query->where('year', $selectedYear)
                   ->where('quarter', $selectedQuarter)
-                  ->where('overall_status', 'approved'); // Only show activities from approved matrices
+                  ->where(function ($subQuery) use ($userStaffId) {
+                      $subQuery->where('overall_status', 'approved') // Approved matrices
+                              ->orWhereHas('activities', function ($activityQuery) use ($userStaffId) {
+                                  $activityQuery->where('responsible_person_id', $userStaffId); // User is responsible person
+                              });
+                  });
         });
 
         // Apply additional filters
@@ -1407,8 +1412,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $myDivisionActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if ($userDivisionId) {
             $myDivisionQuery = clone $baseQuery;
-            $myDivisionQuery->whereHas('matrix', function ($query) use ($userDivisionId) {
-                $query->where('division_id', $userDivisionId);
+            $myDivisionQuery->where(function ($query) use ($userDivisionId, $userStaffId) {
+                $query->whereHas('matrix', function ($matrixQuery) use ($userDivisionId) {
+                    $matrixQuery->where('division_id', $userDivisionId);
+                })->orWhere('responsible_person_id', $userStaffId); // Include activities where user is responsible
             });
             $myDivisionActivities = $myDivisionQuery->latest()->paginate(20);
             
@@ -1428,10 +1435,15 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $sharedActivities = new LengthAwarePaginator([], 0, 20); // Initialize with empty paginated result
         if ($userStaffId) {
             $sharedQuery = clone $baseQuery;
-            $sharedQuery->where('staff_id', $userStaffId)
-                ->whereHas('matrix', function ($query) use ($userDivisionId) {
-                           $query->where('division_id', '!=', $userDivisionId);
-                       });
+            $sharedQuery->where(function ($query) use ($userStaffId, $userDivisionId) {
+                $query->where('staff_id', $userStaffId) // Activities I created
+                      ->orWhere('responsible_person_id', $userStaffId) // Activities I'm responsible for
+                      ->orWhereHas('participantSchedules', function ($scheduleQuery) use ($userStaffId) {
+                          $scheduleQuery->where('participant_id', $userStaffId); // Activities I'm participating in
+                      });
+            })->whereHas('matrix', function ($query) use ($userDivisionId) {
+                $query->where('division_id', '!=', $userDivisionId); // From other divisions
+            });
             $sharedActivities = $sharedQuery->latest()->paginate(20);
             
             // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
@@ -1467,7 +1479,17 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'myDivisionActivitiesCount' => $myDivisionActivities->count(),
             'sharedActivitiesCount' => $sharedActivities->count(),
             'baseQuerySQL' => $baseQuery->toSql(),
-            'baseQueryBindings' => $baseQuery->getBindings()
+            'baseQueryBindings' => $baseQuery->getBindings(),
+            'myDivisionActivities' => $myDivisionActivities->getCollection()->map(function ($activity) {
+                return [
+                    'id' => $activity->id,
+                    'title' => $activity->activity_title,
+                    'matrix_id' => $activity->matrix_id,
+                    'staff_id' => $activity->staff_id,
+                    'responsible_person_id' => $activity->responsible_person_id,
+                    'matrix_division_id' => $activity->matrix->division_id ?? 'N/A'
+                ];
+            })->toArray()
         ]);
         
         return view('activities.index', compact(
