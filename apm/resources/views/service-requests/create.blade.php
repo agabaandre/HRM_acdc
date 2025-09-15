@@ -167,10 +167,11 @@
                     </div>
                 </div>
 
-    <!-- Section 7: Budget Summary -->
+    <!-- Section 7: Budget Summary (Top) -->
                 <div class="mb-5">
                     <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
                         <i class="fas fa-calculator me-2"></i> Budget Summary
+                        <small class="text-muted ms-2">(Live Preview)</small>
                     </h6>
 
                     <div class="row g-2">
@@ -348,29 +349,27 @@
                         <h6 class="fw-bold text-success mb-0">
                     <i class="fas fa-users me-2"></i> Individual Costs (Internal Participants)
                 </h6>
-                        <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-success btn-sm" id="addInternal">
-                        <i class="fas fa-plus me-1"></i> Add Participant
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" id="removeInternal">
-                        <i class="fas fa-minus me-1"></i> Remove Participant
-                    </button>
-                        </div>
                             </div>
                             
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover">
                             <thead class="table-secondary">
                             <tr>
-                                <th style="width: 30%;">Name</th>
+                                <th style="width: 8%;">Remove</th>
+                                <th style="width: 25%;">Name</th>
                                     @foreach ($costItems as $costItem)
-                                    <th style="width: {{ 60 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                    <th style="width: {{ 42 / count($costItems) }}%;">{{ $costItem->name }}</th>
                                                         @endforeach
                                 <th style="width: 10%;">Total</th>
                             </tr>
                         </thead>
                         <tbody id="internalParticipants">
                             <tr>
+                                <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-internal-row" disabled>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
                                 <td>
                                         <select name="internal_participants[0][staff_id]"
                                             class="form-select border-success participant-select" style="width: 100%;">
@@ -405,6 +404,11 @@
                         </tbody>
                             <tfoot class="table-secondary">
                                 <tr>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-success btn-sm" id="addInternal">
+                                            <i class="fas fa-plus me-1"></i> Add
+                                        </button>
+                                    </td>
                                     <td colspan="{{ count($costItems) + 1 }}" class="text-end fw-bold">Subtotal:</td>
                                 <td class="text-end fw-bold" id="internalSubtotal">$0.00</td>
                             </tr>
@@ -419,30 +423,28 @@
                         <h6 class="fw-bold text-success mb-0">
                     <i class="fas fa-user-friends me-2"></i> Individual Costs (External Participants)
                 </h6>
-                        <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-success btn-sm" id="addExternal">
-                        <i class="fas fa-plus me-1"></i> Add Participant
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" id="removeExternal">
-                        <i class="fas fa-minus me-1"></i> Remove Participant
-                    </button>
-                        </div>
                                         </div>
                 
                 <div class="table-responsive">
                         <table class="table table-bordered table-hover">
                             <thead class="table-secondary">
                                 <tr>
+                                    <th style="width: 8%;">Remove</th>
                                     <th style="width: 200px; max-width: 200px;">Name</th>
                                 <th style="width: 200px; max-width: 200px;">Email</th>
                                     @foreach ($costItems as $costItem)
-                                    <th style="width: {{ 40 / count($costItems) }}%;">{{ $costItem->name }}</th>
+                                    <th style="width: {{ 27 / count($costItems) }}%;">{{ $costItem->name }}</th>
                                 @endforeach
                                 <th style="width: 10%;">Total</th>
                             </tr>
                         </thead>
                         <tbody id="externalParticipants">
                             <tr>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-external-row" disabled>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
                                     <td style="width: 200px; max-width: 200px;"><input type="text" name="external_participants[0][name]"
                                             class="form-control border-success" placeholder="Name" value="">
                                         <!-- Hidden fields for cost type and description -->
@@ -467,6 +469,11 @@
                         </tbody>
                             <tfoot class="table-secondary">
                                 <tr>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-success btn-sm" id="addExternal">
+                                            <i class="fas fa-plus me-1"></i> Add
+                                        </button>
+                                    </td>
                                     <td colspan="{{ count($costItems) + 2 }}" class="text-end fw-bold">Subtotal:</td>
                                 <td class="text-end fw-bold" id="externalSubtotal">$0.00</td>
                             </tr>
@@ -573,10 +580,11 @@
                     </table>
                 </div>
             </div>
-              <!-- Section 7: Budget Summary -->
+              <!-- Section 8: Budget Summary (Bottom) -->
                 <div class="mb-5">
                     <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
                         <i class="fas fa-calculator me-2"></i> Budget Summary
+                        <small class="text-muted ms-2">(Final Review)</small>
                     </h6>
 
                     <div class="row g-2">
@@ -587,7 +595,7 @@
                                         <i class="fas fa-file-invoice-dollar text-success" style="font-size: 12px;"></i>
                                     </div>
                                     <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">Original Budget</h6>
-                                    <h6 class="text-success mb-0" id="originalBudgetAmount" style="font-size: 1.1rem;">
+                                    <h6 class="text-success mb-0" id="originalBudgetAmountBottom" style="font-size: 1.1rem;">
                                         ${{ number_format($totalOriginal, 2) }}</h6>
                                 </div>
                             </div>
@@ -599,7 +607,7 @@
                                         <i class="fas fa-calculator text-primary" style="font-size: 12px;"></i>
                                     </div>
                                     <h6 class="card-title text-primary mb-1" style="font-size: 0.8rem;">New Budget</h6>
-                                    <h6 class="text-primary mb-0" id="newBudgetAmount" style="font-size: 1.1rem;">$0.00</h6>
+                                    <h6 class="text-primary mb-0" id="newBudgetAmountBottom" style="font-size: 1.1rem;">$0.00</h6>
                                 </div>
                             </div>
                         </div>
@@ -610,7 +618,7 @@
                                         <i class="fas fa-balance-scale text-warning" style="font-size: 12px;"></i>
                                     </div>
                                     <h6 class="card-title text-warning mb-1" style="font-size: 0.8rem;">Budget Difference</h6>
-                                    <h6 class="text-warning mb-0" id="budgetDifference" style="font-size: 1.1rem;">$0.00</h6>
+                                    <h6 class="text-warning mb-0" id="budgetDifferenceBottom" style="font-size: 1.1rem;">$0.00</h6>
                                 </div>
                             </div>
                         </div>
@@ -706,6 +714,20 @@
              width: 200px !important;
              max-width: 200px !important;
          }
+         
+        /* Remove button styling */
+        .remove-internal-row:disabled,
+        .remove-external-row:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+         
+         .remove-internal-row:not(:disabled):hover,
+         .remove-external-row:not(:disabled):hover {
+             background-color: #dc3545;
+             border-color: #dc3545;
+             color: white;
+         }
     </style>
 
 <script>
@@ -736,20 +758,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Populate the participant dropdown with the correct options
+        // Populate the participant dropdown with available options (excluding already selected ones)
         const participantSelect = newRow.querySelector('select[name*="[staff_id]"]');
         if (participantSelect) {
             // Clear existing options
             participantSelect.innerHTML = '<option value="">Select Participant</option>';
             
+            // Get currently selected participant IDs
+            const selectedParticipantIds = Array.from(document.querySelectorAll('#internalParticipants select[name*="[staff_id]"]'))
+                .map(select => select.value)
+                .filter(value => value !== '');
+            
             if (participantNames.length > 0) {
-                // Add participant options from source activity
+                // Add participant options from source activity, excluding already selected ones
                 participantNames.forEach(participant => {
-                    const option = document.createElement('option');
-                    option.value = participant.id;
-                    option.textContent = participant.text;
-                    participantSelect.appendChild(option);
+                    if (!selectedParticipantIds.includes(participant.id)) {
+                        const option = document.createElement('option');
+                        option.value = participant.id;
+                        option.textContent = participant.text;
+                        participantSelect.appendChild(option);
+                    }
                 });
+                
+                // If no available participants, show message
+                if (participantSelect.options.length === 1) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.disabled = true;
+                    option.textContent = 'All participants already selected';
+                    participantSelect.appendChild(option);
+                }
             } else {
                 // No participants available from source activity
                 const option = document.createElement('option');
@@ -772,6 +810,12 @@ document.addEventListener('DOMContentLoaded', function() {
             totalCell.textContent = '$0.00';
         }
         
+        // Enable remove button for this row
+        const removeBtn = newRow.querySelector('.remove-internal-row');
+        if (removeBtn) {
+            removeBtn.disabled = false;
+        }
+        
         tbody.appendChild(newRow);
         internalParticipantCount++;
         
@@ -779,14 +823,22 @@ document.addEventListener('DOMContentLoaded', function() {
         updateParticipantsSummary();
     });
     
-    // Remove internal participant
-    document.getElementById('removeInternal').addEventListener('click', function() {
-        const tbody = document.getElementById('internalParticipants');
-        if (tbody.rows.length > 1) {
-            tbody.deleteRow(tbody.rows.length - 1);
-            internalParticipantCount--;
-            updateTotals();
-            updateParticipantsSummary();
+    // Remove individual internal participant row
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-internal-row')) {
+            const row = e.target.closest('tr');
+            const tbody = document.getElementById('internalParticipants');
+            
+            // Don't remove if it's the only row
+            if (tbody.rows.length > 1) {
+                row.remove();
+                internalParticipantCount--;
+                updateTotals();
+                updateParticipantsSummary();
+                
+                // Update available options in remaining dropdowns
+                updateInternalParticipantOptions();
+            }
         }
     });
     
@@ -820,9 +872,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (costTypeInput) costTypeInput.value = 'Daily Rate';
         if (descriptionInput) descriptionInput.value = '';
         
-        // Ensure Name and Email columns have fixed width
-        const nameCell = newRow.cells[0];
-        const emailCell = newRow.cells[1];
+        // Ensure Name and Email columns have fixed width (now cells 1 and 2 due to remove button in cell 0)
+        const nameCell = newRow.cells[1];
+        const emailCell = newRow.cells[2];
         if (nameCell) {
             nameCell.style.width = '200px';
             nameCell.style.maxWidth = '200px';
@@ -838,20 +890,29 @@ document.addEventListener('DOMContentLoaded', function() {
             totalCell.textContent = '$0.00';
         }
         
+        // Enable remove button for new row
+        const removeBtn = newRow.querySelector('.remove-external-row');
+        if (removeBtn) {
+            removeBtn.disabled = false;
+        }
+        
         tbody.appendChild(newRow);
         externalParticipantCount++;
         updateTotals();
         updateParticipantsSummary();
     });
     
-    // Remove external participant
-    document.getElementById('removeExternal').addEventListener('click', function() {
-        const tbody = document.getElementById('externalParticipants');
-        if (tbody.rows.length > 1) {
-            tbody.deleteRow(tbody.rows.length - 1);
-            externalParticipantCount--;
-            updateTotals();
-            updateParticipantsSummary();
+    // Remove external participant (individual row removal)
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-external-row')) {
+            const tbody = document.getElementById('externalParticipants');
+            if (tbody.rows.length > 1) {
+                const row = e.target.closest('tr');
+                row.remove();
+                externalParticipantCount--;
+                updateTotals();
+                updateParticipantsSummary();
+            }
         }
     });
     
@@ -866,11 +927,47 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners for participant changes
     document.addEventListener('change', function(e) {
-                if (e.target.matches(
-                        'select[name*="[staff_id]"], input[name*="[name]"], input[name*="[email]"]')) {
+        if (e.target.matches('select[name*="[staff_id]"]')) {
+            // Update available options in other dropdowns when selection changes
+            updateInternalParticipantOptions();
+            updateParticipantsSummary();
+        } else if (e.target.matches('input[name*="[name]"], input[name*="[email]"]')) {
             updateParticipantsSummary();
         }
     });
+    
+    // Function to update internal participant dropdown options
+    function updateInternalParticipantOptions() {
+        const allSelects = document.querySelectorAll('#internalParticipants select[name*="[staff_id]"]');
+        const selectedValues = Array.from(allSelects)
+            .map(select => select.value)
+            .filter(value => value !== '');
+        
+        allSelects.forEach(select => {
+            const currentValue = select.value;
+            const options = Array.from(select.options);
+            
+            // Reset all options to enabled
+            options.forEach(option => {
+                if (option.value !== '') {
+                    option.disabled = false;
+                }
+            });
+            
+            // Disable options that are selected in other dropdowns
+            options.forEach(option => {
+                if (option.value !== '' && option.value !== currentValue && selectedValues.includes(option.value)) {
+                    option.disabled = true;
+                }
+            });
+            
+            // If current selection is now disabled (duplicate), clear it
+            if (currentValue && selectedValues.filter(v => v === currentValue).length > 1) {
+                select.value = '';
+                select.selectedIndex = 0;
+            }
+        });
+    }
     
             // Function to validate and format number input with thousand separators
             function validateAndFormatNumberInput(input) {
@@ -1136,20 +1233,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     .replace('$', '').replace(/,/g, ''));
         const difference = newTotal - originalTotal;
         
-        // Update budget summary
-        document.getElementById('newBudgetAmount').textContent = '$' + newTotal.toFixed(2);
-        const differenceElement = document.getElementById('budgetDifference');
-        const budgetDifferenceCard = differenceElement.closest('.card');
-        
-        // Update colors and content based on difference
-        if (difference < 0) {
+        // Update budget summary (both top and bottom)
+        const updateBudgetSummary = (newBudgetElementId, differenceElementId) => {
+            const newBudgetElement = document.getElementById(newBudgetElementId);
+            const differenceElement = document.getElementById(differenceElementId);
+            const budgetDifferenceCard = differenceElement.closest('.card');
+            
+            if (newBudgetElement) {
+                newBudgetElement.textContent = '$' + newTotal.toFixed(2);
+            }
+            
+            if (differenceElement) {
+                // Update colors and content based on difference
+                if (difference < 0) {
                     differenceElement.className = 'text-success mb-0';
                     differenceElement.textContent = (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2);
                     // Reset card border
                     if (budgetDifferenceCard) {
                         budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-warning');
                     }
-        } else if (difference > 0) {
+                } else if (difference > 0) {
                     differenceElement.className = 'text-danger mb-0 fw-bold';
                     // Add warning icon for over budget
                     differenceElement.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + 
@@ -1159,14 +1262,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (budgetDifferenceCard) {
                         budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-danger');
                     }
-        } else {
+                } else {
                     differenceElement.className = 'text-warning mb-0';
                     differenceElement.textContent = (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2);
                     // Reset card border
                     if (budgetDifferenceCard) {
                         budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-warning');
                     }
-        }
+                }
+            }
+        };
+        
+        // Update both budget summary sections
+        updateBudgetSummary('newBudgetAmount', 'budgetDifference');
+        updateBudgetSummary('newBudgetAmountBottom', 'budgetDifferenceBottom');
         
         // Update hidden fields
         document.getElementById('newTotalBudget').value = newTotal;
@@ -1183,6 +1292,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial calculation
     updateTotals();
     updateParticipantsSummary();
+    updateInternalParticipantOptions();
     });
 </script>
 @endsection
