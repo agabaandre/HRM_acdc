@@ -341,7 +341,7 @@
                         @if($sourceData->background)
                         <div class="mt-3">
                             <label class="form-label text-muted small fw-semibold">Background</label>
-                            <p class="mb-0">{{ $sourceData->background }}</p>
+                            <p class="mb-0">{!! $sourceData->background !!}</p>
                         </div>
                         @endif
                         
