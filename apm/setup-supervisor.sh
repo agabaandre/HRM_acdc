@@ -3,7 +3,7 @@
 # Laravel Supervisor Setup Script
 # This script sets up both queue workers and scheduler through Supervisor
 
-PROJECT_DIR="/var/www/html/staff/apm"
+PROJECT_DIR="/opt/homebrew/var/www/staff/apm"
 SUPERVISOR_DIR="/etc/supervisor/conf.d"
 
 echo "Setting up Laravel Supervisor configuration..."

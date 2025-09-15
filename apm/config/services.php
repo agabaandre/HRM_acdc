@@ -36,8 +36,15 @@ return [
     ],
 
     'staff_api' => [
+        'base_url' => env('BASE_URL', 'http://localhost/staff/'),
+        'token' => env('STAFF_API_TOKEN', 'YWZyY2FjZGNzdGFmZnRyYWNrZXI'),
         'username' => env('STAFF_API_USERNAME'),
         'password' => env('STAFF_API_PASSWORD'),
+        'endpoints' => [
+            'staff' => '/share/get_current_staff',
+            'divisions' => '/share/divisions',
+            'directorates' => '/share/directorates',
+        ],
     ],
 
 ];
