@@ -286,7 +286,7 @@ a {
 .nav-container.primary-menu .dropdown-menu .dropdown-item:active {
     color: #fff;
     text-decoration: none;
-    background-color: rgba(17, 154, 72, 0.2);
+    background-color: #0e9a48 !important;
 }
 
 .nav-container .secondary-menu.navbar-nav a.nav-link {
