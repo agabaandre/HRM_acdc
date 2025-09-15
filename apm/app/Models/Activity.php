@@ -388,6 +388,6 @@ class Activity extends Model
 
     public function getResourceUrlAttribute()
     {
-        return route(( $this->is_single_memo ? 'single-memos.show' : 'activities.show'), $this->id);
+        return route(( $this->is_single_memo ? 'activities.single-memos.show' : 'activities.show'), $this->id);
     }
 }

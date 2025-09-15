@@ -1,0 +1,22 @@
+[Unit]
+Description=Laravel Queue Worker for Africa CDC APM
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/homebrew/var/www/staff/apm
+ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3 --max-time=3600 --memory=512
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=laravel-queue
+
+# Environment variables (adjust as needed)
+Environment=APP_ENV=production
+Environment=APP_DEBUG=false
+
+[Install]
+WantedBy=multi-user.target
