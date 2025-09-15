@@ -243,12 +243,49 @@ class PendingApprovalsService
         }
 
         // Check if user is division head, focal person, admin assistant, or finance officer
-        return in_array($this->currentStaffId, [
+        $primaryApprovers = [
             $division->division_head,
             $division->focal_person,
             $division->admin_assistant,
             $division->finance_officer
-        ]);
+        ];
+        
+        if (in_array($this->currentStaffId, $primaryApprovers)) {
+            return true;
+        }
+        
+        // Also check if user is an active OIC for any of these roles
+        $today = Carbon::today();
+        
+        // Check head OIC
+        if ($division->head_oic_id == $this->currentStaffId) {
+            $isOicActive = true;
+            if ($division->head_oic_start_date) {
+                $isOicActive = $isOicActive && $division->head_oic_start_date <= $today;
+            }
+            if ($division->head_oic_end_date) {
+                $isOicActive = $isOicActive && $division->head_oic_end_date >= $today;
+            }
+            if ($isOicActive) {
+                return true;
+            }
+        }
+        
+        // Check director OIC
+        if ($division->director_oic_id == $this->currentStaffId) {
+            $isOicActive = true;
+            if ($division->director_oic_start_date) {
+                $isOicActive = $isOicActive && $division->director_oic_start_date <= $today;
+            }
+            if ($division->director_oic_end_date) {
+                $isOicActive = $isOicActive && $division->director_oic_end_date >= $today;
+            }
+            if ($isOicActive) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**
@@ -357,8 +394,37 @@ class PendingApprovalsService
         // Check for division-specific approvers
         if ($current_approval_point->is_division_specific && method_exists($model, 'division') && $model->division) {
             $division = $model->division;
-            $staff_id = $division->{$current_approval_point->division_reference_column};
-            if ($staff_id == $this->currentStaffId) {
+            $referenceColumn = $current_approval_point->division_reference_column;
+            
+            // Check for active OIC first (if available)
+            // Map reference columns to their OIC column names
+            $oicColumnMap = [
+                'division_head' => 'head_oic_id',
+                'finance_officer' => 'finance_officer_oic_id', // This might need to be added to the division table
+                'director_id' => 'director_oic_id'
+            ];
+            
+            $oicColumn = $oicColumnMap[$referenceColumn] ?? $referenceColumn . '_oic_id';
+            $oicStartColumn = str_replace('_oic_id', '_oic_start_date', $oicColumn);
+            $oicEndColumn = str_replace('_oic_id', '_oic_end_date', $oicColumn);
+            
+            // Check if current user is the active OIC
+            if (isset($division->$oicColumn) && $division->$oicColumn == $this->currentStaffId) {
+                $isOicActive = true;
+                if (isset($division->$oicStartColumn) && $division->$oicStartColumn) {
+                    $isOicActive = $isOicActive && $division->$oicStartColumn <= $today;
+                }
+                if (isset($division->$oicEndColumn) && $division->$oicEndColumn) {
+                    $isOicActive = $isOicActive && $division->$oicEndColumn >= $today;
+                }
+                
+                if ($isOicActive) {
+                    return true;
+                }
+            }
+            
+            // If no active OIC, check primary approver
+            if (isset($division->$referenceColumn) && $division->$referenceColumn == $this->currentStaffId) {
                 return true;
             }
         }
@@ -528,7 +594,45 @@ class PendingApprovalsService
                     $division->finance_officer
                 ];
                 
-                $staffEmails = Staff::whereIn('staff_id', array_filter($divisionApprovers))
+                // Also include active OIC approvers
+                $today = Carbon::today();
+                $oicApprovers = [];
+                
+                // Check head OIC
+                if ($division->head_oic_id) {
+                    $isOicActive = true;
+                    if ($division->head_oic_start_date) {
+                        $isOicActive = $isOicActive && $division->head_oic_start_date <= $today;
+                    }
+                    if ($division->head_oic_end_date) {
+                        $isOicActive = $isOicActive && $division->head_oic_end_date >= $today;
+                    }
+                    if ($isOicActive) {
+                        $oicApprovers[] = $division->head_oic_id;
+                    }
+                }
+                
+                // Check director OIC
+                if ($division->director_oic_id) {
+                    $isOicActive = true;
+                    if ($division->director_oic_start_date) {
+                        $isOicActive = $isOicActive && $division->director_oic_start_date <= $today;
+                    }
+                    if ($division->director_oic_end_date) {
+                        $isOicActive = $isOicActive && $division->director_oic_end_date >= $today;
+                    }
+                    if ($isOicActive) {
+                        $oicApprovers[] = $division->director_oic_id;
+                    }
+                }
+                
+                // Combine primary and OIC approvers
+                $allDivisionApprovers = array_merge(
+                    array_filter($divisionApprovers),
+                    $oicApprovers
+                );
+                
+                $staffEmails = Staff::whereIn('staff_id', $allDivisionApprovers)
                     ->where('active', 1)
                     ->pluck('work_email')
                     ->filter()

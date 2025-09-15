@@ -326,7 +326,7 @@ class Activity extends Model
         $user = session('user', []);
         $matrix = $this->matrix;
 
-        if($matrix->staff_id == $user['staff_id'] ){
+        if($matrix && isset($user['staff_id']) && $matrix->staff_id == $user['staff_id'] ){
          return ($matrix->forward_workflow_id==null)?'Draft':(($matrix->overall_status =='approved')?'Passed':'Pending');
         }
 
@@ -341,6 +341,9 @@ class Activity extends Model
 
     public function getMyLastActionAttribute(){
         $user = session('user', []);
+        if (!isset($user['staff_id'])) {
+            return null;
+        }
         return ActivityApprovalTrail::where('activity_id',$this->id)
         ->where('staff_id',$user['staff_id'])
         ->where('approval_order',$this->matrix->approval_level)

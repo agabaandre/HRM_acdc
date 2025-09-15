@@ -157,10 +157,17 @@ function dispatchMatrixNotificationJob( $matrix, $recipient, string $type, strin
  */
 function sendMatrixNotificationWithJob( $model, string $type = 'approval')
 {
-    // Get the recipient using the existing helper function
-    $recipient = get_matrix_notification_recipient($model);
+    // Get all staff members in the division
+    $recipients = collect();
     
-    if (!$recipient || !$recipient->work_email) {
+    if (method_exists($model, 'division') && $model->division) {
+        $recipients = \App\Models\Staff::where('division_id', $model->division_id)
+            ->where('active', 1)
+            ->whereNotNull('work_email')
+            ->get();
+    }
+    
+    if ($recipients->isEmpty()) {
         return false;
     }
 
@@ -194,8 +201,8 @@ function sendMatrixNotificationWithJob( $model, string $type = 'approval')
             );
     }
 
-    // Dispatch the job to send email in background
-    dispatchMatrixNotificationJob($model, $recipient, $type, $message);
+    // Dispatch the job to send email in background to all division staff
+    dispatchMatrixNotificationJob($model, $recipients, $type, $message);
     
     return true;
 }

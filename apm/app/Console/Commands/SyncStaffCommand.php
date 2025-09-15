@@ -72,11 +72,11 @@ class SyncStaffCommand extends Command
             $dbCount = Staff::count();
             $this->info("Current database count: {$dbCount}");
 
-            $created = 0;
-            $updated = 0;
-            $failed = 0;
-            $skipped = 0;
-            $skippedReasons = [];
+        $created = 0;
+        $updated = 0;
+        $failed = 0;
+        $skipped = 0;
+        $skippedReasons = [];
 
             // Process each staff member
             $this->info("Processing {$sourceCount} staff records...");
@@ -101,15 +101,20 @@ class SyncStaffCommand extends Command
                         if (empty($workEmail) || stripos($workEmail, '@africacdc.org') === false) {
                             $skipReason = 'Invalid or missing @africacdc.org email: ' . ($workEmail ?: 'empty');
                         } else {
-                            // Check for email conflicts before creating new records
-                            $existingStaffWithEmail = Staff::where('work_email', $workEmail)
-                                ->orWhere('private_email', $workEmail)
-                                ->where('staff_id', '!=', $data['staff_id'])
-                                ->first();
-                                
-                            if ($existingStaffWithEmail) {
-                                $skipReason = "Email conflict: {$workEmail} already exists for staff_id {$existingStaffWithEmail->staff_id}";
+                            // Check if staff_id already exists
+                            $existingStaffById = Staff::where('staff_id', $data['staff_id'])->first();
+                            
+                            if (!$existingStaffById) {
+                                // Staff ID doesn't exist - check for email conflicts before creating
+                                $existingStaffWithEmail = Staff::where('work_email', $workEmail)
+                                    ->orWhere('private_email', $workEmail)
+                                    ->first();
+                                    
+                                if ($existingStaffWithEmail) {
+                                    $skipReason = "Email conflict: {$workEmail} already exists for staff_id {$existingStaffWithEmail->staff_id}";
+                                }
                             }
+                            // If staff_id exists, update regardless of email (staff_id is primary key)
                         }
                     }
                     
