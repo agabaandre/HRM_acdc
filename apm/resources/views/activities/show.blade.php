@@ -496,56 +496,57 @@
                     @endif
                     
                     @if(can_request_arf($activity))
-                                    @php
-                                        // Check if ARF already exists for this activity
-                                        $existingArfTop = \App\Models\RequestARF::where('source_id', $activity->id)
-                                            ->where('model_type', 'App\\Models\\Activity')
-                                            ->first();
-                                    @endphp
-                                    
-                                    @if(!$existingArfTop)
+                        @php
+                            // Check if ARF already exists for this activity
+                            $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                                ->where('model_type', 'App\\Models\\Activity')
+                                ->first();
+                        @endphp
+                        
+                        @if(!$existingArf)
                             <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
                                 <i class="bx bx-file-plus"></i>
                                 <span>Create ARF Request</span>
-                                        </button>
-                                    @elseif(in_array($existingArfTop->overall_status, ['pending', 'approved', 'returned']))
-                            <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                            </button>
+                        @else
+                            <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
                                 <i class="bx bx-show"></i>
                                 <span>View ARF Request</span>
-                                        </a>
-                                    @endif
-                                @endif
+                            </a>
+                        @endif
+                    @endif
                                 
-                                {{-- Service Request Button --}}
+                         
+                    {{-- Service Request Button --}}
                     @if(can_request_services($activity))
-                                    @php
-                                        // Check if Service Request already exists for this activity
-                                        $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
-                                            ->where('model_type', 'App\\Models\\Activity')
-                                            ->first();
-                                    @endphp
-                                    
-                                        @if(!$existingServiceRequest)
-                                            <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
+                        @php
+                            // Check if Service Request already exists for this activity
+                            $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
+                                ->where('model_type', 'App\\Models\\Activity')
+                                ->first();
+                        @endphp
+                        
+                        @if(!$existingServiceRequest)
+                            <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
                                class="btn btn-info d-flex align-items-center gap-2">
                                 <i class="fas fa-tools"></i>
                                 <span>Create Service Request</span>
-                                            </a>
-                                        @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
+                            </a>
+                        @else
                             <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
                                 <i class="fas fa-eye"></i>
                                 <span>View Service Request</span>
-                                            </a>
-                                        @endif
-                                @endif
+                            </a>
+                        @endif
+                    @endif
                             
                     @if(can_print_memo($activity))
-                                <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
+                        <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
                            class="btn btn-primary d-flex align-items-center gap-2" target="_blank">
                             <i class="bx bx-printer"></i>
                             <span>Print Activity</span>
-                                </a>
-            @endif
+                        </a>
+                    @endif
                             </div>
                         </div>
                     </div>

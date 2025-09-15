@@ -520,7 +520,52 @@
                                 <i class="bx bx-printer"></i>
                                 <span>Print PDF</span>
                             </a>
-                    @endif
+                        @endif
+
+                        {{-- ARF Request Button --}}
+                        @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $activity->matrix && $activity->matrix->overall_status === 'approved')
+                            @php
+                                // Check if ARF already exists for this activity
+                                $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                                    ->where('model_type', 'App\\Models\\Activity')
+                                    ->first();
+                            @endphp
+                            
+                            @if(!$existingArf)
+                                <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                                    <i class="bx bx-file-plus"></i>
+                                    <span>Create ARF Request</span>
+                                </button>
+                            @else
+                                <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
+                                    <i class="bx bx-show"></i>
+                                    <span>View ARF Request</span>
+                                </a>
+                            @endif
+                        @endif
+
+                        {{-- Service Request Button --}}
+                        @if(can_request_services($activity))
+                            @php
+                                // Check if Service Request already exists for this activity
+                                $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
+                                    ->where('model_type', 'App\\Models\\Activity')
+                                    ->first();
+                            @endphp
+                            
+                            @if(!$existingServiceRequest)
+                                <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
+                                   class="btn btn-info d-flex align-items-center gap-2">
+                                    <i class="fas fa-tools"></i>
+                                    <span>Create Service Request</span>
+                                </a>
+                            @else
+                                <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                                    <i class="fas fa-eye"></i>
+                                    <span>View Service Request</span>
+                                </a>
+                            @endif
+                        @endif
                         </div>
                         </div>
                         </div>
@@ -1365,6 +1410,71 @@
             </div>
         </div>
     </div>
+
+    @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $activity->matrix && $activity->matrix->overall_status === 'approved')
+        @php
+            // Check if ARF already exists for this activity
+            $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                ->where('model_type', 'App\\Models\\Activity')
+                ->first();
+        @endphp
+        
+        @if(!$existingArf)
+        @include('request-arf.components.create-arf-modal', [
+        'sourceType' => 'Activity',
+        'sourceTitle' => $activity->activity_title,
+        'fundTypeId' => $activity->fundType ? $activity->fundType->id : null,
+        'fundTypeName' => $activity->fundType ? $activity->fundType->name : 'N/A',
+        'divisionName' => $activity->matrix && $activity->matrix->division ? $activity->matrix->division->division_name : 'N/A',
+        'dateFrom' => $activity->date_from ? \Carbon\Carbon::parse($activity->date_from)->format('M d, Y') : 'N/A',
+        'dateTo' => $activity->date_to ? \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') : 'N/A',
+        'numberOfDays' => $activity->date_from && $activity->date_to ? 
+            \Carbon\Carbon::parse($activity->date_from)->diffInDays(\Carbon\Carbon::parse($activity->date_to)) + 1 : 'N/A',
+        'location' => $activity->locations() ? $activity->locations()->pluck('name')->join(', ') : 'N/A',
+        'keyResultArea' => $activity->matrix && $activity->matrix->key_result_area ? 
+            collect($activity->matrix->key_result_area)->pluck('description')->join(', ') : 'N/A',
+        'quarterlyLinkage' => $activity->quarterly_linkage ?? 'N/A',
+        'totalParticipants' => $activity->total_participants ?? 'N/A',
+        'internalParticipants' => $activity->internal_participants 
+            ? (is_string($activity->internal_participants) 
+                ? count(json_decode($activity->internal_participants, true) ?? []) 
+                : count($activity->internal_participants)) 
+            : 0,
+        'externalParticipants' => $activity->total_participants ? ($activity->total_participants - ($activity->internal_participants 
+            ? (is_string($activity->internal_participants) 
+                ? count(json_decode($activity->internal_participants, true) ?? []) 
+                : count($activity->internal_participants)) 
+            : 0)) : 0,
+        'budgetCode' => $activity->fundCodes ? $activity->fundCodes->pluck('code')->join(', ') : 'N/A',
+        'background' => $activity->background ?? 'N/A',
+        'requestForApproval' => $activity->activity_request_remarks ?? 'N/A',
+        'totalBudget' => $activity->total_budget ?? '0.00',
+        'headOfDivision' => $activity->matrix && $activity->matrix->division && $activity->matrix->division->head ? 
+            $activity->matrix->division->head->fname . ' ' . $activity->matrix->division->head->lname : 'N/A',
+        'focalPerson' => $activity->staff ? 
+            $activity->staff->fname . ' ' . $activity->staff->lname : 'N/A',
+        'budgetBreakdown' => $activity->activity_budget ?? [],
+        'budgetIds' => is_string($activity->budget_id) 
+            ? json_decode($activity->budget_id, true) 
+            : ($activity->budget_id ?? []),
+        'fundCodes' => \App\Models\FundCode::whereIn('id', is_string($activity->budget_id) 
+            ? json_decode($activity->budget_id, true) 
+            : ($activity->budget_id ?? []))->with('fundType')->get()->keyBy('id'),
+        'defaultTitle' => 'ARF Request - ' . $activity->activity_title,
+        'sourceId' => $activity->id,
+        'modelType' => 'App\\Models\\Activity'
+    ])
+        @elseif(in_array($existingArf->overall_status, ['pending', 'approved', 'returned']))
+        <div class="alert alert-info">
+            <i class="bx bx-info-circle me-2"></i>
+            An ARF request has already been created for this activity.
+            <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
+                <i class="bx bx-show me-1"></i>View ARF Request
+            </a>
+        </div>
+        @endif
+        
+    @endif
 
 @endsection
 
