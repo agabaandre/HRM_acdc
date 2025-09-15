@@ -573,6 +573,49 @@
                     </table>
                 </div>
             </div>
+              <!-- Section 7: Budget Summary -->
+                <div class="mb-5">
+                    <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
+                        <i class="fas fa-calculator me-2"></i> Budget Summary
+                    </h6>
+
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <div class="card border-success">
+                                <div class="card-body text-center p-2">
+                                    <div class="budget-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
+                                        <i class="fas fa-file-invoice-dollar text-success" style="font-size: 12px;"></i>
+                                    </div>
+                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">Original Budget</h6>
+                                    <h6 class="text-success mb-0" id="originalBudgetAmount" style="font-size: 1.1rem;">
+                                        ${{ number_format($totalOriginal, 2) }}</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-primary">
+                                <div class="card-body text-center p-2">
+                                    <div class="budget-icon bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
+                                        <i class="fas fa-calculator text-primary" style="font-size: 12px;"></i>
+                                    </div>
+                                    <h6 class="card-title text-primary mb-1" style="font-size: 0.8rem;">New Budget</h6>
+                                    <h6 class="text-primary mb-0" id="newBudgetAmount" style="font-size: 1.1rem;">$0.00</h6>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-warning">
+                                <div class="card-body text-center p-2">
+                                    <div class="budget-icon bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
+                                        <i class="fas fa-balance-scale text-warning" style="font-size: 12px;"></i>
+                                    </div>
+                                    <h6 class="card-title text-warning mb-1" style="font-size: 0.8rem;">Budget Difference</h6>
+                                    <h6 class="text-warning mb-0" id="budgetDifference" style="font-size: 1.1rem;">$0.00</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                                 
              
                                 
@@ -862,7 +905,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Form submission handler - strip commas from numeric inputs
+    // Form submission handler - strip commas from numeric inputs and validate budget
     document.getElementById('serviceRequestForm').addEventListener('submit', function(e) {
         // Strip commas from all cost inputs before submission
         const costInputs = document.querySelectorAll('.cost-input');
@@ -903,6 +946,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.value = input.value.replace(/,/g, '');
             }
         });
+        
+        // Validate budget - check if requested funds exceed original budget
+        const originalBudget = parseFloat(document.getElementById('originalTotalBudget').value) || 0;
+        const newBudget = parseFloat(document.getElementById('newTotalBudget').value) || 0;
+        
+        if (newBudget > originalBudget) {
+            e.preventDefault(); // Prevent form submission
+            
+            const difference = newBudget - originalBudget;
+            const originalBudgetFormatted = originalBudget.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            const newBudgetFormatted = newBudget.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            const differenceFormatted = difference.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            
+            show_notification(
+                `Requested funds ($${newBudgetFormatted}) exceed the original budget ($${originalBudgetFormatted}) by $${differenceFormatted}. Please adjust your budget to stay within the original allocation.`,
+                'error'
+            );
+            
+            return false;
+        }
     });
     
     // Update participants summary
@@ -1067,15 +1139,33 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update budget summary
         document.getElementById('newBudgetAmount').textContent = '$' + newTotal.toFixed(2);
         const differenceElement = document.getElementById('budgetDifference');
-                differenceElement.textContent = (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2);
+        const budgetDifferenceCard = differenceElement.closest('.card');
         
-        // Update colors based on difference
+        // Update colors and content based on difference
         if (difference < 0) {
                     differenceElement.className = 'text-success mb-0';
+                    differenceElement.textContent = (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2);
+                    // Reset card border
+                    if (budgetDifferenceCard) {
+                        budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-warning');
+                    }
         } else if (difference > 0) {
-                    differenceElement.className = 'text-danger mb-0';
+                    differenceElement.className = 'text-danger mb-0 fw-bold';
+                    // Add warning icon for over budget
+                    differenceElement.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + 
+                        (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2) + 
+                        ' <small class="text-muted">(Over Budget)</small>';
+                    // Change card border to danger
+                    if (budgetDifferenceCard) {
+                        budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-danger');
+                    }
         } else {
                     differenceElement.className = 'text-warning mb-0';
+                    differenceElement.textContent = (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2);
+                    // Reset card border
+                    if (budgetDifferenceCard) {
+                        budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-warning');
+                    }
         }
         
         // Update hidden fields
