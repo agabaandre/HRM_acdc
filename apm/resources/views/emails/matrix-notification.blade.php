@@ -202,7 +202,7 @@
                 <div class="details-grid">
                     <div class="detail-item">
                         <span class="detail-label">Document Number:</span>
-                        <span class="detail-value">#{{ $resource->document_number }} </span>
+                        <span class="detail-value">#{{ isset($resource->document_number) ? $resource->document_number : 'QM/'.$resource->year.'/'.$resource->quarter' }} </span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Created by:</span>

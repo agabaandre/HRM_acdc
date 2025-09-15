@@ -709,24 +709,121 @@ $(document).ready(function () {
         });
     });
 
+    // Simple function to create budget card with data
+    function createBudgetCardWithData(codeId, label, balance, existingData = null) {
+        const container = $('#budgetGroupContainer');
+        
+        // Check if card already exists
+        const existingCard = container.find(`.budget-body[data-code="${codeId}"]`).closest('.card');
+        if (existingCard.length > 0) {
+            console.log('Card already exists for code:', codeId, '- preserving existing data');
+            return; // Skip creating duplicate card
+        }
+        
+        console.log('Creating budget card for code:', codeId, 'with balance:', balance);
+        
+        // Extract the budget code from the label
+        const codeMatch = label.match(/^([^|]+)/);
+        const budgetCode = codeMatch ? codeMatch[1].trim() : `Code ${codeId}`;
+
+        const cardHtml = `
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="fw-semibold mb-0">
+                        <span class="badge bg-primary me-2">${budgetCode}</span>
+                        <span class="float-end text-muted">
+                            Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered text-center align-middle">
+                        <thead class="table-light fw-bold">
+                            <tr>
+                                <th>Cost</th>
+                                <th>Unit Cost</th>
+                                <th>Units/People</th>
+                                <th>Days/Frequency</th>
+                                <th>Total</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="budget-body" data-code="${codeId}">
+                        </tbody>
+                    </table>
+                    <div class="text-end mt-2">
+                        <button type="button" class="btn btn-primary btn-sm add-row" data-code="${codeId}">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                        <strong class="ms-3">Sub Total: $<span class="subtotal" data-code="${codeId}">0.00</span></strong>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.append(cardHtml);
+
+        // Initialize select2 for the new card
+        container.find('.select-cost-item').select2({
+            theme: 'bootstrap4',
+            width: '100%',
+            placeholder: 'Select Cost Item',
+            allowClear: true
+        });
+
+        // Restore existing data if available
+        if (existingData && existingData.length > 0) {
+            console.log(`Restoring ${existingData.length} budget items for code ${codeId}`);
+            const tbody = $(`.budget-body[data-code="${codeId}"]`);
+            
+            existingData.forEach((item, index) => {
+                console.log(`Creating budget row for existing item:`, item);
+                const row = createBudgetRow(codeId, index);
+                tbody.append(row);
+                
+                // Set values
+                const newRow = tbody.find('tr').last();
+                newRow.find('select[name*="[cost]"]').val(item.cost).trigger('change');
+                newRow.find('input[name*="[unit_cost]"]').val(item.unit_cost);
+                newRow.find('input[name*="[units]"]').val(item.units);
+                newRow.find('input[name*="[days]"]').val(item.days);
+                newRow.find('input[name*="[description]"]').val(item.description);
+                
+                // Calculate total
+                const unitCost = parseFloat(item.unit_cost) || 0;
+                const units = parseFloat(item.units) || 0;
+                const days = parseFloat(item.days) || 0;
+                const total = (unitCost * units * days).toFixed(2);
+                newRow.find('.total').val(total);
+            });
+            
+            // Initialize select2 for the restored rows
+            tbody.find('.select-cost-item').select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: 'Select Cost Item',
+                allowClear: true
+            });
+            
+            updateAllTotals();
+            console.log(`Budget items restored for code ${codeId}`);
+        }
+    }
+
     $('#budget_codes').on('change', function () {
         const selected = $(this).find('option:selected');
         const container = $('#budgetGroupContainer');
         console.log('Budget codes changed. Selected:', selected.map(function() { return $(this).val(); }).get());
         
-        // Get currently existing budget cards
-        const existingCards = container.find('.card');
-        const existingCodeIds = existingCards.map(function() {
-            return $(this).find('.budget-body').data('code');
-        }).get();
-        
         // Get newly selected code IDs
         const selectedCodeIds = selected.map(function() { return $(this).val(); }).get();
         
         // Remove cards for codes that are no longer selected
-        existingCards.each(function() {
+        container.find('.card').each(function() {
             const cardCodeId = $(this).find('.budget-body').data('code');
             if (!selectedCodeIds.includes(cardCodeId)) {
+                console.log('Removing card for unselected code:', cardCodeId);
                 $(this).remove();
             }
         });
@@ -736,63 +833,12 @@ $(document).ready(function () {
             const codeId = $(this).val();
             const label = $(this).text();
             const balance = $(this).data('balance');
-            console.log('Creating budget card for code:', codeId, 'with balance:', balance);
             
-            // Check if card already exists for this code
-            if (existingCodeIds.includes(codeId)) {
-                console.log('Card already exists for code:', codeId);
-                return; // Skip creating duplicate card
-            }
+            // Get existing data for this code
+            const existingData = existingBudgetItems && existingBudgetItems[codeId] ? existingBudgetItems[codeId] : null;
             
-            // Extract the budget code from the label (format: "CODE | Funder | $Balance")
-            const codeMatch = label.match(/^([^|]+)/);
-            const budgetCode = codeMatch ? codeMatch[1].trim() : `Code ${codeId}`;
-
-            const cardHtml = `
-                <div class="card mt-4">
-                    <div class="card-header bg-light">
-                        <h6 class="fw-semibold mb-0">
-                            <span class="badge bg-primary me-2">${budgetCode}</span>
-                            <span class="float-end text-muted">
-                                Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </span>
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-bordered text-center align-middle">
-                            <thead class="table-light fw-bold">
-                                <tr>
-                                    <th>Cost</th>
-                                    <th>Unit Cost</th>
-                                    <th>Units/People</th>
-                                    <th>Days/Frequency</th>
-                                    <th>Total</th>
-                                    <th>Description</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="budget-body" data-code="${codeId}">
-                                ${createBudgetRow(codeId, 0)}
-                            </tbody>
-                        </table>
-                        <div class="text-end mt-2">
-                            <button type="button" class="btn btn-primary btn-sm add-row" data-code="${codeId}">
-                                <i class="fas fa-plus"></i> Add
-                            </button>
-                            <strong class="ms-3">Sub Total: $<span class="subtotal" data-code="${codeId}">0.00</span></strong>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            container.append(cardHtml);
-
-            container.find('.select-cost-item').select2({
-                theme: 'bootstrap4',
-                width: '100%',
-                placeholder: 'Select Cost Item',
-                allowClear: true
-            });
+            // Create the card with data using the simple function
+            createBudgetCardWithData(codeId, label, balance, existingData);
         });
     });
 
@@ -1042,76 +1088,39 @@ $(document).ready(function () {
                 // Wait for budget codes to load, then restore existing selections
                 setTimeout(() => {
                     console.log('Restoring budget code selections...');
-            Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
-                // Select the budget code
+                    Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
+                        // Select the budget code
                         const option = $(`#budget_codes option[value="${codeId}"]`);
                         if (option.length) {
                             option.prop('selected', true);
                             console.log(`Selected budget code: ${codeId}`);
+                            
+                            // Get the option details
+                            const label = option.text();
+                            const balance = option.data('balance');
+                            
+                            // Create the card with data directly
+                            createBudgetCardWithData(codeId, label, balance, items);
                         } else {
                             console.warn(`Budget code option not found: ${codeId}`);
                         }
                     });
-                
-                // Trigger budget codes change to create budget cards
-                $('#budget_codes').trigger('change');
-                
-                    // Restore budget items in the cards after they're created
-                setTimeout(() => {
-                        console.log('Restoring budget items in cards...');
-                        Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
-                    const tbody = $(`.budget-body[data-code="${codeId}"]`);
-                            console.log(`Looking for tbody with data-code="${codeId}":`, tbody.length);
-                            
-                    if (tbody.length && items.length > 0) {
-                        // Check if data is already populated (has input fields with values)
-                        const hasExistingData = tbody.find('input[type="number"]').length > 0 && 
-                                               tbody.find('input[type="number"]').first().val() !== '';
-                        
-                        if (!hasExistingData) {
-                            // Only clear and restore if no existing data
-                            tbody.empty();
-                            
-                            items.forEach((item, index) => {
-                                        console.log(`Creating budget row for item:`, item);
-                                const row = createBudgetRow(codeId, index);
-                                tbody.append(row);
-                                
-                                // Set values
-                                const newRow = tbody.find('tr').last();
-                                newRow.find('select[name*="[cost]"]').val(item.cost).trigger('change');
-                                newRow.find('input[name*="[unit_cost]"]').val(item.unit_cost);
-                                newRow.find('input[name*="[units]"]').val(item.units);
-                                newRow.find('input[name*="[days]"]').val(item.days);
-                                newRow.find('input[name*="[description]"]').val(item.description);
-                                
-                                // Calculate total
-                                const unitCost = parseFloat(item.unit_cost) || 0;
-                                const units = parseFloat(item.units) || 0;
-                                const days = parseFloat(item.days) || 0;
-                                const total = (unitCost * units * days).toFixed(2);
-                                newRow.find('.total').val(total);
-                            });
-                        } else {
-                            console.log(`Budget data already exists for code ${codeId}, skipping restoration`);
-                        }
-                                
-                                // Initialize select2 for cost items
-                                tbody.find('.select-cost-item').select2({
-                                    theme: 'bootstrap4',
-                                    width: '100%',
-                                    placeholder: 'Select Cost Item',
-                                    allowClear: true
+                    
+                    // Update the select2 dropdown to reflect the selections
+                    $('#budget_codes').trigger('change.select2');
+                    
+                    // Also try to refresh the select2 if it exists
+                    if ($('#budget_codes').hasClass('select2-hidden-accessible')) {
+                        $('#budget_codes').select2('destroy').select2({
+                            theme: 'bootstrap4',
+                            width: '100%',
+                            placeholder: 'Select Budget Code(s)',
+                            allowClear: true
                         });
-                        
-                        updateAllTotals();
-                                console.log(`Budget items restored for code ${codeId}`);
-                            } else {
-                                console.warn(`Tbody not found or no items for code ${codeId}`);
                     }
-            });
-        }, 500);
-                }, 1500);
+                    
+                    console.log('Budget codes dropdown updated');
+                }, 1000);
             } else {
                 console.log('No existing budget items found');
             }

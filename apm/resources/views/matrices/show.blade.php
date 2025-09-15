@@ -99,7 +99,7 @@
         </a>
         @endif
 
-         @if( $matrix->overall_status=='approved')
+         @if( $matrix->overall_status=='approved'|| $matrix->overall_status=='pending')
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
         </a>
