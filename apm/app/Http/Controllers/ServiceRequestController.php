@@ -348,9 +348,11 @@ class ServiceRequestController extends Controller
         // Get assigned workflow ID for ServiceRequest model
         $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
         if (!$assignedWorkflowId) {
-            $assignedWorkflowId = 1; // Default workflow ID
-            \Log::warning('No workflow assignment found for ServiceRequest model, using default workflow ID: 1');
+            $assignedWorkflowId = 3; // Default workflow ID for ServiceRequest
+            \Log::warning('No workflow assignment found for ServiceRequest model, using default workflow ID: 3');
         }
+        
+        \Log::info('ServiceRequest using assigned workflow ID: ' . $assignedWorkflowId);
         
         // Set approval levels and workflow IDs for immediate submission
         $approvalLevel = 1; // Start at level 1 for pending
@@ -1089,9 +1091,11 @@ class ServiceRequestController extends Controller
             // Get assigned workflow ID for ServiceRequest model
             $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
             if (!$assignedWorkflowId) {
-                $assignedWorkflowId = 3; // Default workflow ID
+                $assignedWorkflowId = 3; // Default workflow ID for ServiceRequest
                 Log::warning('No workflow assignment found for ServiceRequest model, using default workflow ID: 3');
             }
+            
+            Log::info('ServiceRequest using assigned workflow ID: ' . $assignedWorkflowId);
 
             // Create service request
             $serviceRequest = ServiceRequest::create([
