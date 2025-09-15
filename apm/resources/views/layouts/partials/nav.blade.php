@@ -83,6 +83,15 @@ $settingsMenuItems = [
                 </a>
             </li>
 
+            <!-- Pending Approvals -->
+            <li class="nav-item">
+                <a href="{{ route('pending-approvals.index') }}"
+                    class="nav-link {{ Request::is('pending-approvals*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-clock"></i></div>
+                    <div class="menu-title">Pending Approvals</div>
+                </a>
+            </li>
+
             <!-- Start Page -->
             <li class="nav-item">
                 <a href="{{ str_replace('apm/', '', url('dashboard')) }}"

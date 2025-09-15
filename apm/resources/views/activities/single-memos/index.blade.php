@@ -224,7 +224,7 @@
                                                 <i class="bx bx-show"></i>
                                             </a>
                                             @if($memo->overall_status === 'draft')
-                                                <a href="{{ route('activities.single-memos.edit', $memo,$memo->matrix) }}" 
+                                                <a href="{{ route('activities.single-memos.edit', [$memo, $memo->matrix]) }}" 
                                                            class="btn btn-sm btn-outline-warning" title="Edit">
                                                     <i class="bx bx-edit"></i>
                                                 </a>

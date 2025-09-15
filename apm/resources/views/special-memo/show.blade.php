@@ -491,6 +491,7 @@
                             <span>Edit Memo</span>
                         </a>
                     @endif
+                    
                  
                         <a href="{{ route('special-memo.status', $specialMemo) }}" class="btn btn-info d-flex align-items-center gap-2">
                             <i class="bx bx-info-circle"></i>
@@ -523,28 +524,28 @@
                                 <span>View ARF Request</span>
                             </a>
                         @endif
+                    @endif
+                    
+                    {{-- Service Request Button --}}
+                    @if(can_request_services($specialMemo))
+                        @php
+                            // Check if Service Request already exists for this memo
+                            $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $specialMemo->id)
+                                ->where('model_type', 'App\\Models\\SpecialMemo')
+                                ->first();
+                        @endphp
                         
-                        {{-- Service Request Button --}}
-                        @if(can_request_services($specialMemo))
-                            @php
-                                // Check if Service Request already exists for this memo
-                                $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $specialMemo->id)
-                                    ->where('model_type', 'App\\Models\\SpecialMemo')
-                                    ->first();
-                            @endphp
-                            
-                            @if(!$existingServiceRequest)
-                                <a href="{{ route('service-requests.create') }}?source_type=special_memo&source_id={{ $specialMemo->id }}" 
-                                   class="btn btn-info d-flex align-items-center gap-2">
-                                    <i class="fas fa-tools"></i>
-                                    <span>Create Service Request</span>
-                                </a>
-                            @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
-                                <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
-                                    <i class="fas fa-eye"></i>
-                                    <span>View Service Request</span>
-                                </a>
-                            @endif
+                        @if(!$existingServiceRequest)
+                            <a href="{{ route('service-requests.create') }}?source_type=special_memo&source_id={{ $specialMemo->id }}" 
+                               class="btn btn-info d-flex align-items-center gap-2">
+                                <i class="fas fa-tools"></i>
+                                <span>Create Service Request</span>
+                            </a>
+                        @elseif(in_array($existingServiceRequest->overall_status, ['submitted', 'pending', 'approved', 'completed']))
+                            <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                                <i class="fas fa-eye"></i>
+                                <span>View Service Request</span>
+                            </a>
                         @endif
                     @endif
                 </div>
@@ -831,24 +832,6 @@
             </div>
         </div>
 
-        <!-- Key Result Area Card -->
-        @if($specialMemo->key_result_area && $matrix->key_result_area)
-            <div class="card content-section border-0 mb-4">
-                <div class="card-header bg-transparent border-0 py-3">
-                    <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                        <i class="bx bx-target-lock"></i>
-                        Key Result Area
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <p>{{ $matrix->key_result_area[intval($specialMemo->key_result_area)]['description'] ?? '' }}</p>
-                            </div>
-                            </div>
-                            </div>
-                                        </div>
-                                    @endif
 
         <!-- Background Card -->
         @if($specialMemo->background)
@@ -994,7 +977,7 @@
                                     @endphp
                                     
                                 {{-- Budget Code Title --}}
-                                <h6 style="color: #911C39; font-weight: 600; margin-top: 20px;">
+                                <h6 style="color: #2c3d50; font-weight: 600; margin-top: 20px;">
                                     @if ($fundCode)
                                         {{ $fundCode->activity }} - {{ $fundCode->code }} -
                                         ({{ $fundCode->fundType->name ?? 'N/A' }})

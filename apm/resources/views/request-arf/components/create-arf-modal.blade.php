@@ -1,116 +1,218 @@
+
+    <style>
+        :root {
+            --primary-green: #119A48;
+            --secondary-maroon: #911C39;
+            --light-bg: #f8f9fa;
+            --border-radius: 0.5rem;
+        }
+        
+        .modal-content {
+            border-radius: var(--border-radius);
+            border: none;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .modal-header {
+            border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
+            padding: 1rem 1.5rem;
+        }
+        
+        .section-header {
+            padding: 0.75rem 1rem;
+            background-color: var(--light-bg);
+            border-left: 4px solid var(--primary-green);
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+        
+        .info-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+        }
+        
+        .info-table td {
+            padding: 0.75rem 1rem;
+            vertical-align: top;
+        }
+        
+        .info-table .label-cell {
+            width: 25%;
+            font-weight: 600;
+            color: #6c757d;
+            background-color: #f8f9fa;
+            border-radius: 4px 0 0 4px;
+        }
+        
+        .info-table .value-cell {
+            width: 75%;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .budget-table {
+            font-size: 0.9rem;
+        }
+        
+        .budget-table th {
+            background-color: var(--light-bg);
+            padding: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .budget-table td {
+            padding: 0.75rem;
+            vertical-align: middle;
+        }
+        
+        .fund-header {
+            background-color: rgba(145, 28, 57, 0.1);
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid var(--secondary-maroon);
+        }
+        
+        .grand-total {
+            background-color: rgba(17, 154, 72, 0.1);
+            border-left: 3px solid var(--primary-green);
+            padding: 1rem;
+            border-radius: 4px;
+        }
+        
+        .value-badge {
+            font-size: 0.85em;
+            padding: 0.35em 0.65em;
+        }
+        
+        .modal-body {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        /* Custom scrollbar for modal */
+        .modal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .modal-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+        
+        .modal-body::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+
+
 <!-- Create ARF Modal Component -->
 <div class="modal fade" id="createArfModal" tabindex="-1" aria-labelledby="createArfModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header" style="background: #119A48; color: white; border-radius: 0.75rem 0.75rem 0 0;">
+            <div class="modal-header" style="background: var(--primary-green); color: white;">
                 <h5 class="modal-title fw-bold text-white" id="createArfModalLabel">
                     <i class="bx bx-file-plus me-2"></i>Create ARF Request
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" style="max-height: 80vh; overflow-y: auto;">
+            <div class="modal-body p-4">
                 <!-- Source Details Section -->
-                <div class="bg-light p-3 border-bottom">
-                    <h6 class="fw-bold text-primary mb-3">
-                        <i class="bx bx-info-circle me-2"></i>{{ $sourceType ?? 'Source' }} Details
-                    </h6>
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-hash me-1"></i>{{ $sourceType }} ID</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $sourceId ?? 'N/A' }}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-file me-1"></i>ARF Number</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $arfNumber ?? 'Auto-generated' }}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-buildings me-1"></i>Division</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $divisionName ?? 'N/A' }}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-money me-1"></i>Fund Location</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border">
-                                <span class="badge {{ $fundTypeId == 2 ? 'bg-info' : 'bg-primary' }} small">
+                <div class="mb-4">
+                    <div class="section-header">
+                        <h6 class="fw-bold mb-0 text-primary">
+                            <i class="bx bx-info-circle me-2"></i>{{ $sourceType ?? 'Source' }} Details
+                        </h6>
+                    </div>
+                    
+                    <table class="info-table">
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-hash me-1"></i>{{ $sourceType }} ID</td>
+                            <td class="value-cell">{{ $sourceId ?? 'N/A' }}</td>
+                            <td class="label-cell"><i class="bx bx-file me-1"></i>ARF Number</td>
+                            <td class="value-cell">{{ $arfNumber ?? 'Auto-generated' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-buildings me-1"></i>Division</td>
+                            <td class="value-cell">{{ $divisionName ?? 'N/A' }}</td>
+                            <td class="label-cell"><i class="bx bx-money me-1"></i>Fund Location</td>
+                            <td class="value-cell">
+                                <span class="badge {{ $fundTypeId == 2 ? 'bg-info' : 'bg-primary' }} value-badge">
                                     {{ $fundTypeName ?? 'N/A' }}
                                 </span>
-                            </div>
-                        </div>
-                
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-user me-1"></i>Focal Person</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $focalPerson ?? 'N/A' }}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-calendar me-1"></i>Activity Date From</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $dateFrom ?? 'N/A' }}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-calendar me-1"></i>Activity Date To</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $dateTo ?? 'N/A' }}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-time me-1"></i>No. of days</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $numberOfDays ?? 'N/A' }}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-map me-1"></i>Location/Venue</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $location ?? 'N/A' }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-briefcase me-1"></i>Title of mission/activity</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $sourceTitle ?? 'N/A' }}</div>
-                        </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-user me-1"></i>Focal Person</td>
+                            <td class="value-cell">{{ $focalPerson ?? 'N/A' }}</td>
+                            <td class="label-cell"><i class="bx bx-calendar me-1"></i>Activity Date Range</td>
+                            <td class="value-cell">
+                                {{ $dateFrom ?? 'N/A' }} to {{ $dateTo ?? 'N/A' }}
+                                <small class="text-muted d-block">({{ $numberOfDays ?? 'N/A' }} days)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-map me-1"></i>Location/Venue</td>
+                            <td class="value-cell" colspan="3">{{ $location ?? 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-briefcase me-1"></i>Title of mission/activity</td>
+                            <td class="value-cell" colspan="3">{{ $sourceTitle ?? 'N/A' }}</td>
+                        </tr>
                         @if($sourceType !== 'Non-Travel Memo')
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-user-plus me-1"></i>Number of External Participants</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $externalParticipants ?? 'N/A' }}</div>
-                        </div>
-                        @endif
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-target-lock me-1"></i>Key Result Area</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $keyResultArea ?? 'N/A' }}</div>
-                        </div>
-                      
-                        @if($sourceType !== 'Non-Travel Memo')
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-user-circle me-1"></i>Number of internal participants</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{{ $internalParticipants ?? 'N/A' }}</div>
-                        </div>
-                          <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-group me-1"></i>Total Number of Participants</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-user-plus me-1"></i>External Participants</td>
+                            <td class="value-cell">{{ $externalParticipants ?? 'N/A' }}</td>
+                            <td class="label-cell"><i class="bx bx-user-circle me-1"></i>Internal Participants</td>
+                            <td class="value-cell">{{ $internalParticipants ?? 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-group me-1"></i>Total Participants</td>
+                            <td class="value-cell" colspan="3">
                                 {{ $totalParticipants ?? 'N/A' }}
-                                <small class="text-muted d-block">({{ $internalParticipants ?? 0 }} internal + {{ $externalParticipants ?? 0 }} external)</small>
-                            </div>
-                        </div>
+                                <small class="text-muted">({{ $internalParticipants ?? 0 }} internal + {{ $externalParticipants ?? 0 }} external)</small>
+                            </td>
+                        </tr>
                         @endif
-                     
-                        <div class="col-md-12">
-                            <label class="form-label fw-semibold text-muted small"><i class="bx bx-detail me-1"></i>Background/Context</label>
-                            <div class="form-control-plaintext bg-white rounded p-2 border small">{!! $background ?? 'N/A' !!}</div>
-                        </div>
-                      
-                       
-                    </div>
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-target-lock me-1"></i>Key Result Area</td>
+                            <td class="value-cell" colspan="3">{{ $keyResultArea ?? 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell"><i class="bx bx-detail me-1"></i>Background/Context</td>
+                            <td class="value-cell" colspan="3">{!! $background ?? 'N/A' !!}</td>
+                        </tr>
+                    </table>
                 </div>
 
                 <!-- Budget Codes Section -->
-                <div class="p-3">
-                    <h6 class="fw-bold text-primary mb-3">
-                        <i class="bx bx-money me-2"></i>Budget Codes & Allocations
-                    </h6>
+                <div class="mb-4">
+                    <div class="section-header">
+                        <h6 class="fw-bold mb-0 text-primary">
+                            <i class="bx bx-money me-2"></i>Budget Codes & Allocations
+                        </h6>
+                    </div>
                     
                     @if(!empty($budgetBreakdown))
                         @if($sourceType === 'Activity' && is_object($budgetBreakdown) && method_exists($budgetBreakdown, 'toArray'))
                             {{-- Matrix Activity Budget (Collection of ActivityBudget models) --}}
                             @foreach($fundCodes as $fundCode)
                                 <div class="mb-4">
-                                    <h6 style="color: #911C39; font-weight: 600; margin-bottom: 10px;">
-                                        {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }})
-                                    </h6>
+                                    <div class="fund-header">
+                                        <h6 class="fw-bold mb-0" style="color: var(--secondary-maroon);">
+                                            {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }})
+                                        </h6>
+                                    </div>
                                     
                                     <div class="table-responsive">
-                                        <table class="table table-bordered table-sm">
+                                        <table class="table table-bordered budget-table">
                                             <thead class="table-light">
                                                 <tr>
                                                     <th class="fw-bold">#</th>
@@ -180,16 +282,18 @@
                                     @endphp
                                     
                                     <div class="mb-4">
-                                        <h6 style="color: #911C39; font-weight: 600; margin-bottom: 10px;">
-                                            @if($fundCode)
-                                                {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }}) - {{ $fundCode->funder->name ?? 'N/A' }}
-                                            @else
-                                                Fund Code ID: {{ $fundCodeId }}
-                                            @endif
-                                        </h6>
+                                        <div class="fund-header">
+                                            <h6 class="fw-bold mb-0" style="color: var(--secondary-maroon);">
+                                                @if($fundCode)
+                                                    {{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }}) - {{ $fundCode->funder->name ?? 'N/A' }}
+                                                @else
+                                                    Fund Code ID: {{ $fundCodeId }}
+                                                @endif
+                                            </h6>
+                                        </div>
                                         
                                         <div class="table-responsive">
-                                            <table class="table table-bordered table-sm">
+                                            <table class="table table-bordered budget-table">
                                                 <thead class="table-light">
                                                     <tr>
                                                         <th class="fw-bold">#</th>
@@ -219,10 +323,7 @@
                                                             <td>{{ $item['description'] ?? 'N/A' }}</td>
                                                         </tr>
                                                     @endforeach
-                                  
-                                  
-                                  
-                                          </tbody>
+                                                </tbody>
                                                 <tfoot class="table-light">
                                                     <tr>
                                                         <th colspan="4" class="text-end">Fund Total:</th>
@@ -241,9 +342,11 @@
                             @endif
                         @endif
                         
-                        <div class="alert alert-success">
-                            <i class="bx bx-dollar me-2"></i>
-                            <strong>Grand Total: ${{ number_format($grandTotal, 2) }}</strong>
+                        <div class="grand-total text-end">
+                            <h5 class="fw-bold mb-0">
+                                <i class="bx bx-dollar me-2"></i>
+                                Grand Total: ${{ number_format($grandTotal, 2) }}
+                            </h5>
                         </div>
                     @else
                         <div class="alert alert-warning">
@@ -253,47 +356,52 @@
                 </div>
 
                 <!-- Request for Approval Section -->
-                <div class="bg-light p-3 border-top">
-                    <h6 class="fw-bold text-primary mb-3">
-                        <i class="bx bx-check-circle me-2"></i>Request for Approval
-                    </h6>
-                    <div class="form-control-plaintext bg-white rounded p-3 border">
+                <div>
+                    <div class="section-header">
+                        <h6 class="fw-bold mb-0 text-primary">
+                            <i class="bx bx-check-circle me-2"></i>Request for Approval
+                        </h6>
+                    </div>
+                    
+                    <div class="bg-light p-3 rounded border mb-3">
                         {!! $requestForApproval ?? 'N/A' !!}
                     </div>
                     
-            <form id="createArfForm" action="{{ route('request-arf.store-from-modal') }}" method="POST" class="mt-3">
-                @csrf
-                @php
-                    // Convert display sourceType to validation format
-                    $sourceTypeMap = [
-                        'Activity' => 'activity',
-                        'Non-Travel Memo' => 'non_travel',
-                        'Special Memo' => 'special_memo'
-                    ];
-                    $sourceTypeValue = $sourceTypeMap[$sourceType] ?? 'activity';
-                @endphp
-                <input type="hidden" name="source_type" value="{{ $sourceTypeValue }}">
-                <input type="hidden" name="source_id" value="{{ $sourceId ?? '' }}">
-                <input type="hidden" name="title" value="{{ $defaultTitle ?? 'ARF Request' }}">
-                <input type="hidden" name="total_budget" value="{{ $totalBudget ?? '0.00' }}">
-                <input type="hidden" name="fund_type_id" value="{{ $fundTypeId ?? '' }}">
-                <input type="hidden" name="model_type" value="{{ $modelType ?? 'App\\Models\\Activity' }}">
-                
-                <div class="d-flex gap-2 justify-content-end">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bx bx-x me-1"></i>Cancel
-                    </button>
-                    <button type="button" id="submitApprovalBtn" class="btn btn-success">
-                        <i class="bx bx-send me-1"></i>Submit ARF Request
-                    </button>
-                </div>
-            </form>
+                    <form id="createArfForm" action="{{ route('request-arf.store-from-modal') }}" method="POST">
+                        @csrf
+                        @php
+                            // Convert display sourceType to validation format
+                            $sourceTypeMap = [
+                                'Activity' => 'activity',
+                                'Non-Travel Memo' => 'non_travel',
+                                'Special Memo' => 'special_memo'
+                            ];
+                            $sourceTypeValue = $sourceTypeMap[$sourceType] ?? 'activity';
+                        @endphp
+                        <input type="hidden" name="source_type" value="{{ $sourceTypeValue }}">
+                        <input type="hidden" name="source_id" value="{{ $sourceId ?? '' }}">
+                        <input type="hidden" name="title" value="{{ $defaultTitle ?? 'ARF Request' }}">
+                        <input type="hidden" name="total_budget" value="{{ $totalBudget ?? '0.00' }}">
+                        <input type="hidden" name="fund_type_id" value="{{ $fundTypeId ?? '' }}">
+                        <input type="hidden" name="model_type" value="{{ $modelType ?? 'App\\Models\\Activity' }}">
+                        
+                        <div class="d-flex gap-2 justify-content-end pt-3 border-top">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                <i class="bx bx-x me-1"></i>Cancel
+                            </button>
+                            <button type="button" id="submitApprovalBtn" class="btn btn-success">
+                                <i class="bx bx-send me-1"></i>Submit ARF Request
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 $(document).ready(function() {
     // ARF Form AJAX Submission

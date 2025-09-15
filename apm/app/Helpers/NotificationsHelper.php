@@ -75,8 +75,10 @@ if (!function_exists('send_matrix_notification')) {
      */
     function send_matrix_notification( $model, $type = 'approval',$recipients = null)
     {
+      
+    
         $recipient = $recipients ? $recipients : get_matrix_notification_recipient($model);
-
+            
         if (!$recipient) {
             return null;
         }

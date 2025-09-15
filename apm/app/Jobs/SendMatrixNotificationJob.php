@@ -42,7 +42,7 @@ class SendMatrixNotificationJob implements ShouldQueue
      */
     public function handle(): void
     {
-       if(is_array($this->recipient)) {
+       if(is_iterable($this->recipient)) {
             foreach($this->recipient as $recipient) {
                 $this->processNotification($recipient);
             }
@@ -65,18 +65,20 @@ class SendMatrixNotificationJob implements ShouldQueue
             ]);
 
             // Send email using custom PHPMailer
-            $this->sendMatrixNotificationWithPHPMailer();
+            $this->sendMatrixNotificationWithPHPMailer($recipient);    
             
-            Log::info('Resource notification email sent successfully', [
+            Log::info('Email notification sent successfully to '.$recipient->fname.' '.$recipient->lname, [
                 'model_id' => $this->model->id,
-                'recipient_id' => $recipient->staff_id,
+                'recipient_id' => $recipient->fname.' '.$recipient->lname,
                 'type' => $this->type
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to send resource notification email in job', [
+            Log::error('Failed to send email notification in job', [
                 'model_id' => $this->model->id,
+                'recipient_id' => $recipient->fname.' '.$recipient->lname,
                 'recipient_id' => $recipient->staff_id,
+                'type' => $this->type,
                 'error' => $e->getMessage()
             ]);
             
@@ -86,7 +88,7 @@ class SendMatrixNotificationJob implements ShouldQueue
     /**
      * Send matrix notification email using custom PHPMailer
      */
-    private function sendMatrixNotificationWithPHPMailer(): void
+    private function sendMatrixNotificationWithPHPMailer($recipient): void
     {
         // Create an instance; passing `true` enables exceptions
         $mail = new PHPMailer(true);
@@ -104,12 +106,12 @@ class SendMatrixNotificationJob implements ShouldQueue
 
             // Recipients
             $mail->setFrom(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME', 'Africa CDC APM'));
-            $mail->addAddress($this->recipient->work_email, $this->recipient->fname . ' ' . $this->recipient->lname);
+            $mail->addAddress($recipient->work_email, $recipient->fname . ' ' . $recipient->lname);
             $mail->addBCC('system@africacdc.org');
             //system@africacdc.org
             // Set subject based on type (same logic as MatrixNotification.php)
             $subject = '';
-            $prefix  = env('MAIL_SUBJECT_PREFIX','Approval Management sytem').": ";
+            $prefix  = env('MAIL_SUBJECT_PREFIX','Africa CDC APM').": ";
             switch($this->type) {
                 case 'approval':
                     $subject = ucfirst(class_basename($this->model)).' Approval Request';
@@ -125,7 +127,8 @@ class SendMatrixNotificationJob implements ShouldQueue
             // Render the same view template that MatrixNotification uses
             $htmlContent = View::make('emails.matrix-notification', [
                 'resource' => $this->model,
-                'recipient' => $this->recipient,
+                'resource_type' => ucfirst(class_basename($this->model)),
+                'recipient' => $recipient,
                 'message' => $this->message,
                 'type' => $this->type
             ])->render();

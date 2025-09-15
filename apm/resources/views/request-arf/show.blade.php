@@ -270,7 +270,9 @@
             <div class="d-flex justify-content-between align-items-center py-4">
                 <div>
                     <h1 class="h2 fw-bold text-dark mb-0">View ARF Request</h1>
-                    <p class="text-muted mb-0">{{ $requestARF->arf_number }}</p>
+                    @if($requestARF->document_number)
+                        <p class="text-muted mb-0">{{ $requestARF->document_number }}</p>
+                    @endif
                     <p class="text-dark mb-0 fw-medium">{{ $requestARF->activity_title }}</p>
                     </div>
                 <div class="d-flex gap-3">
@@ -278,13 +280,6 @@
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
                     </a>
-
-                    @if($requestARF->overall_status === 'draft' && $requestARF->staff_id == user_session('staff_id'))
-                        <a href="{{ route('request-arf.edit', $requestARF) }}" class="btn btn-warning d-flex align-items-center gap-2">
-                            <i class="bx bx-edit"></i>
-                            <span>Edit ARF</span>
-                        </a>
-                    @endif
                     
                     <a href="{{ route('request-arf.print', $requestARF) }}" class="btn btn-primary d-flex align-items-center gap-2" target="_blank">
                         <i class="bx bx-printer"></i>
@@ -313,18 +308,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td class="field-label">
-                                    <i class="bx bx-hash text-success me-2"></i>ARF Number
-                                </td>
-                                <td class="field-value">{{ $requestARF->arf_number }}</td>
-                            </tr>
-                            <tr>
-                                <td class="field-label">
-                                    <i class="bx bx-text text-success me-2"></i>ARF Title
-                                </td>
-                                <td class="field-value">{{ $requestARF->activity_title }}</td>
-                            </tr>
                             @if($requestARF->document_number)
                             <tr>
                                 <td class="field-label">
@@ -335,6 +318,12 @@
                                 </td>
                             </tr>
                             @endif
+                            <tr>
+                                <td class="field-label">
+                                    <i class="bx bx-text text-success me-2"></i>ARF Title
+                                </td>
+                                <td class="field-value">{{ $requestARF->activity_title }}</td>
+                            </tr>
                             <tr>
                                 <td class="field-label">
                                     <i class="bx bx-calendar text-success me-2"></i>Request Date
@@ -531,7 +520,7 @@
                         
                         @if($fundCodes->isNotEmpty())
                             @foreach($fundCodes as $fundCodeId => $fundCode)
-                                <h6 style="color: #911C39; font-weight: 600;">{{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }})</h6>
+                                <h6 style="color: #2c3d50; font-weight: 600;">{{ $fundCode->activity }} - {{ $fundCode->code }} - ({{ $fundCode->fundType->name }})</h6>
                                 
                                 <div class="table-responsive">
                                     <table class="table table-bordered">
@@ -828,12 +817,30 @@
                 @endif
             </div>
                         <div class="progress mb-2" style="height: 8px;">
+                            @php
+                                $totalLevels = count($approvalLevels);
+                                $currentLevel = $requestARF->approval_level ?? 0;
+                                $progressPercentage = $totalLevels > 0 ? min(($currentLevel / $totalLevels) * 100, 100) : 0;
+                            @endphp
                             <div class="progress-bar bg-primary" role="progressbar" 
-                                 style="width: {{ min(($requestARF->approval_level ?? 0) * 25, 100) }}%"></div>
+                                 style="width: {{ $progressPercentage }}%"></div>
                         </div>
                         <small class="text-muted">
-                            Level {{ $requestARF->approval_level ?? 0 }} of {{ $requestARF->next_approval_level ?? 'N/A' }}
+                            Level {{ $requestARF->approval_level ?? 0 }} of {{ $totalLevels }}
                         </small>
+                        
+                        @if(!empty($approvalLevels))
+                            <div class="mt-3">
+                                <small class="text-muted d-block mb-2">Approval Levels:</small>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach($approvalLevels as $level)
+                                        <span class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_current'] ? 'primary' : 'secondary') }} small">
+                                            {{ $level['order'] }}. {{ $level['role'] }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
             </div>
         </div>
         
@@ -892,29 +899,7 @@
 
                 <!-- Submit for Approval -->
                 @if(in_array($requestARF->overall_status, ['draft', 'returned']) && is_with_creator_generic($requestARF))
-                    <div class="card sidebar-card border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
-                        <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                                <i class="bx bx-send"></i>
-                                Ready to Submit?
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted mb-3">Ready to submit this ARF request for approval?</p>
-                            <form action="{{ route('request-arf.submit-for-approval', $requestARF) }}" method="POST">
-                                @csrf
-                                <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
-                                    <i class="bx bx-send"></i>
-                                    Submit for Approval
-                                </button>
-                            </form>
-                            <div class="mt-3 p-3 bg-light rounded">
-                                <small class="text-muted">
-                                    <i class="bx bx-info-circle me-1"></i>
-                                    Once submitted, the ARF will enter the approval workflow and cannot be edited.
-                                </small>
-                            </div>
-                </div>
+              
             </div>
         @endif
     </div>

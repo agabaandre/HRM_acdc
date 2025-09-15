@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Models\FundType;
 use App\Traits\HasDocumentNumber;
+use App\Traits\HasApprovalWorkflow;
 
 class ServiceRequest extends Model
 {
-    use HasFactory, HasDocumentNumber, Auditable;
+    use HasFactory, HasDocumentNumber, Auditable, HasApprovalWorkflow;
 
     /**
      * The attributes that are mass assignable.
@@ -48,6 +49,9 @@ class ServiceRequest extends Model
         'new_total_budget',
         'fund_type_id',
         'title',
+        'approval_level',
+        'next_approval_level',
+        'overall_status',
         'responsible_person_id',
         'document_number',
         'budget_id',
