@@ -74,36 +74,19 @@ $settingsMenuItems = [
 <div class="nav-container primary-menu">
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start">
-            <!-- Approver Dashboard -->
-            <li class="nav-item">
-                <a href="{{ route('approver-dashboard.index') }}"
-                    class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-tachometer-alt"></i></div>
-                    <div class="menu-title">Approver Dashboard</div>
-                </a>
-            </li>
-
-            <!-- Pending Approvals -->
-            <li class="nav-item">
-                <a href="{{ route('pending-approvals.index') }}"
-                    class="nav-link {{ Request::is('pending-approvals*') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-clock"></i></div>
-                    <div class="menu-title">Pending Approvals</div>
-                </a>
-            </li>
 
             <!-- Staff Portal Menu -->
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle {{ Request::is('staff*') || Request::is('home/index') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-users"></i></div>
-                    <div class="menu-title">Staff Portal</div>
+                    <div class="menu-title">Staff</div>
                 </a>
                 <ul class="dropdown-menu">
                     <li>
                         <a class="dropdown-item {{ Request::is('home/index') ? 'active' : '' }}" 
                            href="{{ str_replace('apm/', '', url('dashboard')) }}" target="_blank">
-                            <i class="fas fa-external-link-alt me-2"></i>External Dashboard
+                            <i class="fas fa-external-link-alt me-2"></i>Staff Portal Home
                         </a>
                     </li>
                     <li>
@@ -113,6 +96,15 @@ $settingsMenuItems = [
                         </a>
                     </li>
                 </ul>
+            </li>
+
+             <!-- Approver Dashboard -->
+            <li class="nav-item">
+                <a href="{{ route('approver-dashboard.index') }}"
+                    class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <div class="menu-title">Approver Dashboard</div>
+                </a>
             </li>
 
             <!-- APMS Home -->
@@ -131,6 +123,17 @@ $settingsMenuItems = [
                     <div class="menu-title">Quarterly Matrix</div>
                 </a>
             </li>
+           
+
+            <!-- Pending Approvals -->
+            <li class="nav-item">
+                <a href="{{ route('pending-approvals.index') }}"
+                    class="nav-link {{ Request::is('pending-approvals*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-clock"></i></div>
+                    <div class="menu-title">Pending Approvals</div>
+                </a>
+            </li>
+
 
          
 
