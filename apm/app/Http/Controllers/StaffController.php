@@ -11,6 +11,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Yajra\DataTables\Facades\DataTables;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\StaffExport;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class StaffController extends Controller
 {
@@ -55,11 +61,88 @@ class StaffController extends Controller
         }
 
         $staffMembers = $query->latest()->paginate(10);
-        $divisions = Division::where('is_active', 1)->orderBy('division_name')->get();
-        $directorates = Directorate::where('is_active', 1)->orderBy('name')->get();
-        $dutyStations = DutyStation::where('status', 1)->orderBy('name')->get();
+        $divisions = Division::orderBy('division_name')->get();
+        $dutyStations = Staff::select('duty_station_name')
+            ->whereNotNull('duty_station_name')
+            ->where('duty_station_name', '!=', '')
+            ->distinct()
+            ->orderBy('duty_station_name')
+            ->get();
 
-        return view('staff.index', compact('staffMembers', 'divisions', 'directorates', 'dutyStations'));
+        return view('staff.index', compact('staffMembers', 'divisions', 'dutyStations'));
+    }
+
+    /**
+     * Get staff data for DataTables
+     */
+    public function datatable(Request $request)
+    {
+        try {
+            $query = Staff::with(['division', 'dutyStation']);
+
+            // Global search
+            if ($request->has('global_search') && !empty($request->global_search)) {
+                $search = $request->global_search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('staff_id', 'like', "%{$search}%")
+                      ->orWhere('fname', 'like', "%{$search}%")
+                      ->orWhere('lname', 'like', "%{$search}%")
+                      ->orWhere('work_email', 'like', "%{$search}%")
+                      ->orWhere('tel_1', 'like', "%{$search}%")
+                      ->orWhere('title', 'like', "%{$search}%")
+                      ->orWhereHas('division', function($q) use ($search) {
+                          $q->where('division_name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('dutyStation', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Division filter
+            if ($request->has('division_id') && !empty($request->division_id)) {
+                $query->where('division_id', $request->division_id);
+            }
+
+            // Duty Station filter
+            if ($request->has('duty_station_id') && !empty($request->duty_station_id)) {
+                $query->where('duty_station_name', $request->duty_station_id);
+            }
+
+            // Status filter
+            if ($request->has('status') && $request->status !== '') {
+                $query->where('active', $request->status);
+            }
+
+            return DataTables::of($query)
+                ->addColumn('name', function ($staff) {
+                    return $staff->fname . ' ' . $staff->lname;
+                })
+                ->addColumn('actions', function ($staff) {
+                    return $staff->id; // This will be handled in the view
+                })
+                ->rawColumns(['actions'])
+                ->make(true);
+        } catch (\Exception $e) {
+            \Log::error('DataTable error: ' . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while loading data'], 500);
+        }
+    }
+
+    /**
+     * Export staff data
+     */
+    public function export($format): RedirectResponse|BinaryFileResponse
+    {
+        $filters = request()->all();
+        
+        if ($format === 'excel') {
+            return Excel::download(new StaffExport($filters), 'staff_' . date('Y-m-d_H-i-s') . '.xlsx');
+        } elseif ($format === 'pdf') {
+            return Excel::download(new StaffExport($filters), 'staff_' . date('Y-m-d_H-i-s') . '.pdf', \Maatwebsite\Excel\Excel::DOMPDF);
+        }
+        
+        return redirect()->route('staff.index')->with('error', 'Invalid export format');
     }
 
     /**
@@ -67,9 +150,9 @@ class StaffController extends Controller
      */
     public function create()
     {
-        $divisions = Division::where('is_active', 1)->orderBy('division_name')->get();
+        $divisions = Division::orderBy('division_name')->get();
         $directorates = Directorate::where('is_active', 1)->orderBy('name')->get();
-        $dutyStations = DutyStation::where('status', 1)->orderBy('name')->get();
+        $dutyStations = DutyStation::where('is_active', 1)->orderBy('name')->get();
         $supervisors = Staff::active()->orderBy('fname')->get();
 
         return view('staff.create', compact('divisions', 'directorates', 'dutyStations', 'supervisors'));
@@ -78,7 +161,7 @@ class StaffController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'staff_id' => 'required|string|max:20|unique:staff,staff_id',
@@ -153,9 +236,9 @@ class StaffController extends Controller
     public function edit(string $id)
     {
         $staff = Staff::findOrFail($id);
-        $divisions = Division::where('is_active', 1)->orderBy('division_name')->get();
+        $divisions = Division::orderBy('division_name')->get();
         $directorates = Directorate::where('is_active', 1)->orderBy('name')->get();
-        $dutyStations = DutyStation::where('status', 1)->orderBy('name')->get();
+        $dutyStations = DutyStation::where('is_active', 1)->orderBy('name')->get();
         $supervisors = Staff::where('active', 1)->where('id', '!=', $id)->orderBy('fname')->get();
 
         return view('staff.edit', compact('staff', 'divisions', 'directorates', 'dutyStations', 'supervisors'));
@@ -164,7 +247,7 @@ class StaffController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id): RedirectResponse
     {
         $staff = Staff::findOrFail($id);
 
@@ -229,7 +312,7 @@ class StaffController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(string $id): RedirectResponse
     {
         $staff = Staff::findOrFail($id);
         
