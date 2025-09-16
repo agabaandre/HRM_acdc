@@ -123,10 +123,14 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::resource('funders', App\Http\Controllers\FunderController::class)->except(['destroy']);
     Route::resource('divisions', App\Http\Controllers\DivisionController::class)->only(['index', 'show']);
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
-    Route::resource('staff', App\Http\Controllers\StaffController::class);
     
-    // Staff activities route for matrix view
+    // Staff specific routes (must come before resource route)
+    Route::get('staff/datatable', [App\Http\Controllers\StaffController::class, 'datatable'])->name('staff.datatable');
+    Route::get('staff/export/{format}', [App\Http\Controllers\StaffController::class, 'export'])->name('staff.export');
     Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities');
+    
+    // Staff resource routes
+    Route::resource('staff', App\Http\Controllers\StaffController::class);
     Route::resource('request-types', App\Http\Controllers\RequestTypeController::class);
     Route::resource('locations', App\Http\Controllers\LocationController::class)->except(['destroy']);
     Route::resource('cost-items', App\Http\Controllers\CostItemController::class)->except(['destroy']);

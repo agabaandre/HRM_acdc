@@ -91,15 +91,15 @@ class Staff extends Model
     }
 
     
-    // public function directorate(): BelongsTo
-    // {
-    //     return $this->belongsTo(Directorate::class);
-    // }
+    public function directorate(): BelongsTo
+    {
+        return $this->belongsTo(Directorate::class, 'directorate_id');
+    }
 
-    // public function dutyStation(): BelongsTo
-    // {
-    //     return $this->belongsTo(DutyStation::class);
-    // }
+    public function dutyStation(): BelongsTo
+    {
+        return $this->belongsTo(DutyStation::class, 'duty_station_id');
+    }
 
     public function matrices(): HasMany
     {

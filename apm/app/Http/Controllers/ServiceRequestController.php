@@ -16,7 +16,6 @@ use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
@@ -79,7 +78,6 @@ class ServiceRequestController extends Controller
      */
     public function create(Request $request): View
     {
-        \Log::info('ServiceRequestController::create method called');
         try {
         $staff = Staff::all();
             
@@ -104,46 +102,19 @@ class ServiceRequestController extends Controller
                 
                 // Process budget breakdown from source data
                 if ($sourceData) {
-                    \Log::info('Source data loaded', [
-                        'source_type' => $sourceType,
-                        'source_id' => $sourceId,
-                        'has_budget_breakdown' => isset($sourceData->budget_breakdown),
-                        'budget_breakdown' => $sourceData->budget_breakdown ?? 'not set',
-                        'has_internal_participants' => isset($sourceData->internal_participants),
-                        'internal_participants' => $sourceData->internal_participants ?? 'not set'
-                    ]);
-                    
                     $budgetBreakdown = $this->processBudgetDataFromSource($sourceData, $sourceType);
                     $originalTotalBudget = $budgetBreakdown['grand_total'] ?? 0;
                     
                     // Process internal participants from source data
                     $internalParticipants = $this->processInternalParticipantsFromSource($sourceData, $sourceType);
-                    
-                    \Log::info('Processed budget breakdown', [
-                        'budget_breakdown' => $budgetBreakdown,
-                        'original_total' => $originalTotalBudget
-                    ]);
-                    
-                    \Log::info('Processed internal participants', [
-                        'internal_participants' => $internalParticipants
-                    ]);
-                } else {
-                    \Log::warning('Source data is null', [
-                        'source_type' => $sourceType,
-                        'source_id' => $sourceId
-                    ]);
                 }
             }
             
             // Get cost items that exist in budget breakdown and filter by type
-            \Log::info('Starting cost items extraction');
             $costItems = collect();
             $otherCostItems = collect();
             
             if ($budgetBreakdown && is_array($budgetBreakdown)) {
-                \Log::info('Cost items extraction - budget breakdown exists: ' . ($budgetBreakdown ? 'yes' : 'no'));
-                \Log::info('Cost items extraction - budget breakdown type: ' . gettype($budgetBreakdown));
-                
                 // Extract cost item names from budget breakdown
                 $costItemNames = [];
                 foreach ($budgetBreakdown as $fundCode => $items) {
@@ -157,19 +128,15 @@ class ServiceRequestController extends Controller
                 }
                 
                 if (!empty($costItemNames)) {
-                    \Log::info('Cost item names extracted from budget breakdown: ' . json_encode($costItemNames));
-                    
                     // Get Individual Cost items that exist in budget breakdown
                     $individualCosts = CostItem::whereIn('name', $costItemNames)
                                               ->where('cost_type', 'Individual Cost')
                                               ->get();
-                    \Log::info('Found ' . $individualCosts->count() . ' Individual Cost items from budget breakdown');
                     
                     // Get Other Cost items that exist in budget breakdown
                     $otherCosts = CostItem::whereIn('name', $costItemNames)
                                          ->where('cost_type', 'Other Cost')
                                          ->get();
-                    \Log::info('Found ' . $otherCosts->count() . ' Other Cost items from budget breakdown');
                     
                     $costItems = $individualCosts;
                     $otherCostItems = $otherCosts;
@@ -179,13 +146,6 @@ class ServiceRequestController extends Controller
             // Fallback to all Individual Cost items if no budget breakdown
             if ($costItems->isEmpty()) {
                 $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
-                \Log::info('Using fallback: all Individual Cost items (' . $costItems->count() . ' items)');
-            }
-            
-            // Only show Other Cost items that exist in budget breakdown
-            // No fallback - if no Other Cost items in budget, show empty list
-            if ($otherCostItems->isEmpty()) {
-                \Log::info('No Other Cost items found in budget breakdown - showing empty list');
             }
             
             // Generate a unique request number with actual activity parameters (like ARF)
@@ -194,17 +154,9 @@ class ServiceRequestController extends Controller
             // Get participant names from internal participants JSON
             $participantNames = [];
             if (!empty($internalParticipants) && is_array($internalParticipants)) {
-                \Log::info('Processing participant names from internal participants', [
-                    'internal_participants' => $internalParticipants,
-                    'count' => count($internalParticipants),
-                    'keys' => array_keys($internalParticipants)
-                ]);
-                
                 // Check if participants are already processed (have staff objects) or raw JSON
                 if (isset($internalParticipants[0]) && isset($internalParticipants[0]['staff'])) {
                     // Participants are already processed - use them directly (same as special memo)
-                    \Log::info('Participants are already processed with staff objects');
-                    
                     foreach ($internalParticipants as $index => $participant) {
                         if (isset($participant['staff']) && $participant['staff']) {
                             $staffMember = $participant['staff'];
@@ -217,38 +169,19 @@ class ServiceRequestController extends Controller
                                 'position' => $staffMember->job_name ?? 'Staff',
                                 'division' => $divisionName
                             ];
-                            
-                            \Log::info('Added processed participant to names list', [
-                                'staff_id' => $staffMember->staff_id,
-                                'name' => $staffMember->fname . ' ' . $staffMember->lname,
-                                'division' => $divisionName
-                            ]);
                         }
                     }
                 } else {
                     // Participants are raw JSON - need to process them (original logic)
-                    \Log::info('Participants are raw JSON - processing them');
-                    
                     // Get staff IDs from the keys of the internal participants array
                     $staffIds = array_map('intval', array_keys($internalParticipants));
-                    \Log::info('Staff IDs extracted from keys', ['staff_ids' => $staffIds]);
                     
                     // Fetch staff details using the converted integer IDs
                     $staffDetails = Staff::with('division')->whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
-                    \Log::info('Staff details fetched', [
-                        'staff_count' => $staffDetails->count(),
-                        'staff_ids_found' => $staffDetails->keys()->toArray()
-                    ]);
                     
                     foreach ($internalParticipants as $participantId => $participantData) {
                         // Convert string key to integer for database lookup
                         $staffIdInt = (int) $participantId;
-                        
-                        \Log::info('Processing participant', [
-                            'participant_id' => $participantId,
-                            'staff_id_int' => $staffIdInt,
-                            'participant_data' => $participantData
-                        ]);
                         
                         // Check if staff exists in our fetched data
                         if (isset($staffDetails[$staffIdInt])) {
@@ -262,33 +195,13 @@ class ServiceRequestController extends Controller
                                 'position' => $staffMember->position ?? 'Staff',
                                 'division' => $divisionName
                             ];
-                            
-                            \Log::info('Added participant to names list', [
-                                'staff_id' => $staffMember->staff_id,
-                                'name' => $staffMember->fname . ' ' . $staffMember->lname,
-                                'division' => $divisionName
-                            ]);
-                        } else {
-                            \Log::warning('Staff member not found in fetched data', [
-                                'staff_id' => $staffIdInt,
-                                'participant_id' => $participantId,
-                                'available_staff_ids' => $staffDetails->keys()->toArray()
-                            ]);
                         }
                     }
                 }
-                
-                \Log::info('Final participant names', [
-                    'participant_names' => $participantNames,
-                    'count' => count($participantNames)
-                ]);
             }
             
             return view('service-requests.create', compact('staff', 'divisions', 'workflows', 'activities', 'costItems', 'otherCostItems', 'requestNumber', 'sourceData', 'sourceType', 'sourceId', 'budgetBreakdown', 'originalTotalBudget', 'internalParticipants', 'participantNames'));
         } catch (\Exception $e) {
-            \Log::error('Error in ServiceRequestController::create: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
             // Return a fallback view with minimal data
             return view('service-requests.create', [
                 'staff' => collect(),
@@ -349,10 +262,7 @@ class ServiceRequestController extends Controller
         $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
         if (!$assignedWorkflowId) {
             $assignedWorkflowId = 3; // Default workflow ID for ServiceRequest
-            \Log::warning('No workflow assignment found for ServiceRequest model, using default workflow ID: 3');
         }
-        
-        \Log::info('ServiceRequest using assigned workflow ID: ' . $assignedWorkflowId);
         
         // Set approval levels and workflow IDs for immediate submission
         $approvalLevel = 1; // Start at level 1 for pending
@@ -361,13 +271,6 @@ class ServiceRequestController extends Controller
         $forwardWorkflowId = $assignedWorkflowId; // Set the assigned workflow ID
         $reverseWorkflowId = $assignedWorkflowId; // Set the same for reverse workflow
         
-        // Debug: Check what workflow would be assigned
-        \Log::info('ServiceRequest Creation Debug - Workflow Assignment', [
-            'model_name' => 'ServiceRequest',
-            'assigned_workflow_id' => $assignedWorkflowId,
-            'forward_workflow_id_set_to' => $forwardWorkflowId,
-            'workflow_assignments' => WorkflowModel::where('model_name', 'ServiceRequest')->get()->toArray()
-        ]);
         
         // Process specifications array if provided
         if (!isset($validated['specifications']) || !is_array($validated['specifications'])) {
@@ -384,8 +287,6 @@ class ServiceRequestController extends Controller
         $validated['forward_workflow_id'] = $forwardWorkflowId;
         $validated['reverse_workflow_id'] = $reverseWorkflowId;
         
-        \Log::info('Creating ServiceRequest with data', ['service_request_data' => $validated]);
-        
         $serviceRequest = ServiceRequest::create($validated);
         
         // Save approval trail for ServiceRequest creation and submission
@@ -395,14 +296,6 @@ class ServiceRequestController extends Controller
         if (function_exists('send_service_request_email_notification')) {
             send_service_request_email_notification($serviceRequest, 'approval');
         }
-        
-        \Log::info('ServiceRequest Created and Submitted Successfully', [
-            'service_request_id' => $serviceRequest->id, 
-            'request_number' => $serviceRequest->request_number,
-            'forward_workflow_id' => $serviceRequest->forward_workflow_id,
-            'overall_status' => $serviceRequest->overall_status,
-            'approval_level' => $serviceRequest->approval_level
-        ]);
         
         return redirect()
             ->route('service-requests.index')
@@ -429,10 +322,6 @@ class ServiceRequestController extends Controller
         
         // Ensure internalParticipants is an array
         if (!is_array($internalParticipants)) {
-            \Log::warning('Internal participants is not an array', [
-                'type' => gettype($internalParticipants),
-                'value' => $internalParticipants
-            ]);
             $internalParticipants = [];
         }
         
@@ -471,10 +360,6 @@ class ServiceRequestController extends Controller
         
         // Ensure externalParticipants is an array
         if (!is_array($externalParticipants)) {
-            \Log::warning('External participants is not an array', [
-                'type' => gettype($externalParticipants),
-                'value' => $externalParticipants
-            ]);
             $externalParticipants = [];
         }
         
@@ -515,10 +400,6 @@ class ServiceRequestController extends Controller
         
         // Ensure otherCosts is an array
         if (!is_array($otherCosts)) {
-            \Log::warning('Other costs is not an array', [
-                'type' => gettype($otherCosts),
-                'value' => $otherCosts
-            ]);
             $otherCosts = [];
         }
         
@@ -580,37 +461,16 @@ class ServiceRequestController extends Controller
     private function processBudgetDataFromSource($sourceData, string $sourceType): array
     {
         try {
-            \Log::info('Processing budget data from source', [
-                'source_type' => $sourceType,
-                'source_data_exists' => $sourceData !== null,
-                'source_data_class' => $sourceData ? get_class($sourceData) : 'null'
-            ]);
-            
             switch ($sourceType) {
                 case 'activity':
                     if ($sourceData && isset($sourceData->budget_breakdown)) {
-                        \Log::info('Activity budget breakdown found', [
-                            'budget_breakdown' => $sourceData->budget_breakdown,
-                            'is_string' => is_string($sourceData->budget_breakdown)
-                        ]);
-                        
                         $budget = is_string($sourceData->budget_breakdown) 
                             ? json_decode($sourceData->budget_breakdown, true) 
                             : $sourceData->budget_breakdown;
                         
-                        \Log::info('Decoded budget data', [
-                            'decoded_budget' => $budget,
-                            'is_array' => is_array($budget)
-                        ]);
-                        
                         if (is_array($budget)) {
                             return $budget;
                         }
-                    } else {
-                        \Log::warning('Activity budget breakdown not found', [
-                            'has_source_data' => $sourceData !== null,
-                            'has_budget_breakdown' => $sourceData ? isset($sourceData->budget_breakdown) : false
-                        ]);
                     }
                     break;
                     
@@ -641,7 +501,6 @@ class ServiceRequestController extends Controller
             
             return [];
         } catch (\Exception $e) {
-            Log::error('Error processing budget data from source: ' . $e->getMessage());
             return [];
         }
     }
@@ -652,79 +511,38 @@ class ServiceRequestController extends Controller
     private function processInternalParticipantsFromSource($sourceData, string $sourceType): array
     {
         try {
-            \Log::info('Processing internal participants from source', [
-                'source_type' => $sourceType,
-                'source_data_exists' => $sourceData !== null,
-                'source_data_class' => $sourceData ? get_class($sourceData) : 'null'
-            ]);
-            
             switch ($sourceType) {
                 case 'activity':
                     if ($sourceData && isset($sourceData->internal_participants)) {
-                        \Log::info('Activity internal participants found', [
-                            'internal_participants' => $sourceData->internal_participants,
-                            'is_string' => is_string($sourceData->internal_participants)
-                        ]);
-                        
                         $participants = is_string($sourceData->internal_participants) 
                             ? json_decode($sourceData->internal_participants, true) 
                             : $sourceData->internal_participants;
                         
-                        \Log::info('Decoded internal participants', [
-                            'decoded_participants' => $participants,
-                            'is_array' => is_array($participants)
-                        ]);
-                        
                         if (is_array($participants)) {
                             return $participants;
                         }
-                    } else {
-                        \Log::warning('Activity internal participants not found', [
-                            'has_source_data' => $sourceData !== null,
-                            'has_internal_participants' => $sourceData ? isset($sourceData->internal_participants) : false
-                        ]);
                     }
                     break;
                     
                 case 'non_travel_memo':
                 case 'special_memo':
                     if ($sourceData && isset($sourceData->internal_participants)) {
-                        \Log::info('Memo internal participants found', [
-                            'source_type' => $sourceType,
-                            'internal_participants' => $sourceData->internal_participants,
-                            'is_string' => is_string($sourceData->internal_participants)
-                        ]);
-                        
                         $participants = is_string($sourceData->internal_participants) 
                             ? json_decode($sourceData->internal_participants, true) 
                             : $sourceData->internal_participants;
                         
-                        \Log::info('Decoded memo internal participants', [
-                            'decoded_participants' => $participants,
-                            'is_array' => is_array($participants),
-                            'keys' => is_array($participants) ? array_keys($participants) : 'not_array'
-                        ]);
-                        
                         if (is_array($participants) && !empty($participants)) {
                             // Process participants the same way as special memo show
                             $staffIds = array_map('intval', array_keys($participants));
-                            \Log::info('Staff IDs extracted', ['staff_ids' => $staffIds]);
                             
                             return $participants; // Return the raw participants data
                         }
-                    } else {
-                        \Log::warning('Memo internal participants not found', [
-                            'source_type' => $sourceType,
-                            'has_source_data' => $sourceData !== null,
-                            'has_internal_participants' => $sourceData ? isset($sourceData->internal_participants) : false
-                        ]);
                     }
                     break;
             }
             
             return [];
         } catch (\Exception $e) {
-            Log::error('Error processing internal participants from source: ' . $e->getMessage());
             return [];
         }
     }
@@ -1041,7 +859,6 @@ class ServiceRequestController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error getting source data for service request: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error loading source data: ' . $e->getMessage()
@@ -1092,10 +909,7 @@ class ServiceRequestController extends Controller
             $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('ServiceRequest');
             if (!$assignedWorkflowId) {
                 $assignedWorkflowId = 3; // Default workflow ID for ServiceRequest
-                Log::warning('No workflow assignment found for ServiceRequest model, using default workflow ID: 3');
             }
-            
-            Log::info('ServiceRequest using assigned workflow ID: ' . $assignedWorkflowId);
 
             // Create service request
             $serviceRequest = ServiceRequest::create([
@@ -1149,7 +963,6 @@ class ServiceRequestController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error creating service request from modal: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error creating service request: ' . $e->getMessage()
@@ -1170,7 +983,6 @@ class ServiceRequestController extends Controller
                 'costItems' => $costItems
             ]);
         } catch (\Exception $e) {
-            Log::error('Error getting cost items: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error loading cost items'
@@ -1247,7 +1059,6 @@ class ServiceRequestController extends Controller
             
             return $source;
         } catch (\Exception $e) {
-            Log::error('Error getting source data: ' . $e->getMessage());
             return null;
         }
     }
@@ -1432,20 +1243,10 @@ class ServiceRequestController extends Controller
      */
     public function updateStatus(Request $request, ServiceRequest $serviceRequest): RedirectResponse
     {
-        \Illuminate\Support\Facades\Log::info('ServiceRequest updateStatus called', [
-            'request_all' => $request->all(),
-            'service_request_id' => $serviceRequest->id,
-            'current_status' => $serviceRequest->overall_status,
-            'current_level' => $serviceRequest->approval_level,
-            'user_id' => user_session('staff_id')
-        ]);
-
         $request->validate([
             'action' => 'required|in:approved,rejected,returned',
             'comment' => 'nullable|string|max:1000',
         ]);
-
-        \Illuminate\Support\Facades\Log::info('Validation passed, calling generic approval controller');
 
         // Use the generic approval system
         $genericController = app(\App\Http\Controllers\GenericApprovalController::class);

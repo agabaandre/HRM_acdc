@@ -4,32 +4,6 @@
 
 @section('styles')
 <style>
-    .matrix-card {
-        background: #fff;
-        border-radius: 1.25rem;
-        box-shadow: 0 4px 24px rgba(17, 154, 72, 0.08);
-        border: none;
-    }
-
-    .matrix-card .card-header {
-        border-radius: 1.25rem 1.25rem 0 0;
-        background: linear-gradient(90deg, #e9f7ef 0%, #fff 100%);
-        border-bottom: 1px solid #e9f7ef;
-    }
-
-    .matrix-card .card-body {
-        border-radius: 0 0 1.25rem 1.25rem;
-    }
-
-    .approval-level-badge {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 9999px;
-        font-weight: 600;
-        font-size: 0.875rem;
-    }
-
     .status-badge {
         font-size: 0.875rem;
         font-weight: 600;
@@ -38,72 +12,23 @@
         text-transform: capitalize;
     }
     
-    .status-approved {
-        background: #d1fae5;
-        color: #059669;
-        border: 1px solid #a7f3d0;
-    }
-
-    .status-rejected {
-        background: #fee2e2;
-        color: #dc2626;
-        border: 1px solid #fca5a5;
-    }
-
-    .status-pending {
-        background: #fef3c7;
-        color: #d97706;
-        border: 1px solid #fcd34d;
-    }
-
-    .status-draft {
-        background: #f3f4f6;
-        color: #6b7280;
-        border: 1px solid #d1d5db;
-    }
-
-    .status-returned {
-        background: #dbeafe;
-        color: #2563eb;
-        border: 1px solid #93c5fd;
-    }
+    .status-approved { @apply bg-green-100 text-green-800 border border-green-200; }
+    .status-rejected { @apply bg-red-100 text-red-800 border border-red-200; }
+    .status-pending { @apply bg-yellow-100 text-yellow-800 border border-yellow-200; }
+    .status-draft { @apply bg-gray-100 text-gray-800 border border-gray-200; }
+    .status-returned { @apply bg-blue-100 text-blue-800 border border-blue-200; }
     
     .gradient-header {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     }
-
-    .sidebar-card {
-        box-shadow: 0 4px 24px rgba(17, 154, 72, 0.08);
-        border-radius: 1.25rem;
-        overflow: hidden;
-        border: none;
-    }
-
-    .budget-card {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 1px solid #bae6fd;
-        border-radius: 1rem;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-    }
-
-    .budget-item {
-        background: #fff;
-        border: 1px solid #e5e7eb;
+    
+    .meta-card {
+        background: #f8fafc;
         border-radius: 0.75rem;
         padding: 1rem;
-        margin-bottom: 0.75rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
     }
-
-    .fund-code-card {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        border: 1px solid #f59e0b;
-        border-radius: 0.75rem;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-
+    
     .content-section {
         border-left: 4px solid;
         background: #fafafa;
@@ -111,23 +36,60 @@
         margin-bottom: 1.5rem;
     }
     
-    .content-section.bg-blue { 
-        border-left-color: #3b82f6; 
-        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    .content-section.bg-blue { border-left-color: #3b82f6; }
+    .content-section.bg-green { border-left-color: #10b981; }
+    .content-section.bg-purple { border-left-color: #8b5cf6; }
+    .content-section.bg-orange { border-left-color: #f59e0b; }
+    
+    .sidebar-card {
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        border-radius: 0.75rem;
+        overflow: hidden;
     }
-    .content-section.bg-green { 
-        border-left-color: #10b981; 
-        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    
+    .budget-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
-    .content-section.bg-purple { 
-        border-left-color: #8b5cf6; 
-        background: linear-gradient(135deg, #faf5ff 0%, #e9d5ff 100%);
+    
+    .budget-table td {
+        vertical-align: middle;
+        font-size: 0.9rem;
     }
-    .content-section.bg-orange { 
-        border-left-color: #f59e0b; 
-        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    
+    .budget-total-row {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        font-weight: 700;
+    }
+    
+    .fund-code-header {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .fund-code-header h6 {
+        color: #0369a1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .fund-code-header .small {
+        color: #64748b;
+    }
+    
+    .attachment-item {
+        background: #faf5ff;
+        border: 1px solid #e9d5ff;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
     }
 
+    /* Timeline Styles */
     .timeline {
         position: relative;
         margin: 0;
@@ -207,7 +169,7 @@
     }
 
     .btn-action {
-        border-radius: 0.75rem;
+        border-radius: 0.5rem;
         font-weight: 600;
         padding: 0.75rem 1.5rem;
         display: flex;
@@ -220,22 +182,6 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-
-    .info-icon {
-        transition: transform 0.2s;
-    }
-    
-    .card:hover .info-icon {
-        transform: scale(1.1);
-    }
-
-    .budget-icon {
-        transition: transform 0.2s;
-    }
-    
-    .card:hover .budget-icon {
-        transform: scale(1.1);
-    }
 </style>
 @endsection
 
@@ -244,12 +190,12 @@
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card matrix-card">
-                <div class="card-header">
+            <div class="card">
+                <div class="card-header gradient-header">
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <h1 class="h3 mb-2 text-gray-800">
-                                <i class="fas fa-concierge-bell me-2 text-primary info-icon"></i>
+                                <i class="fas fa-concierge-bell me-2 text-primary"></i>
                                 Service Request Details
                             </h1>
                             @if($serviceRequest->request_number)
@@ -262,7 +208,7 @@
                                     {{ ucfirst($serviceRequest->overall_status ?? 'draft') }}
                                 </span>
                                 @if($serviceRequest->approval_level)
-                                    <span class="approval-level-badge">
+                                    <span class="badge bg-primary">
                                         Level {{ $serviceRequest->approval_level }}
                                     </span>
                                 @endif
@@ -364,170 +310,10 @@
             <div class="card content-section bg-green">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h5 class="mb-0 text-success">
-                        <i class="fas fa-calculator me-2 budget-icon"></i>Budget Information
+                        <i class="fas fa-calculator me-2"></i>Budget Information
                     </h5>
                 </div>
                 <div class="card-body">
-                    <!-- Original Budget Breakdown -->
-                    @if($serviceRequest->budget_breakdown && is_array($serviceRequest->budget_breakdown))
-                    <div class="mb-4">
-                        <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                            <i class="fas fa-file-invoice-dollar me-2"></i> Original Budget Breakdown
-                        </h6>
-                        
-                        @php
-                            $budgetByFundCode = [];
-                            $fundCodes = [];
-                            $grandTotal = 0;
-                            
-                            // Process budget structure and organize by fund codes
-                            foreach($serviceRequest->budget_breakdown as $key => $item) {
-                                if ($key === 'grand_total') {
-                                    $grandTotal = floatval($item);
-                                    continue;
-                                }
-                                
-                                if (is_array($item)) {
-                                    $fundCodeId = $key;
-                                    $budgetByFundCode[$fundCodeId] = $item;
-                                }
-                            }
-                        @endphp
-                        
-                        @if (!empty($budgetByFundCode))
-                            @php
-                                $count = 1;
-                                $grandTotal = 0;
-                            @endphp
-
-                            @foreach ($budgetByFundCode as $fundCodeId => $items)
-                                @php
-                                    $groupTotal = 0;
-                                    $itemCount = 1; // Reset counter for each budget code
-                                @endphp
-
-                                {{-- Budget Code Title --}}
-                                <div class="budget-code-header bg-light p-3 rounded-top mb-0">
-                                    <h6 class="mb-0" style="color: #911C39; font-weight: 600;">
-                                        Budget Code: {{ $fundCodeId }}
-                                    </h6>
-                                </div>
-
-                                {{-- Individual Table for this Budget Code --}}
-                                <div class="table-responsive mb-4">
-                                    <table class="table table-hover table-bordered mb-0">
-                                        <thead class="table-secondary">
-                                            <tr>
-                                                <th class="text-center">#</th>
-                                                <th>Cost Item</th>
-                                                <th class="text-end">Unit Cost</th>
-                                                <th class="text-end">Units</th>
-                                                <th class="text-end">Days</th>
-                                                <th class="text-end">Total</th>
-                                                <th>Description</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($items as $item)
-                                                @php
-                                                    $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                    $units = floatval($item['units'] ?? 0);
-                                                    $days = floatval($item['days'] ?? 1);
-
-                                                    // Use days when greater than 1, otherwise just unit_cost * units
-                                                    if ($days > 1) {
-                                                        $total = $unitCost * $units * $days;
-                                                    } else {
-                                                        $total = $unitCost * $units;
-                                                    }
-
-                                                    $groupTotal += $total;
-                                                    $grandTotal += $total;
-                                                @endphp
-                                                <tr>
-                                                    <td class="text-center">{{ $itemCount }}</td>
-                                                    <td>{{ $item['cost'] ?? 'N/A' }}</td>
-                                                    <td class="text-end">${{ number_format($unitCost, 2) }}</td>
-                                                    <td class="text-end">{{ $units }}</td>
-                                                    <td class="text-end">{{ $days }}</td>
-                                                    <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
-                                                    <td>{{ $item['description'] ?? '' }}</td>
-                                                </tr>
-                                                @php
-                                                    $itemCount++;
-                                                @endphp
-                                            @endforeach
-                                        </tbody>
-                                        <tfoot class="table-group-divider">
-                                            <tr class="table-secondary">
-                                                <th colspan="5" class="text-end">Sub Total</th>
-                                                <th class="text-end">${{ number_format($groupTotal, 2) }}</th>
-                                                <th></th>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            @endforeach
-
-                            {{-- Overall Grand Total --}}
-                            <div class="row mt-3">
-                                <div class="col-md-12">
-                                    <div class="total-card text-white p-3 rounded text-center" style="background-color: #2c3d50;">
-                                        <h5 class="mb-0 text-white"><strong>Grand Total: ${{ number_format($grandTotal, 2) }} USD</strong></h5>
-                                    </div>
-                                </div>
-                            </div>
-                        @else
-                            <!-- Fallback: Show budget as key-value pairs if structure is different -->
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm mb-0">
-                                    <thead class="table-secondary">
-                                        <tr>
-                                            <th>Budget Item</th>
-                                            <th>Value</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($serviceRequest->budget_breakdown as $key => $value)
-                                            @if ($key !== 'grand_total')
-                                                <tr>
-                                                    <td>{{ $key }}</td>
-                                                    <td>
-                                                        @if (is_array($value))
-                                                            <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                        @else
-                                                            {{ $value }}
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endif
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @endif
-                    </div>
-                    @endif
-
-                    <!-- Budget Summary -->
-                    @if($serviceRequest->original_total_budget || $serviceRequest->new_total_budget)
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="budget-card text-center">
-                                <label class="form-label text-muted small fw-semibold">Original Budget</label>
-                                <p class="h4 mb-0 text-primary">${{ number_format($serviceRequest->original_total_budget ?? 0, 2) }}</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="budget-card text-center">
-                                <label class="form-label text-muted small fw-semibold">New Total Budget</label>
-                                <p class="h4 mb-0 text-success">${{ number_format($serviceRequest->new_total_budget ?? 0, 2) }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-
-                    <!-- Service Request Budget Breakdown -->
                     @php
                         // Parse the budget breakdown JSON from the service request
                         $budgetData = null;
@@ -538,10 +324,40 @@
                         }
                     @endphp
                     
+                    <!-- Budget Summary Cards -->
+                    @if($serviceRequest->original_total_budget || $serviceRequest->new_total_budget)
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="meta-card text-center">
+                                <label class="form-label text-muted small fw-semibold">Original Budget</label>
+                                <p class="h4 mb-0 text-primary">${{ number_format($serviceRequest->original_total_budget ?? 0, 2) }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="meta-card text-center">
+                                <label class="form-label text-muted small fw-semibold">Requested Funds</label>
+                                <p class="h4 mb-0 text-success">${{ number_format($serviceRequest->new_total_budget ?? 0, 2) }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="meta-card text-center">
+                                <label class="form-label text-muted small fw-semibold">Difference</label>
+                                @php
+                                    $difference = ($serviceRequest->new_total_budget ?? 0) - ($serviceRequest->original_total_budget ?? 0);
+                                @endphp
+                                <p class="h4 mb-0 {{ $difference >= 0 ? 'text-success' : 'text-danger' }}">
+                                    {{ $difference >= 0 ? '+' : '' }}${{ number_format($difference, 2) }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Service Request Budget Breakdown -->
                     @if($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs'])))
                     <div class="mb-4">
                         <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                            <i class="fas fa-calculator me-2"></i>Service Request Budget Breakdown
+                            <i class="fas fa-calculator me-2"></i>Budget Breakdown
                         </h6>
                         
                         <!-- Internal Participants -->
@@ -551,7 +367,7 @@
                                 <i class="fas fa-users me-2"></i>Internal Participants
                             </h6>
                             <div class="table-responsive">
-                                <table class="table table-hover table-bordered">
+                                <table class="table budget-table table-hover table-bordered">
                                     <thead class="table-primary">
                                         <tr>
                                             <th class="text-center">#</th>
@@ -583,11 +399,9 @@
                                             <td>
                                                 @if(isset($participant['costs']) && is_array($participant['costs']))
                                                     @foreach($participant['costs'] as $costName => $costValue)
-                                                        <div class="budget-item">
-                                                            <div class="d-flex justify-content-between">
-                                                                <span><strong>{{ $costName }}:</strong></span>
-                                                                <span class="text-success fw-bold">${{ number_format($costValue, 2) }}</span>
-                                                            </div>
+                                                        <div class="d-flex justify-content-between mb-1">
+                                                            <span><strong>{{ $costName }}:</strong></span>
+                                                            <span class="text-success fw-bold">${{ number_format($costValue, 2) }}</span>
                                                         </div>
                                                     @endforeach
                                                 @else
@@ -602,7 +416,7 @@
                                     </tbody>
                                     @if(isset($budgetData['internal_total']))
                                     <tfoot class="table-group-divider">
-                                        <tr class="table-secondary">
+                                        <tr class="budget-total-row">
                                             <th colspan="3" class="text-end">Internal Total:</th>
                                             <th class="text-end">${{ number_format($budgetData['internal_total'], 2) }}</th>
                                         </tr>
@@ -620,7 +434,7 @@
                                 <i class="fas fa-user-friends me-2"></i>External Participants
                             </h6>
                             <div class="table-responsive">
-                                <table class="table table-hover table-bordered">
+                                <table class="table budget-table table-hover table-bordered">
                                     <thead class="table-warning">
                                         <tr>
                                             <th class="text-center">#</th>
@@ -639,11 +453,9 @@
                                             <td>
                                                 @if(isset($participant['costs']) && is_array($participant['costs']))
                                                     @foreach($participant['costs'] as $costName => $costValue)
-                                                        <div class="budget-item">
-                                                            <div class="d-flex justify-content-between">
-                                                                <span><strong>{{ $costName }}:</strong></span>
-                                                                <span class="text-success fw-bold">${{ number_format($costValue, 2) }}</span>
-                                                            </div>
+                                                        <div class="d-flex justify-content-between mb-1">
+                                                            <span><strong>{{ $costName }}:</strong></span>
+                                                            <span class="text-success fw-bold">${{ number_format($costValue, 2) }}</span>
                                                         </div>
                                                     @endforeach
                                                 @else
@@ -658,7 +470,7 @@
                                     </tbody>
                                     @if(isset($budgetData['external_total']))
                                     <tfoot class="table-group-divider">
-                                        <tr class="table-secondary">
+                                        <tr class="budget-total-row">
                                             <th colspan="4" class="text-end">External Total:</th>
                                             <th class="text-end">${{ number_format($budgetData['external_total'], 2) }}</th>
                                         </tr>
@@ -676,7 +488,7 @@
                                 <i class="fas fa-list me-2"></i>Other Costs
                             </h6>
                             <div class="table-responsive">
-                                <table class="table table-hover table-bordered">
+                                <table class="table budget-table table-hover table-bordered">
                                     <thead class="table-info">
                                         <tr>
                                             <th class="text-center">#</th>
@@ -703,54 +515,13 @@
                                     </tbody>
                                     @if(isset($budgetData['other_total']))
                                     <tfoot class="table-group-divider">
-                                        <tr class="table-secondary">
+                                        <tr class="budget-total-row">
                                             <th colspan="5" class="text-end">Other Total:</th>
                                             <th class="text-end">${{ number_format($budgetData['other_total'], 2) }}</th>
                                         </tr>
                                     </tfoot>
                                     @endif
                                 </table>
-                            </div>
-                        </div>
-                        @endif
-
-                        <!-- Budget Summary -->
-                        @if(isset($budgetData['new_total']) || isset($budgetData['original_total']) || isset($budgetData['difference']))
-                        <div class="row mt-4">
-                            <div class="col-md-12">
-                                <div class="budget-summary-card p-4 rounded" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #007e33;">
-                                    <h5 class="text-center mb-4 text-primary">
-                                        <i class="fas fa-calculator me-2"></i>Budget Summary
-                                    </h5>
-                                    <div class="row text-center">
-                                        @if(isset($budgetData['original_total']))
-                                        <div class="col-md-4">
-                                            <div class="budget-item">
-                                                <h6 class="text-muted mb-2">Original Budget</h6>
-                                                <h4 class="text-primary mb-0">${{ number_format($budgetData['original_total'], 2) }}</h4>
-                                            </div>
-                                        </div>
-                                        @endif
-                                        @if(isset($budgetData['new_total']))
-                                        <div class="col-md-4">
-                                            <div class="budget-item">
-                                                <h6 class="text-muted mb-2">Requested Funds</h6>
-                                                <h4 class="text-success mb-0">${{ number_format($budgetData['new_total'], 2) }}</h4>
-                                            </div>
-                                        </div>
-                                        @endif
-                                        @if(isset($budgetData['difference']))
-                                        <div class="col-md-4">
-                                            <div class="budget-item">
-                                                <h6 class="text-muted mb-2">Difference</h6>
-                                                <h4 class="mb-0 {{ $budgetData['difference'] >= 0 ? 'text-success' : 'text-danger' }}">
-                                                    {{ $budgetData['difference'] >= 0 ? '+' : '' }}${{ number_format($budgetData['difference'], 2) }}
-                                                </h4>
-                                            </div>
-                                        </div>
-                                        @endif
-                                    </div>
-                                </div>
                             </div>
                         </div>
                         @endif
@@ -765,7 +536,7 @@
             <div class="card content-section bg-purple">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h5 class="mb-0 text-purple">
-                        <i class="fas fa-list-alt me-2 info-icon"></i>Specifications
+                        <i class="fas fa-list-alt me-2"></i>Specifications
                     </h5>
                 </div>
                 <div class="card-body">
@@ -786,14 +557,14 @@
             <div class="card content-section bg-blue">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h5 class="mb-0 text-primary">
-                        <i class="fas fa-paperclip me-2 info-icon"></i>Attachments
+                        <i class="fas fa-paperclip me-2"></i>Attachments
                     </h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         @foreach($serviceRequest->attachments as $attachment)
                         <div class="col-md-6 mb-3">
-                            <div class="d-flex align-items-center p-3 bg-white border rounded shadow-sm">
+                            <div class="attachment-item d-flex align-items-center">
                                 <i class="fas fa-file me-3 text-primary fs-4"></i>
                                 <div class="flex-grow-1">
                                     <p class="mb-1 fw-semibold">{{ $attachment['name'] ?? 'Unknown File' }}</p>
@@ -815,7 +586,7 @@
             <div class="card content-section bg-orange">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h5 class="mb-0 text-warning">
-                        <i class="fas fa-comment me-2 info-icon"></i>Remarks
+                        <i class="fas fa-comment me-2"></i>Remarks
                     </h5>
                 </div>
                 <div class="card-body">
@@ -947,9 +718,9 @@
 
             <!-- Submit for Approval -->
             @if(in_array($serviceRequest->overall_status,['draft','returned']) && is_with_creator_generic($serviceRequest))
-            <div class="card sidebar-card mb-4" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
-                <div class="card-header bg-transparent border-0 py-3">
-                    <h6 class="mb-0 text-primary">
+            <div class="card sidebar-card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
                         <i class="fas fa-paper-plane me-2"></i>Submit for Approval
                     </h6>
                 </div>
