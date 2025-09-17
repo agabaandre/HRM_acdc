@@ -1323,21 +1323,15 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             $selectedQuarter = 'Q' . $selectedQuarter;
         }
         
-        // Base query for activities - show activities from approved matrices OR where user is responsible
+        // Base query for activities - show ALL activities regardless of approval status
         $baseQuery = Activity::with([
             'matrix.division',
             'responsiblePerson',
             'staff',
             'fundType'
-        ])->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter, $userStaffId) {
+        ])->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter) {
             $query->where('year', $selectedYear)
-                  ->where('quarter', $selectedQuarter)
-                  ->where(function ($subQuery) use ($userStaffId) {
-                      $subQuery->where('overall_status', 'approved') // Approved matrices
-                              ->orWhereHas('activities', function ($activityQuery) use ($userStaffId) {
-                                  $activityQuery->where('responsible_person_id', $userStaffId); // User is responsible person
-                              });
-                  });
+                  ->where('quarter', $selectedQuarter);
         });
 
         // Apply additional filters

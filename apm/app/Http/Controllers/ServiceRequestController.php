@@ -1529,8 +1529,98 @@ class ServiceRequestController extends Controller
      */
     private function generateActivityMemoHtml($matrix, $activity)
     {
-        // For now, return a simple placeholder
-        return '<div class="page-break"><h3>Source Activity Memorandum</h3><p>Activity: ' . htmlspecialchars($activity->activity_title ?? 'N/A') . '</p></div>';
+        // Load comprehensive relationships for the activity
+        $activity->load([
+            'matrix.division.divisionHead',
+            'matrix.division.focalPerson',
+            'requestType',
+            'fundType',
+            'activityApprovalTrails.staff',
+            'matrix.matrixApprovalTrails.staff',
+            'responsiblePerson',
+            'staff',
+            'activity_budget.fundcode.fundType',
+            'focalPerson'
+        ]);
+
+        // Load matrix with comprehensive relationships
+        $matrix->load([
+            'division.divisionHead',
+            'division.focalPerson',
+            'matrixApprovalTrails.staff',
+            'activities' => function ($query) {
+                $query->with(['staff', 'focalPerson', 'responsiblePerson', 'activity_budget.fundcode.fundType']);
+            }
+        ]);
+
+        // Decode JSON fields
+        $locationIds = is_string($activity->location_id)
+            ? json_decode($activity->location_id, true)
+            : ($activity->location_id ?? []);
+
+        $budgetIds = is_string($activity->budget_id)
+            ? json_decode($activity->budget_id, true)
+            : ($activity->budget_id ?? []);
+
+        $budgetItems = is_string($activity->budget_breakdown)
+            ? json_decode($activity->budget_breakdown, true)
+            : ($activity->budget_breakdown ?? []);
+
+        $attachments = is_string($activity->attachment)
+            ? json_decode($activity->attachment, true)
+            : ($activity->attachment ?? []);
+
+        // Decode internal participants (new format)
+        $rawParticipants = is_string($activity->internal_participants)
+            ? json_decode($activity->internal_participants, true)
+            : ($activity->internal_participants ?? []);
+
+        // Extract staff details and append date/days info
+        $internalParticipants = [];
+        if (!empty($rawParticipants)) {
+            $staffDetails = \App\Models\Staff::whereIn('staff_id', array_keys($rawParticipants))->get()->keyBy('staff_id');
+
+            foreach ($rawParticipants as $staffId => $participantData) {
+                if (isset($staffDetails[$staffId])) {
+                    $internalParticipants[] = [
+                        'staff' => $staffDetails[$staffId],
+                        'participant_start' => $participantData['participant_start'] ?? null,
+                        'participant_end' => $participantData['participant_end'] ?? null,
+                        'participant_days' => $participantData['participant_days'] ?? null,
+                    ];
+                }
+            }
+        }
+
+        // Fetch related data
+        $locations = \App\Models\Location::whereIn('id', $locationIds ?: [])->get();
+        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds ?: [])->get();
+
+        // Get comprehensive workflow information
+        $workflowInfo = $this->getComprehensiveWorkflowInfoForActivity($activity, $matrix);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+
+        // Get matrix approval trails with staff details
+        $matrixApprovals = $matrix->matrixApprovalTrails()->with('staff')->get();
+
+        // Get activity approval trails with staff details and workflow definition
+        $activityApprovals = $activity->activityApprovalTrails()->with(['staff', 'oicStaff', 'workflowDefinition'])->get();
+
+        // Generate HTML using the same template
+        return view('activities.memo-pdf-simple', [
+            'activity' => $activity,
+            'matrix' => $matrix,
+            'locations' => $locations,
+            'fundCodes' => $fundCodes, 
+            'internalParticipants' => $internalParticipants,
+            'budget_items' => $budgetItems,
+            'attachments' => $attachments,
+            'matrix_approval_trails' => $matrixApprovals,
+            'activity_approval_trails' => $activityApprovals,
+            'staff' => $activity->staff,
+            'workflow_info' => $workflowInfo,
+            'organized_workflow_steps' => $organizedWorkflowSteps
+        ])->render();
     }
 
     /**
@@ -1538,8 +1628,100 @@ class ServiceRequestController extends Controller
      */
     private function generateSpecialMemoHtml($specialMemo)
     {
-        // For now, return a simple placeholder
-        return '<div class="page-break"><h3>Source Special Memorandum</h3><p>Memo: ' . htmlspecialchars($specialMemo->memo_title ?? 'N/A') . '</p></div>';
+        // Eager load relations
+        $specialMemo->load([
+            'staff', 
+            'division', 
+            'requestType',
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'approvalTrails.workflowDefinition'
+        ]);
+
+        // Decode JSON fields safely
+        $locationIds = is_string($specialMemo->location_id)
+            ? json_decode($specialMemo->location_id, true)
+            : ($specialMemo->location_id ?? []);
+
+        $budgetIds = is_string($specialMemo->budget_id)
+            ? json_decode($specialMemo->budget_id, true)
+            : ($specialMemo->budget_id ?? []);
+
+        $budgetBreakdown = $specialMemo->budget_breakdown;
+        if (!is_array($budgetBreakdown)) {
+            $decoded = json_decode($budgetBreakdown, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+            $budgetBreakdown = is_array($decoded) ? $decoded : [];
+        }
+
+        $attachments = is_string($specialMemo->attachment)
+            ? json_decode($specialMemo->attachment, true)
+            : ($specialMemo->attachment ?? []);
+
+        $rawParticipants = is_string($specialMemo->internal_participants)
+            ? json_decode($specialMemo->internal_participants, true)
+            : ($specialMemo->internal_participants ?? []);
+
+        // Resolve participants to Staff models
+        $internalParticipants = [];
+        if (!empty($rawParticipants) && is_array($rawParticipants)) {
+            // Check if participants are already processed (have 'staff' key)
+            if (isset($rawParticipants[0]) && isset($rawParticipants[0]['staff'])) {
+                // Participants are already processed, use as is
+                $internalParticipants = $rawParticipants;
+            } else {
+                // Participants need to be processed - get staff details
+                $staffIds = [];
+                foreach ($rawParticipants as $participantData) {
+                    if (isset($participantData['staff_id'])) {
+                        $staffIds[] = $participantData['staff_id'];
+                    }
+                }
+                
+                if (!empty($staffIds)) {
+                    $staffDetails = \App\Models\Staff::whereIn('staff_id', $staffIds)
+                ->get()
+                ->keyBy('staff_id');
+
+                    foreach ($rawParticipants as $participantData) {
+                        $staffId = $participantData['staff_id'] ?? null;
+                $internalParticipants[] = [
+                            'staff' => $staffId ? ($staffDetails[$staffId] ?? null) : null,
+                    'participant_start' => $participantData['participant_start'] ?? null,
+                    'participant_end' => $participantData['participant_end'] ?? null,
+                    'participant_days' => $participantData['participant_days'] ?? null,
+                ];
+                    }
+                }
+            }
+        }
+
+        // Fetch related collections
+        $locations = \App\Models\Location::whereIn('id', $locationIds ?: [])->get();
+        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds ?: [])->with('fundType')->get();
+
+        // Get approval trails
+        $approvalTrails = $specialMemo->approvalTrails;
+
+        // Get workflow information
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($specialMemo);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+
+        // Generate HTML using the same template
+        return view('special-memo.memo-pdf-simple', [
+            'specialMemo' => $specialMemo,
+            'locations' => $locations,
+            'fundCodes' => $fundCodes,
+            'attachments' => $attachments,
+            'budgetBreakdown' => $budgetBreakdown,
+            'internalParticipants' => $internalParticipants,
+            'approval_trails' => $approvalTrails,
+            'matrix_approval_trails' => $approvalTrails, // For compatibility with activities template
+            'workflow_info' => $workflowInfo,
+            'organized_workflow_steps' => $organizedWorkflowSteps
+        ])->render();
     }
 
     /**
@@ -1547,7 +1729,174 @@ class ServiceRequestController extends Controller
      */
     private function generateNonTravelMemoHtml($nonTravel)
     {
-        // For now, return a simple placeholder
-        return '<div class="page-break"><h3>Source Non-Travel Memorandum</h3><p>Memo: ' . htmlspecialchars($nonTravel->memo_title ?? 'N/A') . '</p></div>';
+        // Eager load needed relations
+        $nonTravel->load([
+            'staff', 
+            'nonTravelMemoCategory', 
+            'division', 
+            'fundType',
+            'approvalTrails.staff',
+            'approvalTrails.oicStaff',
+            'approvalTrails.workflowDefinition'
+        ]);
+
+        // Decode JSON fields safely
+        $locationIds = is_string($nonTravel->location_id)
+            ? json_decode($nonTravel->location_id, true)
+            : ($nonTravel->location_id ?? []);
+
+        $budgetIds = is_string($nonTravel->budget_id)
+            ? json_decode($nonTravel->budget_id, true)
+            : ($nonTravel->budget_id ?? []);
+
+        $attachments = is_string($nonTravel->attachment)
+            ? json_decode($nonTravel->attachment, true)
+            : ($nonTravel->attachment ?? []);
+        $attachments = is_array($attachments) ? $attachments : [];
+
+        $breakdown = $nonTravel->budget_breakdown;
+        if (!is_array($breakdown)) {
+            $decoded = json_decode($breakdown, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+            $breakdown = is_array($decoded) ? $decoded : [];
+        }
+
+        // Fetch related collections
+        $locations = \App\Models\Location::whereIn('id', $locationIds ?: [])->get();
+        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds ?: [])->with('fundType')->get();
+
+        // Get approval trails (not activity approval trails)
+        $approvalTrails = $nonTravel->approvalTrails;
+
+        // Get workflow information
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($nonTravel);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+
+        // Generate HTML using the same template
+        return view('non-travel.memo-pdf-simple', [
+            'nonTravel' => $nonTravel,
+            'locations' => $locations,
+            'fundCodes' => $fundCodes,
+            'attachments' => $attachments,
+            'budgetBreakdown' => $breakdown,
+            'approval_trails' => $approvalTrails,
+            'matrix_approval_trails' => $approvalTrails, // For compatibility with activities template
+            'workflow_info' => $workflowInfo,
+            'organized_workflow_steps' => $organizedWorkflowSteps
+        ])->render();
+    }
+
+    /**
+     * Get comprehensive workflow information for activity (copied from ActivityController)
+     */
+    private function getComprehensiveWorkflowInfoForActivity($activity, $matrix)
+    {
+        $workflowInfo = [
+            'current_level' => null,
+            'current_approver' => null,
+            'workflow_steps' => collect(),
+            'approval_trail' => collect(),
+            'matrix_approval_trail' => collect()
+        ];
+
+        // Get matrix workflow information
+        if ($matrix->forward_workflow_id) {
+            // Get workflow definition with category filtering for order 7
+            $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where(function($query) use ($matrix) {
+                    $query->where('approval_order', '!=', 7)
+                          ->orWhere(function($subQuery) use ($matrix) {
+                              $subQuery->where('approval_order', 7)
+                                       ->where('category', $matrix->division->category ?? null);
+                          });
+                })
+                ->orderBy('approval_order')
+                ->with(['approvers.staff', 'approvers.oicStaff'])
+                ->get();
+
+            $workflowInfo['workflow_steps'] = $workflowDefinitions->map(function ($definition) use ($matrix) {
+                $approvers = collect();
+
+                if ($definition->is_division_specific && $matrix->division) {
+                    // Get approver from division table using division_reference_column
+                    $divisionColumn = $definition->division_reference_column;
+                    if ($divisionColumn && isset($matrix->division->$divisionColumn)) {
+                        $staffId = $matrix->division->$divisionColumn;
+                        if ($staffId) {
+                            $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                            if ($staff) {
+                                $approvers->push([
+                                    'staff' => [
+                                        'id' => $staff->staff_id,
+                                        'staff_id' => $staff->staff_id,
+                                        'title' => $staff->title ?? 'N/A',
+                                        'fname' => $staff->fname ?? '',
+                                        'lname' => $staff->lname ?? '',
+                                        'oname' => $staff->oname ?? '',
+                                        'name' => $staff->fname . ' ' . $staff->lname,
+                                        'job_title' => $staff->job_name ?? $staff->position ?? 'N/A',
+                                        'position' => $staff->position ?? 'N/A',
+                                        'work_email' => $staff->work_email ?? 'N/A',
+                                        'signature' => $staff->signature ?? null,
+                                    ]
+                                ]);
+                            }
+                        }
+                    }
+                } else {
+                    // Get regular approvers
+                    foreach ($definition->approvers as $approver) {
+                        $approverData = [
+                            'staff' => [
+                                'id' => $approver->staff->staff_id ?? null,
+                                'staff_id' => $approver->staff->staff_id ?? null,
+                                'title' => $approver->staff->title ?? 'N/A',
+                                'fname' => $approver->staff->fname ?? '',
+                                'lname' => $approver->staff->lname ?? '',
+                                'oname' => $approver->staff->oname ?? '',
+                                'name' => ($approver->staff->fname ?? '') . ' ' . ($approver->staff->lname ?? ''),
+                                'job_title' => $approver->staff->job_name ?? $approver->staff->position ?? 'N/A',
+                                'position' => $approver->staff->position ?? 'N/A',
+                                'work_email' => $approver->staff->work_email ?? 'N/A',
+                                'signature' => $approver->staff->signature ?? null,
+                            ]
+                        ];
+
+                        // Add OIC staff if available
+                        if ($approver->oicStaff) {
+                            $approverData['oic_staff'] = [
+                                'id' => $approver->oicStaff->staff_id ?? null,
+                                'staff_id' => $approver->oicStaff->staff_id ?? null,
+                                'title' => $approver->oicStaff->title ?? 'N/A',
+                                'fname' => $approver->oicStaff->fname ?? '',
+                                'lname' => $approver->oicStaff->lname ?? '',
+                                'oname' => $approver->oicStaff->oname ?? '',
+                                'name' => ($approver->oicStaff->fname ?? '') . ' ' . ($approver->oicStaff->lname ?? ''),
+                                'job_title' => $approver->oicStaff->job_name ?? $approver->oicStaff->position ?? 'N/A',
+                                'position' => $approver->oicStaff->position ?? 'N/A',
+                                'work_email' => $approver->oicStaff->work_email ?? 'N/A',
+                                'signature' => $approver->oicStaff->signature ?? null,
+                            ];
+                        }
+
+                        $approvers->push($approverData);
+                    }
+                }
+
+                return [
+                    'order' => $definition->approval_order,
+                    'role' => $definition->role,
+                    'approvers' => $approvers,
+                    'is_division_specific' => $definition->is_division_specific,
+                    'division_reference_column' => $definition->division_reference_column,
+                    'category' => $definition->category,
+                ];
+            });
+        }
+
+        return $workflowInfo;
     }
 }
