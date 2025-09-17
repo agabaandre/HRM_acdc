@@ -209,80 +209,48 @@
   
   <?php
     // Helper functions to safely access staff data
-    function getStaffEmail($approver) {
-      if (isset($approver['staff']) && isset($approver['staff']['work_email'])) {
-        return $approver['staff']['work_email'];
-      } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['work_email'])) {
-        return $approver['oic_staff']['work_email'];
+    if (!function_exists('getStaffEmail')) {
+      function getStaffEmail($approver) {
+        if (isset($approver['staff']) && isset($approver['staff']['work_email'])) {
+          return $approver['staff']['work_email'];
+        } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['work_email'])) {
+          return $approver['oic_staff']['work_email'];
+        }
+        return null;
       }
-      return null;
     }
     
-    function getStaffId($approver) {
-      if (isset($approver['staff']) && isset($approver['staff']['id'])) {
-        return $approver['staff']['id'];
-      } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['id'])) {
-        return $approver['oic_staff']['id'];
+    if (!function_exists('getStaffId')) {
+      function getStaffId($approver) {
+        if (isset($approver['staff']) && isset($approver['staff']['id'])) {
+          return $approver['staff']['id'];
+        } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['id'])) {
+          return $approver['oic_staff']['id'];
+        }
+        return null;
       }
-      return null;
     }
     
-    function generateVerificationHash($serviceRequestId, $staffId, $approvalDateTime = null) {
-      if (!$serviceRequestId || !$staffId) return 'N/A';
-      $dateTimeToUse = $approvalDateTime ? $approvalDateTime : date('Y-m-d H:i:s');
-      return strtoupper(substr(md5(sha1($serviceRequestId . $staffId . $dateTimeToUse)), 0, 16));
+    if (!function_exists('generateVerificationHash')) {
+      function generateVerificationHash($serviceRequestId, $staffId, $approvalDateTime = null) {
+        if (!$serviceRequestId || !$staffId) return 'N/A';
+        $dateTimeToUse = $approvalDateTime ? $approvalDateTime : date('Y-m-d H:i:s');
+        return strtoupper(substr(md5(sha1($serviceRequestId . $staffId . $dateTimeToUse)), 0, 16));
+      }
     }
 
-    /**
-     * Get the approval date for a given staff ID and/or approval order from the service request approval trails.
-     * Returns a formatted date string if found, otherwise returns the current date/time.
-     *
-     * @param mixed $staffId
-     * @param iterable $serviceRequestApprovalTrails
-     * @param mixed $order
-     * @return string
-     */
-    function getApprovalDate($staffId, $serviceRequestApprovalTrails, $order) {
-        // Try to find approval by staff_id and approval_order first
-      $approval = $serviceRequestApprovalTrails
-        ->where('approval_order', $order)
-        ->where('staff_id', $staffId)
-        ->sortByDesc('created_at')
-        ->first();
-
-        // If not found, try to find by oic_staff_id and approval_order
-        if (!$approval) {
-            $approval = $serviceRequestApprovalTrails
-                ->where('approval_order', $order)
-                ->where('oic_staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        // If still not found, try to find by staff_id only
-        if (!$approval) {
-            $approval = $serviceRequestApprovalTrails
-                ->where('staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        // If still not found, try to find by oic_staff_id only
-        if (!$approval) {
-            $approval = $serviceRequestApprovalTrails
-                ->where('oic_staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        $date = ($approval && isset($approval->created_at))
-            ? (is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at)))
-            : date('j F Y H:i');
-      return $date;
+    // Wrapper function to adapt getApprovalDate call for embedded source memos
+    if (!function_exists('getApprovalDateForServiceRequest')) {
+      function getApprovalDateForServiceRequest($staffId, $serviceRequestApprovalTrails, $order) {
+        // The embedded source memo's getApprovalDate expects different parameter names
+        // We'll call it with the service request approval trails as the second parameter
+        return getApprovalDate($staffId, $serviceRequestApprovalTrails, $order);
+      }
     }
 
     // Helper function to render approver info
-    function renderApproverInfo($approver, $role, $section, $serviceRequest) {
+    if (!function_exists('renderApproverInfo')) {
+      function renderApproverInfo($approver, $role, $section, $serviceRequest) {
         $isOic = isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         $name = $isOic ? $staff['name'] . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . ($staff['name'] ?? ''));
@@ -303,15 +271,17 @@
                 echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
             }
         }
+      }
     }
 
     // Helper function to render signature
-    function renderSignature($approver, $order, $serviceRequestApprovalTrails, $serviceRequest) {
+    if (!function_exists('renderSignature')) {
+      function renderSignature($approver, $order, $serviceRequestApprovalTrails, $serviceRequest) {
         $isOic = isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         $staffId = $staff['id'] ?? null;
 
-        $approvalDate = getApprovalDate($staffId, $serviceRequestApprovalTrails, $order);
+        $approvalDate = getApprovalDateForServiceRequest($staffId, $serviceRequestApprovalTrails, $order);
 
         echo '<div style="line-height: 1.2;">';
         
@@ -325,6 +295,7 @@
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
         echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($serviceRequest->id, $staffId, $approvalDate)) . '</div>';
         echo '</div>';
+      }
     }
 
     // Generate file reference once
