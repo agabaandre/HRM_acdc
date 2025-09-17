@@ -560,7 +560,10 @@ class ServiceRequestController extends Controller
             $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
         }
         
-        return view('service-requests.show', compact('serviceRequest', 'sourceData'));
+        // Get approval levels for progress bar
+        $approvalLevels = $this->getApprovalLevels($serviceRequest);
+        
+        return view('service-requests.show', compact('serviceRequest', 'sourceData', 'approvalLevels'));
     }
 
     /**
@@ -1248,6 +1251,8 @@ class ServiceRequestController extends Controller
             'comment' => 'nullable|string|max:1000',
         ]);
 
+        //(dd($request->all()));
+
         // Use the generic approval system
         $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
         return $genericController->updateStatus($request, 'ServiceRequest', $serviceRequest->id);
@@ -1279,52 +1284,270 @@ class ServiceRequestController extends Controller
             'serviceRequestApprovalTrails.approverRole'
         ]);
 
-        // Decode JSON fields safely
-        $specifications = is_string($serviceRequest->specifications)
-            ? json_decode($serviceRequest->specifications, true)
-            : ($serviceRequest->specifications ?? []);
-        $specifications = is_array($specifications) ? $specifications : [];
-
-        $attachments = is_string($serviceRequest->attachments)
-            ? json_decode($serviceRequest->attachments, true)
-            : ($serviceRequest->attachments ?? []);
-        $attachments = is_array($attachments) ? $attachments : [];
-
-        $budgetBreakdown = $serviceRequest->budget_breakdown;
-        if (!is_array($budgetBreakdown)) {
-            $decoded = json_decode($budgetBreakdown, true);
-            $budgetBreakdown = is_array($decoded) ? $decoded : [];
+        // Get source data if available
+        $sourceData = null;
+        $sourcePdfHtml = null;
+        
+        if ($serviceRequest->source_type && $serviceRequest->source_id) {
+            $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
+            
+            // Generate source memo HTML using existing controllers' data preparation
+            if ($serviceRequest->source_type === 'activity') {
+                $activity = \App\Models\Activity::find($serviceRequest->source_id);
+                if ($activity && $activity->matrix) {
+                    $sourcePdfHtml = $this->generateActivityMemoHtml($activity->matrix, $activity);
+                }
+            } elseif ($serviceRequest->source_type === 'special_memo') {
+                $specialMemo = \App\Models\SpecialMemo::find($serviceRequest->source_id);
+                if ($specialMemo) {
+                    $sourcePdfHtml = $this->generateSpecialMemoHtml($specialMemo);
+                }
+            } elseif ($serviceRequest->source_type === 'non_travel_memo') {
+                $nonTravelMemo = \App\Models\NonTravelMemo::find($serviceRequest->source_id);
+                if ($nonTravelMemo) {
+                    $sourcePdfHtml = $this->generateNonTravelMemoHtml($nonTravelMemo);
+                }
+            }
         }
 
-        $internalParticipantsCost = $serviceRequest->internal_participants_cost;
-        if (!is_array($internalParticipantsCost)) {
-            $decoded = json_decode($internalParticipantsCost, true);
-            $internalParticipantsCost = is_array($decoded) ? $decoded : [];
-        }
+        // Get workflow information for service request
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($serviceRequest);
+        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
 
-        $externalParticipantsCost = $serviceRequest->external_participants_cost;
-        if (!is_array($externalParticipantsCost)) {
-            $decoded = json_decode($externalParticipantsCost, true);
-            $externalParticipantsCost = is_array($decoded) ? $decoded : [];
-        }
-
-        $otherCosts = $serviceRequest->other_costs;
-        if (!is_array($otherCosts)) {
-            $decoded = json_decode($otherCosts, true);
-            $otherCosts = is_array($decoded) ? $decoded : [];
-        }
-
-        // Generate PDF using the service request print view
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('service-requests.print', [
+        // Use mPDF helper function for service request
+        $print = false;
+        $pdf = mpdf_print('service-requests.print', [
             'serviceRequest' => $serviceRequest,
-            'specifications' => $specifications,
-            'attachments' => $attachments,
-            'budgetBreakdown' => $budgetBreakdown,
-            'internalParticipantsCost' => $internalParticipantsCost,
-            'externalParticipantsCost' => $externalParticipantsCost,
-            'otherCosts' => $otherCosts,
-        ]);
+            'sourceData' => $sourceData,
+            'sourcePdfHtml' => $sourcePdfHtml,
+            'organized_workflow_steps' => $organizedWorkflowSteps,
+        ], ['preview_html' => $print]);
 
-        return $pdf->download('service-request-' . $serviceRequest->request_number . '.pdf');
+        // Generate filename
+        $filename = 'Service_Request_' . $serviceRequest->request_number . '_' . now()->format('Y-m-d') . '.pdf';
+
+        // Return PDF for display in browser using mPDF Output method
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
+    }
+
+    /**
+     * Get approval levels for progress bar calculation.
+     */
+    private function getApprovalLevels($serviceRequest)
+    {
+        if (!$serviceRequest->forward_workflow_id) {
+            return [];
+        }
+
+        $levels = \App\Models\WorkflowDefinition::where('workflow_id', $serviceRequest->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'asc')
+            ->get();
+
+        $approvalLevels = [];
+        foreach ($levels as $level) {
+            $isCurrentLevel = $level->approval_order == $serviceRequest->approval_level;
+            $isCompleted = $serviceRequest->approval_level > $level->approval_order;
+            $isPending = $serviceRequest->approval_level == $level->approval_order && $serviceRequest->overall_status === 'pending';
+            
+            // Get approver information
+            $approver = null;
+            if (!$level->is_division_specific) {
+                $approverRecord = \App\Models\Approver::where('workflow_dfn_id', $level->id)->first();
+                if ($approverRecord) {
+                    $approver = \App\Models\Staff::where('staff_id', $approverRecord->staff_id)->first();
+                }
+            }
+
+            $approvalLevels[] = [
+                'order' => $level->approval_order,
+                'role' => $level->role,
+                'approver' => $approver,
+                'is_current' => $isCurrentLevel,
+                'is_completed' => $isCompleted,
+                'is_pending' => $isPending,
+                'is_division_specific' => $level->is_division_specific,
+                'division_reference' => $level->division_reference_column,
+                'category' => $level->category,
+            ];
+        }
+
+        return $approvalLevels;
+    }
+
+    /**
+     * Get comprehensive workflow information for service request
+     */
+    private function getComprehensiveWorkflowInfo(ServiceRequest $serviceRequest)
+    {
+        $workflowInfo = [
+            'current_level' => null,
+            'current_approver' => null,
+            'workflow_steps' => collect(),
+            'approval_trail' => collect(),
+            'matrix_approval_trail' => collect()
+        ];
+
+        if (!$serviceRequest->forward_workflow_id) {
+            return $workflowInfo;
+        }
+
+        // Get workflow definitions with category filtering
+        $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $serviceRequest->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where(function($query) use ($serviceRequest) {
+                $query->where('approval_order', '!=', 7)
+                      ->orWhere(function($subQuery) use ($serviceRequest) {
+                          $subQuery->where('approval_order', 7)
+                                   ->where('category', $serviceRequest->division->category ?? null);
+                      });
+            })
+            ->orderBy('approval_order')
+            ->with(['approvers.staff', 'approvers.oicStaff'])
+            ->get();
+
+        $workflowInfo['workflow_steps'] = $workflowDefinitions->map(function ($definition) use ($serviceRequest) {
+            $approvers = collect();
+
+            if ($definition->is_division_specific && $serviceRequest->division) {
+                // Get approver from division table using division_reference_column
+                $divisionColumn = $definition->division_reference_column;
+                if ($divisionColumn && isset($serviceRequest->division->$divisionColumn)) {
+                    $staffId = $serviceRequest->division->$divisionColumn;
+                    if ($staffId) {
+                        $staff = \App\Models\Staff::where('staff_id', $staffId)->first();
+                        if ($staff) {
+                            $approvers->push([
+                                'staff' => [
+                                    'id' => $staff->staff_id,
+                                    'staff_id' => $staff->staff_id,
+                                    'title' => $staff->title ?? 'N/A',
+                                    'fname' => $staff->fname ?? '',
+                                    'lname' => $staff->lname ?? '',
+                                    'oname' => $staff->oname ?? '',
+                                    'name' => $staff->fname . ' ' . $staff->lname,
+                                    'job_title' => $staff->job_name ?? $staff->position ?? 'N/A',
+                                    'position' => $staff->position ?? 'N/A',
+                                    'work_email' => $staff->work_email ?? 'N/A',
+                                    'signature' => $staff->signature ?? null,
+                                ]
+                            ]);
+                        }
+                    }
+                }
+            } else {
+                // Get regular approvers
+                foreach ($definition->approvers as $approver) {
+                    $approverData = [
+                        'staff' => [
+                            'id' => $approver->staff->staff_id ?? null,
+                            'staff_id' => $approver->staff->staff_id ?? null,
+                            'title' => $approver->staff->title ?? 'N/A',
+                            'fname' => $approver->staff->fname ?? '',
+                            'lname' => $approver->staff->lname ?? '',
+                            'oname' => $approver->staff->oname ?? '',
+                            'name' => ($approver->staff->fname ?? '') . ' ' . ($approver->staff->lname ?? ''),
+                            'job_title' => $approver->staff->job_name ?? $approver->staff->position ?? 'N/A',
+                            'position' => $approver->staff->position ?? 'N/A',
+                            'work_email' => $approver->staff->work_email ?? 'N/A',
+                            'signature' => $approver->staff->signature ?? null,
+                        ]
+                    ];
+
+                    // Add OIC staff if available
+                    if ($approver->oicStaff) {
+                        $approverData['oic_staff'] = [
+                            'id' => $approver->oicStaff->staff_id ?? null,
+                            'staff_id' => $approver->oicStaff->staff_id ?? null,
+                            'title' => $approver->oicStaff->title ?? 'N/A',
+                            'fname' => $approver->oicStaff->fname ?? '',
+                            'lname' => $approver->oicStaff->lname ?? '',
+                            'oname' => $approver->oicStaff->oname ?? '',
+                            'name' => ($approver->oicStaff->fname ?? '') . ' ' . ($approver->oicStaff->lname ?? ''),
+                            'job_title' => $approver->oicStaff->job_name ?? $approver->oicStaff->position ?? 'N/A',
+                            'position' => $approver->oicStaff->position ?? 'N/A',
+                            'work_email' => $approver->oicStaff->work_email ?? 'N/A',
+                            'signature' => $approver->oicStaff->signature ?? null,
+                        ];
+                    }
+
+                    $approvers->push($approverData);
+                }
+            }
+
+            return [
+                'order' => $definition->approval_order,
+                'role' => $definition->role,
+                'approvers' => $approvers,
+                'is_division_specific' => $definition->is_division_specific,
+                'division_reference_column' => $definition->division_reference_column,
+                'category' => $definition->category,
+            ];
+        });
+
+        return $workflowInfo;
+    }
+
+    /**
+     * Organize workflow steps by section (to, through, from)
+     */
+    private function organizeWorkflowStepsBySection($workflowSteps)
+    {
+        $organized = [
+            'to' => collect(),
+            'through' => collect(),
+            'from' => collect(),
+            'others' => collect()
+        ];
+
+        foreach ($workflowSteps as $step) {
+            $order = $step['order'];
+            $role = $step['role'];
+
+            // Determine section based on approval order
+            if ($order <= 2) {
+                $section = 'to';
+            } elseif ($order <= 4) {
+                $section = 'through';
+            } elseif ($order <= 6) {
+                $section = 'from';
+            } else {
+                $section = 'others';
+            }
+
+            $organized[$section]->push($step);
+        }
+
+        return $organized;
+    }
+
+    /**
+     * Generate Activity Memo HTML using the same data preparation as ActivityController
+     */
+    private function generateActivityMemoHtml($matrix, $activity)
+    {
+        // For now, return a simple placeholder
+        return '<div class="page-break"><h3>Source Activity Memorandum</h3><p>Activity: ' . htmlspecialchars($activity->activity_title ?? 'N/A') . '</p></div>';
+    }
+
+    /**
+     * Generate Special Memo HTML using the same data preparation as SpecialMemoController
+     */
+    private function generateSpecialMemoHtml($specialMemo)
+    {
+        // For now, return a simple placeholder
+        return '<div class="page-break"><h3>Source Special Memorandum</h3><p>Memo: ' . htmlspecialchars($specialMemo->memo_title ?? 'N/A') . '</p></div>';
+    }
+
+    /**
+     * Generate Non-Travel Memo HTML using the same data preparation as NonTravelMemoController
+     */
+    private function generateNonTravelMemoHtml($nonTravel)
+    {
+        // For now, return a simple placeholder
+        return '<div class="page-break"><h3>Source Non-Travel Memorandum</h3><p>Memo: ' . htmlspecialchars($nonTravel->memo_title ?? 'N/A') . '</p></div>';
     }
 }

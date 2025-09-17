@@ -211,10 +211,10 @@ class ApprovalService
     /**
      * Process approval action for any model.
      */
-    public function processApproval(Model $model, string $action, string $comment = null, int $userId = null): void
+    public function processApproval(Model $model, string $action, ?string $comment = null, ?int $userId = null): void
     {
         $userId = $userId ?? user_session('staff_id');
-       // dd($model->approval_level);
+       // dd($model->approval_level,$model->forward_workflow_id);
 
         // Save approval trail
         $trail = new ApprovalTrail();
@@ -241,6 +241,7 @@ class ApprovalService
             $model->overall_status = 'returned';
         } else {
             $next_approver = $this->getNextApprover($model);
+            //dd($next_approver);
 
             if ($next_approver) {
                 $model->forward_workflow_id = $next_approver->workflow_id;
@@ -261,14 +262,16 @@ class ApprovalService
     public function getNextApprover($model){
 
         $division   = $model->division;
+        //dd($division);
 
     $current_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
        ->where('is_enabled',1)
        ->where('approval_order',$model->approval_level)
        ->first();
+      //dd($current_definition);
 
     $go_to_category_check_for_external =(!$model->has_extramural && !$model->has_extramural && ($model->approval_level!=null && $current_definition->approval_order > $model->approval_level));
-
+//dd($go_to_category_check_for_external);
     //if it's time to trigger categroy check, just check and continue
     if(($current_definition && $current_definition->triggers_category_check) || $go_to_category_check_for_external){
 
@@ -280,19 +283,25 @@ class ApprovalService
 
         return $category_definition;
     }
+   // dd($current_definition);
 
     $nextStepIncrement = 1;
 
     //Skip Directorate from HOD if no directorate
-    if($model->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)
+    if($model->forward_workflow_id==1 && $current_definition->approval_order==1 && !$division->director_id)
         $nextStepIncrement = 2;
+    else if($model->forward_workflow_id>0 && $current_definition->approval_order==1){
+        $nextStepIncrement = 1;
+    }
 
      if(!$model->forward_workflow_id)// null
         $model->forward_workflow_id = 1;
 
+    //dd($model->forward_workflow_id);
     $next_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
        ->where('is_enabled',1)
        ->where('approval_order',$model->approval_level +$nextStepIncrement)->get();
+    //dd($next_definition);
         
     //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
     // get from $definition where fund_type=2, else where fund_type=2
@@ -322,7 +331,7 @@ class ApprovalService
           ->where('is_enabled',1)
           ->where('approval_order', $definition->approval_order+2)->first();
     }
-
+//dd($definition);
    
    return $definition;
     }

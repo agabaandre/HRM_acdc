@@ -183,7 +183,7 @@
                 </h5>
                 <small class="text-muted">View and manage staff information</small>
             </div>
-        </div>
+    </div>
         <div class="table-responsive">
             <table id="staffTable" class="table table-hover mb-0" style="width:100%">
                 <thead class="table-warning">

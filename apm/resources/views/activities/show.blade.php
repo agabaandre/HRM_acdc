@@ -539,7 +539,7 @@
                             </a>
                         @endif
                     @endif
-                            
+                            {{-- @dd(can_print_memo($activity)) --}}
                     @if(can_print_memo($activity))
                         <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
                            class="btn btn-primary d-flex align-items-center gap-2" target="_blank">

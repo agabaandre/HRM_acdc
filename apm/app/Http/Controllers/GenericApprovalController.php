@@ -37,6 +37,8 @@ class GenericApprovalController extends Controller
     public function updateStatus(Request $request, string $model, int $id): RedirectResponse
     {
         $modelInstance = $this->resolveModel($model, $id);
+
+    
         
         //dd($modelInstance->has_extramural);
         //dd($modelInstance->has_intramural);
@@ -83,6 +85,7 @@ class GenericApprovalController extends Controller
         // } else {
             Log::info('Using approval service fallback');
             // Fallback to approval service
+            //dd($modelInstance);
             $this->approvalService->processApproval(
                 $modelInstance, 
                 $request->action, 
