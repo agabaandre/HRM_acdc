@@ -16,68 +16,168 @@
 @endsection
 
 @section('content')
+<style>
+  /* Status Cards Styling - Same as Week Tasks */
+  .stat-item {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    border-radius: 15px;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--stat-color), var(--stat-color-light));
+  }
+
+  .stat-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .stat-item.total {
+    --stat-color: #17a2b8;
+    --stat-color-light: #20c997;
+  }
+
+  .stat-item.matrices {
+    --stat-color: #ffc107;
+    --stat-color-light: #ffed4e;
+  }
+
+  .stat-item.arf {
+    --stat-color: #28a745;
+    --stat-color-light: #34ce57;
+  }
+
+  .stat-item.service-requests {
+    --stat-color: #007bff;
+    --stat-color-light: #4dabf7;
+  }
+
+  .stat-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--stat-color);
+    display: block;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: countUp 1s ease-out;
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-icon {
+    font-size: 1.5rem;
+    color: var(--stat-color);
+    margin-bottom: 0.5rem;
+    display: block;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stat-progress {
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+  }
+
+  .stat-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--stat-color), var(--stat-color-light));
+    border-radius: 2px;
+    transition: width 1s ease-out;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+</style>
+
 <div class="row mb-4">
     <!-- Summary Cards -->
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h4 class="mb-0">{{ $summaryStats['total_pending'] }}</h4>
-                        <p class="mb-0">Total Pending</p>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-clock fa-2x"></i>
-                    </div>
-                </div>
+    <div class="col-lg-3 col-md-6 col-sm-6">
+        <div class="stat-item total">
+            <i class="fas fa-clock stat-icon"></i>
+            <span class="stat-number">{{ $summaryStats['total_pending'] }}</span>
+            <span class="stat-label">Total Pending</span>
+            <div class="stat-progress">
+                <div class="stat-progress-bar" style="width: 100%"></div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h4 class="mb-0">{{ $summaryStats['by_category']['Matrix'] ?? 0 }}</h4>
-                        <p class="mb-0">Matrices</p>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-calendar-alt fa-2x"></i>
-                    </div>
-                </div>
+    <div class="col-lg-3 col-md-6 col-sm-6">
+        <div class="stat-item matrices">
+            <i class="fas fa-calendar-alt stat-icon"></i>
+            <span class="stat-number">{{ $summaryStats['by_category']['Matrix'] ?? 0 }}</span>
+            <span class="stat-label">Matrices</span>
+            <div class="stat-progress">
+                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? (($summaryStats['by_category']['Matrix'] ?? 0) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h4 class="mb-0">{{ ($summaryStats['by_category']['Special Memo'] ?? 0) + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0) + ($summaryStats['by_category']['Single Memo'] ?? 0) }}</h4>
-                        <p class="mb-0">Memos</p>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-file-alt fa-2x"></i>
-                    </div>
-                </div>
+    <div class="col-lg-3 col-md-6 col-sm-6">
+        <div class="stat-item arf">
+            <i class="fas fa-file-invoice stat-icon"></i>
+            <span class="stat-number">{{ $summaryStats['by_category']['ARF'] ?? 0 }}</span>
+            <span class="stat-label">ARF</span>
+            <div class="stat-progress">
+                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? (($summaryStats['by_category']['ARF'] ?? 0) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h4 class="mb-0">{{ count($summaryStats['by_division']) }}</h4>
-                        <p class="mb-0">Divisions</p>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="fas fa-building fa-2x"></i>
-                    </div>
-                </div>
+    <div class="col-lg-3 col-md-6 col-sm-6">
+        <div class="stat-item service-requests">
+            <i class="fas fa-cogs stat-icon"></i>
+            <span class="stat-number">{{ $summaryStats['by_category']['Service Request'] ?? 0 }}</span>
+            <span class="stat-label">Service Requests</span>
+            <div class="stat-progress">
+                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? (($summaryStats['by_category']['Service Request'] ?? 0) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
             </div>
         </div>
     </div>

@@ -195,11 +195,11 @@
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <h1 class="h3 mb-2 text-gray-800">
-                                <i class="fas fa-concierge-bell me-2 text-primary"></i>
+                                <i class="fas fa-concierge-bell me-2 text-success"></i>
                                 Service Request Details
                             </h1>
-                            @if($serviceRequest->request_number)
-                                <p class="text-muted mb-0">{{ $serviceRequest->request_number }}</p>
+                            @if($serviceRequest->document_number)
+                                <p class="text-muted mb-0">{{ $serviceRequest->document_number }}</p>
                             @endif
                         </div>
                         <div class="col-md-4 text-end">
@@ -226,7 +226,7 @@
             <!-- Activity Details -->
             <div class="card content-section bg-blue">
                 <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 text-primary">
+                    <h5 class="mb-0 text-success">
                         <i class="fas fa-calendar-alt me-2 info-icon"></i>Activity Details
                     </h5>
                 </div>
@@ -330,7 +330,7 @@
                         <div class="col-md-4">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">Original Budget</label>
-                                <p class="h4 mb-0 text-primary">${{ number_format($serviceRequest->original_total_budget ?? 0, 2) }}</p>
+                                <p class="h4 mb-0 text-success">${{ number_format($serviceRequest->original_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -363,7 +363,7 @@
                         <!-- Internal Participants -->
                         @if(isset($budgetData['internal_participants']) && is_array($budgetData['internal_participants']) && count($budgetData['internal_participants']) > 0)
                         <div class="mb-4">
-                            <h6 class="fw-bold text-primary mb-3">
+                            <h6 class="fw-bold text-success mb-3">
                                 <i class="fas fa-users me-2"></i>Internal Participants
                             </h6>
                             <div class="table-responsive">
@@ -556,7 +556,7 @@
             @if($serviceRequest->attachments && is_array($serviceRequest->attachments) && count($serviceRequest->attachments) > 0)
             <div class="card content-section bg-blue">
                 <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 text-primary">
+                    <h5 class="mb-0 text-success">
                         <i class="fas fa-paperclip me-2"></i>Attachments
                     </h5>
                 </div>
@@ -565,7 +565,7 @@
                         @foreach($serviceRequest->attachments as $attachment)
                         <div class="col-md-6 mb-3">
                             <div class="attachment-item d-flex align-items-center">
-                                <i class="fas fa-file me-3 text-primary fs-4"></i>
+                                <i class="fas fa-file me-3 text-success fs-4"></i>
                                 <div class="flex-grow-1">
                                     <p class="mb-1 fw-semibold">{{ $attachment['name'] ?? 'Unknown File' }}</p>
                                     <small class="text-muted">{{ $attachment['size'] ?? 'Unknown size' }}</small>
@@ -600,179 +600,175 @@
         <div class="col-lg-4">
             <!-- Action Buttons -->
             <div class="card sidebar-card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0 text-white">
                         <i class="fas fa-cogs me-2"></i>Actions
                     </h6>
                 </div>
                 <div class="card-body">
                     <div class="action-buttons">
-                        @if(function_exists('can_print_service_request') && can_print_service_request($serviceRequest))
+                        @if(can_print_memo($serviceRequest))
                         <a href="{{ route('service-requests.print', $serviceRequest) }}" target="_blank" class="btn btn-primary btn-action">
                             <i class="fas fa-print"></i>
                             Print PDF
                         </a>
                         @endif
                         
-                        @if($serviceRequest->overall_status === 'draft' || $serviceRequest->overall_status === 'returned')
-                        <a href="{{ route('service-requests.edit', $serviceRequest) }}" class="btn btn-warning btn-action">
-                            <i class="fas fa-edit"></i>
-                            Edit
-                        </a>
+                    </div>
+                </div>
+            </div>
+
+              
+            <!-- Sidebar -->
+            <div>
+                <!-- Quick Approval Status -->
+                <div class="card sidebar-card border-0 mb-4">
+                    <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);">
+                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
+                            <i class="bx bx-trending-up text-info"></i>
+                            Approval Progress
+                        </h6>
+            </div>
+            <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted small">Current Level</span>
+                                <span class="badge bg-primary fs-6">{{ $serviceRequest->approval_level ?? 0 }}</span>
+                            </div>
+                            @if($serviceRequest->workflow_definition)
+                                <div class="mb-2">
+                                    <small class="text-muted">Role:</small><br>
+                                    <strong>{{ $serviceRequest->workflow_definition->role ?? 'Not specified' }}</strong>
+                                </div>
+                            @endif
+                            @if($serviceRequest->current_actor)
+                                <div class="mb-2">
+                                    <small class="text-muted">Current Approver:</small><br>
+                                    <strong>{{ $serviceRequest->current_actor->fname }} {{ $serviceRequest->current_actor->lname }}</strong>
+                    </div>
+                @endif
+            </div>
+                        <div class="progress mb-2" style="height: 8px;">
+                            @php
+                                $totalLevels = $approvalLevels ? count($approvalLevels) : 0;
+                                $currentLevel = $serviceRequest->approval_level ?? 0;
+                                $progressPercentage = $totalLevels > 0 ? min(($currentLevel / $totalLevels) * 100, 100) : 0;
+                            @endphp
+                            <div class="progress-bar bg-primary" role="progressbar" 
+                                 style="width: {{ $progressPercentage }}%"></div>
+                        </div>
+                        <small class="text-muted">
+                            Level {{ $serviceRequest->approval_level ?? 0 }} of {{ $totalLevels }}
+                        </small>
+                        
+                        @if(!empty($approvalLevels) && is_array($approvalLevels))
+                            <div class="mt-3">
+                                <small class="text-muted d-block mb-2">Approval Levels:</small>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach($approvalLevels as $level)
+                                        <span class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_current'] ? 'primary' : 'secondary') }} small">
+                                            {{ $level['order'] }}. {{ $level['role'] }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+            </div>
+        </div>
+        
+                <!-- Enhanced Approval Actions -->
+                @if(can_take_action_generic($serviceRequest) || is_with_creator_generic($serviceRequest))
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-check-circle"></i>
+                                Approval Actions
+                            </h6>
+                </div>
+                <div class="card-body">
+                                <form action="{{ route('service-requests.update-status', $serviceRequest) }}" method="POST" id="approvalForm">
+                                @csrf
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="mb-3">
+                                            <label for="comment" class="form-label">Comments (Optional)</label>
+                                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approvalModal">
+                                        <i class="bx bx-check me-1"></i> Proceed
+                                    </button>
+                                    <button type="submit" name="action" value="rejected" class="btn btn-danger">
+                                        <i class="bx bx-x me-1"></i> Rejected
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Approval Trail -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                            <i class="bx bx-history"></i>
+                            Approval Trail
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                                @if($serviceRequest->approvalTrails->count() > 0)
+                            @include('partials.approval-trail', ['resource' => $serviceRequest])
+                        @else
+                            <div class="text-center text-muted py-4">
+                                <i class="bx bx-time bx-lg mb-3"></i>
+                                <p class="mb-0">No approval actions have been taken yet.</p>
+                            </div>
                         @endif
                     </div>
                 </div>
-            </div>
 
-            <!-- Status Card -->
-            <div class="card sidebar-card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h6 class="mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Request Status
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="text-center mb-3">
-                        <span class="status-badge status-{{ $serviceRequest->overall_status ?? 'draft' }}">
-                            {{ ucfirst($serviceRequest->overall_status ?? 'draft') }}
-                        </span>
-                    </div>
-                    
-                    @if($serviceRequest->approval_level)
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-semibold">Approval Level</label>
-                        <p class="mb-0">Level {{ $serviceRequest->approval_level }} of {{ $serviceRequest->next_approval_level ?? $serviceRequest->approval_level }}</p>
-                    </div>
-                    @endif
-                </div>
-            </div>
+                <!-- Submit for Approval -->
 
-            <!-- Request Details -->
-            <div class="card sidebar-card mb-4">
-                <div class="card-header bg-secondary text-white">
-                    <h6 class="mb-0">
-                        <i class="fas fa-calendar me-2"></i>Request Details
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-semibold">Request Date</label>
-                        <p class="mb-0">{{ \Carbon\Carbon::parse($serviceRequest->request_date)->format('M d, Y') }}</p>
-                    </div>
-                    
-                    @if($serviceRequest->staff)
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-semibold">Requested By</label>
-                        <p class="mb-0 fw-semibold">{{ $serviceRequest->staff->fname }} {{ $serviceRequest->staff->lname }}</p>
-                        <small class="text-muted">{{ $serviceRequest->staff->position ?? 'Staff' }}</small>
-                    </div>
-                    @endif
-                    
-                    @if($serviceRequest->division)
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-semibold">Division</label>
-                        <p class="mb-0">{{ $serviceRequest->division->name ?? $serviceRequest->division->division_name }}</p>
-                    </div>
-                    @endif
-                    
-                    @if($serviceRequest->activity)
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-semibold">Related Activity</label>
-                        <p class="mb-0">{{ $serviceRequest->activity->title ?? 'Untitled Activity' }}</p>
-                    </div>
-                    @endif
-                </div>
-            </div>
 
-            <!-- Approval Actions -->
-            @if(!is_with_creator_generic($serviceRequest) && in_array($serviceRequest->overall_status, ['pending', 'returned']))
-            <div class="card sidebar-card mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0">
-                        <i class="fas fa-gavel me-2"></i>Approval Actions
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('service-requests.update-status', $serviceRequest) }}" method="POST" id="approvalForm">
-                        @csrf
-                        <div class="mb-3">
-                            <label for="comment" class="form-label">Comments (Optional)</label>
-                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
-                        </div>
-                        <div class="d-grid gap-2">
-                            @if(!is_with_creator_generic($serviceRequest))
-                                <button type="submit" name="action" value="approved" class="btn btn-success btn-action">
-                                    <i class="fas fa-check"></i>
-                                    Approve
-                                </button>
-                            @endif
-                            <button type="submit" name="action" value="returned" class="btn btn-warning btn-action">
-                                <i class="fas fa-undo"></i>
-                                Return
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            @endif
-
-            <!-- Submit for Approval -->
-            @if(in_array($serviceRequest->overall_status,['draft','returned']) && is_with_creator_generic($serviceRequest))
-            <div class="card sidebar-card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h6 class="mb-0">
-                        <i class="fas fa-paper-plane me-2"></i>Submit for Approval
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted mb-3">Ready to submit this service request for approval?</p>
-                    <form action="{{ route('service-requests.submit-for-approval', $serviceRequest) }}" method="POST">
-                        @csrf
-                        <button type="submit" class="btn btn-primary btn-action w-100">
-                            <i class="fas fa-send"></i>
-                            Submit for Approval
-                        </button>
-                    </form>
-                    <div class="mt-3 p-3 bg-light rounded">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            <strong>Note:</strong> Once submitted, you won't be able to edit this request until it's returned for revision.
-                        </small>
-                    </div>
-                </div>
-            </div>
-            @endif
-
-            <!-- Approval Trail -->
-            @if($serviceRequest->serviceRequestApprovalTrails && $serviceRequest->serviceRequestApprovalTrails->count() > 0)
-            <div class="card sidebar-card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h6 class="mb-0">
-                        <i class="fas fa-history me-2"></i>Approval Trail
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <ul class="timeline">
-                        @foreach($serviceRequest->serviceRequestApprovalTrails as $trail)
-                        <li class="timeline-item">
-                            <div class="timeline-badge {{ $trail->action }}"></div>
-                            <div class="timeline-content">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <strong class="text-sm">{{ ucfirst($trail->action) }}</strong>
-                                    <small class="text-muted">{{ \Carbon\Carbon::parse($trail->created_at)->format('M d, Y H:i') }}</small>
-                                </div>
-                                <p class="text-sm mb-1">{{ $trail->comments }}</p>
-                                @if($trail->staff)
-                                <small class="text-muted">By: {{ $trail->staff->fname }} {{ $trail->staff->lname }}</small>
-                                @endif
-                            </div>
-                        </li>
-                        @endforeach
-                    </ul>
-                </div>
-            </div>
-            @endif
+        
         </div>
     </div>
 </div>
 @endsection
+
+
+<!-- Approval Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #119A48 0%, #0d7a3a 100%);">
+                <h5 class="modal-title text-white" id="approvalModalLabel">
+                    <i class="bx bx-check-circle me-2"></i> Approve Service Request
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('service-requests.update-status', $serviceRequest) }}" method="POST" id="approvalModalForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="modal_comment" class="form-label">
+                            <i class="bx bx-message-detail text-success me-1"></i>Comments (Optional)
+                        </label>
+                        <textarea class="form-control" id="modal_comment" name="comment" rows="3" 
+                                  placeholder="Add any comments about your approval decision...">{{ old('comment') }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bx bx-x me-1"></i>Cancel
+                    </button>
+                    <button type="submit" name="action" value="approved" class="btn btn-success">
+                        <i class="bx bx-check me-1"></i>Approve Service Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

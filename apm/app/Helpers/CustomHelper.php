@@ -140,8 +140,8 @@ if (!function_exists('user_session')) {
             $isApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
 
             // If this is a matrix memo, check matrix approval and activity approval
-            $isMatrixApproved = true;
-            $isActivityApproved = true;
+            $isMatrixApproved = false;
+            $isActivityApproved = false;
             if (isset($memo->matrix)) {
                 $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'approved';
                 if (isset($memo->activity)) {
@@ -149,7 +149,7 @@ if (!function_exists('user_session')) {
                 }
             }
 
-            return ($isOwner || $isResponsible) && $isApproved && $isMatrixApproved && $isActivityApproved;
+            return ($isOwner || $isResponsible) && $isApproved || ($isOwner || $isResponsible) && $isMatrixApproved && $isActivityApproved;
         }
      }
 
@@ -171,13 +171,13 @@ if (!function_exists('user_session')) {
             $isApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
             
             // If this is a matrix memo, check matrix approval and activity approval
-            $isMatrixApproved = true;
-            $isActivityApproved = true;
+            $isMatrixApproved = false;
+            $isActivityApproved = false;
             if (isset($memo->matrix)) {
                 $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'approved';
               
             }
-           // dd($isMatrixApproved);
+            //dd($isMatrixApproved);
 
             // Fund type check
             $fundTypeId = isset($memo->fundType->id) ? $memo->fundType->id : null;

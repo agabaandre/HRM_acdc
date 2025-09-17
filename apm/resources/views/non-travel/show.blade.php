@@ -186,71 +186,7 @@
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to List</span>
                     </a>
-
-                    @if(can_edit_memo($nonTravel))
-                        <a href="{{ route('non-travel.edit', $nonTravel) }}" class="btn btn-warning d-flex align-items-center gap-2">
-                            <i class="bx bx-edit"></i>
-                            <span>Edit Memo</span>
-                        </a>
-                    @endif
-                    <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-info d-flex align-items-center gap-2">
-                        <i class="bx bx-info-circle"></i>
-                        <span>Approval Status</span>
-                    </a>
-                  
-                   @if(can_print_memo($nonTravel))
-                        <a href="{{ route('non-travel.print', $nonTravel) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
-                            <i class="bx bx-printer"></i>
-                            <span>Print PDF</span>
-                        </a>
-                    @endif
-                    
-                    @if(can_request_arf($nonTravel))
-                        @php
-                            // Check if ARF already exists for this non-travel memo
-                            $existingArfTop = \App\Models\RequestARF::where('source_id', $nonTravel->id)
-                                ->where('model_type', 'App\\Models\\NonTravelMemo')
-                                ->first();
-                        @endphp
-                        
-                        @if(!$existingArfTop)
-                            <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
-                                <i class="bx bx-file-plus"></i>
-                                <span>Create ARF Request</span>
-                            </button>
-                        @elseif(in_array($existingArfTop->overall_status, ['pending', 'approved', 'returned']))
-                            <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary d-flex align-items-center gap-2">
-                                <i class="bx bx-show"></i>
-                                <span>View ARF Request</span>
-                            </a>
-                        @endif
-                        
-                        {{-- Service Request Button --}}
-                       
-                        @dd(can_request_memo_action($nonTravel,'services'))
-                        @if(can_request_memo_action($nonTravel,'services'))
-                            @php
-                                // Check if Service Request already exists for this memo
-                                $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $nonTravel->id)
-                                    ->where('model_type', 'App\\Models\\NonTravelMemo')
-                                    ->first();
-                            @endphp   @dd($existingServiceRequest);
-                            
-                            @if(!$existingServiceRequest)
-                                <a href="{{ route('service-requests.create') }}?source_type=non_travel_memo&source_id={{ $nonTravel->id }}" 
-                                   class="btn btn-info d-flex align-items-center gap-2">
-                                    <i class="fas fa-tools"></i>
-                                    <span>Create Service Request</span>
-                                </a>
-                            @elseif(in_array($existingServiceRequest->status, ['submitted', 'in_progress', 'approved', 'completed']))
-                                <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
-                                    <i class="fas fa-eye"></i>
-                                    <span>View Service Request</span>
-                                </a>
-                            @endif
-                        @endif
-                    @endif
-                </div>
+             </div>
             </div>
         </div>
     </div>
