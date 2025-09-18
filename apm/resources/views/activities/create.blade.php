@@ -602,7 +602,7 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
 
 $(document).ready(function () {
     const today = new Date().setHours(0, 0, 0, 0);
-    const divisionId = {{ user_session('division_id') }};
+    const divisionId = {{ $matrix->division_id }};
 
 
     function validateDates(showError = true) {

@@ -460,7 +460,7 @@
         });
 
         // Get budget codes based on fund type and division
-        const divisionId = @json(user_session('division_id'));
+        const divisionId = {{ $nonTravel->division_id }};
         
         $('#fund_type').on('change', function () {
     const fundTypeId = $(this).val();

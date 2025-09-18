@@ -304,7 +304,7 @@ console.log('Existing external participants:', existingExternalParticipants);
 
 $(document).ready(function () {
     const today = new Date().setHours(0, 0, 0, 0);
-    const divisionId = {{ user_session('division_id') }};
+    const divisionId = {{ $specialMemo->division_id }};
 
     // Initialize fund type change handler
     $('#fund_type_id').change(function(event){
