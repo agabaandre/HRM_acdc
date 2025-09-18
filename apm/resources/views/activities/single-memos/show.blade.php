@@ -1053,7 +1053,7 @@
                                     {{-- Budget Code Title --}}
                                     <h6 style="color: #2c3d50; font-weight: 600; margin-top: 20px;">
                                         @if ($fundCode)
-                                            {{ $fundCode->activity }} - {{ $fundCode->code }} -
+                                            {{ $fundCode->activity }} - {{ $fundCode->code }} - {{ $fundCode->funder->name??'N/A' }}
                                             ({{ $fundCode->fundType->name ?? 'N/A' }})
                                                     @else
                                             Budget Code: {{ $fundCodeId }}

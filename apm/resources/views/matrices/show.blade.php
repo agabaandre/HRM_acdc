@@ -92,27 +92,26 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
-   @if($matrix->division_id == user_session()['division_id']  || still_with_creator($matrix))
-        @if( $matrix->overall_status=='draft')
+    
+        @if( $matrix->overall_status=='draft' || $matrix->overall_status=='returned')
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Activity
         </a>
         @endif
 
-         @if( $matrix->overall_status=='approved'|| $matrix->overall_status=='pending')
+        @if( $matrix->overall_status=='approved'|| $matrix->overall_status=='pending')
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
         </a>
         @endif
 
-    @endif
-     @if(still_with_creator($matrix))
-        <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
-            <i class="bx bx-edit me-1"></i> Edit Matrix
-        </a>
-    @endif
-    <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bx bx-arrow-back me-1"></i> Back
+        @if(still_with_creator($matrix))
+            <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-warning btn-sm shadow-sm">
+                <i class="bx bx-edit me-1"></i> Edit Matrix
+            </a>
+        @endif
+       <a href="{{ route('matrices.index') }}" class="btn btn-outline-secondary btn-sm">
+       <i class="bx bx-arrow-back me-1"></i> Back
     </a>
 </div>
 @endsection
