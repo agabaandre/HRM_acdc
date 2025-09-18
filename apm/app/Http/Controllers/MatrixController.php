@@ -473,8 +473,9 @@ class MatrixController extends Controller
             $staffData = [];
 
             foreach ($divisionStaff as $staff) {
-                // Get participant data for this staff member
+                // Get participant data for this staff member, excluding international_travel = 0
                 $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
+                    ->where('international_travel', 1)
                     ->whereHas('activity', function($q) use ($matrix) {
                         $q->where('matrix_id', $matrix->id);
                     })
@@ -510,6 +511,7 @@ class MatrixController extends Controller
 
             foreach ($allDivisionStaff as $staff) {
                 $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
+                    ->where('international_travel', 1)
                     ->whereHas('activity', function($q) use ($matrix) {
                         $q->where('matrix_id', $matrix->id);
                     })

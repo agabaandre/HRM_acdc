@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td class="px-3 py-3">
                         <div class="fw-semibold text-wrap" style="max-width: 200px;">
-                            <a href="{{ route('staff.activities', ['staff_id' => 'STAFF_ID', 'matrix' => $matrix->id]) }}" 
+                            <a href="/staff/${staff.staff_id}/activities/matrix/{{ $matrix->id }}" 
                                class="text-decoration-none text-primary" target="_blank">
                                 ${fullName}
                             </a>
@@ -231,12 +231,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                 </tr>
             `;
-        });
-        
-        // Replace STAFF_ID placeholder with actual staff_id
-        html = html.replace(/STAFF_ID/g, (match, offset, string) => {
-            const staffIndex = Math.floor(offset / 1000); // Rough calculation
-            return staffData[staffIndex]?.staff_id || '';
         });
         
         $('#staffTableBody').html(html);
