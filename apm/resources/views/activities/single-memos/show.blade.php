@@ -479,7 +479,7 @@
     </a>
     
         @if ($activity->overall_status === 'draft' && $activity->staff_id === user_session('staff_id'))
-        <a href="{{ route('activities.single-memos.edit', $activity) }}" class="btn btn-warning">
+        <a href="{{ route('activities.single-memos.edit', ['activity' => $activity, 'matrix' => $matrix]) }}" class="btn btn-warning">
             <i class="bx bx-edit"></i> Edit
         </a>
     @endif
@@ -498,9 +498,9 @@
                         <p class="text-muted mb-0">Review and manage single memo details</p>
                 </div>
                     <div class="d-flex gap-3">
-                     
-                        @if ($activity->overall_status === 'draft' && $activity->staff_id === user_session('staff_id')|| $activity->responsible_person_id == user_session('staff_id'))
-                            <a href="{{ route('activities.single-memos.edit', $activity) }}"
+                        {{-- @dd($activity->overall_status,$activity->staff_id,$activity->responsible_person_id) --}}
+                            @if ($activity->overall_status == 'draft' && ($activity->staff_id == user_session('staff_id')|| $activity->responsible_person_id == user_session('staff_id')))
+                            <a href="{{ route('activities.single-memos.edit', ['activity' => $activity, 'matrix' => $matrix]) }}"
                                 class="btn btn-warning d-flex align-items-center gap-2">
                                 <i class="bx bx-edit"></i>
                                 <span>Edit Memo</span>

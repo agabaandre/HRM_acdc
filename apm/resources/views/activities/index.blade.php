@@ -176,12 +176,12 @@
                     </div>
                     <div class="col-md-2">
                         <label for="staff_id" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-user me-1 text-success"></i> Staff
+                            <i class="bx bx-user me-1 text-success"></i> Responsible Person
                         </label>
                         <select name="staff_id" id="staff_id" class="form-select select2" style="width: 100%;">
                             <option value="">All Staff</option>
                             @foreach($staff as $staffMember)
-                                <option value="{{ $staffMember->id }}" {{ request('staff_id') == $staffMember->id ? 'selected' : '' }}>
+                                <option value="{{ $staffMember->staff_id }}" {{ request('staff_id') == $staffMember->staff_id ? 'selected' : '' }}>
                                     {{ $staffMember->fname }} {{ $staffMember->lname }}
                                 </option>
                             @endforeach
