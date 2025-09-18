@@ -220,8 +220,8 @@ if (!function_exists('user_session')) {
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
 
-            // Only allow if status is approved
-            $isApproved = isset($memo->overall_status) && $memo->overall_status === 'draft';
+            // Only allow if status is not approved
+            $isApproved = isset($memo->overall_status) && $memo->overall_status === 'draft' || $memo->overall_status === 'returned';
 
             // If this is a matrix memo, check matrix approval and activity approval
             $isMatrixApproved = true;
