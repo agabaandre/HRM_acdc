@@ -473,12 +473,13 @@ class MatrixController extends Controller
             $staffData = [];
 
             foreach ($divisionStaff as $staff) {
-                // Get participant data for this staff member, excluding international_travel = 0
+                // Get participant data for this staff member for the current quarter only
                 $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
                     ->where('international_travel', 1)
-                    ->whereHas('activity', function($q) use ($matrix) {
-                        $q->where('matrix_id', $matrix->id)
-                          ->where('overall_status', '!=', 'cancelled'); // Match staff activities filter
+                    ->where('quarter', $matrix->quarter)
+                    ->where('year', $matrix->year)
+                    ->whereHas('activity', function($q) {
+                        $q->where('overall_status', '!=', 'cancelled'); // Match staff activities filter
                     })
                     ->get();
 
