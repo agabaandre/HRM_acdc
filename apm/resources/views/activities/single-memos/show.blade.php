@@ -1277,27 +1277,62 @@
 
 
                     <!-- Approval Trail Section -->
-                    @if (isset($activity->approvalTrails) && $activity->approvalTrails->count() > 0)
-                        @include('partials.approval-trail', ['resource' => $activity])
-                    @else
-                        <div class="card sidebar-card border-0 mb-4">
-                            <div class="card-header bg-transparent border-0 py-3">
-                                <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
-                                    <i class="bx bx-history"></i>
-                                    Approval Trail
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="text-center text-muted py-4">
-                                    <i class="bx bx-time bx-lg mb-3"></i>
-                                    <p class="mb-0">No approval actions have been taken yet.</p>
-                                    @if ($activity->overall_status === 'draft')
-                                        <small>Submit this single memo for approval to start the approval trail.</small>
-                                    @endif
+                    <div class="row">
+                        <!-- Previous Activity Trail (Matrix) -->
+                        @if ($activity->activityApprovalTrails && $activity->activityApprovalTrails->count() > 0)
+                            <div class="col-12 mb-4">
+                                <div class="card sidebar-card border-0">
+                                    <div class="card-header bg-transparent border-0 py-3">
+                                        <h6 class="mb-0 fw-bold text-info d-flex align-items-center gap-2">
+                                            <i class="bx bx-history"></i>
+                                            Previous Activity Trail (Matrix)
+                                        </h6>
+                                        <small class="text-muted">Approval history from when this was part of the matrix</small>
+                                    </div>
+                                    <div class="card-body">
+                                        @include('matrices.partials.approval-trail', ['trails' => $activity->activityApprovalTrails])
+                                    </div>
                                 </div>
                             </div>
+                        @endif
+
+                        <!-- Current Single Memo Trail -->
+                        <div class="col-12">
+                            @if (isset($activity->approvalTrails) && $activity->approvalTrails->count() > 0)
+                                <div class="card sidebar-card border-0">
+                                    <div class="card-header bg-transparent border-0 py-3">
+                                        <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
+                                            <i class="bx bx-file-text"></i>
+                                            Single Memo Trail
+                                        </h6>
+                                        <small class="text-muted">Current approval history as a single memo</small>
+                                    </div>
+                                    <div class="card-body">
+                                        @include('partials.approval-trail', ['resource' => $activity])
+                                    </div>
+                                </div>
+                            @else
+                                <div class="card sidebar-card border-0">
+                                    <div class="card-header bg-transparent border-0 py-3">
+                                        <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
+                                            <i class="bx bx-file-text"></i>
+                                            Single Memo Trail
+                                        </h6>
+                                        <small class="text-muted">Current approval history as a single memo</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="text-center text-muted py-4">
+                                            <i class="bx bx-time bx-lg mb-3"></i>
+                                            <p class="mb-0">No approval actions have been taken yet.</p>
+                                            @if ($activity->overall_status === 'draft')
+                                                <small>Submit this single memo for approval to start the approval trail.</small>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
-                    @endif
+                    </div>
 
                     <!-- Enhanced Approval Actions -->
                     @if (can_take_action_generic($activity))

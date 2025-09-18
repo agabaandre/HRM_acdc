@@ -103,8 +103,10 @@
                             {{ ucfirst($trail->action) }}
                             
                         </span>
-                        @if($trail->action === 'returned'||$trail->action === 'flagged')
-                            <p class="text-muted">{{ $trail->comments ?? $trail->remarks ?? 'No comments' }}</p>
+                        @if($trail->remarks)
+                            <div class="timeline-remarks mt-2 p-2 bg-light rounded">
+                                <strong>Remarks:</strong> {{ $trail->remarks }}
+                            </div>
                         @endif
                     </div>
                   

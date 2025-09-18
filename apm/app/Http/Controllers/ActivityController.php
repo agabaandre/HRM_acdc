@@ -371,7 +371,10 @@ class ActivityController extends Controller
             'fundType',
             'matrix.division',
             'activity_budget',
-            'activity_budget.fundcode'
+            'activity_budget.fundcode',
+            'activityApprovalTrails.staff',
+            'activityApprovalTrails.oicStaff',
+            'approvalTrails'
         ]);
     
         // Load all staff
@@ -1251,6 +1254,14 @@ class ActivityController extends Controller
         $this->update_activity_status($request, $activity);
 
         $message = "Activity Updated successfully";
+        
+        // If converted to single memo, show different message and redirect to matrix view
+        if ($request->action === 'convert_to_single_memo') {
+            $message = "Activity converted to single memo successfully. It has been returned to the creator for revision.";
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('success', $message);
+        }
 
         return redirect()
         ->route('matrices.activities.show', [$matrix, $activity])
@@ -1272,7 +1283,10 @@ class ActivityController extends Controller
 
         $matrix = $activity->matrix;
 
-        if ($activityTrail->action !== 'passed') {
+        if ($activityTrail->action === 'convert_to_single_memo') {
+            // Convert activity to single memo
+            $this->convertActivityToSingleMemo($activity, $request->comment);
+        } elseif ($activityTrail->action !== 'passed') {
             // Get assigned workflow ID for Matrix model
             $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix');
             if (!$assignedWorkflowId) {
@@ -1282,6 +1296,58 @@ class ActivityController extends Controller
             $matrix->forward_workflow_id = $assignedWorkflowId;
             $matrix->overall_status = 'pending';
             $matrix->update();
+        }
+    }
+
+    /**
+     * Convert activity to single memo.
+     */
+    private function convertActivityToSingleMemo(Activity $activity, string $comment = null)
+    {
+        try {
+            // Get assigned workflow ID for Activity model (single memo workflow)
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Activity');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 1; // Default workflow ID
+                Log::warning('No workflow assignment found for Activity model in convert to single memo, using default workflow ID: 1');
+            }
+
+            // Update activity to single memo
+            $activity->update([
+                'is_single_memo' => true,
+                'document_number' => null,
+                'overall_status' => 'draft', // Set to draft so creator can edit
+                'approval_level' => 1, // Reset to approval level 1
+                'next_approval_level' => 2, // Set next level to 2
+                'forward_workflow_id' => $assignedWorkflowId,
+                'reverse_workflow_id' => $assignedWorkflowId,
+                'is_draft' => true, // Mark as draft so it can be edited
+            ]);
+
+            // Create additional approval trail entry for the conversion
+            ActivityApprovalTrail::create([
+                'activity_id' => $activity->id,
+                'matrix_id' => $activity->matrix_id,
+                'staff_id' => user_session('staff_id'),
+                'action' => 'converted_to_single_memo',
+                'remarks' => $comment ?? 'Activity converted to single memo for revision',
+                'approval_order' => $activity->approval_level,
+                'forward_workflow_id' => $assignedWorkflowId,
+            ]);
+
+            Log::info('Activity converted to single memo', [
+                'activity_id' => $activity->id,
+                'matrix_id' => $activity->matrix_id,
+                'converted_by' => user_session('staff_id'),
+                'comment' => $comment
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error converting activity to single memo', [
+                'activity_id' => $activity->id,
+                'exception' => $e->getMessage()
+            ]);
+            throw $e;
         }
     }
 
