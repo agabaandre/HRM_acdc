@@ -228,7 +228,7 @@
                                     foreach($myDivisionActivities as $activity) {
                                         $participantSchedule = $activity->participantSchedules
                                             ->where('participant_id', $staff->staff_id)
-                                            ->where('division_id', $matrix->division_id)
+                                            ->where('is_home_division', true)
                                             ->first();
                                         if($participantSchedule) {
                                             $myDivisionTotalDays += $participantSchedule->participant_days;
@@ -260,10 +260,10 @@
                                                         $startDate = \Carbon\Carbon::parse($activity->date_from);
                                                         $endDate = \Carbon\Carbon::parse($activity->date_to);
                                                         
-                                                        // Get participant days from participant_schedules table for matrix division
+                                                        // Get participant days from participant_schedules table for home division
                                                         $participantSchedule = $activity->participantSchedules
                                                             ->where('participant_id', $staff->staff_id)
-                                                            ->where('division_id', $matrix->division_id)
+                                                            ->where('is_home_division', true)
                                                             ->first();
                                                         $days = $participantSchedule ? $participantSchedule->participant_days : 0;
                                                     @endphp
@@ -333,7 +333,7 @@
                                     foreach($otherDivisionActivities as $activity) {
                                         $participantSchedule = $activity->participantSchedules
                                             ->where('participant_id', $staff->staff_id)
-                                            ->where('division_id', '!=', $matrix->division_id)
+                                            ->where('is_home_division', false)
                                             ->first();
                                         if($participantSchedule) {
                                             $otherDivisionTotalDays += $participantSchedule->participant_days;
@@ -368,7 +368,7 @@
                                                         // Get participant days from participant schedules for other divisions
                                                         $participantSchedule = $activity->participantSchedules
                                                             ->where('participant_id', $staff->staff_id)
-                                                            ->where('division_id', '!=', $matrix->division_id)
+                                                            ->where('is_home_division', false)
                                                             ->first();
                                                         $days = $participantSchedule ? $participantSchedule->participant_days : 0;
                                                     @endphp
