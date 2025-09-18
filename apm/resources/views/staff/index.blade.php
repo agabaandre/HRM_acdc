@@ -23,104 +23,6 @@
         font-size: 14px;
     }
     
-    .filter-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: 1px solid #dee2e6;
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .dataTables_wrapper .dataTables_length,
-    .dataTables_wrapper .dataTables_filter,
-    .dataTables_wrapper .dataTables_info,
-    .dataTables_wrapper .dataTables_processing,
-    .dataTables_wrapper .dataTables_paginate {
-        color: #6c757d;
-    }
-    
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        border: none !important;
-        color: white !important;
-    }
-    
-    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        border: none !important;
-        color: white !important;
-    }
-
-    /* Table styling to match matrices */
-    .table thead th {
-        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-        border-bottom: 2px solid #f39c12;
-        font-weight: 600;
-        color: #856404;
-        text-transform: uppercase;
-        font-size: 0.875rem;
-        letter-spacing: 0.5px;
-        padding: 0.75rem 0.5rem;
-    }
-
-    .table td {
-        vertical-align: middle;
-        padding: 0.75rem 0.5rem;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-
-    /* Ensure table fits without horizontal scroll */
-    .table-responsive {
-        overflow-x: auto;
-        max-width: 100%;
-    }
-
-    /* Matrices-style card styling */
-    .card {
-        border-radius: 0.75rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    }
-
-    .card-header {
-        border-radius: 0.75rem 0.75rem 0 0;
-    }
-
-    /* Input group styling to match matrices */
-    .input-group-text {
-        border-right: none;
-        background-color: #f8f9fa;
-        border-color: #ced4da;
-    }
-
-    .form-control:focus + .input-group-text,
-    .form-select:focus + .input-group-text {
-        border-color: #86b7fe;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-    }
-
-    /* Success color scheme to match matrices */
-    .text-success {
-        color: #198754 !important;
-    }
-
-    .btn-success {
-        background-color: #198754;
-        border-color: #198754;
-    }
-
-    .btn-outline-success {
-        color: #198754;
-        border-color: #198754;
-    }
-
-    .btn-outline-success:hover {
-        background-color: #198754;
-        border-color: #198754;
-    }
-    
     .table th {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         border-bottom: 2px solid #dee2e6;
@@ -164,57 +66,119 @@
         padding: 0.125rem 0.25rem;
         border-radius: 0.25rem;
     }
- .dataTables_filter {
-    margin-bottom: 6px !important;
-    float: right !important;
-}
 </style>
 @endsection
 
 @section('content')
-
-
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom">
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
+        <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="mb-0 text-dark fw-bold">
-                    <i class="bx bx-user me-2 text-success"></i>Staff Directory
-                </h5>
-                <small class="text-muted">View and manage staff information</small>
+                <h4 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bx bx-user me-2 text-success"></i>
+                    Staff Directory
+                </h4>
+                <small class="text-muted d-block mt-1">
+                    View and manage staff information
+                </small>
             </div>
+            <div class="col-md-6">
+                <div class="d-flex gap-2">
+                    <div class="input-group flex-grow-1">
+                        <span class="input-group-text bg-white">
+                            <i class="bx bx-search text-muted"></i>
+                        </span>
+                        <input type="text" id="staffSearch" class="form-control" 
+                               placeholder="Search by name, position, or division..." 
+                               autocomplete="off">
+                    </div>
+                    <select id="pageSizeSelect" class="form-select" style="width: 120px;">
+                        <option value="10">10 per page</option>
+                        <option value="25" selected>25 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table id="staffTable" class="table table-hover mb-0" style="width:100%">
-                <thead class="table-warning">
+            <table class="table table-hover align-middle mb-0" id="staffTable">
+                <thead class="bg-light">
                     <tr>
-                        <th>#</th>
-                        <th>Name</th>
-                        <th style="width: 200px;">Division</th>
-                        <th>Duty Station</th>
-                        <th>Job Title</th>
-                        <th>Contact</th>
-                        <th>Status</th>
+                        <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">#</th>
+                        <th class="border-0 px-3 py-3 text-muted fw-semibold">Name</th>
+                        <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 200px;">Division</th>
+                        <th class="border-0 px-3 py-3 text-muted fw-semibold">Duty Station</th>
+                        <th class="border-0 px-3 py-3 text-muted fw-semibold">Job Title</th>
+                        <th class="border-0 px-3 py-3 text-muted fw-semibold">Contact</th>
+                        <th class="border-0 px-3 py-3 text-muted fw-semibold text-center">Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <!-- Data will be loaded via AJAX -->
-                    <tr id="loadingRow" style="display: none;">
+                <tbody id="staffTableBody">
+                    <tr>
                         <td colspan="7" class="text-center py-4">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                                    </div>
+                            <i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i>
                             <div class="mt-2">Loading staff data...</div>
-                            </td>
-                        </tr>
-                    <tr id="errorRow" style="display: none;">
-                        <td colspan="7" class="text-center py-4 text-danger">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Error loading staff data. Please check your connection and try again.
-                            </td>
-                        </tr>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
+        </div>
+        
+        <!-- Pagination and Summary -->
+        <div class="card-footer bg-light border-0 py-3">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-3">Showing <span id="showingRange">0-0</span> of <span id="totalRecords">0</span> staff</span>
+                        <div class="btn-group" role="group" id="paginationButtons">
+                            <!-- Pagination buttons will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="row text-center" id="summaryStats">
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bx bx-user-check text-success me-2"></i>
+                                <div>
+                                    <div class="fw-bold text-success" id="totalStaff">0</div>
+                                    <small class="text-muted">Total Staff</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bx bx-user text-primary me-2"></i>
+                                <div>
+                                    <div class="fw-bold text-primary" id="activeStaff">0</div>
+                                    <small class="text-muted">Active</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bx bx-user-x text-warning me-2"></i>
+                                <div>
+                                    <div class="fw-bold text-warning" id="inactiveStaff">0</div>
+                                    <small class="text-muted">Inactive</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bx bx-search text-info me-2"></i>
+                                <div>
+                                    <div class="fw-bold text-info" id="filteredStaff">0</div>
+                                    <small class="text-muted">Filtered</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -253,240 +217,231 @@
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-    console.log('Initializing DataTable...');
-    console.log('jQuery version:', $.fn.jquery);
-    console.log('DataTables available:', typeof $.fn.DataTable !== 'undefined');
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if required elements exist
+    const staffSearchEl = document.getElementById('staffSearch');
+    const pageSizeSelectEl = document.getElementById('pageSizeSelect');
+    const staffTableBodyEl = document.getElementById('staffTableBody');
     
-    // Check if DataTables is loaded
-    if (typeof $.fn.DataTable === 'undefined') {
-        console.error('DataTables is not loaded!');
-        alert('DataTables library is not loaded. Please check your scripts.');
+    if (!staffSearchEl || !pageSizeSelectEl || !staffTableBodyEl) {
+        console.error('Required elements not found for staff table');
         return;
     }
-    
-    // Initialize the DataTable using fallback method directly
-    console.log('Initializing DataTable with fallback method...');
-    loadStaffDataFallback();
-    
-    function initializeRealDataTable() {
-        console.log('Initializing real DataTable...');
+
+    let currentPage = 1;
+    let pageSize = 25;
+    let searchTerm = '';
+    let totalRecords = 0;
+    let totalPages = 0;
+    let searchTimeout;
+
+    // Load staff data function
+    function loadStaffData(page = 1) {
+        currentPage = page;
         
-        // Show loading state
-        $('#loadingRow').show();
-        
-        // Initialize DataTable with server-side processing
-        var table = $('#staffTable').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-            url: "{{ route('staff.datatable') }}",
-            type: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            data: function(d) {
-                // No filters - load all data
-            },
-            beforeSend: function(xhr) {
-                console.log('Sending DataTable request to:', "{{ route('staff.datatable') }}");
-            },
-            success: function(data, textStatus, xhr) {
-                console.log('DataTable success:', data);
-                $('#loadingRow').hide();
-                $('#errorRow').hide();
-            },
-            error: function(xhr, error, thrown) {
-                console.error('DataTable AJAX error:', {
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                    responseText: xhr.responseText,
-                    error: error,
-                    thrown: thrown
-                });
-                $('#loadingRow').hide();
-                $('#errorRow').show();
-                
-                if (xhr.status === 302 || xhr.status === 401) {
-                    console.log('Authentication error - trying fallback method...');
-                    // Try to load data without server-side processing
-                    loadStaffDataFallback();
-                } else if (xhr.status === 404) {
-                    alert('DataTable endpoint not found. Please check the route configuration.');
-                } else {
-                    alert('Error loading data: ' + (xhr.responseJSON?.message || 'Unknown error'));
-                }
-            }
-        },
-        columns: [
-            {
-                data: null,
-                name: null,
-                orderable: false,
-                searchable: false,
-                className: 'text-center',
-                render: function(data, type, row, meta) {
-                    return meta.row + meta.settings._iDisplayStart + 1;
-                }
-            },
-            { 
-                data: 'name',
-                name: 'name',
-                render: function(data, type, row) {
-                    var fullName = [row.fname, row.lname, row.oname].filter(Boolean).join(' ');
-                    var displayName = row.title ? `${row.title} ${fullName}` : fullName;
-                    return `
-                        <div>
-                            <strong>${displayName}</strong>
-                            ${row.work_email ? `<br><small class="text-muted">${row.work_email}</small>` : ''}
-                        </div>
-                    `;
-                }
-            },
-            { 
-                data: 'division.division_name',
-                name: 'division.division_name',
-                defaultContent: 'N/A'
-            },
-                   {
-                       data: 'duty_station_name',
-                       name: 'duty_station_name',
-                       defaultContent: 'N/A'
-                   },
-                   {
-                       data: 'job_name',
-                       name: 'job_name',
-                       defaultContent: 'N/A'
-                   },
-            { 
-                data: 'tel_1',
-                name: 'tel_1',
-                defaultContent: 'N/A'
-            },
-            { 
-                data: 'active',
-                name: 'active',
-                render: function(data, type, row) {
-                    var statusClass = data == 1 ? 'status-active' : 'status-inactive';
-                    var statusText = data == 1 ? 'Active' : 'Inactive';
-                    return `<span class="status-badge ${statusClass}">${statusText}</span>`;
-                }
-            }
-        ],
-        order: [[1, 'asc']],
-        pageLength: 25,
-        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-        language: {
-            processing: '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br>Loading staff data...</div>',
-            emptyTable: '<div class="text-center py-4"><i class="fas fa-users fa-3x text-muted mb-3"></i><br>No staff records found</div>',
-            zeroRecords: '<div class="text-center py-4"><i class="fas fa-search fa-3x text-muted mb-3"></i><br>No matching records found</div>'
-        },
-        timeout: 30000, // 30 seconds timeout
-        dom: '<"row"<"col-sm-12 col-md-6"l>>rtip',
-        drawCallback: function(settings) {
-            // Update total records count
-            $('#totalRecords').text(settings.fnRecordsTotal());
-            
-        // Initialize tooltips
-            $('[data-bs-toggle="tooltip"]').tooltip();
-        }
-    });
-    
+        // Show loading
+        staffTableBodyEl.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <i class="bx bx-loader-alt bx-spin fs-1 text-primary"></i>
+                    <div class="mt-2">Loading staff data...</div>
+                </td>
+            </tr>
+        `;
 
+        // Prepare data
+        const data = {
+            search: searchTerm,
+            page: page,
+            pageSize: pageSize
+        };
 
-        // Refresh table
-        $('#refreshTable').on('click', function() {
-            table.ajax.reload();
-        });
-    
-    } // End of initializeRealDataTable function
-
-
-
-    // Fallback function to load staff data without server-side processing
-    function loadStaffDataFallback() {
-        console.log('Loading staff data with fallback method...');
-        $('#loadingRow').show();
-        $('#errorRow').hide();
-        
-        // Try to load data directly from the controller
         $.ajax({
-            url: "{{ route('staff.datatable') }}",
+            url: '{{ route("staff.ajax") }}',
             type: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            data: data,
+            dataType: 'json',
             success: function(response) {
-                console.log('Fallback success:', response);
-                $('#loadingRow').hide();
+                console.log('AJAX Response:', response);
                 
-                // Destroy existing table and create new one with data
-                if ($.fn.DataTable.isDataTable('#staffTable')) {
-                    $('#staffTable').DataTable().destroy();
+                if (response.data && response.data.length > 0) {
+                    renderStaffTable(response.data);
+                    totalRecords = response.recordsTotal;
+                    totalPages = response.totalPages;
+                    renderPagination();
+                    updateSummary(response.summary);
+                    updateShowingRange();
+                } else {
+                    staffTableBodyEl.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="bx bx-user-x fs-1 text-muted"></i>
+                                <div class="mt-2">No staff found</div>
+                                <small>Try adjusting your search criteria</small>
+                            </td>
+                        </tr>
+                    `;
+                    renderPagination();
+                    updateSummary(response.summary || {});
+                    updateShowingRange();
                 }
-                
-                // Create simple DataTable with the data
-                $('#staffTable').DataTable({
-                    data: response.data,
-                    columns: [
-                        { 
-                            data: null,
-                            render: function(data, type, row, meta) {
-                                return meta.row + 1;
-                            }
-                        },
-                        { 
-                            data: 'name',
-                            render: function(data, type, row) {
-                                var fullName = [row.fname, row.lname, row.oname].filter(Boolean).join(' ');
-                                var displayName = row.title ? `${row.title} ${fullName}` : fullName;
-                                return `
-                                    <div>
-                                        <strong>${displayName}</strong>
-                                        ${row.work_email ? `<br><small class="text-muted">${row.work_email}</small>` : ''}
-                                    </div>
-                                `;
-                            }
-                        },
-                        { data: 'division.division_name', defaultContent: 'N/A' },
-                        { data: 'duty_station_name', defaultContent: 'N/A' },
-                        { data: 'job_name', defaultContent: 'N/A' },
-                        { 
-                            data: 'tel_1',
-                            render: function(data, type, row) {
-                                return `
-                                    <div>
-                                        <div><i class="fas fa-phone me-1"></i>${data || 'N/A'}</div>
-                                        <div><i class="fas fa-envelope me-1"></i>${row.work_email || 'N/A'}</div>
-                                    </div>
-                                `;
-                            }
-                        },
-                        { 
-                            data: 'active',
-                            render: function(data, type, row) {
-                                var statusClass = data == 1 ? 'status-active' : 'status-inactive';
-                                var statusText = data == 1 ? 'Active' : 'Inactive';
-                                return `<span class="status-badge ${statusClass}">${statusText}</span>`;
-                            }
-                        }
-                    ],
-                    pageLength: 25,
-                    lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                    language: {
-                        emptyTable: '<div class="text-center py-4"><i class="fas fa-users fa-3x text-muted mb-3"></i><br>No staff records found</div>',
-                        zeroRecords: '<div class="text-center py-4"><i class="fas fa-search fa-3x text-muted mb-3"></i><br>No matching records found</div>'
-                    }
-                });
             },
             error: function(xhr, status, error) {
-                console.error('Fallback also failed:', xhr.responseText);
-                $('#loadingRow').hide();
-                $('#errorRow').show();
+                console.error('AJAX Error:', error, xhr.responseText);
+                staffTableBodyEl.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-danger">
+                            <i class="bx bx-error fs-1"></i>
+                            <div class="mt-2">Error loading staff data</div>
+                            <small>Status: ${xhr.status} - ${error}</small>
+                        </td>
+                    </tr>
+                `;
             }
         });
     }
+
+    // Render staff table
+    function renderStaffTable(staffData) {
+        let html = '';
+        const startIndex = (currentPage - 1) * pageSize;
+        
+        staffData.forEach((staff, index) => {
+            const rowNumber = startIndex + index + 1;
+            const fullName = [staff.fname, staff.lname, staff.oname].filter(Boolean).join(' ');
+            const displayName = staff.title ? `${staff.title} ${fullName}` : fullName;
+            const statusClass = staff.active == 1 ? 'status-active' : 'status-inactive';
+            const statusText = staff.active == 1 ? 'Active' : 'Inactive';
+            
+            html += `
+                <tr>
+                    <td class="px-3 py-3">
+                        <span class="badge bg-secondary rounded-pill">${rowNumber}</span>
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="fw-semibold text-wrap" style="max-width: 200px;">
+                            ${displayName}
+                        </div>
+                        ${staff.work_email ? `<small class="text-muted">${staff.work_email}</small>` : ''}
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="text-muted text-wrap" style="max-width: 200px;">${staff.division ? staff.division.division_name : 'N/A'}</div>
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="text-muted text-wrap" style="max-width: 150px;">${staff.duty_station_name || 'N/A'}</div>
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="text-muted text-wrap" style="max-width: 150px;">${staff.job_name || 'N/A'}</div>
+                    </td>
+                    <td class="px-3 py-3">
+                        <div class="text-muted">
+                            <div><i class="bx bx-phone me-1"></i>${staff.tel_1 || 'N/A'}</div>
+                            ${staff.work_email ? `<div><i class="bx bx-envelope me-1"></i>${staff.work_email}</div>` : ''}
+                        </div>
+                    </td>
+                    <td class="px-3 py-3 text-center">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        $('#staffTableBody').html(html);
+    }
+
+    // Render pagination
+    function renderPagination() {
+        let html = '';
+        
+        if (totalPages <= 1) {
+            $('#paginationButtons').html('');
+            return;
+        }
+
+        // Previous button
+        html += `
+            <button type="button" class="btn btn-outline-secondary btn-sm" 
+                    ${currentPage === 1 ? 'disabled' : ''} 
+                    onclick="loadStaffData(${currentPage - 1})">
+                <i class="bx bx-chevron-left"></i>
+            </button>
+        `;
+
+        // Page numbers
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+
+        if (startPage > 1) {
+            html += `<button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadStaffData(1)">1</button>`;
+            if (startPage > 2) {
+                html += `<span class="btn btn-outline-secondary btn-sm disabled">...</span>`;
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `
+                <button type="button" class="btn ${i === currentPage ? 'btn-primary' : 'btn-outline-secondary'} btn-sm" 
+                        onclick="loadStaffData(${i})">
+                    ${i}
+                </button>
+            `;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                html += `<span class="btn btn-outline-secondary btn-sm disabled">...</span>`;
+            }
+            html += `<button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadStaffData(${totalPages})">${totalPages}</button>`;
+        }
+
+        // Next button
+        html += `
+            <button type="button" class="btn btn-outline-secondary btn-sm" 
+                    ${currentPage === totalPages ? 'disabled' : ''} 
+                    onclick="loadStaffData(${currentPage + 1})">
+                <i class="bx bx-chevron-right"></i>
+            </button>
+        `;
+
+        $('#paginationButtons').html(html);
+    }
+
+    // Update summary statistics
+    function updateSummary(summary) {
+        $('#totalStaff').text(summary.total_staff || 0);
+        $('#activeStaff').text(summary.active_staff || 0);
+        $('#inactiveStaff').text(summary.inactive_staff || 0);
+        $('#filteredStaff').text(summary.filtered_staff || 0);
+    }
+
+    // Update showing range
+    function updateShowingRange() {
+        const start = totalRecords > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+        const end = Math.min(currentPage * pageSize, totalRecords);
+        $('#showingRange').text(`${start}-${end}`);
+        $('#totalRecords').text(totalRecords);
+    }
+
+    // Search functionality
+    staffSearchEl.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTerm = this.value;
+        searchTimeout = setTimeout(() => {
+            loadStaffData(1);
+        }, 500);
+    });
+
+    // Page size change
+    pageSizeSelectEl.addEventListener('change', function() {
+        pageSize = parseInt(this.value);
+        loadStaffData(1);
+    });
+
+    // Make loadStaffData globally available
+    window.loadStaffData = loadStaffData;
+
+    // Initial load
+    loadStaffData(1);
 });
 
 // Delete confirmation function

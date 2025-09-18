@@ -86,13 +86,13 @@ $settingsMenuItems = [
                     <li>
                         <a class="dropdown-item {{ Request::is('home/index') ? 'active' : '' }}" 
                            href="{{ str_replace('apm/', '', url('dashboard')) }}" target="_blank">
-                            <i class="fas fa-external-link-alt me-2"></i>Staff Portal Home
+                            <i class="fas fa-external-link-alt me-2"></i>Staff Portal 
                         </a>
                     </li>
                     <li>
                         <a class="dropdown-item {{ Request::is('staff*') ? 'active' : '' }}" 
                            href="{{ route('staff.index') }}">
-                            <i class="fas fa-user-cog me-2"></i>Staff Management
+                            <i class="fas fa-user-cog me-2"></i>Staff List / Directory
                         </a>
                     </li>
                 </ul>

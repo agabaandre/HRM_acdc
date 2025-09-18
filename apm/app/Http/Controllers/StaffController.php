@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
-use Yajra\DataTables\Facades\DataTables;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\StaffExport;
 use Illuminate\Http\RedirectResponse;
@@ -72,62 +71,6 @@ class StaffController extends Controller
         return view('staff.index', compact('staffMembers', 'divisions', 'dutyStations'));
     }
 
-    /**
-     * Get staff data for DataTables
-     */
-    public function datatable(Request $request)
-    {
-        try {
-            $query = Staff::with(['division', 'dutyStation']);
-
-            // Global search
-            if ($request->has('global_search') && !empty($request->global_search)) {
-                $search = $request->global_search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('staff_id', 'like', "%{$search}%")
-                      ->orWhere('fname', 'like', "%{$search}%")
-                      ->orWhere('lname', 'like', "%{$search}%")
-                      ->orWhere('work_email', 'like', "%{$search}%")
-                      ->orWhere('tel_1', 'like', "%{$search}%")
-                      ->orWhere('title', 'like', "%{$search}%")
-                      ->orWhereHas('division', function($q) use ($search) {
-                          $q->where('division_name', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('dutyStation', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%");
-                      });
-                });
-            }
-
-            // Division filter
-            if ($request->has('division_id') && !empty($request->division_id)) {
-                $query->where('division_id', $request->division_id);
-            }
-
-            // Duty Station filter
-            if ($request->has('duty_station_id') && !empty($request->duty_station_id)) {
-                $query->where('duty_station_name', $request->duty_station_id);
-            }
-
-            // Status filter
-            if ($request->has('status') && $request->status !== '') {
-                $query->where('active', $request->status);
-            }
-
-            return DataTables::of($query)
-                ->addColumn('name', function ($staff) {
-                    return $staff->fname . ' ' . $staff->lname;
-                })
-                ->addColumn('actions', function ($staff) {
-                    return $staff->id; // This will be handled in the view
-                })
-                ->rawColumns(['actions'])
-                ->make(true);
-        } catch (\Exception $e) {
-            \Log::error('DataTable error: ' . $e->getMessage());
-            return response()->json(['error' => 'An error occurred while loading data'], 500);
-        }
-    }
 
     /**
      * Export staff data
@@ -333,6 +276,73 @@ class StaffController extends Controller
         $staff->delete();
         return redirect()->route('staff.index')
             ->with('success', 'Staff record deleted successfully.');
+    }
+
+    /**
+     * Get staff data for AJAX table (similar to division staff)
+     */
+    public function getStaffAjax(Request $request)
+    {
+        try {
+            $search = $request->get('search', '');
+            $page = (int) $request->get('page', 1);
+            $pageSize = (int) $request->get('pageSize', 25);
+            
+            // Calculate pagination
+            $skip = ($page - 1) * $pageSize;
+            
+            // Get all staff first for summary statistics
+            $allStaff = Staff::with(['division', 'dutyStation'])
+                ->where('active', 1)
+                ->get();
+            
+            // Build query for filtered staff
+            $query = Staff::with(['division', 'dutyStation'])
+                ->where('active', 1);
+            
+            // Apply search filter
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('fname', 'like', "%{$search}%")
+                      ->orWhere('lname', 'like', "%{$search}%")
+                      ->orWhere('oname', 'like', "%{$search}%")
+                      ->orWhere('title', 'like', "%{$search}%")
+                      ->orWhere('work_email', 'like', "%{$search}%")
+                      ->orWhere('job_name', 'like', "%{$search}%")
+                      ->orWhere('duty_station_name', 'like', "%{$search}%")
+                      ->orWhereHas('division', function($q) use ($search) {
+                          $q->where('division_name', 'like', "%{$search}%");
+                      });
+                });
+            }
+            
+            // Get total count
+            $totalRecords = $query->count();
+            $totalPages = ceil($totalRecords / $pageSize);
+            
+            // Get paginated data
+            $staffData = $query->skip($skip)->take($pageSize)->get();
+            
+            // Calculate summary statistics
+            $summary = [
+                'total_staff' => $allStaff->count(),
+                'filtered_staff' => $totalRecords,
+                'active_staff' => $allStaff->where('active', 1)->count(),
+                'inactive_staff' => $allStaff->where('active', 0)->count()
+            ];
+            
+            return response()->json([
+                'data' => $staffData,
+                'recordsTotal' => $totalRecords,
+                'totalPages' => $totalPages,
+                'currentPage' => $page,
+                'summary' => $summary
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Staff AJAX error: ' . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while loading staff data'], 500);
+        }
     }
 
     /**

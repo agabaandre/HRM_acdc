@@ -125,7 +125,7 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     
     // Staff specific routes (must come before resource route)
-    Route::get('staff/datatable', [App\Http\Controllers\StaffController::class, 'datatable'])->name('staff.datatable');
+    Route::get('staff/ajax', [App\Http\Controllers\StaffController::class, 'getStaffAjax'])->name('staff.ajax');
     Route::get('staff/export/{format}', [App\Http\Controllers\StaffController::class, 'export'])->name('staff.export');
     Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities');
     
