@@ -296,8 +296,8 @@
                                                                 </span>
                                                             @else
                                                                 {{-- Matrix Activity: Show matrix status --}}
-                                                                <span class="badge bg-{{ $activity->matrix->status === 'approved' ? 'success' : ($activity->matrix->status === 'pending' ? 'warning' : 'secondary') }}">
-                                                                    {{ ucfirst($activity->matrix->status ?? 'N/A') }}
+                                                                <span class="badge bg-{{ $activity->matrix->overall_status === 'approved' ? 'success' : ($activity->matrix->overall_status === 'pending' ? 'warning' : 'secondary') }}">
+                                                                    {{ ucfirst($activity->matrix->overall_status ?? 'N/A') }}
                                                                 </span>
                                                             @endif
                                                         </td>
@@ -409,8 +409,8 @@
                                                                 </span>
                                                             @else
                                                                 {{-- Matrix Activity: Show matrix status --}}
-                                                                <span class="badge bg-{{ $activity->matrix->status === 'approved' ? 'success' : ($activity->matrix->status === 'pending' ? 'warning' : 'secondary') }}">
-                                                                    {{ ucfirst($activity->matrix->status ?? 'N/A') }}
+                                                                <span class="badge bg-{{ $activity->matrix->overall_status === 'approved' ? 'success' : ($activity->matrix->overall_status === 'pending' ? 'warning' : 'secondary') }}">
+                                                                    {{ ucfirst($activity->matrix->overall_status ?? 'N/A') }}
                                                                 </span>
                                                             @endif
                                                         </td>
