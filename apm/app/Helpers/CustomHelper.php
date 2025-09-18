@@ -227,9 +227,9 @@ if (!function_exists('user_session')) {
             $isMatrixApproved = true;
             $isActivityApproved = true;
             if (isset($memo->matrix)) {
-                $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'draft';
+                $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'draft' || $memo->matrix->overall_status === 'returned';
                 if (isset($memo->activity)) {
-                    $isActivityApproved = isset($memo->activity->overall_status) && $memo->activity->overall_status === 'draft';
+                    $isActivityApproved = isset($memo->activity->overall_status) && $memo->activity->overall_status === 'draft' || $memo->activity->overall_status === 'returned';
                 }
             }
 
