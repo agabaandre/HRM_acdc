@@ -6,7 +6,7 @@
         </button>
     @endif
     <button class="btn btn-danger w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
-        <i class="bx bx-edit text-bold"></i> Return
+        <i class="bx bx-edit text-bold"></i> Return entire matrix
     </button>
 </div>
         
