@@ -1,8 +1,9 @@
 @extends('layouts.app')
 
 @php
-    $title = $matrix->overall_status=='draft' ? ' Activity' : ' Single Memo';
-    $is_single_memo = $matrix->overall_status=='draft' ? 0 : 1;
+    // Single memos only for pending or approved matrices, regular activities for draft or returned
+    $is_single_memo = in_array($matrix->overall_status, ['pending', 'approved']) ? 1 : 0;
+    $title = $is_single_memo ? ' Single Memo' : ' Activity';
    // dd($is_single_memo);
 @endphp
 
