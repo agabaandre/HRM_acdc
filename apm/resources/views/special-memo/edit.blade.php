@@ -86,14 +86,8 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2 activity_code" style="display: none;">
-                        <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
-                        </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $specialMemo->workplan_activity_code ?? '') }}" />
-                    </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="budget_codes" class="form-label fw-semibold">
                             <i class="fas fa-wallet me-1 text-success"></i> Budget Code(s) <span class="text-danger">*</span>
                         </label>
@@ -101,6 +95,14 @@
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
                         <small class="text-muted">Select up to 2 codes</small>
+                    </div>
+
+                    <div class="col-md-2 activity_code" style="display: none;">
+                        <label for="activity_code" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code <span class="text-danger">*</span>
+                        </label>
+                        <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $specialMemo->workplan_activity_code ?? '') }}" />
+                        <small class="text-muted">Applicable to only World Bank Budget Codes</small>
                     </div>
                 </div>
 
@@ -1312,6 +1314,7 @@ $(document).ready(function() {
         $('.summernote').summernote({
             height: 150,
             fontNames: ['Arial'],
+            fontsizes: ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '36', '48'],
             fontNamesIgnoreCheck: ['Arial'],
             defaultFontName: 'Arial',
             toolbar: [
@@ -1320,8 +1323,8 @@ $(document).ready(function() {
                 ['fontname', ['fontname']],
                 ['color', ['color']],
                 ['para', ['ul', 'ol', 'paragraph']],
-                ['table', ['table']],
-                ['insert', ['link']],
+                ['table', ['table']], // Table group (default table button)
+                ['insert', ['link', 'table']], // Add table button to insert group as well
                 ['view', ['fullscreen', 'codeview', 'help']]
             ]
         });

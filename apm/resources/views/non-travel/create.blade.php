@@ -183,11 +183,12 @@
                         <small class="text-muted">Select up to 2 codes</small>
                     </div>
 
-                    <div class="col-md-4 activity_code" style="display: none;">
+                    <div class="col-md-3 activity_code" style="display: none;">
                         <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code
                         </label>
                         <input name="activity_code" id="activity_code" class="form-control border-success" />
+                        <small class="text-muted">Applicable to only World Bank Budget Codes</small>
                     </div>
                 </div>
                     <div class="alert alert-info">
@@ -314,25 +315,6 @@
             width: '100%'
         });
 
-        // Initialize Summernote only for fields with summernote class
-        if ($('.summernote').length > 0) {
-            $('.summernote').summernote({
-                height: 150,
-                fontNames: ['Arial'],
-                fontNamesIgnoreCheck: ['Arial'],
-                defaultFontName: 'Arial',
-                toolbar: [
-                    ['style', ['style']],
-                    ['font', ['bold', 'italic', 'underline', 'clear']],
-                    ['fontname', ['fontname']],
-                    ['color', ['color']],
-                    ['para', ['ul', 'ol', 'paragraph']],
-                    ['table', ['table']],
-                    ['insert', ['link']],
-                    ['view', ['fullscreen', 'codeview', 'help']]
-                ]
-            });
-        }
 
 
 
