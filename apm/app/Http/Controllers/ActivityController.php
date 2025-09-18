@@ -485,10 +485,21 @@ class ActivityController extends Controller
 }
 
     /**
-     * Show the form for editing the specified activity.
+     * Show the form for editing the specified activity (for matrices.activities.edit route).
      */
-    public function edit(Matrix $matrix, Activity $activity): View
+    public function edit(Matrix $matrix, Activity $activity)
     {
+        // No need to swap variables - Laravel passes them in the correct order for resource routes
+        
+        // Debug logging
+        \Illuminate\Support\Facades\Log::info('Edit method called', [
+            'activity_id' => $activity->id,
+            'activity_title' => $activity->activity_title,
+            'is_single_memo' => $activity->is_single_memo,
+            'matrix_id' => $matrix->id,
+            'matrix_status' => $matrix->overall_status
+        ]);
+
         // Check if matrix is approved
         if ($matrix->overall_status === 'approved') {
             return redirect()
@@ -601,6 +612,139 @@ class ActivityController extends Controller
             'budgetItems' => $budgetItems,
             'attachments' => $attachments,
             'title' => 'Edit Activity',
+            'editing' => true
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified single memo activity (for activities.single-memos.edit route).
+     */
+    public function editSingleMemo(Activity $activity, Matrix $matrix)
+    {
+        // Debug logging
+        \Illuminate\Support\Facades\Log::info('=== EDIT SINGLE MEMO METHOD CALLED ===', [
+            'activity_id' => $activity->id,
+            'activity_title' => $activity->activity_title,
+            'is_single_memo' => $activity->is_single_memo,
+            'matrix_id' => $matrix->id,
+            'matrix_status' => $matrix->overall_status,
+            'activity_status' => $activity->overall_status,
+            'activity_staff_id' => $activity->staff_id,
+            'current_user_id' => user_session('staff_id')
+        ]);
+
+        // Check if activity can be edited (only if it's in draft status and user is the creator)
+        if ($activity->overall_status !== 'draft' || $activity->staff_id !== user_session('staff_id')) {
+            return redirect()
+                ->route('activities.single-memos.show', $activity)
+                ->with('error', 'Cannot edit activity. Only draft activities created by you can be edited.');
+        }
+
+        // Eager load the division relationship
+        $matrix->load('division');
+
+        $requestTypes = RequestType::all();
+        // All staff in the system for responsible person (with job details)
+        $staff = Staff::active()
+            ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
+            ->get();
+        
+        // Staff only from current matrix division for internal participants
+        $divisionStaff = Staff::active()
+            ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name'])
+            ->where('division_id', $matrix->division_id)
+            ->get();
+        
+        $locations = Location::all();
+        $fundTypes = FundType::all();
+        $costItems = CostItem::all();
+        
+        // Get all staff grouped by division for external participants
+        $allStaffGroupedByDivision = Staff::active()
+            ->select(['staff_id', 'fname', 'lname', 'division_id', 'division_name'])
+            ->get()
+            ->groupBy('division_name');
+            
+        // Debug: Log the staff data
+        \Illuminate\Support\Facades\Log::info('All staff grouped by division:', [
+            'count' => $allStaffGroupedByDivision->count(),
+            'divisions' => $allStaffGroupedByDivision->keys()->toArray()
+        ]);
+
+        // Decode JSON fields
+        $locationIds = is_string($activity->location_id)
+            ? json_decode($activity->location_id, true)
+            : ($activity->location_id ?? []);
+
+        $budgetIds = is_string($activity->budget_id)
+            ? json_decode($activity->budget_id, true)
+            : ($activity->budget_id ?? []);
+
+        $budgetItems = is_string($activity->budget_breakdown)
+            ? json_decode($activity->budget_breakdown, true)
+            : ($activity->budget_breakdown ?? []);
+
+        $attachments = is_string($activity->attachment)
+            ? json_decode($activity->attachment, true)
+            : ($activity->attachment ?? []);
+
+        // Decode internal participants (new format)
+        $rawParticipants = is_string($activity->internal_participants)
+            ? json_decode($activity->internal_participants, true)
+            : ($activity->internal_participants ?? []);
+
+        // Extract staff details and append date/days info
+        $internalParticipants = [];
+        $externalParticipants = [];
+        if (!empty($rawParticipants)) {
+            $staffDetails = Staff::whereIn('staff_id', array_keys($rawParticipants))->get()->keyBy('staff_id');
+
+            foreach ($rawParticipants as $staffId => $participantData) {
+                if (isset($staffDetails[$staffId])) {
+                    $participant = [
+                        'staff' => $staffDetails[$staffId],
+                        'participant_start' => $participantData['participant_start'] ?? null,
+                        'participant_end' => $participantData['participant_end'] ?? null,
+                        'participant_days' => $participantData['participant_days'] ?? null,
+                        'international_travel' => $participantData['international_travel'] ?? 1,
+                    ];
+                    $internalParticipants[] = $participant;
+                }
+            }
+        }
+
+        // Decode external participants
+        $externalParticipants = is_string($activity->external_participants)
+            ? json_decode($activity->external_participants, true)
+            : ($activity->external_participants ?? []);
+        $externalParticipants = is_array($externalParticipants) ? $externalParticipants : [];
+
+        // Fetch related data
+        $locations = Location::whereIn('id', $locationIds ?: [])->get();
+        $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
+
+        // Debug: Log external participants
+        \Illuminate\Support\Facades\Log::info('External participants data:', [
+            'count' => count($externalParticipants),
+            'participants' => $externalParticipants,
+            'matrix_division_id' => $matrix->division_id
+        ]);
+
+        return view('activities.edit', [
+            'matrix' => $matrix,
+            'activity' => $activity,
+            'requestTypes' => $requestTypes,
+            'staff' => $staff,
+            'divisionStaff' => $divisionStaff,
+            'locations' => $locations,
+            'fundTypes' => $fundTypes,
+            'costItems' => $costItems,
+            'allStaffGroupedByDivision' => $allStaffGroupedByDivision,
+            'internalParticipants' => $internalParticipants,
+            'externalParticipants' => $externalParticipants,
+            'budgetItems' => $budgetItems,
+            'attachments' => $attachments,
+            'title' => 'Edit Single Memo',
             'editing' => true
         ]);
     }
@@ -1340,7 +1484,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         }
         
         if ($selectedStaffId) {
-            $baseQuery->where('staff_id', $selectedStaffId);
+            $baseQuery->where('responsible_person_id', $selectedStaffId);
         }
         
         // Debug: Check what matrices are found

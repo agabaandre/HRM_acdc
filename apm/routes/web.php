@@ -214,11 +214,14 @@ Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\Pe
     Route::get('/single-memos/pending-approvals', [ActivityController::class, 'singleMemoPendingApprovals'])->name('activities.single-memos.pending-approvals');
     Route::get('/single-memos/create', [ActivityController::class, 'createSingleMemo'])->name('activities.single-memos.create');
     Route::post('/single-memos', [ActivityController::class, 'storeSingleMemo'])->name('activities.single-memos.store');
-    Route::get('/single-memos/{activity}', [ActivityController::class, 'show'])->name('activities.single-memos.show');
-    Route::get('/single-memos/{activity}/edit/{matrix}', [ActivityController::class, 'edit'])->name('activities.single-memos.edit');
+    
+    // Specific routes must come before general routes
+    Route::get('/single-memos/{activity}/edit/{matrix}', [ActivityController::class, 'editSingleMemo'])->name('activities.single-memos.edit');
+    Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');
     Route::post('/single-memos/{activity}/submit-for-approval', [ActivityController::class, 'submitSingleMemoForApproval'])->name('activities.single-memos.submit-for-approval');
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
-    Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');
+    
+    // General route must come last - moved to end of file
     
     // Non-Travel Memo Routes
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
@@ -309,5 +312,8 @@ Route::get('service-requests/{serviceRequest}/status', [App\Http\Controllers\Ser
 
 // Activities Routes
 Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index')->middleware(CheckSessionMiddleware::class);
+
+// General single memo route - must come last to avoid conflicts
+Route::get('/single-memos/{activity}', [ActivityController::class, 'show'])->name('activities.single-memos.show')->where('activity', '[0-9]+');
 
 
