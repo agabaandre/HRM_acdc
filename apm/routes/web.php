@@ -216,7 +216,8 @@ Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\Pe
     Route::post('/single-memos', [ActivityController::class, 'storeSingleMemo'])->name('activities.single-memos.store');
     
     // Specific routes must come before general routes
-    Route::get('/single-memos/{activity}/edit/{matrix}', [ActivityController::class, 'editSingleMemo'])->name('activities.single-memos.edit');
+    Route::get('/single-memos/{matrix}/edit/{activity}', [ActivityController::class, 'editSingleMemo'])->name('activities.single-memos.edit');
+    Route::put('/single-memos/{matrix}/update/{activity}', [ActivityController::class, 'updateSingleMemo'])->name('activities.single-memos.update');
     Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');
     Route::post('/single-memos/{activity}/submit-for-approval', [ActivityController::class, 'submitSingleMemoForApproval'])->name('activities.single-memos.submit-for-approval');
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
