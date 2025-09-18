@@ -1494,17 +1494,17 @@ class ActivityController extends Controller
         // Calculate date range for the quarter
         $quarterDates = $this->getQuarterDates($quarter, $year);
         
-        // Get activities where this staff is a participant (from their own division)
-        $myDivisionActivities = Activity::with(['matrix.division', 'staff', 'participantSchedules' => function($query) use ($staffId) {
-                $query->where('participant_id', $staffId);
+        // Get ALL activities from this specific matrix where this staff is a participant
+        $allActivities = Activity::with(['matrix.division', 'staff', 'participantSchedules' => function($query) use ($staffId) {
+                $query->where('participant_id', $staffId)
+                      ->where('international_travel', 1); // Match participants schedule filter
             }])
-            ->whereHas('matrix', function($query) use ($staff, $quarter, $year) {
-                $query->where('division_id', $staff->division_id)
-                      ->where('quarter', $quarter)
-                      ->where('year', $year);
+            ->whereHas('matrix', function($query) use ($matrix) {
+                $query->where('id', $matrix->id); // Only show activities from this specific matrix
             })
             ->whereHas('participantSchedules', function($query) use ($staffId) {
-                $query->where('participant_id', $staffId);
+                $query->where('participant_id', $staffId)
+                      ->where('international_travel', 1); // Match participants schedule filter
             })
             ->where('overall_status', '!=', 'cancelled')
             ->when($statusFilter, function($query) use ($statusFilter) {
@@ -1519,30 +1519,20 @@ class ActivityController extends Controller
             ->orderBy('date_from')
             ->get();
         
-        // Get activities where this staff is a participant (from other divisions)
-        $otherDivisionActivities = Activity::with(['matrix.division', 'staff', 'participantSchedules' => function($query) use ($staffId) {
-                $query->where('participant_id', $staffId);
-            }])
-            ->whereHas('matrix', function($query) use ($staff, $quarter, $year) {
-                $query->where('division_id', '!=', $staff->division_id)
-                      ->where('quarter', $quarter)
-                      ->where('year', $year);
-            })
-            ->whereHas('participantSchedules', function($query) use ($staffId) {
-                $query->where('participant_id', $staffId);
-            })
-            ->where('overall_status', '!=', 'cancelled')
-            ->when($statusFilter, function($query) use ($statusFilter) {
-                $query->where('overall_status', $statusFilter);
-            })
-            ->when($activityTypeFilter === 'single_memo', function($query) {
-                $query->where('is_single_memo', true);
-            })
-            ->when($activityTypeFilter === 'regular', function($query) {
-                $query->where('is_single_memo', false);
-            })
-            ->orderBy('date_from')
-            ->get();
+        // Separate activities by division based on participant schedules
+        $myDivisionActivities = $allActivities->filter(function($activity) use ($staff) {
+            // Activities where the staff member is a participant in their home division
+            return $activity->participantSchedules->where('participant_id', $staff->staff_id)
+                ->where('is_home_division', true)
+                ->isNotEmpty();
+        });
+        
+        $otherDivisionActivities = $allActivities->filter(function($activity) use ($staff) {
+            // Activities where the staff member is a participant in other divisions
+            return $activity->participantSchedules->where('participant_id', $staff->staff_id)
+                ->where('is_home_division', false)
+                ->isNotEmpty();
+        });
         
         return view('activities.staff-activities', [
             'staff' => $staff,
