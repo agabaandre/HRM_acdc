@@ -220,6 +220,7 @@ Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\Pe
     Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');
     Route::post('/single-memos/{activity}/submit-for-approval', [ActivityController::class, 'submitSingleMemoForApproval'])->name('activities.single-memos.submit-for-approval');
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
+    Route::delete('/single-memos/{activity}', [ActivityController::class, 'destroySingleMemo'])->name('activities.single-memos.destroy');
     
     // General route must come last - moved to end of file
     

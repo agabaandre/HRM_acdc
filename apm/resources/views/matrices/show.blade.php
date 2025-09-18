@@ -160,7 +160,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
-                            @if(can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
+                             @if(can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
                                 <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">
                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                 </th>
@@ -283,9 +283,22 @@
                                     @endif
                                 </td>
                                 <td class="px-3 py-3 text-center">
-                                    <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" class="btn btn-outline-primary btn-sm">
-                                        <i class="bx bx-show"></i>
-                                    </a>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" class="btn btn-outline-primary btn-sm" title="View Activity">
+                                            <i class="bx bx-show"></i>
+                                        </a>
+                                        @if(($matrix->overall_status == 'draft' || $matrix->overall_status == 'returned') && 
+                                            ($activity->responsible_person_id == user_session('staff_id') || $activity->staff_id == user_session('staff_id')))
+                                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteActivityModal" 
+                                                    data-activity-id="{{ $activity->id }}"
+                                                    data-activity-title="{{ $activity->activity_title }}"
+                                                    title="Delete Activity">
+                                                <i class="bx bx-trash"></i>
+                                            </button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @php
@@ -460,9 +473,22 @@
                                         </span>
                                     </td>
                                     <td class="px-3 py-3 text-center">
-                                        <a href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm">
-                                            <i class="bx bx-show"></i>
-                                        </a>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm" title="View Single Memo">
+                                                <i class="bx bx-show"></i>
+                                            </a>
+                                            @if(($matrix->overall_status == 'draft' || $matrix->overall_status == 'returned') && 
+                                                ($memo->responsible_person_id == user_session('staff_id') || $memo->staff_id == user_session('staff_id')))
+                                                <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#deleteSingleMemoModal" 
+                                                        data-memo-id="{{ $memo->id }}"
+                                                        data-memo-title="{{ $memo->activity_title }}"
+                                                        title="Delete Single Memo">
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @php $memoCount++; @endphp
@@ -508,6 +534,7 @@
 
     <div class="col-lg-5">
         <!-- Approval Actions Section -->
+        {{-- @dd(can_take_action($matrix)) --}}
         @if(can_take_action($matrix) || (can_division_head_edit($matrix) && $matrix->overall_status === 'returned'))
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
@@ -780,6 +807,84 @@
     </div>
 </div>
 
+<!-- Delete Activity Confirmation Modal -->
+<div class="modal fade" id="deleteActivityModal" tabindex="-1" aria-labelledby="deleteActivityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white" id="deleteActivityModalLabel">
+                    <i class="bx bx-trash me-2"></i> Delete Activity
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Are you sure you want to delete this activity?</p>
+                <div class="alert alert-danger">
+                    <i class="bx bx-info-circle me-2"></i>
+                    <strong>Warning:</strong> This action cannot be undone. All data associated with this activity will be permanently deleted.
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <strong>Activity Title:</strong><br>
+                        <span class="text-muted" id="deleteActivityTitle">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bx bx-x me-1"></i> Cancel
+                </button>
+                <form id="deleteActivityForm" method="POST" style="display: inline;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bx bx-trash me-1"></i> Yes, Delete Activity
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Single Memo Confirmation Modal -->
+<div class="modal fade" id="deleteSingleMemoModal" tabindex="-1" aria-labelledby="deleteSingleMemoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white" id="deleteSingleMemoModalLabel">
+                    <i class="bx bx-trash me-2"></i> Delete Single Memo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Are you sure you want to delete this single memo?</p>
+                <div class="alert alert-danger">
+                    <i class="bx bx-info-circle me-2"></i>
+                    <strong>Warning:</strong> This action cannot be undone. All data associated with this single memo will be permanently deleted.
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <strong>Single Memo Title:</strong><br>
+                        <span class="text-muted" id="deleteSingleMemoTitle">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bx bx-x me-1"></i> Cancel
+                </button>
+                <form id="deleteSingleMemoForm" method="POST" style="display: inline;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bx bx-trash me-1"></i> Yes, Delete Single Memo
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 
 
@@ -947,6 +1052,42 @@ function populateActivitiesTable(tableId, activities) {
     
     tbody.innerHTML = html;
 }
+
+// Delete Activity Modal Function
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteActivityModal = document.getElementById('deleteActivityModal');
+    if (deleteActivityModal) {
+        deleteActivityModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const activityId = button.getAttribute('data-activity-id');
+            const activityTitle = button.getAttribute('data-activity-title');
+            
+            // Update modal content
+            document.getElementById('deleteActivityTitle').textContent = activityTitle;
+            
+            // Update form action
+            const form = document.getElementById('deleteActivityForm');
+            form.action = `{{ url('matrices/' . $matrix->id . '/activities') }}/${activityId}`;
+        });
+    }
+
+    // Delete Single Memo Modal Function
+    const deleteSingleMemoModal = document.getElementById('deleteSingleMemoModal');
+    if (deleteSingleMemoModal) {
+        deleteSingleMemoModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const memoId = button.getAttribute('data-memo-id');
+            const memoTitle = button.getAttribute('data-memo-title');
+            
+            // Update modal content
+            document.getElementById('deleteSingleMemoTitle').textContent = memoTitle;
+            
+            // Update form action
+            const form = document.getElementById('deleteSingleMemoForm');
+            form.action = `{{ url('single-memos') }}/${memoId}`;
+        });
+    }
+});
 </script>
 @endpush
 @endsection

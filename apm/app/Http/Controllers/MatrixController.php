@@ -670,7 +670,8 @@ class MatrixController extends Controller
     public function update_status(Request $request, Matrix $matrix): RedirectResponse
     {
         $request->validate(['action' => 'required']);
-        $this->saveMatrixTrail($matrix,$request->comment  ?? ($request->action=='approved')?'approved':'',$request->action);
+        //dd($request->all());
+        $this->saveMatrixTrail($matrix,$request->comment,$request->action);
         
         $notification_type =null;
 
@@ -715,7 +716,7 @@ class MatrixController extends Controller
     }
 
     private function saveMatrixTrail($matrix,$comment,$action){
-
+//dd($matrix,$comment,$action);
         $matrixTrail = new ApprovalTrail();
         $matrixTrail->remarks  = $comment;
         $matrixTrail->action   = $action;
@@ -726,6 +727,7 @@ class MatrixController extends Controller
         $matrixTrail->approval_order   = ($matrix->approval_level==0||$action=='submitted')?0:$matrix->approval_level;
         $matrixTrail->staff_id = user_session('staff_id');
         $matrixTrail->save();
+        //dd($matrixTrail);
 
         mark_matrix_notifications_read(user_session('staff_id'), $matrix->id);
     }

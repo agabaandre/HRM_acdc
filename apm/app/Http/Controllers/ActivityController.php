@@ -983,8 +983,68 @@ class ActivityController extends Controller
                 ->with('error', 'Cannot delete activity. The parent matrix has been approved.');
         }
 
+        // Check if user can delete the activity
+        $currentUserId = user_session('staff_id');
+        $canDelete = false;
+
+        // Allow deletion if matrix is in draft or returned status
+        if (in_array($matrix->overall_status, ['draft', 'returned'])) {
+            // Allow if user is the responsible person or the creator
+            if ($activity->responsible_person_id == $currentUserId || $activity->staff_id == $currentUserId) {
+                $canDelete = true;
+            }
+        }
+
+        if (!$canDelete) {
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('error', 'You do not have permission to delete this activity.');
+        }
+
         try {
-            // Delete uploaded files
+            DB::beginTransaction();
+
+            // 1. Delete participant schedules
+            ParticipantSchedule::where('activity_id', $activity->id)->delete();
+
+            // 2. Delete activity approval trails
+            ActivityApprovalTrail::where('activity_id', $activity->id)->delete();
+
+            // 3. Get activity budgets before deletion to restore fund code balances
+            $activityBudgets = ActivityBudget::where('activity_id', $activity->id)->get();
+            
+            // 4. Restore fund code balances and delete transactions
+            foreach ($activityBudgets as $budget) {
+                // Find the fund code
+                $fundCode = FundCode::find($budget->fund_code);
+                if ($fundCode) {
+                    // Add back the budget amount to fund code balance
+                    $fundCode->budget_balance = floatval($fundCode->budget_balance ?? 0) + floatval($budget->total ?? 0);
+                    $fundCode->save();
+                    
+                    // Create reversal transaction for audit trail
+                    FundCodeTransaction::create([
+                        'fund_code_id' => $budget->fund_code,
+                        'amount' => floatval($budget->total ?? 0),
+                        'description' => "Activity Deletion Reversal: " . $activity->activity_title . " - Fund Code: " . $fundCode->code,
+                        'activity_id' => $activity->id,
+                        'matrix_id' => $activity->matrix_id,
+                        'activity_budget_id' => $budget->id,
+                        'balance_before' => floatval($fundCode->budget_balance ?? 0) - floatval($budget->total ?? 0),
+                        'balance_after' => floatval($fundCode->budget_balance ?? 0),
+                        'is_reversal' => true,
+                        'created_by' => user_session('staff_id'),
+                    ]);
+                }
+                
+                // Delete fund code transactions for this budget
+                FundCodeTransaction::where('activity_budget_id', $budget->id)->delete();
+            }
+
+            // 5. Delete activity budgets
+            ActivityBudget::where('activity_id', $activity->id)->delete();
+
+            // 6. Delete uploaded files
             $attachments = json_decode($activity->attachment, true) ?? [];
             foreach ($attachments as $attachment) {
                 if (isset($attachment['path'])) {
@@ -995,16 +1055,20 @@ class ActivityController extends Controller
                 }
             }
 
+            // 7. Delete the activity
             $activity->delete();
 
+            DB::commit();
+
             return redirect()
-                ->route('matrices.activities.index', $matrix)
-                ->with('success', 'Activity deleted successfully.');
+                ->route('matrices.show', $matrix)
+                ->with('success', 'Activity deleted successfully. Budget amounts have been restored to fund codes.');
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error deleting activity', ['exception' => $e]);
             
             return redirect()
-                ->route('matrices.activities.index', $matrix)
+                ->route('matrices.show', $matrix)
                 ->with('error', 'An error occurred while deleting the activity.');
         }
     }
@@ -2227,5 +2291,110 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'divisions',
             'getWorkflowInfo'
         ));
+    }
+
+    /**
+     * Remove the specified single memo.
+     */
+    public function destroySingleMemo(Activity $activity): RedirectResponse
+    {
+        // Get the matrix for this single memo
+        $matrix = $activity->matrix;
+        
+        // Check if matrix is approved
+        if ($matrix->overall_status === 'approved') {
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('error', 'Cannot delete single memo. The parent matrix has been approved.');
+        }
+
+        // Check if user can delete the single memo
+        $currentUserId = user_session('staff_id');
+        $canDelete = false;
+
+        // Allow deletion if matrix is in draft or returned status
+        if (in_array($matrix->overall_status, ['draft', 'returned'])) {
+            // Allow if user is the responsible person or the creator
+            if ($activity->responsible_person_id == $currentUserId || $activity->staff_id == $currentUserId) {
+                $canDelete = true;
+            }
+        }
+
+        if (!$canDelete) {
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('error', 'You do not have permission to delete this single memo.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Delete participant schedules
+            ParticipantSchedule::where('activity_id', $activity->id)->delete();
+
+            // 2. Delete activity approval trails
+            ActivityApprovalTrail::where('activity_id', $activity->id)->delete();
+
+            // 3. Get activity budgets before deletion to restore fund code balances
+            $activityBudgets = ActivityBudget::where('activity_id', $activity->id)->get();
+            
+            // 4. Restore fund code balances and delete transactions
+            foreach ($activityBudgets as $budget) {
+                // Find the fund code
+                $fundCode = FundCode::find($budget->fund_code);
+                if ($fundCode) {
+                    // Add back the budget amount to fund code balance
+                    $fundCode->budget_balance = floatval($fundCode->budget_balance ?? 0) + floatval($budget->total ?? 0);
+                    $fundCode->save();
+                    
+                    // Create reversal transaction for audit trail
+                    FundCodeTransaction::create([
+                        'fund_code_id' => $budget->fund_code,
+                        'amount' => floatval($budget->total ?? 0),
+                        'description' => "Single Memo Deletion Reversal: " . $activity->activity_title . " - Fund Code: " . $fundCode->code,
+                        'activity_id' => $activity->id,
+                        'matrix_id' => $activity->matrix_id,
+                        'activity_budget_id' => $budget->id,
+                        'balance_before' => floatval($fundCode->budget_balance ?? 0) - floatval($budget->total ?? 0),
+                        'balance_after' => floatval($fundCode->budget_balance ?? 0),
+                        'is_reversal' => true,
+                        'created_by' => user_session('staff_id'),
+                    ]);
+                }
+                
+                // Delete fund code transactions for this budget
+                FundCodeTransaction::where('activity_budget_id', $budget->id)->delete();
+            }
+
+            // 5. Delete activity budgets
+            ActivityBudget::where('activity_id', $activity->id)->delete();
+
+            // 6. Delete uploaded files
+            $attachments = json_decode($activity->attachment, true) ?? [];
+            foreach ($attachments as $attachment) {
+                if (isset($attachment['path'])) {
+                    $filePath = storage_path('app/public/' . $attachment['path']);
+                    if (file_exists($filePath)) {
+                        unlink($filePath);
+                    }
+                }
+            }
+
+            // 7. Delete the single memo (activity)
+            $activity->delete();
+
+            DB::commit();
+
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('success', 'Single memo deleted successfully. Budget amounts have been restored to fund codes.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting single memo', ['exception' => $e]);
+            
+            return redirect()
+                ->route('matrices.show', $matrix)
+                ->with('error', 'An error occurred while deleting the single memo.');
+        }
     }
 }
