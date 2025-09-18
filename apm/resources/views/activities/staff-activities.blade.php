@@ -226,7 +226,10 @@
                                     // Calculate total days for my division activities
                                     $myDivisionTotalDays = 0;
                                     foreach($myDivisionActivities as $activity) {
-                                        $participantSchedule = $activity->participantSchedules->where('participant_id', $staff->staff_id)->first();
+                                        $participantSchedule = $activity->participantSchedules
+                                            ->where('participant_id', $staff->staff_id)
+                                            ->where('division_id', $matrix->division_id)
+                                            ->first();
                                         if($participantSchedule) {
                                             $myDivisionTotalDays += $participantSchedule->participant_days;
                                         }
@@ -257,8 +260,11 @@
                                                         $startDate = \Carbon\Carbon::parse($activity->date_from);
                                                         $endDate = \Carbon\Carbon::parse($activity->date_to);
                                                         
-                                                        // Get participant days from participant_schedules table
-                                                        $participantSchedule = $activity->participantSchedules->where('participant_id', $staff->staff_id)->first();
+                                                        // Get participant days from participant_schedules table for matrix division
+                                                        $participantSchedule = $activity->participantSchedules
+                                                            ->where('participant_id', $staff->staff_id)
+                                                            ->where('division_id', $matrix->division_id)
+                                                            ->first();
                                                         $days = $participantSchedule ? $participantSchedule->participant_days : 0;
                                                     @endphp
                                                     <tr>
@@ -325,7 +331,10 @@
                                     // Calculate total days for other division activities
                                     $otherDivisionTotalDays = 0;
                                     foreach($otherDivisionActivities as $activity) {
-                                        $participantSchedule = $activity->participantSchedules->where('participant_id', $staff->staff_id)->first();
+                                        $participantSchedule = $activity->participantSchedules
+                                            ->where('participant_id', $staff->staff_id)
+                                            ->where('division_id', '!=', $matrix->division_id)
+                                            ->first();
                                         if($participantSchedule) {
                                             $otherDivisionTotalDays += $participantSchedule->participant_days;
                                         }
@@ -356,8 +365,11 @@
                                                         $startDate = \Carbon\Carbon::parse($activity->date_from);
                                                         $endDate = \Carbon\Carbon::parse($activity->date_to);
                                                         
-                                                        // Get participant days from participant schedules
-                                                        $participantSchedule = $activity->participantSchedules->where('participant_id', $staff->staff_id)->first();
+                                                        // Get participant days from participant schedules for other divisions
+                                                        $participantSchedule = $activity->participantSchedules
+                                                            ->where('participant_id', $staff->staff_id)
+                                                            ->where('division_id', '!=', $matrix->division_id)
+                                                            ->first();
                                                         $days = $participantSchedule ? $participantSchedule->participant_days : 0;
                                                     @endphp
                                                     <tr>

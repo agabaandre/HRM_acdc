@@ -482,11 +482,11 @@ class MatrixController extends Controller
                     })
                     ->get();
 
-                // Calculate division days (activities in same division)
-                $division_days = $participantSchedules->where('is_home_division', true)->sum('participant_days');
+                // Calculate division days (activities in matrix's division)
+                $division_days = $participantSchedules->where('division_id', $matrix->division_id)->sum('participant_days');
                 
                 // Calculate other division days (activities in other divisions)
-                $other_days = $participantSchedules->where('is_home_division', false)->sum('participant_days');
+                $other_days = $participantSchedules->where('division_id', '!=', $matrix->division_id)->sum('participant_days');
                 
                 $total_days = $division_days + $other_days;
                 $isOverLimit = $total_days > 21;
