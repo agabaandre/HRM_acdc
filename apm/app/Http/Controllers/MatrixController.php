@@ -430,20 +430,126 @@ class MatrixController extends Controller
         }
         
         // Filter division staff by name if provided
-        $divisionStaff = $matrix->division_staff;
-        if ($request->filled('staff_name')) {
-            $staffName = $request->staff_name;
-            $divisionStaff = $divisionStaff->filter(function ($staff) use ($staffName) {
-                $fullName = strtolower($staff->fname . ' ' . $staff->lname);
-                $searchTerm = strtolower($staffName);
-                return str_contains($fullName, $searchTerm);
-            });
-        }
-        
         //dd($matrix);
     
-        return view('matrices.show', compact('matrix', 'activities', 'singleMemos', 'divisionStaff'));
+        return view('matrices.show', compact('matrix', 'activities', 'singleMemos'));
      }
+
+    /**
+     * Get division staff data via AJAX for DataTables
+     */
+    public function getDivisionStaffAjax(Matrix $matrix, Request $request)
+    {
+        try {
+            $search = $request->get('search', '');
+            $page = $request->get('page', 1);
+            $pageSize = $request->get('pageSize', 25);
+            $start = ($page - 1) * $pageSize;
+
+            // Get all division staff first to calculate summary statistics
+            $allDivisionStaff = $matrix->division_staff;
+            $quarter_year = $matrix->quarter . "-" . $matrix->year;
+
+            // Build query for filtered staff
+            $query = Staff::where('division_id', $matrix->division_id);
+
+            // Apply search filter
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('fname', 'like', '%' . $search . '%')
+                      ->orWhere('lname', 'like', '%' . $search . '%')
+                      ->orWhere('job_name', 'like', '%' . $search . '%')
+                      ->orWhere('duty_station_name', 'like', '%' . $search . '%');
+                });
+            }
+
+            // Get total count
+            $totalRecords = $query->count();
+
+            // Get paginated data
+            $divisionStaff = $query->skip($start)->take($pageSize)->get();
+
+            // Calculate days for each staff member
+            $staffData = [];
+
+            foreach ($divisionStaff as $staff) {
+                // Get participant data for this staff member
+                $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
+                    ->whereHas('activity', function($q) use ($matrix) {
+                        $q->where('matrix_id', $matrix->id);
+                    })
+                    ->get();
+
+                // Calculate division days (activities in same division)
+                $division_days = $participantSchedules->where('is_home_division', true)->sum('participant_days');
+                
+                // Calculate other division days (activities in other divisions)
+                $other_days = $participantSchedules->where('is_home_division', false)->sum('participant_days');
+                
+                $total_days = $division_days + $other_days;
+                $isOverLimit = $total_days > 21;
+
+                $staffData[] = [
+                    'staff_id' => $staff->staff_id,
+                    'title' => $staff->title,
+                    'fname' => $staff->fname,
+                    'lname' => $staff->lname,
+                    'job_name' => $staff->job_name,
+                    'duty_station_name' => $staff->duty_station_name,
+                    'division_days' => $division_days,
+                    'other_days' => $other_days,
+                    'total_days' => $total_days,
+                    'is_over_limit' => $isOverLimit
+                ];
+            }
+
+            // Calculate summary statistics from all division staff
+            $totalStaff = $allDivisionStaff->count();
+            $totalDivisionDays = 0;
+            $overLimitCount = 0;
+
+            foreach ($allDivisionStaff as $staff) {
+                $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
+                    ->whereHas('activity', function($q) use ($matrix) {
+                        $q->where('matrix_id', $matrix->id);
+                    })
+                    ->get();
+
+                $division_days = $participantSchedules->where('is_home_division', true)->sum('participant_days');
+                $other_days = $participantSchedules->where('is_home_division', false)->sum('participant_days');
+                $total_days = $division_days + $other_days;
+
+                $totalDivisionDays += $division_days;
+                if ($total_days >= 21) {
+                    $overLimitCount++;
+                }
+            }
+
+            return response()->json([
+                'data' => $staffData,
+                'recordsTotal' => $totalRecords,
+                'currentPage' => $page,
+                'pageSize' => $pageSize,
+                'totalPages' => ceil($totalRecords / $pageSize),
+                'summary' => [
+                    'total_staff' => $totalStaff,
+                    'total_division_days' => $totalDivisionDays,
+                    'over_limit_count' => $overLimitCount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in getDivisionStaffAjax: ' . $e->getMessage(), [
+                'matrix_id' => $matrix->id,
+                'error' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'An error occurred while loading staff data',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     
     
 

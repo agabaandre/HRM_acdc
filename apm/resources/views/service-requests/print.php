@@ -210,25 +210,25 @@
   <?php
     // Helper functions to safely access staff data
     if (!function_exists('getStaffEmail')) {
-      function getStaffEmail($approver) {
-        if (isset($approver['staff']) && isset($approver['staff']['work_email'])) {
-          return $approver['staff']['work_email'];
-        } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['work_email'])) {
-          return $approver['oic_staff']['work_email'];
-        }
-        return null;
+    function getStaffEmail($approver) {
+      if (isset($approver['staff']) && isset($approver['staff']['work_email'])) {
+        return $approver['staff']['work_email'];
+      } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['work_email'])) {
+        return $approver['oic_staff']['work_email'];
+      }
+      return null;
       }
     }
     
     if (!function_exists('getStaffId')) {
-      function getStaffId($approver) {
-        if (isset($approver['staff']) && isset($approver['staff']['id'])) {
-          return $approver['staff']['id'];
-        } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['id'])) {
-          return $approver['oic_staff']['id'];
-        }
-        return null;
+    function getStaffId($approver) {
+      if (isset($approver['staff']) && isset($approver['staff']['id'])) {
+        return $approver['staff']['id'];
+      } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['id'])) {
+        return $approver['oic_staff']['id'];
       }
+      return null;
+    }
     }
     
     if (!function_exists('generateVerificationHash')) {
@@ -270,8 +270,8 @@
             if (!empty($divisionName)) {
                 echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
             }
+            }
         }
-      }
     }
 
     // Helper function to render signature
@@ -295,7 +295,7 @@
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
         echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($serviceRequest->id, $staffId, $approvalDate)) . '</div>';
         echo '</div>';
-      }
+    }
     }
 
     // Generate file reference once
@@ -459,40 +459,40 @@
   <tr>
     <th scope="row">Priority</th>
     <td><?php echo htmlspecialchars($serviceRequest->priority ?? 'N/A'); ?><span class="fill line"></span></td>
-  </tr>
-  <tr>
+      </tr>
+      <tr>
     <th scope="row">Required By Date</th>
     <td><?php echo isset($serviceRequest->required_by_date) ? date('d/m/Y', strtotime($serviceRequest->required_by_date)) : 'N/A'; ?><span class="fill line"></span></td>
-  </tr>
-  <tr>
+      </tr>
+      <tr>
     <th scope="row">Location</th>
     <td><?php echo htmlspecialchars($serviceRequest->location ?? 'N/A'); ?><span class="fill line"></span></td>
-  </tr>
-  <tr>
+      </tr>
+      <tr>
     <th scope="row">Estimated Cost</th>
     <td><?php echo number_format($serviceRequest->estimated_cost ?? 0, 2); ?><span class="fill line"></span></td>
-  </tr>
-</table>
-
+      </tr>
+    </table>
+    
 <!-- Description -->
 <table class="mb-15 mt-neg20">
   <tr>
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Description:</strong></td>
-  </tr>
-  <tr>
+      </tr>
+      <tr>
    <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><div class="justify-text"><?php echo htmlspecialchars($serviceRequest->description ?? 'N/A'); ?></div></td>
-  </tr>
-</table>
+      </tr>
+    </table>
 
 <!-- Justification -->
 <table class="mb-15 mt-neg20">
   <tr>
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Justification:</strong></td>
-  </tr>
-  <tr>
+      </tr>
+      <tr>
    <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><div class="justify-text"><?php echo htmlspecialchars($serviceRequest->justification ?? 'N/A'); ?></div></td>
-  </tr>
-</table>
+      </tr>
+    </table>
 
 <div class="page-break"></div>
 

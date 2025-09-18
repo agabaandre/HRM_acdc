@@ -1473,6 +1473,123 @@ class ActivityController extends Controller
     }
 
     /**
+     * Display staff activities for a specific matrix/quarter.
+     */
+    public function showStaffActivities($staffId, $matrix, Request $request): View
+    {
+        // Get the staff member
+        $staff = Staff::where('staff_id', $staffId)->firstOrFail();
+        
+        // Get the matrix by ID
+        $matrix = Matrix::findOrFail($matrix);
+        
+        // Get quarter and year from matrix
+        $quarter = $matrix->quarter;
+        $year = $matrix->year;
+        
+        // Get filter parameters
+        $statusFilter = $request->get('status');
+        $activityTypeFilter = $request->get('activity_type');
+        
+        // Calculate date range for the quarter
+        $quarterDates = $this->getQuarterDates($quarter, $year);
+        
+        // Get activities where this staff is a participant (from their own division)
+        $myDivisionActivities = Activity::with(['matrix.division', 'staff', 'participantSchedules' => function($query) use ($staffId) {
+                $query->where('participant_id', $staffId);
+            }])
+            ->whereHas('matrix', function($query) use ($staff, $quarter, $year) {
+                $query->where('division_id', $staff->division_id)
+                      ->where('quarter', $quarter)
+                      ->where('year', $year);
+            })
+            ->whereHas('participantSchedules', function($query) use ($staffId) {
+                $query->where('participant_id', $staffId);
+            })
+            ->where('overall_status', '!=', 'cancelled')
+            ->when($statusFilter, function($query) use ($statusFilter) {
+                $query->where('overall_status', $statusFilter);
+            })
+            ->when($activityTypeFilter === 'single_memo', function($query) {
+                $query->where('is_single_memo', true);
+            })
+            ->when($activityTypeFilter === 'regular', function($query) {
+                $query->where('is_single_memo', false);
+            })
+            ->orderBy('date_from')
+            ->get();
+        
+        // Get activities where this staff is a participant (from other divisions)
+        $otherDivisionActivities = Activity::with(['matrix.division', 'staff', 'participantSchedules' => function($query) use ($staffId) {
+                $query->where('participant_id', $staffId);
+            }])
+            ->whereHas('matrix', function($query) use ($staff, $quarter, $year) {
+                $query->where('division_id', '!=', $staff->division_id)
+                      ->where('quarter', $quarter)
+                      ->where('year', $year);
+            })
+            ->whereHas('participantSchedules', function($query) use ($staffId) {
+                $query->where('participant_id', $staffId);
+            })
+            ->where('overall_status', '!=', 'cancelled')
+            ->when($statusFilter, function($query) use ($statusFilter) {
+                $query->where('overall_status', $statusFilter);
+            })
+            ->when($activityTypeFilter === 'single_memo', function($query) {
+                $query->where('is_single_memo', true);
+            })
+            ->when($activityTypeFilter === 'regular', function($query) {
+                $query->where('is_single_memo', false);
+            })
+            ->orderBy('date_from')
+            ->get();
+        
+        return view('activities.staff-activities', [
+            'staff' => $staff,
+            'matrix' => $matrix,
+            'myDivisionActivities' => $myDivisionActivities,
+            'otherDivisionActivities' => $otherDivisionActivities,
+            'quarter' => $quarter,
+            'year' => $year,
+            'quarterDates' => $quarterDates
+        ]);
+    }
+    
+    /**
+     * Get quarter dates for filtering activities.
+     */
+    private function getQuarterDates($quarter, $year)
+    {
+        switch (strtolower($quarter)) {
+            case 'q1':
+                return [
+                    'start' => $year . '-01-01',
+                    'end' => $year . '-03-31'
+                ];
+            case 'q2':
+                return [
+                    'start' => $year . '-04-01',
+                    'end' => $year . '-06-30'
+                ];
+            case 'q3':
+                return [
+                    'start' => $year . '-07-01',
+                    'end' => $year . '-09-30'
+                ];
+            case 'q4':
+                return [
+                    'start' => $year . '-10-01',
+                    'end' => $year . '-12-31'
+                ];
+            default:
+                return [
+                    'start' => $year . '-01-01',
+                    'end' => $year . '-12-31'
+                ];
+        }
+    }
+
+    /**
      * Display a listing of single memos (activities with is_single_memo = true).
      */
     public function singlememos(Request $request): View
