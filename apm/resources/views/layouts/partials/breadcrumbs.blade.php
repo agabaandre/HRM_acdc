@@ -46,11 +46,19 @@
 
                         @foreach($segments as $key => $segment)
                         @php
-                        $url = $key === 0 ? "/$segment" : "$url/$segment";
-
                         $displayName = ucwords(str_replace(['-', '_'], ' ', $segment));
                         $segmentLower = strtolower($segment);
                         $previousSegment = $segments[$key - 1] ?? null;
+                        
+                        // Only build URLs for simple routes, avoid complex parameterized routes
+                        if ($key === 0) {
+                            $url = "/$segment";
+                        } elseif (in_array($segmentLower, ['matrix']) && $previousSegment === 'activities') {
+                            // Don't build URL for matrix parameter in staff activities route
+                            $url = '';
+                        } else {
+                            $url = "$url/$segment";
+                        }
 
                         // Handle special case: matrice or matrices
                         if (in_array($segmentLower, ['matrice', 'matrices'])) {
@@ -80,6 +88,10 @@
                                 $displayName = $activity->activity_title ?? 'Activity #' . $segment;
                             } elseif ($previousSegment === 'staff' && isset($staff)) {
                                 $displayName = $staff->full_name ?? 'Staff #' . $segment;
+                            } elseif ($previousSegment === 'matrix' && isset($matrix)) {
+                                // Handle staff activities matrix route
+                                $displayName = $matrix->year . ' ' . ($matrix->quarter ?? '');
+                                $url = ''; // Don't make this clickable
                             } else {
                                 $displayName = 'Details';
                             }
@@ -98,6 +110,12 @@
                             $url = ''; // avoid link on action
                         }
 
+                        // Handle special route patterns
+                        elseif ($segmentLower === 'matrix' && $previousSegment === 'activities') {
+                            // This is the staff activities matrix route - don't make it clickable
+                            $displayName = 'Matrix';
+                            $url = '';
+                        }
                         // Handle resource names
                         else {
                         $resourceNames = ['fund-types', 'fund-codes', 'directorates', 'staff', 'request-types', 'activities', 'non-travel', 'request-arf', 'special-memo', 'service-requests'];
