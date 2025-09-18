@@ -216,24 +216,42 @@ if (!function_exists('user_session')) {
      if (!function_exists('can_edit_memo')) {
         function can_edit_memo($memo) {
             $user = (object) session('user', []);
+            $session_division_id = isset($user->division_id) ? $user->division_id : null;
+
             // Must be owner or responsible person
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-            $isHod = 
-            // Only allow if status is not approved
-            $isApproved = isset($memo->overall_status) && $memo->overall_status === 'draft' || $memo->overall_status === 'returned';
+
+            // Only allow if status is draft or returned
+            $isApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned'));
 
             // If this is a matrix memo, check matrix approval and activity approval
+            // Default to true only if not set, otherwise check actual status
             $isMatrixApproved = true;
-            $isActivityApproved = true;
             if (isset($memo->matrix)) {
-                $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'draft' || $memo->matrix->overall_status === 'returned';
-                if (isset($memo->activity)) {
-                    $isActivityApproved = isset($memo->activity->overall_status) && $memo->activity->overall_status === 'draft' || $memo->activity->overall_status === 'returned';
+                $isMatrixApproved = (isset($memo->matrix->overall_status) && ($memo->matrix->overall_status == 'draft' || $memo->matrix->overall_status == 'returned'));
+            }
+
+            $isActivityApproved = true;
+            if (isset($memo->activity)) {
+                $isActivityApproved = (isset($memo->activity->overall_status) && ($memo->activity->overall_status == 'draft' || $memo->activity->overall_status == 'returned'));
+            }
+
+            // Check if user is division head of the memo's division
+            $isDivisionHead = false;
+            
+            if (isset($memo->division_id)) {
+                // Get all division IDs where the user is the division head
+                $divisionIds = Division::where('division_head', $user->staff_id)->pluck('id')->toArray();
+
+                if (in_array($memo->division_id, $divisionIds)) {
+                    $isDivisionHead = true;
                 }
             }
 
-            return ($isOwner || $isResponsible) && $isApproved && $isMatrixApproved && $isActivityApproved;
+            return (
+                ($isOwner || $isResponsible) && $isApproved && $isMatrixApproved && $isActivityApproved
+            ) || $isDivisionHead;
         }
      }
      
