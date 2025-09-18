@@ -1520,17 +1520,17 @@ class ActivityController extends Controller
             ->get();
         
         // Separate activities by division based on participant schedules
-        $myDivisionActivities = $allActivities->filter(function($activity) use ($staff, $matrix) {
-            // Activities where the staff member is a participant in the matrix's division
+        $myDivisionActivities = $allActivities->filter(function($activity) use ($staff) {
+            // Activities where the staff member is a participant in their home division
             return $activity->participantSchedules->where('participant_id', $staff->staff_id)
-                ->where('division_id', $matrix->division_id)
+                ->where('is_home_division', true)
                 ->isNotEmpty();
         });
         
-        $otherDivisionActivities = $allActivities->filter(function($activity) use ($staff, $matrix) {
-            // Activities where the staff member is a participant in divisions other than the matrix's division
+        $otherDivisionActivities = $allActivities->filter(function($activity) use ($staff) {
+            // Activities where the staff member is a participant in other divisions
             return $activity->participantSchedules->where('participant_id', $staff->staff_id)
-                ->where('division_id', '!=', $matrix->division_id)
+                ->where('is_home_division', false)
                 ->isNotEmpty();
         });
         
