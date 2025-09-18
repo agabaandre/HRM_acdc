@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td class="px-3 py-3">
                         <div class="fw-semibold text-wrap" style="max-width: 200px;">
-                            <a href="/apm/staff/${staff.staff_id}/activities/matrix/{{ $matrix->id }}" 
+                            <a href="{{ url('staff') }}/${staff.staff_id}/activities/matrix/{{ $matrix->id }}" 
                                class="text-decoration-none text-primary" target="_blank">
                                 ${fullName}
                             </a>
