@@ -120,7 +120,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h2 class="mb-1">
-                                <i class="bx bx-user me-2 text-primary"></i>
+                                <i class="bx bx-user me-2 text-success"></i>
                                 {{ $staff->title }} {{ $staff->fname }} {{ $staff->lname }}
                             </h2>
                             <p class="text-muted mb-0">
@@ -155,7 +155,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <h6 class="mb-0">
-                                <i class="bx bx-filter me-2 text-primary"></i>
+                                <i class="bx bx-filter me-2 text-success"></i>
                                 Filter Activities
                             </h6>
                         </div>
