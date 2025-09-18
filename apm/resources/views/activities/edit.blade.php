@@ -700,7 +700,7 @@ $(document).ready(function () {
     }
 
     // Budget codes loading and management
-    const divisionId = {{ user_session('division_id') }};
+    const divisionId = {{ $matrix->division_id }};
 
     $('#fund_type').on('change', function () {
         const fundTypeId = $(this).val();
