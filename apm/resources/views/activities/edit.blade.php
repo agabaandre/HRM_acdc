@@ -156,7 +156,7 @@
                     <div class="d-flex gap-2 mb-3">
                         <button type="button" class="btn btn-danger btn-sm" id="addAttachment">Add New</button>
                         <button type="button" class="btn btn-secondary btn-sm" id="removeAttachment">Remove</button>
-                        <button type="button" class="btn btn-warning btn-sm" id="retryBudgetInit" style="display: none;">Retry Budget Init</button>
+                        {{-- <button type="button" class="btn btn-warning btn-sm" id="retryBudgetInit" style="display: none;">Retry Budget Init</button> --}}
                     </div>
                     <div class="row g-3" id="attachmentContainer">
                         @if($attachments && count($attachments) > 0)
