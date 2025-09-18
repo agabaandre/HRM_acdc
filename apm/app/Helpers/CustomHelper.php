@@ -241,22 +241,21 @@ if (!function_exists('user_session')) {
     
     if (!function_exists('done_approving')) {
         /**
-         * Get a value from session('user') using dot notation
+         * Check if the user's last action at this approval level or higher was 'approved'
+         * (caters for returns by considering the latest action)
          */
         function done_approving($matrix)
         {
-         
             $user = session('user', []);
-            $my_appoval =  ApprovalTrail::where('model_id',"=",$matrix->id)
-            ->where('model_type', "="  , 'App\Models\\'.ucfirst(class_basename($matrix)))
-            ->where('action','approved')
-            ->where('approval_order',$matrix->approval_level)
-            ->where('staff_id',$user['staff_id'])->pluck('id');
-            
+            $approval = ApprovalTrail::where('model_id', $matrix->id)
+                ->where('model_type', 'App\Models\\' . ucfirst(class_basename($matrix)))
+                ->where('approval_order', '>=', $matrix->approval_level)
+                ->where('staff_id', $user['staff_id'])
+                ->orderByDesc('id')
+                ->first();
 
-            return count($my_appoval)>0;
+            return $approval && $approval->action === 'approved';
         }
-
     }
 
     if (!function_exists('can_approve_activity')) {
@@ -268,16 +267,15 @@ if (!function_exists('user_session')) {
                return false;
           
             if($activity->matrix->forward_workflow_id==null)
-                return true;
-            
-            if(count($activity->activity_budget)==0)
                 return false;
-            
+          
+            if($activity->fund_type_id==3)
+                return true;
 
             if(!$activity->matrix->workflow_definition->allowed_funders||empty($activity->matrix->workflow_definition->allowed_funders))
                 return true;
 
-            return  in_array($activity->activity_budget[0]->fundcode->fund_type_id,json_decode($activity->matrix->workflow_definition->allowed_funders));
+            return  in_array($activity->activity_budget[0]->fundcode->fund_type_id,json_decode(@$activity->matrix->workflow_definition->allowed_funders));
         }
     }
 
@@ -350,7 +348,7 @@ if (!function_exists('user_session')) {
             $user = session('user', []);
 
             ///dd($user);
-            //dd(done_approving($matrix));
+           // dd(done_approving($matrix));
 
            if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft','returned'])) {
                return false;
