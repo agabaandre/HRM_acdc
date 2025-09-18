@@ -402,7 +402,7 @@
                         <tbody>
                             @php $memoCount = 1; @endphp
                             @forelse($singleMemos as $memo)
-                                <tr style="background-color: #d5f5de;">
+                                <tr style="background-color: {{ $memo->overall_status !== 'approved' ? '#fff3cd' : '#d5f5de' }};">
                                     <td class="px-3 py-3 text-center">
                                         <span class="badge bg-secondary rounded-pill">{{ $memoCount }}</span>
                                     </td>
@@ -468,8 +468,8 @@
                                         <span class="fw-bold text-success">{{ number_format($totalBudget, 2) }} USD</span>
                                     </td>
                                     <td class="px-3 py-3 text-center">
-                                        <span class="badge bg-success rounded-pill">
-                                            Single Memo - {{ ucfirst($memo->status) }}
+                                        <span class="badge bg-{{ $memo->overall_status === 'approved' ? 'success' : 'warning' }} rounded-pill">
+                                            {{ ucfirst($memo->overall_status) }}
                                         </span>
                                     </td>
                                     <td class="px-3 py-3 text-center">

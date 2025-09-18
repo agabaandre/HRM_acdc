@@ -535,11 +535,6 @@ class ActivityController extends Controller
             ->get()
             ->groupBy('division_name');
             
-        // Debug: Log the staff data
-        \Illuminate\Support\Facades\Log::info('All staff grouped by division:', [
-            'count' => $allStaffGroupedByDivision->count(),
-            'divisions' => $allStaffGroupedByDivision->keys()->toArray()
-        ]);
 
         // Decode JSON fields
         $locationIds = is_string($activity->location_id)
@@ -593,12 +588,6 @@ class ActivityController extends Controller
         $selectedLocations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
 
-        // Debug: Log external participants
-        \Illuminate\Support\Facades\Log::info('External participants data:', [
-            'count' => count($externalParticipants),
-            'participants' => $externalParticipants,
-            'matrix_division_id' => $matrix->division_id
-        ]);
 
         return view('activities.edit', [
             'matrix' => $matrix,
@@ -622,22 +611,10 @@ class ActivityController extends Controller
     /**
      * Show the form for editing the specified single memo activity (for activities.single-memos.edit route).
      */
-    public function editSingleMemo(Activity $activity, Matrix $matrix)
+    public function editSingleMemo(Matrix $matrix, Activity $activity)
     {
-        // Debug logging
-        \Illuminate\Support\Facades\Log::info('=== EDIT SINGLE MEMO METHOD CALLED ===', [
-            'activity_id' => $activity->id,
-            'activity_title' => $activity->activity_title,
-            'is_single_memo' => $activity->is_single_memo,
-            'matrix_id' => $matrix->id,
-            'matrix_status' => $matrix->overall_status,
-            'activity_status' => $activity->overall_status,
-            'activity_staff_id' => $activity->staff_id,
-            'current_user_id' => user_session('staff_id')
-        ]);
-
         // Check if activity can be edited (only if it's in draft status and user is the creator)
-        if ($activity->overall_status !== 'draft' || $activity->staff_id !== user_session('staff_id')) {
+        if ($activity->overall_status !== 'draft' || $activity->staff_id != user_session('staff_id')) {
             return redirect()
                 ->route('activities.single-memos.show', $activity)
                 ->with('error', 'Cannot edit activity. Only draft activities created by you can be edited.');
@@ -668,11 +645,6 @@ class ActivityController extends Controller
             ->get()
             ->groupBy('division_name');
             
-        // Debug: Log the staff data
-        \Illuminate\Support\Facades\Log::info('All staff grouped by division:', [
-            'count' => $allStaffGroupedByDivision->count(),
-            'divisions' => $allStaffGroupedByDivision->keys()->toArray()
-        ]);
 
         // Decode JSON fields
         $locationIds = is_string($activity->location_id)
@@ -711,27 +683,30 @@ class ActivityController extends Controller
                         'participant_days' => $participantData['participant_days'] ?? null,
                         'international_travel' => $participantData['international_travel'] ?? 1,
                     ];
-                    $internalParticipants[] = $participant;
+                    
+                    // Separate internal and external participants
+                    if ($staffDetails[$staffId]->division_id == $matrix->division_id) {
+                        $internalParticipants[] = $participant;
+                    } else {
+                        $externalParticipants[] = $participant;
+                    }
                 }
             }
         }
 
-        // Decode external participants
-        $externalParticipants = is_string($activity->external_participants)
-            ? json_decode($activity->external_participants, true)
-            : ($activity->external_participants ?? []);
-        $externalParticipants = is_array($externalParticipants) ? $externalParticipants : [];
-
         // Fetch related data
-        $locations = Location::whereIn('id', $locationIds ?: [])->get();
+        $selectedLocations = Location::whereIn('id', $locationIds ?: [])->get();
         $fundCodes = FundCode::whereIn('id', $budgetIds ?: [])->get();
-
-        // Debug: Log external participants
-        \Illuminate\Support\Facades\Log::info('External participants data:', [
-            'count' => count($externalParticipants),
-            'participants' => $externalParticipants,
-            'matrix_division_id' => $matrix->division_id
-        ]);
+        
+        // Calculate current activity budget for each fund code (for editing validation)
+        $currentActivityBudgets = [];
+        if ($fundCodes->isNotEmpty()) {
+            $activityBudgets = \App\Models\ActivityBudget::where('activity_id', $activity->id)->get();
+            foreach ($fundCodes as $fundCode) {
+                $currentBudget = $activityBudgets->where('fund_code', $fundCode->id)->first();
+                $currentActivityBudgets[$fundCode->id] = $currentBudget ? $currentBudget->total : 0;
+            }
+        }
 
         return view('activities.edit', [
             'matrix' => $matrix,
@@ -747,9 +722,28 @@ class ActivityController extends Controller
             'externalParticipants' => $externalParticipants,
             'budgetItems' => $budgetItems,
             'attachments' => $attachments,
+            'selectedLocations' => $selectedLocations,
+            'fundCodes' => $fundCodes,
+            'currentActivityBudgets' => $currentActivityBudgets,
             'title' => 'Edit Single Memo',
             'editing' => true
         ]);
+    }
+
+    /**
+     * Update the specified single memo activity.
+     */
+    public function updateSingleMemo(Request $request, Matrix $matrix, Activity $activity): RedirectResponse|JsonResponse
+    {
+        Log::info('UpdateSingleMemo method called', [
+            'matrix_id' => $matrix->id,
+            'activity_id' => $activity->id,
+            'is_single_memo' => $activity->is_single_memo ?? false,
+            'request_data' => $request->all()
+        ]);
+        
+        // Use the same logic as regular update but with single memo specific handling
+        return $this->update($request, $matrix, $activity);
     }
 
     /**
@@ -757,20 +751,50 @@ class ActivityController extends Controller
      */
     public function update(Request $request, Matrix $matrix, Activity $activity): RedirectResponse|JsonResponse
     {
+       // dd($request->all());
+        Log::info('Update method called', [
+            'matrix_id' => $matrix->id,
+            'activity_id' => $activity->id,
+            'is_single_memo' => $activity->is_single_memo ?? false,
+            'request_data' => $request->all()
+        ]);
+        
         // Check if matrix is approved
-        if ($matrix->overall_status === 'approved') {
+        Log::info('Checking matrix approval status', [
+            'matrix_id' => $matrix->id,
+            'matrix_status' => $matrix->overall_status,
+            'is_approved' => $matrix->overall_status === 'approved'
+        ]);
+        
+        // Block regular activities if matrix is approved, but allow single memos
+        if ($matrix->overall_status == 'approved' && $activity->is_single_memo == 0) {
             $message = 'Cannot update activity. The matrix has been approved.';
+            
+            Log::info('Matrix is approved, blocking regular activity update', [
+                'matrix_id' => $matrix->id,
+                'matrix_status' => $matrix->overall_status,
+                'is_single_memo' => $activity->is_single_memo
+            ]);
             
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'msg' => $message
-                ], 422);
+                ], 403);
             }
             
             return redirect()
                 ->route('matrices.activities.show', [$matrix, $activity])
                 ->with('error', $message);
+        }
+        
+        // Log that single memo editing is allowed even with approved matrix
+        if ($matrix->overall_status == 'approved' && $activity->is_single_memo == 1) {
+            Log::info('Matrix is approved but allowing single memo update', [
+                'matrix_id' => $matrix->id,
+                'matrix_status' => $matrix->overall_status,
+                'is_single_memo' => $activity->is_single_memo
+            ]);
         }
 
         $userStaffId = session('user.auth_staff_id');
@@ -778,16 +802,39 @@ class ActivityController extends Controller
         return DB::transaction(function () use ($request, $matrix, $activity, $userStaffId) {
             try {
                 // Validate required fields
-                $validated = $request->validate([
-                    'activity_title' => 'required|string|max:255',
-                    'location_id' => 'required|array|min:1',
-                    'location_id.*' => 'exists:locations,id',
-                    'participant_start' => 'required|array',
-                    'participant_end' => 'required|array',
+                try {
+                    $validated = $request->validate([
+                        'activity_title' => 'required|string|max:255',
+                        'location_id' => 'required|array|min:1',
+                        'location_id.*' => 'exists:locations,id',
+                        'participant_start' => 'required|array',
+                        'participant_end' => 'required|array',
                     'participant_days' => 'required|array',
                     'attachments.*.type' => 'required|string|max:255',
                     'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240', // 10MB max
                 ]);
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    Log::error('Validation failed in update', [
+                        'errors' => $e->validator->errors()->all(),
+                        'request_data' => $request->all()
+                    ]);
+                    
+                    $errorMessage = 'Validation failed: ' . implode(', ', $e->validator->errors()->all());
+                    
+                    if ($request->ajax()) {
+                        return response()->json([
+                            'success' => false,
+                            'msg' => $errorMessage
+                        ], 422);
+                    }
+                    
+                    return redirect()->back()->withInput()->with([
+                        'msg' => $errorMessage,
+                        'type' => 'error'
+                    ]);
+                }
+
+                Log::info('Validation passed, proceeding with update');
 
                 // Build internal_participants array with staff_id as key
                 $participantStarts = $request->input('participant_start', []);
@@ -926,9 +973,9 @@ class ActivityController extends Controller
                     'attachment' => json_encode($attachments),
                     'overall_status' => 'draft',
                     'approval_level' => 0,
+                    'is_single_memo' => $activity->is_single_memo??0, // Preserve single memo status
                     'forward_workflow_id' => null,
                     'is_draft' => 1,
-                    'is_single_memo' => $request->input('is_single_memo', 0),
                 ]);
 
                 if (count($internalParticipants) > 0)
@@ -955,9 +1002,15 @@ class ActivityController extends Controller
                     ]);
             } catch (\Exception $e) {
                 DB::rollBack();
-                Log::error('Error updating activity', ['exception' => $e]);
+                Log::error('Error updating activity', [
+                    'exception' => $e,
+                    'message' => $e->getMessage(),
+                    'line' => $e->getLine(),
+                    'file' => $e->getFile(),
+                    'trace' => $e->getTraceAsString()
+                ]);
 
-                $errorMessage = 'An error occurred while updating the activity. Please try again.';
+                $errorMessage = 'Error: ' . $e->getMessage() . ' (Line: ' . $e->getLine() . ')';
                 
                 if ($request->ajax()) {
                     return response()->json([

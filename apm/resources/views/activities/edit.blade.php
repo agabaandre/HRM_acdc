@@ -19,7 +19,7 @@
         </div>
 
         <div class="card-body p-4">
-            <form action="{{ route('matrices.activities.update', [$matrix, $activity]) }}" method="POST" id="activityForm" enctype="multipart/form-data">
+            <form action="{{ $activity->is_single_memo ? route('activities.single-memos.update', [$matrix, $activity]) : route('matrices.activities.update', [$matrix, $activity]) }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -275,19 +275,41 @@ $(document).ready(function () {
             contentType: false,
             success: function(response) {
                 if (response.success) {
-                    show_notification(response.msg || 'Activity updated successfully!', 'success');
+                    const successMessage = response.msg || 
+                        @if($activity->is_single_memo)
+                            'Single memo updated successfully!'
+                        @else
+                            'Activity updated successfully!'
+                        @endif;
+                    show_notification(successMessage, 'success');
                     
-                    // Redirect to the activity show page after a short delay
+                    // Redirect to the appropriate show page after a short delay
                     setTimeout(function() {
-                        window.location.href = response.redirect_url || '{{ route("matrices.activities.show", [$matrix, $activity]) }}';
+                        const redirectUrl = response.redirect_url || 
+                            @if($activity->is_single_memo)
+                                '{{ route("activities.single-memos.show", $activity) }}'
+                            @else
+                                '{{ route("matrices.activities.show", [$matrix, $activity]) }}'
+                            @endif;
+                        window.location.href = redirectUrl;
                     }, 1500);
                 } else {
-                    show_notification(response.msg || 'An error occurred while updating the activity.', 'error');
+                    const errorMessage = response.msg || 
+                        @if($activity->is_single_memo)
+                            'An error occurred while updating the single memo.'
+                        @else
+                            'An error occurred while updating the activity.'
+                        @endif;
+                    show_notification(errorMessage, 'error');
                     submitBtn.prop('disabled', false).html(originalBtnText);
                 }
             },
             error: function(xhr) {
-                let errorMessage = 'An error occurred while updating the activity.';
+                let errorMessage = @if($activity->is_single_memo)
+                    'An error occurred while updating the single memo.'
+                @else
+                    'An error occurred while updating the activity.'
+                @endif;
                 
                 if (xhr.status === 422) {
                     // Validation errors
@@ -696,8 +718,10 @@ $(document).ready(function () {
             if (data.length) {
                 data.forEach(code => {
                     const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
+                    const currentActivityBudgets = @if(isset($editing) && $editing && isset($currentActivityBudgets)) @json($currentActivityBudgets) @else {} @endif;
+                    const currentActivityBudget = currentActivityBudgets[code.id] || 0;
                     budgetCodesSelect.append(
-                        `<option value="${code.id}" data-balance="${code.budget_balance}">${label}</option>`
+                        `<option value="${code.id}" data-balance="${code.budget_balance}" data-current-activity-budget="${currentActivityBudget}">${label}</option>`
                     );
                 });
                 budgetCodesSelect.prop('disabled', false);
@@ -890,8 +914,15 @@ $(document).ready(function () {
             const balanceElement = $(`#budget_codes option[value="${code}"]`);
             const budgetBalance = parseFloat(balanceElement.data('balance')) || 0;
             
-            // Check if subtotal exceeds budget balance (skip for external source)
-            if (subtotal > budgetBalance && fundTypeId !== 3) {
+            // If editing, add the current activity's budget for this code to available balance
+            let availableBalance = budgetBalance;
+            @if(isset($editing) && $editing && isset($fundCodes))
+                const currentActivityBudget = parseFloat(balanceElement.data('current-activity-budget')) || 0;
+                availableBalance = budgetBalance + currentActivityBudget;
+            @endif
+            
+            // Check if subtotal exceeds available budget (skip for external source)
+            if (subtotal > availableBalance && fundTypeId !== 3) {
                 hasExceededBudget = true;
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                     .addClass('text-danger fw-bold');
@@ -902,7 +933,7 @@ $(document).ready(function () {
                 if (warningDiv.length === 0) {
                     warningDiv = $(`<div class="alert alert-danger mt-2 budget-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Budget exceeded! Available: $${budgetBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Budget exceeded! Available: $${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>`);
                     card.find('.card-body').append(warningDiv);
                 }
