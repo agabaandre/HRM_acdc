@@ -306,18 +306,34 @@
       placeholder: 'Type here.................',
       tabsize: 2,
       height: 250,
+      fontNames: ['Arial', 'Times New Roman', 'Courier New', 'Calibri', 'Tahoma', 'Verdana'],
+      fontNamesIgnoreCheck: [],
+      fontSizes: ['12', '14', '16', '18', '20', '24', '36', '48'],
       toolbar: [
-        // customize the toolbar as needed
         ['style', ['style']],
         ['font', ['bold', 'italic', 'underline', 'clear']],
         ['fontname', ['fontname']],
+        ['fontsize', ['fontsize']],
         ['color', ['color']],
         ['para', ['ul', 'ol', 'paragraph']],
+        ['table', ['table']],
         ['insert', ['link', 'picture', 'video']],
         ['view', ['fullscreen', 'codeview', 'help']]
       ],
-      // Remove default image upload (base64) behavior
+      popover: {
+        table: [
+          ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+          ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+        ]
+      },
       callbacks: {
+        onInit: function() {
+          // Enable font and table dropdowns if they are disabled
+          setTimeout(function() {
+            $('.note-fontname .dropdown-toggle, .note-table .dropdown-toggle, .note-fontsize .dropdown-toggle').removeAttr('disabled').removeClass('disabled');
+            $('.note-fontname .dropdown-menu, .note-table .dropdown-menu, .note-fontsize .dropdown-menu').removeAttr('aria-disabled');
+          }, 500);
+        },
         onImageUpload: function(files) {
           for (var i = 0; i < files.length; i++) {
             uploadImage(files[i], this);

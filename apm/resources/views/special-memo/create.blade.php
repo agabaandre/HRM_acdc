@@ -38,14 +38,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2 activity_code" style="display: none;">
-                        <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger">*</span>
-                        </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" />
-                    </div>
-
-                    <div class="col-md-12">
+                    <div class="col-md-4">
                         <label for="budget_codes" class="form-label fw-semibold">
                             <i class="fas fa-wallet me-1 text-success"></i> Budget Code(s) <span class="text-danger">*</span>
                         </label>
@@ -53,6 +46,13 @@
                             <option value="" selected disabled>Select a fund type first</option>
                         </select>
                         <small class="text-muted">Select up to 2 codes</small>
+                    </div>
+                       <div class="col-md-3 activity_code" style="display: none;">
+                        <label for="activity_code" class="form-label fw-semibold">
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code <span class="text-danger">*</span>
+                        </label>
+                        <input name="activity_code" id="activity_code" class="form-control border-success" />
+                        <small class="text-muted">Applicable to only World Bank Budget Codes</small>
                     </div>
 
 
@@ -635,15 +635,17 @@ $(document).ready(function() {
             height: 150,
             fontNames: ['Arial'],
             fontNamesIgnoreCheck: ['Arial'],
+            fontsizes: ['12', '14', '16', '18', '20', '24', '36', '48'],
             defaultFontName: 'Arial',
             toolbar: [
                 ['style', ['style']],
                 ['font', ['bold', 'italic', 'underline', 'clear']],
                 ['fontname', ['fontname']],
+                ['fontsize', ['fontsize']], // Added font size change
                 ['color', ['color']],
                 ['para', ['ul', 'ol', 'paragraph']],
-                ['table', ['table']],
-                ['insert', ['link']],
+                ['table', ['table']], // Added table
+                ['insert', ['link', 'table']], // Add table to insert group as well
                 ['view', ['fullscreen', 'codeview', 'help']]
             ]
         });

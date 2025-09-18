@@ -53,11 +53,13 @@
                         </small>
                     </div>
 
-                    <div class="col-md-2 activity_code" style="display: none;">
+                    <div class="col-md-3 activity_code" style="display: none;">
                         <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> Activity Code <span class="text-danger"></span>
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code <span class="text-danger"></span>
+                           
                         </label>
                         <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $activity->workplan_activity_code) }}" />
+                         <small class="text-muted">Applicable to only World Bank Budget Codes</small>
                     </div>
 
                     <div class="col-md-2">
