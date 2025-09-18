@@ -303,44 +303,92 @@
   // Initialize Summernote on the textarea
   $(document).ready(function() {
     $('.summernote').summernote({
-      placeholder: 'Type here.................',
-      tabsize: 2,
-      height: 250,
-      fontNames: ['Arial', 'Times New Roman', 'Courier New', 'Calibri', 'Tahoma', 'Verdana'],
-      fontNamesIgnoreCheck: [],
-      fontSizes: ['12', '14', '16', '18', '20', '24', '36', '48'],
-      toolbar: [
-        ['style', ['style']],
-        ['font', ['bold', 'italic', 'underline', 'clear']],
-        ['fontname', ['fontname']],
-        ['fontsize', ['fontsize']],
-        ['color', ['color']],
-        ['para', ['ul', 'ol', 'paragraph']],
-        ['table', ['table']],
-        ['insert', ['link', 'picture', 'video']],
-        ['view', ['fullscreen', 'codeview', 'help']]
+    placeholder: 'Type here…',
+    height: 300,
+    minHeight: 200,
+    maxHeight: null,
+    dialogsInBody: true,        // prevents z-index issues
+    styleWithSpan: true,        // cleaner markup for font/size
+    disableDragAndDrop: false,
+
+    // Fonts (shows dropdown only if fonts exist on client)
+    fontNames: ['Arial', 'Calibri', 'Tahoma', 'Verdana', 'Times New Roman', 'Courier New'],
+    fontNamesIgnoreCheck: ['Arial','Calibri','Tahoma','Verdana','Times New Roman','Courier New'],
+
+    // Font sizes (Summernote expects strings)
+    fontSizes: ['8','9','10','11','12','14','16','18','20','24','28','32','36','48'],
+    fontSizeUnits: ['px','pt'], // lets users pick px or pt in recent Summernote versions
+
+    // Helpful line-height options
+    lineHeights: ['0.9','1.0','1.15','1.3','1.5','1.75','2.0'],
+
+    // Give new tables readable, compact Bootstrap-like styling
+    tableClassName: 'table table-bordered table-sm',
+
+    toolbar: [
+      ['style', ['style']],
+      ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
+      ['fontname', ['fontname']],
+      ['fontsize', ['fontsize']],
+      ['color', ['color']],
+      ['para', ['ul', 'ol', 'paragraph']],
+      ['height', ['lineheight']],
+      ['table', ['table']],
+      ['insert', ['link', 'picture', 'video', 'hr']],
+      ['view', ['fullscreen', 'codeview', 'help']]
+    ],
+
+    popover: {
+      table: [
+        ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+        ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
       ],
-      popover: {
-        table: [
-          ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
-          ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
-        ]
+      image: [
+        ['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+        ['float', ['floatLeft', 'floatRight', 'floatNone']],
+        ['remove', ['removeMedia']]
+      ]
+    },
+
+    callbacks: {
+      onInit: function () {
+        // Ensure editor content defaults are readable
+        $(this).next('.note-editor').find('.note-editable').css({
+          'font-family': 'Arial, Calibri, Tahoma, Verdana, "Times New Roman", "Courier New", sans-serif',
+          'font-size': '12pt',
+          'line-height': '1.3'
+        });
       },
-      callbacks: {
-        onInit: function() {
-          // Enable font and table dropdowns if they are disabled
-          setTimeout(function() {
-            $('.note-fontname .dropdown-toggle, .note-table .dropdown-toggle, .note-fontsize .dropdown-toggle').removeAttr('disabled').removeClass('disabled');
-            $('.note-fontname .dropdown-menu, .note-table .dropdown-menu, .note-fontsize .dropdown-menu').removeAttr('aria-disabled');
-          }, 500);
-        },
-        onImageUpload: function(files) {
-          for (var i = 0; i < files.length; i++) {
+      onCreateLink: function (link) {
+        // open links in new tab by default
+        return link.replace(/^<a /, '<a target="_blank" rel="noopener" ');
+      },
+      onImageUpload: function (files) {
+        // keep your original uploader if you have one
+        for (var i = 0; i < files.length; i++) {
+          if (typeof uploadImage === 'function') {
             uploadImage(files[i], this);
           }
         }
+      },
+      onPaste: function (e) {
+        // Optional: normalize pasted Office/HTML table content
+        // (Keeps tables clean and usable)
+        const clipboardData = (e.originalEvent || e).clipboardData;
+        if (clipboardData && clipboardData.getData) {
+          let html = clipboardData.getData('text/html');
+          if (html) {
+            // light cleanup of table borders from Word/Excel
+            html = html
+              .replace(/border="[^"]*"/gi, '')
+              .replace(/style="[^"]*border[^"]*"/gi, '');
+            document.execCommand('insertHTML', false, html);
+            e.preventDefault();
+          }
+        }
       }
-    });
+    }
+  });
   });
 
   function uploadImage(file, editor) {
