@@ -223,6 +223,12 @@ Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\Pe
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
     Route::delete('/single-memos/{activity}', [ActivityController::class, 'destroySingleMemo'])->name('activities.single-memos.destroy');
     
+    // Staff activities route
+    Route::get('/staff/{staff_id}/activities/matrix/{matrix}', [ActivityController::class, 'showStaffActivities'])->name('staff.activities');
+    
+    // Matrix division staff AJAX route
+    Route::get('/matrices/{matrix}/division-staff-ajax', [MatrixController::class, 'getDivisionStaffAjax'])->name('matrices.division-staff-ajax');
+    
     // General route must come last - moved to end of file
     
     // Non-Travel Memo Routes
