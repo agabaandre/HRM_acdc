@@ -1495,7 +1495,7 @@ class ActivityController extends Controller
         $quarterDates = $this->getQuarterDates($quarter, $year);
         
         // Get ALL activities from the current quarter where this staff is a participant
-        $allActivities = Activity::with(['matrix.division', 'staff', 'participantSchedules' => function($query) use ($staffId, $matrix) {
+        $allActivities = Activity::with(['matrix', 'matrix.division', 'staff', 'participantSchedules' => function($query) use ($staffId, $matrix) {
                 $query->where('participant_id', $staffId)
                       ->where('international_travel', 1)
                       ->where('quarter', $matrix->quarter)
