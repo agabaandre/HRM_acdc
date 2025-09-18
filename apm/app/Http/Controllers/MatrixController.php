@@ -477,7 +477,8 @@ class MatrixController extends Controller
                 $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
                     ->where('international_travel', 1)
                     ->whereHas('activity', function($q) use ($matrix) {
-                        $q->where('matrix_id', $matrix->id);
+                        $q->where('matrix_id', $matrix->id)
+                          ->where('overall_status', '!=', 'cancelled'); // Match staff activities filter
                     })
                     ->get();
 
@@ -513,7 +514,8 @@ class MatrixController extends Controller
                 $participantSchedules = \App\Models\ParticipantSchedule::where('participant_id', $staff->staff_id)
                     ->where('international_travel', 1)
                     ->whereHas('activity', function($q) use ($matrix) {
-                        $q->where('matrix_id', $matrix->id);
+                        $q->where('matrix_id', $matrix->id)
+                          ->where('overall_status', '!=', 'cancelled'); // Match staff activities filter
                     })
                     ->get();
 
