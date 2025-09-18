@@ -219,7 +219,7 @@ if (!function_exists('user_session')) {
             // Must be owner or responsible person
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-
+            $isHod = 
             // Only allow if status is not approved
             $isApproved = isset($memo->overall_status) && $memo->overall_status === 'draft' || $memo->overall_status === 'returned';
 

@@ -289,9 +289,17 @@
                                                             <span class="badge bg-primary">{{ $days }}</span>
                                                         </td>
                                                         <td class="px-3 py-3 text-center">
-                                                            <span class="badge bg-{{ $activity->overall_status === 'approved' ? 'success' : ($activity->overall_status === 'pending' ? 'warning' : 'secondary') }}">
-                                                                {{ ucfirst($activity->overall_status) }}
-                                                            </span>
+                                                            @if($activity->is_single_memo)
+                                                                {{-- Single Memo: Show overall status --}}
+                                                                <span class="badge bg-{{ $activity->overall_status === 'approved' ? 'success' : ($activity->overall_status === 'pending' ? 'warning' : 'secondary') }}">
+                                                                    {{ ucfirst($activity->overall_status) }}
+                                                                </span>
+                                                            @else
+                                                                {{-- Matrix Activity: Show matrix status --}}
+                                                                <span class="badge bg-{{ $activity->matrix->status === 'approved' ? 'success' : ($activity->matrix->status === 'pending' ? 'warning' : 'secondary') }}">
+                                                                    {{ ucfirst($activity->matrix->status ?? 'N/A') }}
+                                                                </span>
+                                                            @endif
                                                         </td>
                                                         <td class="px-3 py-3 text-center">
                                                             @if($activity->is_single_memo)
@@ -394,9 +402,17 @@
                                                             <span class="badge bg-info">{{ $days }}</span>
                                                         </td>
                                                         <td class="px-3 py-3 text-center">
-                                                            <span class="badge bg-{{ $activity->overall_status === 'approved' ? 'success' : ($activity->overall_status === 'pending' ? 'warning' : 'secondary') }}">
-                                                                {{ ucfirst($activity->overall_status) }}
-                                                            </span>
+                                                            @if($activity->is_single_memo)
+                                                                {{-- Single Memo: Show overall status --}}
+                                                                <span class="badge bg-{{ $activity->overall_status === 'approved' ? 'success' : ($activity->overall_status === 'pending' ? 'warning' : 'secondary') }}">
+                                                                    {{ ucfirst($activity->overall_status) }}
+                                                                </span>
+                                                            @else
+                                                                {{-- Matrix Activity: Show matrix status --}}
+                                                                <span class="badge bg-{{ $activity->matrix->status === 'approved' ? 'success' : ($activity->matrix->status === 'pending' ? 'warning' : 'secondary') }}">
+                                                                    {{ ucfirst($activity->matrix->status ?? 'N/A') }}
+                                                                </span>
+                                                            @endif
                                                         </td>
                                                         <td class="px-3 py-3 text-center">
                                                             @if($activity->is_single_memo)
