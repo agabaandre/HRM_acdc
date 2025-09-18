@@ -222,7 +222,22 @@
                         <div class="tab-pane fade show active" id="my-division" role="tabpanel" 
                              aria-labelledby="my-division-tab">
                             <div class="p-4">
+                                @php
+                                    // Calculate total days for my division activities
+                                    $myDivisionTotalDays = 0;
+                                    foreach($myDivisionActivities as $activity) {
+                                        $participantSchedule = $activity->participantSchedules->where('participant_id', $staff->staff_id)->first();
+                                        if($participantSchedule) {
+                                            $myDivisionTotalDays += $participantSchedule->participant_days;
+                                        }
+                                    }
+                                @endphp
+                                
                                 @if($myDivisionActivities->count() > 0)
+                                    <div class="alert alert-info mb-3">
+                                        <i class="bx bx-info-circle me-2"></i>
+                                        <strong>Total Division Days: {{ $myDivisionTotalDays }}</strong>
+                                    </div>
                                     <div class="table-responsive">
                                         <table class="table table-hover align-middle">
                                             <thead class="bg-light">
@@ -306,7 +321,22 @@
                         <div class="tab-pane fade" id="other-divisions" role="tabpanel" 
                              aria-labelledby="other-divisions-tab">
                             <div class="p-4">
+                                @php
+                                    // Calculate total days for other division activities
+                                    $otherDivisionTotalDays = 0;
+                                    foreach($otherDivisionActivities as $activity) {
+                                        $participantSchedule = $activity->participantSchedules->where('participant_id', $staff->staff_id)->first();
+                                        if($participantSchedule) {
+                                            $otherDivisionTotalDays += $participantSchedule->participant_days;
+                                        }
+                                    }
+                                @endphp
+                                
                                 @if($otherDivisionActivities->count() > 0)
+                                    <div class="alert alert-warning mb-3">
+                                        <i class="bx bx-info-circle me-2"></i>
+                                        <strong>Total Other Division Days: {{ $otherDivisionTotalDays }}</strong>
+                                    </div>
                                     <div class="table-responsive">
                                         <table class="table table-hover align-middle">
                                             <thead class="bg-light">
