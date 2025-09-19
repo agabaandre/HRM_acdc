@@ -141,6 +141,10 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::post('/jobs/execute-command', [App\Http\Controllers\JobsController::class, 'executeCommand'])->name('jobs.execute-command');
     Route::get('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'getEnvContent'])->name('jobs.env-content');
     Route::post('/jobs/env-content', [App\Http\Controllers\JobsController::class, 'updateEnvContent'])->name('jobs.update-env-content');
+    
+    // Systemd Monitor Routes
+    Route::get('/systemd-monitor', [App\Http\Controllers\SystemdMonitorController::class, 'index'])->name('systemd-monitor.index');
+    Route::post('/systemd-monitor/execute', [App\Http\Controllers\SystemdMonitorController::class, 'executeCommand'])->name('systemd-monitor.execute');
     Route::get('/jobs/system-info', [App\Http\Controllers\JobsController::class, 'getSystemInfo'])->name('jobs.system-info');
     
     // Document Counter Management

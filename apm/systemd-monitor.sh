@@ -45,7 +45,7 @@ echo ""
 
 # Check queue size
 echo -e "${BLUE}Queue Size:${NC}"
-queue_size=$(php artisan tinker --execute="echo \App\Models\Job::count();" 2>/dev/null | tail -1 || echo "0")
+queue_size=$(php artisan tinker --execute="echo \\Illuminate\\Support\\Facades\\DB::table('jobs')->count();" 2>/dev/null | tail -1 || echo "0")
 if [ "$queue_size" -gt 0 ]; then
     echo -e "${YELLOW}⚠${NC} $queue_size jobs in queue"
 else
