@@ -105,13 +105,14 @@
                         <div class="col-md-4">
                             <div class="card border-0 shadow-sm">
                                 <div class="card-body text-center">
-                                    <div class="avatar avatar-lg bg-danger text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3">
-                                        <i class="fas fa-trash"></i>
+                                    <div class="avatar avatar-lg bg-info text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3">
+                                        <i class="fas fa-envelope"></i>
                                     </div>
-                                    <h3 class="mb-1">Clear</h3>
-                                    <p class="text-muted mb-0">Failed Jobs</p>
-                                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="executeCommand('clear-failed-jobs')">
-                                        <i class="fas fa-trash"></i> Clear All
+                                    <h6 class="mb-1">Last Daily Notification</h6>
+                                    <p class="text-muted mb-1 small">{{ $last_daily_notification }}</p>
+                                    <p class="text-muted mb-2 small">{{ $approver_count }} approvers</p>
+                                    <button class="btn btn-sm btn-outline-info mt-2" onclick="executeCommand('send-daily-notifications')">
+                                        <i class="fas fa-paper-plane"></i> Send Now
                                     </button>
                                 </div>
                             </div>
@@ -154,6 +155,42 @@
                                                     <i class="fas fa-stop"></i> Stop
                                                 </button>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Job Controls -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Job Controls</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Email Notifications</h6>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-info" onclick="executeCommand('send-daily-notifications')">
+                                                    <i class="fas fa-envelope"></i> Send Daily Notifications
+                                                </button>
+                                            </div>
+                                            <small class="text-muted d-block mt-2">Manually trigger daily pending approvals email notifications</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Queue Management</h6>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-warning" onclick="executeCommand('retry-failed-jobs')">
+                                                    <i class="fas fa-redo"></i> Retry Failed Jobs
+                                                </button>
+                                                <button class="btn btn-danger" onclick="executeCommand('clear-failed-jobs')">
+                                                    <i class="fas fa-trash"></i> Clear Failed Jobs
+                                                </button>
+                                            </div>
+                                            <small class="text-muted d-block mt-2">Manage failed jobs in the queue</small>
                                         </div>
                                     </div>
                                 </div>
@@ -228,6 +265,13 @@
 @push('scripts')
 <script>
 function executeCommand(command) {
+    // Special handling for daily notifications
+    if (command === 'send-daily-notifications') {
+        if (!confirm('Are you sure you want to send daily notifications to all {{ $approver_count }} approvers? This will send emails to all users with pending approvals.')) {
+            return;
+        }
+    }
+    
     // Show loading modal
     const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
     loadingModal.show();

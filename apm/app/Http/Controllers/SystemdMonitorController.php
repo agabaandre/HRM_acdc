@@ -22,6 +22,8 @@ class SystemdMonitorController extends Controller
             'queue_size' => $this->getQueueSize(),
             'recent_queue_logs' => $this->getRecentLogs('laravel-queue-worker'),
             'recent_scheduler_logs' => $this->getRecentLogs('laravel-scheduler'),
+            'last_daily_notification' => $this->getLastDailyNotificationTime(),
+            'approver_count' => $this->getApproverCount(),
         ];
 
         return view('systemd-monitor.index', $data);
@@ -79,6 +81,61 @@ class SystemdMonitorController extends Controller
         }
     }
 
+    private function getLastDailyNotificationTime()
+    {
+        try {
+            // Check logs for the last daily notification
+            $result = Process::run("grep -i 'daily pending approvals notification job' /opt/homebrew/var/www/staff/apm/storage/logs/laravel-$(date +%Y-%m-%d).log | tail -1 | cut -d' ' -f1-2");
+            $output = trim($result->output());
+            
+            if (empty($output)) {
+                // Try yesterday's log
+                $yesterday = date('Y-m-d', strtotime('-1 day'));
+                $result = Process::run("grep -i 'daily pending approvals notification job' /opt/homebrew/var/www/staff/apm/storage/logs/laravel-{$yesterday}.log | tail -1 | cut -d' ' -f1-2");
+                $output = trim($result->output());
+            }
+            
+            return $output ?: 'Never';
+        } catch (\Exception $e) {
+            Log::error("Failed to get last daily notification time: " . $e->getMessage());
+            return 'Unknown';
+        }
+    }
+
+    private function getApproverCount()
+    {
+        try {
+            // Get count of staff who are approvers (similar to the job logic)
+            $divisionApprovers = \Illuminate\Support\Facades\DB::table('divisions')
+                ->select('division_head as staff_id')
+                ->whereNotNull('division_head')
+                ->union(
+                    \Illuminate\Support\Facades\DB::table('divisions')
+                        ->select('focal_person as staff_id')
+                        ->whereNotNull('focal_person')
+                )
+                ->union(
+                    \Illuminate\Support\Facades\DB::table('divisions')
+                        ->select('admin_assistant as staff_id')
+                        ->whereNotNull('admin_assistant')
+                )
+                ->union(
+                    \Illuminate\Support\Facades\DB::table('divisions')
+                        ->select('finance_officer as staff_id')
+                        ->whereNotNull('finance_officer')
+                )
+                ->get()
+                ->pluck('staff_id')
+                ->unique()
+                ->count();
+            
+            return $divisionApprovers;
+        } catch (\Exception $e) {
+            Log::error("Failed to get approver count: " . $e->getMessage());
+            return 0;
+        }
+    }
+
     public function executeCommand(Request $request)
     {
         // Check if user has permission
@@ -95,7 +152,8 @@ class SystemdMonitorController extends Controller
             'stop-queue-worker',
             'stop-scheduler',
             'clear-failed-jobs',
-            'retry-failed-jobs'
+            'retry-failed-jobs',
+            'send-daily-notifications'
         ];
 
         if (!in_array($command, $allowedCommands)) {
@@ -103,16 +161,27 @@ class SystemdMonitorController extends Controller
         }
 
         try {
-            $systemdCommand = $this->getSystemdCommand($command);
-            $result = Process::run($systemdCommand);
-            
-            return response()->json([
-                'success' => true,
-                'output' => $result->output(),
-                'error' => $result->errorOutput()
-            ]);
+            if ($command === 'send-daily-notifications') {
+                // Dispatch the daily notifications job
+                \App\Jobs\SendDailyPendingApprovalsNotificationJob::dispatch();
+                
+                return response()->json([
+                    'success' => true,
+                    'output' => 'Daily notifications job dispatched successfully',
+                    'error' => ''
+                ]);
+            } else {
+                $systemdCommand = $this->getSystemdCommand($command);
+                $result = Process::run($systemdCommand);
+                
+                return response()->json([
+                    'success' => true,
+                    'output' => $result->output(),
+                    'error' => $result->errorOutput()
+                ]);
+            }
         } catch (\Exception $e) {
-            Log::error("Failed to execute systemd command {$command}: " . $e->getMessage());
+            Log::error("Failed to execute command {$command}: " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage()
