@@ -64,6 +64,11 @@ $settingsMenuItems = [
 'title' => 'Jobs'
 ],
 [
+'url' => url('systemd-monitor'),
+'icon' => 'fas fa-server',
+'title' => 'Systemd Monitor'
+],
+[
 'route' => 'audit-logs.index',
 'icon' => 'fas fa-clipboard-list',
 'title' => 'Audit Logs'
@@ -216,7 +221,7 @@ $settingsMenuItems = [
                 <ul class="dropdown-menu">
                     @foreach($settingsMenuItems as $item)
                     <li>
-                        <a class="dropdown-item" href="{{ route($item['route']) }}">
+                        <a class="dropdown-item" href="{{ isset($item['url']) ? $item['url'] : route($item['route']) }}">
                             <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
                         </a>
                     </li>
