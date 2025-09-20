@@ -662,3 +662,250 @@ function getNextDocumentNumberPreview(string $documentType, $division = null, in
         $year
     );
 }
+
+/**
+ * Display memo status with appropriate badge styling
+ * 
+ * Logic:
+ * - Single Memos: Show overall_status
+ * - Non-Travel/Special Memos: Show overall_status  
+ * - Matrix Activities:
+ *   - If user is approver: Show their specific approval action with approver name and level
+ *   - If user is not approver: Show matrix overall_status
+ * 
+ * For matrix activities, when showing approval actions, includes:
+ * - Action taken (passed, returned, etc.)
+ * - Approver's full name
+ * - Approval level/role from workflow definition
+ * 
+ * @param mixed $memo The memo/activity object
+ * @param string $type The memo type ('single_memo', 'non_travel', 'special', 'matrix_activity')
+ * @return string HTML badge element
+ */
+function display_memo_status($memo, $type)
+{
+    $user = session('user', []);
+    $staffId = $user['staff_id'] ?? null;
+    
+    $statusText = '';
+    $badgeClass = 'bg-secondary';
+    
+    // Determine memo type based on passed parameter
+    $isMatrixActivity = $type === 'matrix_activity';
+    $isNonTravel = $type === 'non_travel';
+    $isSpecialMemo = $type === 'special';
+    $isSingleMemo = $type === 'single_memo';
+    
+    if ($isSingleMemo) {
+        // For single memos, show the overall status
+        $statusText = ucwords($memo->overall_status ?? 'pending');
+        $badgeClass = get_status_badge_class($memo->overall_status ?? 'pending');
+        
+    } elseif ($isNonTravel || $isSpecialMemo) {
+        // For non-travel or special memos, show the overall status
+        $statusText = ucwords($memo->overall_status ?? 'pending');
+        $badgeClass = get_status_badge_class($memo->overall_status ?? 'pending');
+        
+    } elseif ($isMatrixActivity) {
+        // For matrix activities
+        if ($memo->matrix && can_approve_activity($memo)) {
+            // User is an approver - show their specific action with name and level
+            $latestApproval = ActivityApprovalTrail::where('activity_id', $memo->id)
+                ->where('matrix_id', $memo->matrix_id)
+                ->where('staff_id', $staffId)
+                ->with(['staff', 'workflowDefinition'])
+                ->orderByDesc('id')
+                ->first();
+                
+            if ($latestApproval && $latestApproval->action) {
+                $action = ucwords($latestApproval->action);
+                $approverName = $latestApproval->staff ? 
+                    $latestApproval->staff->fname . ' ' . $latestApproval->staff->lname : 'Unknown';
+                
+                // Get approval level from workflow definition
+                $approvalLevel = 'Level ' . $latestApproval->approval_order;
+                if ($memo->matrix && $memo->matrix->forward_workflow_id) {
+                    $workflowDef = \App\Models\WorkflowDefinition::where('workflow_id', $memo->matrix->forward_workflow_id)
+                        ->where('approval_order', $latestApproval->approval_order)
+                        ->first();
+                    if ($workflowDef) {
+                        $approvalLevel = $workflowDef->role;
+                    }
+                }
+                
+                $statusText = "{$action} by {$approverName} ({$approvalLevel})";
+                $badgeClass = get_approval_action_badge_class($latestApproval->action);
+            } else {
+                // Get current approver info for pending status
+                $currentApprover = getCurrentApproverInfo($memo);
+                if ($currentApprover) {
+                    $statusText = "Pending - {$currentApprover['name']} ({$currentApprover['level']})";
+                } else {
+                    $statusText = 'Pending';
+                }
+                $badgeClass = 'bg-warning';
+            }
+        } else {
+            // User is not an approver - show matrix overall status
+            if ($memo->matrix && $memo->matrix->overall_status) {
+                $statusText = ucwords($memo->matrix->overall_status);
+                $badgeClass = get_status_badge_class($memo->matrix->overall_status);
+            } else {
+                $statusText = 'Pending';
+                $badgeClass = 'bg-warning';
+            }
+        }
+    } else {
+        // Fallback
+        $statusText = ucwords($memo->overall_status ?? 'pending');
+        $badgeClass = get_status_badge_class($memo->overall_status ?? 'pending');
+    }
+    
+    return "<span class=\"badge {$badgeClass}\">{$statusText}</span>";
+}
+
+/**
+ * Get badge class for status
+ */
+function get_status_badge_class($status)
+{
+    switch (strtolower($status)) {
+        case 'approved':
+            return 'bg-success';
+        case 'pending':
+            return 'bg-warning';
+        case 'returned':
+            return 'bg-danger';
+        case 'draft':
+            return 'bg-secondary';
+        case 'cancelled':
+            return 'bg-dark';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+/**
+ * Get badge class for approval action
+ */
+function get_approval_action_badge_class($action)
+{
+    switch (strtolower($action)) {
+        case 'passed':
+        case 'approved':
+            return 'bg-success';
+        case 'returned':
+        case 'rejected':
+            return 'bg-danger';
+        case 'pending':
+            return 'bg-warning';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+/**
+ * Determine memo type automatically
+ * 
+ * @param mixed $memo The memo/activity object
+ * @return string The memo type
+ */
+function get_memo_type($memo)
+{
+    // Check model class first
+    $className = get_class($memo);
+    
+    switch ($className) {
+        case 'App\Models\NonTravelMemo':
+            return 'non_travel';
+        case 'App\Models\SpecialMemo':
+            return 'special';
+        case 'App\Models\Activity':
+            // Check if it's a single memo
+            if (isset($memo->is_single_memo) && $memo->is_single_memo) {
+                return 'single_memo';
+            }
+            return 'matrix_activity';
+        default:
+            // Check memo type field for other models
+            if (isset($memo->memo_type)) {
+                switch ($memo->memo_type) {
+                    case 'non_travel':
+                        return 'non_travel';
+                    case 'special':
+                        return 'special';
+                    default:
+                        return 'matrix_activity';
+                }
+            }
+            return 'matrix_activity';
+    }
+}
+
+/**
+ * Get current approver information for pending status
+ */
+function getCurrentApproverInfo($memo)
+{
+    // Handle different memo types
+    $forwardWorkflowId = null;
+    $approvalLevel = null;
+    
+    if ($memo->matrix) {
+        // Matrix activity
+        $forwardWorkflowId = $memo->matrix->forward_workflow_id;
+        $approvalLevel = $memo->matrix->approval_level;
+    } elseif (isset($memo->forward_workflow_id)) {
+        // Non-travel, special memo, or single memo
+        $forwardWorkflowId = $memo->forward_workflow_id;
+        $approvalLevel = $memo->approval_level;
+    }
+    
+    if (!$forwardWorkflowId || !$approvalLevel) {
+        return null;
+    }
+
+    // Get workflow definition for current approval level
+    $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
+        ->where('approval_order', $approvalLevel)
+        ->where('is_enabled', 1)
+        ->with(['approvers.staff', 'approvers.oicStaff'])
+        ->first();
+
+    if (!$workflowDefinition) {
+        return null;
+    }
+
+    // Get current approver (prefer staff, fallback to OIC)
+    $currentApprover = $workflowDefinition->approvers->first();
+    if (!$currentApprover) {
+        return null;
+    }
+
+    $approverName = 'Unknown';
+    if ($currentApprover->staff) {
+        $approverName = $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname;
+    } elseif ($currentApprover->oicStaff) {
+        $approverName = $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname;
+    }
+
+    return [
+        'name' => $approverName,
+        'level' => $workflowDefinition->role
+    ];
+}
+
+/**
+ * Display memo status with automatic type detection
+ * 
+ * This is a convenience wrapper that automatically determines the memo type
+ * and calls display_memo_status with the appropriate type parameter.
+ * 
+ * @param mixed $memo The memo/activity object
+ * @return string HTML badge element
+ */
+function display_memo_status_auto($memo)
+{
+    $type = get_memo_type($memo);
+    return display_memo_status($memo, $type);
+}

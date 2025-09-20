@@ -256,7 +256,16 @@
                                 <i class="bx bx-badge-check me-2 text-success"></i>Status
                             </td>
                             <td class="field-value">
-                                <span class="badge bg-{{ $nonTravel->overall_status === 'approved' ? 'success' : ($nonTravel->overall_status === 'pending' ? 'warning' : ($nonTravel->overall_status === 'rejected' ? 'danger' : 'secondary')) }} fs-6">
+                                @php
+                                    $statusBadgeClass = [
+                                        'draft' => 'status-draft',
+                                        'pending' => 'status-pending',
+                                        'approved' => 'status-approved',
+                                        'rejected' => 'status-rejected',
+                                        'returned' => 'status-returned',
+                                    ][$nonTravel->overall_status] ?? 'status-draft';
+                                @endphp
+                                <span class="status-badge {{ $statusBadgeClass }}">
                                     {{ ucfirst($nonTravel->overall_status ?? 'draft') }}
                                 </span>
                                 @if($nonTravel->overall_status === 'pending')
