@@ -777,6 +777,7 @@ class NonTravelMemoController extends Controller
         $request->validate([
             'action' => 'required|in:approved,rejected,returned',
             'comment' => 'nullable|string|max:1000',
+            'available_budget' => 'nullable|numeric|min:0'
         ]);
 
         // Debug: Log validation passed

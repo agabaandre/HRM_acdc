@@ -286,7 +286,7 @@ trait HasApprovalWorkflow
     /**
      * Update the approval status.
      */
-    public function updateApprovalStatus(string $action, string $comment = null): void
+    public function updateApprovalStatus(string $action, ?string $comment = null, ?array $additionalData = null): void
     {
        
         $this->saveApprovalTrail($comment ?? '', $action);
@@ -312,6 +312,15 @@ trait HasApprovalWorkflow
                 $this->overall_status = 'pending';
             } else {
                 $this->overall_status = 'approved';
+            }
+        }
+
+        // Handle additional data (like available_budget)
+        if ($additionalData && is_array($additionalData)) {
+            foreach ($additionalData as $key => $value) {
+                if (in_array($key, $this->getFillable()) && $value !== null) {
+                    $this->$key = $value;
+                }
             }
         }
 

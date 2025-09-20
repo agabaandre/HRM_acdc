@@ -211,7 +211,7 @@ class ApprovalService
     /**
      * Process approval action for any model.
      */
-    public function processApproval(Model $model, string $action, ?string $comment = null, ?int $userId = null): void
+    public function processApproval(Model $model, string $action, ?string $comment = null, ?int $userId = null, ?array $additionalData = null): void
     {
         $userId = $userId ?? user_session('staff_id');
        // dd($model->approval_level,$model->forward_workflow_id);
@@ -250,6 +250,15 @@ class ApprovalService
                 $model->overall_status = 'pending';
             } else {
                 $model->overall_status = 'approved';
+            }
+        }
+
+        // Handle additional data (like available_budget)
+        if ($additionalData && is_array($additionalData)) {
+            foreach ($additionalData as $key => $value) {
+                if (in_array($key, $model->getFillable()) && $value !== null) {
+                    $model->$key = $value;
+                }
             }
         }
 

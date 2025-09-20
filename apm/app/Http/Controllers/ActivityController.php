@@ -1689,6 +1689,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $request->validate([
             'action' => 'required|in:approved,rejected,returned',
             'comment' => 'nullable|string|max:1000',
+            'available_budget' => 'nullable|numeric|min:0'
         ]);
 
         $approvalService = app(ApprovalService::class);
@@ -1700,7 +1701,13 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ]);
         }
 
-        $activity->updateApprovalStatus($request->action, $request->comment);
+        // Prepare additional data for approval
+        $additionalData = [];
+        if ($request->has('available_budget') && $request->available_budget !== null) {
+            $additionalData['available_budget'] = $request->available_budget;
+        }
+
+        $activity->updateApprovalStatus($request->action, $request->comment, $additionalData);
 
         switch ($request->action) {
             case 'approved':
