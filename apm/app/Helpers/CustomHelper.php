@@ -303,14 +303,17 @@ if (!function_exists('user_session')) {
          */
         function done_approving_activty($activity)
         {
-         
             $user = session('user', []);
-            $my_appoval =  ActivityApprovalTrail::where('activity_id',$activity->id)
-            ->where('action','passed')
-            ->where('approval_order',$activity->matrix->approval_level)
-            ->where('staff_id',$user['staff_id'])->pluck('id');
+            // Get the latest approval trail for this activity, matrix, user, and approval level
+            $latest_approval = ActivityApprovalTrail::where('activity_id', $activity->id)
+                ->where('matrix_id', $activity->matrix_id)
+                ->where('approval_order', $activity->matrix->approval_level)
+                ->where('staff_id', $user['staff_id'])
+                ->where('action', 'passed')
+                ->orderByDesc('id')
+                ->first();
 
-            return count($my_appoval)>0;
+            return isset($latest_approval->action);
         }
 
     }
@@ -367,16 +370,25 @@ if (!function_exists('user_session')) {
 
             ///dd($user);
            // dd(done_approving($matrix));
+          
 
-           if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft','returned'])) {
-               return false;
+           if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft'])) {
+             
+            return false;
+
+            
            }
 
             $still_with_creator = still_with_creator($matrix);
             //dd($still_with_creator);
 
             if($still_with_creator || !$matrix->forward_workflow_id)
+            {
+               // dd('here');
             return false;
+        
+            }
+           
 
             $today = Carbon::today();
 
@@ -418,7 +430,7 @@ if (!function_exists('user_session')) {
                         $division_specific_access = true;
                     }
                 }
-
+                // dd('here');
                 //how to check approval levels against approver in approvers table???
                 
             }else{
@@ -467,6 +479,7 @@ if (!function_exists('user_session')) {
            /**TODO
             * Factor in approval conditions 
             */
+            //dd('is_at_my_level'.$is_at_my_approval_level,' stil creator:'.$still_with_creator  );
  
             return ( ($is_at_my_approval_level || $still_with_creator || $division_specific_access) && $matrix->overall_status !== 'approved');
         }
