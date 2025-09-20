@@ -759,6 +759,20 @@
                                 {{ optional($activity->fundType)->name ?? 'Not specified' }}
                             </td>
                         </tr>
+                        @if($activity->available_budget)
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-wallet me-2 text-info"></i>Available Budget
+                            </td>
+                            <td class="field-value fw-bold text-info">${{ number_format($activity->available_budget, 2) }}</td>
+                            <td class="field-label">
+                                <i class="bx bx-info-circle me-2 text-secondary"></i>Budget Status
+                            </td>
+                            <td class="field-value">
+                                <span class="badge bg-info">Finance Approved</span>
+                            </td>
+                        </tr>
+                        @endif
                         
                         <!-- Attachments -->
                         <tr>
@@ -1127,6 +1141,8 @@
                 </div>
             </div>
                         </div>
+                        
+               
                     @else
                         <!-- Fallback: Show budget as key-value pairs if structure is different -->
                         <div class="table-responsive">
@@ -1163,7 +1179,20 @@
                             </div>
                 @endif
                             </div>
+                              @if($activity->available_budget)
+                        {{-- Available Budget --}}
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <div class="alert alert-info">
+                                    <h6 class="mb-0"><strong>Available Budget: {{ number_format($activity->available_budget, 2) }}
+                                            USD</strong></h6>
+                                    <small class="text-muted">Allocated by Finance Officer</small>
+                     </div>
+                 </div>
+                        </div>
+                        @endif
                             </div>
+        
 
         <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
             <!-- Request for Approval Card -->

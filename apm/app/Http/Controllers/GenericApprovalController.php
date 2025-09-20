@@ -51,7 +51,10 @@ class GenericApprovalController extends Controller
             'user_id' => user_session('staff_id')
         ]);
 
-        $request->validate(['action' => 'required']);
+        $request->validate([
+            'action' => 'required',
+            'available_budget' => 'nullable|numeric|min:0'
+        ]);
 
         $modelInstance = $this->resolveModel($model, $id);
         
@@ -77,6 +80,12 @@ class GenericApprovalController extends Controller
 
         Log::info('User authorized, processing approval', ['action' => $request->action]);
 
+        // Prepare additional data for approval
+        $additionalData = [];
+        if ($request->has('available_budget') && $request->available_budget !== null) {
+            $additionalData['available_budget'] = $request->available_budget;
+        }
+
         // // Process the approval using the model's own approval workflow
         // if (method_exists($modelInstance, 'updateApprovalStatus')) {
         //     //dd('Test');
@@ -90,7 +99,8 @@ class GenericApprovalController extends Controller
                 $modelInstance, 
                 $request->action, 
                 $request->comment ?? '', 
-                $userId
+                $userId,
+                $additionalData
             );
        // }
 

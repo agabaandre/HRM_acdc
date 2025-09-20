@@ -26,7 +26,7 @@
                         <div class="modal-body">
                             <div class="alert alert-info">
                                 <i class="bx bx-info-circle me-2"></i>
-                                <strong>Note:</strong> This will convert the activity to a single memo, set it to approval level 1, and return it to the creator for revision as the rest of the batch continues through the approval process.
+                                <strong>Note:</strong> This will convert the activity to the Divsion Head as a Single Memo for Revision.
                             </div>
                             <div class="mb-3">
                                 <label for="recommendChangesComment" class="form-label">Comments (Required)</label>
@@ -37,7 +37,7 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-warning">
-                                <i class="bx bx-file-text me-1"></i> Convert to Single Memo
+                                <i class="bx bx-file-text me-1"></i> Return Actvity
                             </button>
                         </div>
                     </form>
@@ -85,10 +85,20 @@
                                This confirms that you find this activity okay.
                                <input type="hidden" name="action" value="passed"/>
                             </div>
+                             @if($activity->approval_level=='5')
+                                        <div classs="col-md-8">
+                                            <div class="mb-3">
+                                                <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
+                                                <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
+                                            </div>
+                                        </div>
+                            @endif
                             <div class="mb-3">
                                 <label for="confirmReviewComment" class="form-label">Comments</label>
                                 <textarea class="form-control" id="confirmReviewComment" name="comment" rows="3"></textarea>
                             </div>
+
+
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

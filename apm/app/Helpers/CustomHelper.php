@@ -909,3 +909,102 @@ function display_memo_status_auto($memo)
     $type = get_memo_type($memo);
     return display_memo_status($memo, $type);
 }
+
+/**
+ * Get memo status text only (without HTML)
+ * 
+ * @param mixed $memo The memo/activity object
+ * @param string $type The memo type
+ * @return string Status text only
+ */
+function get_memo_status_text($memo, $type)
+{
+    $user = session('user', []);
+    $staffId = $user['staff_id'] ?? null;
+    
+    $statusText = '';
+    
+    // Determine memo type based on passed parameter
+    $isMatrixActivity = $type === 'matrix_activity';
+    $isNonTravel = $type === 'non_travel';
+    $isSpecialMemo = $type === 'special';
+    $isSingleMemo = $type === 'single_memo';
+    
+    if ($isSingleMemo) {
+        // For single memos, show the overall status
+        $statusText = ucwords($memo->overall_status ?? 'pending');
+        
+    } elseif ($isNonTravel || $isSpecialMemo) {
+        // For non-travel or special memos, show the overall status
+        $statusText = ucwords($memo->overall_status ?? 'pending');
+        
+    } elseif ($isMatrixActivity) {
+        // For matrix activities
+        if ($memo->matrix && can_approve_activity($memo)) {
+            // User is an approver - show their specific action with name and level
+            $latestApproval = ActivityApprovalTrail::where('activity_id', $memo->id)
+                ->where('matrix_id', $memo->matrix_id)
+                ->where('staff_id', $staffId)
+                ->with(['staff', 'workflowDefinition'])
+                ->orderByDesc('id')
+                ->first();
+                
+            if ($latestApproval && $latestApproval->action) {
+                $action = ucwords($latestApproval->action);
+                $approverName = $latestApproval->staff ? 
+                    $latestApproval->staff->fname . ' ' . $latestApproval->staff->lname : 'Unknown';
+                
+                // Get approval level from workflow definition
+                $approvalLevel = 'Level ' . $latestApproval->approval_order;
+                if ($memo->matrix && $memo->matrix->forward_workflow_id) {
+                    $workflowDef = \App\Models\WorkflowDefinition::where('workflow_id', $memo->matrix->forward_workflow_id)
+                        ->where('approval_order', $latestApproval->approval_order)
+                        ->first();
+                    if ($workflowDef) {
+                        $approvalLevel = $workflowDef->role;
+                    }
+                }
+                
+                $statusText = "{$action} by {$approverName} ({$approvalLevel})";
+            } else {
+                // Get current approver info for pending status
+                $currentApprover = getCurrentApproverInfo($memo);
+                if ($currentApprover) {
+                    $statusText = "Pending - {$currentApprover['name']} ({$currentApprover['level']})";
+                } else {
+                    $statusText = 'Pending';
+                }
+            }
+        } else {
+            // User is not an approver - show matrix overall status
+            if ($memo->matrix && $memo->matrix->overall_status) {
+                $statusText = ucwords($memo->matrix->overall_status);
+            } else {
+                $statusText = 'Pending';
+            }
+        }
+    } else {
+        // Fallback
+        $statusText = ucwords($memo->overall_status ?? 'pending');
+    }
+    
+    return $statusText;
+}
+
+/**
+ * Get memo status text with automatic type detection
+ * 
+ * @param mixed $memo The memo/activity object
+ * @return string Status text only
+ */
+function get_memo_status_text_auto($memo)
+{
+    $type = get_memo_type($memo);
+    return get_memo_status_text($memo, $type);
+}
+function isdivision_head($memo)
+{
+    $user = session('user', []);
+    $staffId = $user['staff_id'] ?? null;
+    return $memo->division->division_head == $staffId;
+}

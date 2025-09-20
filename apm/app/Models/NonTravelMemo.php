@@ -41,6 +41,7 @@ class NonTravelMemo extends Model
         'attachment',
         'is_draft',
         'document_number',
+        'available_budget',
     ];
 
     protected $appends = ['workflow_definition', 'current_actor'];

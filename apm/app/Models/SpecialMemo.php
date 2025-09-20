@@ -54,6 +54,7 @@ class SpecialMemo extends Model
         'forward_workflow_id',
         'approval_level',
         'next_approval_level',
+        'available_budget',
     ];
 
     /**

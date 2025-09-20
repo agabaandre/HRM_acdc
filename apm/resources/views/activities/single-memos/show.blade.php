@@ -677,7 +677,7 @@
                                      <i class="bx bx-check-circle me-2 text-success"></i>Status
                                  </td>
                                  <td class="field-value" colspan="3">
-                                    {!!display_memo_status_auto($activity,'single_memo')!!}
+                                   {!!display_memo_status_auto($activity,'single_memo')!!}
                                      @if ($activity->overall_status === 'pending')
                                          <a href="{{ route('activities.single-memos.status', $activity) }}"
                                              class="btn btn-sm btn-outline-info ms-2">
@@ -780,7 +780,7 @@
                                     <i class="bx bx-credit-card me-2 text-warning"></i>Fund Type
                                 </td>
                                 <td class="field-value">
-                                    {{ optional($activity->fundType)->name ?? 'Not specified' }}
+                                   <span class="badge badge-info"> {{ optional($activity->fundType)->name ?? 'Not specified' }}</span>
                                 </td>
                                         </tr>
 
@@ -1148,6 +1148,8 @@
                                 <p class="mb-0">No budget details</p>
                     </div>
                     @endif
+
+                     
                     </div>
                 </div>
 
@@ -1354,8 +1356,16 @@
                                                     placeholder="Add any comments about your decision..."></textarea>
                                             </div>
                                         </div>
+                                        @if($activity->approval_level=='5')
+                                        <div class="col-md-8">
+                                            <div class="mb-3">
+                                                <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
+                                                <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
+                                            </div>
+                                        </div>
+                                        @endif
                                         <div class="col-md-4">
-                                            <div class="d-grid gap-2">
+                                            <div class="d-grid gap-2 mt-4">
                                                 <button type="submit" name="action" value="approved"
                                                     class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
                                                     <i class="bx bx-check"></i>
@@ -1366,11 +1376,14 @@
                                                     <i class="bx bx-undo"></i>
                                                     Return
                                                 </button>
-                                                {{-- <button type="submit" name="action" value="rejected"
-                                                    class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
-                                                    <i class="bx bx-x"></i>
-                                                    Cancel
-                                                </button> --}}
+                                                {{-- @dd($activity->approval_level); --}}
+                                                {{-- @dd(is_with_creator_generic($activity)) --}}
+                                            @if(isdivision_head($activity)&&($activity->approval_level=='1'))
+                                            <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <i class="bx bx-x"></i>
+                                                Cancel
+                                            </button>
+                                            @endif
                                             </div>
                                         </div>
                                     </div>

@@ -256,23 +256,7 @@
                                 <i class="bx bx-badge-check me-2 text-success"></i>Status
                             </td>
                             <td class="field-value">
-                                @php
-                                    $statusBadgeClass = [
-                                        'draft' => 'status-draft',
-                                        'pending' => 'status-pending',
-                                        'approved' => 'status-approved',
-                                        'rejected' => 'status-rejected',
-                                        'returned' => 'status-returned',
-                                    ][$nonTravel->overall_status] ?? 'status-draft';
-                                @endphp
-                                <span class="status-badge {{ $statusBadgeClass }}">
-                                    {{ ucfirst($nonTravel->overall_status ?? 'draft') }}
-                                </span>
-                                @if($nonTravel->overall_status === 'pending')
-                                    <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-sm btn-outline-info ms-2">
-                                        <i class="bx bx-info-circle me-1"></i>View Status
-                                    </a>
-                                @endif
+                              {!!display_memo_status_auto($nonTravel,'non_travel')!!}
                             </td>
                             <td class="field-label">
                                 <i class="bx bx-calendar me-2 text-info"></i>Memo Date
@@ -653,29 +637,42 @@
                                 @csrf
                                 <input type="hidden" name="debug_approval" value="1">
                                 <div class="row">
+                                   
                                     <div class="col-md-8">
                                         <div class="mb-3">
                                             <label for="comment" class="form-label">Comments (Optional)</label>
                                             <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
                                         </div>
                                     </div>
+                                    @if($nonTravel->approval_level=='5')
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
+                                            <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
+                                        </div>
+                                    </div>
+                                                                
+                                    @endif
+
+        
                                     <div class="col-md-4">
-                                        <div class="d-grid gap-2">
-                                          @if(!is_with_creator_generic($nonTravel))
+                                        <div class="d-grid gap-2 mt-4">
                                             <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-check"></i>
                                                 Approve
                                             </button>
-                                            @endif
+                                           
                                             <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-undo"></i>
                                                 Return
                                             </button>
-                                            {{-- <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                            @if(isdivision_head($nonTravel)&&$nonTravel->approval_level=='1')
+                                            <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-x"></i>
                                                 Cancel
-                                            </button> --}}
-                                            
+                                            </button>
+                                            @endif
+
                                         </div>
                                     </div>
                                 </div>

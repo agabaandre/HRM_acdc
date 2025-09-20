@@ -686,18 +686,7 @@
                                 <i class="bx bx-check-circle me-2 text-success"></i>Status
                             </td>
                             <td class="field-value" colspan="3">
-                                @php
-                                    $statusBadgeClass = [
-                                        'draft' => 'status-draft',
-                                        'pending' => 'status-pending',
-                                        'approved' => 'status-approved',
-                                        'rejected' => 'status-rejected',
-                                        'returned' => 'status-returned',
-                                    ][$specialMemo->overall_status] ?? 'status-draft';
-                                @endphp
-                                <span class="status-badge {{ $statusBadgeClass }}">
-                                    {{ ucfirst($specialMemo->overall_status ?? 'draft') }}
-                                </span>
+                               {!!display_memo_status_auto($specialMemo,'special')!!}
                                 @if($specialMemo->overall_status === 'pending')
                                     <a href="{{ route('special-memo.status', $specialMemo) }}" class="btn btn-sm btn-outline-info ms-2">
                                         <i class="bx bx-info-circle me-1"></i>View Status
@@ -1332,8 +1321,17 @@
                                             <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
                                         </div>
                                     </div>
+                                    @if($specialMemo->approval_level=='5')
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
+                                            <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
+                                        </div>
+                                    </div>
+                                                                
+                                    @endif
                                     <div class="col-md-4">
-                                        <div class="d-grid gap-2">
+                                        <div class="d-grid gap-2 mt-4">
                                             <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
                                                 <i class="bx bx-check"></i>
                                                 Approve
@@ -1342,10 +1340,12 @@
                                                 <i class="bx bx-undo"></i>
                                                 Return
                                             </button>
-                                            {{-- <button type="submit" name="action" value="rejected" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                             @if(isdivision_head($specialMemo)&&($specialMemo->approval_level=='1'))
+                                            <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-x"></i>
                                                 Cancel
-                                            </button> --}}
+                                            </button>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
