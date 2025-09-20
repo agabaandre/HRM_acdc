@@ -180,19 +180,25 @@
                         @php
                           $count=1;
                           //dd($activities[0]->activity_budget);
-                        //  dd($activities[1]->activity_budget->fundcode);
+                        // dd($activities[1]->activity_budget->fundcode);
                         @endphp
 
                         @forelse($activities as $activity)
+                   
                             <tr>
-                                @if(can_take_action($matrix) &&  get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft')
+                            {{-- @dd(can_take_action($matrix)) --}}
+                            
+                                @if((can_take_action($matrix) &&  get_approvable_activities($matrix)->count()>0 )&& ($matrix->overall_status!=='draft'))
                                <td class="px-3 py-3">
+                                       
                                     @if(can_approve_activity($activity) && !done_approving_activty($activity))
+                                    
                                         <input type="checkbox" class="form-check-input activity-checkbox" value="{{ $activity->id }}" data-activity-title="{{ $activity->activity_title }}">
                                     @endif
                                 </td>
                                 @endif
                                <td class="px-3 py-3">
+                      
                                     <span class="badge bg-secondary rounded-pill">{{ $count }}</span>
                                </td>
                                 <td class="px-3 py-3">
