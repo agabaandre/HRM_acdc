@@ -1728,9 +1728,75 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
      */
     public function showSingleMemoStatus(Activity $activity): View
     {
-        $activity->load(['staff', 'matrix.division']);
+        $activity->load(['staff', 'matrix.division', 'forwardWorkflow']);
         
-        return view('activities.single-memos.status', compact('activity'));
+        // Get approval level information
+        $approvalLevels = $this->getApprovalLevels($activity);
+        
+        // Pass as singleMemo for the view
+        $singleMemo = $activity;
+        
+        return view('activities.single-memos.status', compact('singleMemo', 'approvalLevels'));
+    }
+
+    /**
+     * Get approval levels for single memo
+     */
+    private function getApprovalLevels(Activity $activity): array
+    {
+        if (!$activity->forward_workflow_id) {
+            return [];
+        }
+
+        $levels = \App\Models\WorkflowDefinition::where('workflow_id', $activity->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'asc')
+            ->get();
+
+        $approvalLevels = [];
+        foreach ($levels as $level) {
+            $isCurrentLevel = $level->approval_order == $activity->approval_level;
+            $isCompleted = $activity->approval_level > $level->approval_order;
+            $isPending = $activity->approval_level == $level->approval_order && $activity->overall_status === 'pending';
+            
+            $approver = null;
+            if ($level->is_division_specific && $activity->division) {
+                $staffId = $activity->division->{$level->division_reference_column} ?? null;
+                if ($staffId) {
+                    $approver = \App\Models\Staff::where('staff_id', $staffId)->first();
+                }
+            } else {
+                $approverRecord = \App\Models\Approver::where('workflow_dfn_id', $level->id)->first();
+                if ($approverRecord) {
+                    $approver = \App\Models\Staff::where('staff_id', $approverRecord->staff_id)->first();
+                }
+            }
+
+            $approvalLevels[] = [
+                'order' => $level->approval_order,
+                'role' => $level->role,
+                'approver' => $approver,
+                'is_current' => $isCurrentLevel,
+                'is_completed' => $isCompleted,
+                'is_pending' => $isPending,
+                'is_division_specific' => $level->is_division_specific,
+                'division_reference' => $level->division_reference_column,
+                'category' => $level->category,
+            ];
+        }
+
+        return $approvalLevels;
+    }
+
+    /**
+     * Print single memo PDF
+     */
+    public function printSingleMemo(Activity $activity)
+    {
+        // For now, redirect to the show page
+        // TODO: Implement PDF generation for single memos
+        return redirect()->route('activities.single-memos.show', $activity)
+            ->with('info', 'PDF generation for single memos is not yet implemented.');
     }
 
     /**

@@ -223,6 +223,7 @@ Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\Pe
     Route::get('/single-memos/{matrix}/edit/{activity}', [ActivityController::class, 'editSingleMemo'])->name('activities.single-memos.edit');
     Route::put('/single-memos/{matrix}/update/{activity}', [ActivityController::class, 'updateSingleMemo'])->name('activities.single-memos.update');
     Route::get('/single-memos/{activity}/status', [ActivityController::class, 'showSingleMemoStatus'])->name('activities.single-memos.status');
+    Route::get('/single-memos/{activity}/print', [ActivityController::class, 'printSingleMemo'])->name('activities.single-memos.print');
     Route::post('/single-memos/{activity}/submit-for-approval', [ActivityController::class, 'submitSingleMemoForApproval'])->name('activities.single-memos.submit-for-approval');
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
     Route::delete('/single-memos/{activity}', [ActivityController::class, 'destroySingleMemo'])->name('activities.single-memos.destroy');

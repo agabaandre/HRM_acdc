@@ -660,29 +660,8 @@
                             </td>
                             <td class="field-value" colspan="3">
                         <strong>Status: </strong>
-                                
-                        @php
-                            // Determine the status and badge color
-                            $statusText = '';
-                            $badgeClass = 'bg-secondary';
-
-                            if (can_approve_activity($activity)) {
-                                if ($activity->status == 'passed') {
-                                    $statusText = ucwords($activity->status);
-                                    $badgeClass = 'bg-success';
-                                } else {
-                                    $statusText = ucwords($activity->status);
-                                    $badgeClass = 'bg-danger';
-                                }
-                            }
-                        @endphp
-
-                        @if(can_approve_activity($activity))
-                            <span class="badge {{ $badgeClass }}">{{ $statusText }}</span>
-                        @else
-                            <span class="badge bg-success">No Action Required</span>
-                        @endif
-                            </td>
+                                {!!display_memo_status_auto($activity,'matrix_activity')!!}
+                        </td>
                         </tr>
                 @if($activity->document_number)
                         <tr>
