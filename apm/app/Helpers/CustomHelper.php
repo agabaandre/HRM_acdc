@@ -74,7 +74,7 @@ if (!function_exists('user_session')) {
 
             // If matrix is in draft or returned
             if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
-                //dd("here");
+                //=dd("here");
                 return false;
             }
 

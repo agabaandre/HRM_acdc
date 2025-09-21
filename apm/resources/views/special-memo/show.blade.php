@@ -783,7 +783,13 @@
                                 <i class="bx bx-credit-card me-2 text-warning"></i>Fund Type
                             </td>
                             <td class="field-value">
-                                {{ optional($specialMemo->fundType)->name ?? 'Not specified' }}
+                                 @if($specialMemo->fundType)
+                                    <span class="badge bg-success">
+                                        {{ $specialMemo->fundType->name }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">Not specified</span>
+                                @endif
                             </td>
                         </tr>
                         

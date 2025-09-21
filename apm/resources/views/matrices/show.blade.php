@@ -569,17 +569,7 @@
 </div>
 
 <!-- Action Buttons Section -->
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-end gap-3">
-            @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
-                <button type="button" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
-                    <i class="bx bx-save me-2"></i> Submit Matrix for Approval
-                </button>
-            @endif
-        </div>
-    </div>
-</div>
+
 
 <!-- Submit Matrix Confirmation Modal -->
 <div class="modal fade" id="submitMatrixModal" tabindex="-1" aria-labelledby="submitMatrixModalLabel" aria-hidden="true">
