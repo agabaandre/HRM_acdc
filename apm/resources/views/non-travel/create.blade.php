@@ -243,11 +243,11 @@
 
                 <div class="d-flex justify-content-end gap-3 border-top pt-4 mt-5">
                     <button type="submit" name="action" value="draft" class="btn btn-secondary btn-lg px-5">
-                        <i class="bx bx-save me-1"></i> Save as Draft
+                        <i class="bx bx-save me-1"></i> Save Non-Travel Memo
                     </button>
-                    <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
+                    {{-- <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
                         <i class="bx bx-check-circle me-1"></i> Submit for Approval
-                    </button>
+                    </button> --}}
                 </div>
             </form>
         </div>

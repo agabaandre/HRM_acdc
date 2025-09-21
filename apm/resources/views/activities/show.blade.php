@@ -756,7 +756,7 @@
                                 <i class="bx bx-credit-card me-2 text-warning"></i>Fund Type
                             </td>
                             <td class="field-value">
-                                {{ optional($activity->fundType)->name ?? 'Not specified' }}
+                                <span class="badge bg-success">{{ optional($activity->fundType)->name ?? 'Not specified' }}</span>
                             </td>
                         </tr>
                         @if($activity->available_budget)

@@ -337,12 +337,9 @@
                             </td>
                             <td class="field-value">
                                 @if($nonTravel->fundType)
-                                    <span class="badge {{ $nonTravel->fundType->id == 1 ? 'bg-primary' : 'bg-info' }}">
+                                    <span class="badge bg-success">
                                         {{ $nonTravel->fundType->name }}
                                     </span>
-                                    <small class="text-muted ms-2">
-                                        ({{ $nonTravel->fundType->id == 1 ? 'Intramural' : 'Extramural' }})
-                                    </small>
                                 @else
                                     <span class="text-muted">Not specified</span>
                                 @endif
