@@ -1,19 +1,20 @@
 
 <div class="d-flex gap-2">
-{{-- @dd(activities_approved_by_me($matrix)) --}}
+{{-- {{ dd( activities_approved_by_me($matrix)) }} --}}
+  @if(!($matrix->overall_status == 'approved'))
+     <button class="btn btn-danger w-50 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
+        <i class="fa fa-arrow-circle-left text-bold"></i> Return entire matrix
+    </button>
+    @endif
     @if(!still_with_creator($matrix) && activities_approved_by_me($matrix))
         <button class="btn btn-success w-50 text-white" type="button" data-bs-toggle="modal" data-bs-target="#confirmReview" style="border-radius: 0px;">
-            <i class="bx bx-check text-bold"></i> Approve
+            <i class="fa fa-arrow-circle-right"></i> Approve
         </button>
     
     
    
     @endif
-  @if(!($matrix->overall_status == 'approved'))
-     <button class="btn btn-danger w-50 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
-        <i class="bx bx-edit text-bold"></i> Return entire matrix
-    </button>
-    @endif
+
  <br>
         
 

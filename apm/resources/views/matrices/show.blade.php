@@ -569,8 +569,8 @@
             </div>
         @endif
          @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
-                <button type="button w-100" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
-                    <i class="bx bx-save me-2"></i> Submit Matrix for Approval
+                <button type="button w-100" class="btn btn-success w-100 text-white" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
+                    <i class="fa fa-envelope"></i> Submit Matrix for Approval
                 </button>
         @endif
 
@@ -634,7 +634,7 @@
                     <i class="bx bx-x me-1"></i> Cancel
                 </button>
                 <a href="{{ route('matrices.request_approval', $matrix) }}" class="btn btn-success">
-                    <i class="bx bx-save me-1"></i> Yes, Submit Matrix
+                    <i class="fa fa-envelope"></i> Yes, Submit Matrix
                 </a>
             </div>
         </div>

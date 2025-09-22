@@ -221,7 +221,9 @@ if (!function_exists('user_session')) {
             // Must be owner or responsible person
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-
+          //  dd($);.
+            $isFocalperson = isset($memo->matrix->division->focal_person, $user->staff_id) && $memo->matrix->division->focal_person == $user->staff_id;
+           // dd($isFocalperson);
             // Only allow if status is draft or returned
             $isApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned'));
 
@@ -250,7 +252,7 @@ if (!function_exists('user_session')) {
             }
 
             return (
-                ($isOwner || $isResponsible) && $isApproved && $isMatrixApproved && $isActivityApproved
+                ($isOwner || $isResponsible || $isFocalperson) && $isApproved && $isMatrixApproved && $isActivityApproved
             ) || $isDivisionHead;
         }
      }
@@ -324,7 +326,9 @@ if (!function_exists('user_session')) {
 
     if (!function_exists('get_approvable_activities')) {
         function get_approvable_activities($matrix){
+            
             $approvable_activities = collect();
+            //dd($approvable_activities);
             $currentUserId = user_session('staff_id');
             
             // Get the current user's workflow definition for this matrix
@@ -337,16 +341,18 @@ if (!function_exists('user_session')) {
             
             // Get workflow definition based on matrix's current approval level
             $currentApprovalLevel = $matrix->approval_level;
+        //    / dd($currentApprovalLevel);
             
             // Find workflow definition for current approval level
             $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
                 ->where('approval_order', $currentApprovalLevel)
                 ->first();
-                
+            //dd($workflowDefinition);
             if (!$workflowDefinition) {
                 return $approvable_activities; // Return empty if no workflow definition found
             }
-            
+           //dd($workflowDefinition);
+            //dd($currentUserId);
             // Check if user is an approver for this workflow definition
             $isApprover = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
                 ->where('staff_id', $currentUserId)
@@ -355,6 +361,10 @@ if (!function_exists('user_session')) {
                           ->orWhere('end_date', '>=', now());
                 })
                 ->exists();
+
+        // getFullSql(($isApprover));
+
+           // dd($isApprover);
                 
             // Check if user is an OIC approver
             $isOicApprover = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
@@ -364,9 +374,49 @@ if (!function_exists('user_session')) {
                           ->orWhere('end_date', '>=', now());
                 })
                 ->exists();
+           //dd($isOicApprover);
+            // Check for division-level approvers (Finance Officer, Head of Division, Director)
+            $isDivisionLevelApprover = false;
+            
+            // Get matrix's division (not user's division)
+            $matrixDivision = $matrix->division;
+            
+            if ($matrixDivision) {
+                // Check if user is Finance Officer for this matrix's division
+                $isFinanceOfficer = $matrixDivision->finance_officer == $currentUserId;
+                
+                // Check if user is Head of Division for this matrix's division
+                $isHeadOfDivision = $matrixDivision->division_head == $currentUserId;
+                
+                // Check if user is Finance Officer OIC for this matrix's division
+                $isFinanceOfficerOic = $matrixDivision->finance_officer_oic_id == $currentUserId;
+                
+                // Check if user is Director for this matrix's division
+                $isDirector = $matrixDivision->director_id == $currentUserId;
+                
+                // Check if user is Director OIC for this matrix's division
+                $isDirectorOic = $matrixDivision->director_oic_id == $currentUserId;
+                
+                // Check if user is Head OIC for this matrix's division
+                $isHeadOic = $matrixDivision->head_oic_id == $currentUserId;
+                
+                $isDivisionLevelApprover = $isFinanceOfficer || $isHeadOfDivision || $isFinanceOfficerOic || $isDirector || $isDirectorOic || $isHeadOic;
+            }
+            
+            
+            // Additional check: Check if user is an OIC for any approver in the current workflow definition
+            // This covers cases where someone is an OIC but not specifically assigned to division fields
+            $isWorkflowOic = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
+                ->where('oic_staff_id', $currentUserId)
+                ->where(function($query) {
+                    $query->whereNull('end_date')
+                          ->orWhere('end_date', '>=', now());
+                })
+                ->exists();
             
             // If user is not an approver for this level, return empty collection
-            if (!$isApprover && !$isOicApprover) {
+            if (!$isApprover && !$isOicApprover && !$isDivisionLevelApprover && !$isWorkflowOic) {
+               // dd($isApprover,$isOicApprover);
                 return $approvable_activities;
             }
             
@@ -398,8 +448,6 @@ if (!function_exists('user_session')) {
                     $approvable_activities->push($activity);
                 }
             }
-
-            //dd($approvable_activities);
             
             return $approvable_activities;
         }
