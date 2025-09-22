@@ -1302,7 +1302,10 @@ class ActivityController extends Controller
 
     public function update_status(Request $request, Matrix $matrix, Activity $activity): RedirectResponse
     {
-        $request->validate(['action' => 'required']);
+        $request->validate([
+            'action' => 'required',
+            'available_budget' => 'nullable|numeric|min:0'
+        ]);
      
         $this->update_activity_status($request, $activity);
 
@@ -1333,6 +1336,12 @@ class ActivityController extends Controller
         $activityTrail->matrix_id   = $activity->matrix_id;
         $activityTrail->staff_id = user_session('staff_id');
         $activityTrail->save();
+
+        // Update activity with available_budget if provided and action is 'passed'
+        if ($request->action === 'passed' && $request->has('available_budget') && $request->available_budget !== null) {
+            $activity->available_budget = $request->available_budget;
+            $activity->save();
+        }
 
         $matrix = $activity->matrix;
 
@@ -2695,6 +2704,64 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             return redirect()
                 ->route('matrices.show', $matrix)
                 ->with('error', 'An error occurred while deleting the single memo.');
+        }
+    }
+
+    /**
+     * Copy an activity
+     */
+    public function copy(Matrix $matrix, Activity $activity)
+    {
+        // Check if user has permission to copy activities
+        if (!in_array(91, user_session('permissions', []))) {
+            return redirect()->back()->with('error', 'You do not have permission to copy activities.');
+        }
+
+        // Check if activity is in draft status
+        if ($activity->overall_status !== 'draft') {
+            return redirect()->back()->with('error', 'Only draft activities can be copied.');
+        }
+
+        // Check if matrix allows activity creation
+        if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
+            return redirect()->back()->with('error', 'Activities can only be copied when the matrix is in draft or returned status.');
+        }
+
+        try {
+            // Create a copy of the activity
+            $newActivity = $activity->replicate();
+            $newActivity->activity_title = $activity->activity_title . ' (Copy)';
+            $newActivity->document_number = null; // Will be generated on save
+            $newActivity->overall_status = 'draft';
+            $newActivity->approval_level = 0;
+            $newActivity->next_approval_level = 1;
+            $newActivity->is_single_memo = 0; // Ensure it's an activity, not a single memo
+            $newActivity->created_at = now();
+            $newActivity->updated_at = now();
+            $newActivity->save();
+
+            // Copy activity budget if exists
+            if ($activity->activity_budget) {
+                foreach ($activity->activity_budget as $budget) {
+                    $newBudget = $budget->replicate();
+                    $newBudget->activity_id = $newActivity->id;
+                    $newBudget->created_at = now();
+                    $newBudget->updated_at = now();
+                    $newBudget->save();
+                }
+            }
+
+            // Copy activity participants if exists
+            if ($activity->internal_participants) {
+                $newActivity->internal_participants = $activity->internal_participants;
+                $newActivity->save();
+            }
+
+            return redirect()->route('matrices.activities.edit', [$matrix, $newActivity])
+                ->with('success', 'Activity copied successfully. You can now edit the copied activity.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to copy activity: ' . $e->getMessage());
         }
     }
 }

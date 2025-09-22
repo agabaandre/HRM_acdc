@@ -234,6 +234,12 @@ Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\Pe
     // Matrix division staff AJAX route
     Route::get('/matrices/{matrix}/division-staff-ajax', [MatrixController::class, 'getDivisionStaffAjax'])->name('matrices.division-staff-ajax');
     
+    // Matrix activities for approvers AJAX route
+        Route::get('/matrices/{matrix}/activities-for-approver', [MatrixController::class, 'getActivitiesForApprover'])->name('matrices.activities-for-approver');
+        Route::get('/matrices/{matrix}/single-memos-for-approver', [MatrixController::class, 'getSingleMemosForApprover'])->name('matrices.single-memos-for-approver');
+        Route::get('/matrices/{matrix}/budgets', [MatrixController::class, 'getMatrixBudgets'])->name('matrices.budgets');
+        Route::get('/matrices/{matrix}/activities/{activity}/copy', [ActivityController::class, 'copy'])->name('matrices.activities.copy');
+    
     // General route must come last - moved to end of file
     
     // Non-Travel Memo Routes

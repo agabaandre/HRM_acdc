@@ -293,7 +293,11 @@ if (!function_exists('user_session')) {
             if(!$activity->matrix->workflow_definition->allowed_funders||empty($activity->matrix->workflow_definition->allowed_funders))
                 return true;
 
-            return  in_array($activity->activity_budget[0]->fundcode->fund_type_id,json_decode(@$activity->matrix->workflow_definition->allowed_funders));
+            // Check if activity has budget data before accessing it
+            if(empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode)
+                return true;
+
+            return  in_array($activity->activity_budget[0]->fundcode->fund_type_id, $activity->matrix->workflow_definition->allowed_funders ?? []);
         }
     }
 
@@ -321,11 +325,82 @@ if (!function_exists('user_session')) {
     if (!function_exists('get_approvable_activities')) {
         function get_approvable_activities($matrix){
             $approvable_activities = collect();
+            $currentUserId = user_session('staff_id');
+            
+            // Get the current user's workflow definition for this matrix
+            $userWorkflowDefinition = null;
+            
+            // Check if user is logged in
+            if (!$currentUserId) {
+                return $approvable_activities; // Return empty collection if not logged in
+            }
+            
+            // Get workflow definition based on matrix's current approval level
+            $currentApprovalLevel = $matrix->approval_level;
+            
+            // Find workflow definition for current approval level
+            $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                ->where('approval_order', $currentApprovalLevel)
+                ->first();
+                
+            if (!$workflowDefinition) {
+                return $approvable_activities; // Return empty if no workflow definition found
+            }
+            
+            // Check if user is an approver for this workflow definition
+            $isApprover = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
+                ->where('staff_id', $currentUserId)
+                ->where(function($query) {
+                    $query->whereNull('end_date')
+                          ->orWhere('end_date', '>=', now());
+                })
+                ->exists();
+                
+            // Check if user is an OIC approver
+            $isOicApprover = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
+                ->where('oic_staff_id', $currentUserId)
+                ->where(function($query) {
+                    $query->whereNull('end_date')
+                          ->orWhere('end_date', '>=', now());
+                })
+                ->exists();
+            
+            // If user is not an approver for this level, return empty collection
+            if (!$isApprover && !$isOicApprover) {
+                return $approvable_activities;
+            }
+            
+            // Filter activities based on allowed_funders if specified
             foreach($matrix->activities as $activity) {
-                if (can_approve_activity($activity)) {
+                $canApprove = true;
+                
+                // Check if activity has budget data and allowed_funders is specified
+                if ($workflowDefinition->allowed_funders && !empty($workflowDefinition->allowed_funders)) {
+                    // For external source activities (fund_type_id == 3), always allow
+                
+                        // Check if activity has budget data
+                        if (empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode) {
+                            $canApprove = false; // Don't allow activities without budget data
+                        } else {
+                            // Check if activity's fund type is in allowed_funders
+                            $activityFundTypeId = $activity->activity_budget[0]->fundcode->fund_type_id;
+                            $canApprove = in_array($activityFundTypeId, $workflowDefinition->allowed_funders);
+                        }
+                    
+                }
+                
+                // Additional check using existing can_approve_activity function
+                if ($canApprove) {
+                    $canApprove = can_approve_activity($activity);
+                }
+                
+                if ($canApprove) {
                     $approvable_activities->push($activity);
                 }
             }
+
+            //dd($approvable_activities);
+            
             return $approvable_activities;
         }
     }

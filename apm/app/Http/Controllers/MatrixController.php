@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Approver;
 use App\Models\Division;
 use App\Models\ApprovalTrail;
+use App\Models\ActivityApprovalTrail;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowModel;
 use Illuminate\Http\Request;
@@ -390,7 +391,8 @@ class MatrixController extends Controller
             $singleMemosQuery->where('document_number', 'like', '%' . $request->single_memo_search . '%');
         }
         
-        $activities = $activitiesQuery->latest()->paginate(20);
+        $perPage = $request->get('per_page', 20);
+        $activities = $activitiesQuery->latest()->paginate($perPage);
         $singleMemos = $singleMemosQuery->latest()->paginate(20);
      
         // Prepare additional decoded & related data per activity
@@ -434,6 +436,518 @@ class MatrixController extends Controller
     
         return view('matrices.show', compact('matrix', 'activities', 'singleMemos'));
      }
+
+    /**
+     * Get activities for approvers via AJAX with filtering by approval order and allowed funders
+     */
+    public function getActivitiesForApprover(Matrix $matrix, Request $request)
+    {
+        $userStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
+        
+        // If user is not logged in, return all activities without filtering
+        if (!$userStaffId) {
+            return $this->getAllActivities($matrix, $request);
+        }
+
+        // Get user's workflow definition and approval order
+        $userWorkflowDefinition = $this->getUserWorkflowDefinition($matrix, $userStaffId, $userDivisionId);
+        
+        // If no workflow definition found for user, return all activities without filtering
+        if (!$userWorkflowDefinition) {
+            return $this->getAllActivities($matrix, $request);
+        }
+
+        // Build activities query with filtering
+        $activitiesQuery = $matrix->activities()
+            ->where('is_single_memo', 0)
+            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+
+        // Filter by allowed funders if specified in workflow definition
+        if ($userWorkflowDefinition->allowed_funders) {
+            $allowedFunders = is_string($userWorkflowDefinition->allowed_funders) 
+                ? json_decode($userWorkflowDefinition->allowed_funders, true) 
+                : $userWorkflowDefinition->allowed_funders;
+            
+            if (is_array($allowedFunders) && !empty($allowedFunders)) {
+                $activitiesQuery->whereIn('fund_type_id', $allowedFunders);
+            }
+        }
+
+        // Apply document number filter if provided
+        if ($request->filled('document_number')) {
+            $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+
+        // Apply general search filter if provided
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $activitiesQuery->where(function($query) use ($searchTerm) {
+                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('background', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
+                      ->orWhereHas('responsiblePerson', function($q) use ($searchTerm) {
+                          $q->where('fname', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
+                      })
+                      ->orWhereHas('fundType', function($q) use ($searchTerm) {
+                          $q->where('name', 'like', '%' . $searchTerm . '%');
+                      });
+            });
+        }
+
+        $perPage = $request->get('per_page', 20);
+        $activities = $activitiesQuery->latest()->paginate($perPage);
+
+        // Prepare additional decoded & related data per activity
+        foreach ($activities as $activity) {
+            // Decode JSON arrays
+            $locationIds = is_array($activity->location_id)
+                ? $activity->location_id
+                : json_decode($activity->location_id ?? '[]', true);
+
+            $internalRaw = is_string($activity->internal_participants)
+                ? json_decode($activity->internal_participants ?? '[]', true)
+                : ($activity->internal_participants ?? []);
+
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+
+            // Attach related models
+            $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+            
+            // Add approval-related data
+            $activity->can_approve = can_approve_activity($activity);
+            $activity->allow_print = allow_print_activity($activity);
+            $activity->my_last_action = $activity->my_last_action ?? null;
+            
+            // Check if user's approval order has already passed this activity
+            $activity->user_has_passed = $this->hasUserPassedActivity($activity, $userWorkflowDefinition);
+        }
+
+        return response()->json([
+            'activities' => $activities,
+            'user_workflow_definition' => [
+                'id' => $userWorkflowDefinition->id,
+                'role' => $userWorkflowDefinition->role,
+                'approval_order' => $userWorkflowDefinition->approval_order,
+                'allowed_funders' => $userWorkflowDefinition->allowed_funders,
+                'is_division_specific' => $userWorkflowDefinition->is_division_specific,
+            ],
+            'pagination' => [
+                'current_page' => $activities->currentPage(),
+                'last_page' => $activities->lastPage(),
+                'per_page' => $activities->perPage(),
+                'total' => $activities->total(),
+                'from' => $activities->firstItem(),
+                'to' => $activities->lastItem(),
+            ]
+        ]);
+    }
+
+    /**
+     * Get user's workflow definition for the given matrix
+     */
+    private function getUserWorkflowDefinition(Matrix $matrix, $userStaffId, $userDivisionId)
+    {
+        if (!$matrix->forward_workflow_id) {
+            return null;
+        }
+
+        // Get current approval level workflow definitions
+        $workflowDefinitions = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+            ->where('approval_order', $matrix->approval_level)
+            ->where('is_enabled', 1)
+            ->get();
+
+        if ($workflowDefinitions->isEmpty()) {
+            return null;
+        }
+
+        // Check for division-specific workflow definition
+        if ($workflowDefinitions->count() > 1 && $matrix->division) {
+            $divisionSpecific = $workflowDefinitions->where('is_division_specific', 1)
+                ->where('category', $matrix->division->category)
+                ->first();
+            
+            if ($divisionSpecific) {
+                return $divisionSpecific;
+            }
+        }
+
+        // Check if user is an approver for any of the workflow definitions
+        foreach ($workflowDefinitions as $definition) {
+            if ($definition->is_division_specific) {
+                // Check division-specific approvers
+                if ($this->isDivisionSpecificApprover($matrix, $definition, $userStaffId, $userDivisionId)) {
+                    return $definition;
+                }
+            } else {
+                // Check regular approvers
+                $today = \Carbon\Carbon::today();
+                
+                // Check for regular approver
+                $isApprover = Approver::where('workflow_dfn_id', $definition->id)
+                    ->where('staff_id', $userStaffId)
+                    ->where(function($query) use ($today) {
+                        $query->whereNull('end_date')
+                              ->orWhere('end_date', '>=', $today);
+                    })
+                    ->exists();
+                
+                if ($isApprover) {
+                    return $definition;
+                }
+                
+                // Check for OIC approver
+                $isOicApprover = Approver::where('workflow_dfn_id', $definition->id)
+                    ->where('oic_staff_id', $userStaffId)
+                    ->where(function($query) use ($today) {
+                        $query->whereNull('end_date')
+                              ->orWhere('end_date', '>=', $today);
+                    })
+                    ->exists();
+                
+                if ($isOicApprover) {
+                    return $definition;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if user is a division-specific approver
+     */
+    private function isDivisionSpecificApprover(Matrix $matrix, WorkflowDefinition $definition, $userStaffId, $userDivisionId)
+    {
+        if (!$definition->is_division_specific || !$matrix->division) {
+            return false;
+        }
+
+        // Check if user's division matches matrix division
+        if ($userDivisionId && $matrix->division_id == $userDivisionId) {
+            return true;
+        }
+
+        // Check division reference column
+        if ($definition->division_reference_column) {
+            $columnValue = $matrix->division->{$definition->division_reference_column};
+            if ($columnValue == $userStaffId) {
+                return true;
+            }
+            
+            // Check for active OIC for this reference column
+            $today = \Carbon\Carbon::today();
+            $oicColumnMap = [
+                'division_head' => 'head_oic_id',
+                'finance_officer' => 'finance_officer_oic_id',
+                'director_id' => 'director_oic_id'
+            ];
+            
+            $oicColumn = $oicColumnMap[$definition->division_reference_column] ?? $definition->division_reference_column . '_oic_id';
+            $oicStartColumn = str_replace('_oic_id', '_oic_start_date', $oicColumn);
+            $oicEndColumn = str_replace('_oic_id', '_oic_end_date', $oicColumn);
+            
+            // Check if current user is the active OIC
+            if (isset($matrix->division->$oicColumn) && $matrix->division->$oicColumn == $userStaffId) {
+                $isOicActive = true;
+                if (isset($matrix->division->$oicStartColumn) && $matrix->division->$oicStartColumn) {
+                    $isOicActive = $isOicActive && $matrix->division->$oicStartColumn <= $today;
+                }
+                if (isset($matrix->division->$oicEndColumn) && $matrix->division->$oicEndColumn) {
+                    $isOicActive = $isOicActive && $matrix->division->$oicEndColumn >= $today;
+                }
+                
+                if ($isOicActive) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user's last action on this activity was "passed" at the current approval level
+     */
+    private function hasUserPassedActivity($activity, $userWorkflowDefinition)
+    {
+        if (!$userWorkflowDefinition || !$activity->matrix) {
+            return false;
+        }
+
+        // If activity is already passed (allow_print), user has passed
+        if ($activity->allow_print) {
+            return true;
+        }
+
+        // Check if user's last action on this activity was "passed" at the current approval level
+        $userStaffId = user_session('staff_id');
+        if ($userStaffId) {
+            $currentApprovalLevel = $activity->matrix->approval_level;
+            
+            $lastAction = ActivityApprovalTrail::where('activity_id', $activity->id)
+                ->where('staff_id', $userStaffId)
+                ->where('approval_order', $currentApprovalLevel)
+                ->orderBy('id', 'desc')
+                ->first();
+                
+            if ($lastAction && $lastAction->action === 'passed') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get all activities without filtering (fallback for non-authenticated users)
+     */
+    private function getAllActivities(Matrix $matrix, Request $request)
+    {
+        // Build activities query without filtering
+        $activitiesQuery = $matrix->activities()
+            ->where('is_single_memo', 0)
+            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+
+        // Apply document number filter if provided
+        if ($request->filled('document_number')) {
+            $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+
+        // Apply general search filter if provided
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $activitiesQuery->where(function($query) use ($searchTerm) {
+                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('background', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
+                      ->orWhereHas('responsiblePerson', function($q) use ($searchTerm) {
+                          $q->where('fname', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
+                      })
+                      ->orWhereHas('fundType', function($q) use ($searchTerm) {
+                          $q->where('name', 'like', '%' . $searchTerm . '%');
+                      });
+            });
+        }
+
+        $perPage = $request->get('per_page', 20);
+        $activities = $activitiesQuery->latest()->paginate($perPage);
+
+        // Prepare additional decoded & related data per activity
+        foreach ($activities as $activity) {
+            // Decode JSON arrays
+            $locationIds = is_array($activity->location_id)
+                ? $activity->location_id
+                : json_decode($activity->location_id ?? '[]', true);
+
+            $internalRaw = is_string($activity->internal_participants)
+                ? json_decode($activity->internal_participants ?? '[]', true)
+                : ($activity->internal_participants ?? []);
+
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+
+            // Attach related models
+            $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+            
+            // Add approval-related data (default to false for non-authenticated users)
+            $activity->can_approve = false;
+            $activity->allow_print = false;
+            $activity->my_last_action = null;
+            $activity->user_has_passed = false;
+        }
+
+        return response()->json([
+            'activities' => $activities,
+            'user_workflow_definition' => null,
+            'pagination' => [
+                'current_page' => $activities->currentPage(),
+                'last_page' => $activities->lastPage(),
+                'per_page' => $activities->perPage(),
+                'total' => $activities->total(),
+                'from' => $activities->firstItem(),
+                'to' => $activities->lastItem(),
+            ]
+        ]);
+    }
+
+    /**
+     * Get single memos for approvers via AJAX with filtering
+     */
+    public function getSingleMemosForApprover(Matrix $matrix, Request $request)
+    {
+        $userStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
+        
+        // If user is not logged in, return all single memos without filtering
+        if (!$userStaffId) {
+            return $this->getAllSingleMemos($matrix, $request);
+        }
+
+        // Get user's workflow definition and approval order
+        $userWorkflowDefinition = $this->getUserWorkflowDefinition($matrix, $userStaffId, $userDivisionId);
+        
+        // If no workflow definition found for user, return all single memos without filtering
+        if (!$userWorkflowDefinition) {
+            return $this->getAllSingleMemos($matrix, $request);
+        }
+
+        // Build single memos query with filtering
+        $singleMemosQuery = $matrix->activities()
+            ->where('is_single_memo', 1)
+            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+
+        // Apply document number filter if provided
+        if ($request->filled('document_number')) {
+            $singleMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+
+        // Apply general search filter if provided
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $singleMemosQuery->where(function($query) use ($searchTerm) {
+                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('background', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
+                      ->orWhereHas('responsiblePerson', function($q) use ($searchTerm) {
+                          $q->where('fname', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
+                      })
+                      ->orWhereHas('fundType', function($q) use ($searchTerm) {
+                          $q->where('name', 'like', '%' . $searchTerm . '%');
+                      });
+            });
+        }
+
+        $perPage = $request->get('per_page', 20);
+        $singleMemos = $singleMemosQuery->latest()->paginate($perPage);
+
+        // Prepare additional decoded & related data per single memo
+        foreach ($singleMemos as $memo) {
+            // Decode JSON arrays
+            $locationIds = is_array($memo->location_id)
+                ? $memo->location_id
+                : json_decode($memo->location_id ?? '[]', true);
+
+            $internalRaw = is_string($memo->internal_participants)
+                ? json_decode($memo->internal_participants ?? '[]', true)
+                : ($memo->internal_participants ?? []);
+
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+
+            // Attach related models
+            $memo->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+            
+            // Add approval-related data
+            $memo->can_approve = can_approve_activity($memo);
+            $memo->allow_print = allow_print_activity($memo);
+            $memo->my_last_action = $memo->my_last_action ?? null;
+            
+            // Check if user's last action on this single memo was "passed"
+            $memo->user_has_passed = $this->hasUserPassedActivity($memo, $userWorkflowDefinition);
+        }
+
+        return response()->json([
+            'single_memos' => $singleMemos,
+            'user_workflow_definition' => [
+                'id' => $userWorkflowDefinition->id,
+                'role' => $userWorkflowDefinition->role,
+                'approval_order' => $userWorkflowDefinition->approval_order,
+                'allowed_funders' => $userWorkflowDefinition->allowed_funders,
+                'is_division_specific' => $userWorkflowDefinition->is_division_specific,
+            ],
+            'pagination' => [
+                'current_page' => $singleMemos->currentPage(),
+                'last_page' => $singleMemos->lastPage(),
+                'per_page' => $singleMemos->perPage(),
+                'total' => $singleMemos->total(),
+                'from' => $singleMemos->firstItem(),
+                'to' => $singleMemos->lastItem(),
+            ]
+        ]);
+    }
+
+    /**
+     * Get all single memos without filtering (fallback for non-authenticated users)
+     */
+    private function getAllSingleMemos(Matrix $matrix, Request $request)
+    {
+        // Build single memos query without filtering
+        $singleMemosQuery = $matrix->activities()
+            ->where('is_single_memo', 1)
+            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+
+        // Apply document number filter if provided
+        if ($request->filled('document_number')) {
+            $singleMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+
+        // Apply general search filter if provided
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $singleMemosQuery->where(function($query) use ($searchTerm) {
+                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('background', 'like', '%' . $searchTerm . '%')
+                      ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
+                      ->orWhereHas('responsiblePerson', function($q) use ($searchTerm) {
+                          $q->where('fname', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
+                      })
+                      ->orWhereHas('fundType', function($q) use ($searchTerm) {
+                          $q->where('name', 'like', '%' . $searchTerm . '%');
+                      });
+            });
+        }
+
+        $perPage = $request->get('per_page', 20);
+        $singleMemos = $singleMemosQuery->latest()->paginate($perPage);
+
+        // Prepare additional decoded & related data per single memo
+        foreach ($singleMemos as $memo) {
+            // Decode JSON arrays
+            $locationIds = is_array($memo->location_id)
+                ? $memo->location_id
+                : json_decode($memo->location_id ?? '[]', true);
+
+            $internalRaw = is_string($memo->internal_participants)
+                ? json_decode($memo->internal_participants ?? '[]', true)
+                : ($memo->internal_participants ?? []);
+
+            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
+
+            // Attach related models
+            $memo->locations = Location::whereIn('id', $locationIds ?: [])->get();
+            $memo->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+            
+            // Add approval-related data (default to false for non-authenticated users)
+            $memo->can_approve = false;
+            $memo->allow_print = false;
+            $memo->my_last_action = null;
+            $memo->user_has_passed = false;
+        }
+
+        return response()->json([
+            'single_memos' => $singleMemos,
+            'user_workflow_definition' => null,
+            'pagination' => [
+                'current_page' => $singleMemos->currentPage(),
+                'last_page' => $singleMemos->lastPage(),
+                'per_page' => $singleMemos->perPage(),
+                'total' => $singleMemos->total(),
+                'from' => $singleMemos->firstItem(),
+                'to' => $singleMemos->lastItem(),
+            ]
+        ]);
+    }
 
     /**
      * Get division staff data via AJAX for DataTables
@@ -544,7 +1058,7 @@ class MatrixController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error in getDivisionStaffAjax: ' . $e->getMessage(), [
+            Log::error('Error in getDivisionStaffAjax: ' . $e->getMessage(), [
                 'matrix_id' => $matrix->id,
                 'error' => $e->getTraceAsString()
             ]);
@@ -1442,5 +1956,78 @@ class MatrixController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Get matrix budget information
+     */
+    public function getMatrixBudgets(Matrix $matrix)
+    {
+        try {
+            $intramuralBudget = 0;
+            $extramuralBudget = 0;
+            $totalBudget = 0;
+            
+            foreach($matrix->activities as $activity) {
+                $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown, true);
+                
+                if (is_array($budget)) {
+                    foreach ($budget as $key => $entries) {
+                        if ($key === 'grand_total') continue;
+                        
+                        if (is_array($entries)) {
+                            foreach ($entries as $item) {
+                                $unitCost = floatval($item['unit_cost'] ?? 0);
+                                $units = floatval($item['units'] ?? 0);
+                                $days = floatval($item['days'] ?? 1);
+                                
+                                if ($days > 1) {
+                                    $itemTotal = $unitCost * $units * $days;
+                                } else {
+                                    $itemTotal = $unitCost * $units;
+                                }
+                                
+                                // Add to total budget
+                                $totalBudget += $itemTotal;
+                                
+                                // Categorize by fund type based on the key (fund code ID)
+                                $fundCodeId = intval($key);
+                                $fundCode = \App\Models\FundCode::with('fundType')->find($fundCodeId);
+                                
+                                if ($fundCode && $fundCode->fundType) {
+                                    $fundTypeId = $fundCode->fundType->id;
+                                    if (in_array($fundTypeId, [1, 3])) {
+                                        // Intramural (fund types 1 and 3)
+                                        $intramuralBudget += $itemTotal;
+                                    } elseif ($fundTypeId == 2) {
+                                        // Extramural (fund type 2)
+                                        $extramuralBudget += $itemTotal;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Get activities count
+            $activitiesCount = $matrix->activities->count();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'intramural_budget' => $intramuralBudget,
+                    'extramural_budget' => $extramuralBudget,
+                    'total_budget' => $totalBudget,
+                    'activities_count' => $activitiesCount
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error calculating budgets: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

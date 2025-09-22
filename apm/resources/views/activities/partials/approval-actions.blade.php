@@ -85,8 +85,8 @@
                                This confirms that you find this activity okay.
                                <input type="hidden" name="action" value="passed"/>
                             </div>
-                             @if($activity->approval_level=='5')
-                                        <div classs="col-md-8">
+                             @if($matrix->approval_level=='5')
+                                        <div class="col-md-8">
                                             <div class="mb-3">
                                                 <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
                                                 <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>

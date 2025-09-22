@@ -1,22 +1,22 @@
 
 <div class="d-flex gap-2">
-{{-- @dd(!still_with_creator($matrix)) --}}
+{{-- @dd(activities_approved_by_me($matrix)) --}}
     @if(!still_with_creator($matrix) && activities_approved_by_me($matrix))
         <button class="btn btn-success w-50 text-white" type="button" data-bs-toggle="modal" data-bs-target="#confirmReview" style="border-radius: 0px;">
             <i class="bx bx-check text-bold"></i> Approve
         </button>
-    @endif
     
-    <button class="btn btn-danger w-50 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
+    
+   
+    @endif
+  @if(!($matrix->overall_status == 'approved'))
+     <button class="btn btn-danger w-50 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
         <i class="bx bx-edit text-bold"></i> Return entire matrix
     </button>
+    @endif
+ <br>
+        
 
-        {{-- @dd($matrix->activities->count() > 0 && still_with_creator($matrix)) --}}
-            @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
-                <button type="button w-50" class="btn btn-success btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
-                    <i class="bx bx-save me-2"></i> Submit Matrix for Approval
-                </button>
-            @endif
     
   
     
