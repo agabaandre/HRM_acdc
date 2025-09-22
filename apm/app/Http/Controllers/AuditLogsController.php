@@ -535,17 +535,22 @@ class AuditLogsController extends Controller
                         ];
                     }
                     
-                    // Remove audit-specific fields and add reversal metadata
+                    // Remove audit-specific fields (don't add reversal metadata to primary table)
                     $restoreData = array_diff_key($oldValues, [
                         'created_at' => '',
                         'updated_at' => '',
                         'id' => ''
                     ]);
                     
+                    // Convert date fields to proper format
+                    if (isset($restoreData['date_from']) && is_string($restoreData['date_from'])) {
+                        $restoreData['date_from'] = \Carbon\Carbon::parse($restoreData['date_from'])->format('Y-m-d');
+                    }
+                    if (isset($restoreData['date_to']) && is_string($restoreData['date_to'])) {
+                        $restoreData['date_to'] = \Carbon\Carbon::parse($restoreData['date_to'])->format('Y-m-d');
+                    }
+                    
                     $restoreData['updated_at'] = now();
-                    $restoreData['reversal_reason'] = $reason;
-                    $restoreData['reversed_at'] = now();
-                    $restoreData['reversed_by'] = user_session('staff_id');
                     
                     $restoredId = DB::table($modelTable)->insertGetId($restoreData);
                     

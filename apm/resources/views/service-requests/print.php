@@ -205,7 +205,7 @@
  
   <!-- Service Request Document -->
   <!-- Document Title -->
-  <h1 class="document-title">Service Request</h1>
+  <h1 class="document-title">Interoffice Memorandum</h1>
   
   <?php
     // Helper functions to safely access staff data

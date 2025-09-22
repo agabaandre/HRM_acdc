@@ -10,6 +10,7 @@ use App\Traits\HasApprovalWorkflow;
 use App\Traits\HasDocumentNumber;
 use Illuminate\Support\Str;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
+use App\Models\ActivityApprovalTrail;
 
 class Activity extends Model
 {
@@ -341,13 +342,20 @@ class Activity extends Model
     }
 
     public function getMyLastActionAttribute(){
-        $user = session('user', []);
-        if (!isset($user['staff_id'])) {
+        $userStaffId = user_session('staff_id');
+        if (!$userStaffId) {
             return null;
         }
+        
+        // Only get actions at the current approval level
+        $currentApprovalLevel = $this->matrix ? $this->matrix->approval_level : null;
+        if (!$currentApprovalLevel) {
+            return null;
+        }
+        
         return ActivityApprovalTrail::where('activity_id',$this->id)
-        ->where('staff_id',$user['staff_id'])
-        ->where('approval_order',$this->matrix->approval_level)
+        ->where('staff_id',$userStaffId)
+        ->where('approval_order', $currentApprovalLevel)
         ->orderByDesc('id')->first();
     }
 

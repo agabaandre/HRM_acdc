@@ -27,6 +27,42 @@
     font-weight: 500;
 }
 
+/* Enhanced styling for budget values - eye-friendly colors */
+#intramural-budget, #extramural-budget, #total-budget {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.4rem;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: all 0.2s ease;
+    display: inline-block;
+    min-width: 100px;
+    font-size: 0.9rem;
+}
+
+#intramural-budget {
+    border-color: #52c41a;
+    background: linear-gradient(135deg, #f6ffed 0%, #f0f9e8 100%);
+    color: #389e0d !important;
+}
+
+#extramural-budget {
+    border-color: #1890ff;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+    color: #0958d9 !important;
+}
+
+#total-budget {
+    border-color: #722ed1;
+    background: linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%);
+    color: #531dab !important;
+}
+
+#intramural-budget:hover, #extramural-budget:hover, #total-budget:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
 /* Modal content wrapping styles for Key Result Areas */
 .modal-body .list-group-item {
     word-wrap: break-word;
@@ -98,14 +134,18 @@
                 <span class="matrix-meta-value">{{ $matrix->focalPerson ? ($matrix->focalPerson->fname." ".$matrix->focalPerson->lname): 'Not assigned' }}</span>
             </div>
             <div class="matrix-meta-item">
-                <i class="bx bx-money"></i>
-                <span class="matrix-meta-label">Intramural Budget:</span>
-                <span class="matrix-meta-value">{{ number_format($matrix->intramural_budget,2) }}</span>
+                <i class="bx bx-money text-success"></i>
+                <span class="matrix-meta-label fw-bold">Intramural Budget:</span>
+                <span class="matrix-meta-value text-success fw-bold fs-6" id="intramural-budget">
+                    <i class="bx bx-loader-alt bx-spin"></i> Loading...
+                </span>
             </div>
             <div class="matrix-meta-item">
-                <i class="bx bx-money"></i>
-                <span class="matrix-meta-label">Extramural Budget:</span>
-                <span class="matrix-meta-value">{{ number_format($matrix->extramural_budget,2) }}</span>
+                <i class="bx bx-money text-info"></i>
+                <span class="matrix-meta-label fw-bold">Extramural Budget:</span>
+                <span class="matrix-meta-value text-info fw-bold fs-6" id="extramural-budget">
+                    <i class="bx bx-loader-alt bx-spin"></i> Loading...
+                </span>
             </div>
         </div>
         <div class="mt-3">
