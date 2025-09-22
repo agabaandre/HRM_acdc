@@ -1,11 +1,12 @@
 
 <div class="d-flex gap-2">
     <button class="btn btn-success w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#confirmReview" style="border-radius: 0px;">
-        <i class="bx bx-check text-bold"></i> Pass
+        <i class="bx bx-check text-bold"></i> Pass Activity
     </button>
+    {{-- @dd($matrix->approval_level) --}}
     @if(!still_with_creator($matrix))
     <button class="btn btn-danger w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
-        <i class="bx bx-edit text-bold"></i> Not Passed
+        <i class="bx bx-edit text-bold"></i> Return Activity
     </button>
     @endif
 
