@@ -1124,7 +1124,7 @@ function renderActivities(activities) {
                 html += 'data-bs-toggle="modal" data-bs-target="#copyActivityModal" ';
                 html += `data-activity-id="${activity.id}" data-activity-title="${activity.activity_title}" `;
                 html += 'title="Copy Activity">';
-                html += '<i class="bx bx-copy"></i> Copy';
+                html += '<i class="bx bx-copy"></i>';
                 html += '</button>';
             }
             
