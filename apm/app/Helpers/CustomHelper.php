@@ -328,8 +328,15 @@ if (!function_exists('user_session')) {
         function get_approvable_activities($matrix){
             
             $approvable_activities = collect();
-            //dd($approvable_activities);
             $currentUserId = user_session('staff_id');
+            
+            // Simple cache key for this matrix and user
+            $cacheKey = "approvable_activities_{$matrix->id}_{$currentUserId}_{$matrix->approval_level}";
+            
+            // Check cache first (cache for 5 minutes)
+            if (\Cache::has($cacheKey)) {
+                return \Cache::get($cacheKey);
+            }
             
             // Get the current user's workflow definition for this matrix
             $userWorkflowDefinition = null;
@@ -448,6 +455,9 @@ if (!function_exists('user_session')) {
                     $approvable_activities->push($activity);
                 }
             }
+            
+            // Cache the result for 5 minutes
+            \Cache::put($cacheKey, $approvable_activities, 300);
             
             return $approvable_activities;
         }
