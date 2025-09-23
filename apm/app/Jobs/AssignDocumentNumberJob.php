@@ -58,7 +58,7 @@ class AssignDocumentNumberJob implements ShouldQueue
                 return;
             }
 
-            // Generate document number
+            // Generate document number with conflict resolution
             $documentNumber = DocumentNumberService::generateForModel($model, $this->documentType);
             
             // Update the model with the document number
@@ -70,6 +70,47 @@ class AssignDocumentNumberJob implements ShouldQueue
                 'document_number' => $documentNumber,
                 'document_type' => $this->documentType
             ]);
+            
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle unique constraint violations
+            if ($e->getCode() == 23000) { // MySQL duplicate entry error
+                Log::warning("Document number conflict detected, retrying with next available number", [
+                    'model_type' => $this->modelType,
+                    'model_id' => $this->modelId,
+                    'error' => $e->getMessage()
+                ]);
+                
+                try {
+                    // Try to find next available number
+                    $division = $model->division ?? $model->division_id;
+                    $documentNumber = DocumentNumberService::findNextAvailableNumber(
+                        $this->documentType,
+                        is_object($division) ? $division->division_short_name : 'UNKNOWN'
+                    );
+                    
+                    $model->update(['document_number' => $documentNumber]);
+                    
+                    Log::info("Document number assigned after conflict resolution", [
+                        'model_type' => $this->modelType,
+                        'model_id' => $this->modelId,
+                        'document_number' => $documentNumber
+                    ]);
+                    
+                } catch (\Exception $retryException) {
+                    Log::error("Document number assignment failed after conflict resolution", [
+                        'model_type' => $this->modelType,
+                        'model_id' => $this->modelId,
+                        'original_error' => $e->getMessage(),
+                        'retry_error' => $retryException->getMessage()
+                    ]);
+                    
+                    // Re-throw the original exception
+                    throw $e;
+                }
+            } else {
+                // Re-throw non-unique constraint errors
+                throw $e;
+            }
             
         } catch (\Exception $e) {
             Log::error("Document number assignment failed", [

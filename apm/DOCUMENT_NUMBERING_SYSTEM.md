@@ -43,6 +43,12 @@ AU/CDC/{DIVISION_SHORT_NAME}/IM/{DOCUMENT_TYPE}/{COUNTER}
 - Background job processing prevents blocking
 - Fallback to immediate assignment if needed
 
+### ✅ **Conflict Resolution**
+- Automatic retry logic when document number conflicts occur
+- Unique constraint violation handling in background jobs
+- Gap prevention after activity deletions
+- Command-line tools for fixing existing conflicts
+
 ## Usage
 
 ### Automatic Assignment (Recommended)
@@ -227,6 +233,79 @@ php artisan tinker
 >>> App\Models\DocumentCounter::resetCountersForNewYear(2025);
 ```
 
+### Fix Document Number Conflicts
+
+```bash
+# Check for conflicts without making changes (dry run)
+php artisan fix:document-conflicts --dry-run
+
+# Fix all document number conflicts
+php artisan fix:document-conflicts
+
+# Fix conflicts for specific division only
+php artisan fix:document-conflicts --division=1
+
+# Reset counters to next available numbers after deletions
+php artisan fix:document-conflicts --reset-counters
+
+# Fix conflicts and reset counters in one command
+php artisan fix:document-conflicts --reset-counters
+```
+
+## Conflict Resolution System
+
+### How Conflicts Occur
+
+Document number conflicts can happen when:
+
+1. **Activity Deletion**: An activity with document number `AU/CDC/CR/IM/SM/001` is deleted, but the counter remains at 001
+2. **Duplicate Generation**: A new activity gets the same document number `AU/CDC/CR/IM/SM/001`
+3. **Unique Constraint Violation**: The database rejects the duplicate, causing the job to fail
+
+### Automatic Resolution
+
+The system now includes robust conflict resolution:
+
+#### **DocumentNumberService Enhancements**
+- **Retry Logic**: Up to 10 attempts to generate unique document numbers
+- **Uniqueness Check**: Verifies document numbers across all tables before assignment
+- **Next Available**: Finds the next available number when conflicts occur
+
+#### **AssignDocumentNumberJob Improvements**
+- **Constraint Handling**: Catches MySQL duplicate entry errors (code 23000)
+- **Automatic Retry**: Finds next available number when conflicts detected
+- **Enhanced Logging**: Tracks conflict resolution attempts
+
+#### **Counter Reset Functionality**
+- **Gap Prevention**: Resets counters to prevent gaps after deletions
+- **Smart Detection**: Finds highest used document number and resets accordingly
+
+### Manual Conflict Resolution
+
+Use the `fix:document-conflicts` command to resolve existing conflicts:
+
+```bash
+# Dry run to see what would be fixed
+php artisan fix:document-conflicts --dry-run
+
+# Fix all conflicts
+php artisan fix:document-conflicts
+
+# Fix for specific division
+php artisan fix:document-conflicts --division=1
+
+# Reset counters after deletions
+php artisan fix:document-conflicts --reset-counters
+```
+
+### Conflict Resolution Process
+
+1. **Detection**: Scans all tables for duplicate document numbers
+2. **Analysis**: Identifies which records have conflicts
+3. **Resolution**: Keeps first record, assigns new numbers to duplicates
+4. **Verification**: Ensures all document numbers are unique
+5. **Logging**: Records all changes for audit trail
+
 ## API Methods
 
 ### DocumentCounter Model
@@ -268,6 +347,12 @@ $components = DocumentNumberService::parseDocumentNumber($number);
 
 // Get preview
 $preview = DocumentNumberService::getNextNumberPreview('QM', $division);
+
+// Find next available number (conflict resolution)
+$nextNumber = DocumentNumberService::findNextAvailableNumber('SM', 'CR');
+
+// Reset counter after deletions
+DocumentNumberService::resetCounterAfterDeletion('SM', 'CR', 2024);
 ```
 
 ## Examples

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class DocumentNumberService
 {
     /**
-     * Generate a unique document number
+     * Generate a unique document number with conflict resolution
      */
     public static function generateDocumentNumber(
         string $documentType,
@@ -30,14 +30,47 @@ class DocumentNumberService
             $divisionShortName = 'UNKNOWN';
         }
         
-        // Get next counter value
-        $counter = DocumentCounter::getNextCounter($divisionShortName, $documentType, $year);
+        // Try to generate a unique document number with retry logic
+        $maxRetries = 10;
+        $attempt = 0;
         
-        // Format counter with leading zeros
-        $formattedCounter = str_pad($counter, 3, '0', STR_PAD_LEFT);
+        while ($attempt < $maxRetries) {
+            try {
+                // Get next counter value
+                $counter = DocumentCounter::getNextCounter($divisionShortName, $documentType, $year);
+                
+                // Format counter with leading zeros
+                $formattedCounter = str_pad($counter, 3, '0', STR_PAD_LEFT);
+                
+                // Generate the document number
+                $documentNumber = "AU/CDC/{$divisionShortName}/IM/{$documentType}/{$formattedCounter}";
+                
+                // Check if this document number already exists in any table
+                if (self::isDocumentNumberUnique($documentNumber)) {
+                    return $documentNumber;
+                }
+                
+                // If not unique, increment counter and try again
+                $attempt++;
+                
+            } catch (\Exception $e) {
+                // Log the error and retry
+                \Log::warning("Document number generation attempt {$attempt} failed", [
+                    'division_short_name' => $divisionShortName,
+                    'document_type' => $documentType,
+                    'year' => $year,
+                    'error' => $e->getMessage()
+                ]);
+                
+                $attempt++;
+                
+                if ($attempt >= $maxRetries) {
+                    throw new \Exception("Failed to generate unique document number after {$maxRetries} attempts: " . $e->getMessage());
+                }
+            }
+        }
         
-        // Generate the document number
-        return "AU/CDC/{$divisionShortName}/IM/{$documentType}/{$formattedCounter}";
+        throw new \Exception("Failed to generate unique document number after {$maxRetries} attempts");
     }
 
     /**
@@ -186,5 +219,112 @@ class DocumentNumberService
         $formattedCounter = str_pad($nextCounter, 3, '0', STR_PAD_LEFT);
         
         return "AU/CDC/{$divisionShortName}/IM/{$documentType}/{$formattedCounter}";
+    }
+
+    /**
+     * Check if a document number is unique across all tables
+     */
+    private static function isDocumentNumberUnique(string $documentNumber): bool
+    {
+        $tables = [
+            'matrices',
+            'activities', 
+            'non_travel_memos',
+            'special_memos',
+            'service_requests',
+            'request_arfs'
+        ];
+
+        foreach ($tables as $table) {
+            $exists = \DB::table($table)
+                ->where('document_number', $documentNumber)
+                ->exists();
+            
+            if ($exists) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Find the next available document number for a division and document type
+     */
+    public static function findNextAvailableNumber(
+        string $documentType,
+        string $divisionShortName,
+        int $year = null
+    ): string {
+        $year = $year ?? date('Y');
+        
+        // Start from counter 1
+        $counter = 1;
+        $maxAttempts = 1000; // Prevent infinite loop
+        $attempt = 0;
+        
+        while ($attempt < $maxAttempts) {
+            $formattedCounter = str_pad($counter, 3, '0', STR_PAD_LEFT);
+            $documentNumber = "AU/CDC/{$divisionShortName}/IM/{$documentType}/{$formattedCounter}";
+            
+            if (self::isDocumentNumberUnique($documentNumber)) {
+                return $documentNumber;
+            }
+            
+            $counter++;
+            $attempt++;
+        }
+        
+        throw new \Exception("Could not find available document number after {$maxAttempts} attempts");
+    }
+
+    /**
+     * Reset document counter to the next available number after deletions
+     */
+    public static function resetCounterAfterDeletion(
+        string $documentType,
+        string $divisionShortName,
+        int $year = null
+    ): void {
+        $year = $year ?? date('Y');
+        
+        // Find the highest document number currently in use
+        $highestCounter = 0;
+        $tables = [
+            'matrices',
+            'activities', 
+            'non_travel_memos',
+            'special_memos',
+            'service_requests',
+            'request_arfs'
+        ];
+
+        foreach ($tables as $table) {
+            $result = \DB::table($table)
+                ->where('document_number', 'LIKE', "AU/CDC/{$divisionShortName}/IM/{$documentType}/%")
+                ->selectRaw('MAX(CAST(SUBSTRING_INDEX(document_number, "/", -1) AS UNSIGNED)) as max_counter')
+                ->value('max_counter');
+            
+            if ($result && $result > $highestCounter) {
+                $highestCounter = $result;
+            }
+        }
+
+        // Update the counter to be one more than the highest used number
+        $counter = DocumentCounter::where('division_short_name', $divisionShortName)
+            ->where('year', $year)
+            ->where('document_type', $documentType)
+            ->first();
+
+        if ($counter) {
+            $counter->update(['counter' => $highestCounter]);
+        } else {
+            DocumentCounter::create([
+                'division_short_name' => $divisionShortName,
+                'year' => $year,
+                'document_type' => $documentType,
+                'counter' => $highestCounter
+            ]);
+        }
     }
 }
