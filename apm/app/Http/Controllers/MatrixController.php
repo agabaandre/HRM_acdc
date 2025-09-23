@@ -458,10 +458,18 @@ class MatrixController extends Controller
             return $this->getAllActivities($matrix, $request);
         }
 
-        // Build activities query with filtering
+        // Build activities query with filtering and eager loading
         $activitiesQuery = $matrix->activities()
             ->where('is_single_memo', 0)
-            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+            ->with([
+                'requestType', 
+                'fundType', 
+                'responsiblePerson', 
+                'activity_budget', 
+                'activity_budget.fundcode',
+                'matrix.division', // Eager load matrix division
+                'matrix.forwardWorkflow' // Eager load workflow
+            ]);
 
         // Filter by allowed funders if specified in workflow definition
         if ($userWorkflowDefinition->allowed_funders) {
@@ -470,7 +478,10 @@ class MatrixController extends Controller
                 : $userWorkflowDefinition->allowed_funders;
             
             if (is_array($allowedFunders) && !empty($allowedFunders)) {
-                $activitiesQuery->whereIn('fund_type_id', $allowedFunders);
+                // Filter by fund type through the activity_budget relationship
+                $activitiesQuery->whereHas('activity_budget.fundcode', function($query) use ($allowedFunders) {
+                    $query->whereIn('fund_type_id', $allowedFunders);
+                });
             }
         }
 
@@ -500,7 +511,11 @@ class MatrixController extends Controller
         $perPage = $request->get('per_page', 20);
         $activities = $activitiesQuery->latest()->paginate($perPage);
 
-        // Prepare additional decoded & related data per activity
+        // Collect all location and staff IDs for batch loading
+        $allLocationIds = [];
+        $allStaffIds = [];
+        $activitiesData = [];
+
         foreach ($activities as $activity) {
             // Decode JSON arrays
             $locationIds = is_array($activity->location_id)
@@ -513,11 +528,38 @@ class MatrixController extends Controller
 
             $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
 
-            // Attach related models
-            $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
-            $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+            // Collect IDs for batch loading
+            $allLocationIds = array_merge($allLocationIds, $locationIds ?: []);
+            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds ?: []);
+
+            // Store activity data for processing
+            $activitiesData[] = [
+                'activity' => $activity,
+                'location_ids' => $locationIds ?: [],
+                'staff_ids' => $internalParticipantIds ?: []
+            ];
+        }
+
+        // Batch load all locations and staff
+        $locations = Location::whereIn('id', array_unique($allLocationIds))->get()->keyBy('id');
+        $staff = Staff::whereIn('staff_id', array_unique($allStaffIds))->get()->keyBy('staff_id');
+
+        // Cache workflow definition data to avoid repeated queries
+        $workflowDefinitionData = [
+            'id' => $userWorkflowDefinition->id,
+            'approval_order' => $userWorkflowDefinition->approval_order,
+            'allowed_funders' => $userWorkflowDefinition->allowed_funders
+        ];
+
+        // Process activities with pre-loaded data
+        foreach ($activitiesData as $data) {
+            $activity = $data['activity'];
             
-            // Add approval-related data
+            // Attach related models from pre-loaded collections
+            $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
+            $activity->internalParticipants = $staff->whereIn('staff_id', $data['staff_ids'])->values();
+            
+            // Add approval-related data (optimized with caching)
             $activity->can_approve = can_approve_activity($activity);
             $activity->allow_print = allow_print_activity($activity);
             $activity->my_last_action = $activity->my_last_action ?? null;
@@ -708,10 +750,18 @@ class MatrixController extends Controller
      */
     private function getAllActivities(Matrix $matrix, Request $request)
     {
-        // Build activities query without filtering
+        // Build activities query without filtering and eager loading
         $activitiesQuery = $matrix->activities()
             ->where('is_single_memo', 0)
-            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+            ->with([
+                'requestType', 
+                'fundType', 
+                'responsiblePerson', 
+                'activity_budget', 
+                'activity_budget.fundcode',
+                'matrix.division',
+                'matrix.forwardWorkflow'
+            ]);
 
         // Apply document number filter if provided
         if ($request->filled('document_number')) {
@@ -739,7 +789,11 @@ class MatrixController extends Controller
         $perPage = $request->get('per_page', 20);
         $activities = $activitiesQuery->latest()->paginate($perPage);
 
-        // Prepare additional decoded & related data per activity
+        // Collect all location and staff IDs for batch loading
+        $allLocationIds = [];
+        $allStaffIds = [];
+        $activitiesData = [];
+
         foreach ($activities as $activity) {
             // Decode JSON arrays
             $locationIds = is_array($activity->location_id)
@@ -752,9 +806,29 @@ class MatrixController extends Controller
 
             $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
 
-            // Attach related models
-            $activity->locations = Location::whereIn('id', $locationIds ?: [])->get();
-            $activity->internalParticipants = Staff::whereIn('staff_id', $internalParticipantIds ?: [])->get();
+            // Collect IDs for batch loading
+            $allLocationIds = array_merge($allLocationIds, $locationIds ?: []);
+            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds ?: []);
+
+            // Store activity data for processing
+            $activitiesData[] = [
+                'activity' => $activity,
+                'location_ids' => $locationIds ?: [],
+                'staff_ids' => $internalParticipantIds ?: []
+            ];
+        }
+
+        // Batch load all locations and staff
+        $locations = Location::whereIn('id', array_unique($allLocationIds))->get()->keyBy('id');
+        $staff = Staff::whereIn('staff_id', array_unique($allStaffIds))->get()->keyBy('staff_id');
+
+        // Process activities with pre-loaded data
+        foreach ($activitiesData as $data) {
+            $activity = $data['activity'];
+            
+            // Attach related models from pre-loaded collections
+            $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
+            $activity->internalParticipants = $staff->whereIn('staff_id', $data['staff_ids'])->values();
             
             // Add approval-related data (default to false for non-authenticated users)
             $activity->can_approve = false;
