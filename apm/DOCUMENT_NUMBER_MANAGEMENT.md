@@ -112,6 +112,8 @@ php artisan queue:work --queue=default
 
 The system uses the `default` queue for document number assignment jobs. Ensure your queue configuration is properly set up in `config/queue.php`.
 
+**Important**: Background jobs run without HTTP context, so they don't have access to sessions, cookies, or request data. The `--user` parameter in commands is only for reference and logging purposes.
+
 ## Automatic Assignment
 
 Document numbers are automatically assigned when:
