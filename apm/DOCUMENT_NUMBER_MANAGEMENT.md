@@ -91,7 +91,7 @@ php artisan fix:document-number-conflicts --reset-counters
 
 ## Queue System
 
-The document number assignment uses Laravel's queue system to ensure proper processing and conflict resolution.
+The document number assignment uses Laravel's queue system to ensure proper processing and conflict resolution. **Background jobs do not require sessions** - they run independently of HTTP requests.
 
 ### Queue Worker
 
