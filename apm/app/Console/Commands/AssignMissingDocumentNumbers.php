@@ -45,11 +45,8 @@ class AssignMissingDocumentNumbers extends Command
         $userId = $this->option('user');
         $useQueue = $this->option('queue');
 
-        // Set session for audit logging with specified user
-        session(['user' => ['staff_id' => $userId]]);
-
         $this->info('🔍 Scanning for records without document numbers...');
-        $this->info("Using user ID: {$userId} for session and audit logging");
+        $this->info("Using user ID: {$userId} for reference (background jobs don't use sessions)");
 
         if ($isDryRun) {
             $this->warn('DRY RUN MODE - No changes will be made');

@@ -41,11 +41,8 @@ class MonitorDocumentNumbers extends Command
         $checkInterval = (int) $this->option('check-interval');
         $daemon = $this->option('daemon');
 
-        // Set session for audit logging
-        session(['user' => ['staff_id' => $userId]]);
-
         $this->info("🔍 Document Number Monitor Started");
-        $this->info("Using user ID: {$userId} for session and audit logging");
+        $this->info("Using user ID: {$userId} for reference (background jobs don't use sessions)");
         $this->info("Auto-assign: " . ($autoAssign ? 'Enabled' : 'Disabled'));
         
         if ($daemon) {
