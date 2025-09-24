@@ -753,7 +753,7 @@
       <tr>
         <td class="head">Strategic Axis Budget Balance (Certified by SFO)</td>
         <td>USD</td>
-        <td>$ <?=number_format($approvalOrder5->amount_allocated ?? 0, 2);?></td>
+        <td>$ <?=number_format($activity->available_budget ?? 0, 2);?></td>
         <td>Date: <?=$approvalOrder5 ? (is_object($approvalOrder5->created_at) ? $approvalOrder5->created_at->format('j F Y') : date('j F Y', strtotime($approvalOrder5->created_at))) : 'N/A';?></td>
       </tr>
       <tr>
