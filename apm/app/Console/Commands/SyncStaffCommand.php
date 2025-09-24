@@ -59,7 +59,6 @@ class SyncStaffCommand extends Command
             }
 
             $staffData = $response->json();
-            //dd($staffData);
 
             if (!is_array($staffData)) {
                 throw new Exception('Invalid response format from API');
