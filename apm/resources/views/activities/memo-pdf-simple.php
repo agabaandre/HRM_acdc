@@ -205,8 +205,8 @@
  
   <!-- Document Title -->
   <h1 class="document-title">Interoffice Memorandum</h1>
-  
-  
+
+   
   <?php
     // Helper functions to safely access staff data
     function getStaffEmail($approver) {
@@ -312,8 +312,11 @@
         $staffId = $staff['id'] ?? null;
 
         $approvalDate = getApprovalDate($staffId, $matrix_approval_trails, $order);
+        dd($staff);
 
         echo '<div style="line-height: 1.2;">';
+      echo htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']);
+  
         
         if (isset($staff['signature']) && !empty($staff['signature'])) {
             echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
