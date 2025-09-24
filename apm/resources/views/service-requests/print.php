@@ -209,94 +209,58 @@
   <h1 class="document-title">Interoffice Memorandum</h1>
   
   <?php
-    // Helper functions to safely access staff data
-    if (!function_exists('getStaffEmail')) {
-    function getStaffEmail($approver) {
-      if (isset($approver['staff']) && isset($approver['staff']['work_email'])) {
-        return $approver['staff']['work_email'];
-      } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['work_email'])) {
-        return $approver['oic_staff']['work_email'];
-      }
-      return null;
-      }
-    }
-    
-    if (!function_exists('getStaffId')) {
-    function getStaffId($approver) {
-      if (isset($approver['staff']) && isset($approver['staff']['id'])) {
-        return $approver['staff']['id'];
-      } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['id'])) {
-        return $approver['oic_staff']['id'];
-      }
-      return null;
-    }
-    }
-    
-    if (!function_exists('generateVerificationHash')) {
-      function generateVerificationHash($serviceRequestId, $staffId, $approvalDateTime = null) {
-        if (!$serviceRequestId || !$staffId) return 'N/A';
-        $dateTimeToUse = $approvalDateTime ? $approvalDateTime : date('Y-m-d H:i:s');
-        return strtoupper(substr(md5(sha1($serviceRequestId . $staffId . $dateTimeToUse)), 0, 16));
-      }
-    }
+    // Use centralized PrintHelper
+    use App\Helpers\PrintHelper;
 
-    // Wrapper function to adapt getApprovalDate call for embedded source memos
-    if (!function_exists('getApprovalDateForServiceRequest')) {
-      function getApprovalDateForServiceRequest($staffId, $serviceRequestApprovalTrails, $order) {
-        // The embedded source memo's getApprovalDate expects different parameter names
-        // We'll call it with the service request approval trails as the second parameter
-        return getApprovalDate($staffId, $serviceRequestApprovalTrails, $order);
-      }
+    // Fetch approvers from source data approval trails
+    $sourceApprovers = [];
+    if (isset($sourceData)) {
+        // Determine the source ID and model type
+        $sourceId = null;
+        $modelType = null;
+        $divisionId = null;
+        
+        if (isset($sourceData->matrix_id)) {
+            // It's a matrix activity, use matrix ID
+            $sourceId = $sourceData->matrix_id;
+            $modelType = 'App\Models\Matrix';
+            $divisionId = $sourceData->division_id ?? null;
+        } else {
+            // It's a direct memo, use the source data ID
+            $sourceId = $sourceData->id;
+            $divisionId = $sourceData->division_id ?? null;
+            // Determine model type based on source data type
+            if (isset($sourceData->matrix_id)) {
+                $modelType = 'App\Models\Matrix';
+            } else {
+                // Check if it's a non-travel memo or special memo
+                $modelType = 'App\Models\NonTravelMemo'; // Default to non-travel memo
+            }
+        }
+        
+        if ($sourceId && $modelType) {
+            // Get the workflow_id from the source data
+            $workflowId = null;
+            if ($sourceData && isset($sourceData->forward_workflow_id)) {
+                $workflowId = $sourceData->forward_workflow_id;
+            }
+            
+            $sourceApprovers = PrintHelper::fetchApproversFromTrails($sourceId, $modelType, $divisionId, $workflowId);
+        }
     }
 
     // Helper function to render approver info
     if (!function_exists('renderApproverInfo')) {
       function renderApproverInfo($approver, $role, $section, $serviceRequest) {
-        $isOic = isset($approver['oic_staff']);
-        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $name = $isOic ? $staff['name'] . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . ($staff['name'] ?? ''));
-        echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
-        echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
-
-        // Add OIC watermark if applicable
-        if ($isOic) {
-            echo '<div style="position: relative; display: inline-block;">';
-            echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
-            echo '</div>';
-        }
-
-        // Show division name for FROM section
-        if ($section === 'from') {
-            $divisionName = $serviceRequest->division->division_name ?? '';
-            if (!empty($divisionName)) {
-                echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
-            }
-            }
-        }
+        PrintHelper::renderApproverInfo($approver, $role, $section, $serviceRequest);
+      }
     }
 
     // Helper function to render signature
     if (!function_exists('renderSignature')) {
       function renderSignature($approver, $order, $serviceRequestApprovalTrails, $serviceRequest) {
-        $isOic = isset($approver['oic_staff']);
-        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $staffId = $staff['id'] ?? null;
-
-        $approvalDate = getApprovalDateForServiceRequest($staffId, $serviceRequestApprovalTrails, $order);
-
-        echo '<div style="line-height: 1.2;">';
-        
-        if (isset($staff['signature']) && !empty($staff['signature'])) {
-            echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-        } else {
-            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
-        }
-        
-        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($serviceRequest->id, $staffId, $approvalDate)) . '</div>';
-        echo '</div>';
-    }
+        PrintHelper::renderSignature($approver, $order, $serviceRequestApprovalTrails, $serviceRequest);
+      }
     }
 
     // Generate file reference once
@@ -305,26 +269,13 @@
         $divisionName = $serviceRequest->division->division_name ?? '';
         $divisionShortName = $serviceRequest->division->division_short_name ?? '';
         
-        if (!function_exists('generateShortCodeFromDivision')) {
-            function generateShortCodeFromDivision(string $name): string {
-                $ignore = ['of', 'and', 'for', 'the', 'in'];
-                $words = preg_split('/\s+/', strtolower($name));
-                $initials = array_map(function ($word) use ($ignore) {
-                    // Check if word is not empty before accessing first character
-                    if (empty($word) || in_array($word, $ignore)) {
-                        return '';
-                    }
-                    return strtoupper($word[0]);
-                }, $words);
-                return implode('', array_filter($initials));
-            }
-        }
+        // Use PrintHelper for generating short code
         
         // Use division_short_name if available, otherwise generate from division_name
         if (!empty($divisionShortName)) {
             $shortCode = strtoupper($divisionShortName);
         } else {
-            $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
+            $shortCode = $divisionName ? PrintHelper::generateShortCodeFromDivision($divisionName) : 'DIV';
         }
         
         $year = date('Y', strtotime($serviceRequest->created_at ?? 'now'));
@@ -332,8 +283,8 @@
         $serviceRequest_reference = "AU/CDC/{$shortCode}/SR/{$year}/{$serviceRequestId}";
     }
 
-      // Define the order of sections: TO, THROUGH, FROM (excluding 'others')
-      $sectionOrder = ['to', 'through', 'from'];
+      // Define the order of sections: TO, FROM (excluding 'others')
+      $sectionOrderLabels = ['to', 'from'];
       
       // Filter out 'others' section if it exists
       if (isset($organized_workflow_steps['others'])) {
@@ -341,15 +292,14 @@
       }
 
       // Section labels in sentence case
-      $sectionLabels = [
+      $serviceRequestsectionLabels = [
         'to' => 'To:',
-        'through' => 'Through:',
         'from' => 'From:'
       ];
 
       // Calculate total rows needed for rowspan
       $totalRows = 0;
-      foreach ($sectionOrder as $section) {
+      foreach ($sectionOrderLabels as $section) {
         if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0) {
           $totalRows += $organized_workflow_steps[$section]->count();
         } else {
@@ -359,7 +309,7 @@
       $dateFileRowspan = $totalRows;
     ?>
   <table class="mb-15">
-    <?php foreach ($sectionOrder as $section): ?>
+    <?php foreach ($sectionOrderLabels as $section): ?>
       <?php if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0): ?>
         <?php foreach ($organized_workflow_steps[$section] as $index => $step): 
                 $order = $step['order'];
@@ -367,10 +317,26 @@
           ?>
           <tr>
                 <td style="width: 12%; vertical-align: top;">
-                    <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
+                    <strong class="section-label"><?php echo $serviceRequestsectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
             </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
+              <?php if ($section === 'from' && isset($sourceApprovers[1]) && count($sourceApprovers[1]) > 0): ?>
+                <?php foreach ($sourceApprovers[1] as $approver): ?>
+                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php elseif ($section === 'from' && isset($sourceApprovers['division_head']) && count($sourceApprovers['division_head']) > 0): ?>
+                <?php foreach ($sourceApprovers['division_head'] as $approver): ?>
+                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php elseif ($section === 'to' && isset($sourceApprovers[2]) && count($sourceApprovers[2]) > 0): ?>
+                <?php foreach ($sourceApprovers[2] as $approver): ?>
+                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php elseif ($section === 'through' && isset($sourceApprovers[3]) && count($sourceApprovers[3]) > 0): ?>
+                <?php foreach ($sourceApprovers[3] as $approver): ?>
+                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php elseif (isset($step['approvers']) && count($step['approvers']) > 0): ?>
                 <?php foreach ($step['approvers'] as $approver): ?>
                             <?php renderApproverInfo($approver, $role, $section, $serviceRequest); ?>
                         <?php endforeach; ?>
@@ -382,13 +348,25 @@
         <?php endif; ?>
       </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
+              <?php if ($section === 'from' && isset($sourceApprovers[1]) && count($sourceApprovers[1]) > 0): ?>
+                <?php foreach ($sourceApprovers[1] as $approver): ?>
+                            <?php renderSignature($approver, 1, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
+          <?php endforeach; ?>
+                    <?php elseif ($section === 'from' && isset($sourceApprovers['division_head']) && count($sourceApprovers['division_head']) > 0): ?>
+                <?php foreach ($sourceApprovers['division_head'] as $approver): ?>
+                            <?php renderSignature($approver, 'division_head', $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
+          <?php endforeach; ?>
+                    <?php elseif ($section === 'to' && isset($sourceApprovers[2]) && count($sourceApprovers[2]) > 0): ?>
+                <?php foreach ($sourceApprovers[2] as $approver): ?>
+                            <?php renderSignature($approver, 2, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
+          <?php endforeach; ?>
+                    <?php elseif (isset($step['approvers']) && count($step['approvers']) > 0): ?>
                 <?php foreach ($step['approvers'] as $approver): ?>
                             <?php renderSignature($approver, $order, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
           <?php endforeach; ?>
         <?php endif; ?>
       </td>
-                <?php if ($section === $sectionOrder[0] && $index === 0): // Only output the Date/FileNo cell once ?>
+                <?php if ($section === $sectionOrderLabels[0] && $index === 0): // Only output the Date/FileNo cell once ?>
                     <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
                         <div class="text-right">
                   <div style="margin-bottom: 20px;">
@@ -408,16 +386,44 @@
       <?php else: ?>
         <tr>
                 <td style="width: 12%; vertical-align: top;">
-                    <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
+                    <strong class="section-label"><?php echo $serviceRequestsectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
           </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
+                    <?php if ($section === 'from' && isset($sourceApprovers[1]) && count($sourceApprovers[1]) > 0): ?>
+                        <?php foreach ($sourceApprovers[1] as $approver): ?>
+                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php elseif ($section === 'from' && isset($sourceApprovers['division_head']) && count($sourceApprovers['division_head']) > 0): ?>
+                        <?php foreach ($sourceApprovers['division_head'] as $approver): ?>
+                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php elseif ($section === 'to' && isset($sourceApprovers[2]) && count($sourceApprovers[2]) > 0): ?>
+                        <?php foreach ($sourceApprovers[2] as $approver): ?>
+                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php else: ?>
                     <div class="approver-name"><?php echo htmlspecialchars($section); ?></div>
                     <?php if ($section === 'from'): ?>
                         <div class="approver-title"><?php echo htmlspecialchars($serviceRequest->division->division_name ?? ''); ?></div>
+                        <?php endif; ?>
                     <?php endif; ?>
           </td>
-                <td style="width: 30%; vertical-align: top; text-align: left;"></td>
-                <?php if ($section === $sectionOrder[0]): // Only output the Date/FileNo cell once ?>
+                <td style="width: 30%; vertical-align: top; text-align: left;">
+                    <?php if ($section === 'from' && isset($sourceApprovers[1]) && count($sourceApprovers[1]) > 0): ?>
+                        <?php foreach ($sourceApprovers[1] as $approver): ?>
+                            <?php renderSignature($approver, 1, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php elseif ($section === 'from' && isset($sourceApprovers['division_head']) && count($sourceApprovers['division_head']) > 0): ?>
+                        <?php foreach ($sourceApprovers['division_head'] as $approver): ?>
+                            <?php renderSignature($approver, 'division_head', $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php elseif ($section === 'to' && isset($sourceApprovers[2]) && count($sourceApprovers[2]) > 0): ?>
+                        <?php foreach ($sourceApprovers[2] as $approver): ?>
+                            <?php renderSignature($approver, 2, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+          </td>
+                <?php if ($section === $sectionOrderLabels[0]): // Only output the Date/FileNo cell once ?>
                     <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
                         <div class="text-right">
                 <div style="margin-bottom: 20px;">
@@ -468,7 +474,7 @@
   <!-- Service Request Budget Breakdown -->
   <?php if ($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs']))): ?>
                     <div class="mb-4">
-                      <!-- Service Request Details -->
+<!-- Service Request Details -->
 <div class="mb-0" style="color:#006633; font-size: 15px;"><strong>Budget Breakdown</strong></div>
                         
                         <!-- Internal Participants -->
@@ -501,8 +507,8 @@
                                 <thead>
                                     <tr>
                                         <th class="bg-highlight" colspan="7"><?php echo htmlspecialchars($costName); ?></th>
-                                    </tr>
-                                    <tr>
+  </tr>
+  <tr>
                                         <th class="bg-highlight">#</th>
                                         <th class="bg-highlight">Name</th>
                                         <th class="bg-highlight">Unit Cost</th>
@@ -510,7 +516,7 @@
                                         <th class="bg-highlight">Days</th>
                                         <th class="bg-highlight">Total</th>
                                         <th class="bg-highlight">Description</th>
-                                    </tr>
+  </tr>
                                 </thead>
                                 <tbody>
                                     <?php
@@ -544,16 +550,16 @@
                                             <td class="text-right"><?php echo $days; ?></td>
                                             <td class="text-right">$<?php echo number_format($total, 2); ?></td>
                                             <td>Internal participant - <?php echo htmlspecialchars($staff->position ?? 'Staff'); ?></td>
-                                        </tr>
+      </tr>
                                         <?php $count++; ?>
                                     <?php endforeach; ?>
                                 </tbody>
                                 <tfoot>
-                                    <tr>
+      <tr>
                                         <th class="bg-highlight text-right" colspan="5"><?php echo htmlspecialchars($costName); ?> Total</th>
                                         <th class="bg-highlight text-right">$<?php echo number_format($groupTotal, 2); ?></th>
                                         <th class="bg-highlight"></th>
-                                    </tr>
+      </tr>
                                 </tfoot>
                             </table>
                             <?php endforeach; ?>
@@ -600,8 +606,8 @@
                                 <thead>
                                     <tr>
                                         <th class="bg-highlight" colspan="7"><?php echo htmlspecialchars($costName); ?></th>
-                                    </tr>
-                                    <tr>
+      </tr>
+      <tr>
                                         <th class="bg-highlight">#</th>
                                         <th class="bg-highlight">Name</th>
                                         <th class="bg-highlight">Unit Cost</th>
@@ -609,7 +615,7 @@
                                         <th class="bg-highlight">Days</th>
                                         <th class="bg-highlight">Total</th>
                                         <th class="bg-highlight">Description</th>
-                                    </tr>
+      </tr>
                                 </thead>
                                 <tbody>
                                     <?php
@@ -633,18 +639,18 @@
                                             <td class="text-right"><?php echo $days; ?></td>
                                             <td class="text-right">$<?php echo number_format($total, 2); ?></td>
                                             <td>External participant - <?php echo htmlspecialchars($participant['organization'] ?? 'N/A'); ?></td>
-                                        </tr>
+      </tr>
                                         <?php $count++; ?>
                                     <?php endforeach; ?>
                                 </tbody>
                                 <tfoot>
-                                    <tr>
+      <tr>
                                         <th class="bg-highlight text-right" colspan="5"><?php echo htmlspecialchars($costName); ?> Total</th>
                                         <th class="bg-highlight text-right">$<?php echo number_format($groupTotal, 2); ?></th>
                                         <th class="bg-highlight"></th>
-                                    </tr>
+      </tr>
                                 </tfoot>
-                            </table>
+    </table>
                             <?php endforeach; ?>
                             
                             <!-- External Participants Comments -->
@@ -699,18 +705,18 @@
                                             <td class="text-right"><?php echo $days; ?></td>
                                             <td class="text-right">$<?php echo number_format($total, 2); ?></td>
                                             <td><?php echo htmlspecialchars($cost['description'] ?? 'N/A'); ?></td>
-                                        </tr>
+      </tr>
                                         <?php $count++; ?>
                                     <?php endforeach; ?>
                                 </tbody>
                                 <tfoot>
-                                    <tr>
+      <tr>
                                         <th class="bg-highlight text-right" colspan="5">Other Costs Total</th>
                                         <th class="bg-highlight text-right">$<?php echo number_format($otherGrandTotal, 2); ?></th>
                                         <th class="bg-highlight"></th>
-                                    </tr>
+      </tr>
                                 </tfoot>
-                            </table>
+    </table>
                             
                             <!-- Other Costs Comments -->
                             <?php if ($serviceRequest->other_costs_comment): ?>

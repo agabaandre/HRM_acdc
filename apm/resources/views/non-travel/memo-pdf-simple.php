@@ -207,237 +207,45 @@
   <h1 class="document-title">Interoffice Memorandum</h1>
   
   <?php
-    // Helper functions to safely access staff data
-    function getStaffEmail($approver) {
-        if (isset($approver['staff']) && isset($approver['staff']['work_email'])) {
-            return $approver['staff']['work_email'];
-        } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['work_email'])) {
-            return $approver['oic_staff']['work_email'];
-        }
-        return null;
-    }
+    // Use centralized PrintHelper
+    use App\Helpers\PrintHelper;
 
-    function getStaffId($approver) {
-        if (isset($approver['staff']) && isset($approver['staff']['id'])) {
-            return $approver['staff']['id'];
-        } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['id'])) {
-            return $approver['oic_staff']['id'];
-        }
-        return null;
-    }
-
-    function generateVerificationHash($nonTravelId, $staffId, $approvalDateTime = null) {
-        if (!$nonTravelId || !$staffId) return 'N/A';
-        $dateTimeToUse = $approvalDateTime ? $approvalDateTime : date('Y-m-d H:i:s');
-        return strtoupper(substr(md5(sha1($nonTravelId . $staffId . $dateTimeToUse)), 0, 16));
-    }
-
-    /**
-     * Get the approval date for a given staff ID and/or approval order from the approval trails.
-     * Returns a formatted date string if found, otherwise returns the current date/time.
-     *
-     * @param mixed $staffId
-     * @param iterable $approvalTrails
-     * @param mixed $order
-     * @return string
-     */
+    // Use PrintHelper for getApprovalDate
     function getApprovalDate($staffId, $approvalTrails, $order) {
-        // Try to find approval by staff_id and approval_order first
-        $approval = $approvalTrails
-            ->where('approval_order', $order)
-            ->where('staff_id', $staffId)
-            ->sortByDesc('created_at')
-            ->first();
-
-        // If not found, try to find by oic_staff_id and approval_order
-        if (!$approval) {
-            $approval = $approvalTrails
-                ->where('approval_order', $order)
-                ->where('oic_staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        // If still not found, try to find by staff_id only
-        if (!$approval) {
-            $approval = $approvalTrails
-                ->where('staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        // If still not found, try to find by oic_staff_id only
-        if (!$approval) {
-            $approval = $approvalTrails
-                ->where('oic_staff_id', $staffId)
-                ->sortByDesc('created_at')
-                ->first();
-        }
-
-        $date = ($approval && isset($approval->created_at))
-            ? (is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at)))
-            : date('j F Y H:i');
-      return $date;
+        return PrintHelper::getApprovalDate($staffId, $approvalTrails, $order);
     }
 
     // Helper function to render approver info
     function renderApproverInfo($approver, $role, $section, $nonTravel) {
-        $isOic = isset($approver['oic_staff']);
-        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        
-        // Construct name from individual fields
-        $staffName = '';
-        if ($staff) {
-            $staffName = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
-        }
-        
-        $name = $isOic ? $staffName . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . $staffName);
-        echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
-        echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
-
-        // Add OIC watermark if applicable
-        if ($isOic) {
-            echo '<div style="position: relative; display: inline-block;">';
-            echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
-            echo '</div>';
-        }
-
-        // Show division name for FROM section
-        if ($section === 'from') {
-            $divisionName = $nonTravel->division->division_name ?? '';
-            if (!empty($divisionName)) {
-                echo '<div class="approver-title">' . htmlspecialchars($divisionName) . '</div>';
-            }
-        }
+        PrintHelper::renderApproverInfo($approver, $role, $section, $nonTravel);
     }
 
     // Helper function to render signature
     function renderSignature($approver, $order, $matrix_approval_trails, $nonTravel) {
-        $isOic = isset($approver['oic_staff']);
-        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $staffId = $staff['staff_id'] ?? $staff['id'] ?? null;
-
-        $approvalDate = getApprovalDate($staffId, $matrix_approval_trails, $order);
-
-        echo '<div style="line-height: 1.2;">';
-        
-        if (isset($staff['signature']) && !empty($staff['signature'])) {
-            echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-        } else {
-            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
-        }
-        
-        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($nonTravel->id, $staffId, $approvalDate)) . '</div>';
-        echo '</div>';
+        PrintHelper::renderSignature($approver, $order, $matrix_approval_trails, $nonTravel);
     }
 
     // Helper function to get latest approval for a specific order
     function getLatestApprovalForOrder($approvalTrails, $order) {
-        $approvals = $approvalTrails->where('approval_order', $order);
-        return $approvals->sortByDesc('created_at')->first();
+        return PrintHelper::getLatestApprovalForOrder($approvalTrails, $order);
     }
 
     // Helper function to render budget signature with OIC support
     function renderBudgetSignature($approval, $nonTravel, $label = '') {
-        if (!$approval) {
-            echo '<span style="color:#aaa;">N/A</span>';
-            return;
-        }
-
-        $isOic = !empty($approval->oic_staff_id);
-        $staff = $isOic ? $approval->oicStaff : $approval->staff;
-        
-        if (!$staff) {
-            echo '<span style="color:#aaa;">N/A</span>';
-            return;
-        }
-
-        $name = $staff->title . ' ' . $staff->fname . ' ' . $staff->lname . ' ' . $staff->oname;
-        if ($isOic) {
-            $name .= ' (OIC)';
-        }
-
-        echo '<div style="line-height: 1.2;">';
-        
-        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
-        
-        if (!empty($staff->signature)) {
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff->signature) . '" alt="Signature">';
-        } else {
-            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
-        }
-        
-        $approvalDate = is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at));
-        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-        
-        $hash = generateVerificationHash($nonTravel->id, $isOic ? $approval->oic_staff_id : $approval->staff_id, $approval->created_at);
-        echo '<div class="signature-hash">Hash: ' . htmlspecialchars($hash) . '</div>';
-        
-        // Add OIC watermark if applicable
-        if ($isOic) {
-            echo '<div style="position: relative; display: inline-block; margin-top: 5px;">';
-            echo '<span style="position: absolute; top: -5px; right: -10px; background: #ff6b6b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
-            echo '</div>';
-        }
-        
-        echo '</div>';
+        PrintHelper::renderBudgetSignature($approval, $nonTravel, $label);
     }
 
     // Helper function to render budget approver info with OIC support
     function renderBudgetApproverInfo($approval, $label = '') {
-        if (!$approval) {
-            echo 'N/A';
-            return;
-        }
-
-        $isOic = !empty($approval->oic_staff_id);
-        $staff = $isOic ? $approval->oicStaff : $approval->staff;
-        
-        if (!$staff) {
-            echo 'N/A';
-            return;
-        }
-
-        $name = $staff->title . ' ' . $staff->fname . ' ' . $staff->lname . ' ' . $staff->oname;
-        if ($isOic) {
-            $name .= ' (OIC)';
-        }
-
-        echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
-
-        
-        // Get role from workflow definition instead of job_name
-        $role = 'N/A';
-        if (isset($approval->workflowDefinition) && $approval->workflowDefinition) {
-            $role = $approval->workflowDefinition->role ?? 'N/A';
-        } elseif (isset($approval->role)) {
-            $role = $approval->role;
-        }
-        echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
-    
-        if($approval->workflowDefinition->approval_order == 1){
-          echo '<div class="approver-title">' . htmlspecialchars($staff->division_name ?? 'N/A') . '</div>';
-        }
-        echo '<span class="fill line"></span>';
+        PrintHelper::renderBudgetApproverInfo($approval, $label);
     }
 
     // Generate file reference once
     $memo_reference = 'N/A';
     if (isset($nonTravel)) {
         $divisionName = $nonTravel->division->division_name ?? '';
-        if (!function_exists('generateShortCodeFromDivision')) {
-            function generateShortCodeFromDivision(string $name): string {
-                $ignore = ['of', 'and', 'for', 'the', 'in'];
-                $words = preg_split('/\s+/', strtolower($name));
-                $initials = array_map(function ($word) use ($ignore) {
-                    return in_array($word, $ignore) ? '' : strtoupper($word[0]);
-                }, $words);
-                return implode('', array_filter($initials));
-            }
-        }
-        $shortCode = $divisionName ? generateShortCodeFromDivision($divisionName) : 'DIV';
+        // Use PrintHelper for generating short code
+        $shortCode = $divisionName ? PrintHelper::generateShortCodeFromDivision($divisionName) : 'DIV';
         $year = date('Y', strtotime($nonTravel->created_at ?? 'now'));
         $memoId = $nonTravel->id ?? 'N/A';
         $quarter = 'Q' . ceil(date('n', strtotime($nonTravel->created_at ?? 'now')) / 3);

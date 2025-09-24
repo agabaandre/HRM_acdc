@@ -1241,33 +1241,6 @@ class NonTravelMemoController extends Controller
         return $workflowInfo;
     }
 
-    /**
-     * Organize workflow steps by memo_print_section for dynamic memo rendering
-     */
-    private function organizeWorkflowStepsBySection($workflowSteps)
-    {
-        $organizedSteps = [
-            'to' => collect(),
-            'through' => collect(),
-            'from' => collect(),
-            'others' => collect()
-        ];
-
-        foreach ($workflowSteps as $step) {
-            $section = $step['memo_print_section'] ?? 'through';
-            $organizedSteps[$section]->push($step);
-        }
-
-        // Sort each section by print_order first, then by approval order as fallback
-        foreach ($organizedSteps as $section => $steps) {
-            $organizedSteps[$section] = $steps->sortBy([
-                ['print_order', 'asc'],
-                ['order', 'asc']
-            ])->values();
-        }
-
-        return $organizedSteps;
-    }
     
     /**
      * Generate a printable PDF for a Non-Travel Memo.
@@ -1317,7 +1290,7 @@ class NonTravelMemoController extends Controller
 
         // Get workflow information
         $workflowInfo = $this->getComprehensiveWorkflowInfo($nonTravel);
-        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+        $organizedWorkflowSteps = \App\Helpers\PrintHelper::organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
 
         // Use mPDF helper function
         $print = false;
