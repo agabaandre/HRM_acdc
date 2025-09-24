@@ -205,6 +205,8 @@
  
   <!-- Document Title -->
   <h1 class="document-title">Interoffice Memorandum</h1>
+
+   <?=htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']);?>
   
   <?php
     // Helper functions to safely access staff data
