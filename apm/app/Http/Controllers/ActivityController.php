@@ -1335,6 +1335,7 @@ class ActivityController extends Controller
         $activityTrail->activity_id   = $activity->id;
         $activityTrail->matrix_id   = $activity->matrix_id;
         $activityTrail->staff_id = user_session('staff_id');
+        $activityTrail->is_archived = 0; // Explicitly set as non-archived
         $activityTrail->save();
 
         // Update activity with available_budget if provided and action is 'passed'
@@ -1395,6 +1396,7 @@ class ActivityController extends Controller
                 'remarks' => $comment ?? 'Activity converted to single memo for revision',
                 'approval_order' => $activity->approval_level,
                 'forward_workflow_id' => $assignedWorkflowId,
+                'is_archived' => 0, // Explicitly set as non-archived
             ]);
 
             Log::info('Activity converted to single memo', [
@@ -2052,6 +2054,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         // Check if the activity has any approval trails with 'passed' action
         $activityApprovals = \App\Models\ActivityApprovalTrail::where('activity_id', $activity->id)
             ->where('action', 'passed')
+            ->where('is_archived', 0) // Only consider non-archived trails
             ->get();
 
         Log::info('Activity approval check', [

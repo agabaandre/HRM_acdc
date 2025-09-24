@@ -129,6 +129,23 @@ if (!function_exists('user_session')) {
         }
      }
 
+    if (!function_exists('is_finance_officer')) {
+        /**
+         * Check if the current user is a finance officer for the matrix's division
+         */
+        function is_finance_officer($matrix) {
+            $user = session('user', []);
+            $currentUserId = $user['staff_id'] ?? null;
+            
+            if (!$currentUserId || !$matrix->division) {
+                return false;
+            }
+            
+            // Check if user is the finance officer for the matrix's division
+            return $matrix->division->finance_officer == $currentUserId;
+        }
+    }
+
      if (!function_exists('can_print_memo')) {
         function can_print_memo($memo) {
             $user = (object) session('user', []);
@@ -267,14 +284,118 @@ if (!function_exists('user_session')) {
         function done_approving($matrix)
         {
             $user = session('user', []);
-            $approval = ApprovalTrail::where('model_id', $matrix->id)
+            
+            // Check if user has approved at the current approval level
+            $currentLevelApproval = ApprovalTrail::where('model_id', $matrix->id)
                 ->where('model_type', 'App\Models\\' . ucfirst(class_basename($matrix)))
-                ->where('approval_order', '>=', $matrix->approval_level)
+                ->where('approval_order', $matrix->approval_level)
                 ->where('staff_id', $user['staff_id'])
+                ->where('is_archived', 0)
                 ->orderByDesc('id')
                 ->first();
+                
+            return $currentLevelApproval && $currentLevelApproval->action === 'approved';
+        }
+    }
 
-            return $approval && $approval->action === 'approved';
+    if (!function_exists('matrix_has_been_returned')) {
+        /**
+         * Check if the matrix has been returned back to the focal person by HOD
+         * This happens when the matrix status is 'returned' and approval_level is 0
+         */
+        function matrix_has_been_returned($matrix)
+        {
+            // Check if matrix status is 'returned' and approval level is 0 (back to focal person)
+            if ($matrix->overall_status === 'returned' && $matrix->approval_level == 0) {
+                return true;
+            }
+            
+            // Additional check: Look for recent 'returned' action in approval trail
+            $user = session('user', []);
+            if (isset($user['staff_id'])) {
+                $recentApproval = ApprovalTrail::where('model_id', $matrix->id)
+                    ->where('model_type', 'App\Models\\' . ucfirst(class_basename($matrix)))
+                    ->where('action', 'returned')
+                    ->orderByDesc('id')
+                    ->first();
+                    
+                return $recentApproval !== null;
+            }
+            
+            return false;
+        }
+    }
+
+    if (!function_exists('archive_approval_trails')) {
+        /**
+         * Archive approval trails when a matrix or memo is returned to restart approval process
+         * For matrices: Only archive when approval_order = 0 (draft/returned state)
+         * For memos: Archive when returned (any approval level)
+         */
+        function archive_approval_trails($model)
+        {
+            try {
+                $modelType = get_class($model);
+                $modelId = $model->id;
+                
+                // For matrices, only archive when approval_order = 0 (draft/returned state)
+                if ($modelType === 'App\Models\Matrix') {
+                    // Only archive if matrix is at approval_order 0 (draft or returned state)
+                    if ($model->approval_level != 0) {
+                        \Log::info("Skipping archiving for matrix - not at approval_order 0", [
+                            'matrix_id' => $modelId,
+                            'approval_level' => $model->approval_level,
+                            'overall_status' => $model->overall_status
+                        ]);
+                        return 0;
+                    }
+                    
+                    // Archive approval trails for the matrix
+                    $archivedCount = ApprovalTrail::where('model_id', $modelId)
+                        ->where('model_type', $modelType)
+                        ->where('is_archived', 0)
+                        ->update(['is_archived' => 1]);
+                    
+                    // Also archive activity approval trails
+                    $activityArchivedCount = ActivityApprovalTrail::where('matrix_id', $modelId)
+                        ->where('is_archived', 0)
+                        ->update(['is_archived' => 1]);
+                    
+                    \Log::info("Archived approval trails for matrix return to draft/returned state", [
+                        'matrix_id' => $modelId,
+                        'approval_level' => $model->approval_level,
+                        'overall_status' => $model->overall_status,
+                        'approval_trails_archived' => $archivedCount,
+                        'activity_approval_trails_archived' => $activityArchivedCount
+                    ]);
+                    
+                    return $archivedCount;
+                } else {
+                    // For memos, archive when returned (any approval level)
+                    $archivedCount = ApprovalTrail::where('model_id', $modelId)
+                        ->where('model_type', $modelType)
+                        ->where('is_archived', 0)
+                        ->update(['is_archived' => 1]);
+                    
+                    \Log::info("Archived approval trails for memo return", [
+                        'model_type' => $modelType,
+                        'model_id' => $modelId,
+                        'approval_level' => $model->approval_level ?? 'N/A',
+                        'overall_status' => $model->overall_status ?? 'N/A',
+                        'approval_trails_archived' => $archivedCount
+                    ]);
+                    
+                    return $archivedCount;
+                }
+                
+            } catch (\Exception $e) {
+                \Log::error("Failed to archive approval trails", [
+                    'model_type' => $modelType ?? 'unknown',
+                    'model_id' => $modelId ?? 'unknown',
+                    'error' => $e->getMessage()
+                ]);
+                return 0;
+            }
         }
     }
 
@@ -289,8 +410,8 @@ if (!function_exists('user_session')) {
             if($activity->matrix->forward_workflow_id==null)
                 return false;
           
-            if($activity->fund_type_id==3)
-                return true;
+            // if($activity->fund_type_id==3)
+            //     return true;
 
             if(!$activity->matrix->workflow_definition->allowed_funders||empty($activity->matrix->workflow_definition->allowed_funders))
                 return true;
@@ -316,6 +437,7 @@ if (!function_exists('user_session')) {
                 ->where('approval_order', $activity->matrix->approval_level)
                 ->where('staff_id', $user['staff_id'])
                 ->where('action', 'passed')
+                ->where('is_archived', 0) // Only consider non-archived trails
                 ->orderByDesc('id')
                 ->first();
 
@@ -433,17 +555,15 @@ if (!function_exists('user_session')) {
                 
                 // Check if activity has budget data and allowed_funders is specified
                 if ($workflowDefinition->allowed_funders && !empty($workflowDefinition->allowed_funders)) {
-                    // For external source activities (fund_type_id == 3), always allow
-                
-                        // Check if activity has budget data
-                        if (empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode) {
-                            $canApprove = false; // Don't allow activities without budget data
-                        } else {
-                            // Check if activity's fund type is in allowed_funders
-                            $activityFundTypeId = $activity->activity_budget[0]->fundcode->fund_type_id;
-                            $canApprove = in_array($activityFundTypeId, $workflowDefinition->allowed_funders);
-                        }
-                    
+                    // Check if activity has budget data
+                    if (empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode) {
+                        // For external source activities (no budget data), only allow if fund type 3 is in allowed_funders
+                        $canApprove = in_array(3, $workflowDefinition->allowed_funders);
+                    } else {
+                        // Check if activity's fund type is in allowed_funders
+                        $activityFundTypeId = $activity->activity_budget[0]->fundcode->fund_type_id;
+                        $canApprove = in_array($activityFundTypeId, $workflowDefinition->allowed_funders);
+                    }
                 }
                 
                 // Additional check using existing can_approve_activity function
@@ -469,6 +589,7 @@ if (!function_exists('user_session')) {
             
             // Get all activities that the user can approve (based on can_approve_activity logic)
             $approvable_activities = get_approvable_activities($matrix);
+            //dd($approvable_activities);
             $has_approved = false;
 
             // If no approvable activities exist, return false
@@ -482,11 +603,14 @@ if (!function_exists('user_session')) {
                     ->where("approval_order", $matrix->approval_level)
                     ->where("activity_id", $activity->id)
                     ->where("action", "passed")
+                    ->where("is_archived", 0) // Only consider non-archived trails
                     ->exists();
 
                 if(!$has_approved)
                 break;
             }
+
+           // dd($has_approved);
 
             return $has_approved;
         }
@@ -501,16 +625,9 @@ if (!function_exists('user_session')) {
         {
             $user = session('user', []);
 
-            ///dd($user);
-           // dd(done_approving($matrix));
-          
-
-           if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft'])) {
-             
-            return false;
-
-            
-           }
+            if (empty($user['staff_id']) || done_approving($matrix) || in_array($matrix->overall_status,['approved','draft'])) {
+                return false;
+            }
 
             $still_with_creator = still_with_creator($matrix);
             //dd($still_with_creator);
@@ -545,7 +662,7 @@ if (!function_exists('user_session')) {
             $is_at_my_approval_level =false;
 
             
-           //if user is not defined in the approver table, $workflow_dfns will be empty
+            //if user is not defined in the approver table, $workflow_dfns will be empty
             if ($workflow_dfns->isEmpty()) {
                 //dd("here");
                 $division_specific_access = false;
@@ -567,6 +684,19 @@ if (!function_exists('user_session')) {
                 //how to check approval levels against approver in approvers table???
                 
             }else{
+                // User is in approvers table, but check if this is a division-specific role
+                $current_approval_point = $current_approval_point->first();
+                
+                if ($current_approval_point && $current_approval_point->is_division_specific) {
+                    // For division-specific roles, only allow the actual division person
+                    $division = $matrix->division;
+                    if ($division && $division->{$current_approval_point->division_reference_column} == user_session()['staff_id']) {
+                        $division_specific_access = true;
+                    } else {
+                        // User is in approvers table but not the actual division person
+                        return false;
+                    }
+                } else {
                 // dd("here2");
                  //dd($current_approval_point);
                // $current_approval_point = $current_approval_point->where('approval_order',$workflow_dfns[0])->first();
@@ -607,6 +737,7 @@ if (!function_exists('user_session')) {
                 $is_at_my_approval_level = ($current_approval_point) ? 
                     ($current_approval_point->workflow_id === $matrix->forward_workflow_id && $matrix->approval_level == $current_approval_point->approval_order) : 
                     false;
+                }
             }      
 
            /**TODO
@@ -695,6 +826,7 @@ if (!function_exists('allow_print_activity')) {
         $finalApprovalExists = \App\Models\ActivityApprovalTrail::where('activity_id', $activity->id)
             ->where('approval_order', $finalApprovalOrder)
             ->where('action', 'passed')
+            ->where('is_archived', 0) // Only consider non-archived trails
             ->exists();
         
         return $finalApprovalExists;
@@ -841,7 +973,12 @@ function display_memo_status($memo, $type)
         
     } elseif ($isMatrixActivity) {
         // For matrix activities
-        if ($memo->matrix && can_approve_activity($memo)) {
+        // Check if matrix is approved - if so, show activity's overall_status instead of trail status
+        if ($memo->matrix && $memo->matrix->overall_status === 'approved') {
+            // When matrix is approved, show the activity's overall_status
+            $statusText = ucwords($memo->overall_status ?? 'pending');
+            $badgeClass = get_status_badge_class($memo->overall_status ?? 'pending');
+        } elseif ($memo->matrix && can_approve_activity($memo)) {
             // User is an approver - show their specific action with name and level
             $latestApproval = ActivityApprovalTrail::where('activity_id', $memo->id)
                 ->where('matrix_id', $memo->matrix_id)
@@ -1009,17 +1146,53 @@ function getCurrentApproverInfo($memo)
         return null;
     }
 
-    // Get current approver (prefer staff, fallback to OIC)
-    $currentApprover = $workflowDefinition->approvers->first();
-    if (!$currentApprover) {
-        return null;
+    $approverName = 'Unknown';
+    
+    // Check if this is a division-specific workflow definition
+    if ($workflowDefinition->is_division_specific && $memo->matrix) {
+        // For division-specific approvers, get from divisions table
+        $division = $memo->matrix->division;
+        
+        if ($division) {
+            // Map workflow roles to division fields
+            $roleToFieldMap = [
+                'Finance Officer' => 'finance_officer',
+                'Head of Division' => 'division_head',
+                'Director' => 'director_id'
+            ];
+            
+            $approverStaffId = null;
+            $roleName = $workflowDefinition->role;
+            
+            if (isset($roleToFieldMap[$roleName])) {
+                $fieldName = $roleToFieldMap[$roleName];
+                $approverStaffId = $division->{$fieldName};
+            }
+            
+            // Get approver staff details
+            if ($approverStaffId) {
+                $approverStaff = \App\Models\Staff::find($approverStaffId);
+                if ($approverStaff) {
+                    $approverName = $approverStaff->fname . ' ' . $approverStaff->lname;
+                }
+            }
+        }
+    } else {
+        // For non-division-specific approvers, get from approvers table
+        $currentApprover = $workflowDefinition->approvers->first();
+        
+        if ($currentApprover) {
+            if ($currentApprover->staff) {
+                $approverName = $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname;
+            } elseif ($currentApprover->oicStaff) {
+                $approverName = $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname;
+            }
+        }
     }
 
-    $approverName = 'Unknown';
-    if ($currentApprover->staff) {
-        $approverName = $currentApprover->staff->fname . ' ' . $currentApprover->staff->lname;
-    } elseif ($currentApprover->oicStaff) {
-        $approverName = $currentApprover->oicStaff->fname . ' ' . $currentApprover->oicStaff->lname;
+    // Return null if no approver found
+    if ($approverName === 'Unknown') {
+        return null;
     }
 
     return [
@@ -1073,7 +1246,11 @@ function get_memo_status_text($memo, $type)
         
     } elseif ($isMatrixActivity) {
         // For matrix activities
-        if ($memo->matrix && can_approve_activity($memo)) {
+        // Check if matrix is approved - if so, show activity's overall_status instead of trail status
+        if ($memo->matrix && $memo->matrix->overall_status === 'approved') {
+            // When matrix is approved, show the activity's overall_status
+            $statusText = ucwords($memo->overall_status ?? 'pending');
+        } elseif ($memo->matrix && can_approve_activity($memo)) {
             // User is an approver - show their specific action with name and level
             $latestApproval = ActivityApprovalTrail::where('activity_id', $memo->id)
                 ->where('matrix_id', $memo->matrix_id)
