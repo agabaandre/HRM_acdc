@@ -454,7 +454,6 @@
 <?php else: ?>
     for the specified period.
 <?php endif; ?>
-Below is the budget breakdown:</p>
 
   <?php
     // Parse the budget breakdown JSON from the service request
