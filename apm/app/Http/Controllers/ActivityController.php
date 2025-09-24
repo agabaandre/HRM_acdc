@@ -2171,8 +2171,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         // Get comprehensive workflow information
         $workflowInfo = $this->getComprehensiveWorkflowInfo($activity, $matrix);
 
-        // Organize workflow steps by memo_print_section
-        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+        // Organize workflow steps by memo_print_section using helper
+        $organizedWorkflowSteps = \App\Helpers\PrintHelper::organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
 
         // Get matrix approval trails with staff details
         $matrixApprovals = $matrix->matrixApprovalTrails()->with('staff')->get();
@@ -2429,33 +2429,6 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         return $workflowInfo;
     }
 
-    /**
-     * Organize workflow steps by memo_print_section for dynamic memo rendering
-     */
-    private function organizeWorkflowStepsBySection($workflowSteps)
-    {
-        $organizedSteps = [
-            'to' => collect(),
-            'through' => collect(),
-            'from' => collect(),
-            'others' => collect()
-        ];
-
-        foreach ($workflowSteps as $step) {
-            $section = $step['memo_print_section'] ?? 'through';
-            $organizedSteps[$section]->push($step);
-        }
-
-        // Sort each section by print_order first, then by approval order as fallback
-        foreach ($organizedSteps as $section => $steps) {
-            $organizedSteps[$section] = $steps->sortBy([
-                ['print_order', 'asc'],
-                ['order', 'asc']
-            ])->values();
-        }
-
-        return $organizedSteps;
-    }
 
     /**
      * Get workflow information for the activity (legacy method)

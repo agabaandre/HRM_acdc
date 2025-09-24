@@ -1332,7 +1332,7 @@ class SpecialMemoController extends Controller
 
         // Get workflow information
         $workflowInfo = $this->getComprehensiveWorkflowInfo($specialMemo);
-        $organizedWorkflowSteps = $this->organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
+        $organizedWorkflowSteps = \App\Helpers\PrintHelper::organizeWorkflowStepsBySection($workflowInfo['workflow_steps']);
 
         // Use mPDF helper function
         $print = false;
