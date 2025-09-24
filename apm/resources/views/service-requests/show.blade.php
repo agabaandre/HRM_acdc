@@ -715,7 +715,7 @@
                                  style="width: {{ $progressPercentage }}%"></div>
                         </div>
                         <small class="text-muted">
-                            Level {{ $serviceRequest->approval_level ?? 0 }} of {{ $totalLevels }}
+                            Level {{ max(0, ($serviceRequest->approval_level ?? 0) - 1) }} of {{ $totalLevels }}
                         </small>
                         
                         @if(!empty($approvalLevels) && is_array($approvalLevels))
@@ -745,14 +745,6 @@
                 <div class="card-body">
                                 <form action="{{ route('service-requests.update-status', $serviceRequest) }}" method="POST" id="approvalForm">
                                 @csrf
-                                <div class="row">
-                                    <div class="col-12">
-                                        <div class="mb-3">
-                                            <label for="comment" class="form-label">Comments (Optional)</label>
-                                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
-                                        </div>
-                                    </div>
-                                </div>
                                 <div class="d-grid gap-2">
                                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approvalModal">
                                         <i class="bx bx-check me-1"></i> Proceed

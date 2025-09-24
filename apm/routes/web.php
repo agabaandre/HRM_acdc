@@ -292,15 +292,17 @@ Route::post('special-memo/{specialMemo}/update-status', [App\Http\Controllers\Sp
 Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMemoController::class, 'status'])->name('special-memo.status');
     
     // Request for Services Routes
-    Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
-    Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
+    // Specific routes must come before resource routes to avoid conflicts
+    Route::get('service-requests/pending-approvals', [App\Http\Controllers\ServiceRequestController::class, 'pendingApprovals'])->name('service-requests.pending-approvals');
     Route::get('service-requests/export/my-submitted', [App\Http\Controllers\ServiceRequestController::class, 'exportMySubmitted'])->name('service-requests.export.my-submitted');
     Route::get('service-requests/export/all', [App\Http\Controllers\ServiceRequestController::class, 'exportAll'])->name('service-requests.export.all');
-    
-    // Service Request Modal Routes
     Route::post('service-requests/get-source-data', [App\Http\Controllers\ServiceRequestController::class, 'getSourceData'])->name('service-requests.get-source-data');
     Route::post('service-requests/store-from-modal', [App\Http\Controllers\ServiceRequestController::class, 'storeFromModal'])->name('service-requests.store-from-modal');
     Route::get('service-requests/cost-items', [App\Http\Controllers\ServiceRequestController::class, 'getCostItems'])->name('service-requests.cost-items');
+    
+    // Resource routes
+    Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
+    Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
     Route::get('service-requests/{serviceRequest}/print', [App\Http\Controllers\ServiceRequestController::class, 'print'])->name('service-requests.print');
 
     // Reports

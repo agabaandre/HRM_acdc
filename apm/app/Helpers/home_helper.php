@@ -358,11 +358,42 @@ if (!function_exists('get_pending_service_requests_count')) {
      */
     function get_pending_service_requests_count(int $staffId): int
     {
-        // For now, just return count of pending service requests
-        // TODO: Implement proper approval logic when ServiceRequest approval system is added
-        return ServiceRequest::where('approval_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->count();
+        $userDivisionId = user_session('division_id');
+        
+        $pendingQuery = ServiceRequest::with([
+            'staff',
+            'division',
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
+            'forwardWorkflow.workflowDefinitions'
+        ])
+        ->where('overall_status', 'pending')
+        ->where('forward_workflow_id', '!=', null)
+        ->where('approval_level', '>', 0);
+
+        $pendingQuery->where(function($q) use ($userDivisionId, $staffId) {
+            // Check if user can approve at current level
+            $q->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQuery) use ($userDivisionId, $staffId) {
+                $workflowQuery->whereColumn('approval_order', 'service_requests.approval_level')
+                ->where(function($approverQuery) use ($userDivisionId, $staffId) {
+                    // Division-specific approvers
+                    $approverQuery->where(function($divQuery) use ($userDivisionId, $staffId) {
+                        $divQuery->where('is_division_specific', 1)
+                            ->whereHas('approvers', function($approverSubQuery) use ($staffId) {
+                                $approverSubQuery->where('staff_id', $staffId);
+                            });
+                    })
+                    // General approvers
+                    ->orWhere(function($genQuery) use ($staffId) {
+                        $genQuery->where('is_division_specific', 0)
+                            ->whereHas('approvers', function($approverSubQuery) use ($staffId) {
+                                $approverSubQuery->where('staff_id', $staffId);
+                            });
+                    });
+                });
+            });
+        });
+
+        return $pendingQuery->count();
     }
 }
 

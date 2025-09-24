@@ -40,31 +40,102 @@ class PendingApprovalsController extends Controller
         // Get summary statistics
         $summaryStats = $this->pendingApprovalsService->getSummaryStats();
         
-        // Filter by category if specified
-        if ($category !== 'all') {
-            $pendingApprovals = [$category => $pendingApprovals[$category] ?? []];
-        }
-        
         // Get divisions for filter dropdown
         $divisions = \App\Models\Division::orderBy('division_name')->get();
         
-        // Get categories for filter dropdown
-        $categories = collect($pendingApprovals)->keys()->map(function ($cat) {
-            return [
-                'value' => $cat,
-                'label' => $cat,
-                'count' => count($pendingApprovals[$cat] ?? [])
-            ];
-        })->prepend(['value' => 'all', 'label' => 'All Categories', 'count' => $summaryStats['total_pending']]);
+        // Get categories for filter dropdown - group similar items (before filtering)
+        $groupedCategories = $this->groupCategoriesForFilter($pendingApprovals, $summaryStats);
+        
+        // Filter by category if specified (after creating grouped categories)
+        if ($category !== 'all') {
+            $pendingApprovals = $this->filterByGroupedCategory($pendingApprovals, $category);
+        }
         
         return view('pending-approvals.index', compact(
             'pendingApprovals',
             'summaryStats',
-            'categories',
+            'groupedCategories',
             'divisions',
             'category',
             'division'
         ));
+    }
+
+    /**
+     * Group categories for filter dropdown
+     */
+    private function groupCategoriesForFilter(array $pendingApprovals, array $summaryStats): array
+    {
+        $categories = [];
+        
+        // All Categories
+        $categories[] = [
+            'value' => 'all',
+            'label' => 'All Categories',
+            'count' => $summaryStats['total_pending']
+        ];
+        
+        // Matrices
+        $matrixCount = count($pendingApprovals['Matrix'] ?? []);
+        if ($matrixCount > 0) {
+            $categories[] = [
+                'value' => 'Matrix',
+                'label' => 'Matrices',
+                'count' => $matrixCount
+            ];
+        }
+        
+        // Memos (Special Memo + Non-Travel Memo + Single Memo)
+        $memoCount = (count($pendingApprovals['Special Memo'] ?? []) + 
+                     count($pendingApprovals['Non-Travel Memo'] ?? []) + 
+                     count($pendingApprovals['Single Memo'] ?? []));
+        if ($memoCount > 0) {
+            $categories[] = [
+                'value' => 'memos',
+                'label' => 'Memos',
+                'count' => $memoCount
+            ];
+        }
+        
+        // Requests (Service Request + ARF)
+        $requestCount = (count($pendingApprovals['Service Request'] ?? []) + 
+                       count($pendingApprovals['ARF'] ?? []));
+        if ($requestCount > 0) {
+            $categories[] = [
+                'value' => 'requests',
+                'label' => 'Requests',
+                'count' => $requestCount
+            ];
+        }
+        
+        return $categories;
+    }
+
+    /**
+     * Filter pending approvals by grouped category
+     */
+    private function filterByGroupedCategory(array $pendingApprovals, string $category): array
+    {
+        switch ($category) {
+            case 'Matrix':
+                return ['Matrix' => $pendingApprovals['Matrix'] ?? []];
+                
+            case 'memos':
+                return [
+                    'Special Memo' => $pendingApprovals['Special Memo'] ?? [],
+                    'Non-Travel Memo' => $pendingApprovals['Non-Travel Memo'] ?? [],
+                    'Single Memo' => $pendingApprovals['Single Memo'] ?? []
+                ];
+                
+            case 'requests':
+                return [
+                    'Service Request' => $pendingApprovals['Service Request'] ?? [],
+                    'ARF' => $pendingApprovals['ARF'] ?? []
+                ];
+                
+            default:
+                return [$category => $pendingApprovals[$category] ?? []];
+        }
     }
 
     /**

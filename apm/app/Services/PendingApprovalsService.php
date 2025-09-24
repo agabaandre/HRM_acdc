@@ -6,6 +6,8 @@ use App\Models\Matrix;
 use App\Models\Activity;
 use App\Models\SpecialMemo;
 use App\Models\NonTravelMemo;
+use App\Models\ServiceRequest;
+use App\Models\RequestARF;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowModel;
 use App\Models\Approver;
@@ -57,6 +59,12 @@ class PendingApprovalsService
 
         // Get pending single memos (activities with is_single_memo = true)
         $pendingItems = $pendingItems->merge($this->getPendingSingleMemos());
+
+        // Get pending service requests
+        $pendingItems = $pendingItems->merge($this->getPendingServiceRequests());
+
+        // Get pending ARF requests
+        $pendingItems = $pendingItems->merge($this->getPendingARFRequests());
 
         // Group by category and sort by date received
         return $this->groupByCategory($pendingItems);
@@ -223,6 +231,96 @@ class PendingApprovalsService
                 'workflow_role' => $this->getWorkflowRole($activity),
                 'item_id' => $activity->id,
                 'item_type' => 'Activity'
+            ]);
+        });
+    }
+
+    /**
+     * Get pending service requests
+     */
+    protected function getPendingServiceRequests(): Collection
+    {
+        $query = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        // Get all approval levels for this user (both division-specific and non-division-specific)
+        $approvalLevels = $this->getUserApprovalLevels('ServiceRequest');
+        
+        if (!empty($approvalLevels)) {
+            $query->whereIn('approval_level', $approvalLevels);
+        } else {
+            // If no approval levels, return empty collection
+            return collect();
+        }
+
+        // For division-specific approvers, only show items from their division
+        if ($this->isDivisionSpecificApprover()) {
+            $query->where('division_id', $this->currentDivisionId);
+        }
+
+        return $query->get()->filter(function ($serviceRequest) {
+            // Check if the current user is actually the current approver for this item
+            return $this->isCurrentApprover($serviceRequest);
+        })->map(function ($serviceRequest) {
+            return $this->formatPendingItem($serviceRequest, 'Service Request', [
+                'title' => $serviceRequest->title ?? 'Service Request',
+                'division' => $serviceRequest->division->division_name ?? 'N/A',
+                'submitted_by' => $serviceRequest->responsiblePerson ? 
+                    ($serviceRequest->responsiblePerson->fname . ' ' . $serviceRequest->responsiblePerson->lname) : 
+                    ($serviceRequest->staff->fname . ' ' . $serviceRequest->staff->lname ?? 'N/A'),
+                'date_received' => $this->getDateReceivedToCurrentLevel($serviceRequest),
+                'view_url' => route('service-requests.show', $serviceRequest),
+                'approval_level' => $serviceRequest->approval_level,
+                'workflow_role' => $this->getWorkflowRole($serviceRequest),
+                'item_id' => $serviceRequest->id,
+                'item_type' => 'ServiceRequest'
+            ]);
+        });
+    }
+
+    /**
+     * Get pending ARF requests
+     */
+    protected function getPendingARFRequests(): Collection
+    {
+        $query = RequestARF::with(['staff', 'responsiblePerson', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        // Get all approval levels for this user (both division-specific and non-division-specific)
+        $approvalLevels = $this->getUserApprovalLevels('RequestARF');
+        
+        if (!empty($approvalLevels)) {
+            $query->whereIn('approval_level', $approvalLevels);
+        } else {
+            // If no approval levels, return empty collection
+            return collect();
+        }
+
+        // For division-specific approvers, only show items from their division
+        if ($this->isDivisionSpecificApprover()) {
+            $query->where('division_id', $this->currentDivisionId);
+        }
+
+        return $query->get()->filter(function ($arfRequest) {
+            // Check if the current user is actually the current approver for this item
+            return $this->isCurrentApprover($arfRequest);
+        })->map(function ($arfRequest) {
+            return $this->formatPendingItem($arfRequest, 'ARF', [
+                'title' => $arfRequest->activity_title ?? 'ARF Request',
+                'division' => $arfRequest->division->division_name ?? 'N/A',
+                'submitted_by' => $arfRequest->responsiblePerson ? 
+                    ($arfRequest->responsiblePerson->fname . ' ' . $arfRequest->responsiblePerson->lname) : 
+                    ($arfRequest->staff->fname . ' ' . $arfRequest->staff->lname ?? 'N/A'),
+                'date_received' => $this->getDateReceivedToCurrentLevel($arfRequest),
+                'view_url' => route('request-arfs.show', $arfRequest),
+                'approval_level' => $arfRequest->approval_level,
+                'workflow_role' => $this->getWorkflowRole($arfRequest),
+                'item_id' => $arfRequest->id,
+                'item_type' => 'RequestARF'
             ]);
         });
     }

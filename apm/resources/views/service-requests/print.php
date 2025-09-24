@@ -20,6 +20,7 @@
         font-size: 18px; 
         font-weight: bold; 
         text-align: center; 
+        text-transform: uppercase;
         margin-top: -20px; 
         margin-bottom: 15px; 
         color:#100f0f; 
@@ -396,8 +397,8 @@
           </div>
                   <div>
                     <br><br>
-                                <strong class="section-label">Request No:</strong><br>
-                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($serviceRequest->request_number ?? 'N/A'); ?></span>
+                                <strong class="section-label">File No:</strong><br>
+                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($serviceRequest->document_number ?? 'N/A'); ?></span>
           </div>
         </div>
       </td>
@@ -425,8 +426,8 @@
                 </div>
                 <div>
                                 <br><br>
-                                <strong class="section-label">Request No:</strong><br>
-                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($serviceRequest->request_number ?? 'N/A'); ?></span>
+                                <strong class="section-label">File No:</strong><br>
+                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($serviceRequest->document_number ?? 'N/A'); ?></span>
                 </div>
               </div>
             </td>
@@ -440,65 +441,299 @@
  <table class="mb-15">
   <tr>
     <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Subject:</strong></td>
-    <td style="width: 88%; text-align: left; vertical-align: top;" class="subject-text"><?php echo htmlspecialchars($serviceRequest->service_title ?? 'N/A'); ?></td>
+    <td style="width: 88%; text-align: left; vertical-align: top;" class="subject-text">Service Request  for <?php echo htmlspecialchars($serviceRequest->service_title ?? 'N/A'); ?></td>
   </tr>
  </table>
 
-<!-- Service Request Details -->
-<div class="section-label mb-15"><strong>Service Request Information</strong></div>
 
-<table class="form-table mb-15" role="table" aria-label="Service Request Information">
-  <tr>
-    <th scope="row">Division</th>
-    <td><?php echo htmlspecialchars($serviceRequest->division->division_name ?? 'N/A'); ?><span class="fill line"></span></td>
-  </tr>
-  <tr>
-    <th scope="row">Service Type</th>
-    <td><?php echo htmlspecialchars($serviceRequest->service_type ?? 'N/A'); ?><span class="fill line"></span></td>
-  </tr>
-  <tr>
-    <th scope="row">Priority</th>
-    <td><?php echo htmlspecialchars($serviceRequest->priority ?? 'N/A'); ?><span class="fill line"></span></td>
-      </tr>
-      <tr>
-    <th scope="row">Required By Date</th>
-    <td><?php echo isset($serviceRequest->required_by_date) ? date('d/m/Y', strtotime($serviceRequest->required_by_date)) : 'N/A'; ?><span class="fill line"></span></td>
-      </tr>
-      <tr>
-    <th scope="row">Location</th>
-    <td><?php echo htmlspecialchars($serviceRequest->location ?? 'N/A'); ?><span class="fill line"></span></td>
-      </tr>
-      <tr>
-    <th scope="row">Estimated Cost</th>
-    <td><?php echo number_format($serviceRequest->estimated_cost ?? 0, 2); ?><span class="fill line"></span></td>
-      </tr>
-    </table>
+<p>Reference is made to the attached approval memo <b><?=$sourceData->document_number?></b> regarding <?=$sourceData->title?> 
+<?php if (isset($sourceData->date_from) && isset($sourceData->date_to)): ?>
+    starting on <?=date('j F Y', strtotime($sourceData->date_from))?> and ending on <?=date('j F Y', strtotime($sourceData->date_to))?>.
+<?php elseif (isset($sourceData->memo_date)): ?>
+    dated <?=date('j F Y', strtotime($sourceData->memo_date))?>.
+<?php else: ?>
+    for the specified period.
+<?php endif; ?>
+Below is the budget breakdown:</p>
+
+  <?php
+    // Parse the budget breakdown JSON from the service request
+    $budgetData = null;
+    if ($serviceRequest->budget_breakdown) {
+        $budgetData = is_string($serviceRequest->budget_breakdown) 
+            ? json_decode($serviceRequest->budget_breakdown, true) 
+            : $serviceRequest->budget_breakdown;
+    }
+  ?>
+
+  <!-- Service Request Budget Breakdown -->
+  <?php if ($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs']))): ?>
+                    <div class="mb-4">
+                      <!-- Service Request Details -->
+<div class="mb-0" style="color:#006633; font-size: 15px;"><strong>Budget Breakdown</strong></div>
+                        
+                        <!-- Internal Participants -->
+                        <?php if (isset($budgetData['internal_participants']) && is_array($budgetData['internal_participants']) && count($budgetData['internal_participants']) > 0): ?>
+                        <div>
+                            <h4 class="fw-bold text-success mb-3">
+                                <i class="fas fa-users me-2"></i>Internal Participants
+                            </h4>
+                            
+                            <?php
+                            // Group participants by cost type
+                            $costGroups = [];
+                            foreach ($budgetData['internal_participants'] as $participant) {
+                                if (isset($participant['costs']) && is_array($participant['costs'])) {
+                                    foreach ($participant['costs'] as $costName => $costValue) {
+                                        if (!isset($costGroups[$costName])) {
+                                            $costGroups[$costName] = [];
+                                        }
+                                        $costGroups[$costName][] = [
+                                            'participant' => $participant,
+                                            'unit_cost' => $costValue
+                                        ];
+                                    }
+                                }
+                            }
+                            ?>
+                            
+                            <?php foreach ($costGroups as $costName => $participants): ?>
+                            <table class="bordered-table mb-15">
+                                <thead>
+                                    <tr>
+                                        <th class="bg-highlight" colspan="7"><?php echo htmlspecialchars($costName); ?></th>
+                                    </tr>
+                                    <tr>
+                                        <th class="bg-highlight">#</th>
+                                        <th class="bg-highlight">Name</th>
+                                        <th class="bg-highlight">Unit Cost</th>
+                                        <th class="bg-highlight">Units</th>
+                                        <th class="bg-highlight">Days</th>
+                                        <th class="bg-highlight">Total</th>
+                                        <th class="bg-highlight">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $count = 1;
+                                    $groupTotal = 0;
+                                    ?>
+                                    <?php foreach ($participants as $item): ?>
+                                        <?php
+                                        $participant = $item['participant'];
+                                        $unitCost = $item['unit_cost'];
+                                        $staff = null;
+                                        if (isset($participant['staff_id'])) {
+                                            $staff = \App\Models\Staff::find($participant['staff_id']);
+                                        }
+                                        $units = 1; // Default units for internal participants
+                                        $days = 1;  // Default days for internal participants
+                                        $total = $unitCost * $units * $days;
+                                        $groupTotal += $total;
+                                        ?>
+                                        <tr>
+                                            <td><?php echo $count; ?></td>
+                                            <td>
+                                                <?php if ($staff): ?>
+                                                    <?php echo htmlspecialchars($staff->fname . ' ' . $staff->lname); ?>
+                                                <?php else: ?>
+                                                    Staff ID: <?php echo htmlspecialchars($participant['staff_id'] ?? 'Unknown'); ?>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-right">$<?php echo number_format($unitCost, 2); ?></td>
+                                            <td class="text-right"><?php echo $units; ?></td>
+                                            <td class="text-right"><?php echo $days; ?></td>
+                                            <td class="text-right">$<?php echo number_format($total, 2); ?></td>
+                                            <td>Internal participant - <?php echo htmlspecialchars($staff->position ?? 'Staff'); ?></td>
+                                        </tr>
+                                        <?php $count++; ?>
+                                    <?php endforeach; ?>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th class="bg-highlight text-right" colspan="5"><?php echo htmlspecialchars($costName); ?> Total</th>
+                                        <th class="bg-highlight text-right">$<?php echo number_format($groupTotal, 2); ?></th>
+                                        <th class="bg-highlight"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            <?php endforeach; ?>
+                            
+                            <!-- Internal Participants Comments -->
+                            <?php if ($serviceRequest->internal_participants_comment): ?>
+                            <div class="mt-3 p-3 bg-light rounded border-start border-success border-4">
+                                <h6 class="fw-bold text-success mb-2">
+                                    <i class="fas fa-comment me-2"></i>Internal Participants Comments
+                                </h6>
+                                <p class="mb-0 text-muted"><?php echo htmlspecialchars($serviceRequest->internal_participants_comment); ?></p>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- External Participants -->
+                        <?php if (isset($budgetData['external_participants']) && is_array($budgetData['external_participants']) && count($budgetData['external_participants']) > 0): ?>
+                        <div class="mb-4">
+                          <h4 class="fw-bold text-success mb-3">
+                                <i class="fas fa-users me-2"></i>External Participants
+                            </h4>
+                            
+                            <?php
+                            // Group participants by cost type
+                            $costGroups = [];
+                            foreach ($budgetData['external_participants'] as $participant) {
+                                if (isset($participant['costs']) && is_array($participant['costs'])) {
+                                    foreach ($participant['costs'] as $costName => $costValue) {
+                                        if (!isset($costGroups[$costName])) {
+                                            $costGroups[$costName] = [];
+                                        }
+                                        $costGroups[$costName][] = [
+                                            'participant' => $participant,
+                                            'unit_cost' => $costValue
+                                        ];
+                                    }
+                                }
+                            }
+                            ?>
+                            
+                            <?php foreach ($costGroups as $costName => $participants): ?>
+                            <table class="bordered-table mb-15">
+                                <thead>
+                                    <tr>
+                                        <th class="bg-highlight" colspan="7"><?php echo htmlspecialchars($costName); ?></th>
+                                    </tr>
+                                    <tr>
+                                        <th class="bg-highlight">#</th>
+                                        <th class="bg-highlight">Name</th>
+                                        <th class="bg-highlight">Unit Cost</th>
+                                        <th class="bg-highlight">Units</th>
+                                        <th class="bg-highlight">Days</th>
+                                        <th class="bg-highlight">Total</th>
+                                        <th class="bg-highlight">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $count = 1;
+                                    $groupTotal = 0;
+                                    ?>
+                                    <?php foreach ($participants as $item): ?>
+                                        <?php
+                                        $participant = $item['participant'];
+                                        $unitCost = $item['unit_cost'];
+                                        $units = 1; // Default units for external participants
+                                        $days = 1;  // Default days for external participants
+                                        $total = $unitCost * $units * $days;
+                                        $groupTotal += $total;
+                                        ?>
+                                        <tr>
+                                            <td><?php echo $count; ?></td>
+                                            <td><?php echo htmlspecialchars($participant['name'] ?? 'N/A'); ?></td>
+                                            <td class="text-right">$<?php echo number_format($unitCost, 2); ?></td>
+                                            <td class="text-right"><?php echo $units; ?></td>
+                                            <td class="text-right"><?php echo $days; ?></td>
+                                            <td class="text-right">$<?php echo number_format($total, 2); ?></td>
+                                            <td>External participant - <?php echo htmlspecialchars($participant['organization'] ?? 'N/A'); ?></td>
+                                        </tr>
+                                        <?php $count++; ?>
+                                    <?php endforeach; ?>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th class="bg-highlight text-right" colspan="5"><?php echo htmlspecialchars($costName); ?> Total</th>
+                                        <th class="bg-highlight text-right">$<?php echo number_format($groupTotal, 2); ?></th>
+                                        <th class="bg-highlight"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            <?php endforeach; ?>
+                            
+                            <!-- External Participants Comments -->
+                            <?php if ($serviceRequest->external_participants_comment): ?>
+                            <div class="mt-3 p-3 bg-light rounded border-start border-warning border-4">
+                                <h6 class="fw-bold text-warning mb-2">
+                                    <i class="fas fa-comment me-2"></i>External Participants Comments
+                                </h6>
+                                <p class="mb-0 text-muted"><?php echo htmlspecialchars($serviceRequest->external_participants_comment); ?></p>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Other Costs -->
+                        <?php if (isset($budgetData['other_costs']) && is_array($budgetData['other_costs']) && count($budgetData['other_costs']) > 0): ?>
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-info mb-3">
+                                <i class="fas fa-list me-2"></i>Other Costs
+                            </h6>
+                            
+                            <table class="bordered-table mb-15">
+                                <thead>
+                                    <tr>
+                                        <th class="bg-highlight">#</th>
+                                        <th class="bg-highlight">Cost Item</th>
+                                        <th class="bg-highlight">Unit Cost</th>
+                                        <th class="bg-highlight">Units</th>
+                                        <th class="bg-highlight">Days</th>
+                                        <th class="bg-highlight">Total</th>
+                                        <th class="bg-highlight">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $count = 1;
+                                    $otherGrandTotal = 0;
+                                    ?>
+                                    <?php foreach ($budgetData['other_costs'] as $index => $cost): ?>
+                                        <?php
+                                        $unitCost = $cost['unit_cost'] ?? 0;
+                                        $units = $cost['units'] ?? 1;
+                                        $days = $cost['days'] ?? 1;
+                                        $total = $unitCost * $units * $days;
+                                        $otherGrandTotal += $total;
+                                        ?>
+                                        <tr>
+                                            <td><?php echo $count; ?></td>
+                                            <td><?php echo htmlspecialchars($cost['cost_type'] ?? 'N/A'); ?></td>
+                                            <td class="text-right">$<?php echo number_format($unitCost, 2); ?></td>
+                                            <td class="text-right"><?php echo $units; ?></td>
+                                            <td class="text-right"><?php echo $days; ?></td>
+                                            <td class="text-right">$<?php echo number_format($total, 2); ?></td>
+                                            <td><?php echo htmlspecialchars($cost['description'] ?? 'N/A'); ?></td>
+                                        </tr>
+                                        <?php $count++; ?>
+                                    <?php endforeach; ?>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th class="bg-highlight text-right" colspan="5">Other Costs Total</th>
+                                        <th class="bg-highlight text-right">$<?php echo number_format($otherGrandTotal, 2); ?></th>
+                                        <th class="bg-highlight"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            
+                            <!-- Other Costs Comments -->
+                            <?php if ($serviceRequest->other_costs_comment): ?>
+                            <div class="mt-3 p-3 bg-light rounded border-start border-info border-4">
+                                <h6 class="fw-bold text-info mb-2">
+                                    <i class="fas fa-comment me-2"></i>Other Costs Comments
+                                </h6>
+                                <p class="mb-0 text-muted"><?php echo htmlspecialchars($serviceRequest->other_costs_comment); ?></p>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
     
-<!-- Description -->
-<table class="mb-15 mt-neg20">
-  <tr>
-    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Description:</strong></td>
-      </tr>
-      <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><div class="justify-text"><?php echo htmlspecialchars($serviceRequest->description ?? 'N/A'); ?></div></td>
-      </tr>
-    </table>
 
-<!-- Justification -->
-<table class="mb-15 mt-neg20">
-  <tr>
-    <td style="width: 12%; text-align: left; vertical-align: top;"><strong class="section-label">Justification:</strong></td>
-      </tr>
-      <tr>
-   <td class="justify-text" style="width: 100%; text-align: justify; vertical-align: top;"><div class="justify-text"><?php echo htmlspecialchars($serviceRequest->justification ?? 'N/A'); ?></div></td>
-      </tr>
-    </table>
 
 <div class="page-break"></div>
 
 <?php if ($sourcePdfHtml): ?>
   <!-- Include the source memo HTML here -->
-  <div class="section-label mb-15"><strong>Source Memorandum</strong></div>
+  <div class="section-label mb-15"><strong>Approval Memo</strong></div>
   
   <!-- The source memo HTML will be embedded here -->
   <?php echo $sourcePdfHtml; ?>

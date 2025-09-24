@@ -335,7 +335,7 @@ body {
             </a>
             @if(get_staff_pending_action_count('matrices') >= 0)
             <a href="{{ route('matrices.pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
-              <i class="fas fa-tasks"></i> Approvals
+              <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="matrix-pending-count">{{ get_staff_pending_action_count('matrices') }}</span>
             </a>
             @endif
@@ -390,7 +390,7 @@ body {
             </a>
             @if(get_staff_pending_action_count('special-memo') >=0)
             <a href="{{ route('special-memo.pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
-              <i class="fas fa-tasks"></i> Approvals
+              <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="special-memo-pending-count">{{ get_staff_pending_action_count('special-memo') }}</span>
             </a>
             @endif
@@ -416,9 +416,9 @@ body {
             <a href="{{ url('service-requests') }}" class="btn btn-success btn-sm">
               <i class="fas fa-plus"></i> Open
             </a>
-            @if(get_staff_pending_action_count('service-requests') > 0)
-            <a href="{{ url('service-requests') }}" class="btn btn-outline-primary btn-sm position-relative">
-              <i class="fas fa-tasks"></i> Approvals
+            @if(get_staff_pending_action_count('service-requests') >= 0)
+            <a href="{{ url('service-requests/pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
+              <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="service-requests-pending-count">{{ get_staff_pending_action_count('service-requests') }}</span>
             </a>
             @endif

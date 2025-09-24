@@ -12,6 +12,8 @@ use App\Models\SpecialMemo;
 use App\Models\CostItem;
 use App\Models\FundType;
 use App\Models\WorkflowModel;
+use App\Models\WorkflowDefinition;
+use App\Models\Approver;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,7 +39,7 @@ class ServiceRequestController extends Controller
         $currentStaffId = user_session('staff_id');
         
         // Base query for filtering
-        $baseQuery = ServiceRequest::with(['staff', 'division', 'workflowDefinition'])
+        $baseQuery = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'workflowDefinition'])
             ->latest();
             
         // Apply filters
@@ -870,6 +872,150 @@ class ServiceRequestController extends Controller
                 'message' => 'Error loading source data: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Display pending service requests for approvers
+     */
+    public function pendingApprovals(Request $request): View
+    {
+        $userStaffId = user_session('staff_id');
+
+        // Check if we have valid session data
+        if (!$userStaffId) {
+            return view('service-requests.pending-approvals', [
+                'pendingRequests' => collect(),
+                'approvedByMe' => collect(),
+                'divisions' => collect(),
+                'error' => 'No session data found. Please log in again.'
+            ]);
+        }
+
+        // Use the exact same logic as the home helper for consistency
+        $userDivisionId = user_session('division_id');
+        
+        $pendingQuery = ServiceRequest::with([
+            'staff',
+            'responsiblePerson',
+            'division',
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
+            'forwardWorkflow.workflowDefinitions'
+        ])
+        ->where('overall_status', 'pending')
+        ->where('forward_workflow_id', '!=', null)
+        ->where('approval_level', '>', 0);
+
+        $pendingQuery->where(function($q) use ($userDivisionId, $userStaffId) {
+            // Check if user can approve at current level
+            $q->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQuery) use ($userDivisionId, $userStaffId) {
+                $workflowQuery->whereColumn('approval_order', 'service_requests.approval_level')
+                ->where(function($approverQuery) use ($userDivisionId, $userStaffId) {
+                    // Division-specific approvers
+                    $approverQuery->where(function($divQuery) use ($userDivisionId, $userStaffId) {
+                        $divQuery->where('is_division_specific', 1)
+                            ->whereHas('approvers', function($approverSubQuery) use ($userStaffId) {
+                                $approverSubQuery->where('staff_id', $userStaffId);
+                            });
+                    })
+                    // General approvers
+                    ->orWhere(function($genQuery) use ($userStaffId) {
+                        $genQuery->where('is_division_specific', 0)
+                            ->whereHas('approvers', function($approverSubQuery) use ($userStaffId) {
+                                $approverSubQuery->where('staff_id', $userStaffId);
+                            });
+                    });
+                });
+            });
+        });
+
+        // Apply filters
+        if ($request->filled('division')) {
+            $pendingQuery->whereHas('division', function($q) use ($request) {
+                $q->where('division_name', 'like', '%' . $request->division . '%');
+            });
+        }
+
+        if ($request->filled('staff')) {
+            $pendingQuery->whereHas('responsiblePerson', function($q) use ($request) {
+                $q->where(function($query) use ($request) {
+                    $query->where('fname', 'like', '%' . $request->staff . '%')
+                          ->orWhere('lname', 'like', '%' . $request->staff . '%')
+                          ->orWhereRaw("CONCAT(fname, ' ', lname) LIKE ?", ['%' . $request->staff . '%']);
+                });
+            });
+        }
+
+        if ($request->filled('document')) {
+            $pendingQuery->where('document_number', 'like', '%' . $request->document . '%');
+        }
+
+        if ($request->filled('title')) {
+            $pendingQuery->where('title', 'like', '%' . $request->title . '%');
+        }
+
+        $pendingRequests = $pendingQuery->paginate(20);
+
+        // Get approved by me
+        $approvedByMeQuery = ServiceRequest::with(['staff', 'responsiblePerson', 'division'])
+            ->whereHas('serviceRequestApprovalTrails', function($query) use ($userStaffId) {
+                $query->where('staff_id', $userStaffId)
+                    ->where('action', 'approved');
+            })
+            ->where('overall_status', 'approved');
+
+        $approvedByMe = $approvedByMeQuery->paginate(20);
+
+        // Get divisions for filter
+        $divisions = Division::orderBy('division_name')->get();
+
+        // Helper function to get workflow info
+        $getWorkflowInfo = function($request) {
+            $approvalLevel = $request->approval_level ?? 0;
+            $workflowRole = 'N/A';
+            $actorName = 'N/A';
+
+            if ($request->forward_workflow_id && $approvalLevel > 0) {
+                $currentDefinition = WorkflowDefinition::where('workflow_id', $request->forward_workflow_id)
+                    ->where('approval_order', $approvalLevel)
+                    ->first();
+                    
+                if ($currentDefinition) {
+                    $workflowRole = $currentDefinition->role ?? 'N/A';
+                    
+                    // Get actor name
+                    if ($currentDefinition->is_division_specific && $request->division) {
+                        $staffId = $request->division->{$currentDefinition->division_reference_column} ?? null;
+                        if ($staffId) {
+                            $actor = Staff::where('staff_id', $staffId)->first();
+                            if ($actor) {
+                                $actorName = $actor->fname . ' ' . $actor->lname;
+                            }
+                        }
+                    } else {
+                        $approver = Approver::where('workflow_dfn_id', $currentDefinition->id)->first();
+                        if ($approver) {
+                            $actor = Staff::where('staff_id', $approver->staff_id)->first();
+                            if ($actor) {
+                                $actorName = $actor->fname . ' ' . $actor->lname;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return [
+                'approvalLevel' => $approvalLevel,
+                'workflowRole' => $workflowRole,
+                'actorName' => $actorName
+            ];
+        };
+
+        return view('service-requests.pending-approvals', compact(
+            'pendingRequests',
+            'approvedByMe',
+            'divisions',
+            'getWorkflowInfo'
+        ));
     }
 
     /**
