@@ -312,10 +312,9 @@
         $staffId = $staff['id'] ?? null;
 
         $approvalDate = getApprovalDate($staffId, $matrix_approval_trails, $order);
-        dd($staff);
 
         echo '<div style="line-height: 1.2;">';
-      echo htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']);
+      // echo htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']);
   
         
         if (isset($staff['signature']) && !empty($staff['signature'])) {
