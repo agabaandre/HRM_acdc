@@ -72,7 +72,14 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label for="documentFilter" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-hash me-1 text-success"></i> Document #
+                    </label>
+                    <input type="text" id="documentFilter" class="form-control" 
+                           placeholder="Search by document number...">
+                </div>
+                <div class="col-md-2">
                     <label for="staffFilter" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff Member
                     </label>
@@ -87,7 +94,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-3 d-flex align-items-end">
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Apply Filters
                     </button>
@@ -133,14 +140,15 @@
                                 <table class="table table-hover mb-0" id="pendingTable">
                                     <thead class="table-warning">
                                         <tr>
-                                            <th>#</th>
-                                            <th>Title</th>
-                                            <th>Category</th>
-                                            <th>Staff Member</th>
-                                            <th>Division</th>
-                                            <th>Date</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
+                                            <th style="width: 40px;">#</th>
+                                            <th style="width: 120px;">Document Number</th>
+                                            <th style="width: 280px;">Title</th>
+                                            <th style="width: 100px;">Category</th>
+                                            <th style="width: 120px;">Staff Member</th>
+                                            <th style="width: 120px;">Division</th>
+                                            <th style="width: 100px;">Date</th>
+                                            <th style="width: 150px;">Status</th>
+                                            <th class="text-center" style="width: 100px;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -148,23 +156,28 @@
                                         @foreach($pendingMemos as $memo)
                                             <tr>
                                                 <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                                                <td style="width: 120px;">
+                                                    <div class="text-muted small">{{ $memo->document_number ?? 'N/A' }}</div>
                                                 </td>
-                                                <td>
+                                                <td style="width: 280px;">
+                                                    <div class="fw-bold text-primary" style="word-wrap: break-word; white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; max-height: 3.6em;" title="{{ $memo->activity_title }}">{{ $memo->activity_title }}</div>
+                                                </td>
+                                                <td style="width: 120px; word-wrap: break-word; white-space: normal;">
                                                     <span class="badge bg-info text-dark">
                                                         <i class="bx bx-category me-1"></i>
                                                         {{ $memo->nonTravelMemoCategory->name ?? 'N/A' }}
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td style="width: 150px; word-wrap: break-word; white-space: normal;">
                                                     @if($memo->staff)
-                                                        {{ $memo->staff->fname }} {{ $memo->staff->lname }}
+                                                        <div>{{ $memo->staff->fname }} {{ $memo->staff->lname }}</div>
                                                     @else
                                                         <span class="text-muted">Not assigned</span>
                                                     @endif
                                                 </td>
-                                                <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
+                                                <td style="width: 150px; word-wrap: break-word; white-space: normal;">
+                                                    <div>{{ $memo->division->division_name ?? 'N/A' }}</div>
+                                                </td>
                                                 <td>{{ $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('M d, Y') : 'N/A' }}</td>
                                                 <td>
                                                     @php
@@ -256,14 +269,15 @@
                                 <table class="table table-hover mb-0" id="approvedTable">
                                     <thead class="table-success">
                                         <tr>
-                                            <th>#</th>
-                                            <th>Title</th>
-                                            <th>Category</th>
-                                            <th>Staff Member</th>
-                                            <th>Division</th>
-                                            <th>Date</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
+                                            <th style="width: 40px;">#</th>
+                                            <th style="width: 120px;">Document Number</th>
+                                            <th style="width: 280px;">Title</th>
+                                            <th style="width: 100px;">Category</th>
+                                            <th style="width: 120px;">Staff Member</th>
+                                            <th style="width: 120px;">Division</th>
+                                            <th style="width: 100px;">Date</th>
+                                            <th style="width: 150px;">Status</th>
+                                            <th class="text-center" style="width: 100px;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -271,23 +285,28 @@
                                         @foreach($approvedByMe as $memo)
                                             <tr>
                                                 <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                                                <td style="width: 120px;">
+                                                    <div class="text-muted small">{{ $memo->document_number ?? 'N/A' }}</div>
                                                 </td>
-                                                <td>
+                                                <td style="width: 280px;">
+                                                    <div class="fw-bold text-primary" style="word-wrap: break-word; white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; max-height: 3.6em;" title="{{ $memo->activity_title }}">{{ $memo->activity_title }}</div>
+                                                </td>
+                                                <td style="width: 120px; word-wrap: break-word; white-space: normal;">
                                                     <span class="badge bg-info text-dark">
                                                         <i class="bx bx-category me-1"></i>
                                                         {{ $memo->nonTravelMemoCategory->name ?? 'N/A' }}
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td style="width: 150px; word-wrap: break-word; white-space: normal;">
                                                     @if($memo->staff)
-                                                        {{ $memo->staff->fname }} {{ $memo->staff->lname }}
+                                                        <div>{{ $memo->staff->fname }} {{ $memo->staff->lname }}</div>
                                                     @else
                                                         <span class="text-muted">Not assigned</span>
                                                     @endif
                                                 </td>
-                                                <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
+                                                <td style="width: 150px; word-wrap: break-word; white-space: normal;">
+                                                    <div>{{ $memo->division->division_name ?? 'N/A' }}</div>
+                                                </td>
                                                 <td>{{ $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('M d, Y') : 'N/A' }}</td>
                                                 <td>
                                                     @php
@@ -382,24 +401,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const categoryFilter = document.getElementById('categoryFilter').value;
         const divisionFilter = document.getElementById('divisionFilter').value;
         const staffFilter = document.getElementById('staffFilter').value;
+        const documentFilter = document.getElementById('documentFilter').value.toLowerCase();
 
         const rows = document.querySelectorAll('#pendingTable tbody tr');
         
         rows.forEach(row => {
             let show = true;
             
+            // Document number filter
+            if (documentFilter && !row.querySelector('td:nth-child(2)').textContent.toLowerCase().includes(documentFilter)) {
+                show = false;
+            }
+            
             // Category filter
-            if (categoryFilter && !row.querySelector('td:nth-child(3)').textContent.includes(categoryFilter)) {
+            if (categoryFilter && !row.querySelector('td:nth-child(4)').textContent.includes(categoryFilter)) {
                 show = false;
             }
             
             // Division filter
-            if (divisionFilter && !row.querySelector('td:nth-child(5)').textContent.includes(divisionFilter)) {
+            if (divisionFilter && !row.querySelector('td:nth-child(6)').textContent.includes(divisionFilter)) {
                 show = false;
             }
             
             // Staff filter
-            if (staffFilter && !row.querySelector('td:nth-child(4)').textContent.includes(staffFilter)) {
+            if (staffFilter && !row.querySelector('td:nth-child(5)').textContent.includes(staffFilter)) {
                 show = false;
             }
             
@@ -414,6 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('categoryFilter').addEventListener('change', applyFilters);
     document.getElementById('divisionFilter').addEventListener('change', applyFilters);
     document.getElementById('staffFilter').addEventListener('change', applyFilters);
+    document.getElementById('documentFilter').addEventListener('input', applyFilters);
 });
 </script>
 @endpush

@@ -112,14 +112,16 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-success">
                                     <tr>
-                                        <th>#</th>
-                                        <th>Request Number</th>
-                                        <th>Title</th>
-                                        <th>Division</th>
-                                        <th>Request Date</th>
-                                        <th>Total Budget</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Actions</th>
+                                        <th style="width: 40px;">#</th>
+                                        <th style="width: 120px;">Request Number</th>
+                                        <th style="width: 120px;">Document Number</th>
+                                        <th style="width: 280px;">Title</th>
+                                        <th style="width: 120px;">Staff</th>
+                                        <th style="width: 120px;">Division</th>
+                                        <th style="width: 100px;">Request Date</th>
+                                        <th style="width: 100px;">Total Budget</th>
+                                        <th style="width: 150px;">Status</th>
+                                        <th class="text-center" style="width: 100px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -130,10 +132,16 @@
                             <td>
                                 <div class="fw-bold text-primary">{{ $request->request_number }}</div>
                             </td>
-                            <td>
-                                <div class="fw-bold text-primary">{{ $request->title ?? 'N/A' }}</div>
+                            <td style="width: 120px;">
+                                <div class="text-muted small">{{ $request->document_number ?? 'N/A' }}</div>
                             </td>
-                            <td>{{ $request->division->division_name ?? 'N/A' }}</td>
+                            <td style="width: 280px;">
+                                <div class="fw-bold text-primary" style="word-wrap: break-word; white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; max-height: 3.6em;" title="{{ $request->title ?? 'N/A' }}">{{ $request->title ?? 'N/A' }}</div>
+                            </td>
+                            <td>{{ $request->responsiblePerson ? ($request->responsiblePerson->fname . ' ' . $request->responsiblePerson->lname) : 'N/A' }}</td>
+                            <td style="width: 150px; word-wrap: break-word; white-space: normal;">
+                                <div>{{ $request->division->division_name ?? 'N/A' }}</div>
+                            </td>
                             <td>{{ $request->request_date ? \Carbon\Carbon::parse($request->request_date)->format('M d, Y') : 'N/A' }}</td>
                             <td>
                                 <span class="fw-bold text-success">
@@ -227,15 +235,16 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-primary">
                                     <tr>
-                                        <th>#</th>
-                                        <th>Request Number</th>
-                                        <th>Title</th>
-                                        <th>Staff</th>
-                                        <th>Division</th>
-                                        <th>Request Date</th>
-                                        <th>Total Budget</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Actions</th>
+                                        <th style="width: 40px;">#</th>
+                                        <th style="width: 120px;">Request Number</th>
+                                        <th style="width: 120px;">Document Number</th>
+                                        <th style="width: 280px;">Title</th>
+                                        <th style="width: 120px;">Staff</th>
+                                        <th style="width: 120px;">Division</th>
+                                        <th style="width: 100px;">Request Date</th>
+                                        <th style="width: 100px;">Total Budget</th>
+                                        <th style="width: 150px;">Status</th>
+                                        <th class="text-center" style="width: 100px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -246,11 +255,16 @@
                             <td>
                                 <div class="fw-bold text-primary">{{ $request->request_number }}</div>
                             </td>
-                            <td>
-                                <div class="fw-bold text-primary">{{ $request->title ?? 'N/A' }}</div>
+                            <td style="width: 120px;">
+                                <div class="text-muted small">{{ $request->document_number ?? 'N/A' }}</div>
                             </td>
-                            <td>{{ $request->staff->name ?? 'N/A' }}</td>
-                            <td>{{ $request->division->division_name ?? 'N/A' }}</td>
+                            <td style="width: 280px;">
+                                <div class="fw-bold text-primary" style="word-wrap: break-word; white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; max-height: 3.6em;" title="{{ $request->title ?? 'N/A' }}">{{ $request->title ?? 'N/A' }}</div>
+                            </td>
+                            <td>{{ $request->responsiblePerson ? ($request->responsiblePerson->fname . ' ' . $request->responsiblePerson->lname) : 'N/A' }}</td>
+                            <td style="width: 150px; word-wrap: break-word; white-space: normal;">
+                                <div>{{ $request->division->division_name ?? 'N/A' }}</div>
+                            </td>
                             <td>{{ $request->request_date ? \Carbon\Carbon::parse($request->request_date)->format('M d, Y') : 'N/A' }}</td>
                             <td>
                                 <span class="fw-bold text-success">

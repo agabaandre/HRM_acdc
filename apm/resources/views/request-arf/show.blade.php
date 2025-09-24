@@ -826,7 +826,7 @@
                                  style="width: {{ $progressPercentage }}%"></div>
                         </div>
                         <small class="text-muted">
-                            Level {{ $requestARF->approval_level ?? 0 }} of {{ $totalLevels }}
+                            Level {{ max(0, ($requestARF->approval_level ?? 0) - 1) }} of {{ $totalLevels }}
                         </small>
                         
                         @if(!empty($approvalLevels))

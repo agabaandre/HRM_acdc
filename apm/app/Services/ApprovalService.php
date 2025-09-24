@@ -294,7 +294,11 @@ class ApprovalService
        ->first();
       //dd($current_definition);
 
-    $go_to_category_check_for_external =(!$model->has_extramural && !$model->has_extramural && ($model->approval_level!=null && $current_definition->approval_order > $model->approval_level));
+    // Check if model has extramural/intramural properties (for matrices/activities)
+    $has_extramural = property_exists($model, 'has_extramural') ? $model->has_extramural : false;
+    $has_intramural = property_exists($model, 'has_intramural') ? $model->has_intramural : true; // Default to true for service requests
+
+    $go_to_category_check_for_external = (!$has_extramural && !$has_intramural && ($model->approval_level!=null && $current_definition->approval_order > $model->approval_level));
 //dd($go_to_category_check_for_external);
     //if it's time to trigger categroy check, just check and continue
     if(($current_definition && $current_definition->triggers_category_check) || $go_to_category_check_for_external){
@@ -332,7 +336,7 @@ class ApprovalService
     //if one, just return the one available
     if ($next_definition->count() > 1) {
 
-        if ($model->has_extramural && $model->approval_level !== $next_definition->first()->approval_order) {
+        if ($has_extramural && $model->approval_level !== $next_definition->first()->approval_order) {
             return $next_definition->where('fund_type', 2);
         } 
         else {
@@ -343,14 +347,14 @@ class ApprovalService
     $definition = ($next_definition->count()>0)?$next_definition[0]:null;
     //dd($definition);
     //intramural only, skip extra mural role
-    if($definition  && !$model->has_extramural &&  $definition->fund_type==2){
+    if($definition  && !$has_extramural &&  $definition->fund_type==2){
       return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
         ->where('is_enabled',1)
         ->where('approval_order',$definition->approval_order+1)->first();
     }
 
     //only extramural, skip by intramural roles
-    if($definition  && !$model->has_intramural &&  $definition->fund_type==1){
+    if($definition  && !$has_intramural &&  $definition->fund_type==1){
         return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
           ->where('is_enabled',1)
           ->where('approval_order', $definition->approval_order+2)->first();

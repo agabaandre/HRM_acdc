@@ -59,7 +59,12 @@
     --stat-color-light: #34ce57;
   }
 
-  .stat-item.service-requests {
+  .stat-item.memos {
+    --stat-color: #6f42c1;
+    --stat-color-light: #9c7bff;
+  }
+
+  .stat-item.requests {
     --stat-color: #007bff;
     --stat-color-light: #4dabf7;
   }
@@ -161,23 +166,23 @@
     </div>
     
     <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="stat-item arf">
-            <i class="fas fa-file-invoice stat-icon"></i>
-            <span class="stat-number">{{ $summaryStats['by_category']['ARF'] ?? 0 }}</span>
-            <span class="stat-label">ARF</span>
+        <div class="stat-item memos">
+            <i class="fas fa-file-alt stat-icon"></i>
+            <span class="stat-number">{{ ($summaryStats['by_category']['Special Memo'] ?? 0) + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0) + ($summaryStats['by_category']['Single Memo'] ?? 0) }}</span>
+            <span class="stat-label">Memos</span>
             <div class="stat-progress">
-                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? (($summaryStats['by_category']['ARF'] ?? 0) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
+                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? ((($summaryStats['by_category']['Special Memo'] ?? 0) + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0) + ($summaryStats['by_category']['Single Memo'] ?? 0)) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
             </div>
         </div>
     </div>
     
     <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="stat-item service-requests">
+        <div class="stat-item requests">
             <i class="fas fa-cogs stat-icon"></i>
-            <span class="stat-number">{{ $summaryStats['by_category']['Service Request'] ?? 0 }}</span>
-            <span class="stat-label">Service Requests</span>
+            <span class="stat-number">{{ ($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0) }}</span>
+            <span class="stat-label">Requests</span>
             <div class="stat-progress">
-                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? (($summaryStats['by_category']['Service Request'] ?? 0) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
+                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? ((($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0)) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
             </div>
         </div>
     </div>
@@ -190,7 +195,7 @@
             <div class="col-md-4">
                 <label for="categoryFilter" class="form-label">Category</label>
                 <select id="categoryFilter" class="form-select">
-                    @foreach($categories as $cat)
+                    @foreach($groupedCategories as $cat)
                         <option value="{{ $cat['value'] }}" {{ $category === $cat['value'] ? 'selected' : '' }}>
                             {{ $cat['label'] }} ({{ $cat['count'] }})
                         </option>
