@@ -157,16 +157,8 @@ if (!function_exists('user_session')) {
             $isApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
 
             // If this is a matrix memo, check matrix approval and activity approval
-            $isMatrixApproved = false;
-            $isActivityApproved = false;
-            if (isset($memo->matrix)) {
-                $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'approved';
-                if (isset($memo->activity)) {
-                    $isActivityApproved = isset($memo->activity->overall_status) && $memo->activity->overall_status === 'approved';
-                }
-            }
 
-            return ($isOwner || $isResponsible) && $isApproved || ($isOwner || $isResponsible) && $isMatrixApproved && $isActivityApproved;
+            return ($isOwner || $isResponsible) && $isApproved;
         }
      }
 
@@ -244,18 +236,6 @@ if (!function_exists('user_session')) {
             // Only allow if status is draft or returned
             $isApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned'));
 
-            // If this is a matrix memo, check matrix approval and activity approval
-            // Default to true only if not set, otherwise check actual status
-            $isMatrixApproved = true;
-            if (isset($memo->matrix)) {
-                $isMatrixApproved = (isset($memo->matrix->overall_status) && ($memo->matrix->overall_status == 'draft' || $memo->matrix->overall_status == 'returned'));
-            }
-
-            $isActivityApproved = true;
-            if (isset($memo->activity)) {
-                $isActivityApproved = (isset($memo->activity->overall_status) && ($memo->activity->overall_status == 'draft' || $memo->activity->overall_status == 'returned'));
-            }
-
             // Check if user is division head of the memo's division
             $isDivisionHead = false;
             
@@ -268,9 +248,7 @@ if (!function_exists('user_session')) {
                 }
             }
 
-            return (
-                ($isOwner || $isResponsible || $isFocalperson) && $isApproved && $isMatrixApproved && $isActivityApproved
-            ) || $isDivisionHead;
+            return ($isOwner || $isResponsible || $isFocalperson || $isDivisionHead) && $isApproved;
         }
      }
      
