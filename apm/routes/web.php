@@ -180,7 +180,7 @@ Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\Pe
     // Add matrices and activities resources inside the middleware group
     // IMPORTANT: Specific routes must come BEFORE resource routes to avoid conflicts
     Route::get('/matrices/pending-approvals', [MatrixController::class, 'pendingApprovals'])->name('matrices.pending-approvals');
-    Route::get('/matrices/request_approval/{matrix}', [MatrixController::class, 'request_approval'])->name('matrices.request_approval');
+    Route::match(['get', 'post'], '/matrices/request_approval/{matrix}', [MatrixController::class, 'request_approval'])->name('matrices.request_approval');
     Route::post('/matrices/{matrix}/status', [MatrixController::class, 'update_status'])->name('matrices.status');
     Route::get('/matrices/{matrix}/status', [MatrixController::class, 'status'])->name('matrices.view-status');
     

@@ -271,6 +271,7 @@ trait HasApprovalWorkflow
         }
         
         $trail->staff_id = user_session('staff_id');
+        $trail->is_archived = 0; // Explicitly set as non-archived
 
         // For activities, also save matrix_id
         if (method_exists($this, 'matrix_id') && $this->matrix_id) {
@@ -310,8 +311,18 @@ trait HasApprovalWorkflow
                 $this->approval_level = $next_approver->approval_order;
                 $this->next_approval_level = $next_approver->approval_order;
                 $this->overall_status = 'pending';
+                
+                // If this is a matrix, update all activities' overall_status to 'pending'
+                if (get_class($this) === 'App\Models\Matrix') {
+                    $this->activities()->where('is_single_memo', 0)->update(['overall_status' => 'pending']);
+                }
             } else {
                 $this->overall_status = 'approved';
+                
+                // If this is a matrix, update all activities' overall_status to 'approved'
+                if (get_class($this) === 'App\Models\Matrix') {
+                    $this->activities()->where('is_single_memo', 0)->update(['overall_status' => 'approved']);
+                }
             }
         }
 

@@ -471,52 +471,101 @@ class MatrixController extends Controller
                 'matrix.forwardWorkflow' // Eager load workflow
             ]);
 
-        // Filter by allowed funders if specified in workflow definition
+        // Get all activities first, then filter using the same logic as get_approvable_activities
+        $allActivities = $matrix->activities()
+            ->where('is_single_memo', 0)
+            ->with([
+                'requestType', 
+                'fundType', 
+                'responsiblePerson', 
+                'activity_budget', 
+                'activity_budget.fundcode',
+                'matrix.division',
+                'matrix.forwardWorkflow'
+            ])
+            ->get();
+        
+        // Filter activities based on allowed_funders using the same logic as get_approvable_activities
+        $filteredActivities = collect();
         if ($userWorkflowDefinition->allowed_funders) {
             $allowedFunders = is_string($userWorkflowDefinition->allowed_funders) 
                 ? json_decode($userWorkflowDefinition->allowed_funders, true) 
                 : $userWorkflowDefinition->allowed_funders;
             
             if (is_array($allowedFunders) && !empty($allowedFunders)) {
-                // Filter by fund type through the activity_budget relationship
-                $activitiesQuery->whereHas('activity_budget.fundcode', function($query) use ($allowedFunders) {
-                    $query->whereIn('fund_type_id', $allowedFunders);
-                });
+                foreach ($allActivities as $activity) {
+                    $canApprove = true;
+                    
+                    // Check if activity has budget data
+                    if (empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode) {
+                        // For external source activities (no budget data), only allow if fund type 3 is in allowed_funders
+                        $canApprove = in_array(3, $allowedFunders);
+                    } else {
+                        // Check if activity's fund type is in allowed_funders
+                        $activityFundTypeId = $activity->activity_budget[0]->fundcode->fund_type_id;
+                        $canApprove = in_array($activityFundTypeId, $allowedFunders);
+                    }
+                    
+                    if ($canApprove) {
+                        $filteredActivities->push($activity);
+                    }
+                }
+            } else {
+                $filteredActivities = $allActivities;
             }
+        } else {
+            $filteredActivities = $allActivities;
         }
+        
+        // Now apply search and document number filters to the filtered activities
+        $activitiesQuery = $filteredActivities;
 
         // Apply document number filter if provided
         if ($request->filled('document_number')) {
-            $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+            $activitiesQuery = $activitiesQuery->filter(function($activity) use ($request) {
+                return stripos($activity->document_number ?? '', $request->document_number) !== false;
+            });
         }
 
         // Apply general search filter if provided
         if ($request->filled('search')) {
             $searchTerm = $request->search;
-            $activitiesQuery->where(function($query) use ($searchTerm) {
-                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('background', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
-                      ->orWhereHas('responsiblePerson', function($q) use ($searchTerm) {
-                          $q->where('fname', 'like', '%' . $searchTerm . '%')
-                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
-                      })
-                      ->orWhereHas('fundType', function($q) use ($searchTerm) {
-                          $q->where('name', 'like', '%' . $searchTerm . '%');
-                      });
+            $activitiesQuery = $activitiesQuery->filter(function($activity) use ($searchTerm) {
+                return stripos($activity->activity_title ?? '', $searchTerm) !== false
+                    || stripos($activity->document_number ?? '', $searchTerm) !== false
+                    || stripos($activity->background ?? '', $searchTerm) !== false
+                    || stripos($activity->activity_request_remarks ?? '', $searchTerm) !== false
+                    || stripos($activity->responsiblePerson->fname ?? '', $searchTerm) !== false
+                    || stripos($activity->responsiblePerson->lname ?? '', $searchTerm) !== false
+                    || stripos($activity->fundType->name ?? '', $searchTerm) !== false;
             });
         }
 
+        // Sort by latest (created_at desc)
+        $activitiesQuery = $activitiesQuery->sortByDesc('created_at');
+
+        // Apply pagination manually
         $perPage = $request->get('per_page', 20);
-        $activities = $activitiesQuery->latest()->paginate($perPage);
+        $currentPage = $request->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        $activities = $activitiesQuery->slice($offset, $perPage)->values();
+        
+        // Create pagination object
+        $total = $activitiesQuery->count();
+        $activities = new \Illuminate\Pagination\LengthAwarePaginator(
+            $activities,
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'pageName' => 'page']
+        );
 
         // Collect all location and staff IDs for batch loading
         $allLocationIds = [];
         $allStaffIds = [];
         $activitiesData = [];
 
-        foreach ($activities as $activity) {
+        foreach ($activities->items() as $activity) {
             // Decode JSON arrays
             $locationIds = is_array($activity->location_id)
                 ? $activity->location_id
@@ -552,6 +601,7 @@ class MatrixController extends Controller
         ];
 
         // Process activities with pre-loaded data
+        $processedActivities = collect();
         foreach ($activitiesData as $data) {
             $activity = $data['activity'];
             
@@ -563,10 +613,17 @@ class MatrixController extends Controller
             $activity->can_approve = can_approve_activity($activity);
             $activity->allow_print = allow_print_activity($activity);
             $activity->my_last_action = $activity->my_last_action ?? null;
+            $activity->my_current_level_action = $activity->my_current_level_action ?? null;
+            $activity->has_passed_at_current_level = $activity->has_passed_at_current_level ?? false;
             
             // Check if user's approval order has already passed this activity
             $activity->user_has_passed = $this->hasUserPassedActivity($activity, $userWorkflowDefinition);
+            
+            $processedActivities->push($activity);
         }
+
+        // Update the paginated collection with processed activities
+        $activities->setCollection($processedActivities);
 
         return response()->json([
             'activities' => $activities,
@@ -726,23 +783,8 @@ class MatrixController extends Controller
             return true;
         }
 
-        // Check if user's last action on this activity was "passed" at the current approval level
-        $userStaffId = user_session('staff_id');
-        if ($userStaffId) {
-            $currentApprovalLevel = $activity->matrix->approval_level;
-            
-            $lastAction = ActivityApprovalTrail::where('activity_id', $activity->id)
-                ->where('staff_id', $userStaffId)
-                ->where('approval_order', $currentApprovalLevel)
-                ->orderBy('id', 'desc')
-                ->first();
-                
-            if ($lastAction && $lastAction->action === 'passed') {
-                return true;
-            }
-        }
-
-        return false;
+        // Use the new attribute to check if user has passed at current level
+        return $activity->has_passed_at_current_level;
     }
 
     /**
@@ -1341,8 +1383,20 @@ class MatrixController extends Controller
         send_matrix_email_notification($matrix, 'approval');
     }
 
-    public function request_approval( Matrix $matrix){
+    public function request_approval(Request $request, Matrix $matrix){
 
+        // Check if this is HOD resubmission with comment
+        $hodComment = $request->input('hod_comment');
+        $focalPersonComment = $request->input('focal_person_comment');
+        
+        if ($hodComment) {
+            // This is HOD resubmission, save the comment in the approval trail
+            $this->saveMatrixTrail($matrix, $hodComment, 'submitted');
+        } elseif ($focalPersonComment) {
+            // This is focal person resubmission after return, save the comment in the approval trail
+            $this->saveMatrixTrail($matrix, $focalPersonComment, 'submitted');
+        }
+        
         $this->updateMatrix($matrix,(Object)['action'=>'approvals'],null);
         //notify and save notification
         send_matrix_email_notification($matrix, 'approval');
@@ -1379,6 +1433,10 @@ class MatrixController extends Controller
             $matrix->forward_workflow_id = (intval($matrix->approval_level)==1)?null:1;
             $matrix->approval_level = ($matrix->approval_level==1)?0:1;
             $matrix->overall_status ='returned';
+            
+            // Archive approval trails to restart approval process
+            archive_approval_trails($matrix);
+            
             //notify and save notification
             $notification_type = 'returned';
         }else{
@@ -1391,6 +1449,9 @@ class MatrixController extends Controller
             $matrix->approval_level = $next_approval_point->approval_order;
             $matrix->next_approval_level = $next_approval_point->approval_order;
             $matrix->overall_status = 'pending';
+            
+            // Update all activities' overall_status to 'pending' when matrix moves to next approval level
+            $matrix->activities()->where('is_single_memo', 0)->update(['overall_status' => 'pending']);
 
             //notify and save notification
             $notification_type = 'approval';
@@ -1399,6 +1460,9 @@ class MatrixController extends Controller
             //no more approval levels
             $matrix->overall_status = 'approved';
             $notification_type = 'approved';
+            
+            // Update all activities' overall_status to 'approved' when matrix is approved
+            $matrix->activities()->where('is_single_memo', 0)->update(['overall_status' => 'approved']);
            }
         }
         
@@ -1425,6 +1489,7 @@ class MatrixController extends Controller
         $matrixTrail->matrix_id   = $matrix->id; // For backward compatibility
         $matrixTrail->approval_order   = ($matrix->approval_level==0||$action=='submitted')?0:$matrix->approval_level;
         $matrixTrail->staff_id = user_session('staff_id');
+        $matrixTrail->is_archived = 0; // Explicitly set as non-archived
         $matrixTrail->save();
         //dd($matrixTrail);
 

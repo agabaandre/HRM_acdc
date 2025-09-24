@@ -24,6 +24,7 @@ class ActivityApprovalTrail extends Model
         'remarks',
         'approval_order',
         'forward_workflow_id',
+        'is_archived',
     ];
 
     /**
@@ -39,6 +40,7 @@ class ActivityApprovalTrail extends Model
         'oic_staff_id' => 'integer',
         'approval_order' => 'integer',
         'forward_workflow_id' => 'integer',
+        'is_archived' => 'boolean',
     ];
 
     public function activity(): BelongsTo
@@ -88,6 +90,22 @@ class ActivityApprovalTrail extends Model
             ->first();
 
         return $workflowDefinition ? $workflowDefinition->role : 'Focal Person';
+    }
+
+    /**
+     * Scope to get non-archived approval trails.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_archived', 0);
+    }
+
+    /**
+     * Scope to get archived approval trails.
+     */
+    public function scopeArchived($query)
+    {
+        return $query->where('is_archived', 1);
     }
 
 }

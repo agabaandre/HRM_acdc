@@ -149,6 +149,7 @@ class ApprovalService
             //->where('action', 'approved')
             ->where('approval_order', $model->approval_level)
             ->where('staff_id', $userId)
+            ->where('is_archived', 0) // Only consider non-archived trails
             ->first();
       //  dd($approval);
 
@@ -225,6 +226,7 @@ class ApprovalService
         $trail->action = $action;
         $trail->approval_order = $model->approval_level ?? 1;
         $trail->staff_id = $userId;
+        $trail->is_archived = 0; // Explicitly set as non-archived
 
         // For activities, also save matrix_id
         if (method_exists($model, 'matrix_id') && $model->matrix_id) {
@@ -239,6 +241,9 @@ class ApprovalService
             $model->approval_level = intval($model->approval_level)==1?0:1;
             //dd($model->approval_level);
             $model->overall_status = 'returned';
+            
+            // Archive approval trails to restart approval process
+            archive_approval_trails($model);
         } else {
             $next_approver = $this->getNextApprover($model);
             //dd($next_approver);
@@ -248,8 +253,18 @@ class ApprovalService
                 $model->approval_level = $next_approver->approval_order;
                 $model->next_approval_level = $next_approver->approval_order;
                 $model->overall_status = 'pending';
+                
+                // If this is a matrix, update all activities' overall_status to 'pending'
+                if (get_class($model) === 'App\Models\Matrix') {
+                    $model->activities()->where('is_single_memo', 0)->update(['overall_status' => 'pending']);
+                }
             } else {
                 $model->overall_status = 'approved';
+                
+                // If this is a matrix, update all activities' overall_status to 'approved'
+                if (get_class($model) === 'App\Models\Matrix') {
+                    $model->activities()->where('is_single_memo', 0)->update(['overall_status' => 'approved']);
+                }
             }
         }
 

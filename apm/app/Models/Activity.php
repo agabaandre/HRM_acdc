@@ -61,7 +61,7 @@ class Activity extends Model
 
     protected $hidden = ['created_at', 'updated_at'];
 
-    protected $appends = ['formatted_dates','status','my_last_action'];
+    protected $appends = ['formatted_dates','status','my_last_action','has_passed_at_current_level','my_current_level_action'];
 
     protected $casts = [
         'id' => 'integer',
@@ -347,21 +347,81 @@ class Activity extends Model
             return null;
         }
         
-        // Only get actions at the current approval level
+        // Get the current approval level
         $currentApprovalLevel = $this->matrix ? $this->matrix->approval_level : null;
         if (!$currentApprovalLevel) {
             return null;
         }
         
-        return ActivityApprovalTrail::where('activity_id',$this->id)
+        // First, check if user has any action at the current approval level
+        $currentLevelAction = ActivityApprovalTrail::where('activity_id',$this->id)
         ->where('staff_id',$userStaffId)
         ->where('approval_order', $currentApprovalLevel)
+        ->where('is_archived', 0)
         ->orderByDesc('id')->first();
+        
+        if ($currentLevelAction) {
+            return $currentLevelAction;
+        }
+        
+        // If no action at current level, check if user has already passed at any previous level
+        // This allows previous approvers to see their actions
+        $previousPassedAction = ActivityApprovalTrail::where('activity_id',$this->id)
+        ->where('staff_id',$userStaffId)
+        ->where('action', 'passed')
+        ->where('approval_order', '<', $currentApprovalLevel)
+        ->where('is_archived', 0)
+        ->orderByDesc('id')->first();
+        
+        return $previousPassedAction;
+    }
+
+    /**
+     * Check if the current user has passed this activity at the current approval level
+     * This is used for determining if activity should show as "passed" for current approver
+     */
+    public function getHasPassedAtCurrentLevelAttribute(){
+        $userStaffId = user_session('staff_id');
+        if (!$userStaffId || !$this->matrix) {
+            return false;
+        }
+        
+        $currentApprovalLevel = $this->matrix->approval_level;
+        
+        // Check if user has passed at the current approval level
+        return ActivityApprovalTrail::where('activity_id', $this->id)
+            ->where('staff_id', $userStaffId)
+            ->where('approval_order', $currentApprovalLevel)
+            ->where('action', 'passed')
+            ->where('is_archived', 0)
+            ->exists();
+    }
+
+    /**
+     * Get the current user's action at the current approval level only
+     * This is used for status display for the current approver
+     */
+    public function getMyCurrentLevelActionAttribute(){
+        $userStaffId = user_session('staff_id');
+        if (!$userStaffId || !$this->matrix) {
+            return null;
+        }
+        
+        $currentApprovalLevel = $this->matrix->approval_level;
+        
+        // Only return actions at the current approval level
+        return ActivityApprovalTrail::where('activity_id', $this->id)
+            ->where('staff_id', $userStaffId)
+            ->where('approval_order', $currentApprovalLevel)
+            ->where('is_archived', 0)
+            ->orderByDesc('id')
+            ->first();
     }
 
     public function getFinalApprovalStatusAttribute(){
         // Get the latest approval trail entry for this activity
         $latestTrail = ActivityApprovalTrail::where('activity_id', $this->id)
+            ->where('is_archived', 0) // Only consider non-archived trails
             ->orderBy('id', 'desc')
             ->first();
         

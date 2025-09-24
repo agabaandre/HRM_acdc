@@ -177,8 +177,8 @@
                             <div class="d-flex align-items-center">
                                 <label for="pageSizeSelect" class="form-label me-2 mb-0 text-muted small">Show:</label>
                                 <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 120px;">
-                                    <option value="10">10 per page</option>
-                                    <option value="20" selected>20 per page</option>
+                                    <option value="10" selected>10 per page</option>
+                                    <option value="20">20 per page</option>
                                     <option value="50">50 per page</option>
                                     <option value="100">100 per page</option>
                                 </select>
@@ -214,6 +214,13 @@
                 <span id="search-message">Searching...</span>
             </div>
 
+            <!-- Top Pagination -->
+            <div class="p-3 bg-light border-top" id="activities-top-pagination" style="display: none;">
+                <div class="d-flex justify-content-center">
+                    <!-- Top pagination will be loaded here via AJAX -->
+                </div>
+            </div>
+
             <!-- Activities table -->
             <div id="activities-table-container">
             <div class="table-responsive">
@@ -244,8 +251,8 @@
                                     </div>
                                     </div>
 
-            <!-- Level 5 Approver Notice -->
-            @if(can_take_action($matrix) && $matrix->approval_level == 5)
+            <!-- Finance Officer Notice -->
+            @if(can_take_action($matrix) && is_finance_officer($matrix))
                 <div class="p-4 border-top bg-warning bg-opacity-10">
                     <div class="d-flex align-items-center">
                         <i class="bx bx-info-circle text-warning me-2 fs-4"></i>
@@ -346,8 +353,8 @@
                                 <div class="d-flex align-items-center">
                                     <label for="single-memo-pageSizeSelect" class="form-label me-2 mb-0 text-muted small">Show:</label>
                                     <select id="single-memo-pageSizeSelect" class="form-select form-select-sm" style="width: 120px;">
-                                        <option value="10">10 per page</option>
-                                        <option value="20" selected>20 per page</option>
+                                        <option value="10" selected>10 per page</option>
+                                        <option value="20">20 per page</option>
                                         <option value="50">50 per page</option>
                                         <option value="100">100 per page</option>
                                     </select>
@@ -381,6 +388,13 @@
                 <div id="single-memo-search-status" class="alert alert-info m-3" style="display: none;">
                     <i class="bx bx-search me-2"></i>
                     <span id="single-memo-search-message">Searching...</span>
+                </div>
+
+                <!-- Top Pagination for Single Memos -->
+                <div class="p-3 bg-light border-top" id="single-memos-top-pagination" style="display: none;">
+                    <div class="d-flex justify-content-center">
+                        <!-- Top pagination will be loaded here via AJAX -->
+                    </div>
                 </div>
 
                 <!-- Single memos table -->
@@ -498,8 +512,11 @@
                                             <a href="{{ route('activities.single-memos.show', $memo) }}" class="btn btn-outline-primary btn-sm" title="View Single Memo">
                                                 <i class="bx bx-show"></i>
                                             </a>
-                                            @if(($matrix->overall_status == 'draft' || $matrix->overall_status == 'returned') && 
-                                                ($memo->responsible_person_id == user_session('staff_id') || $memo->staff_id == user_session('staff_id')))
+                                            @if($memo->overall_status == 'draft' && 
+                                                ($memo->responsible_person_id == user_session('staff_id') || 
+                                                 $memo->staff_id == user_session('staff_id') || 
+                                                 $matrix->division->division_head == user_session('staff_id') ||
+                                                 $matrix->staff_id == user_session('staff_id')))
                                                 @if($matrix->overall_status == 'draft')
                                                     <button type="button" class="btn btn-outline-info btn-sm" 
                                                             data-bs-toggle="modal" 
@@ -555,7 +572,6 @@
 
     <div class="col-lg-5">
         <!-- Approval Actions Section -->
-        {{-- @dd(can_take_action($matrix)) --}}
         @if(can_take_action($matrix) || (can_division_head_edit($matrix) && $matrix->overall_status === 'returned'))
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
@@ -570,7 +586,11 @@
         @endif
          @if(($matrix->activities->count() > 0 && still_with_creator($matrix)))
                 <button type="button w-100" class="btn btn-success w-100 text-white" data-bs-toggle="modal" data-bs-target="#submitMatrixModal">
-                    <i class="fa fa-envelope"></i> Submit Matrix for Approval
+                    @if(can_division_head_edit($matrix))
+                        <i class="fa fa-envelope"></i> Resubmit Matrix for Approval
+                    @else
+                        <i class="fa fa-envelope"></i> Submit Matrix for Approval
+                    @endif
                 </button>
         @endif
 
@@ -601,17 +621,49 @@
             <div class="modal-header bg-success text-white">
            
                 <h5 class="modal-title text-white" id="submitMatrixModalLabel">
-                    <i class="bx bx-save me-2"></i> Submit Matrix for Approval
+                    <i class="bx bx-save me-2"></i> 
+                    @if(can_division_head_edit($matrix))
+                        Resubmit Matrix for Approval
+                    @else
+                        Submit Matrix for Approval
+                    @endif
                 </h5>
 
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                @if(can_division_head_edit($matrix))
+                    <p class="mb-3">Are you sure you want to resubmit this matrix for approval?</p>
+                    <div class="alert alert-warning">
+                        <i class="bx bx-info-circle me-2"></i>
+                        <strong>Note:</strong> As the Head of Division, you are resubmitting this matrix after it was returned. Please add any comments about the changes made.
+                    </div>
+                @else
                 <p class="mb-3">Are you sure you want to submit this matrix for approval?</p>
                 <div class="alert alert-info">
                     <i class="bx bx-info-circle me-2"></i>
                     <strong>Note:</strong> Once submitted, you will not be able to make further changes to this matrix unless it's returned.
                 </div>
+                @endif
+                
+                @if(can_division_head_edit($matrix))
+                    <div class="mb-3">
+                        <label for="hodComment" class="form-label">
+                            <strong>Comments (Optional):</strong>
+                        </label>
+                        <textarea class="form-control" id="hodComment" name="hod_comment" rows="3" 
+                                  placeholder="Add any comments about the changes made to the matrix..."></textarea>
+                    </div>
+                @elseif($matrix->overall_status === 'returned')
+                    <div class="mb-3">
+                        <label for="focalPersonComment" class="form-label">
+                            <strong>Comments (Optional):</strong>
+                        </label>
+                        <textarea class="form-control" id="focalPersonComment" name="focal_person_comment" rows="3" 
+                                  placeholder="Add any comments about the changes made to address the return feedback..."></textarea>
+                    </div>
+                @endif
+                
                 <div class="row">
                     <div class="col-md-6">
                         <strong>Activities Count:</strong><br>
@@ -633,9 +685,19 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bx bx-x me-1"></i> Cancel
                 </button>
+                @if(can_division_head_edit($matrix))
+                    <button type="button" class="btn btn-success" id="submitWithCommentBtn">
+                        <i class="fa fa-envelope"></i> Yes, Resubmit Matrix
+                    </button>
+                @elseif($matrix->overall_status === 'returned')
+                    <button type="button" class="btn btn-success" id="submitWithFocalCommentBtn">
+                        <i class="fa fa-envelope"></i> Yes, Submit Matrix
+                    </button>
+                @else
                 <a href="{{ route('matrices.request_approval', $matrix) }}" class="btn btn-success">
-                    <i class="fa fa-envelope"></i> Yes, Submit Matrix
+                        <i class="fa fa-envelope"></i> Yes, Submit Matrix
                 </a>
+                @endif
             </div>
         </div>
     </div>
@@ -896,13 +958,13 @@
 let currentPage = 1;
 let isLoading = false;
 let currentSearchTerm = '';
-let pageSize = 20;
+let pageSize = 10;
 
 // Single memos AJAX variables
 let singleMemoCurrentPage = 1;
 let singleMemoIsLoading = false;
 let singleMemoCurrentSearchTerm = '';
-let singleMemoPageSize = 20;
+let singleMemoPageSize = 10;
 
 // Generate activity URL
 function getActivityUrl(activityId) {
@@ -914,9 +976,9 @@ function canShowCheckbox() {
     return {{ can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' ? 'true' : 'false' }};
 }
 
-// Check if current workflow is at level 5 (Finance Officer level)
+// Check if current user is a finance officer
 function isLevel5Approver() {
-    return {{ $matrix->approval_level == 5 ? 'true' : 'false' }};
+    return {{ is_finance_officer($matrix) ? 'true' : 'false' }};
 }
 
 // Check if delete button should be shown
@@ -1041,7 +1103,7 @@ function renderActivities(activities) {
         `;
     } else {
         activities.forEach((activity, index) => {
-            const count = ((currentPage - 1) * 20) + index + 1;
+            const count = ((currentPage - 1) * pageSize) + index + 1;
             const budget = calculateBudget(activity.budget_breakdown);
             const canApprove = activity.can_approve || false;
             const allowPrint = activity.allow_print || false;
@@ -1184,10 +1246,35 @@ function calculateBudget(budgetBreakdown) {
 
 // Get activity status
 function getActivityStatus(activity) {
+    // Check if matrix is approved - if so, show overall_status instead of trail status
+    const matrixStatus = '{{ $matrix->overall_status }}';
+    
+    if (matrixStatus === 'approved') {
+        // When matrix is approved, show the activity's overall_status
+        const overallStatus = activity.overall_status || 'pending';
+        switch (overallStatus) {
+            case 'approved':
+                return { text: 'Approved', badgeClass: 'success' };
+            case 'pending':
+                return { text: 'Pending', badgeClass: 'secondary' };
+            case 'returned':
+                return { text: 'Returned', badgeClass: 'warning' };
+            case 'rejected':
+                return { text: 'Rejected', badgeClass: 'danger' };
+            default:
+                return { text: overallStatus.charAt(0).toUpperCase() + overallStatus.slice(1), badgeClass: 'info' };
+        }
+    }
+    
+    // Original logic for non-approved matrices
     if (activity.allow_print) {
         return { text: 'Passed', badgeClass: 'success' };
-    } else if (activity.my_last_action) {
-        const action = activity.my_last_action.action;
+    } else if (activity.has_passed_at_current_level) {
+        // User has passed at current approval level
+        return { text: 'Passed', badgeClass: 'success' };
+    } else if (activity.my_current_level_action) {
+        // Only show actions from current approval level
+        const action = activity.my_current_level_action.action;
         if (action === 'approved') {
             return { text: 'Approved', badgeClass: 'success' };
         } else if (action === 'rejected') {
@@ -1217,6 +1304,7 @@ function formatCurrency(amount) {
 // Render pagination
 function renderPagination(pagination, activities) {
     const container = document.getElementById('activities-pagination');
+    const topContainer = document.getElementById('activities-top-pagination');
     let html = '';
     
     if (pagination.last_page > 1) {
@@ -1248,7 +1336,13 @@ function renderPagination(pagination, activities) {
         html += '</ul></nav>';
     }
     
+    // Render both top and bottom pagination
     container.innerHTML = html;
+    if (topContainer) {
+        topContainer.innerHTML = html;
+        // Show top pagination if there are multiple pages
+        topContainer.style.display = pagination.last_page > 1 ? 'block' : 'none';
+    }
 }
 
 // Update workflow info display
@@ -1584,7 +1678,7 @@ function renderSingleMemos(singleMemos) {
                             <a href="${getSingleMemoUrl(memo.id)}" class="btn btn-outline-primary btn-sm" title="View Single Memo">
                                 <i class="bx bx-show"></i>
                             </a>
-                            ${canShowSingleMemoDeleteButton() ? `
+                            ${canShowSingleMemoDeleteButton(memo) ? `
                                 <button type="button" class="btn btn-outline-danger btn-sm" 
                                         data-bs-toggle="modal" 
                                         data-bs-target="#deleteSingleMemoModal" 
@@ -1606,32 +1700,51 @@ function renderSingleMemos(singleMemos) {
 
 // Get single memo status
 function getSingleMemoStatus(memo) {
-    if (memo.allow_print) {
-        return { text: 'Passed', badgeClass: 'success' };
-    } else if (memo.my_last_action) {
-        const action = memo.my_last_action.action;
-        if (action === 'approved') {
+    // Use overall_status directly for single memos
+    const status = memo.overall_status || 'pending';
+    
+    switch (status.toLowerCase()) {
+        case 'approved':
+        case 'passed':
             return { text: 'Approved', badgeClass: 'success' };
-        } else if (action === 'rejected') {
+        case 'rejected':
             return { text: 'Rejected', badgeClass: 'danger' };
-        } else if (action === 'returned') {
+        case 'returned':
             return { text: 'Returned', badgeClass: 'warning' };
-        } else {
-            return { text: action.charAt(0).toUpperCase() + action.slice(1), badgeClass: 'info' };
-        }
-    } else {
-        return { text: 'Pending', badgeClass: 'secondary' };
+        case 'draft':
+            return { text: 'Draft', badgeClass: 'secondary' };
+        case 'pending':
+        default:
+            return { text: 'Pending', badgeClass: 'info' };
     }
 }
 
 // Check if delete button should be shown for single memos
-function canShowSingleMemoDeleteButton() {
-    return {{ ($matrix->overall_status == 'draft' || $matrix->overall_status == 'returned') ? 'true' : 'false' }};
+function canShowSingleMemoDeleteButton(memo) {
+    const currentUserId = {{ user_session('staff_id') ?? 'null' }};
+    const matrixDivisionHead = {{ $matrix->division->division_head ?? 'null' }};
+    const matrixFocalPerson = {{ $matrix->staff_id ?? 'null' }};
+    
+    // Check if single memo is in draft status
+    if (!memo || memo.overall_status !== 'draft') {
+        return false;
+    }
+    
+    // Check if user is the responsible person, staff member, division head, or focal person
+    if (memo.responsible_person_id == currentUserId || 
+        memo.staff_id == currentUserId || 
+        matrixDivisionHead == currentUserId ||
+        matrixFocalPerson == currentUserId) {
+        return true;
+    }
+    
+    return false;
 }
 
 // Render single memo pagination
 function renderSingleMemoPagination(pagination, singleMemos) {
     const container = document.getElementById('single-memos-pagination');
+    const topContainer = document.getElementById('single-memos-top-pagination');
     let html = '';
     
     if (pagination.last_page > 1) {
@@ -1663,7 +1776,13 @@ function renderSingleMemoPagination(pagination, singleMemos) {
         html += '</ul></div>';
     }
     
+    // Render both top and bottom pagination
     container.innerHTML = html;
+    if (topContainer) {
+        topContainer.innerHTML = html;
+        // Show top pagination if there are multiple pages
+        topContainer.style.display = pagination.last_page > 1 ? 'block' : 'none';
+    }
 }
 
 // Update single memo showing range
@@ -2120,6 +2239,74 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update form action
             const form = document.getElementById('deleteSingleMemoForm');
             form.action = `{{ url('single-memos') }}/${memoId}`;
+        });
+    }
+
+    // Handle HOD submission with comment
+    const submitWithCommentBtn = document.getElementById('submitWithCommentBtn');
+    if (submitWithCommentBtn) {
+        submitWithCommentBtn.addEventListener('click', function() {
+            const comment = document.getElementById('hodComment').value;
+            const matrixId = {{ $matrix->id }};
+            
+            // Create a form to submit with comment
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `{{ route('matrices.request_approval', $matrix) }}`;
+            
+            // Add CSRF token
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = '_token';
+            csrfToken.value = '{{ csrf_token() }}';
+            form.appendChild(csrfToken);
+            
+            // Add comment if provided
+            if (comment.trim()) {
+                const commentInput = document.createElement('input');
+                commentInput.type = 'hidden';
+                commentInput.name = 'hod_comment';
+                commentInput.value = comment.trim();
+                form.appendChild(commentInput);
+            }
+            
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
+        });
+    }
+
+    // Handle focal person submission with comment (when matrix is returned)
+    const submitWithFocalCommentBtn = document.getElementById('submitWithFocalCommentBtn');
+    if (submitWithFocalCommentBtn) {
+        submitWithFocalCommentBtn.addEventListener('click', function() {
+            const comment = document.getElementById('focalPersonComment').value;
+            const matrixId = {{ $matrix->id }};
+            
+            // Create a form to submit with comment
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `{{ route('matrices.request_approval', $matrix) }}`;
+            
+            // Add CSRF token
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = '_token';
+            csrfToken.value = '{{ csrf_token() }}';
+            form.appendChild(csrfToken);
+            
+            // Add comment if provided
+            if (comment.trim()) {
+                const commentInput = document.createElement('input');
+                commentInput.type = 'hidden';
+                commentInput.name = 'focal_person_comment';
+                commentInput.value = comment.trim();
+                form.appendChild(commentInput);
+            }
+            
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
         });
     }
 });

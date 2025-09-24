@@ -26,6 +26,7 @@ class ApprovalTrail extends Model
         'remarks',
         'approval_order',
         'forward_workflow_id',
+        'is_archived',
     ];
 
     /**
@@ -43,6 +44,7 @@ class ApprovalTrail extends Model
             'oic_staff_id' => 'integer',
             'approval_order' => 'integer',
             'forward_workflow_id' => 'integer',
+            'is_archived' => 'boolean',
         ];
     }
 
@@ -142,5 +144,21 @@ class ApprovalTrail extends Model
     public function scopeByStaff($query, $staffId)
     {
         return $query->where('staff_id', $staffId);
+    }
+
+    /**
+     * Scope to get non-archived approval trails.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_archived', 0);
+    }
+
+    /**
+     * Scope to get archived approval trails.
+     */
+    public function scopeArchived($query)
+    {
+        return $query->where('is_archived', 1);
     }
 } 
