@@ -116,28 +116,45 @@ class SyncDivisionsCommand extends Command
                     ];
 
                     if (empty($divisionData['division_name'])) {
+                        $skipped++;
+                        try {
+                            Log::warning("Skipped division: Missing division_name");
+                        } catch (\Exception $logException) {
+                            // Ignore logging errors
+                        }
+                        $progressBar->advance();
                         continue; // Skip if no division_name
                     }
 
-                    if ($id) {
-                        $division = Division::updateOrCreate(
-                            ['id' => $id],
-                            $divisionData
-                            
-                        );
-                        if ($division->wasRecentlyCreated) {
-                            $created++;
-                        } else {
-                            $updated++;
+                    // Use division_name as the unique identifier for updateOrCreate
+                    $division = Division::updateOrCreate(
+                        ['division_name' => $divisionData['division_name']],
+                        $divisionData
+                    );
+                    
+                    if ($division->wasRecentlyCreated) {
+                        $created++;
+                        try {
+                            Log::info("Created division: {$divisionData['division_name']} (ID: {$division->id})");
+                        } catch (\Exception $logException) {
+                            // Ignore logging errors
                         }
                     } else {
-                        Division::create($divisionData);
-                        $created++;
+                        $updated++;
+                        try {
+                            Log::info("Updated division: {$divisionData['division_name']} (ID: {$division->id})");
+                        } catch (\Exception $logException) {
+                            // Ignore logging errors
+                        }
                     }
                 } catch (Exception $e) {
                     $failed++;
                     $divisionName = $data['name'] ?? $data['division_name'] ?? 'unknown';
-                    Log::error("Failed to sync division {$divisionName}: " . $e->getMessage());
+                    try {
+                        Log::error("Failed to sync division {$divisionName}: " . $e->getMessage());
+                    } catch (\Exception $logException) {
+                        // Ignore logging errors
+                    }
                     $this->error("Failed to sync division {$divisionName}: " . $e->getMessage());
                 }
                 
@@ -169,19 +186,27 @@ class SyncDivisionsCommand extends Command
             $this->info(str_repeat('=', 50));
             
             // Log results
-            Log::info('Divisions sync completed', [
-                'source_count' => $sourceCount,
-                'db_count' => $finalDbCount,
-                'created' => $created,
-                'updated' => $updated,
-                'failed' => $failed,
-                'skipped' => $skipped,
-                'count_match' => $sourceCount === $finalDbCount
-            ]);
+            try {
+                Log::info('Divisions sync completed', [
+                    'source_count' => $sourceCount,
+                    'db_count' => $finalDbCount,
+                    'created' => $created,
+                    'updated' => $updated,
+                    'failed' => $failed,
+                    'skipped' => $skipped,
+                    'count_match' => $sourceCount === $finalDbCount
+                ]);
+            } catch (\Exception $logException) {
+                // Ignore logging errors
+            }
 
             return 0;
         } catch (Exception $e) {
-            Log::error('Divisions sync failed: ' . $e->getMessage());
+            try {
+                Log::error('Divisions sync failed: ' . $e->getMessage());
+            } catch (\Exception $logException) {
+                // Ignore logging errors
+            }
             $this->error('Divisions sync failed: ' . $e->getMessage());
             return 1;
         }

@@ -86,6 +86,9 @@ class SyncDirectoratesCommand extends Command
                 try {
                     $name = $data['name'] ?? null;
                     if (empty($name)) {
+                        $skipped++;
+                        Log::warning("Skipped directorate: Missing name");
+                        $progressBar->advance();
                         continue; // Skip if no name
                     }
                     $isActive = isset($data['is_active']) ? (bool)$data['is_active'] : true;
@@ -96,21 +99,18 @@ class SyncDirectoratesCommand extends Command
                         'is_active' => $isActive,
                     ];
 
-                    if ($id) {
-                        // Update or create by id
-                        $directorate = Directorate::updateOrCreate(
-                            ['id' => $id],
-                            $directorateData
-                        );
-                        if ($directorate->wasRecentlyCreated) {
-                            $created++;
-                        } else {
-                            $updated++;
-                        }
-                    } else {
-                        // Create new if no id
-                        Directorate::create($directorateData);
+                    // Use name as the unique identifier for updateOrCreate
+                    $directorate = Directorate::updateOrCreate(
+                        ['name' => $name],
+                        $directorateData
+                    );
+                    
+                    if ($directorate->wasRecentlyCreated) {
                         $created++;
+                        Log::info("Created directorate: {$name} (ID: {$directorate->id})");
+                    } else {
+                        $updated++;
+                        Log::info("Updated directorate: {$name} (ID: {$directorate->id})");
                     }
                 } catch (Exception $e) {
                     $failed++;

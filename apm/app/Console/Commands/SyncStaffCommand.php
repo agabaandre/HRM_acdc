@@ -94,8 +94,17 @@ class SyncStaffCommand extends Command
                     } elseif (empty($data['fname']) || empty($data['lname'])) {
                         $skipReason = 'Missing name fields (fname/lname)';
                     } else {
-                        // Validate and sanitize email
+                        // Validate and sanitize email - only allow @africacdc.org emails
                         $workEmail = $data['work_email'] ?? $data['private_email'] ?? null;
+                        $privateEmail = $data['private_email'] ?? null;
+                        
+                        // Clean up empty or invalid emails
+                        if (empty($workEmail) || $workEmail === '' || $workEmail === 'null') {
+                            $workEmail = null;
+                        }
+                        if (empty($privateEmail) || $privateEmail === '' || $privateEmail === 'null') {
+                            $privateEmail = null;
+                        }
                         
                         // Only sync staff with a valid @africacdc.org work email
                         if (empty($workEmail) || stripos($workEmail, '@africacdc.org') === false) {
@@ -104,7 +113,7 @@ class SyncStaffCommand extends Command
                             // Check if staff_id already exists
                             $existingStaffById = Staff::where('staff_id', $data['staff_id'])->first();
                             
-                            if (!$existingStaffById) {
+                            if (!$existingStaffById && !empty($workEmail)) {
                                 // Staff ID doesn't exist - check for email conflicts before creating
                                 $existingStaffWithEmail = Staff::where('work_email', $workEmail)
                                     ->orWhere('private_email', $workEmail)
@@ -121,7 +130,11 @@ class SyncStaffCommand extends Command
                     if ($skipReason) {
                         $skipped++;
                         $skippedReasons[] = "Staff ID {$staffId}: {$skipReason}";
-                        Log::warning("Skipped staff member {$staffId}: {$skipReason}");
+                        try {
+                            Log::warning("Skipped staff member {$staffId}: {$skipReason}");
+                        } catch (\Exception $logException) {
+                            // Ignore logging errors
+                        }
                         $progressBar->advance();
                         continue;
                     }
@@ -142,50 +155,63 @@ class SyncStaffCommand extends Command
                     // Find existing staff by staff_id only
                     $existingStaff = Staff::where('staff_id', $data['staff_id'])->first();
 
-                    // Prepare the data array
+                    // Prepare the data array with all available fields
                     $staffData = [
                         'staff_id' => $data['staff_id'],
-                        'sap_no' => $data['SAPNO'] ?? '',
+                        'sap_no' => $data['SAPNO'] ?? $data['sap_no'] ?? '',
                         'work_email' => $workEmail,
-                        'title' => $data['title'],
+                        'title' => $data['title'] ?? '',
                         'fname' => $data['fname'],
                         'lname' => $data['lname'],
                         'oname' => $data['oname'] ?? '',
-                        'grade' => $data['grade'],
-                        'gender' => $data['gender'],
+                        'grade' => $data['grade'] ?? '',
+                        'gender' => $data['gender'] ?? '',
                         'date_of_birth' => $dateOfBirth,
-                        'job_name' => $data['job_name'],
-                        'contracting_institution' => $data['contracting_institution'],
-                        'contract_type' => $data['contract_type'],
-                        'nationality' => $data['nationality'],
-                        'division_name' => $data['division_name'],
-                        'division_id' => $data['division_id'],
-                        'duty_station_id' => $data['duty_station_id'],
+                        'job_name' => $data['job_name'] ?? '',
+                        'contracting_institution' => $data['contracting_institution'] ?? '',
+                        'contract_type' => $data['contract_type'] ?? '',
+                        'nationality' => $data['nationality'] ?? '',
+                        'division_name' => $data['division_name'] ?? '',
+                        'division_id' => $data['division_id'] ?? null,
+                        'duty_station_id' => $data['duty_station_id'] ?? null,
                         'duty_station_name' => $data['duty_station_name'] ?? '',
-                        'status' => $data['status'],
+                        'status' => $data['status'] ?? 'Active',
                         'tel_1' => $data['tel_1'] ?? '',
                         'whatsapp' => $data['whatsapp'] ?? '',
-                        'private_email' => $data['private_email'] ?? '',
+                        'private_email' => $privateEmail,
                         'photo' => $data['photo'] ?? '',
                         'signature' => $data['signature'] ?? '',
                         'physical_location' => $data['physical_location'] ?? '',
+                        'active' => isset($data['active']) ? (bool)$data['active'] : true,
                     ];
 
                     if ($existingStaff) {
                         // Update existing staff
                         $existingStaff->update($staffData);
                         $updated++;
-                        Log::info("Updated staff member {$staffId}: {$workEmail}");
+                        try {
+                            Log::info("Updated staff member {$staffId}: {$workEmail}");
+                        } catch (\Exception $logException) {
+                            // Ignore logging errors
+                        }
                     } else {
                         // Create new staff member
                         Staff::create($staffData);
                         $created++;
-                        Log::info("Created staff member {$staffId}: {$workEmail}");
+                        try {
+                            Log::info("Created staff member {$staffId}: {$workEmail}");
+                        } catch (\Exception $logException) {
+                            // Ignore logging errors
+                        }
                     }
                 } catch (Exception $e) {
                     $failed++;
                     $staffId = $data['staff_id'] ?? 'unknown';
-                    Log::error("Failed to sync staff member {$staffId}: " . $e->getMessage());
+                    try {
+                        Log::error("Failed to sync staff member {$staffId}: " . $e->getMessage());
+                    } catch (\Exception $logException) {
+                        // Ignore logging errors
+                    }
                     $this->error("Failed to sync staff member {$staffId}: " . $e->getMessage());
                 }
                 
@@ -228,20 +254,28 @@ class SyncStaffCommand extends Command
             $this->info(str_repeat('=', 50));
             
             // Log results
-            Log::info('Staff sync completed', [
-                'source_count' => $sourceCount,
-                'db_count' => $finalDbCount,
-                'created' => $created,
-                'updated' => $updated,
-                'failed' => $failed,
-                'skipped' => $skipped,
-                'skipped_reasons' => $skippedReasons,
-                'count_match' => $sourceCount === $finalDbCount
-            ]);
+            try {
+                Log::info('Staff sync completed', [
+                    'source_count' => $sourceCount,
+                    'db_count' => $finalDbCount,
+                    'created' => $created,
+                    'updated' => $updated,
+                    'failed' => $failed,
+                    'skipped' => $skipped,
+                    'skipped_reasons' => $skippedReasons,
+                    'count_match' => $sourceCount === $finalDbCount
+                ]);
+            } catch (\Exception $logException) {
+                // Ignore logging errors
+            }
 
             return 0;
         } catch (Exception $e) {
-            Log::error('Staff sync failed: ' . $e->getMessage());
+            try {
+                Log::error('Staff sync failed: ' . $e->getMessage());
+            } catch (\Exception $logException) {
+                // Ignore logging errors
+            }
             $this->error('Staff sync failed: ' . $e->getMessage());
             return 1;
         }
