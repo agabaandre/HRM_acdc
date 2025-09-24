@@ -2182,7 +2182,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
 
         // Generate PDF using the comprehensive data
         //$print=true;
-        $print=true;
+        $print=false;
         $pdf = mpdf_print('activities.memo-pdf-simple', [
             'activity' => $activity,
             'matrix' => $matrix,
