@@ -44,6 +44,7 @@ class Staff extends Model
         'whatsapp',
         'private_email',
         'photo',
+        'signature',
         'physical_location',
         'supervisor_id',
         'active',
