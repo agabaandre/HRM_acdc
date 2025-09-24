@@ -115,7 +115,6 @@
                                         <th>#</th>
                                         <th>Request Number</th>
                                         <th>Title</th>
-                                        <th>Service Type</th>
                                         <th>Division</th>
                                         <th>Request Date</th>
                                         <th>Total Budget</th>
@@ -133,18 +132,6 @@
                             </td>
                             <td>
                                 <div class="fw-bold text-primary">{{ $request->title ?? 'N/A' }}</div>
-                            </td>
-                            <td>
-                                @php
-                                    $typeLabels = [
-                                        'it' => '<span class="badge bg-info">IT</span>',
-                                        'maintenance' => '<span class="badge bg-secondary">Maintenance</span>',
-                                        'procurement' => '<span class="badge bg-primary">Procurement</span>',
-                                        'travel' => '<span class="badge bg-success">Travel</span>',
-                                        'other' => '<span class="badge bg-light text-dark">Other</span>',
-                                    ];
-                                    echo $typeLabels[$request->service_type] ?? '<span class="badge bg-light text-dark">Other</span>';
-                                @endphp
                             </td>
                             <td>{{ $request->division->division_name ?? 'N/A' }}</td>
                             <td>{{ $request->request_date ? \Carbon\Carbon::parse($request->request_date)->format('M d, Y') : 'N/A' }}</td>
@@ -177,11 +164,12 @@
                                             {{ strtoupper($request->overall_status) }}
                                         </span>
                                         <br>
-                                      
-                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                        @if($actorName !== 'N/A')
-                                            <small class="text-muted d-block">{{ $actorName }}</small>
-                                        @endif
+                                        <small class="text-muted d-block">
+                                            {{ $workflowRole }}
+                                            @if($actorName !== 'N/A')
+                                                <span class="text-primary">({{ $actorName }})</span>
+                                            @endif
+                                        </small>
                                     </div>
                                 @else
                                     <span class="badge {{ $statusClass }}">
@@ -243,7 +231,6 @@
                                         <th>Request Number</th>
                                         <th>Title</th>
                                         <th>Staff</th>
-                                        <th>Service Type</th>
                                         <th>Division</th>
                                         <th>Request Date</th>
                                         <th>Total Budget</th>
@@ -263,18 +250,6 @@
                                 <div class="fw-bold text-primary">{{ $request->title ?? 'N/A' }}</div>
                             </td>
                             <td>{{ $request->staff->name ?? 'N/A' }}</td>
-                            <td>
-                                @php
-                                    $typeLabels = [
-                                        'it' => '<span class="badge bg-info">IT</span>',
-                                        'maintenance' => '<span class="badge bg-secondary">Maintenance</span>',
-                                        'procurement' => '<span class="badge bg-primary">Procurement</span>',
-                                        'travel' => '<span class="badge bg-success">Travel</span>',
-                                        'other' => '<span class="badge bg-light text-dark">Other</span>',
-                                    ];
-                                    echo $typeLabels[$request->service_type] ?? '<span class="badge bg-light text-dark">Other</span>';
-                                @endphp
-                            </td>
                             <td>{{ $request->division->division_name ?? 'N/A' }}</td>
                             <td>{{ $request->request_date ? \Carbon\Carbon::parse($request->request_date)->format('M d, Y') : 'N/A' }}</td>
                             <td>
@@ -306,11 +281,12 @@
                                             {{ strtoupper($request->overall_status) }}
                                         </span>
                                         <br>
-                                      
-                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                        @if($actorName !== 'N/A')
-                                            <small class="text-muted d-block">{{ $actorName }}</small>
-                                        @endif
+                                        <small class="text-muted d-block">
+                                            {{ $workflowRole }}
+                                            @if($actorName !== 'N/A')
+                                                <span class="text-primary">({{ $actorName }})</span>
+                                            @endif
+                                        </small>
                                     </div>
                                 @else
                                     <span class="badge {{ $statusClass }}">

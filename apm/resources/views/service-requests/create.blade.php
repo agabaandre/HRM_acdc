@@ -6,7 +6,7 @@
 
 @section('header-actions')
     <a href="{{ route('service-requests.index') }}" class="btn btn-outline-secondary">
-        <i class="bx bx-arrow-back me-1 text-success"></i> Back to List
+        <i class="bx bx-arrow-back me-1 text-default"></i> Back to List
     </a>
 @endsection
 
@@ -74,9 +74,9 @@
 
 <div class="card shadow-sm border-0 mb-5">
     <div class="card-header bg-white border-bottom">
-        <h5 class="mb-0 text-dark">
+        <h4 class="mb-0 text-dark">
             <i class="fas fa-tools me-2"></i> Service Request Details
-        </h5>
+        </h4>
                 </div>
     <div class="card-body p-4">
             <form action="{{ route('service-requests.store') }}" method="POST" enctype="multipart/form-data"
@@ -116,9 +116,7 @@
 
     <!-- Section 6: Activity Information -->
             <div class="mb-5">
-                <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                        <i class="fas fa-info-circle me-2"></i> Activity Information
-                </h6>
+             
                         
                     <!-- Activity Title -->
                     <div class="mb-3">
@@ -169,36 +167,49 @@
 
     <!-- Section 7: Budget Summary (Top) -->
                 <div class="mb-5">
-                    <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                        <i class="fas fa-calculator me-2"></i> Budget Summary
-                        <small class="text-muted ms-2">(Live Preview)</small>
+                    <h6 class="fw-bold text-dark mb-4 border-bottom pb-2">
+                        <i class="fas fa-calculator me-2" style="background: linear-gradient(45deg, #dc3545, #fd7e14, #ffc107); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i> Budget Summary
                     </h6>
 
                     <div class="row g-2">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card border-success">
                                 <div class="card-body text-center p-2">
                                     <div class="budget-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
                                         <i class="fas fa-file-invoice-dollar text-success" style="font-size: 12px;"></i>
                                     </div>
-                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">Original Budget</h6>
+                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">Original Memo Budget</h6>
                                     <h6 class="text-success mb-0" id="originalBudgetAmount" style="font-size: 1.1rem;">
                                         ${{ number_format($totalOriginal, 2) }}</h6>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        @if($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget)
+                        <div class="col-md-3">
+                            <div class="card border-dark">
+                                <div class="card-body text-center p-2">
+                                    <div class="budget-icon bg-dark bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
+                                        <i class="fas fa-coins text-dark" style="font-size: 12px;"></i>
+                                    </div>
+                                    <h6 class="card-title text-dark mb-1" style="font-size: 0.8rem;">Allocated Budget (Finance)</h6>
+                                    <h6 class="text-dark fw-bold mb-0" id="allocatedBudgetAmount" style="font-size: 1.1rem;">
+                                        ${{ number_format($sourceData->available_budget, 2) }}</h6>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+                        <div class="col-md-3">
                             <div class="card border-primary">
                                 <div class="card-body text-center p-2">
                                     <div class="budget-icon bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
                                         <i class="fas fa-calculator text-primary" style="font-size: 12px;"></i>
                                     </div>
-                                    <h6 class="card-title text-primary mb-1" style="font-size: 0.8rem;">New Budget</h6>
+                                    <h6 class="card-title text-primary mb-1" style="font-size: 0.8rem;">Total Requested Funds</h6>
                                     <h6 class="text-primary mb-0" id="newBudgetAmount" style="font-size: 1.1rem;">$0.00</h6>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card border-warning">
                                 <div class="card-body text-center p-2">
                                     <div class="budget-icon bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
@@ -213,8 +224,8 @@
                 </div>
             <!-- Section 2: Original Budget Breakdown -->
             <div class="mb-5">
-                <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                    <i class="fas fa-file-invoice-dollar me-2"></i> Original Budget Breakdown
+                <h6 class="fw-bold text-dark mb-4 border-bottom pb-2">
+                    <i class="fas fa-file-invoice-dollar text-danger me-2"></i> Original Budget Breakdown
                 </h6>
                 
                     @if (!empty($budgetBreakdown))
@@ -346,8 +357,8 @@
             <!-- Section 3: Individual Costs (Internal Participants) -->
             <div class="mb-5">
                     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-                        <h6 class="fw-bold text-success mb-0">
-                    <i class="fas fa-users me-2"></i> Individual Costs (Internal Participants)
+                        <h6 class="fw-bold text-dark mb-0">
+                    <i class="fas fa-users me-2" style="background: linear-gradient(45deg, #28a745, #20c997, #17a2b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i> Individual Costs (Internal Participants)
                 </h6>
                             </div>
                             
@@ -415,13 +426,23 @@
                         </tfoot>
                     </table>
                                                 </div>
+                                                
+                                                <!-- Internal Participants Comment Section -->
+                                                <div class="mt-3">
+                                                    <label for="internal_participants_comment" class="form-label fw-bold text-dark">
+                                                        <i class="fas fa-comment me-2"></i>Internal Participants Comments
+                                                    </label>
+                                                    <textarea name="internal_participants_comment" id="internal_participants_comment" 
+                                                        class="form-control border-success summernote" rows="3" 
+                                                        placeholder="Add any comments or notes about internal participants costs..."></textarea>
+                                                </div>
                                             </div>
 
             <!-- Section 4: Individual Costs (External Participants) -->
             <div class="mb-5">
                     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-                        <h6 class="fw-bold text-success mb-0">
-                    <i class="fas fa-user-friends me-2"></i> Individual Costs (External Participants)
+                        <h6 class="fw-bold text-dark mb-0">
+                    <i class="fas fa-user-friends me-2" style="background: linear-gradient(45deg, #fd7e14, #ffc107, #28a745); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i> Individual Costs (External Participants)
                 </h6>
                                         </div>
                 
@@ -479,6 +500,16 @@
                             </tr>
                         </tfoot>
                     </table>
+                                    </div>
+                                    
+                                    <!-- External Participants Comment Section -->
+                                    <div class="mt-3">
+                                        <label for="external_participants_comment" class="form-label fw-bold text-success">
+                                            <i class="fas fa-comment me-2"></i>External Participants Comments
+                                        </label>
+                                        <textarea name="external_participants_comment" id="external_participants_comment" 
+                                            class="form-control border-success summernote" rows="3" 
+                                            placeholder="Add any comments or notes about external participants costs..."></textarea>
                                     </div>
                                 </div>
                                 
@@ -549,12 +580,22 @@
                         </tfoot>
                     </table>
                                     </div>
+                                    
+                                    <!-- Other Costs Comment Section -->
+                                    <div class="mt-3">
+                                        <label for="other_costs_comment" class="form-label fw-bold text-success">
+                                            <i class="fas fa-comment me-2"></i>Other Costs Comments
+                                        </label>
+                                        <textarea name="other_costs_comment" id="other_costs_comment" 
+                                            class="form-control border-success summernote" rows="3" 
+                                            placeholder="Add any comments or notes about other costs..."></textarea>
+                                    </div>
                                 </div>
                                 
             <!-- Section 6: Participants Summary -->
             <div class="mb-5">
-                <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                    <i class="fas fa-users me-2"></i> Participants Summary
+                <h6 class="fw-bold text-dark mb-4 border-bottom pb-2">
+                    <i class="fas fa-users me-2" style="background: linear-gradient(45deg, #6f42c1, #e83e8c, #20c997); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i> Participants Summary
                 </h6>
                 
                 <div class="table-responsive">
@@ -582,36 +623,50 @@
             </div>
               <!-- Section 8: Budget Summary (Bottom) -->
                 <div class="mb-5">
-                    <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
-                        <i class="fas fa-calculator me-2"></i> Budget Summary
+                    <h6 class="fw-bold text-dark mb-4 border-bottom pb-2">
+                        <i class="fas fa-calculator me-2" style="background: linear-gradient(45deg, #dc3545, #fd7e14, #ffc107); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i> Budget Summary
                         <small class="text-muted ms-2">(Final Review)</small>
                     </h6>
 
                     <div class="row g-2">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card border-success">
                                 <div class="card-body text-center p-2">
                                     <div class="budget-icon bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
                                         <i class="fas fa-file-invoice-dollar text-success" style="font-size: 12px;"></i>
                                     </div>
-                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">Original Budget</h6>
+                                    <h6 class="card-title text-success mb-1" style="font-size: 0.8rem;">Original Memo Budget</h6>
                                     <h6 class="text-success mb-0" id="originalBudgetAmountBottom" style="font-size: 1.1rem;">
                                         ${{ number_format($totalOriginal, 2) }}</h6>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        @if($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget)
+                        <div class="col-md-3">
+                            <div class="card border-dark">
+                                <div class="card-body text-center p-2">
+                                    <div class="budget-icon bg-dark bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
+                                        <i class="fas fa-coins text-dark" style="font-size: 12px;"></i>
+                                    </div>
+                                    <h6 class="card-title text-dark mb-1" style="font-size: 0.8rem;">Allocated Budget (Finance)</h6>
+                                    <h6 class="text-dark fw-bold mb-0" id="allocatedBudgetAmountBottom" style="font-size: 1.1rem;">
+                                        ${{ number_format($sourceData->available_budget, 2) }}</h6>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+                        <div class="col-md-3">
                             <div class="card border-primary">
                                 <div class="card-body text-center p-2">
                                     <div class="budget-icon bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
                                         <i class="fas fa-calculator text-primary" style="font-size: 12px;"></i>
                                     </div>
-                                    <h6 class="card-title text-primary mb-1" style="font-size: 0.8rem;">New Budget</h6>
+                                    <h6 class="card-title text-primary mb-1" style="font-size: 0.8rem;">Total Requested Funds</h6>
                                     <h6 class="text-primary mb-0" id="newBudgetAmountBottom" style="font-size: 1.1rem;">$0.00</h6>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card border-warning">
                                 <div class="card-body text-center p-2">
                                     <div class="budget-icon bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-1" style="width: 25px; height: 25px;">
@@ -819,6 +874,8 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.appendChild(newRow);
         internalParticipantCount++;
         
+        // Update participant options immediately after adding new row
+        updateInternalParticipantOptions();
         updateTotals();
         updateParticipantsSummary();
     });
@@ -833,11 +890,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (tbody.rows.length > 1) {
                 row.remove();
                 internalParticipantCount--;
-                updateTotals();
-                updateParticipantsSummary();
                 
                 // Update available options in remaining dropdowns
                 updateInternalParticipantOptions();
+                updateTotals();
+                updateParticipantsSummary();
             }
         }
     });
@@ -928,8 +985,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listeners for participant changes
     document.addEventListener('change', function(e) {
         if (e.target.matches('select[name*="[staff_id]"]')) {
-            // Update available options in other dropdowns when selection changes
-            updateInternalParticipantOptions();
+            // Prevent duplicate selection and update options
+            preventDuplicateSelection(e.target);
             updateParticipantsSummary();
         } else if (e.target.matches('input[name*="[name]"], input[name*="[email]"]')) {
             updateParticipantsSummary();
@@ -967,6 +1024,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 select.selectedIndex = 0;
             }
         });
+    }
+    
+    // Function to prevent duplicate selection on change
+    function preventDuplicateSelection(selectElement) {
+        const allSelects = document.querySelectorAll('#internalParticipants select[name*="[staff_id]"]');
+        const selectedValues = Array.from(allSelects)
+            .map(select => select.value)
+            .filter(value => value !== '');
+        
+        // Check if current selection is a duplicate
+        const currentValue = selectElement.value;
+        if (currentValue && selectedValues.filter(v => v === currentValue).length > 1) {
+            // Clear the selection and show warning
+            selectElement.value = '';
+            selectElement.selectedIndex = 0;
+            
+            // Show a brief warning
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'alert alert-warning alert-dismissible fade show position-fixed';
+            warningDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            warningDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Duplicate Selection!</strong> This participant is already selected in another row.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            document.body.appendChild(warningDiv);
+            
+            // Auto-remove warning after 3 seconds
+            setTimeout(() => {
+                if (warningDiv.parentNode) {
+                    warningDiv.remove();
+                }
+            }, 3000);
+        }
+        
+        // Update all other dropdowns
+        updateInternalParticipantOptions();
     }
     
             // Function to validate and format number input with thousand separators
@@ -1229,9 +1324,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Calculate new total
         const newTotal = internalTotal + externalTotal + otherTotal;
-                const originalTotal = parseFloat(document.getElementById('originalBudgetAmount').textContent
-                    .replace('$', '').replace(/,/g, ''));
-        const difference = newTotal - originalTotal;
+        
+        // Get allocated budget (finance) if available, otherwise fall back to original budget
+        const allocatedBudgetElement = document.getElementById('allocatedBudgetAmount');
+        const originalBudgetElement = document.getElementById('originalBudgetAmount');
+        
+        let baseBudget = 0;
+        if (allocatedBudgetElement) {
+            baseBudget = parseFloat(allocatedBudgetElement.textContent.replace('$', '').replace(/,/g, ''));
+        } else if (originalBudgetElement) {
+            baseBudget = parseFloat(originalBudgetElement.textContent.replace('$', '').replace(/,/g, ''));
+        }
+        
+        const difference = baseBudget - newTotal; // Allocated budget minus requested funds
         
         // Update budget summary (both top and bottom)
         const updateBudgetSummary = (newBudgetElementId, differenceElementId) => {
@@ -1245,29 +1350,25 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (differenceElement) {
                 // Update colors and content based on difference
-                if (difference < 0) {
-                    differenceElement.className = 'text-success mb-0';
-                    differenceElement.textContent = (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2);
+                if (difference >= 0) {
+                    // Within budget - positive difference means allocated budget is higher than requested
+                    differenceElement.className = 'text-success mb-0 fw-bold';
+                    differenceElement.innerHTML = '<i class="fas fa-check-circle me-1"></i>' + 
+                        '$' + Math.abs(difference).toFixed(2) + 
+                        ' <small class="text-muted">(Within Budget)</small>';
                     // Reset card border
                     if (budgetDifferenceCard) {
-                        budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-warning');
+                        budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-success');
                     }
-                } else if (difference > 0) {
+                } else {
+                    // Over budget - negative difference means requested funds exceed allocated budget
                     differenceElement.className = 'text-danger mb-0 fw-bold';
-                    // Add warning icon for over budget
                     differenceElement.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + 
-                        (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2) + 
-                        ' <small class="text-muted">(Over Budget)</small>';
+                        '$' + Math.abs(difference).toFixed(2) + 
+                        ' <small class="text-muted">(Exceeds Budget)</small>';
                     // Change card border to danger
                     if (budgetDifferenceCard) {
                         budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-danger');
-                    }
-                } else {
-                    differenceElement.className = 'text-warning mb-0';
-                    differenceElement.textContent = (difference >= 0 ? '+' : '') + '$' + Math.abs(difference).toFixed(2);
-                    // Reset card border
-                    if (budgetDifferenceCard) {
-                        budgetDifferenceCard.className = budgetDifferenceCard.className.replace(/border-\w+/g, 'border-warning');
                     }
                 }
             }
@@ -1279,7 +1380,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update hidden fields
         document.getElementById('newTotalBudget').value = newTotal;
-        document.getElementById('originalTotalBudget').value = originalTotal;
+        document.getElementById('originalTotalBudget').value = baseBudget; // Use allocated budget instead of original budget
+        
+        // Store budget validation state globally
+        window.isBudgetExceeded = difference < 0;
+        
+        // Debug logging
+        console.log('Budget Calculation Debug:');
+        console.log('Allocated Budget:', baseBudget);
+        console.log('Requested Total:', newTotal);
+        console.log('Difference:', difference);
+        console.log('Is Budget Exceeded:', window.isBudgetExceeded);
     }
     
     // Add event listeners to all inputs
@@ -1290,9 +1401,74 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Initial calculation
+    updateInternalParticipantOptions();
     updateTotals();
     updateParticipantsSummary();
-    updateInternalParticipantOptions();
+    
+    // Form validation before submission
+    document.getElementById('serviceRequestForm').addEventListener('submit', function(e) {
+        // Debug form submission
+        console.log('Form submission validation:');
+        console.log('isBudgetExceeded:', window.isBudgetExceeded);
+        console.log('newTotalBudget value:', document.getElementById('newTotalBudget').value);
+        console.log('originalTotalBudget value:', document.getElementById('originalTotalBudget').value);
+        
+        // Check if budget is exceeded
+        if (window.isBudgetExceeded) {
+            e.preventDefault();
+            
+            // Show warning modal
+            const warningModal = `
+                <div class="modal fade" id="budgetWarningModal" tabindex="-1" aria-labelledby="budgetWarningModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-danger">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title" id="budgetWarningModalLabel">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Budget Exceeded
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-danger d-flex align-items-center" role="alert">
+                                    <i class="fas fa-exclamation-triangle me-3" style="font-size: 1.5rem;"></i>
+                                    <div>
+                                        <h6 class="alert-heading mb-2">Cannot Submit Service Request</h6>
+                                        <p class="mb-2">The total requested funds exceed the allocated budget from finance.</p>
+                                        <p class="mb-0"><strong>Please reduce your requested amounts to stay within the allocated budget.</strong></p>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                                        <i class="fas fa-edit me-2"></i>Review Budget
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById('budgetWarningModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', warningModal);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('budgetWarningModal'));
+            modal.show();
+            
+            // Remove modal from DOM when hidden
+            document.getElementById('budgetWarningModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+            
+            return false;
+        }
+    });
     });
 </script>
 @endsection

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use iamfarhad\LaravelAuditLog\Traits\Auditable;
 use App\Models\FundType;
+use App\Models\Approver;
+use App\Models\WorkflowDefinition;
 use App\Traits\HasDocumentNumber;
 use App\Traits\HasApprovalWorkflow;
 
@@ -43,8 +45,11 @@ class ServiceRequest extends Model
         // New budget and approval columns
         'budget_breakdown',
         'internal_participants_cost',
+        'internal_participants_comment',
         'external_participants_cost',
+        'external_participants_comment',
         'other_costs',
+        'other_costs_comment',
         'original_total_budget',
         'new_total_budget',
         'fund_type_id',
@@ -151,6 +156,46 @@ class ServiceRequest extends Model
     public function currentActor(): BelongsTo
     {
         return $this->belongsTo(Staff::class, 'current_actor_id', 'staff_id');
+    }
+    
+    /**
+     * Get the workflow definition for the current approval level.
+     */
+    public function getWorkflowDefinitionAttribute()
+    {
+        if (!$this->forward_workflow_id || !$this->approval_level) {
+            return null;
+        }
+        
+        return WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)
+            ->where('approval_order', $this->approval_level)
+            ->first();
+    }
+
+    /**
+     * Get the current actor (approver) for this service request.
+     */
+    public function getCurrentActorAttribute()
+    {
+        $definition = $this->workflow_definition;
+        if (!$definition) {
+            return null;
+        }
+
+        // Check if it's division-specific (either is_division_specific is true OR division_reference_column is set)
+        if (($definition->is_division_specific || $definition->division_reference_column) && $this->division) {
+            $staffId = $this->division->{$definition->division_reference_column} ?? null;
+            if ($staffId) {
+                return Staff::where('staff_id', $staffId)->first();
+            }
+        } else {
+            $approver = Approver::where('workflow_dfn_id', $definition->id)->first();
+            if ($approver) {
+                return Staff::where('staff_id', $approver->staff_id)->first();
+            }
+        }
+
+        return null;
     }
     
     /**

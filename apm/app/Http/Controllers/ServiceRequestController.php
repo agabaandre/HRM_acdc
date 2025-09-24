@@ -37,7 +37,7 @@ class ServiceRequestController extends Controller
         $currentStaffId = user_session('staff_id');
         
         // Base query for filtering
-        $baseQuery = ServiceRequest::with(['staff', 'division', 'workflowDefinition', 'currentActor'])
+        $baseQuery = ServiceRequest::with(['staff', 'division', 'workflowDefinition'])
             ->latest();
             
         // Apply filters
@@ -246,8 +246,11 @@ class ServiceRequestController extends Controller
             'new_total_budget' => 'required|numeric|min:0',
             'budget_breakdown' => 'nullable|string',
             'internal_participants_cost' => 'nullable|string',
+            'internal_participants_comment' => 'nullable|string',
             'external_participants_cost' => 'nullable|string',
+            'external_participants_comment' => 'nullable|string',
             'other_costs' => 'nullable|array',
+            'other_costs_comment' => 'nullable|string',
             'internal_participants' => 'nullable|array',
             'external_participants' => 'nullable|array',
         ]);
@@ -886,8 +889,11 @@ class ServiceRequestController extends Controller
                 'priority' => 'required|in:low,medium,high,urgent',
                 'service_type' => 'required|in:it,maintenance,procurement,travel,other',
                 'internal_participants_cost' => 'nullable|array',
+                'internal_participants_comment' => 'nullable|string',
                 'external_participants_cost' => 'nullable|array',
+                'external_participants_comment' => 'nullable|string',
                 'other_costs' => 'nullable|array',
+                'other_costs_comment' => 'nullable|string',
                 'original_total_budget' => 'required|numeric|min:0',
                 'new_total_budget' => 'required|numeric|min:0',
             ]);
@@ -935,8 +941,11 @@ class ServiceRequestController extends Controller
                 // New budget and approval columns
                 'budget_breakdown' => $sourceDataJson->budgetBreakdown,
                 'internal_participants_cost' => $validated['internal_participants_cost'] ?? [],
+                'internal_participants_comment' => $validated['internal_participants_comment'] ?? '',
                 'external_participants_cost' => $validated['external_participants_cost'] ?? [],
+                'external_participants_comment' => $validated['external_participants_comment'] ?? '',
                 'other_costs' => $validated['other_costs'] ?? [],
+                'other_costs_comment' => $validated['other_costs_comment'] ?? '',
                 'original_total_budget' => $validated['original_total_budget'],
                 'new_total_budget' => $validated['new_total_budget'],
                 'fund_type_id' => $source->fund_type_id,
