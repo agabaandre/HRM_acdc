@@ -494,7 +494,7 @@
             <div class="container-fluid">
                 <div class="d-flex justify-content-between align-items-center py-4">
                     <div>
-                        <h1 class="h2 fw-bold text-dark mb-0">View Single Memo</h1>
+                        <h1 class="h2 fw-bold text-dark mb-0">Single Memo Details: {{ $activity->document_number }}</h1>
                         <p class="text-muted mb-0">Review and manage single memo details</p>
                 </div>
                     <div class="d-flex gap-3">
