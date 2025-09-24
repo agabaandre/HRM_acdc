@@ -208,7 +208,7 @@
                                     {{ ucfirst($serviceRequest->overall_status ?? 'draft') }}
                                 </span>
                                 @if($serviceRequest->approval_level)
-                                    <span class="badge bg-primary">
+                                    <span class="badge bg-success">
                                         Level {{ $serviceRequest->approval_level }}
                                     </span>
                                 @endif
@@ -327,27 +327,48 @@
                     <!-- Budget Summary Cards -->
                     @if($serviceRequest->original_total_budget || $serviceRequest->new_total_budget)
                     <div class="row mb-4">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="meta-card text-center">
-                                <label class="form-label text-muted small fw-semibold">Original Budget</label>
+                                <label class="form-label text-muted small fw-semibold">Original Memo Budget</label>
                                 <p class="h4 mb-0 text-success">${{ number_format($serviceRequest->original_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        @if($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget)
+                        <div class="col-md-3">
                             <div class="meta-card text-center">
-                                <label class="form-label text-muted small fw-semibold">Requested Funds</label>
+                                <label class="form-label text-muted small fw-semibold">Allocated Budget (Finance)</label>
+                                <p class="h4 mb-0 text-dark fw-bold">${{ number_format($sourceData->available_budget, 2) }}</p>
+                            </div>
+                        </div>
+                        @endif
+                        <div class="col-md-3">
+                            <div class="meta-card text-center">
+                                <label class="form-label text-muted small fw-semibold">Total Requested Funds</label>
                                 <p class="h4 mb-0 text-success">${{ number_format($serviceRequest->new_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">Difference</label>
                                 @php
-                                    $difference = ($serviceRequest->new_total_budget ?? 0) - ($serviceRequest->original_total_budget ?? 0);
+                                    // Use allocated budget if available, otherwise fall back to original budget
+                                    $allocatedBudget = ($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget) 
+                                        ? $sourceData->available_budget 
+                                        : ($serviceRequest->original_total_budget ?? 0);
+                                    $difference = $allocatedBudget - ($serviceRequest->new_total_budget ?? 0);
                                 @endphp
                                 <p class="h4 mb-0 {{ $difference >= 0 ? 'text-success' : 'text-danger' }}">
                                     {{ $difference >= 0 ? '+' : '' }}${{ number_format($difference, 2) }}
                                 </p>
+                                @if($difference >= 0)
+                                    <small class="text-success fw-semibold">
+                                        <i class="fas fa-check-circle me-1"></i>Within Allocated Budget
+                                    </small>
+                                @else
+                                    <small class="text-danger fw-semibold">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Exceeds Allocated Budget
+                                    </small>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -424,6 +445,16 @@
                                     @endif
                                 </table>
                             </div>
+                            
+                            <!-- Internal Participants Comments -->
+                            @if($serviceRequest->internal_participants_comment)
+                            <div class="mt-3 p-3 bg-light rounded border-start border-success border-4">
+                                <h6 class="fw-bold text-success mb-2">
+                                    <i class="fas fa-comment me-2"></i>Internal Participants Comments
+                                </h6>
+                                <p class="mb-0 text-muted">{{ $serviceRequest->internal_participants_comment }}</p>
+                            </div>
+                            @endif
                         </div>
                         @endif
 
@@ -478,6 +509,16 @@
                                     @endif
                                 </table>
                             </div>
+                            
+                            <!-- External Participants Comments -->
+                            @if($serviceRequest->external_participants_comment)
+                            <div class="mt-3 p-3 bg-light rounded border-start border-warning border-4">
+                                <h6 class="fw-bold text-warning mb-2">
+                                    <i class="fas fa-comment me-2"></i>External Participants Comments
+                                </h6>
+                                <p class="mb-0 text-muted">{{ $serviceRequest->external_participants_comment }}</p>
+                            </div>
+                            @endif
                         </div>
                         @endif
 
@@ -523,6 +564,16 @@
                                     @endif
                                 </table>
                             </div>
+                            
+                            <!-- Other Costs Comments -->
+                            @if($serviceRequest->other_costs_comment)
+                            <div class="mt-3 p-3 bg-light rounded border-start border-info border-4">
+                                <h6 class="fw-bold text-info mb-2">
+                                    <i class="fas fa-comment me-2"></i>Other Costs Comments
+                                </h6>
+                                <p class="mb-0 text-muted">{{ $serviceRequest->other_costs_comment }}</p>
+                            </div>
+                            @endif
                         </div>
                         @endif
                     </div>
@@ -623,9 +674,9 @@
             <div>
                 <!-- Quick Approval Status -->
                 <div class="card sidebar-card border-0 mb-4">
-                    <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);">
+                    <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                            <i class="bx bx-trending-up text-info"></i>
+                            <i class="bx bx-trending-up text-success"></i>
                             Approval Progress
                         </h6>
             </div>
@@ -633,8 +684,14 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="text-muted small">Current Level</span>
-                                <span class="badge bg-primary fs-6">{{ $serviceRequest->approval_level ?? 0 }}</span>
+                                <span class="badge bg-success fs-6">{{ $serviceRequest->approval_level ?? 0 }}</span>
                             </div>
+                            @if($serviceRequest->forwardWorkflow)
+                                <div class="mb-2">
+                                    <small class="text-muted">Workflow:</small><br>
+                                    <strong class="text-success">{{ $serviceRequest->forwardWorkflow->name ?? 'Service Request Workflow' }}</strong>
+                                </div>
+                            @endif
                             @if($serviceRequest->workflow_definition)
                                 <div class="mb-2">
                                     <small class="text-muted">Role:</small><br>
@@ -654,7 +711,7 @@
                                 $currentLevel = $serviceRequest->approval_level ?? 0;
                                 $progressPercentage = $totalLevels > 0 ? min(($currentLevel / $totalLevels) * 100, 100) : 0;
                             @endphp
-                            <div class="progress-bar bg-primary" role="progressbar" 
+                            <div class="progress-bar bg-success" role="progressbar" 
                                  style="width: {{ $progressPercentage }}%"></div>
                         </div>
                         <small class="text-muted">
@@ -666,7 +723,7 @@
                                 <small class="text-muted d-block mb-2">Approval Levels:</small>
                                 <div class="d-flex flex-wrap gap-1">
                                     @foreach($approvalLevels as $level)
-                                        <span class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_current'] ? 'primary' : 'secondary') }} small">
+                                        <span class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_current'] ? 'success' : 'light') }} small">
                                             {{ $level['order'] }}. {{ $level['role'] }}
                                         </span>
                                     @endforeach
