@@ -246,21 +246,21 @@
             }
             
             $sourceApprovers = PrintHelper::fetchApproversFromTrails($sourceId, $modelType, $divisionId, $workflowId);
-        }
+      }
     }
 
     // Helper function to render approver info
     if (!function_exists('renderApproverInfo')) {
       function renderApproverInfo($approver, $role, $section, $serviceRequest) {
         PrintHelper::renderApproverInfo($approver, $role, $section, $serviceRequest);
-      }
+        }
     }
 
     // Helper function to render signature
     if (!function_exists('renderSignature')) {
       function renderSignature($approver, $order, $serviceRequestApprovalTrails, $serviceRequest) {
         PrintHelper::renderSignature($approver, $order, $serviceRequestApprovalTrails, $serviceRequest);
-      }
+    }
     }
 
     // Generate file reference once
@@ -529,98 +529,118 @@
                             }
                             ?>
                             
-                            <!-- Regular Crosstab Structure (non-Tickets) -->
+                            <!-- Individual Participant Cost Breakdown (non-Tickets) - 3 per row -->
                             <?php if (!empty($participantData)): ?>
-                            <table class="bordered-table mb-15">
-                                <thead>
-                                    <tr>
-                                        <th class="bg-highlight">#</th>
-                                        <th class="bg-highlight">Name</th>
-                                        <th class="bg-highlight">Unit Cost</th>
-                                        <th class="bg-highlight">Units</th>
-                                        <th class="bg-highlight">Days</th>
-                                        <th class="bg-highlight">Total</th>
-                                        <th class="bg-highlight">Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    $count = 1;
-                                    $grandTotal = 0;
-                                    $participantTotals = []; // Track total per participant
+                                <?php
+                                $grandTotal = 0;
+                                $participantTotals = []; // Track total per participant
+                                $participantsWithCosts = []; // Array to store participants with costs
+                                
+                                // Initialize participant totals and collect participants with costs
+                                foreach (array_keys($participantData) as $participantName) {
+                                    $participantTotals[$participantName] = 0;
                                     
-                                    // Initialize participant totals
-                                    foreach (array_keys($participantData) as $participantName) {
-                                        $participantTotals[$participantName] = 0;
+                                    // Check if participant has any costs
+                                    $hasCosts = false;
+                                    foreach ($costTypes as $costName) {
+                                        $costValue = $participantData[$participantName][$costName] ?? 0;
+                                        if ($costValue > 0) {
+                                            $hasCosts = true;
+                                            break;
+                                        }
                                     }
-                                    ?>
-                                    <?php foreach ($costTypes as $costName): ?>
-                                        <?php
-                                        $rowTotal = 0;
-                                        $participantCount = 0;
-                                        ?>
-                                        <?php foreach (array_keys($participantData) as $participantName): ?>
-                                            <?php 
-                                            $costValue = $participantData[$participantName][$costName] ?? 0;
-                                            if ($costValue > 0) {
-                                                $participantCount++;
-                                                $units = 1; // Default units
-                                                $days = 1;  // Default days
-                                                $total = $costValue * $units * $days;
-                                                $rowTotal += $total;
-                                                $grandTotal += $total;
-                                                $participantTotals[$participantName] += $total;
-                                            ?>
-                                            <tr>
-                                                <td><?php echo $count; ?></td>
-                                                <td><?php echo htmlspecialchars($participantName); ?></td>
-                                                <td class="text-right">$<?php echo number_format($costValue, 2); ?></td>
-                                                <td class="text-right"><?php echo $units; ?></td>
-                                                <td class="text-right"><?php echo $days; ?></td>
-                                                <td class="text-right">$<?php echo number_format($total, 2); ?></td>
-                                                <td><?php echo htmlspecialchars($costName); ?> - Internal participant</td>
-                                            </tr>
-                                            <?php 
-                                                $count++;
-                                            }
-                                            ?>
-                                        <?php endforeach; ?>
-                                        <?php if ($participantCount > 0): ?>
-                                        <tr style="background-color: #f8f9fa;">
-                                            <td colspan="5" class="text-right fw-bold"><?php echo htmlspecialchars($costName); ?> Subtotal:</td>
-                                            <td class="text-right fw-bold">$<?php echo number_format($rowTotal, 2); ?></td>
-                                            <td></td>
-                                        </tr>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
                                     
-                                    <!-- Individual Participant Totals -->
-                                    <tr style="background-color: #e8f5e8; border-top: 2px solid #28a745;">
-                                        <td colspan="6" class="text-center fw-bold" style="color: #155724;">INDIVIDUAL PARTICIPANT TOTALS</td>
-                                        <td></td>
-                                    </tr>
-                                    <?php foreach (array_keys($participantData) as $participantName): ?>
-                                        <?php if ($participantTotals[$participantName] > 0): ?>
-                                        <tr style="background-color: #f8f9fa;">
-                                            <td></td>
-                                            <td class="fw-bold"><?php echo htmlspecialchars($participantName); ?></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td class="text-right fw-bold" style="color: #155724;">$<?php echo number_format($participantTotals[$participantName], 2); ?></td>
-                                            <td class="fw-bold" style="color: #155724;">Total to Pay</td>
-                                        </tr>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </tbody>
-                                <tfoot>
+                                    if ($hasCosts) {
+                                        $participantsWithCosts[] = $participantName;
+                                    }
+                                }
+                                ?>
+                                
+                                <!-- Mega Table for 3 tables per row -->
+                                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                                    <?php
+                                    $participantsCount = count($participantsWithCosts);
+                                    $rows = ceil($participantsCount / 3);
+                                    
+                                    for ($row = 0; $row < $rows; $row++):
+                                        $startIndex = $row * 3;
+                                        $endIndex = min($startIndex + 3, $participantsCount);
+                                    ?>
                                     <tr>
-                                        <th class="bg-highlight text-right" colspan="5">Grand Total</th>
-                                        <th class="bg-highlight text-right">$<?php echo number_format($grandTotal, 2); ?></th>
-                                        <th class="bg-highlight"></th>
+                                        <?php for ($col = $startIndex; $col < $endIndex; $col++): ?>
+                                            <?php if (isset($participantsWithCosts[$col])): ?>
+                                                <?php
+                                                $participantName = $participantsWithCosts[$col];
+                                                $participantTotal = 0;
+                                                ?>
+                                                <td style="width: 33.33%; padding: 4px; vertical-align: top;">
+                                                    <table class="bordered-table" style="width: 100%; margin: 0; margin-top: 4px;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th class="bg-highlight text-left" colspan="2" style="padding: 8px;">
+                                                                    <strong><?php echo htmlspecialchars($participantName); ?></strong>
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php
+                                                            $count = 1;
+                                                            foreach ($costTypes as $costName):
+                                                                $costValue = $participantData[$participantName][$costName] ?? 0;
+                                                                if ($costValue > 0):
+                                                                    $units = 1; // Default units
+                                                                    $days = 1;  // Default days
+                                                                    $total = $costValue * $units * $days;
+                                                                    $participantTotal += $total;
+                                                                    $grandTotal += $total;
+                                                            ?>
+                                                            <tr>
+                                                                <td style="width: 60%; padding: 6px; font-size: 12px;">
+                                                                    <strong><?php echo $count; ?>. <?php echo htmlspecialchars($costName); ?>:</strong>
+                                                                </td>
+                                                                <td style="width: 40%; padding: 6px; text-align: right; font-size: 12px;">
+                                                                    <strong>$<?php echo number_format($total, 2); ?></strong>
+                                                                </td>
+                                                            </tr>
+                                                            <?php
+                                                                    $count++;
+                                                                endif;
+                                                            endforeach;
+                                                            ?>
+                                                            <tr style="background-color: #f8f9fa; border-top: 2px solid #28a745;">
+                                                                <td style="padding: 6px; font-size: 12px;">
+                                                                    <strong>Total:</strong>
+                                                                </td>
+                                                                <td style="padding: 6px; text-align: right; font-size: 12px;">
+                                                                    <strong>$<?php echo number_format($participantTotal, 2); ?></strong>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                                <?php 
+                                                $participantTotals[$participantName] = $participantTotal;
+                                                ?>
+                                            <?php else: ?>
+                                                <td style="width: 33.33%; padding: 4px;"></td>
+                                            <?php endif; ?>
+                                        <?php endfor; ?>
                                     </tr>
-                                </tfoot>
-                            </table>
+                                    <?php endfor; ?>
+                                </table>
+                                
+                                <!-- Grand Total Summary -->
+                                <div class="mt-4">
+                                    <table class="bordered-table" style="width: 100%;">
+                                        <tfoot>
+                                            <tr style="background-color: #e8f5e8;">
+                                                <th class="bg-highlight text-right" style="padding: 12px;">
+                                                    <strong>Grand Total: $<?php echo number_format($grandTotal, 2); ?></strong>
+                                                </th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             <?php endif; ?>
                             
                             <!-- Special Tickets Structure (id 1) -->
@@ -629,8 +649,8 @@
                                 <thead>
                                     <tr>
                                         <th class="bg-highlight" colspan="7"><?php echo htmlspecialchars($costName); ?></th>
-                                    </tr>
-                                    <tr>
+  </tr>
+  <tr>
                                         <th class="bg-highlight">#</th>
                                         <th class="bg-highlight">Name</th>
                                         <th class="bg-highlight">Unit Cost</th>
@@ -638,7 +658,7 @@
                                         <th class="bg-highlight">Days</th>
                                         <th class="bg-highlight">Total</th>
                                         <th class="bg-highlight">Description</th>
-                                    </tr>
+  </tr>
                                 </thead>
                                 <tbody>
                                     <?php
@@ -661,16 +681,16 @@
                                             <td class="text-right"><?php echo $days; ?></td>
                                             <td class="text-right">$<?php echo number_format($total, 2); ?></td>
                                             <td>Internal participant - <?php echo htmlspecialchars($item['staff']->position ?? 'Staff'); ?></td>
-                                        </tr>
+      </tr>
                                         <?php $count++; ?>
                                     <?php endforeach; ?>
                                 </tbody>
                                 <tfoot>
-                                    <tr>
+      <tr>
                                         <th class="bg-highlight text-right" colspan="5"><?php echo htmlspecialchars($costName); ?> Total</th>
                                         <th class="bg-highlight text-right">$<?php echo number_format($groupTotal, 2); ?></th>
                                         <th class="bg-highlight"></th>
-                                    </tr>
+      </tr>
                                 </tfoot>
                             </table>
                             <?php endforeach; ?>
@@ -730,98 +750,118 @@
                             }
                             ?>
                             
-                            <!-- Regular Crosstab Structure (non-Tickets) -->
+                            <!-- Individual Participant Cost Breakdown (non-Tickets) - 3 per row -->
                             <?php if (!empty($participantData)): ?>
-                            <table class="bordered-table mb-15">
-                                <thead>
-                                    <tr>
-                                        <th class="bg-highlight">#</th>
-                                        <th class="bg-highlight">Name</th>
-                                        <th class="bg-highlight">Unit Cost</th>
-                                        <th class="bg-highlight">Units</th>
-                                        <th class="bg-highlight">Days</th>
-                                        <th class="bg-highlight">Total</th>
-                                        <th class="bg-highlight">Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    $count = 1;
-                                    $grandTotal = 0;
-                                    $participantTotals = []; // Track total per participant
+                                <?php
+                                $grandTotal = 0;
+                                $participantTotals = []; // Track total per participant
+                                $participantsWithCosts = []; // Array to store participants with costs
+                                
+                                // Initialize participant totals and collect participants with costs
+                                foreach (array_keys($participantData) as $participantName) {
+                                    $participantTotals[$participantName] = 0;
                                     
-                                    // Initialize participant totals
-                                    foreach (array_keys($participantData) as $participantName) {
-                                        $participantTotals[$participantName] = 0;
+                                    // Check if participant has any costs
+                                    $hasCosts = false;
+                                    foreach ($costTypes as $costName) {
+                                        $costValue = $participantData[$participantName][$costName] ?? 0;
+                                        if ($costValue > 0) {
+                                            $hasCosts = true;
+                                            break;
+                                        }
                                     }
-                                    ?>
-                                    <?php foreach ($costTypes as $costName): ?>
-                                        <?php
-                                        $rowTotal = 0;
-                                        $participantCount = 0;
-                                        ?>
-                                        <?php foreach (array_keys($participantData) as $participantName): ?>
-                                            <?php 
-                                            $costValue = $participantData[$participantName][$costName] ?? 0;
-                                            if ($costValue > 0) {
-                                                $participantCount++;
-                                                $units = 1; // Default units
-                                                $days = 1;  // Default days
-                                                $total = $costValue * $units * $days;
-                                                $rowTotal += $total;
-                                                $grandTotal += $total;
-                                                $participantTotals[$participantName] += $total;
-                                            ?>
-                                            <tr>
-                                                <td><?php echo $count; ?></td>
-                                                <td><?php echo htmlspecialchars($participantName); ?></td>
-                                                <td class="text-right">$<?php echo number_format($costValue, 2); ?></td>
-                                                <td class="text-right"><?php echo $units; ?></td>
-                                                <td class="text-right"><?php echo $days; ?></td>
-                                                <td class="text-right">$<?php echo number_format($total, 2); ?></td>
-                                                <td><?php echo htmlspecialchars($costName); ?> - External participant</td>
-                                            </tr>
-                                            <?php 
-                                                $count++;
-                                            }
-                                            ?>
-                                        <?php endforeach; ?>
-                                        <?php if ($participantCount > 0): ?>
-                                        <tr style="background-color: #f8f9fa;">
-                                            <td colspan="5" class="text-right fw-bold"><?php echo htmlspecialchars($costName); ?> Subtotal:</td>
-                                            <td class="text-right fw-bold">$<?php echo number_format($rowTotal, 2); ?></td>
-                                            <td></td>
-                                        </tr>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
                                     
-                                    <!-- Individual Participant Totals -->
-                                    <tr style="background-color: #e8f5e8; border-top: 2px solid #28a745;">
-                                        <td colspan="6" class="text-center fw-bold" style="color: #155724;">INDIVIDUAL PARTICIPANT TOTALS</td>
-                                        <td></td>
-                                    </tr>
-                                    <?php foreach (array_keys($participantData) as $participantName): ?>
-                                        <?php if ($participantTotals[$participantName] > 0): ?>
-                                        <tr style="background-color: #f8f9fa;">
-                                            <td></td>
-                                            <td class="fw-bold"><?php echo htmlspecialchars($participantName); ?></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td class="text-right fw-bold" style="color: #155724;">$<?php echo number_format($participantTotals[$participantName], 2); ?></td>
-                                            <td class="fw-bold" style="color: #155724;">Total to Pay</td>
-                                        </tr>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </tbody>
-                                <tfoot>
+                                    if ($hasCosts) {
+                                        $participantsWithCosts[] = $participantName;
+                                    }
+                                }
+                                ?>
+                                
+                                <!-- Mega Table for 3 tables per row -->
+                                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                                    <?php
+                                    $participantsCount = count($participantsWithCosts);
+                                    $rows = ceil($participantsCount / 3);
+                                    
+                                    for ($row = 0; $row < $rows; $row++):
+                                        $startIndex = $row * 3;
+                                        $endIndex = min($startIndex + 3, $participantsCount);
+                                    ?>
                                     <tr>
-                                        <th class="bg-highlight text-right" colspan="5">Grand Total</th>
-                                        <th class="bg-highlight text-right">$<?php echo number_format($grandTotal, 2); ?></th>
-                                        <th class="bg-highlight"></th>
+                                        <?php for ($col = $startIndex; $col < $endIndex; $col++): ?>
+                                            <?php if (isset($participantsWithCosts[$col])): ?>
+                                                <?php
+                                                $participantName = $participantsWithCosts[$col];
+                                                $participantTotal = 0;
+                                                ?>
+                                                <td style="width: 33.33%; padding: 4px; vertical-align: top;">
+                                                    <table class="bordered-table" style="width: 100%; margin: 0; margin-top: 4px;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th class="bg-highlight text-left" colspan="2" style="padding: 8px;">
+                                                                    <strong><?php echo htmlspecialchars($participantName); ?></strong>
+                                                                </th>
+      </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php
+                                                            $count = 1;
+                                                            foreach ($costTypes as $costName):
+                                                                $costValue = $participantData[$participantName][$costName] ?? 0;
+                                                                if ($costValue > 0):
+                                                                    $units = 1; // Default units
+                                                                    $days = 1;  // Default days
+                                                                    $total = $costValue * $units * $days;
+                                                                    $participantTotal += $total;
+                                                                    $grandTotal += $total;
+                                                            ?>
+                                                            <tr>
+                                                                <td style="width: 60%; padding: 6px; font-size: 12px;">
+                                                                    <strong><?php echo $count; ?>. <?php echo htmlspecialchars($costName); ?>:</strong>
+                                                                </td>
+                                                                <td style="width: 40%; padding: 6px; text-align: right; font-size: 12px;">
+                                                                    <strong>$<?php echo number_format($total, 2); ?></strong>
+                                                                </td>
+                                                            </tr>
+                                                            <?php
+                                                                    $count++;
+                                                                endif;
+                                                            endforeach;
+                                                            ?>
+                                                            <tr style="background-color: #f8f9fa; border-top: 2px solid #28a745;">
+                                                                <td style="padding: 6px; font-size: 12px;">
+                                                                    <strong>Total:</strong>
+                                                                </td>
+                                                                <td style="padding: 6px; text-align: right; font-size: 12px;">
+                                                                    <strong>$<?php echo number_format($participantTotal, 2); ?></strong>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                                <?php 
+                                                $participantTotals[$participantName] = $participantTotal;
+                                                ?>
+                                            <?php else: ?>
+                                                <td style="width: 33.33%; padding: 4px;"></td>
+                                            <?php endif; ?>
+                                        <?php endfor; ?>
                                     </tr>
-                                </tfoot>
-                            </table>
+                                    <?php endfor; ?>
+                                </table>
+                                
+                                <!-- Grand Total Summary -->
+                                <div class="mt-4">
+                                    <table class="bordered-table" style="width: 100%;">
+                                        <tfoot>
+                                            <tr style="background-color: #e8f5e8;">
+                                                <th class="bg-highlight text-right" style="padding: 12px;">
+                                                    <strong>Grand Total: $<?php echo number_format($grandTotal, 2); ?></strong>
+                                                </th>
+      </tr>
+                                        </tfoot>
+    </table>
+                                </div>
                             <?php endif; ?>
                             
                             <!-- Special Tickets Structure (id 1) -->
@@ -830,8 +870,8 @@
                                 <thead>
                                     <tr>
                                         <th class="bg-highlight" colspan="7"><?php echo htmlspecialchars($costName); ?></th>
-                                    </tr>
-                                    <tr>
+      </tr>
+      <tr>
                                         <th class="bg-highlight">#</th>
                                         <th class="bg-highlight">Name</th>
                                         <th class="bg-highlight">Unit Cost</th>
@@ -872,9 +912,9 @@
                                         <th class="bg-highlight text-right" colspan="5"><?php echo htmlspecialchars($costName); ?> Total</th>
                                         <th class="bg-highlight text-right">$<?php echo number_format($groupTotal, 2); ?></th>
                                         <th class="bg-highlight"></th>
-                                    </tr>
+      </tr>
                                 </tfoot>
-                            </table>
+    </table>
                             <?php endforeach; ?>
                             
                             <!-- External Participants Comments -->
