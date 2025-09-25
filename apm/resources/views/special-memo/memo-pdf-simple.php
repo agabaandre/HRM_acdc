@@ -440,13 +440,23 @@
         $special_memo_reference = "AU/CDC/{$shortCode}/SM/{$year}/{$specialMemoId}";
     }
 
+      // Get division category for workflow filtering
+      $divisionCategory = null;
+      if (isset($specialMemo->division) && isset($specialMemo->division->category)) {
+          $divisionCategory = $specialMemo->division->category;
+      }
+
+      // Organize approvers by section using helper (same as activity memo)
+      $organizedApprovers = PrintHelper::organizeApproversBySection(
+          $specialMemo->id ?? null,
+          'App\Models\SpecialMemo',
+          $specialMemo->division_id ?? null,
+          $specialMemo->forward_workflow_id ?? null,
+          $divisionCategory
+      );
+
       // Define the order of sections: TO, THROUGH, FROM (excluding 'others')
       $sectionOrder = ['to', 'through', 'from'];
-      
-      // Filter out 'others' section if it exists
-      if (isset($organized_workflow_steps['others'])) {
-        unset($organized_workflow_steps['others']);
-      }
 
       // Section labels in sentence case
       $sectionLabels = [
@@ -458,8 +468,8 @@
       // Calculate total rows needed for rowspan
       $totalRows = 0;
       foreach ($sectionOrder as $section) {
-        if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0) {
-          $totalRows += $organized_workflow_steps[$section]->count();
+        if (isset($organizedApprovers[$section]) && count($organizedApprovers[$section]) > 0) {
+          $totalRows += count($organizedApprovers[$section]);
         } else {
           $totalRows += 1; // At least one row per section
         }
@@ -468,34 +478,18 @@
     ?>
   <table class="mb-15">
     <?php foreach ($sectionOrder as $section): ?>
-      <?php if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0): ?>
-        <?php foreach ($organized_workflow_steps[$section] as $index => $step): 
-                $order = $step['order'];
-                $role = $step['role'];
-          ?>
+      <?php if (isset($organizedApprovers[$section]) && count($organizedApprovers[$section]) > 0): ?>
+        <?php foreach ($organizedApprovers[$section] as $index => $approver): ?>
           <tr>
                 <td style="width: 12%; vertical-align: top;">
                     <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
             </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                            <?php renderApproverInfo($approver, $role, $section, $specialMemo); ?>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="approver-name"><?php echo htmlspecialchars($role); ?></div>
-                        <?php if ($section === 'from'): ?>
-                            <div class="approver-title"><?php echo htmlspecialchars($specialMemo->division->division_name ?? ''); ?></div>
-                    <?php endif; ?>
-        <?php endif; ?>
-      </td>
+                    <?php renderApproverInfo($approver, $approver['role'], $section, $specialMemo); ?>
+                </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-              <?php if (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                            <?php renderSignature($approver, $order, $approval_trails, $specialMemo); ?>
-          <?php endforeach; ?>
-        <?php endif; ?>
-      </td>
+                    <?php renderSignature($approver, $approver['order'], $approval_trails, $specialMemo); ?>
+                </td>
                 <?php if ($section === $sectionOrder[0] && $index === 0): // Only output the Date/FileNo cell once ?>
                     <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
                         <div class="text-right">

@@ -572,7 +572,7 @@ if (!function_exists('user_session')) {
 
             // If no approvable activities exist, return false
             if ($approvable_activities->isEmpty())
-                 $has_approved=false;
+                 $has_approved=true;
 
             // For each approvable activity, check if user has at least one 'passed' approval
             foreach ($approvable_activities as $activity) {

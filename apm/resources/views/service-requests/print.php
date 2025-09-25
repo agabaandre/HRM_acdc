@@ -452,14 +452,17 @@
  </table>
 
 
-<p>Reference is made to the attached approval memo <b><?=$sourceData->document_number?></b> regarding <?=$sourceData->title?> 
-<?php if (isset($sourceData->date_from) && isset($sourceData->date_to)): ?>
-    starting on <?=date('j F Y', strtotime($sourceData->date_from))?> and ending on <?=date('j F Y', strtotime($sourceData->date_to))?>.
-<?php elseif (isset($sourceData->memo_date)): ?>
-    dated <?=date('j F Y', strtotime($sourceData->memo_date))?>.
-<?php else: ?>
-    for the specified period.
-<?php endif; ?>
+ <p>
+    Reference is made to the attached approval memo <b><?=$sourceData->document_number?></b> concerning <?=$sourceData->activity_title?>,
+    <?php if (isset($sourceData->date_from) && isset($sourceData->date_to)): ?>
+        scheduled to commence on <?=date('j F Y', strtotime($sourceData->date_from))?> and conclude on <?=date('j F Y', strtotime($sourceData->date_to))?>.
+    <?php elseif (isset($sourceData->memo_date)): ?>
+        dated <?=date('j F Y', strtotime($sourceData->memo_date))?>.
+    <?php else: ?>
+        for the specified period.
+    <?php endif; ?>
+</p>
+
 
   <?php
     // Parse the budget breakdown JSON from the service request

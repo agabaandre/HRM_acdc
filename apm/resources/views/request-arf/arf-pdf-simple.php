@@ -513,6 +513,46 @@
         echo '</div>';
     }
 
+    // Helper function to render budget approver info from PrintHelper data
+    function renderBudgetApproverInfoFromPrintHelper($approver) {
+        $isOic = isset($approver['oic_staff']);
+        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
+        
+        if ($staff) {
+            $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+            $title = $staff['title'] ?? '';
+            $role = $approver['role'] ?? 'Approver';
+            
+            echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+            echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+            
+            if ($title) {
+                echo '<div class="approver-title">' . htmlspecialchars($title) . '</div>';
+            }
+        }
+    }
+    
+    // Helper function to render budget signature from PrintHelper data
+    function renderBudgetSignatureFromPrintHelper($approver, $sourceModel) {
+        $isOic = isset($approver['oic_staff']);
+        $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
+        
+        if ($staff) {
+            $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+            $role = $approver['role'] ?? 'Approver';
+            
+            echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+            echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+            
+            // Add signature if available
+            if (!empty($staff['signature'])) {
+                echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+            } else {
+                echo '<div class="signature-placeholder">_________________</div>';
+            }
+        }
+    }
+
     // Helper function to render budget approver info with OIC support or responsible person info
     function renderBudgetApproverInfo($approval = null, $responsible_person = false) {
         // If $responsible_person is provided and is an object (Staff), render their info
@@ -779,10 +819,35 @@
             <?php endif; ?>
 
 <?php
-    // Get latest approvals for each order from source model approval trails
+    // Use PrintHelper for consistent approver display
+    use App\Helpers\PrintHelper;
+    
+    // Get division category for workflow filtering
+    $divisionCategory = null;
+    if (isset($sourceData['division']) && isset($sourceData['division']->category)) {
+        $divisionCategory = $sourceData['division']->category;
+    }
+    
+    // Get source model type and ID
+    $sourceModelType = $requestARF->model_type ?? null;
+    $sourceModelId = $requestARF->source_id ?? null;
+    $sourceDivisionId = $sourceData['division']->id ?? null;
+    $sourceWorkflowId = $sourceData['division']->workflow_id ?? $requestARF->forward_workflow_id ?? null;
+    
+    // Organize approvers by section using helper (same as other memo types)
+    $organizedApprovers = [];
+    if ($sourceModelType && $sourceModelId && $sourceWorkflowId) {
+        $organizedApprovers = PrintHelper::organizeApproversBySection(
+            $sourceModelId,
+            $sourceModelType,
+            $sourceDivisionId,
+            $sourceWorkflowId,
+            $divisionCategory
+        );
+    }
+    
+    // Fallback to old method if PrintHelper doesn't return data
     $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
-   
-   
     $approvalOrder1 = getLatestApprovalForOrder($sourceApprovalTrails, 1);
     $approvalOrder9 = getLatestApprovalForOrder($sourceApprovalTrails, 9);
     $approvalOrder10 = getLatestApprovalForOrder($sourceApprovalTrails, 10);
@@ -810,11 +875,26 @@
       <tr>
         <td>Signed (Endorsed by):</td>
         <td>
-          <?php renderBudgetApproverInfo($approvalOrder1); ?>
+          <?php 
+          // Use PrintHelper data if available, otherwise fallback to old method
+          if (!empty($organizedApprovers['from']) && count($organizedApprovers['from']) > 0) {
+              $approver = $organizedApprovers['from'][0]; // Get first approver from 'from' section
+              renderBudgetApproverInfoFromPrintHelper($approver);
+          } else {
+              renderBudgetApproverInfo($approvalOrder1);
+          }
+          ?>
         </td>
         <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-            <?php renderBudgetSignature($approvalOrder1, $sourceModel); ?>
+            <?php 
+            if (!empty($organizedApprovers['from']) && count($organizedApprovers['from']) > 0) {
+                $approver = $organizedApprovers['from'][0];
+                renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
+            } else {
+                renderBudgetSignature($approvalOrder1, $sourceModel);
+            }
+            ?>
           </span>
         </td>
       </tr>
@@ -822,22 +902,52 @@
         
           <td>Approved  By:</td>
           <td>
-           <?php renderBudgetApproverInfo($approvalOrder9); ?>
+           <?php 
+           // Use PrintHelper data if available, otherwise fallback to old method
+           if (!empty($organizedApprovers['through']) && count($organizedApprovers['through']) > 0) {
+               $approver = $organizedApprovers['through'][0]; // Get first approver from 'through' section
+               renderBudgetApproverInfoFromPrintHelper($approver);
+           } else {
+               renderBudgetApproverInfo($approvalOrder9);
+           }
+           ?>
           </td>
           <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
             <span class="fill">
-             <?php renderBudgetSignature($approvalOrder9, $sourceModel); ?>
+             <?php 
+             if (!empty($organizedApprovers['through']) && count($organizedApprovers['through']) > 0) {
+                 $approver = $organizedApprovers['through'][0];
+                 renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
+             } else {
+                 renderBudgetSignature($approvalOrder9, $sourceModel);
+             }
+             ?>
             </span>
           </td>
       </tr>
       <tr>
         <td>Approved by:</td>
         <td>
-          <?php renderBudgetApproverInfo($approvalOrder10); ?>
+          <?php 
+          // Use PrintHelper data if available, otherwise fallback to old method
+          if (!empty($organizedApprovers['to']) && count($organizedApprovers['to']) > 0) {
+              $approver = $organizedApprovers['to'][0]; // Get first approver from 'to' section
+              renderBudgetApproverInfoFromPrintHelper($approver);
+          } else {
+              renderBudgetApproverInfo($approvalOrder10);
+          }
+          ?>
         </td>
         <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-            <?php renderBudgetSignature($approvalOrder10, $sourceModel); ?>
+            <?php 
+            if (!empty($organizedApprovers['to']) && count($organizedApprovers['to']) > 0) {
+                $approver = $organizedApprovers['to'][0];
+                renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
+            } else {
+                renderBudgetSignature($approvalOrder10, $sourceModel);
+            }
+            ?>
           </span>
         </td>
       </tr>
