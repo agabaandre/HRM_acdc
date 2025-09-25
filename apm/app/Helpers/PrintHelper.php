@@ -131,7 +131,7 @@ class PrintHelper
         }
         
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(self::generateVerificationHash($item->id, $staffId, $approvalDate)) . '</div>';
+        echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars(self::generateVerificationHash($item->id, $staffId, $approvalDate)) . '</div>';
         echo '</div>';
     }
 
@@ -212,7 +212,7 @@ class PrintHelper
         echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
         
         $hash = self::generateVerificationHash($item->id, $isOic ? $approval->oic_staff_id : $approval->staff_id, $approval->created_at);
-        echo '<div class="signature-hash">Hash: ' . htmlspecialchars($hash) . '</div>';
+        echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars($hash) . '</div>';
          
         // Add OIC watermark if applicable
         if ($isOic) {
