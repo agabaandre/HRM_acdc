@@ -556,15 +556,15 @@
                                 }
                                 ?>
                                 
-                                <!-- Mega Table for 3 tables per row -->
+                                <!-- Mega Table for 2 tables per row -->
                                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                                     <?php
                                     $participantsCount = count($participantsWithCosts);
-                                    $rows = ceil($participantsCount / 3);
+                                    $rows = ceil($participantsCount / 2);
                                     
                                     for ($row = 0; $row < $rows; $row++):
-                                        $startIndex = $row * 3;
-                                        $endIndex = min($startIndex + 3, $participantsCount);
+                                        $startIndex = $row * 2;
+                                        $endIndex = min($startIndex + 2, $participantsCount);
                                     ?>
                                     <tr>
                                         <?php for ($col = $startIndex; $col < $endIndex; $col++): ?>
@@ -573,7 +573,7 @@
                                                 $participantName = $participantsWithCosts[$col];
                                                 $participantTotal = 0;
                                                 ?>
-                                                <td style="width: 33.33%; padding: 4px; vertical-align: top;">
+                                                <td style="width: 50%; padding: 4px; vertical-align: top;">
                                                     <table class="bordered-table" style="width: 100%; margin: 0; margin-top: 4px;">
                                                         <thead>
                                                             <tr>
@@ -622,7 +622,7 @@
                                                 $participantTotals[$participantName] = $participantTotal;
                                                 ?>
                                             <?php else: ?>
-                                                <td style="width: 33.33%; padding: 4px;"></td>
+                                                <td style="width: 50%; padding: 4px;"></td>
                                             <?php endif; ?>
                                         <?php endfor; ?>
                                     </tr>
@@ -777,15 +777,15 @@
                                 }
                                 ?>
                                 
-                                <!-- Mega Table for 3 tables per row -->
+                                <!-- Mega Table for 2 tables per row -->
                                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                                     <?php
                                     $participantsCount = count($participantsWithCosts);
-                                    $rows = ceil($participantsCount / 3);
+                                    $rows = ceil($participantsCount / 2);
                                     
                                     for ($row = 0; $row < $rows; $row++):
-                                        $startIndex = $row * 3;
-                                        $endIndex = min($startIndex + 3, $participantsCount);
+                                        $startIndex = $row * 2;
+                                        $endIndex = min($startIndex + 2, $participantsCount);
                                     ?>
                                     <tr>
                                         <?php for ($col = $startIndex; $col < $endIndex; $col++): ?>
@@ -794,7 +794,7 @@
                                                 $participantName = $participantsWithCosts[$col];
                                                 $participantTotal = 0;
                                                 ?>
-                                                <td style="width: 33.33%; padding: 4px; vertical-align: top;">
+                                                <td style="width: 50%; padding: 4px; vertical-align: top;">
                                                     <table class="bordered-table" style="width: 100%; margin: 0; margin-top: 4px;">
                                                         <thead>
                                                             <tr>
@@ -843,7 +843,7 @@
                                                 $participantTotals[$participantName] = $participantTotal;
                                                 ?>
                                             <?php else: ?>
-                                                <td style="width: 33.33%; padding: 4px;"></td>
+                                                <td style="width: 50%; padding: 4px;"></td>
                                             <?php endif; ?>
                                         <?php endfor; ?>
                                     </tr>
