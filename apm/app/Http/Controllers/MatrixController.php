@@ -1423,25 +1423,29 @@ class MatrixController extends Controller
     public function update_status(Request $request, Matrix $matrix): RedirectResponse
     {
         $request->validate(['action' => 'required']);
-        //dd($request->all());
+//dd($request->all());
         $this->saveMatrixTrail($matrix,$request->comment,$request->action);
-        
+       // dd($request->action);
         $notification_type =null;
 
         if($request->action !=='approved'){
-
+         
             $matrix->forward_workflow_id = (intval($matrix->approval_level)==1)?null:1;
             $matrix->approval_level = ($matrix->approval_level==1)?0:1;
             $matrix->overall_status ='returned';
-            
-            // Archive approval trails to restart approval process
+            ///dd('here1')
+;            // Archive approval trails to restart approval process
             archive_approval_trails($matrix);
             
             //notify and save notification
             $notification_type = 'returned';
         }else{
+   
+         // dd('here2');
             //move to next
             $next_approval_point = $this->get_next_approver($matrix);
+            //dd($next_approval_point);
+         
            
            if($next_approval_point){
 
@@ -1500,30 +1504,38 @@ class MatrixController extends Controller
 
         $division   = $matrix->division;
 
+        ///dd($division);
+
         $current_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
            ->where('is_enabled',1)
            ->where('approval_order',$matrix->approval_level)
            ->first();
 
-        $go_to_category_check_for_external =(!$matrix->has_extramural && !$matrix->has_extramural && ($matrix->approval_level!=null && $current_definition->approval_order > $matrix->approval_level));
-
+        $nextStepIncrement = 1;
+        $go_to_category_check_for_external =(!$matrix->has_extramural && !$matrix->has_intramural && ($matrix->approval_level!=null && $current_definition->approval_order > $matrix->approval_level));
+       
         //if it's time to trigger categroy check, just check and continue
-        if(($current_definition && $current_definition->triggers_category_check) || $go_to_category_check_for_external){
+        if(($current_definition && $current_definition->triggers_category_check && $division->category!='Other') || $go_to_category_check_for_external){
+    
+          //dd($category_definition)
+        $category_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+            ->where('is_enabled',1)
+            ->where('category',$division->category)
+            ->orderBy('approval_order','asc')
+            ->first();
 
-            $category_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
-                        ->where('is_enabled',1)
-                        ->where('category',$division->category)
-                        ->orderBy('approval_order','asc')
-                        ->first();
+        return $category_definition;
 
-            return $category_definition;
         }
 
-        $nextStepIncrement = 1;
+        //skip Director finance if approver at approval order 4 or 5 extramural or intramural activities are oved
 
-        //Skip Directorate from HOD if no directorate
-        if($matrix->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)
+        //Skip Directorate from HOD if no directorate && skips programs and operations to go to other
+        if(($matrix->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)|| ($current_definition && $current_definition->triggers_category_check && $division->category=='Other'))
             $nextStepIncrement = 2;
+       
+
+   
 
          if(!$matrix->forward_workflow_id) { // null
             // Get assigned workflow ID for Matrix model
@@ -1538,6 +1550,8 @@ class MatrixController extends Controller
         $next_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
            ->where('is_enabled',1)
            ->where('approval_order',$matrix->approval_level +$nextStepIncrement)->get();
+
+      //dd($next_definition);
             
         //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
         // get from $definition where fund_type=2, else where fund_type=2

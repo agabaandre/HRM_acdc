@@ -424,6 +424,57 @@ if (!function_exists('user_session')) {
 
     }
 
+
+
+    if (!function_exists('has_user_returned_activity_as_single_memo')) {
+        /**
+         * Check if a user has returned any activity as a single memo in a matrix
+         * This helps determine if the user can proceed even if their approvable stack is empty
+         * 
+         * @param object $matrix The matrix to check
+         * @param int|null $userId Optional user ID, defaults to current user
+         * @return bool
+         */
+        function has_user_returned_activity_as_single_memo($matrix, $userId = null) {
+            $userId = $userId ?? user_session('staff_id');
+            
+            if (!$userId) {
+                return false;
+            }
+            
+            // Check if user has any 'convert_to_single_memo' actions in activity approval trails for this matrix
+            return ActivityApprovalTrail::where('matrix_id', $matrix->id)
+                ->where('staff_id', $userId)
+                ->where('action', 'convert_to_single_memo')
+                ->where('is_archived', 0) // Only consider non-archived trails
+                ->exists();
+        }
+    }
+
+    if (!function_exists('can_user_proceed_with_empty_approvable_stack')) {
+        /**
+         * Check if a user can proceed even when their approvable stack is empty
+         * This considers if the user has returned any activities as single memos
+         * 
+         * @param object $matrix The matrix to check
+         * @param int|null $userId Optional user ID, defaults to current user
+         * @return bool
+         */
+        function can_user_proceed_with_empty_approvable_stack($matrix, $userId = null) {
+            $userId = $userId ?? user_session('staff_id');
+            
+            if (!$userId) {
+                return false;
+            }
+        
+            // Check if user has returned any activities as single memos
+            $hasReturnedActivities = has_user_returned_activity_as_single_memo($matrix, $userId);
+            
+            // User can proceed if they have converted activities to single memos and their approvable stack is empty
+            return $hasReturnedActivities && get_approvable_activities($matrix)->count() == 0;
+        }
+    }
+
     if (!function_exists('get_approvable_activities')) {
         function get_approvable_activities($matrix){
             
@@ -556,7 +607,7 @@ if (!function_exists('user_session')) {
             
             // Cache the result for 5 minutes
             \Cache::put($cacheKey, $approvable_activities, 300);
-            
+            //dd($approvable_activities);
             return $approvable_activities;
         }
     }
@@ -572,6 +623,8 @@ if (!function_exists('user_session')) {
 
             // If no approvable activities exist, return false
             if ($approvable_activities->isEmpty())
+                 $has_approved=false;
+            if(can_user_proceed_with_empty_approvable_stack($matrix))
                  $has_approved=true;
 
             // For each approvable activity, check if user has at least one 'passed' approval

@@ -252,7 +252,7 @@
                                     </div>
 
             <!-- Finance Officer Notice -->
-            @if(can_take_action($matrix) && is_finance_officer($matrix))
+            @if(can_take_action($matrix) && is_finance_officer($matrix) && $matrix->approval_level == 5)
                 <div class="p-4 border-top bg-warning bg-opacity-10">
                     <div class="d-flex align-items-center">
                         <i class="bx bx-info-circle text-warning me-2 fs-4"></i>
@@ -973,12 +973,12 @@ function getActivityUrl(activityId) {
 
 // Check if checkbox column should be shown
 function canShowCheckbox() {
-    return {{ can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' ? 'true' : 'false' }};
+    return {{ can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $matrix->approval_level != 5 ? 'true' : 'false' }};
 }
 
-// Check if current user is a finance officer
+// Check if current user is a finance officer at level 5
 function isLevel5Approver() {
-    return {{ is_finance_officer($matrix) ? 'true' : 'false' }};
+    return {{ ($matrix->approval_level == 5 && is_finance_officer($matrix)) ? 'true' : 'false' }};
 }
 
 // Check if delete button should be shown
@@ -1092,9 +1092,10 @@ function renderActivities(activities) {
     let html = '';
     
     if (activities.length === 0) {
+        const colspan = canShowCheckbox() ? '11' : '10';
         html = `
             <tr>
-                <td colspan="10" class="text-center py-5">
+                <td colspan="${colspan}" class="text-center py-5">
                     <i class="bx bx-calendar-x fs-1 text-muted mb-3 d-block"></i>
                     <div class="text-muted">No activities found for this matrix.</div>
                     <small class="text-muted">Activities will appear here once they are added.</small>
@@ -1112,10 +1113,11 @@ function renderActivities(activities) {
             
             html += '<tr>';
             
-            if (canShowCheckbox() && !isLevel5Approver()) {
+            if (canShowCheckbox()) {
                 html += '<td class="px-3 py-3">';
                 // Only show checkbox if user can approve AND hasn't passed this activity
-                if (canApprove && !userHasPassed) {
+                // AND user is not a finance officer at level 5
+                if (canApprove && !userHasPassed && !isLevel5Approver()) {
                     html += `<input type="checkbox" class="form-check-input activity-checkbox" value="${activity.id}" data-activity-title="${activity.activity_title}">`;
                 }
                 html += '</td>';

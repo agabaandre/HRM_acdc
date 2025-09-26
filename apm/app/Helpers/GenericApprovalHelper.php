@@ -136,7 +136,7 @@ if (!function_exists('get_next_approver_generic')) {
             ->where('is_enabled', 1)
             ->where('approval_order', $model->approval_level)
             ->first();
-
+        $nextStepIncrement = 1;
         if (!$current_definition) {
             return null;
         }
@@ -148,7 +148,7 @@ if (!function_exists('get_next_approver_generic')) {
                 ($model->approval_level != null && $current_definition->approval_order > $model->approval_level));
         }
 
-        if (($current_definition && $current_definition->triggers_category_check) || $go_to_category_check) {
+        if (($current_definition && $current_definition->triggers_category_check && $model->division->category!='Other') || $go_to_category_check ) {
             if (method_exists($model, 'division') && $model->division) {
                 $category_definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
                     ->where('is_enabled', 1)
@@ -160,13 +160,17 @@ if (!function_exists('get_next_approver_generic')) {
             }
         }
 
-        $nextStepIncrement = 1;
+      
 
         // Skip Directorate from HOD if no directorate
         if ($model->forward_workflow_id > 0 && $current_definition->approval_order == 1) {
             if (method_exists($model, 'division') && $model->division && !$model->division->director_id) {
                 $nextStepIncrement = 2;
             }
+        }
+
+        if(($current_definition && $current_definition->triggers_category_check) && $model->division->category=='Other'){
+            $nextStepIncrement = 2;
         }
 
         $next_approval_order = $model->approval_level + $nextStepIncrement;

@@ -1382,22 +1382,13 @@ class ActivityController extends Controller
                 'overall_status' => 'draft', // Set to draft so creator can edit
                 'approval_level' => 1, // Reset to approval level 1
                 'next_approval_level' => 2, // Set next level to 2
-                'forward_workflow_id' => $assignedWorkflowId,
+                'forward_workflow_id' => null, // Set to NULL when returned as single memo
                 'reverse_workflow_id' => $assignedWorkflowId,
                 'is_draft' => true, // Mark as draft so it can be edited
             ]);
 
-            // Create additional approval trail entry for the conversion
-            ActivityApprovalTrail::create([
-                'activity_id' => $activity->id,
-                'matrix_id' => $activity->matrix_id,
-                'staff_id' => user_session('staff_id'),
-                'action' => 'converted_to_single_memo',
-                'remarks' => $comment ?? 'Activity converted to single memo for revision',
-                'approval_order' => $activity->approval_level,
-                'forward_workflow_id' => $assignedWorkflowId,
-                'is_archived' => 0, // Explicitly set as non-archived
-            ]);
+            // Note: Approval trail entry is already created in update_activity_status() 
+            // No need to create a duplicate entry here
 
             Log::info('Activity converted to single memo', [
                 'activity_id' => $activity->id,
