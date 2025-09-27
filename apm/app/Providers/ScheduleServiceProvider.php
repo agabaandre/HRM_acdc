@@ -107,7 +107,7 @@ class ScheduleServiceProvider extends ServiceProvider
             });
             
         $schedule->command('notifications:daily-pending-approvals')
-            ->dailyAt('00:40')
+            ->dailyAt('01:07')
             ->timezone('Africa/Addis_Ababa')
             ->description('Send test pending approvals notifications to all approvers')
             ->withoutOverlapping()
