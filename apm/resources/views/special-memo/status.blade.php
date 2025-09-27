@@ -236,9 +236,9 @@
 
                     <!-- Approval Actions -->
                     @if(can_take_action_generic($specialMemo))
-                        <div class="card matrix-card mb-4">
-                            <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                                <h6 class="m-0 fw-semibold text-success"><i class="bx bx-check-circle me-2"></i>Approval Actions - Level {{ $specialMemo->approval_level ?? 0 }}</h6>
+                        <div class="card matrix-card mb-4" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                            <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
+                                <h6 class="m-0 fw-semibold" style="color: #1f2937;"><i class="bx bx-check-circle me-2" style="color: #059669;"></i>Approval Actions - Level {{ $specialMemo->approval_level ?? 0 }}</h6>
                             </div>
                             <div class="card-body p-4">
                                 <div class="alert alert-info mb-3">

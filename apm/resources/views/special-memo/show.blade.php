@@ -1216,7 +1216,7 @@
                                     <!-- Status -->
                                     <div class="col-md-4">
                                         <div class="d-flex align-items-center gap-2">
-                                            <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                            <div class="p-2" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
                                                 <i class="bx bx-badge-check text-white"></i>
                                             </div>
                                             <div>
@@ -1230,7 +1230,7 @@
                                     @if($specialMemo->overall_status !== 'draft' && $specialMemo->current_actor)
                                     <div class="col-md-4">
                                         <div class="d-flex align-items-center gap-2">
-                                            <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                                            <div class="p-2" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
                                                 <i class="bx bx-user text-white"></i>
                                             </div>
                                             <div>
@@ -1245,7 +1245,7 @@
                                     @if($specialMemo->workflow_definition)
                                     <div class="col-md-4">
                                         <div class="d-flex align-items-center gap-2">
-                                            <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                                            <div class="p-2" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
                                                 <i class="bx bx-crown text-white"></i>
                                             </div>
                                             <div>
@@ -1271,41 +1271,12 @@
                     </div>
                 </div>
 
-            </div> 
-            <!-- End container-fluid -->
-
-            <div class="col-lg-12">
-                <!-- Approval Trail Section -->
-            
-                @if(isset($specialMemo->approvalTrails) && $specialMemo->approvalTrails->count() > 0)
-                    @include('partials.approval-trail', ['resource' => $specialMemo])
-                @else
-                    <div class="card sidebar-card border-0 mb-4">
-                        <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
-                                <i class="bx bx-history"></i>
-                                Approval Trail
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="text-center text-muted py-4">
-                                <i class="bx bx-time bx-lg mb-3"></i>
-                                <p class="mb-0">No approval actions have been taken yet.</p>
-                                @if($specialMemo->overall_status === 'draft')
-                                    <small>Submit this special memo for approval to start the approval trail.</small>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @endif
-
                 <!-- Enhanced Approval Actions -->
-                {{-- {{ dd(can_take_action_generic($specialMemo)) }} --}}
                 @if(can_take_action_generic($specialMemo) || (is_with_creator_generic($specialMemo) && $specialMemo->overall_status != 'draft') || (isdivision_head($specialMemo) && $specialMemo->overall_status == 'returned'))
-                    <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
-                        <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                                <i class="bx bx-check-circle"></i>
+                    <div class="card border-0 shadow-lg mt-4" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                        <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
+                            <h6 class="mb-0 fw-bold text-gray-800 d-flex align-items-center gap-2" style="color: #1f2937;">
+                                <i class="bx bx-check-circle" style="color: #059669;"></i>
                                 Approval Actions - Level {{ $specialMemo->approval_level ?? 0 }}
                             </h6>
                         </div>
@@ -1313,30 +1284,30 @@
                             <div class="alert alert-info mb-3">
                                 <i class="bx bx-info-circle me-2"></i>
                                 <strong>Current Level:</strong> {{ $specialMemo->approval_level ?? 0 }}
-                                @if($specialMemo->workflow_definition)
-                                    - <strong>Role:</strong> {{ $specialMemo->workflow_definition->role ?? 'Not specified' }}
+                                @if ($specialMemo->workflow_definition)
+                                    - <strong>Role:</strong>
+                                    {{ $specialMemo->workflow_definition->role ?? 'Not specified' }}
                                 @endif
                             </div>
                             
                             <form action="{{ route('special-memo.update-status', $specialMemo) }}" method="POST" id="approvalForm">
                                 @csrf
-                                <input type="hidden" name="debug_approval" value="1">
                                 <div class="row">
                                     <div class="col-md-8">
                                         <div class="mb-3">
-                                            <label for="comment" class="form-label">Comments (Optional)</label>
-                                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
+                                            <label for="remarks" class="form-label fw-semibold">
+                                                <i class="bx bx-message-square-detail me-1"></i>Comments
+                                            </label>
+                                            <textarea class="form-control" id="remarks" name="remarks" rows="3"
+                                                placeholder="Add your comments here..."></textarea>
                                         </div>
-                                    </div>
-                                    @if($specialMemo->approval_level=='5')
-                                    <div class="col-md-8">
+                                        @if($specialMemo->approval_level=='5')
                                         <div class="mb-3">
                                             <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
                                             <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
                                         </div>
+                                        @endif
                                     </div>
-                                                                
-                                    @endif
                                     <div class="col-md-4">
                                         <div class="d-grid gap-2 mt-4">
                                             @php
@@ -1376,7 +1347,7 @@
 
                 <!-- Submit for Approval Section -->
                 @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id') || $specialMemo->overall_status == 'draft' && $specialMemo->division->division_head == user_session('staff_id'))
-                    <div class="card sidebar-card border-0"
+                    <div class="card sidebar-card border-0 mt-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
@@ -1405,9 +1376,13 @@
                     </div>
                 @endif
 
+            </div> 
+            <!-- End container-fluid -->
+
+            <div class="col-lg-12">
                 <!-- Resubmission Section for HODs when returned -->
                 @if(($specialMemo->overall_status === 'returned' || $specialMemo->overall_status === 'pending') && isdivision_head($specialMemo) && $specialMemo->approval_level <= 1)
-                    <div class="card sidebar-card border-0"
+                    <div class="card sidebar-card border-0 mb-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
@@ -1427,6 +1402,30 @@
                                     <i class="bx bx-info-circle me-1"></i>
                                     <strong>Note:</strong> This will resubmit the memo to the approver who returned it.
                                 </small>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Approval Trail Section -->
+            
+                @if(isset($specialMemo->approvalTrails) && $specialMemo->approvalTrails->count() > 0)
+                    @include('partials.approval-trail', ['resource' => $specialMemo])
+                @else
+                    <div class="card sidebar-card border-0 mb-4">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
+                                <i class="bx bx-history"></i>
+                                Approval Trail
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center text-muted py-4">
+                                <i class="bx bx-time bx-lg mb-3"></i>
+                                <p class="mb-0">No approval actions have been taken yet.</p>
+                                @if($specialMemo->overall_status === 'draft')
+                                    <small>Submit this special memo for approval to start the approval trail.</small>
+                                @endif
                             </div>
                         </div>
                     </div>

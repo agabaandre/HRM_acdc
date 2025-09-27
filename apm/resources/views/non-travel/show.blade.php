@@ -600,7 +600,7 @@
                             <!-- Status -->
                             <div class="col-md-4">
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                    <div class="p-2" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
                                         <i class="bx bx-badge-check text-white"></i>
                                     </div>
                                     <div>
@@ -614,7 +614,7 @@
                             @if($nonTravel->overall_status !== 'draft' && $nonTravel->current_actor)
                             <div class="col-md-4">
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                                    <div class="p-2" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
                                         <i class="bx bx-user text-white"></i>
                                     </div>
                                     <div>
@@ -629,7 +629,7 @@
                             @if($nonTravel->workflow_definition)
                             <div class="col-md-4">
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                                    <div class="p-2" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
                                         <i class="bx bx-crown text-white"></i>
                                     </div>
                                     <div>
@@ -659,13 +659,13 @@
                     </div>
                 </div>
                 @endif
-   <!-- Enhanced Approval Actions -->
 
+                <!-- Enhanced Approval Actions -->
                 @if(can_take_action_generic($nonTravel)|| is_with_creator_generic($nonTravel) && $nonTravel->overall_status != 'draft')
-                    <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
-                        <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                                <i class="bx bx-check-circle"></i>
+                    <div class="card border-0 shadow-lg mt-4" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                        <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
+                            <h6 class="mb-0 fw-bold text-gray-800 d-flex align-items-center gap-2" style="color: #1f2937;">
+                                <i class="bx bx-check-circle" style="color: #059669;"></i>
                                 Approval Actions - Level {{ $nonTravel->approval_level ?? 0 }}
                             </h6>
                         </div>
@@ -680,26 +680,22 @@
                             
                             <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST" id="approvalForm">
                                 @csrf
-                                <input type="hidden" name="debug_approval" value="1">
                                 <div class="row">
-                                   
                                     <div class="col-md-8">
                                         <div class="mb-3">
-                                            <label for="comment" class="form-label">Comments (Optional)</label>
-                                            <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Add any comments about your decision..."></textarea>
+                                            <label for="remarks" class="form-label fw-semibold">
+                                                <i class="bx bx-message-square-detail me-1"></i>Comments
+                                            </label>
+                                            <textarea class="form-control" id="remarks" name="remarks" rows="3"
+                                                placeholder="Add your comments here..."></textarea>
                                         </div>
-                                    </div>
-                                    @if($nonTravel->approval_level=='5')
-                                    <div class="col-md-8">
+                                        @if($nonTravel->approval_level=='5')
                                         <div class="mb-3">
                                             <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
                                             <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
                                         </div>
+                                        @endif
                                     </div>
-                                                                
-                                    @endif
-
-        
                                     <div class="col-md-4">
                                         <div class="d-grid gap-2 mt-4">
                                             @php
@@ -710,14 +706,14 @@
                                             
                                             {{-- Show Approve button only if not returned to HOD --}}
                                             @if(!$isReturnedToHOD)
-                                                <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
+                                                <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
                                                     <i class="bx bx-check"></i>
                                                     Approve
                                                 </button>
                                             @endif
                                             
                                             {{-- Always show Return button --}}
-                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
+                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
                                                 <i class="bx bx-undo"></i>
                                                 Return
                                             </button>
@@ -736,12 +732,10 @@
                         </div>
                     </div>
                 @endif
-                <!-- Approval Trail -->
-                @include('partials.approval-trail', ['resource' => $nonTravel])
 
                 <!-- Submit for Approval -->
                 @if($nonTravel->overall_status === 'draft' && $nonTravel->staff_id == user_session('staff_id') || $nonTravel->overall_status == 'draft' && $nonTravel->division->division_head == user_session('staff_id'))
-                    <div class="card sidebar-card border-0"
+                    <div class="card sidebar-card border-0 mt-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
@@ -772,7 +766,7 @@
 
                 <!-- Resubmission Section for HODs when returned -->
                 @if(($nonTravel->overall_status === 'returned' || $nonTravel->overall_status === 'pending') && isdivision_head($nonTravel) && $nonTravel->approval_level <= 1)
-                    <div class="card sidebar-card border-0"
+                    <div class="card sidebar-card border-0 mb-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
@@ -796,6 +790,9 @@
                         </div>
                     </div>
                 @endif
+
+                <!-- Approval Trail -->
+                @include('partials.approval-trail', ['resource' => $nonTravel])
             </div>
         </div>
     </div>

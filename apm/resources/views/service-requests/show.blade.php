@@ -735,13 +735,13 @@
         
                 <!-- Enhanced Approval Actions -->
                 @if(can_take_action_generic($serviceRequest) || is_with_creator_generic($serviceRequest))
-                    <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                                <i class="bx bx-check-circle"></i>
+                    <div class="card border-0 shadow-lg mb-4" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                        <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
+                            <h6 class="mb-0 fw-bold text-gray-800 d-flex align-items-center gap-2" style="color: #1f2937;">
+                                <i class="bx bx-check-circle" style="color: #059669;"></i>
                                 Approval Actions
                             </h6>
-                </div>
+                        </div>
                 <div class="card-body">
                                 <form action="{{ route('service-requests.update-status', $serviceRequest) }}" method="POST" id="approvalForm">
                                 @csrf

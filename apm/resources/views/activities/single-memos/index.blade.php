@@ -26,7 +26,7 @@
                 </div>
                 <div class="col-md-2">
                     <label for="staff_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-user me-1 text-success"></i> Staff
+                        <i class="bx bx-user me-1 text-success"></i> Staff/Responsible Person
                     </label>
                     <select name="staff_id" id="staff_id" class="form-select select2" style="width: 100%;">
                         <option value="">All Staff</option>
@@ -85,7 +85,7 @@
                 <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="mySubmitted-tab" data-bs-toggle="tab" data-bs-target="#mySubmitted" type="button" role="tab" aria-controls="mySubmitted" aria-selected="true">
                     <i class="bx bx-file-doc me-2"></i> My Single Memos
-                    <span class="badge bg-success text-white ms-2">{{ $singleMemos->where('staff_id', user_session('staff_id'))->count() }}</span>
+                    <span class="badge bg-success text-white ms-2">{{ $singleMemos->where(function($memo) { return $memo->staff_id == user_session('staff_id') || $memo->responsible_person_id == user_session('staff_id'); })->count() }}</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -118,12 +118,14 @@
                             <h6 class="mb-0 text-success fw-bold">
                                 <i class="bx bx-file-doc me-2"></i> My Single Memos
                             </h6>
-                            <small class="text-muted">All single memos you have created</small>
+                            <small class="text-muted">Single memos you created or are responsible for</small>
                         </div>
                     </div>
                     
                     @php 
-                        $myMemos = $singleMemos->where('staff_id', user_session('staff_id'));
+                        $myMemos = $singleMemos->where(function($memo) { 
+                            return $memo->staff_id == user_session('staff_id') || $memo->responsible_person_id == user_session('staff_id'); 
+                        });
                     @endphp
                     
                     @if($myMemos->count() > 0)
@@ -275,7 +277,7 @@
                                 <th>#</th>
                                         <th>Document #</th>
                                 <th>Title</th>
-                                <th>Staff</th>
+                                <th>Responsible Person</th>
                                 <th>Division</th>
                                 <th>Date Range</th>
                                 <th>Request Type</th>
@@ -300,8 +302,12 @@
                                                 <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
                                     </td>
                                             <td>
-                                                @if($memo->staff)
-                                                    {{ $memo->staff->fname }} {{ $memo->staff->lname }}
+                                                @if($memo->responsiblePerson)
+                                                    <div class="fw-bold text-primary">{{ $memo->responsiblePerson->fname }} {{ $memo->responsiblePerson->lname }}</div>
+                                                    <small class="text-muted">Responsible Person</small>
+                                                @elseif($memo->staff)
+                                                    <div class="fw-bold text-secondary">{{ $memo->staff->fname }} {{ $memo->staff->lname }}</div>
+                                                    <small class="text-muted">Creator</small>
                                                 @else
                                                     <span class="text-muted">Not assigned</span>
                                                 @endif

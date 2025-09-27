@@ -722,7 +722,7 @@ $(document).ready(function () {
                     const currentActivityBudgets = @if(isset($editing) && $editing && isset($currentActivityBudgets)) @json($currentActivityBudgets) @else {} @endif;
                     const currentActivityBudget = currentActivityBudgets[code.id] || 0;
                     budgetCodesSelect.append(
-                        `<option value="${code.id}" data-balance="${code.budget_balance}" data-current-activity-budget="${currentActivityBudget}" data-funder-id="${code.funder_id}">${label}</option>`
+                        `<option value="${code.id}" data-balance="${code.budget_balance}" data-current-activity-budget="${currentActivityBudget}" data-funder-id="${code.funder_id}" data-fund-type-id="${code.fund_type_id}">${label}</option>`
                     );
                 });
                 budgetCodesSelect.prop('disabled', false);
@@ -841,17 +841,18 @@ $(document).ready(function () {
         const container = $('#budgetGroupContainer');
         console.log('Budget codes changed. Selected:', selected.map(function() { return $(this).val(); }).get());
         
-        // Check if any selected budget code is World Bank (funder_id = 1)
-        let hasWorldBankCode = false;
+        // Check if any selected budget code is World Bank (funder_id = 1) AND Intramural (fund_type_id = 1)
+        let hasWorldBankIntramuralCode = false;
         selected.each(function () {
             const funderId = $(this).data('funder-id');
-            if (funderId == 1) { // World Bank funder_id
-                hasWorldBankCode = true;
+            const fundTypeId = $(this).data('fund-type-id');
+            if (funderId == 1 && fundTypeId == 1) { // World Bank funder_id AND Intramural fund_type_id
+                hasWorldBankIntramuralCode = true;
             }
         });
 
-        // Make World Bank Activity Code required if World Bank budget code is selected
-        if (hasWorldBankCode) {
+        // Make World Bank Activity Code required if World Bank AND Intramural budget code is selected
+        if (hasWorldBankIntramuralCode) {
             $('#activity_code').prop('required', true);
             $('.activity_code label .text-danger').show();
         } else {
@@ -1351,6 +1352,32 @@ $(document).ready(function () {
             }
         }
     });
+
+    // Initialize World Bank Activity Code requirement on page load
+    function initializeWorldBankActivityCodeRequirement() {
+        const selected = $('#budget_codes').find('option:selected');
+        let hasWorldBankIntramuralCode = false;
+        
+        selected.each(function () {
+            const funderId = $(this).data('funder-id');
+            const fundTypeId = $(this).data('fund-type-id');
+            if (funderId == 1 && fundTypeId == 1) { // World Bank funder_id AND Intramural fund_type_id
+                hasWorldBankIntramuralCode = true;
+            }
+        });
+
+        // Make World Bank Activity Code required if World Bank AND Intramural budget code is selected
+        if (hasWorldBankIntramuralCode) {
+            $('#activity_code').prop('required', true);
+            $('.activity_code label .text-danger').show();
+        } else {
+            $('#activity_code').prop('required', false);
+            $('.activity_code label .text-danger').hide();
+        }
+    }
+
+    // Initialize on page load
+    initializeWorldBankActivityCodeRequirement();
 });
 </script>
 @endpush

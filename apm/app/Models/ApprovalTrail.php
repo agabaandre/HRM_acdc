@@ -111,11 +111,31 @@ class ApprovalTrail extends Model
             return 'Head of Division';
         }
 
-        // For other actions, use the original logic
-        $workflowDefinition = WorkflowDefinition::where('approval_order', $this->approval_order)
+        // For other actions, use category-based routing if multiple definitions exist at the same level
+        $workflowDefinitions = WorkflowDefinition::where('approval_order', $this->approval_order)
             ->where('workflow_id', $this->forward_workflow_id)
-            ->first();
+            ->get();
 
+        if ($workflowDefinitions->count() > 1) {
+            // Multiple definitions at this level - use category-based routing
+            $division = null;
+            if ($model->matrix) {
+                $division = $model->matrix->division;
+            } elseif (isset($model->division)) {
+                $division = $model->division;
+            }
+            
+            if ($division && $division->category) {
+                // Find the definition that matches the division category
+                $workflowDefinition = $workflowDefinitions->where('category', $division->category)->first();
+                if ($workflowDefinition) {
+                    return $workflowDefinition->role;
+                }
+            }
+        }
+
+        // Fallback to first available definition
+        $workflowDefinition = $workflowDefinitions->first();
         return $workflowDefinition ? $workflowDefinition->role : 'Focal Person';
     }
 

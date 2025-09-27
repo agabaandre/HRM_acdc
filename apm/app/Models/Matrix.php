@@ -179,10 +179,29 @@ class Matrix extends Model
             ->where('is_enabled',1)
             ->get();
 
-        if ( $definitions->count() > 1 && $definitions[0]->category )
-                return $definitions->where('category', $this->division->category)->first();
+        if ( $definitions->count() > 1 && $definitions[0]->category ) {
+            // Multiple definitions at this level - use category-based routing
+            $categoryDefinition = $definitions->where('category', $this->division->category)->first();
+            
+            if ($categoryDefinition) {
+                return $categoryDefinition;
+            }
+            
+            // If no definition found at current level for this category, 
+            // look for the next available level for this category
+            $nextDefinition = WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)
+                ->where('approval_order', '>', $this->approval_level)
+                ->where('is_enabled', 1)
+                ->where('category', $this->division->category)
+                ->orderBy('approval_order', 'asc')
+                ->first();
+                
+            if ($nextDefinition) {
+                return $nextDefinition;
+            }
+        }
 
-          return ($definitions->count()>0)?$definitions[0]:WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)->where('approval_order', 1)->first();
+        return ($definitions->count()>0)?$definitions[0]:WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)->where('approval_order', 1)->first();
     }
 
     public function getCurrentActorAttribute()

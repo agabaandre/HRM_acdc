@@ -606,25 +606,56 @@ if (!function_exists('get_pending_single_memo_count')) {
      */
     function get_pending_single_memo_count(int $staffId): int
     {
-        // Single memos are activities, so check activity approval trails
-        return DB::table('activities')
-            ->join('approval_trails', function($join) {
-                $join->on('activities.id', '=', 'approval_trails.model_id')
-                     ->where('approval_trails.model_type', 'App\\Models\\Activity');
-            })
-            ->where('activities.overall_status', 'pending')
-            ->where('activities.forward_workflow_id', '!=', null)
-            ->where('activities.approval_level', '>', 0)
-            ->where('approval_trails.staff_id', '!=', $staffId) // Not approved by current user
-            ->whereNotExists(function($query) use ($staffId) {
-                $query->select(DB::raw(1))
-                      ->from('approval_trails as at2')
-                      ->whereRaw('at2.model_id = activities.id')
-                      ->where('at2.model_type', 'App\\Models\\Activity')
-                      ->where('at2.staff_id', $staffId)
-                      ->where('at2.action', 'approved');
-            })
-            ->count();
+        $userDivisionId = user_session('division_id');
+        
+        // Use the same approach as special memo for consistency
+        $query = \App\Models\Activity::where('overall_status', 'pending')
+            ->where('is_single_memo', true)
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($query) use ($userDivisionId, $staffId) {
+            // Case 1: Check if user is an approver for the current approval level
+            $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) use ($staffId) {
+                $subQ->where('approval_order', \Illuminate\Support\Facades\DB::raw('activities.approval_level'))
+                      ->where(function($workflowQ) use ($staffId) {
+                          // Check if user is in approvers table
+                          $workflowQ->whereHas('approvers', function($approverQ) use ($staffId) {
+                              $approverQ->where('staff_id', $staffId);
+                          });
+                      });
+            });
+
+            // Case 2: Check if user has division-specific role for the current approval level
+            if ($userDivisionId) {
+                $query->orWhere(function($subQ) use ($userDivisionId, $staffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userDivisionId, $staffId) {
+                        $workflowQ->where('is_division_specific', 1)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('activities.approval_level'))
+                                  ->where(function($divQ) use ($userDivisionId, $staffId) {
+                                    $divisionsTable = (new \App\Models\Division())->getTable();
+                                      // Check division roles
+                                      $divQ->whereRaw("EXISTS (
+                                          SELECT 1 FROM {$divisionsTable} d 
+                                          WHERE d.id = activities.division_id 
+                                          AND d.id = ?
+                                          AND (
+                                              d.focal_person = ? OR
+                                              d.division_head = ? OR
+                                              d.admin_assistant = ? OR
+                                              d.finance_officer = ? OR
+                                              d.head_oic_id = ? OR
+                                              d.director_id = ? OR
+                                              d.director_oic_id = ?
+                                          )
+                                      )", [$userDivisionId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId]);
+                                  });
+                    });
+                });
+            }
+        });
+
+        return $query->count();
     }
 }
 

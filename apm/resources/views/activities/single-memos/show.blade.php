@@ -1201,7 +1201,7 @@
                                         <!-- Status -->
                                         <div class="col-md-4">
                                             <div class="d-flex align-items-center gap-2">
-                                                <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                                <div class="p-2" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
                                                     <i class="bx bx-badge-check text-white"></i>
                                                 </div>
                                                 <div>
@@ -1215,7 +1215,7 @@
                                         @if ($activity->overall_status !== 'draft' && $activity->current_actor)
                                         <div class="col-md-4">
                                             <div class="d-flex align-items-center gap-2">
-                                                <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                                                <div class="p-2" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
                                                     <i class="bx bx-user text-white"></i>
                                                 </div>
                                                 <div>
@@ -1230,7 +1230,7 @@
                                         @if ($activity->workflow_definition)
                                         <div class="col-md-4">
                                             <div class="d-flex align-items-center gap-2">
-                                                <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                                                <div class="p-2" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
                                                     <i class="bx bx-crown text-white"></i>
                                                 </div>
                                                 <div>
@@ -1255,7 +1255,113 @@
                             @endif
                         </div>
 
+                        <!-- Enhanced Approval Actions -->
+                        @if (can_take_action_generic($activity) || (is_with_creator_generic($activity) && $activity->overall_status != 'draft') || (isdivision_head($activity) && ($activity->overall_status == 'returned' || $activity->overall_status == 'pending') && $activity->approval_level == 1))
+                            <div class="card border-0 shadow-lg mt-4"
+                                style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                                <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
+                                    <h6 class="mb-0 fw-bold text-gray-800 d-flex align-items-center gap-2" style="color: #1f2937;">
+                                        <i class="bx bx-check-circle" style="color: #059669;"></i>
+                                        Approval Actions - Level {{ $activity->approval_level ?? 0 }}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-info mb-3">
+                                        <i class="bx bx-info-circle me-2"></i>
+                                        <strong>Current Level:</strong> {{ $activity->approval_level ?? 0 }}
+                                        @if ($activity->workflow_definition)
+                                            - <strong>Role:</strong>
+                                            {{ $activity->workflow_definition->role ?? 'Not specified' }}
+                                        @endif
+                                    </div>
+                                    
+                                    <form action="{{ route('activities.single-memos.update-status', $activity) }}"
+                                        method="POST" id="approvalForm">
+                                        @csrf
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <div class="mb-3">
+                                                    <label for="remarks" class="form-label fw-semibold">
+                                                        <i class="bx bx-message-square-detail me-1"></i>Comments
+                                                    </label>
+                                                    <textarea class="form-control" id="remarks" name="remarks" rows="3"
+                                                        placeholder="Add your comments here..."></textarea>
+                                                </div>
+                                                @if($activity->approval_level=='5')
+                                                <div class="mb-3">
+                                                    <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
+                                                    <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
+                                                </div>
+                                                @endif
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="d-grid gap-2 mt-4">
+                                                    @php
+                                                        $isHOD = isdivision_head($activity);
+                                                        $isReturnedToHOD = $isHOD && $activity->overall_status == 'returned' && $activity->approval_level == 1;
+                                                        $isPendingAtHOD = $isHOD && $activity->overall_status == 'pending' && $activity->approval_level == 1;
+                                                    @endphp
+                                                    
+                                                    {{-- Show Approve button only if not returned to HOD --}}
+                                                    @if(!$isReturnedToHOD)
+                                                        <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
+                                                            <i class="bx bx-check"></i>
+                                                            Approve
+                                                        </button>
+                                                    @endif
+                                                    
+                                                    {{-- Always show Return button --}}
+                                                    <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
+                                                        <i class="bx bx-undo"></i>
+                                                        Return
+                                                    </button>
+                                                    
+                                                    {{-- Show Cancel button only for HOD at level 1 --}}
+                                                    @if($isHOD && $activity->approval_level == 1)
+                                                        <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                            <i class="bx bx-x"></i>
+                                                            Cancel
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        @endif
 
+                        <!-- Submit for Approval Section -->
+                        @if ($activity->overall_status === 'draft' && $activity->staff_id == user_session('staff_id'))
+                            <div class="card sidebar-card border-0 mt-4"
+                                style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                                <div class="card-header bg-transparent border-0 py-3">
+                                    <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                        <i class="bx bx-send"></i>
+                                        Submit for Approval
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted mb-3">Ready to submit this single memo for approval?</p>
+                                    <form action="{{ route('activities.single-memos.submit-for-approval', $activity) }}"
+                                        method="POST">
+                                        @csrf
+                                        <button type="submit"
+                                            class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
+                                            <i class="bx bx-send"></i>
+                                            Submit for Approval
+                                        </button>
+                                    </form>
+                                    <div class="mt-3 p-3 bg-light rounded">
+                                        <small class="text-muted">
+                                            <i class="bx bx-info-circle me-1"></i>
+                                            <strong>Note:</strong> Once submitted, you won't be able to edit this memo until
+                                            it's returned for revision.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
 
                     </div>
 
@@ -1264,7 +1370,32 @@
                 </div> <!-- End container-fluid -->
                 <div class="col-lg-12">
 
-
+                    <!-- Resubmission Section for HODs when returned -->
+                    @if($activity->overall_status === 'returned' && isdivision_head($activity) && $activity->approval_level <= 1)
+                        <div class="card sidebar-card border-0 mb-4"
+                            style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                            <div class="card-header bg-transparent border-0 py-3">
+                                <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                    <i class="bx bx-undo"></i>
+                                    Resubmit for Approval
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">This memo was returned for revision. Ready to resubmit?</p>
+                                <button type="button" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2" 
+                                        data-bs-toggle="modal" data-bs-target="#resubmitModal">
+                                    <i class="bx bx-undo"></i>
+                                    Resubmit for Approval
+                                </button>
+                                <div class="mt-3 p-3 bg-light rounded">
+                                    <small class="text-muted">
+                                        <i class="bx bx-info-circle me-1"></i>
+                                        <strong>Note:</strong> This will resubmit the memo to the approver who returned it.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
 
                     <!-- Approval Trail Section -->
                     <div class="row">
@@ -1324,141 +1455,6 @@
                         </div>
                     </div>
 
-                    <!-- Enhanced Approval Actions -->
-                    @if (can_take_action_generic($activity) || (is_with_creator_generic($activity) && $activity->overall_status != 'draft') || (isdivision_head($activity) && ($activity->overall_status == 'returned' || $activity->overall_status == 'pending') && $activity->approval_level == 1))
-                        <div class="card border-0 shadow-sm"
-                            style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
-                            <div class="card-header bg-transparent border-0 py-3">
-                                <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                                    <i class="bx bx-check-circle"></i>
-                                    Approval Actions - Level {{ $activity->approval_level ?? 0 }}
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="alert alert-info mb-3">
-                                    <i class="bx bx-info-circle me-2"></i>
-                                    <strong>Current Level:</strong> {{ $activity->approval_level ?? 0 }}
-                                    @if ($activity->workflow_definition)
-                                        - <strong>Role:</strong>
-                                        {{ $activity->workflow_definition->role ?? 'Not specified' }}
-                                    @endif
-                                </div>
-                                
-                                <form action="{{ route('activities.single-memos.update-status', $activity) }}"
-                                    method="POST" id="approvalForm">
-                                    @csrf
-                                    <input type="hidden" name="debug_approval" value="1">
-                                    <div class="row">
-                                        <div class="col-md-8">
-                                            <div class="mb-3">
-                                                <label for="comment" class="form-label">Comments (Optional)</label>
-                                                <textarea class="form-control" id="comment" name="comment" rows="3"
-                                                    placeholder="Add any comments about your decision..."></textarea>
-                                            </div>
-                                        </div>
-                                        @if($activity->approval_level=='5')
-                                        <div class="col-md-8">
-                                            <div class="mb-3">
-                                                <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
-                                                <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
-                                            </div>
-                                        </div>
-                                        @endif
-                                        <div class="col-md-4">
-                                            <div class="d-grid gap-2 mt-4">
-                                                @php
-                                                    $isHOD = isdivision_head($activity);
-                                                    $isReturnedToHOD = $isHOD && $activity->overall_status == 'returned' && $activity->approval_level == 1;
-                                                    $isPendingAtHOD = $isHOD && $activity->overall_status == 'pending' && $activity->approval_level == 1;
-                                                @endphp
-                                                
-                                                {{-- Show Approve button only if not returned to HOD --}}
-                                                @if(!$isReturnedToHOD)
-                                                    <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
-                                                        <i class="bx bx-check"></i>
-                                                        Approve
-                                                    </button>
-                                                @endif
-                                                
-                                                {{-- Always show Return button --}}
-                                                <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
-                                                    <i class="bx bx-undo"></i>
-                                                    Return
-                                                </button>
-                                                
-                                                {{-- Show Cancel button only for HOD at level 1 --}}
-                                                @if($isHOD && $activity->approval_level == 1)
-                                                    <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
-                                                        <i class="bx bx-x"></i>
-                                                        Cancel
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Resubmission Section for HODs when returned -->
-                    @if($activity->overall_status === 'returned' && isdivision_head($activity) && $activity->approval_level <= 1)
-                        <div class="card sidebar-card border-0"
-                            style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
-                            <div class="card-header bg-transparent border-0 py-3">
-                                <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                                    <i class="bx bx-undo"></i>
-                                    Resubmit for Approval
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted mb-3">This memo was returned for revision. Ready to resubmit?</p>
-                                <button type="button" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2" 
-                                        data-bs-toggle="modal" data-bs-target="#resubmitModal">
-                                    <i class="bx bx-undo"></i>
-                                    Resubmit for Approval
-                                </button>
-                                <div class="mt-3 p-3 bg-light rounded">
-                                    <small class="text-muted">
-                                        <i class="bx bx-info-circle me-1"></i>
-                                        <strong>Note:</strong> This will resubmit the memo to the approver who returned it.
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
-                    <!-- Submit for Approval Section -->
-                    @if ($activity->overall_status === 'draft' && $activity->staff_id == user_session('staff_id'))
-                        <div class="card sidebar-card border-0"
-                            style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
-                            <div class="card-header bg-transparent border-0 py-3">
-                                <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
-                                    <i class="bx bx-send"></i>
-                                    Submit for Approval
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <p class="text-muted mb-3">Ready to submit this single memo for approval?</p>
-                                <form action="{{ route('activities.single-memos.submit-for-approval', $activity) }}"
-                                    method="POST">
-                                    @csrf
-                                    <button type="submit"
-                                        class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
-                                        <i class="bx bx-send"></i>
-                                        Submit for Approval
-                                    </button>
-                                </form>
-                                <div class="mt-3 p-3 bg-light rounded">
-                                    <small class="text-muted">
-                                        <i class="bx bx-info-circle me-1"></i>
-                                        <strong>Note:</strong> Once submitted, you won't be able to edit this memo until
-                                        it's returned for revision.
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
 
                 </div>
 

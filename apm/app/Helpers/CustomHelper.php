@@ -227,33 +227,94 @@ if (!function_exists('user_session')) {
             $user = (object) session('user', []);
             $session_division_id = isset($user->division_id) ? $user->division_id : null;
 
-            // Must be owner or responsible person
+            // Check if this is a single memo (Activity model with is_single_memo = true)
+            $isSingleMemo = isset($memo->is_single_memo) && $memo->is_single_memo;
+
+            // Check if user is authorized to edit
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-          //  dd($);.
-            $isFocalperson = isset($memo->matrix, $memo->matrix->division->focal_person, $user->staff_id) && $memo->matrix->division->focal_person == $user->staff_id;
-           // dd($isFocalperson);
-            // Only allow if status is draft or returned
-            $isMemoApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned')) || 
-                             (isset($memo->matrix, $memo->matrix->overall_status) && ($memo->matrix->overall_status == 'returned' || $memo->matrix->overall_status == 'draft'));
-
-          $isunderapproval = (isset($memo->overall_status) && ($memo->overall_status == 'returned' || $memo->overall_status == 'pending')) || 
-
+            
+            // Check if user is focal person of the memo's division
+            $isFocalperson = false;
+            if (isset($memo->division_id)) {
+                $division = Division::find($memo->division_id);
+                if ($division && isset($division->focal_person, $user->staff_id)) {
+                    $isFocalperson = $division->focal_person == $user->staff_id;
+                }
+            }
+            
             // Check if user is division head of the memo's division
             $isDivisionHead = false;
-            
             if (isset($memo->division_id)) {
-                // Get all division IDs where the user is the division head
                 $divisionIds = Division::where('division_head', $user->staff_id)->pluck('id')->toArray();
-
                 if (in_array($memo->division_id, $divisionIds)) {
                     $isDivisionHead = true; 
                 }
             }
 
-            //dd($isOwner,$isResponsible,$isFocalperson,$isDivisionHead,$isApproved);
+            // User must be authorized
+            $isAuthorized = $isOwner || $isResponsible || $isFocalperson || $isDivisionHead;
+            if (!$isAuthorized) {
+                return false;
+            }
 
-         return ( ($isOwner || $isResponsible || $isFocalperson || $isDivisionHead) && $isMemoApproved);
+            // Check memo status conditions
+            $memoStatus = $memo->overall_status ?? null;
+            $approvalLevel = $memo->approval_level ?? 0;
+
+            // Always allow editing if status is 'draft' or 'returned'
+            if ($memoStatus === 'draft' || $memoStatus === 'returned') {
+                return true;
+            }
+
+            // For single memos: only consider the memo's own status, not matrix status
+            if ($isSingleMemo) {
+                // For 'pending' status: only allow editing if at level 1 (HOD level)
+                if ($memoStatus === 'pending' && $approvalLevel == 1) {
+                    return true;
+                }
+
+                // For 'pending' status at other levels: only allow if user is HOD and memo is returned to them
+                if ($memoStatus === 'pending' && $approvalLevel > 1) {
+                    // Only HOD can edit pending memos at higher levels if they are the current approver
+                    return $isDivisionHead && $approvalLevel == 1;
+                }
+
+                // Don't allow editing if status is 'approved' or 'cancelled'
+                if (in_array($memoStatus, ['approved', 'cancelled'])) {
+                    return false;
+                }
+
+                // Default: don't allow editing
+                return false;
+            }
+
+            // For matrix activities: consider both memo and matrix status
+            $matrixStatus = isset($memo->matrix) ? $memo->matrix->overall_status : null;
+
+            // Allow editing if matrix status is 'draft' or 'returned' (for matrix activities)
+            if ($matrixStatus === 'draft' || $matrixStatus === 'returned') {
+                return true;
+            }
+
+            // For 'pending' status: only allow editing if at level 1 (HOD level)
+            if ($memoStatus === 'pending' && $approvalLevel == 1) {
+                return true;
+            }
+
+            // For 'pending' status at other levels: only allow if user is HOD and memo is returned to them
+            if ($memoStatus === 'pending' && $approvalLevel > 1) {
+                // Only HOD can edit pending memos at higher levels if they are the current approver
+                return $isDivisionHead && $approvalLevel == 1;
+            }
+
+            // Don't allow editing if status is 'approved' or 'cancelled'
+            if (in_array($memoStatus, ['approved', 'cancelled'])) {
+                return false;
+            }
+
+            // Default: don't allow editing
+            return false;
         }
      }
      
@@ -1234,11 +1295,55 @@ function getCurrentApproverInfo($memo)
     }
 
     // Get workflow definition for current approval level
-    $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
+    // If there are multiple definitions at the same level (like level 7), use category-based routing
+    $workflowDefinition = null;
+    
+    // Check if there are multiple definitions at this level
+    $definitionsAtLevel = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
         ->where('approval_order', $approvalLevel)
         ->where('is_enabled', 1)
-        ->with(['approvers.staff', 'approvers.oicStaff'])
-        ->first();
+        ->count();
+    
+    if ($definitionsAtLevel > 1) {
+        // Multiple definitions at this level - use category-based routing
+        $division = null;
+        if ($memo->matrix) {
+            $division = $memo->matrix->division;
+        } elseif (isset($memo->division)) {
+            $division = $memo->division;
+        }
+        
+        if ($division && $division->category) {
+            // Find the definition that matches the division category
+            $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
+                ->where('approval_order', $approvalLevel)
+                ->where('is_enabled', 1)
+                ->where('category', $division->category)
+                ->with(['approvers.staff', 'approvers.oicStaff'])
+                ->first();
+            
+            // If no definition found at current level for this category, 
+            // look for the next available level for this category
+            if (!$workflowDefinition) {
+                $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
+                    ->where('approval_order', '>', $approvalLevel)
+                    ->where('is_enabled', 1)
+                    ->where('category', $division->category)
+                    ->with(['approvers.staff', 'approvers.oicStaff'])
+                    ->orderBy('approval_order', 'asc')
+                    ->first();
+            }
+        }
+    }
+    
+    // If no category-specific definition found, use the first available one
+    if (!$workflowDefinition) {
+        $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $forwardWorkflowId)
+            ->where('approval_order', $approvalLevel)
+            ->where('is_enabled', 1)
+            ->with(['approvers.staff', 'approvers.oicStaff'])
+            ->first();
+    }
 
     if (!$workflowDefinition) {
         return null;

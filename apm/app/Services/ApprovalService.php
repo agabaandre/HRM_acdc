@@ -492,47 +492,25 @@ public function getNextApprover($model)
             $pickFirstCategoryNode = function (?string $category) use ($model, $pick, $approvalLevel) {
         $cat = $category ?: 'Other';
         
-        // First try to get category-specific approver
+        // Simple and elegant: Find workflow definition that matches the division category
+        // This approach is scalable and doesn't require hardcoded logic for each category
         $definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
             ->where('is_enabled', 1)
             ->where('category', $cat)
-            ->orderBy('approval_order', 'asc')
-        ->first();
-
-        // If we found a category-specific approver, check if we've already passed it
-        if ($definition) {
-            // If current approval level is greater than or equal to the category approver level,
-            // we've already passed this approver, so go to the next available approval order
-            if ($approvalLevel >= $definition->approval_order) {
-                // We've already passed the category approver, find the next available approval order
-                $nextDefinition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
-                    ->where('is_enabled', 1)
-                    ->where('approval_order', '>', $approvalLevel)
-                    ->orderBy('approval_order', 'asc')
-                    ->first();
-                
-                if ($nextDefinition) {
-                    return $nextDefinition;
-                }
-            } else {
-                // We haven't reached the category approver yet, return it
-                return $definition;
-            }
-        }
-        
-        // If no category-specific approver found, find the next available approval order
-        $nextDefinition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
-            ->where('is_enabled', 1)
-            ->where('approval_order', '>', $approvalLevel)
+            ->where('approval_order', '>', $approvalLevel) // Only look for next level, not current
             ->orderBy('approval_order', 'asc')
             ->first();
         
-        if ($nextDefinition) {
-            return $nextDefinition;
+        // If no category-specific approver found, find the next available approval order
+        if (!$definition) {
+            $definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', '>', $approvalLevel)
+                ->orderBy('approval_order', 'asc')
+                ->first();
         }
         
-        // Fallback: return null if no next approver found
-        return null;
+        return $definition;
     };
 
     // Get current workflow definition
@@ -547,7 +525,7 @@ public function getNextApprover($model)
     // If at HOD level (approval_order = 1), check if we should skip directorate
     if ($approvalLevel == 1) {
         // Check if division has directorate (null or 0 means no director)
-        if ($division->director_id === null || $division->director_id == 0) {
+        if ($division->director_id == null || $division->director_id == 0) {
             // No directorate - skip to next available step after Director (order 2)
             // But first check fund types to route correctly
             if ($hasIntra && !$hasExtra) {
@@ -568,7 +546,13 @@ public function getNextApprover($model)
                 if ($definition) return $definition;
             }
             
-            // External or fallback - go to next available step after Director
+            // External source - skip Director and go directly to division category check
+            if ($isExternal) {
+                $definition = $pickFirstCategoryNode($division->category ?? null);
+                if ($definition) return $definition;
+            }
+            
+            // Fallback - go to next available step after Director
             $definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
                 ->where('is_enabled', 1)
                 ->where('approval_order', '>', 2) // Skip Director step (order 2)
@@ -601,7 +585,7 @@ public function getNextApprover($model)
     // If at Director level (approval_order = 2), check if division has director
     if ($approvalLevel == 2) {
         // Check if division has director - if not, skip to next level
-        if ($division->director_id === null) {
+        if ($division->director_id == null) {
             // No director - skip to next available step
             $definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
                 ->where('is_enabled', 1)
@@ -639,7 +623,13 @@ public function getNextApprover($model)
             if ($definition) return $definition;
         }
 
-        // For external sources, go to next available step
+        // External source - go directly to division category check
+        if ($isExternal) {
+            $definition = $pickFirstCategoryNode($division->category ?? null);
+            if ($definition) return $definition;
+        }
+
+        // Fallback - go to next available step
         $definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
             ->where('is_enabled', 1)
             ->where('approval_order', '>', $approvalLevel)
@@ -791,6 +781,14 @@ public function getNextApprover($model)
     }
 
     // STEP 7-11: Final Approval Chain (Head Operations/Programs -> DDG -> COP -> DG -> Registry)
+    // At level 7, use category-based routing to find the correct approver
+    if ($approvalLevel == 7) {
+        $definition = $pickFirstCategoryNode($division->category ?? null);
+        if ($definition) {
+            return $definition;
+        }
+    }
+    
     // Find the next available approval order
     $definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
         ->where('is_enabled', 1)
