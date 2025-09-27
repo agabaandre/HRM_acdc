@@ -387,11 +387,11 @@ class NonTravelMemoController extends Controller
     /** Show edit form */
     public function edit(NonTravelMemo $nonTravel)
     {
-        // Check if memo is in draft status - only allow editing of drafts
-        if ($nonTravel->overall_status !== 'draft') {
+        // Check if user has privileges to edit this memo using can_edit_memo()
+        if (!can_edit_memo($nonTravel)) {
             return redirect()
                 ->route('non-travel.show', $nonTravel)
-                ->with('error', 'Cannot edit memo. Only draft memos can be edited.');
+                ->with('error', 'You do not have permission to edit this memo.');
         }
 
         // Retrieve budgets with funder details
@@ -455,11 +455,11 @@ class NonTravelMemoController extends Controller
     public function update(Request $request, NonTravelMemo $nonTravel): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         //dd($request);
-        // Check if memo is in draft status - only allow updating of drafts
-        if ($nonTravel->overall_status !== 'draft') {
+        // Check if user has privileges to edit this memo using can_edit_memo()
+        if (!can_edit_memo($nonTravel)) {
             return redirect()
                 ->route('non-travel.show', $nonTravel)
-                ->with('error', 'Cannot update memo. Only draft memos can be updated.');
+                ->with('error', 'You do not have permission to edit this memo.');
         }
 
         // Get fund type to determine validation rules
