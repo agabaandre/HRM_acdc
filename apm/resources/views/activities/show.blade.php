@@ -495,51 +495,49 @@
                         </a>
                     @endif
                     
-                    @if(can_request_arf($activity))
-                        @php
-                            // Check if ARF already exists for this activity
-                            $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
-                                ->where('model_type', 'App\\Models\\Activity')
-                                ->first();
-                        @endphp
-                        
-                        @if(!$existingArf)
-                            <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
-                                <i class="bx bx-file-plus"></i>
-                                <span>Create ARF Request</span>
-                            </button>
-                        @else
-                            <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
-                                <i class="bx bx-show"></i>
-                                <span>View ARF Request</span>
-                            </a>
-                        @endif
+                    @php
+                        // Check if ARF already exists for this activity
+                        $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                            ->where('model_type', 'App\\Models\\Activity')
+                            ->first();
+                    @endphp
+                    
+                    @if($existingArf)
+                        {{-- Show View ARF button if ARF exists --}}
+                        <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
+                            <i class="bx bx-show"></i>
+                            <span>View ARF Request</span>
+                        </a>
+                    @elseif(can_request_arf($activity))
+                        {{-- Show Create ARF button if memo is approved and no ARF exists --}}
+                        <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                            <i class="bx bx-file-plus"></i>
+                            <span>Create ARF Request</span>
+                        </button>
                     @endif
                                 
                          
                     {{-- Service Request Button --}}
-                    @if(can_request_services($activity))
-                        @php
-                            // Check if Service Request already exists for this activity
-                            $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
-                                ->where('model_type', 'App\\Models\\Activity')
-                                ->first();
-
-                               
-                        @endphp
-                        
-                        @if(!$existingServiceRequest)
-                            <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
-                               class="btn btn-info d-flex align-items-center gap-2">
-                                <i class="fas fa-tools"></i>
-                                <span>Create Service Request</span>
-                            </a>
-                        @else
-                            <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
-                                <i class="fas fa-eye"></i>
-                                <span>View Service Request</span>
-                            </a>
-                        @endif
+                    @php
+                        // Check if Service Request already exists for this activity
+                        $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
+                            ->where('model_type', 'App\\Models\\Activity')
+                            ->first();
+                    @endphp
+                    
+                    @if($existingServiceRequest)
+                        {{-- Show View Service Request button if Service Request exists --}}
+                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                            <i class="fas fa-eye"></i>
+                            <span>View Service Request</span>
+                        </a>
+                    @elseif(can_request_services($activity))
+                        {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
+                        <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
+                           class="btn btn-info d-flex align-items-center gap-2">
+                            <i class="fas fa-tools"></i>
+                            <span>Create Service Request</span>
+                        </a>
                     @endif
                             {{-- @dd(can_print_memo($activity)) --}}
                     @if(can_print_memo($activity))
@@ -715,6 +713,7 @@
                                 {{ optional($activity->focalPerson)->job_name ?? 'Not specified' }}
                             </td>
                         </tr>
+                        @if($activity->fund_type_id == 1)
                         <tr>
                             <td class="field-label">
                                 <i class="bx bx-calendar me-2 text-danger"></i>Date Range
@@ -731,8 +730,25 @@
                                 {{ optional($activity->requestType)->name ?? 'Not specified' }}
                             </td>
                         </tr>
+                        @else
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-category me-2 text-purple"></i>Request Type
+                            </td>
+                            <td class="field-value">
+                                {{ optional($activity->requestType)->name ?? 'Not specified' }}
+                            </td>
+                            <td class="field-label">
+                                <i class="bx bx-calendar me-2 text-info"></i>Memo Date
+                            </td>
+                            <td class="field-value">
+                                {{ $activity->created_at ? $activity->created_at->format('M d, Y') : 'Not set' }}
+                            </td>
+                        </tr>
+                        @endif
                         
                         <!-- Location Information -->
+                        @if($activity->fund_type_id != 1)
                         <tr>
                             <td class="field-label">
                                 <i class="bx bx-map me-2 text-success"></i>Location(s)
@@ -747,6 +763,7 @@
                         @endif
                             </td>
                         </tr>
+                        @endif
                         
                         <!-- Budget Information -->
                         <tr>
@@ -812,7 +829,7 @@
                 </div>
 
         <!-- Key Result Area Card -->
-        @if($activity->key_result_area && $matrix->key_result_area)
+        @if(!$activity->is_single_memo && $activity->key_result_area && $matrix->key_result_area)
             <div class="card content-section border-0 mb-4">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
@@ -845,6 +862,7 @@
             </div>
         @endif
 
+        @if($activity->fund_type_id != 1)
         <div class="row">
             <!-- Participants & Location -->
             <div class="card content-section bg-green border-0 mb-4 w-100">
@@ -964,6 +982,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
                
 

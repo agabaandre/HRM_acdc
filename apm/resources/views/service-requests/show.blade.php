@@ -233,18 +233,24 @@
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Activity Type</label>
                                 <p class="mb-0">
-                                    @if(isset($sourceData->is_special_memo) && $sourceData->is_special_memo)
+                                    @if($serviceRequest->source_type === 'special_memo')
                                         Special Memo
-                                    @elseif(isset($sourceData->requestType))
-                                        {{ $sourceData->requestType->name ?? 'Service Request' }}
+                                    @elseif($serviceRequest->source_type === 'non_travel_memo')
+                                        Non-Travel Memo
+                                    @elseif($serviceRequest->source_type === 'activity')
+                                        @if(isset($sourceData->is_single_memo) && $sourceData->is_single_memo)
+                                            Single Memo
+                                        @else
+                                            Matrix Activity
+                                        @endif
                                     @elseif(isset($sourceData->fundType))
-                                        {{ $sourceData->fundType->name ?? 'Service Request' }}
+                                        {{ $sourceData->fundType->name ?? 'Activity' }}
                                     @else
-                                        Regular Activity
+                                        Activity
                                     @endif
                                 </p>
                             </div>
-                            @if(isset($sourceData->is_special_memo) && $sourceData->is_special_memo)
+                            @if($serviceRequest->source_type === 'non_travel_memo')
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label text-muted small fw-semibold">Memo Date</label>
                                     <p class="mb-0">{{ $sourceData->memo_date ? \Carbon\Carbon::parse($sourceData->memo_date)->format('M d, Y') : 'Not specified' }}</p>
@@ -259,6 +265,7 @@
                                     <p class="mb-0">{{ $sourceData->date_to ? \Carbon\Carbon::parse($sourceData->date_to)->format('M d, Y') : 'Not specified' }}</p>
                                 </div>
                             @endif
+                            @if(!isset($sourceData->fund_type_id) || $sourceData->fund_type_id != 1)
                             <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted small fw-semibold">Key Result Area</label>
                                 <p class="mb-0">{{ $sourceData->key_result_area ?? 'Not specified' }}</p>
@@ -275,6 +282,7 @@
                                 <label class="form-label text-muted small fw-semibold">Location</label>
                                 <p class="mb-0">{{ $sourceData->location ?? 'Not specified' }}</p>
                             </div>
+                            @endif
                         </div>
                         
                         @if($sourceData->background)
