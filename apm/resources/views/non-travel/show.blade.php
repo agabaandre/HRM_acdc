@@ -194,48 +194,48 @@
                         </a>
                     @endif
                     
-                    @if(can_request_arf($nonTravel))
-                        @php
-                            // Check if ARF already exists for this non-travel memo
-                            $existingArf = \App\Models\RequestARF::where('source_id', $nonTravel->id)
-                                ->where('model_type', 'App\\Models\\NonTravelMemo')
-                                ->first();
-                        @endphp
-                        
-                        @if(!$existingArf)
-                            <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
-                                <i class="bx bx-file-plus"></i>
-                                <span>Create ARF Request</span>
-                            </button>
-                        @else
-                            <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
-                                <i class="bx bx-show"></i>
-                                <span>View ARF Request</span>
-                            </a>
-                        @endif
+                    @php
+                        // Check if ARF already exists for this non-travel memo
+                        $existingArf = \App\Models\RequestARF::where('source_id', $nonTravel->id)
+                            ->where('model_type', 'App\\Models\\NonTravelMemo')
+                            ->first();
+                    @endphp
+                    
+                    @if($existingArf)
+                        {{-- Show View ARF button if ARF exists --}}
+                        <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
+                            <i class="bx bx-show"></i>
+                            <span>View ARF Request</span>
+                        </a>
+                    @elseif(can_request_arf($nonTravel))
+                        {{-- Show Create ARF button if memo is approved and no ARF exists --}}
+                        <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                            <i class="bx bx-file-plus"></i>
+                            <span>Create ARF Request</span>
+                        </button>
                     @endif
                     
                     {{-- Service Request Button --}}
-                    @if(can_request_services($nonTravel))
-                        @php
-                            // Check if Service Request already exists for this non-travel memo
-                            $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $nonTravel->id)
-                                ->where('model_type', 'App\\Models\\NonTravelMemo')
-                                ->first();
-                        @endphp
-                        
-                        @if(!$existingServiceRequest)
-                            <a href="{{ route('service-requests.create') }}?source_type=non_travel&source_id={{ $nonTravel->id }}" 
-                               class="btn btn-info d-flex align-items-center gap-2">
-                                <i class="fas fa-tools"></i>
-                                <span>Create Service Request</span>
-                            </a>
-                        @else
-                            <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
-                                <i class="fas fa-eye"></i>
-                                <span>View Service Request</span>
-                            </a>
-                        @endif
+                    @php
+                        // Check if Service Request already exists for this non-travel memo
+                        $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $nonTravel->id)
+                            ->where('model_type', 'App\\Models\\NonTravelMemo')
+                            ->first();
+                    @endphp
+                    
+                    @if($existingServiceRequest)
+                        {{-- Show View Service Request button if Service Request exists --}}
+                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                            <i class="fas fa-eye"></i>
+                            <span>View Service Request</span>
+                        </a>
+                    @elseif(can_request_services($nonTravel))
+                        {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
+                        <a href="{{ route('service-requests.create') }}?source_type=non_travel&source_id={{ $nonTravel->id }}" 
+                           class="btn btn-info d-flex align-items-center gap-2">
+                            <i class="fas fa-tools"></i>
+                            <span>Create Service Request</span>
+                        </a>
                     @endif
                     
                     @if(can_print_memo($nonTravel))

@@ -476,7 +476,62 @@
   ?>
 
   <!-- Service Request Budget Breakdown -->
-  <?php if ($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs']))): ?>
+  <?php if ($serviceRequest->source_type === 'non_travel_memo' && $sourceData && $sourceData->budget_breakdown): ?>
+    <!-- Non-Travel Memo Source Budget Breakdown -->
+    <?php
+    $sourceBudgetBreakdown = is_string($sourceData->budget_breakdown) 
+        ? json_decode($sourceData->budget_breakdown, true) 
+        : $sourceData->budget_breakdown;
+    ?>
+    <?php if ($sourceBudgetBreakdown && is_array($sourceBudgetBreakdown)): ?>
+    <div class="mb-4">
+        <div class="mb-0" style="color:#006633; font-size: 15px;"><strong>Budget Breakdown (Non-Travel Memo)</strong></div>
+        
+        <table class="bordered-table mb-15">
+            <thead>
+                <tr>
+                    <th class="bg-highlight">#</th>
+                    <th class="bg-highlight">Description</th>
+                    <th class="bg-highlight">Quantity</th>
+                    <th class="bg-highlight">Unit Price</th>
+                    <th class="bg-highlight">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $grandTotal = 0;
+                $rowIndex = 1;
+                unset($sourceBudgetBreakdown['grand_total']);
+                ?>
+                <?php foreach ($sourceBudgetBreakdown as $codeId => $items): ?>
+                    <?php if (is_array($items)): ?>
+                        <?php foreach ($items as $item): ?>
+                            <?php
+                            $itemTotal = ($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0);
+                            $grandTotal += $itemTotal;
+                            ?>
+                            <tr>
+                                <td><?php echo $rowIndex; ?></td>
+                                <td><?php echo $item['description'] ?? 'N/A'; ?></td>
+                                <td class="text-center"><?php echo $item['quantity'] ?? 1; ?></td>
+                                <td class="text-right">$<?php echo number_format($item['unit_cost'] ?? 0, 2); ?></td>
+                                <td class="text-right">$<?php echo number_format($itemTotal, 2); ?></td>
+                            </tr>
+                            <?php $rowIndex++; ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th class="bg-highlight text-right" colspan="4">Grand Total</th>
+                    <th class="bg-highlight text-right">$<?php echo number_format($grandTotal, 2); ?></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <?php endif; ?>
+  <?php elseif ($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs']))): ?>
                     <div class="mb-4">
 <!-- Service Request Details -->
 <div class="mb-0" style="color:#006633; font-size: 15px;"><strong>Budget Breakdown</strong></div>

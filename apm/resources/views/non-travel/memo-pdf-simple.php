@@ -82,7 +82,7 @@
         font-size: 14px; 
         margin-top: 10px;
         margin-bottom: 10px;
-        font-style: italic;
+        font-style: regular;
     }
     p {
       font-size: 14px;
