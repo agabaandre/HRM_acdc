@@ -518,6 +518,13 @@ class SpecialMemoController extends Controller
      */
     public function edit(SpecialMemo $specialMemo): View
     {
+        // Check if user has privileges to edit this memo using can_edit_memo()
+        if (!can_edit_memo($specialMemo)) {
+            return redirect()
+                ->route('special-memo.show', $specialMemo)
+                ->with('error', 'You do not have permission to edit this memo.');
+        }
+
         ini_set('memory_limit', '1024M');
         $division_id = user_session('division_id');
       
@@ -677,6 +684,13 @@ class SpecialMemoController extends Controller
      */
     public function update(Request $request, SpecialMemo $specialMemo): RedirectResponse
     {
+        // Check if user has privileges to edit this memo using can_edit_memo()
+        if (!can_edit_memo($specialMemo)) {
+            return redirect()
+                ->route('special-memo.show', $specialMemo)
+                ->with('error', 'You do not have permission to edit this memo.');
+        }
+
         // Debug: Log the request data
         \Log::info('Special Memo Update Request', [
             'action' => $request->input('action'),

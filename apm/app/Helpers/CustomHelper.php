@@ -148,17 +148,10 @@ if (!function_exists('user_session')) {
 
      if (!function_exists('can_print_memo')) {
         function can_print_memo($memo) {
-            $user = (object) session('user', []);
-            // Must be owner or responsible person
-            $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
-            $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
+            // Only allow if status is approved - anyone can print approved memos
+            $isApproved = isset($memo->overall_status) && $memo->overall_status == 'approved';
 
-            // Only allow if status is approved
-            $isApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
-
-            // If this is a matrix memo, check matrix approval and activity approval
-
-            return ($isOwner || $isResponsible) && $isApproved;
+            return $isApproved;
         }
      }
 
@@ -176,12 +169,11 @@ if (!function_exists('user_session')) {
             // Check if this is a single memo
             $isSingleMemo = isset($memo->is_single_memo) && $memo->is_single_memo;
             
-            // Must be owner or responsible person
-            $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
+            // Must be responsible person only
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
             
-            // Check if user is authorized
-            $isAuthorized = $isOwner || $isResponsible;
+            // Check if user is authorized (only responsible person)
+            $isAuthorized = $isResponsible;
             if (!$isAuthorized) {
                 return false;
             }
