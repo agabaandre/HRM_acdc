@@ -193,6 +193,13 @@ class SendDailyPendingApprovalsNotificationJob implements ShouldQueue
             $mail->setFrom(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME', 'Africa CDC APM'));
             $mail->addAddress($approver['work_email'], $approver['fname'] . ' ' . $approver['lname']);
             $mail->addBCC('system@africacdc.org');
+            
+            // Log BCC addition for debugging
+            Log::info("Daily notification BCC added", [
+                'staff_id' => $approver['staff_id'],
+                'bcc_email' => 'system@africacdc.org',
+                'recipient_email' => $approver['work_email']
+            ]);
 
             // Subject - Dynamic based on time of day
             $prefix = env('MAIL_SUBJECT_PREFIX', 'APM') . ": ";
@@ -222,8 +229,11 @@ class SendDailyPendingApprovalsNotificationJob implements ShouldQueue
 
             Log::info("Daily pending approvals email sent successfully", [
                 'staff_id' => $approver['staff_id'],
+                'recipient_email' => $approver['work_email'],
+                'bcc_email' => 'system@africacdc.org',
                 'total_pending' => $summaryStats['total_pending'],
-                'result' => $result
+                'result' => $result,
+                'subject' => $mail->Subject
             ]);
 
         } catch (Exception $e) {

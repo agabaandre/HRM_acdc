@@ -253,7 +253,7 @@
                                                 <span class="badge badge-info">Level {{ $item['approval_level'] }}</span>
                                             </div>
                                             <div class="item-actions">
-                                                <a href="{{ $baseUrl }}{{ $item['view_url'] }}" class="btn">View Details</a>
+                                                <a href="{{ $item['view_url'] }}" class="btn">View Details</a>
                                             </div>
                                         </li>
                                     @endforeach
