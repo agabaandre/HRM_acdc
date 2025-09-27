@@ -24,7 +24,7 @@ Schedule::command('notifications:daily-pending-approvals')
     ->runInBackground();
 
 Schedule::command('notifications:daily-pending-approvals')
-    ->dailyAt('23:45')
+    ->dailyAt('00:15')
     ->timezone('Africa/Addis_Ababa') // Africa CDC timezone
     ->description('Send test pending approvals notifications to all approvers')
     ->withoutOverlapping()
