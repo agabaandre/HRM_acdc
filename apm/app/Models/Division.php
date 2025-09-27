@@ -45,6 +45,8 @@ class Division extends Model
         'director_oic_start_date',
         'director_oic_end_date',
         'category',
+        'created_at',
+        'updated_at',
     ];
 
 

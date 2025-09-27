@@ -108,17 +108,16 @@
                     
                     @if($mySubmittedArfs && $mySubmittedArfs->count() > 0)
         <div class="table-responsive">
-                            <table class="table table-hover mb-0">
+                            <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
                                 <thead class="table-success">
                                     <tr>
-                                        <th>#</th>
-                                        <th>ARF Number</th>
-                                        <th>Title</th>
-                                        <th>Division</th>
-                                        <th>Request Date</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Actions</th>
+                                        <th style="width: 5%;">#</th>
+                                        <th style="width: 15%;">Document Number</th>
+                                        <th style="width: 35%;">Title</th>
+                                        <th style="width: 15%;">Division</th>
+                                        <th style="width: 15%;">Request Date</th>
+                                        <th style="width: 10%;">Status</th>
+                                        <th class="text-center" style="width: 10%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -127,18 +126,15 @@
                         <tr>
                                             <td>{{ $count++ }}</td>
                             <td>
-                                <div class="fw-bold text-primary">{{ $arf->arf_number }}</div>
+                                <div class="fw-bold text-primary">{{ $arf->document_number ?? $arf->arf_number }}</div>
                             </td>
-                            <td>
-                                <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
+                            <td style="max-width: 300px; width: 300px; word-wrap: break-word; overflow-wrap: break-word;">
+                                <div class="fw-bold text-primary text-break" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">{{ to_sentence_case($arf->activity_title) }}</div>
                             </td>
-                            <td>{{ $arf->actual_division->division_name ?? 'N/A' }}</td>
+                            <td style="max-width: 150px; width: 150px; word-wrap: break-word; overflow-wrap: break-word;">
+                                <div class="text-break" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">{{ $arf->actual_division->division_name ?? 'N/A' }}</div>
+                            </td>
                             <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
-                            <td>
-                                <span class="fw-bold text-success">
-                                    ${{ number_format($arf->requested_amount, 2) }}
-                                </span>
-                            </td>
                             <td>
                                 {!! display_memo_status_auto($arf) !!}
                             </td>
@@ -189,18 +185,17 @@
                     
                     @if($allArfs && $allArfs->count() > 0)
         <div class="table-responsive">
-                            <table class="table table-hover mb-0">
+                            <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
                                 <thead class="table-primary">
                                     <tr>
-                                        <th>#</th>
-                                        <th>ARF Number</th>
-                                        <th>Title</th>
-                                        <th>Staff</th>
-                                        <th>Division</th>
-                                        <th>Request Date</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                        <th class="text-center">Actions</th>
+                                        <th style="width: 5%;">#</th>
+                                        <th style="width: 15%;">Document Number</th>
+                                        <th style="width: 30%;">Title</th>
+                                        <th style="width: 12%;">Staff</th>
+                                        <th style="width: 12%;">Division</th>
+                                        <th style="width: 12%;">Request Date</th>
+                                        <th style="width: 10%;">Status</th>
+                                        <th class="text-center" style="width: 10%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -209,19 +204,16 @@
                         <tr>
                                             <td>{{ $count++ }}</td>
                             <td>
-                                <div class="fw-bold text-primary">{{ $arf->arf_number }}</div>
+                                <div class="fw-bold text-primary">{{ $arf->document_number ?? $arf->arf_number }}</div>
                             </td>
-                            <td>
-                                <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
+                            <td style="max-width: 300px; width: 300px; word-wrap: break-word; overflow-wrap: break-word;">
+                                <div class="fw-bold text-primary text-break" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">{{ to_sentence_case($arf->activity_title) }}</div>
                             </td>
                             <td>{{ $arf->staff->name ?? 'N/A' }}</td>
-                            <td>{{ $arf->actual_division->division_name ?? 'N/A' }}</td>
-                            <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
-                            <td>
-                                <span class="fw-bold text-success">
-                                    ${{ number_format($arf->requested_amount, 2) }}
-                                </span>
+                            <td style="max-width: 150px; width: 150px; word-wrap: break-word; overflow-wrap: break-word;">
+                                <div class="text-break" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">{{ $arf->actual_division->division_name ?? 'N/A' }}</div>
                             </td>
+                            <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
                             <td>
                                 {!! display_memo_status_auto($arf) !!}
                             </td>

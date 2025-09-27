@@ -123,13 +123,32 @@ class ServiceRequestController extends Controller
             
             // Only load cost items for activities and special memos
             if ($sourceType != 'non_travel_memo') {
-                // Fallback to all Individual Cost items if no budget breakdown
-                if ($costItems->isEmpty()) {
-                    $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
-                }
+                // Extract cost items from budget breakdown
+                $extractedCostItems = $this->extractCostItemsFromBudget($budgetBreakdown);
                 
-                // Fallback to all Other Cost items if no budget breakdown
-                if ($otherCostItems->isEmpty()) {
+                if (!empty($extractedCostItems)) {
+                    // Create dynamic cost items from budget breakdown
+                    $costItems = collect();
+                    $otherCostItems = collect();
+                    
+                    foreach ($extractedCostItems as $costItem) {
+                        $dynamicCostItem = (object) [
+                            'id' => $costItem['name'], // Use name as ID for dynamic items
+                            'name' => $costItem['name'],
+                            'cost_type' => $costItem['cost_type'],
+                            'description' => $costItem['description'] ?? ''
+                        ];
+                        
+                        // Separate into Individual Cost and Other Cost collections
+                        if ($costItem['cost_type'] === 'Individual Cost') {
+                            $costItems->push($dynamicCostItem);
+                        } else {
+                            $otherCostItems->push($dynamicCostItem);
+                        }
+                    }
+                } else {
+                    // Fallback to all Individual Cost items if no budget breakdown
+                    $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
                     $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
                 }
             }
@@ -492,6 +511,78 @@ class ServiceRequestController extends Controller
         } catch (\Exception $e) {
             return [];
         }
+    }
+
+    /**
+     * Extract cost items from budget breakdown
+     */
+    private function extractCostItemsFromBudget(array $budgetBreakdown): array
+    {
+        $costItems = [];
+        
+        foreach ($budgetBreakdown as $key => $value) {
+            if ($key === 'grand_total') {
+                continue;
+            }
+            
+            if (is_array($value)) {
+                foreach ($value as $item) {
+                    if (isset($item['cost']) && !empty($item['cost'])) {
+                        // Create a unique key for this cost item
+                        $costKey = strtolower(str_replace(' ', '_', $item['cost']));
+                        
+                        // Determine cost type based on the cost item name
+                        $costType = $this->determineCostType($item['cost']);
+                        
+                        $costItems[$costKey] = [
+                            'name' => $item['cost'],
+                            'description' => $item['description'] ?? '',
+                            'unit_cost' => $item['unit_cost'] ?? 0,
+                            'units' => $item['units'] ?? 0,
+                            'days' => $item['days'] ?? 1,
+                            'cost_type' => $costType
+                        ];
+                    }
+                }
+            }
+        }
+        
+        return $costItems;
+    }
+
+    /**
+     * Determine cost type based on cost item name
+     */
+    private function determineCostType(string $costName): string
+    {
+        // Map cost names to their types based on the database
+        $costTypeMap = [
+            'tickets' => 'Individual Cost',
+            'dsa' => 'Individual Cost',
+            'accommodation' => 'Individual Cost',
+            'visa' => 'Individual Cost',
+            'conference' => 'Other Cost',
+            'car hire' => 'Other Cost',
+            'printing of branded materials' => 'Other Cost',
+            'honorarium' => 'Other Cost'
+        ];
+        
+        $normalizedName = strtolower(trim($costName));
+        
+        // Check for exact match first
+        if (isset($costTypeMap[$normalizedName])) {
+            return $costTypeMap[$normalizedName];
+        }
+        
+        // Check for partial matches
+        foreach ($costTypeMap as $key => $type) {
+            if (strpos($normalizedName, $key) !== false || strpos($key, $normalizedName) !== false) {
+                return $type;
+            }
+        }
+        
+        // Default to Individual Cost if no match found
+        return 'Individual Cost';
     }
 
     /**
