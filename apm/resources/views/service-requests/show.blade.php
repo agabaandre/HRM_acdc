@@ -204,14 +204,7 @@
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="d-flex align-items-center justify-content-end gap-3">
-                                <span class="status-badge status-{{ $serviceRequest->overall_status ?? 'draft' }}">
-                                    {{ ucfirst($serviceRequest->overall_status ?? 'draft') }}
-                                </span>
-                                @if($serviceRequest->approval_level)
-                                    <span class="badge bg-success">
-                                        Level {{ $serviceRequest->approval_level }}
-                                    </span>
-                                @endif
+                               {!!display_memo_status_auto($serviceRequest)!!}
                             </div>
                         </div>
                     </div>

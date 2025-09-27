@@ -981,8 +981,8 @@ class ActivityController extends Controller
                 }
 
                 // Update the activity record
+                // Note: staff_id (creator) is preserved and never changed
                 $activity->update([
-                    'staff_id' => $userStaffId,
                     'workplan_activity_code' => $request->input('activity_code'),
                     'responsible_person_id' => $request->input('responsible_person_id'),
                     'date_from' => $request->input('date_from', now()->toDateString()),

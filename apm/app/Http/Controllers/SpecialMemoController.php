@@ -859,6 +859,7 @@ class SpecialMemoController extends Controller
             $isDraft = ($action === 'draft');
             $overallStatus = $isDraft ? 'draft' : 'pending';
 
+            // Note: staff_id (creator) is preserved and never changed
             $updateData = [
                 'responsible_person_id' => $request->input('responsible_person_id', 1),
                 'date_from' => $request->input('date_from'),
