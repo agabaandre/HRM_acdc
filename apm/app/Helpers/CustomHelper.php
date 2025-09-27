@@ -172,37 +172,47 @@ if (!function_exists('user_session')) {
          */
         function can_request_memo_action($memo, $type) {
             $user = (object) session('user', []);
+            
+            // Check if this is a single memo
+            $isSingleMemo = isset($memo->is_single_memo) && $memo->is_single_memo;
+            
             // Must be owner or responsible person
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
-            //@dd($isOwner,$isResponsible,$memo);
-            // Only allow if status is approved
-            $isApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
             
-            // If this is a matrix memo, check matrix approval and activity approval
-            $isMatrixApproved = false;
-            $isActivityApproved = false;
-            if (isset($memo->matrix)) {
-                $isMatrixApproved = isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'approved';
-              
+            // Check if user is authorized
+            $isAuthorized = $isOwner || $isResponsible;
+            if (!$isAuthorized) {
+                return false;
             }
-            //dd($isMatrixApproved);
+            
+            // Check approval status
+            $isApproved = false;
+            if ($isSingleMemo) {
+                // For single memos: only check the memo's own status
+                $isApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
+            } else {
+                // For matrix activities: check both memo and matrix status
+                $memoApproved = isset($memo->overall_status) && $memo->overall_status === 'approved';
+                $matrixApproved = isset($memo->matrix) && isset($memo->matrix->overall_status) && $memo->matrix->overall_status === 'approved';
+                $isApproved = $memoApproved || $matrixApproved;
+            }
+            
+            if (!$isApproved) {
+                return false;
+            }
 
             // Fund type check
             $fundTypeId = isset($memo->fundType->id) ? $memo->fundType->id : null;
 
             $isTypeAllowed = false;
-            //dd($type);
             if ($type === 'services') {
-                
                 $isTypeAllowed = $fundTypeId == 1; // intramural
             } elseif ($type === 'arf') {
                 $isTypeAllowed = $fundTypeId == 2; // extramural
             }
-            //dd($isTypeAllowed);
-           // dd($type);
 
-            return ($isOwner || $isResponsible) && ($isApproved || $isMatrixApproved)  && $isTypeAllowed;
+            return $isTypeAllowed;
         }
      }
 

@@ -523,7 +523,7 @@
                         @endif
 
                         {{-- ARF Request Button --}}
-                        @if($activity->fundType && strtolower($activity->fundType->name) === 'extramural' && $activity->matrix && $activity->matrix->overall_status === 'approved')
+                        @if(can_request_arf($activity))
                             @php
                                 // Check if ARF already exists for this activity
                                 $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
