@@ -79,7 +79,7 @@ if (!function_exists('user_session')) {
             }
 
             // If matrix is in draft, allow staff, focal person, or responsible staff to edit
-            if ($matrix->overall_status === 'draft') {
+            if ($matrix->overall_status == 'draft') {
                     //dd("here");//  dd($activity);
                 $allowedIds = [$matrix->staff_id, $matrix->focal_person_id];
    
@@ -231,10 +231,13 @@ if (!function_exists('user_session')) {
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
           //  dd($);.
-            $isFocalperson = isset($memo->matrix->division->focal_person, $user->staff_id) && $memo->matrix->division->focal_person == $user->staff_id;
+            $isFocalperson = isset($memo->matrix, $memo->matrix->division->focal_person, $user->staff_id) && $memo->matrix->division->focal_person == $user->staff_id;
            // dd($isFocalperson);
             // Only allow if status is draft or returned
-            $isApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned'));
+            $isMemoApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned')) || 
+                             (isset($memo->matrix, $memo->matrix->overall_status) && ($memo->matrix->overall_status == 'returned' || $memo->matrix->overall_status == 'draft'));
+
+          $isunderapproval = (isset($memo->overall_status) && ($memo->overall_status == 'returned' || $memo->overall_status == 'pending')) || 
 
             // Check if user is division head of the memo's division
             $isDivisionHead = false;
@@ -244,14 +247,49 @@ if (!function_exists('user_session')) {
                 $divisionIds = Division::where('division_head', $user->staff_id)->pluck('id')->toArray();
 
                 if (in_array($memo->division_id, $divisionIds)) {
-                    $isDivisionHead = true;
+                    $isDivisionHead = true; 
                 }
             }
 
-            return ($isOwner || $isResponsible || $isFocalperson || $isDivisionHead) && $isApproved;
+            //dd($isOwner,$isResponsible,$isFocalperson,$isDivisionHead,$isApproved);
+
+         return ( ($isOwner || $isResponsible || $isFocalperson || $isDivisionHead) && $isMemoApproved);
         }
      }
      
+
+     if (!function_exists('can_submit_for_approval')) {
+        function can_submit_for_approval($memo) {
+            $user = (object) session('user', []);
+            $session_division_id = isset($user->division_id) ? $user->division_id : null;
+
+            // Must be owner or responsible person
+            $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
+            $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
+          //  dd($);.
+            // $isFocalperson = isset($memo->matrix, $memo->matrix->division->focal_person, $user->staff_id) && $memo->matrix->division->focal_person == $user->staff_id;
+           // dd($isFocalperson);
+            // Only allow if status is draft or returned
+            $isMemoApproved = (isset($memo->overall_status) && ($memo->overall_status == 'draft' || $memo->overall_status == 'returned')) || 
+                             (isset($memo->matrix, $memo->matrix->overall_status) && ($memo->matrix->overall_status == 'returned' || $memo->matrix->overall_status == 'draft'));
+
+            // Check if user is division head of the memo's division
+            $isDivisionHead = false;
+            
+            if (isset($memo->division_id)) {
+                // Get all division IDs where the user is the division head
+                $divisionIds = Division::where('division_head', $user->staff_id)->pluck('id')->toArray();
+
+                if (in_array($memo->division_id, $divisionIds)) {
+                    $isDivisionHead = true; 
+                }
+            }
+
+            //dd($isOwner,$isResponsible,$isFocalperson,$isDivisionHead,$isApproved);
+
+         return ( ($isOwner || $isResponsible || $isDivisionHead) && $isMemoApproved);
+        }
+     }
 
     
     if (!function_exists('done_approving')) {
@@ -993,14 +1031,38 @@ function display_memo_status($memo, $type)
     $isSingleMemo = $type === 'single_memo';
     
     if ($isSingleMemo) {
-        // For single memos, show the overall status
-        $statusText = ucwords($memo->overall_status ?? 'pending');
-        $badgeClass = get_status_badge_class($memo->overall_status ?? 'pending');
+        // For single memos, show the overall status or current actor if not approved
+        $overallStatus = $memo->overall_status ?? 'pending';
+        if ($overallStatus !== 'approved') {
+            $currentApprover = getCurrentApproverInfo($memo);
+            if ($currentApprover) {
+                $statusText = "Pending - {$currentApprover['name']} ({$currentApprover['level']})";
+                $badgeClass = 'bg-warning';
+            } else {
+                $statusText = ucwords($overallStatus);
+                $badgeClass = get_status_badge_class($overallStatus);
+            }
+        } else {
+            $statusText = ucwords($overallStatus);
+            $badgeClass = get_status_badge_class($overallStatus);
+        }
         
     } elseif ($isNonTravel || $isSpecialMemo) {
-        // For non-travel or special memos, show the overall status
-        $statusText = ucwords($memo->overall_status ?? 'pending');
-        $badgeClass = get_status_badge_class($memo->overall_status ?? 'pending');
+        // For non-travel or special memos, show the overall status or current actor if not approved
+        $overallStatus = $memo->overall_status ?? 'pending';
+        if ($overallStatus !== 'approved') {
+            $currentApprover = getCurrentApproverInfo($memo);
+            if ($currentApprover) {
+                $statusText = "Pending - {$currentApprover['name']} ({$currentApprover['level']})";
+                $badgeClass = 'bg-warning';
+            } else {
+                $statusText = ucwords($overallStatus);
+                $badgeClass = get_status_badge_class($overallStatus);
+            }
+        } else {
+            $statusText = ucwords($overallStatus);
+            $badgeClass = get_status_badge_class($overallStatus);
+        }
         
     } elseif ($isMatrixActivity) {
         // For matrix activities
@@ -1152,14 +1214,19 @@ function getCurrentApproverInfo($memo)
     $forwardWorkflowId = null;
     $approvalLevel = null;
     
-    if ($memo->matrix) {
+    // Check if this is a single memo (Activity with its own approval workflow)
+    if (get_class($memo) === 'App\Models\Activity') {
+        // Single memo - always use its own properties, ignore matrix relation
+        $forwardWorkflowId = $memo->forward_workflow_id ?? null;
+        $approvalLevel = $memo->approval_level ?? null;
+    } elseif ($memo->matrix) {
         // Matrix activity
         $forwardWorkflowId = $memo->matrix->forward_workflow_id;
         $approvalLevel = $memo->matrix->approval_level;
-    } elseif (isset($memo->forward_workflow_id)) {
-        // Non-travel, special memo, or single memo
-        $forwardWorkflowId = $memo->forward_workflow_id;
-        $approvalLevel = $memo->approval_level;
+    } else {
+        // Non-travel, special memo
+        $forwardWorkflowId = $memo->forward_workflow_id ?? null;
+        $approvalLevel = $memo->approval_level ?? null;
     }
     
     if (!$forwardWorkflowId || !$approvalLevel) {
@@ -1180,9 +1247,14 @@ function getCurrentApproverInfo($memo)
     $approverName = 'Unknown';
     
     // Check if this is a division-specific workflow definition
-    if ($workflowDefinition->is_division_specific && $memo->matrix) {
+    if ($workflowDefinition->is_division_specific) {
         // For division-specific approvers, get from divisions table
-        $division = $memo->matrix->division;
+        $division = null;
+        if ($memo->matrix) {
+            $division = $memo->matrix->division;
+        } elseif (isset($memo->division)) {
+            $division = $memo->division;
+        }
         
         if ($division) {
             // Map workflow roles to division fields
@@ -1244,6 +1316,7 @@ function getCurrentApproverInfo($memo)
 function display_memo_status_auto($memo)
 {
     $type = get_memo_type($memo);
+    
     return display_memo_status($memo, $type);
 }
 

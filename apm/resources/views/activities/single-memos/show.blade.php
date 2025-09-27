@@ -499,7 +499,7 @@
                 </div>
                     <div class="d-flex gap-3">
                         {{-- @dd($activity->overall_status,$activity->staff_id,$activity->responsible_person_id) --}}
-                            @if ($activity->overall_status == 'draft' && ($activity->staff_id == user_session('staff_id')|| $activity->responsible_person_id == user_session('staff_id')))
+                            @if (can_edit_memo($activity))
                             <a href="{{ route('activities.single-memos.edit', ['matrix' => $matrix, 'activity' => $activity]) }}"
                                 class="btn btn-warning d-flex align-items-center gap-2">
                                 <i class="bx bx-edit"></i>
@@ -1113,6 +1113,19 @@
                                         </div>
                                     </div>
                                 </div>
+                                
+                                {{-- Available Budget --}}
+                                @if($activity->available_budget)
+                                <div class="row mt-2">
+                                    <div class="col-md-12">
+                                        <div class="alert alert-info">
+                                            <h6 class="mb-0"><strong>Available Budget: {{ number_format($activity->available_budget, 2) }}
+                                                    USD</strong></h6>
+                                            <small class="text-muted">Allocated by Finance Officer</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
                             @else
                                 <!-- Fallback: Show budget as key-value pairs if structure is different -->
                                 <div class="table-responsive">
@@ -1182,77 +1195,64 @@
                             @if ($activity->overall_status !== 'approved')
                                 <div class="mt-3 p-3"
                                     style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 0.5rem; border: 1px solid #bbf7d0;">
-                                    <div class="d-flex align-items-center gap-2 mb-2">
-                                        <i class="bx bx-user-check text-green-600"></i>
-                                        <span class="fw-semibold text-green-900">Current Status</span>
-                                    </div>
-                                    <div class="memo-meta-row">
-                                        <div class="memo-meta-item">
-                                            <i class="bx bx-badge-check"></i>
-                                            <span
-                                                class="memo-meta-value">{{ ucfirst($activity->overall_status ?? 'draft') }}</span>
+                                    
+                                    <!-- Compact Approval Info Row -->
+                                    <div class="row g-3">
+                                        <!-- Status -->
+                                        <div class="col-md-4">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                                    <i class="bx bx-badge-check text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold text-dark small">Status</div>
+                                                    <div class="fw-bold text-purple">{{ ucfirst($activity->overall_status ?? 'draft') }}</div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        @if ($activity->overall_status === 'pending')
-                                            <div class="memo-meta-item">
-                                                <i class="bx bx-time"></i>
-                                                <span class="memo-meta-value">Awaiting Approval</span>
-                    </div>
-                    @endif
+
+                                        <!-- Current Approver -->
+                                        @if ($activity->overall_status !== 'draft' && $activity->current_actor)
+                                        <div class="col-md-4">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                                                    <i class="bx bx-user text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold text-dark small">Current Approver</div>
+                                                    <div class="fw-bold text-info">{{ $activity->current_actor->fname . ' ' . $activity->current_actor->lname }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        <!-- Approval Role -->
+                                        @if ($activity->workflow_definition)
+                                        <div class="col-md-4">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                                                    <i class="bx bx-crown text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold text-dark small">Approval Role</div>
+                                                    <div class="fw-bold text-orange">{{ $activity->workflow_definition->role ?? 'Not specified' }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endif
                                     </div>
 
-                                    @if ($activity->overall_status !== 'draft' && $activity->current_actor)
-                                        <div class="mt-3 p-3"
-                                            style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 0.5rem; border: 1px solid #bbf7d0;">
-                                            <div class="d-flex align-items-center gap-2 mb-2">
-                                                <i class="bx bx-user text-success"></i>
-                                                <span class="fw-semibold text-success">Current Approver</span>
-                            </div>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Name:</strong>
-                                                        <div class="fw-bold text-success">
-                                                            {{ $activity->current_actor->fname . ' ' . $activity->current_actor->lname }}
+                                    <!-- Additional Info (if needed) -->
+                                    @if ($activity->overall_status === 'pending')
+                                    <div class="mt-3 p-2 bg-info bg-opacity-10 rounded">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bx bx-info-circle text-info"></i>
+                                            <span class="text-info fw-medium small">This single memo is currently awaiting approval from the supervisor above.</span>
                                         </div>
-                                                    </div>
-                                                    @if ($activity->current_actor->job_name)
-                                                        <div class="mb-2">
-                                                            <strong class="text-muted small">Job Title:</strong>
-                                                            <div class="fw-semibold">
-                                                                {{ $activity->current_actor->job_name }}</div>
-                                            </div>
-                                        @endif
                                     </div>
-                                    <div class="col-md-6">
-                                                    @if ($activity->current_actor->division_name)
-                                                        <div class="mb-2">
-                                                            <strong class="text-muted small">Division:</strong>
-                                                            <div class="fw-semibold">
-                                                                {{ $activity->current_actor->division_name }}</div>
-                                            </div>
-                                        @endif
-                                                    @if ($activity->workflow_definition)
-                                                        <div class="mb-2">
-                                                            <strong class="text-muted small">Approval Role:</strong>
-                                                            <div>
-                                                                <span
-                                                                    class="badge bg-info">{{ $activity->workflow_definition->role ?? 'Not specified' }}</span>
-                                                            </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                                            <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
-                                    <div class="d-flex align-items-center gap-2">
-                                                    <i class="bx bx-info-circle text-success"></i>
-                                                    <span class="text-success fw-medium small">This single memo is
-                                                        currently awaiting approval from the supervisor above.</span>
-                                    </div>
-                                </div>
-                            </div>
                                     @endif
-                        </div>
-                    @endif
+                                </div>
+                            @endif
                         </div>
 
 
@@ -1325,7 +1325,7 @@
                     </div>
 
                     <!-- Enhanced Approval Actions -->
-                    @if (can_take_action_generic($activity))
+                    @if (can_take_action_generic($activity) || (is_with_creator_generic($activity) && $activity->overall_status != 'draft') || (isdivision_head($activity) && ($activity->overall_status == 'returned' || $activity->overall_status == 'pending') && $activity->approval_level == 1))
                         <div class="card border-0 shadow-sm"
                             style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                             <div class="card-header bg-transparent border-0 py-3">
@@ -1366,28 +1366,64 @@
                                         @endif
                                         <div class="col-md-4">
                                             <div class="d-grid gap-2 mt-4">
-                                                <button type="submit" name="action" value="approved"
-                                                    class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
-                                                    <i class="bx bx-check"></i>
-                                                    Approve
-                                                </button>
-                                                <button type="submit" name="action" value="returned"
-                                                    class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
+                                                @php
+                                                    $isHOD = isdivision_head($activity);
+                                                    $isReturnedToHOD = $isHOD && $activity->overall_status == 'returned' && $activity->approval_level == 1;
+                                                    $isPendingAtHOD = $isHOD && $activity->overall_status == 'pending' && $activity->approval_level == 1;
+                                                @endphp
+                                                
+                                                {{-- Show Approve button only if not returned to HOD --}}
+                                                @if(!$isReturnedToHOD)
+                                                    <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
+                                                        <i class="bx bx-check"></i>
+                                                        Approve
+                                                    </button>
+                                                @endif
+                                                
+                                                {{-- Always show Return button --}}
+                                                <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
                                                     <i class="bx bx-undo"></i>
                                                     Return
                                                 </button>
-                                                {{-- @dd($activity->approval_level); --}}
-                                                {{-- @dd(is_with_creator_generic($activity)) --}}
-                                            @if(isdivision_head($activity)&&($activity->approval_level=='1'))
-                                            <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
-                                                <i class="bx bx-x"></i>
-                                                Cancel
-                                            </button>
-                                            @endif
+                                                
+                                                {{-- Show Cancel button only for HOD at level 1 --}}
+                                                @if($isHOD && $activity->approval_level == 1)
+                                                    <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                        <i class="bx bx-x"></i>
+                                                        Cancel
+                                                    </button>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Resubmission Section for HODs when returned -->
+                    @if($activity->overall_status === 'returned' && isdivision_head($activity) && $activity->approval_level <= 1)
+                        <div class="card sidebar-card border-0"
+                            style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                            <div class="card-header bg-transparent border-0 py-3">
+                                <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                    <i class="bx bx-undo"></i>
+                                    Resubmit for Approval
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">This memo was returned for revision. Ready to resubmit?</p>
+                                <button type="button" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2" 
+                                        data-bs-toggle="modal" data-bs-target="#resubmitModal">
+                                    <i class="bx bx-undo"></i>
+                                    Resubmit for Approval
+                                </button>
+                                <div class="mt-3 p-3 bg-light rounded">
+                                    <small class="text-muted">
+                                        <i class="bx bx-info-circle me-1"></i>
+                                        <strong>Note:</strong> This will resubmit the memo to the approver who returned it.
+                                    </small>
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -1443,6 +1479,42 @@
                     style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
                     <div class="text-center w-100">Loading preview...</div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Resubmit Modal --}}
+    <div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="resubmitModalLabel">
+                        <i class="bx bx-undo me-2"></i>Resubmit for Approval
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('activities.single-memos.resubmit', $activity) }}" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="bx bx-info-circle me-2"></i>
+                            <strong>Resubmission:</strong> This will resubmit the single memo to the approver who returned it.
+                        </div>
+                        <div class="mb-3">
+                            <label for="resubmit_comment" class="form-label">Comments (Optional)</label>
+                            <textarea class="form-control" id="resubmit_comment" name="comment" rows="3" 
+                                placeholder="Add any comments about the resubmission..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bx bx-x me-1"></i>Cancel
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bx bx-undo me-1"></i>Resubmit
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

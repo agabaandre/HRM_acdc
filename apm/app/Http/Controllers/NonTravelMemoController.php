@@ -775,7 +775,7 @@ class NonTravelMemoController extends Controller
         ]);
 
         $request->validate([
-            'action' => 'required|in:approved,rejected,returned',
+            'action' => 'required|in:approved,rejected,returned,cancelled',
             'comment' => 'nullable|string|max:1000',
             'available_budget' => 'nullable|numeric|min:0'
         ]);
@@ -786,6 +786,75 @@ class NonTravelMemoController extends Controller
         // Use the generic approval system
         $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
         return $genericController->updateStatus($request, 'NonTravelMemo', $nonTravel->id);
+    }
+
+    /**
+     * Resubmit a returned non-travel memo for approval.
+     */
+    public function resubmit(Request $request, NonTravelMemo $nonTravel): RedirectResponse
+    {
+        $request->validate([
+            'comment' => 'nullable|string|max:1000'
+        ]);
+
+        // Check if the memo is in the correct status for resubmission
+        if (!in_array($nonTravel->overall_status, ['returned', 'pending'])) {
+            return redirect()->back()->with('error', 'Only returned or pending memos can be resubmitted.');
+        }
+
+        if (!isdivision_head($nonTravel)) {
+            return redirect()->back()->with('error', 'Only division heads can resubmit returned memos.');
+        }
+
+        // Check if memo is at the correct level for resubmission (0 or 1)
+        if ($nonTravel->approval_level > 1) {
+            return redirect()->back()->with('error', 'Memo must be at the correct level to be resubmitted.');
+        }
+
+        // Handle resubmission based on current level
+        if ($nonTravel->approval_level == 0) {
+            // Memo was returned by HOD to focal person - resubmit to HOD (level 1)
+            $nonTravel->approval_level = 1;
+            $nonTravel->forward_workflow_id = \App\Models\WorkflowModel::getWorkflowIdForModel('NonTravelMemo');
+            $nonTravel->overall_status = 'pending';
+            $nonTravel->save();
+        } else {
+            // Memo was returned by other approver to HOD - resubmit to that approver
+            $lastApprovalTrail = \App\Models\ApprovalTrail::where('model_id', $nonTravel->id)
+                ->where('model_type', 'App\\Models\\NonTravelMemo')
+                ->where('action', 'returned')
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if (!$lastApprovalTrail) {
+                return redirect()->back()->with('error', 'Could not find the approver who returned this memo.');
+            }
+
+            // Set the memo back to the approver who returned it
+            $nonTravel->approval_level = $lastApprovalTrail->approval_order;
+            $nonTravel->forward_workflow_id = $lastApprovalTrail->forward_workflow_id;
+            $nonTravel->overall_status = 'pending';
+            $nonTravel->save();
+        }
+
+        // Create a new approval trail for the resubmission
+        $resubmitTrail = new \App\Models\ApprovalTrail();
+        $resubmitTrail->model_id = $nonTravel->id;
+        $resubmitTrail->model_type = 'App\\Models\\NonTravelMemo';
+        $resubmitTrail->remarks = $request->comment ?? 'Memo resubmitted for approval';
+        $resubmitTrail->forward_workflow_id = $nonTravel->forward_workflow_id;
+        $resubmitTrail->action = 'resubmitted';
+        $resubmitTrail->approval_order = $nonTravel->approval_level;
+        
+        // Always use the HOD (current user) as the resubmitter in the approval trail
+        // This shows who actually performed the resubmission action
+        $resubmitTrail->staff_id = user_session('staff_id');
+        
+        $resubmitTrail->is_archived = 0;
+        $resubmitTrail->save();
+
+        return redirect()->route('non-travel.show', $nonTravel)
+            ->with('success', 'Memo has been resubmitted for approval.');
     }
 
     /**

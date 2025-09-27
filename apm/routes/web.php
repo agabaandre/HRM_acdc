@@ -226,6 +226,7 @@ Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\Pe
     Route::get('/single-memos/{activity}/print', [ActivityController::class, 'printSingleMemo'])->name('activities.single-memos.print');
     Route::post('/single-memos/{activity}/submit-for-approval', [ActivityController::class, 'submitSingleMemoForApproval'])->name('activities.single-memos.submit-for-approval');
     Route::post('/single-memos/{activity}/update-status', [ActivityController::class, 'updateSingleMemoStatus'])->name('activities.single-memos.update-status');
+    Route::post('/single-memos/{activity}/resubmit', [ActivityController::class, 'resubmitSingleMemo'])->name('activities.single-memos.resubmit');
     Route::delete('/single-memos/{activity}', [ActivityController::class, 'destroySingleMemo'])->name('activities.single-memos.destroy');
     
     // Staff activities route
@@ -289,6 +290,7 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
 // Special Memo Approval Routes
 Route::post('special-memo/{specialMemo}/submit-for-approval', [App\Http\Controllers\SpecialMemoController::class, 'submitForApproval'])->name('special-memo.submit-for-approval');
 Route::post('special-memo/{specialMemo}/update-status', [App\Http\Controllers\SpecialMemoController::class, 'updateStatus'])->name('special-memo.update-status');
+Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\SpecialMemoController::class, 'resubmit'])->name('special-memo.resubmit');
 Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMemoController::class, 'status'])->name('special-memo.status');
     
     // Request for Services Routes
@@ -324,6 +326,7 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
 // Non-Travel Memo Approval Routes
 Route::post('non-travel/{nonTravel}/submit-for-approval', [App\Http\Controllers\NonTravelMemoController::class, 'submitForApproval'])->name('non-travel.submit-for-approval');
 Route::post('non-travel/{nonTravel}/update-status', [App\Http\Controllers\NonTravelMemoController::class, 'updateStatus'])->name('non-travel.update-status');
+Route::post('non-travel/{nonTravel}/resubmit', [App\Http\Controllers\NonTravelMemoController::class, 'resubmit'])->name('non-travel.resubmit');
 Route::get('non-travel/{nonTravel}/status', [App\Http\Controllers\NonTravelMemoController::class, 'status'])->name('non-travel.status');
 
 // Service Request Approval Routes

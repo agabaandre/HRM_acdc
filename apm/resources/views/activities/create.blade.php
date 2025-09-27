@@ -64,8 +64,7 @@
 
                     <div class="col-md-3 activity_code" style="display: none;">
                         <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code <span class="text-danger"></span>
-                            
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code <span class="text-danger" style="display: none;">*</span>
                         </label>
                         <input name="activity_code" id="activity_code" class="form-control border-success" />
                         <small class="text-muted">Applicable to only World Bank Budget Codes</small>
@@ -751,7 +750,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             data.forEach(code => {
                 const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${code.budget_balance}">${label}</option>`
+                    `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
@@ -764,6 +763,24 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     $('#budget_codes').on('change', function () {
     const selected = $(this).find('option:selected');
     const container = $('#budgetGroupContainer');
+    
+    // Check if any selected budget code is World Bank (funder_id = 1)
+    let hasWorldBankCode = false;
+    selected.each(function () {
+        const funderId = $(this).data('funder-id');
+        if (funderId == 1) { // World Bank funder_id
+            hasWorldBankCode = true;
+        }
+    });
+
+    // Make World Bank Activity Code required if World Bank budget code is selected
+    if (hasWorldBankCode) {
+        $('#activity_code').prop('required', true);
+        $('.activity_code label .text-danger').show();
+    } else {
+        $('#activity_code').prop('required', false);
+        $('.activity_code label .text-danger').hide();
+    }
     
     // Get currently existing budget cards
     const existingCards = container.find('.card');

@@ -1,7 +1,7 @@
 
 <div class="d-flex gap-2">
 {{-- {{ dd( activities_approved_by_me($matrix)) }} --}}
-  @if(!($matrix->overall_status == 'approved'))
+  @if(!($matrix->overall_status == 'approved') && !activities_approved_by_me($matrix) && !can_user_proceed_with_empty_approvable_stack($matrix) || still_with_creator($matrix))
      <button class="btn btn-danger w-50 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
         <i class="fa fa-arrow-circle-left text-bold"></i> Return entire matrix
     </button>

@@ -185,7 +185,7 @@
 
                     <div class="col-md-3 activity_code" style="display: none;">
                         <label for="activity_code" class="form-label fw-semibold">
-                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code
+                            <i class="fas fa-hand-holding-usd me-1 text-success"></i> World Bank Activity Code <span class="text-danger" style="display: none;">*</span>
                         </label>
                         <input name="activity_code" id="activity_code" class="form-control border-success" />
                         <small class="text-muted">Applicable to only World Bank Budget Codes</small>
@@ -242,7 +242,7 @@
               
 
                 <div class="d-flex justify-content-end gap-3 border-top pt-4 mt-5">
-                    <button type="submit" name="action" value="draft" class="btn btn-secondary btn-lg px-5">
+                    <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
                         <i class="bx bx-save me-1"></i> Save Non-Travel Memo
                     </button>
                     {{-- <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">
@@ -349,7 +349,7 @@
             data.forEach(code => {
                 const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${code.budget_balance}">${label}</option>`
+                    `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
@@ -364,6 +364,24 @@
             const selected = $(this).find('option:selected');
             const container = $('#budgetCards');
             container.empty();
+
+            // Check if any selected budget code is World Bank (funder_id = 1)
+            let hasWorldBankCode = false;
+            selected.each(function () {
+                const funderId = $(this).data('funder-id');
+                if (funderId == 1) { // World Bank funder_id
+                    hasWorldBankCode = true;
+                }
+            });
+
+            // Make World Bank Activity Code required if World Bank budget code is selected
+            if (hasWorldBankCode) {
+                $('#activity_code').prop('required', true);
+                $('.activity_code label .text-danger').show();
+            } else {
+                $('#activity_code').prop('required', false);
+                $('.activity_code label .text-danger').hide();
+            }
 
             if (selected.length === 0) {
                 return;
