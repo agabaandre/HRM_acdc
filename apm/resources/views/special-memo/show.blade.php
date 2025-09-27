@@ -516,13 +516,13 @@
                         {{-- Show View ARF button if ARF exists --}}
                         <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
                             <i class="bx bx-show"></i>
-                            <span>View ARF Request</span>
+                            <span>View Activity Request</span>
                         </a>
                     @elseif(can_request_arf($specialMemo))
                         {{-- Show Create ARF button if memo is approved and no ARF exists --}}
                         <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
                             <i class="bx bx-file-plus"></i>
-                            <span>Create ARF Request</span>
+                            <span>Create Activity Request</span>
                         </button>
                     @endif
                     
@@ -1535,7 +1535,7 @@
                 if (!is_array($ids)) $ids = [];
                 return \App\Models\FundCode::whereIn('id', $ids)->with('fundType')->get()->keyBy('id');
             })(),
-            'defaultTitle' => 'ARF Request - ' . $specialMemo->title,
+            'defaultTitle' => to_sentence_case('Activity Request - ' . $specialMemo->title),
             'sourceId' => $specialMemo->id,
             'modelType' => 'App\\Models\\SpecialMemo'
         ])
@@ -1546,7 +1546,7 @@
                 <i class="bx bx-info-circle me-2"></i>
                 An ARF request has already been created for this special memo.
                 <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-sm btn-outline-primary ms-2">
-                    <i class="bx bx-show me-1"></i>View ARF Request
+                    <i class="bx bx-show me-1"></i>View Activity Request
                 </a>
             </div>
             @endif
