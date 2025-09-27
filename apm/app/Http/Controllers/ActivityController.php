@@ -1166,7 +1166,12 @@ class ActivityController extends Controller
         if (count($budgetItems) > 0) {
             
             foreach ($budgetCodes as $key => $fundCode) {
-                $items = $budgetItems[$fundCode];
+                // Handle both FundCode objects and string codes
+                $fundCodeId = is_object($fundCode) ? $fundCode->id : $fundCode;
+                $fundCodeString = is_object($fundCode) ? $fundCode->code : $fundCode;
+                $fundTypeId = is_object($fundCode) ? $fundCode->fund_type_id : null;
+                
+                $items = $budgetItems[$fundCodeString];
                
                 foreach ($items as $index => $item) {
                     $item = (object) $item;
@@ -1176,8 +1181,8 @@ class ActivityController extends Controller
                         DB::beginTransaction();
                         
                         // Check if we have an existing budget record to update
-                        $existingBudget = $existingBudgets->first(function ($budget) use ($fundCode, $item) {
-                            return $budget->fund_code == $fundCode && 
+                        $existingBudget = $existingBudgets->first(function ($budget) use ($fundCodeString, $item) {
+                            return $budget->fund_code == $fundCodeString && 
                                    $budget->cost == $item->cost &&
                                    $budget->description == $item->description;
                         });
@@ -1217,8 +1222,8 @@ class ActivityController extends Controller
                             $activityBudget = ActivityBudget::create([
                                 'activity_id' => $activity->id,
                                 'matrix_id' => $activity->matrix_id,
-                                'fund_type_id' => $fundCode,
-                                'fund_code' => $fundCode,
+                                'fund_type_id' => $fundTypeId,
+                                'fund_code' => $fundCodeString,
                                 'cost' => $item->cost,
                                 'description' => $item->description,
                                 'unit_cost' => $item->unit_cost,
@@ -1227,7 +1232,7 @@ class ActivityController extends Controller
                                 'total' => $total
                             ]);
 
-                            $this->store_fund_code_transaction($fundCode, $total, $activity, $activityBudget);
+                            $this->store_fund_code_transaction($fundCodeString, $total, $activity, $activityBudget);
                         }
                         
                         DB::commit();
@@ -1242,11 +1247,14 @@ class ActivityController extends Controller
             // Remove any existing budget records that are no longer in the updated data
             $updatedBudgetIds = [];
             foreach ($budgetCodes as $fundCode) {
-                $items = $budgetItems[$fundCode];
+                // Handle both FundCode objects and string codes
+                $fundCodeString = is_object($fundCode) ? $fundCode->code : $fundCode;
+                
+                $items = $budgetItems[$fundCodeString];
                 foreach ($items as $item) {
                     $item = (object) $item;
-                    $existingBudget = $existingBudgets->first(function ($budget) use ($fundCode, $item) {
-                        return $budget->fund_code == $fundCode && 
+                    $existingBudget = $existingBudgets->first(function ($budget) use ($fundCodeString, $item) {
+                        return $budget->fund_code == $fundCodeString && 
                                $budget->cost == $item->cost &&
                                $budget->description == $item->description;
                     });
