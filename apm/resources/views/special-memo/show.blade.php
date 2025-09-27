@@ -518,8 +518,8 @@
                                 <i class="bx bx-file-plus"></i>
                                 <span>Create ARF Request</span>
                             </button>
-                        @elseif(in_array($existingArfTop->overall_status, ['pending', 'approved', 'returned']))
-                            <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                        @else
+                            <a href="{{ route('request-arf.show', $existingArfTop) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
                                 <i class="bx bx-show"></i>
                                 <span>View ARF Request</span>
                             </a>
@@ -541,7 +541,7 @@
                                 <i class="fas fa-tools"></i>
                                 <span>Create Service Request</span>
                             </a>
-                        @elseif(in_array($existingServiceRequest->overall_status, ['submitted', 'pending', 'approved', 'completed']))
+                        @else
                             <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
                                 <i class="fas fa-eye"></i>
                                 <span>View Service Request</span>
