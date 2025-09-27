@@ -490,6 +490,10 @@ class NonTravelMemoController extends Controller
         
         $data = $request->validate($validationRules);
 
+        // For non-travel memos: staff_id (creator) is the responsible person and should never be changed
+        // We don't include staff_id or responsible_person_id in validation rules to prevent updates
+        // The staff_id remains the original creator throughout the memo's lifecycle
+
        // Handle file uploads for attachments
        $attachments = [];
        $existingAttachments = is_string($nonTravel->attachment) 

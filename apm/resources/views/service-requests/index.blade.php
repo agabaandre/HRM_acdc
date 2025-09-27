@@ -149,41 +149,7 @@
                                 </span>
                             </td>
                             <td>
-                                @php
-                                    $statusBadgeClass = [
-                                        'draft' => 'bg-secondary',
-                                        'pending' => 'bg-warning',
-                                        'approved' => 'bg-success',
-                                        'rejected' => 'bg-danger',
-                                        'returned' => 'bg-info',
-                                    ];
-                                    $statusClass = $statusBadgeClass[$request->overall_status] ?? 'bg-secondary';
-                                    
-                                    // Get workflow information
-                                    $approvalLevel = $request->approval_level ?? 'N/A';
-                                    $workflowRole = $request->workflow_definition ? ($request->workflow_definition->role ?? 'N/A') : 'N/A';
-                                    $actorName = $request->current_actor ? ($request->current_actor->fname . ' ' . $request->current_actor->lname) : 'N/A';
-                                @endphp
-                                
-                                @if($request->overall_status === 'pending')
-                                    <!-- Structured display for pending status -->
-                                    <div class="text-center">
-                                        <span class="badge {{ $statusClass }} mb-1">
-                                            {{ strtoupper($request->overall_status) }}
-                                        </span>
-                                        <br>
-                                        <small class="text-muted d-block">
-                                            {{ $workflowRole }}
-                                            @if($actorName !== 'N/A')
-                                                <span class="text-primary">({{ $actorName }})</span>
-                                            @endif
-                                        </small>
-                                    </div>
-                                @else
-                                    <span class="badge {{ $statusClass }}">
-                                        {{ strtoupper($request->overall_status) }}
-                                    </span>
-                                @endif
+                                {!! display_memo_status_auto($request) !!}
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">
@@ -272,41 +238,7 @@
                                 </span>
                             </td>
                             <td>
-                                @php
-                                    $statusBadgeClass = [
-                                        'draft' => 'bg-secondary',
-                                        'pending' => 'bg-warning',
-                                        'approved' => 'bg-success',
-                                        'rejected' => 'bg-danger',
-                                        'returned' => 'bg-info',
-                                    ];
-                                    $statusClass = $statusBadgeClass[$request->overall_status] ?? 'bg-secondary';
-                                    
-                                    // Get workflow information
-                                    $approvalLevel = $request->approval_level ?? 'N/A';
-                                    $workflowRole = $request->workflow_definition ? ($request->workflow_definition->role ?? 'N/A') : 'N/A';
-                                    $actorName = $request->current_actor ? ($request->current_actor->fname . ' ' . $request->current_actor->lname) : 'N/A';
-                                @endphp
-                                
-                                @if($request->overall_status === 'pending')
-                                    <!-- Structured display for pending status -->
-                                    <div class="text-center">
-                                        <span class="badge {{ $statusClass }} mb-1">
-                                            {{ strtoupper($request->overall_status) }}
-                                        </span>
-                                        <br>
-                                        <small class="text-muted d-block">
-                                            {{ $workflowRole }}
-                                            @if($actorName !== 'N/A')
-                                                <span class="text-primary">({{ $actorName }})</span>
-                                            @endif
-                                        </small>
-                                    </div>
-                                @else
-                                    <span class="badge {{ $statusClass }}">
-                                        {{ strtoupper($request->overall_status) }}
-                                    </span>
-                                @endif
+                                {!! display_memo_status_auto($request) !!}
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">

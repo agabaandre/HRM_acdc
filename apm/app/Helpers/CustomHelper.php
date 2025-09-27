@@ -169,8 +169,18 @@ if (!function_exists('user_session')) {
             // Check if this is a single memo
             $isSingleMemo = isset($memo->is_single_memo) && $memo->is_single_memo;
             
+            // Check if this is a non-travel memo (creator is responsible person)
+            $isNonTravelMemo = get_class($memo) === 'App\Models\NonTravelMemo';
+            
             // Must be responsible person only
-            $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
+            $isResponsible = false;
+            if ($isNonTravelMemo) {
+                // For non-travel memos: creator (staff_id) is the responsible person
+                $isResponsible = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
+            } else {
+                // For other memos: check responsible_person_id
+                $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
+            }
             
             // Check if user is authorized (only responsible person)
             $isAuthorized = $isResponsible;
@@ -1092,6 +1102,8 @@ function display_memo_status($memo, $type)
     $isNonTravel = $type === 'non_travel';
     $isSpecialMemo = $type === 'special';
     $isSingleMemo = $type === 'single_memo';
+    $isServiceRequest = $type === 'service_request';
+    $isARF = $type === 'arf';
     
     if ($isSingleMemo) {
         // For single memos, show the overall status or current actor if not approved
@@ -1181,6 +1193,22 @@ function display_memo_status($memo, $type)
                 $badgeClass = 'bg-warning';
             }
         }
+    } elseif ($isServiceRequest || $isARF) {
+        // For service requests and ARF, show the overall status or current actor if not approved
+        $overallStatus = $memo->overall_status ?? 'pending';
+        if ($overallStatus !== 'approved') {
+            $currentApprover = getCurrentApproverInfo($memo);
+            if ($currentApprover) {
+                $statusText = "Pending - {$currentApprover['name']} ({$currentApprover['level']})";
+                $badgeClass = 'bg-warning';
+            } else {
+                $statusText = ucwords($overallStatus);
+                $badgeClass = get_status_badge_class($overallStatus);
+            }
+        } else {
+            $statusText = ucwords($overallStatus);
+            $badgeClass = get_status_badge_class($overallStatus);
+        }
     } else {
         // Fallback
         $statusText = ucwords($memo->overall_status ?? 'pending');
@@ -1252,6 +1280,10 @@ function get_memo_type($memo)
                 return 'single_memo';
             }
             return 'matrix_activity';
+        case 'App\Models\ServiceRequest':
+            return 'service_request';
+        case 'App\Models\RequestARF':
+            return 'arf';
         default:
             // Check memo type field for other models
             if (isset($memo->memo_type)) {

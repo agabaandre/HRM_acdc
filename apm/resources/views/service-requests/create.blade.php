@@ -49,21 +49,14 @@
                     $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
                 }
 
-                // If no grand_total found, calculate from items with proper days logic
+                // If no grand_total found, calculate from items with proper quantity logic
                 if ($totalOriginal == 0 && !empty($budgetByFundCode)) {
                     foreach ($budgetByFundCode as $fundCodeId => $items) {
                         foreach ($items as $item) {
-                            if (isset($item['unit_cost']) && isset($item['units'])) {
+                            if (isset($item['unit_cost']) && isset($item['quantity'])) {
                                 $unitCost = floatval($item['unit_cost']);
-                                $units = floatval($item['units']);
-                                $days = floatval($item['days'] ?? 1);
-
-                                // Use days when greater than 1, otherwise just unit_cost * units
-                                if ($days > 1) {
-                                    $totalOriginal += $unitCost * $units * $days;
-                                } else {
-                                    $totalOriginal += $unitCost * $units;
-                                }
+                                $quantity = floatval($item['quantity']);
+                                $totalOriginal += $unitCost * $quantity;
                             }
                         }
                     }
@@ -95,7 +88,8 @@
                 <input type="hidden" name="budget_id" value="{{ $sourceData->budget_id ?? '[]' }}">
                 <input type="hidden" name="original_total_budget" id="originalTotalBudget"
                     value="{{ $totalOriginal ?? 0 }}">
-            <input type="hidden" name="new_total_budget" id="newTotalBudget" value="0">
+            <input type="hidden" name="new_total_budget" id="newTotalBudget" 
+                value="{{ $sourceType == 'non_travel_memo' ? ($totalOriginal ?? 0) : 0 }}">
             <input type="hidden" name="budget_breakdown" id="budgetBreakdown" value="">
              <input type="hidden" name="division_id" id="divisionId" value="{{ $sourceData->division_id ?? 0 }}">
             <input type="hidden" name="internal_participants_cost" id="internalParticipantsCost" value="">
@@ -205,7 +199,13 @@
                                         <i class="fas fa-calculator text-primary" style="font-size: 12px;"></i>
                                     </div>
                                     <h6 class="card-title text-primary mb-1" style="font-size: 0.8rem;">Total Requested Funds</h6>
-                                    <h6 class="text-primary mb-0" id="newBudgetAmount" style="font-size: 1.1rem;">$0.00</h6>
+                                    <h6 class="text-primary mb-0" id="newBudgetAmount" style="font-size: 1.1rem;">
+                                        @if($sourceType == 'non_travel_memo' && isset($totalOriginal))
+                                            ${{ number_format($totalOriginal, 2) }}
+                                        @else
+                                            $0.00
+                                        @endif
+                                    </h6>
                                 </div>
                             </div>
                         </div>
@@ -216,7 +216,13 @@
                                         <i class="fas fa-balance-scale text-warning" style="font-size: 12px;"></i>
                                     </div>
                                     <h6 class="card-title text-warning mb-1" style="font-size: 0.8rem;">Budget Difference</h6>
-                                    <h6 class="text-warning mb-0" id="budgetDifference" style="font-size: 1.1rem;">$0.00</h6>
+                                    <h6 class="text-warning mb-0" id="budgetDifference" style="font-size: 1.1rem;">
+                                        @if($sourceType == 'non_travel_memo')
+                                            $0.00
+                                        @else
+                                            $0.00
+                                        @endif
+                                    </h6>
                                 </div>
                             </div>
                         </div>
@@ -256,54 +262,46 @@
 
                                 {{-- Individual Table for this Budget Code --}}
                                 <div class="table-responsive mb-4">
-                                        <table class="table table-hover table-bordered mb-0">
-                                        <thead class="table-secondary">
+                                        <table class="table table-hover border rounded-3 overflow-hidden">
+                                        <thead style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
                                             <tr>
-                                                <th class="text-center">#</th>
-                                                <th>Cost Item</th>
-                                                <th class="text-end">Unit Cost</th>
-                                                <th class="text-end">Units</th>
-                                                <th class="text-end">Days</th>
-                                                <th class="text-end">Total</th>
-                                                <th>Description</th>
+                                                <th class="border-0 fw-bold">#</th>
+                                                <th class="border-0 fw-bold">Description</th>
+                                                <th class="border-0 fw-bold text-center">Quantity</th>
+                                                <th class="border-0 fw-bold text-end">Unit Price</th>
+                                                <th class="border-0 fw-bold text-end">Total</th>
                             </tr>
                         </thead>
                         <tbody>
                                             @foreach ($items as $item)
                                                 @php
-                                                    $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                    $units = floatval($item['units'] ?? 0);
-                                                    $days = floatval($item['days'] ?? 1);
-
-                                                    // Use days when greater than 1, otherwise just unit_cost * units
-                                                    if ($days > 1) {
-                                                        $total = $unitCost * $units * $days;
-                                                    } else {
-                                                        $total = $unitCost * $units;
-                                                    }
-
-                                                    $groupTotal += $total;
-                                                    $grandTotal += $total;
+                                                    $itemTotal = ($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0);
+                                                    $groupTotal += $itemTotal;
+                                                    $grandTotal += $itemTotal;
                                             @endphp
-                                            <tr>
-                                                    <td class="text-center">{{ $itemCount }}</td>
-                                                    <td>{{ $item['cost'] ?? 'N/A' }}</td>
-                                                    <td class="text-end">${{ number_format($unitCost, 2) }}</td>
-                                                    <td class="text-end">{{ $units }}</td>
-                                                    <td class="text-end">{{ $days }}</td>
-                                                    <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
-                                                    <td>{{ $item['description'] ?? '' }}</td>
+                                            <tr class="border-bottom">
+                                                    <td class="fw-medium">{{ $itemCount }}</td>
+                                                    <td>
+                                                        <div>
+                                                            <p class="mb-1 fw-medium">{{ $item['description'] ?? 'N/A' }}</p>
+                                                            @if(isset($item['notes']) && !empty($item['notes']))
+                                                                <small class="text-muted">{{ $item['notes'] }}</small>
+                                                            @endif
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-center fw-medium">{{ $item['quantity'] ?? 1 }}</td>
+                                                    <td class="text-end">${{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
+                                                    <td class="text-end">${{ number_format($itemTotal, 2) }}</td>
                                             </tr>
                                                 @php
                                                     $itemCount++;
                                                 @endphp
                                                 @endforeach
                                         </tbody>
-                                        <tfoot class="table-group-divider">
-                                            <tr class="table-secondary">
-                                                <th colspan="5" class="text-end">Sub Total</th>
-                                                <th class="text-end">${{ number_format($groupTotal, 2) }}</th>
-                                                <th></th>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="4" class="text-end fw-bold">Sub Total</td>
+                                                <td class="text-end fw-bold">${{ number_format($groupTotal, 2) }}</td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -354,7 +352,8 @@
                     @endif
                                 </div>
                                 
-            <!-- Section 3: Individual Costs (Internal Participants) -->
+            <!-- Section 3: Individual Costs (Internal Participants) - Only for activities and special memos -->
+            @if($sourceType != 'non_travel_memo')
             <div class="mb-5">
                     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
                         <h6 class="fw-bold text-dark mb-0">
@@ -437,8 +436,10 @@
                                                         placeholder="Add any comments or notes about internal participants costs..."></textarea>
                                                 </div>
                                             </div>
+            @endif
 
-            <!-- Section 4: Individual Costs (External Participants) -->
+            <!-- Section 4: Individual Costs (External Participants) - Only for activities and special memos -->
+            @if($sourceType != 'non_travel_memo')
             <div class="mb-5">
                     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
                         <h6 class="fw-bold text-dark mb-0">
@@ -512,8 +513,11 @@
                                             placeholder="Add any comments or notes about external participants costs..."></textarea>
                                     </div>
                                 </div>
+            @endif
                                 
-            <!-- Section 5: Other Costs -->
+                               {{-- @dd($sourceType); --}}
+            <!-- Section 5: Other Costs - Only for activities and special memos -->
+            @if($sourceType != 'non_travel_memo')
             <div class="mb-5">
                 <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
                     <i class="fas fa-receipt me-2"></i> Other Costs
@@ -591,8 +595,10 @@
                                             placeholder="Add any comments or notes about other costs..."></textarea>
                                     </div>
                                 </div>
+            @endif
                                 
-            <!-- Section 6: Participants Summary -->
+            <!-- Section 6: Participants Summary - Only for activities and special memos -->
+            @if($sourceType != 'non_travel_memo')
             <div class="mb-5">
                 <h6 class="fw-bold text-dark mb-4 border-bottom pb-2">
                     <i class="fas fa-users me-2" style="background: linear-gradient(45deg, #6f42c1, #e83e8c, #20c997); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i> Participants Summary
@@ -621,7 +627,30 @@
                     </table>
                 </div>
             </div>
-              <!-- Section 8: Budget Summary (Bottom) -->
+            @endif
+            
+            <!-- Hidden fields for non-travel memos budget data -->
+            @if($sourceType == 'non_travel_memo' && $budgetBreakdown && !empty($budgetBreakdown))
+                @php
+                    $grandTotal = 0;
+                    $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
+                    unset($budgetBreakdown['grand_total']);
+                    foreach($budgetBreakdown as $codeId => $items) {
+                        if(is_array($items)) {
+                            foreach($items as $item) {
+                                $itemTotal = ($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0);
+                                $grandTotal += $itemTotal;
+                            }
+                        }
+                    }
+                @endphp
+                <input type="hidden" name="budget_breakdown" value="{{ json_encode($budgetBreakdown) }}">
+                <input type="hidden" name="original_total_budget" value="{{ $grandTotal }}">
+                <input type="hidden" name="new_total_budget" value="{{ $grandTotal }}">
+            @endif
+              
+              <!-- Section 8: Budget Summary (Bottom) - Only for activities and special memos -->
+              @if($sourceType != 'non_travel_memo')
                 <div class="mb-5">
                     <h6 class="fw-bold text-dark mb-4 border-bottom pb-2">
                         <i class="fas fa-calculator me-2" style="background: linear-gradient(45deg, #dc3545, #fd7e14, #ffc107); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i> Budget Summary
@@ -679,6 +708,7 @@
                         </div>
                     </div>
                 </div>
+              @endif
                                 
              
                                 

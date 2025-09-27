@@ -387,9 +387,7 @@
                                     <i class="bx bx-info-circle text-success me-2"></i>Status
                                 </td>
                                 <td class="field-value">
-                                    <span class="status-indicator status-{{ $requestARF->overall_status }}">
-                                        {{ ucfirst($requestARF->overall_status) }}
-                                    </span>
+                                    {!! display_memo_status_auto($requestARF) !!}
                                 </td>
                             </tr>
                         </tbody>

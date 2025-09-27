@@ -95,6 +95,11 @@ class ServiceRequestController extends Controller
             $sourceData = null;
             $sourceType = $request->get('source_type');
             $sourceId = $request->get('source_id');
+            
+            // Map URL parameter to controller source type
+            if ($sourceType === 'non_travel') {
+                $sourceType = 'non_travel_memo';
+            }
             $budgetBreakdown = null;
             $originalTotalBudget = 0;
             $internalParticipants = [];
@@ -112,42 +117,21 @@ class ServiceRequestController extends Controller
                 }
             }
             
-            // Get cost items that exist in budget breakdown and filter by type
+            // For non-travel memos, we don't need cost items since we display descriptions directly
             $costItems = collect();
             $otherCostItems = collect();
             
-            if ($budgetBreakdown && is_array($budgetBreakdown)) {
-                // Extract cost item names from budget breakdown
-                $costItemNames = [];
-                foreach ($budgetBreakdown as $fundCode => $items) {
-                    if (is_array($items)) {
-                        foreach ($items as $item) {
-                            if (isset($item['cost']) && !in_array($item['cost'], $costItemNames)) {
-                                $costItemNames[] = $item['cost'];
-                            }
-                        }
-                    }
+            // Only load cost items for activities and special memos
+            if ($sourceType != 'non_travel_memo') {
+                // Fallback to all Individual Cost items if no budget breakdown
+                if ($costItems->isEmpty()) {
+                    $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
                 }
                 
-                if (!empty($costItemNames)) {
-                    // Get Individual Cost items that exist in budget breakdown
-                    $individualCosts = CostItem::whereIn('name', $costItemNames)
-                                              ->where('cost_type', 'Individual Cost')
-                                              ->get();
-                    
-                    // Get Other Cost items that exist in budget breakdown
-                    $otherCosts = CostItem::whereIn('name', $costItemNames)
-                                         ->where('cost_type', 'Other Cost')
-                                         ->get();
-                    
-                    $costItems = $individualCosts;
-                    $otherCostItems = $otherCosts;
+                // Fallback to all Other Cost items if no budget breakdown
+                if ($otherCostItems->isEmpty()) {
+                    $otherCostItems = CostItem::where('cost_type', 'Other Cost')->get();
                 }
-            }
-            
-            // Fallback to all Individual Cost items if no budget breakdown
-            if ($costItems->isEmpty()) {
-                $costItems = CostItem::where('cost_type', 'Individual Cost')->get();
             }
             
             // Generate a unique request number with actual activity parameters (like ARF)
@@ -1536,7 +1520,7 @@ class ServiceRequestController extends Controller
     /**
      * Get comprehensive workflow information for service request
      */
-    private function getComprehensiveWorkflowInfo(ServiceRequest $serviceRequest)
+    private function getComprehensiveWorkflowInfo($serviceRequest)
     {
         $workflowInfo = [
             'current_level' => null,

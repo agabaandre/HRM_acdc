@@ -70,24 +70,14 @@
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <div class="form-group position-relative">
-                        <label for="staff_id" class="form-label fw-semibold">
-                            <i class="bx bx-user me-1 text-primary"></i>Staff Member <span class="text-danger">*</span>
+                        <label class="form-label fw-semibold">
+                            <i class="bx bx-user me-1 text-primary"></i>Creator/Responsible Person
                         </label>
-                        <select name="staff_id" 
-                                id="staff_id" 
-                                class="form-select form-select-lg @error('staff_id') is-invalid @enderror" 
-                                required>
-                            <option value="">Select Staff Member</option>
-                            @foreach($staff as $member)
-                                <option value="{{ $member->staff_id }}" 
-                                        {{ (int)old('staff_id', $nonTravel->staff_id) === $member->staff_id ? 'selected' : '' }}>
-                                    {{ $member->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('staff_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <div class="form-control-plaintext bg-light p-3 rounded border">
+                            <i class="bx bx-user-check me-2 text-success"></i>
+                            <strong>{{ $nonTravel->staff->fname ?? '' }} {{ $nonTravel->staff->lname ?? '' }}</strong>
+                            <small class="text-muted d-block">(Cannot be changed - creator is the responsible person)</small>
+                        </div>
                     </div>
                 </div>
                 
