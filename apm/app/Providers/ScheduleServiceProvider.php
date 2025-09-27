@@ -84,5 +84,36 @@ class ScheduleServiceProvider extends ServiceProvider
             ->onFailure(function () {
                 Log::error('Staff sync failed at scheduled time');
             });
+        
+        // Daily pending approvals notifications
+        $schedule->command('notifications:daily-pending-approvals')
+            ->dailyAt('09:00')
+            ->timezone('Africa/Addis_Ababa')
+            ->description('Send morning pending approvals notifications to all approvers')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Morning pending approvals notification failed');
+            });
+            
+        $schedule->command('notifications:daily-pending-approvals')
+            ->dailyAt('16:00')
+            ->timezone('Africa/Addis_Ababa')
+            ->description('Send evening pending approvals notifications to all approvers')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Evening pending approvals notification failed');
+            });
+            
+        $schedule->command('notifications:daily-pending-approvals')
+            ->dailyAt('00:40')
+            ->timezone('Africa/Addis_Ababa')
+            ->description('Send test pending approvals notifications to all approvers')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Test pending approvals notification failed');
+            });
     }
 }
