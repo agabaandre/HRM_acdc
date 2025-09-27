@@ -314,13 +314,13 @@
             <!-- Enhanced Header -->
             <div class="bg-white border-b border-gray-200 shadow-sm">
                 <div class="container-fluid">
-                    <div class="d-flex justify-content-between align-items-center py-4">
-                        <div>
+                    <div class="d-flex justify-content-between align-items-start py-4">
+                        <div class="flex-grow-1 me-3" style="min-width: 0;">
                             <h1 class="h2 fw-bold text-dark mb-0">View Activity Request</h1>
                             @if ($requestARF->document_number)
                                 <p class="text-muted mb-0">{{ $requestARF->document_number }}</p>
                             @endif
-                            <p class="text-dark mb-0 fw-medium">{{ $requestARF->activity_title }}</p>
+                            <p class="text-dark mb-0 fw-medium text-break" style="word-wrap: break-word; overflow-wrap: break-word; max-width: 100%;">{{ $requestARF->activity_title }}</p>
                         </div>
 
                            <div class="d-flex gap-3 col-md-2 justify-content-end">
