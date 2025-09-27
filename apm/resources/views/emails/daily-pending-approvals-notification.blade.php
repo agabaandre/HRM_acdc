@@ -243,7 +243,7 @@
                                         <li class="item">
                                             <div class="item-title">{{ $item['title'] }}</div>
                                             <div class="item-meta">
-                                                <strong>Document Number:</strong> {{ $item['document_number'] }} | 
+                                                <strong>Document Number:</strong> {{ $item['document_number'] ?? 'N/A' }} | 
                                                 <strong>Division:</strong> {{ $item['division'] }} | 
                                                 <strong>Submitted by:</strong> {{ $item['submitted_by'] }} | 
                                                 <strong>Date:</strong> {{ \Carbon\Carbon::parse($item['date_received'])->format('M d, Y H:i') }}

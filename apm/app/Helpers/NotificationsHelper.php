@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 if (!function_exists('get_matrix_notification_recipient')) {
     /**
      * Get the staff member who should be notified for matrix approval
+     * This should return the NEXT approver, not the current one
      * 
      * @param Modal $matrix
      * @return Staff|null
@@ -21,17 +22,18 @@ if (!function_exists('get_matrix_notification_recipient')) {
             return null;
         }
 
-        $today = Carbon::today();
-        $current_approval_point = WorkflowDefinition::where('approval_order', $matrix->approval_level)
-            ->where('workflow_id', $matrix->forward_workflow_id)
-            ->first();
-
-        if (!$current_approval_point) {
+        // Use the ApprovalService to get the next approver
+        $approvalService = new \App\Services\ApprovalService();
+        $nextApprover = $approvalService->getNextApprover($matrix);
+        
+        if (!$nextApprover) {
             return null;
         }
 
+        $today = Carbon::today();
+        
         // Check for active OIC approvers first (they have priority)
-        $oic_approver = Approver::where('workflow_dfn_id', $current_approval_point->id)
+        $oic_approver = Approver::where('workflow_dfn_id', $nextApprover->id)
             ->whereNotNull('oic_staff_id')
             ->where(function ($query) use ($today) {
                 $query->whereNull('end_date')
@@ -44,7 +46,7 @@ if (!function_exists('get_matrix_notification_recipient')) {
         }
 
         // Check for regular approvers if no active OIC found
-        $approver = Approver::where('workflow_dfn_id', $current_approval_point->id)
+        $approver = Approver::where('workflow_dfn_id', $nextApprover->id)
             ->where(function ($query) use ($today) {
                 $query->whereNull('end_date')
                     ->orWhere('end_date', '>=', $today);
@@ -56,10 +58,10 @@ if (!function_exists('get_matrix_notification_recipient')) {
         }
 
         // Check for division-specific approvers
-        if ($current_approval_point->is_division_specific) {
+        if ($nextApprover->is_division_specific) {
             $division = $matrix->division;
             if ($division) {
-                $referenceColumn = $current_approval_point->division_reference_column;
+                $referenceColumn = $nextApprover->division_reference_column;
                 
                 // Check for active OIC first (if available)
                 // Map reference columns to their OIC column names

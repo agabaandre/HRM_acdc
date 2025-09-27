@@ -56,7 +56,7 @@ class SendDailyPendingApprovalsNotificationJob implements ShouldQueue
                 } catch (\Exception $e) {
                     $failureCount++;
                     Log::error('Failed to send notification to approver', [
-                        'staff_id' => $approver->staff_id,
+                        'staff_id' => $approver['staff_id'],
                         'error' => $e->getMessage()
                     ]);
                 }

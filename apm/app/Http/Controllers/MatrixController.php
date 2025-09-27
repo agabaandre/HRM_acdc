@@ -1400,8 +1400,7 @@ class MatrixController extends Controller
         }
         
         $this->updateMatrix($matrix,(Object)['action'=>'approvals'],null);
-        //notify and save notification
-        send_matrix_email_notification($matrix, 'approval');
+        // Notification is already sent in updateMatrix method
         
         return redirect()->route('matrices.index')->with([
             'msg' => 'Matrix updated successfully.',

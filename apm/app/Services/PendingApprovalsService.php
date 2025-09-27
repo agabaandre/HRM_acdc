@@ -104,7 +104,7 @@ class PendingApprovalsService
                 'date_received' => $this->getDateReceivedToCurrentLevel($matrix),
                 'view_url' => route('matrices.show', $matrix),
                 'approval_level' => $matrix->approval_level,
-                'workflow_role' => $this->getWorkflowRole($matrix),
+                'workflow_role' => $this->getCurrentApproverRole($matrix),
                 'item_id' => $matrix->id,
                 'item_type' => 'Matrix'
             ]);
@@ -145,7 +145,7 @@ class PendingApprovalsService
                 'date_received' => $this->getDateReceivedToCurrentLevel($memo),
                 'view_url' => route('special-memo.show', $memo),
                 'approval_level' => $memo->approval_level,
-                'workflow_role' => $this->getWorkflowRole($memo),
+                'workflow_role' => $this->getCurrentApproverRole($memo),
                 'item_id' => $memo->id,
                 'item_type' => 'SpecialMemo'
             ]);
@@ -186,7 +186,7 @@ class PendingApprovalsService
                 'date_received' => $this->getDateReceivedToCurrentLevel($memo),
                 'view_url' => route('non-travel.show', $memo),
                 'approval_level' => $memo->approval_level,
-                'workflow_role' => $this->getWorkflowRole($memo),
+                'workflow_role' => $this->getCurrentApproverRole($memo),
                 'item_id' => $memo->id,
                 'item_type' => 'NonTravelMemo'
             ]);
@@ -228,7 +228,7 @@ class PendingApprovalsService
                 'date_received' => $this->getDateReceivedToCurrentLevel($activity),
                 'view_url' => route('activities.single-memos.show', $activity),
                 'approval_level' => $activity->approval_level,
-                'workflow_role' => $this->getWorkflowRole($activity),
+                'workflow_role' => $this->getCurrentApproverRole($activity),
                 'item_id' => $activity->id,
                 'item_type' => 'Activity'
             ]);
@@ -273,7 +273,7 @@ class PendingApprovalsService
                 'date_received' => $this->getDateReceivedToCurrentLevel($serviceRequest),
                 'view_url' => route('service-requests.show', $serviceRequest),
                 'approval_level' => $serviceRequest->approval_level,
-                'workflow_role' => $this->getWorkflowRole($serviceRequest),
+                'workflow_role' => $this->getCurrentApproverRole($serviceRequest),
                 'item_id' => $serviceRequest->id,
                 'item_type' => 'ServiceRequest'
             ]);
@@ -318,7 +318,7 @@ class PendingApprovalsService
                 'date_received' => $this->getDateReceivedToCurrentLevel($arfRequest),
                 'view_url' => route('request-arfs.show', $arfRequest),
                 'approval_level' => $arfRequest->approval_level,
-                'workflow_role' => $this->getWorkflowRole($arfRequest),
+                'workflow_role' => $this->getCurrentApproverRole($arfRequest),
                 'item_id' => $arfRequest->id,
                 'item_type' => 'RequestARF'
             ]);
@@ -452,7 +452,20 @@ class PendingApprovalsService
      */
     protected function isCurrentApprover($model): bool
     {
-        if (!$model->forward_workflow_id || !$model->approval_level) {
+        if (!$model->forward_workflow_id || $model->approval_level === null) {
+            return false;
+        }
+
+        // Special case: level 0 means returned to creator/focal person
+        if ($model->approval_level == 0) {
+            // Check if current user is the creator or focal person
+            if (method_exists($model, 'staff_id') && $model->staff_id == $this->currentStaffId) {
+                return true;
+            }
+            if (method_exists($model, 'focal_person_id') && $model->focal_person_id == $this->currentStaffId) {
+                return true;
+            }
+            // For level 0, only show to creator/focal person, not to division heads
             return false;
         }
 
@@ -566,6 +579,63 @@ class PendingApprovalsService
     }
 
     /**
+     * Get the workflow role that the current approver should be acting as
+     * This is different from getWorkflowRole which shows the current level of the item
+     */
+    protected function getCurrentApproverRole($item): string
+    {
+        if (!$item->forward_workflow_id || $item->approval_level === null) {
+            return 'N/A';
+        }
+
+        // Special case: level 0 means returned to creator/focal person
+        if ($item->approval_level == 0) {
+            return 'Creator/Focal Person';
+        }
+
+        // For daily notifications, we need to find what role the current approver should be acting as
+        // This means finding the workflow definition that matches the current approver's approval level
+        $workflowDefinition = WorkflowDefinition::where('workflow_id', $item->forward_workflow_id)
+            ->where('approval_order', $item->approval_level)
+            ->where('is_enabled', 1)
+            ->first();
+
+        if (!$workflowDefinition) {
+            return 'N/A';
+        }
+
+        // Check if this is a division-specific role and if the current user matches
+        if ($workflowDefinition->is_division_specific) {
+            $division = $item->division;
+            if ($division) {
+                $referenceColumn = $workflowDefinition->division_reference_column;
+                $staffId = $division->{$referenceColumn} ?? null;
+                
+                if ($staffId == $this->currentStaffId) {
+                    // Special case: If the person is both division head and finance officer,
+                    // prioritize showing "Head of Division" for better clarity
+                    if ($referenceColumn == 'finance_officer' && $division->division_head == $this->currentStaffId) {
+                        return 'Head of Division';
+                    }
+                    return $workflowDefinition->role;
+                }
+            }
+        }
+
+        // Check if the current user is assigned to this workflow definition
+        $approver = Approver::where('workflow_dfn_id', $workflowDefinition->id)
+            ->where('staff_id', $this->currentStaffId)
+            ->first();
+
+        if ($approver) {
+            return $workflowDefinition->role;
+        }
+
+        // If no specific match, return the role anyway (this might be a fallback case)
+        return $workflowDefinition->role;
+    }
+
+    /**
      * Format a pending item with common structure
      */
     protected function formatPendingItem($item, string $category, array $data): array
@@ -573,6 +643,7 @@ class PendingApprovalsService
         return array_merge([
             'id' => $item->id,
             'category' => $category,
+            'type' => $data['item_type'] ?? $category, // Use item_type if available, otherwise use category
             'status' => $item->overall_status,
             'created_at' => $item->created_at,
             'updated_at' => $item->updated_at,
