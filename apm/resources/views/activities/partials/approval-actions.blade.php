@@ -4,7 +4,7 @@
         <i class="bx bx-check text-bold"></i> Pass Activity
     </button>
     {{-- @dd($matrix->approval_level) --}}
-    @if(!still_with_creator($matrix))
+    @if(!still_with_creator($matrix) && !activities_approved_by_me($matrix) && !can_user_proceed_with_empty_approvable_stack($matrix))
     <button class="btn btn-danger w-100 text-white" type="button" data-bs-toggle="modal" data-bs-target="#recommendChangesModal" style="border-radius: 0px;">
         <i class="bx bx-edit text-bold"></i> Return Activity
     </button>

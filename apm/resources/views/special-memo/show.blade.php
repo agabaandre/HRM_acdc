@@ -686,7 +686,7 @@
                                 <i class="bx bx-check-circle me-2 text-success"></i>Status
                             </td>
                             <td class="field-value" colspan="3">
-                               {!!display_memo_status_auto($specialMemo,'special')!!}
+                               {!!display_memo_status_auto($specialMemo,'special')!!} 
                                 @if($specialMemo->overall_status === 'pending')
                                     <a href="{{ route('special-memo.status', $specialMemo) }}" class="btn btn-sm btn-outline-info ms-2">
                                         <i class="bx bx-info-circle me-1"></i>View Status
@@ -1044,8 +1044,21 @@
                                         <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }}
                                                 USD</strong></h6>
                                     </div>
+                                </div>
+                            </div>
+                            
+                            {{-- Available Budget --}}
+                            @if($specialMemo->available_budget)
+                            <div class="row mt-2">
+                                <div class="col-md-12">
+                                    <div class="alert alert-info">
+                                        <h6 class="mb-0"><strong>Available Budget: {{ number_format($specialMemo->available_budget, 2) }}
+                                                USD</strong></h6>
+                                        <small class="text-muted">Allocated by Finance Officer</small>
                                     </div>
                                 </div>
+                            </div>
+                            @endif
                             @else
                                 <!-- Fallback: Show budget as key-value pairs if structure is different -->
                                 <div class="table-responsive">
@@ -1194,77 +1207,64 @@
                 </div>
                     <div class="card-body">
 
-                        @if($specialMemo->overall_status == 'approved' || $specialMemo->overall_status == 'rejected' || $specialMemo->overall_status == 'returned' || $specialMemo->overall_status == 'draft')
+                        @if($specialMemo->overall_status !== 'approved')
                             <div class="mt-3 p-3"
                                 style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 0.5rem; border: 1px solid #bbf7d0;">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <i class="bx bx-user-check text-green-600"></i>
-                                    <span class="fw-semibold text-green-900">Current Status</span>
-                                </div>
-                                <div class="memo-meta-row">
-                                    <div class="memo-meta-item">
-                                        <i class="bx bx-badge-check"></i>
-                                        <span
-                                            class="memo-meta-value">{{ ucfirst($specialMemo->overall_status ?? 'draft') }}</span>
-                                    </div>
-                                    @if($specialMemo->overall_status === 'pending')
-                                        <div class="memo-meta-item">
-                                            <i class="bx bx-time"></i>
-                                            <span class="memo-meta-value">Awaiting Approval</span>
+                                
+                                <!-- Compact Approval Info Row -->
+                                <div class="row g-3">
+                                    <!-- Status -->
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                                <i class="bx bx-badge-check text-white"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold text-dark small">Status</div>
+                                                <div class="fw-bold text-purple">{{ ucfirst($specialMemo->overall_status ?? 'draft') }}</div>
+                                            </div>
                                         </div>
+                                    </div>
+
+                                    <!-- Current Approver -->
+                                    @if($specialMemo->overall_status !== 'draft' && $specialMemo->current_actor)
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                                                <i class="bx bx-user text-white"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold text-dark small">Current Approver</div>
+                                                <div class="fw-bold text-info">{{ $specialMemo->current_actor->fname . ' ' . $specialMemo->current_actor->lname }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
+
+                                    <!-- Approval Role -->
+                                    @if($specialMemo->workflow_definition)
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                                                <i class="bx bx-crown text-white"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold text-dark small">Approval Role</div>
+                                                <div class="fw-bold text-orange">{{ $specialMemo->workflow_definition->role ?? 'Not specified' }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     @endif
                                 </div>
 
-                                @if($specialMemo->overall_status !== 'draft' && $specialMemo->current_actor)
-                                    <div class="mt-3 p-3"
-                                        style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 0.5rem; border: 1px solid #bbf7d0;">
-                                        <div class="d-flex align-items-center gap-2 mb-2">
-                                            <i class="bx bx-user text-success"></i>
-                                            <span class="fw-semibold text-success">Current Approver</span>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="mb-2">
-                                                    <strong class="text-muted small">Name:</strong>
-                                                    <div class="fw-bold text-success">
-                                                        {{ $specialMemo->current_actor->fname . ' ' . $specialMemo->current_actor->lname }}
-                                                    </div>
-                                                </div>
-                                                @if($specialMemo->current_actor->job_name)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Job Title:</strong>
-                                                        <div class="fw-semibold">
-                                                            {{ $specialMemo->current_actor->job_name }}</div>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                            <div class="col-md-6">
-                                                @if($specialMemo->current_actor->division_name)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Division:</strong>
-                                                        <div class="fw-semibold">
-                                                            {{ $specialMemo->current_actor->division_name }}</div>
-                                                    </div>
-                                                @endif
-                                                @if($specialMemo->workflow_definition)
-                                                    <div class="mb-2">
-                                                        <strong class="text-muted small">Approval Role:</strong>
-                                                        <div>
-                                                            <span
-                                                                class="badge bg-info">{{ $specialMemo->workflow_definition->role ?? 'Not specified' }}</span>
-                                                        </div>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="mt-2 p-2 bg-success bg-opacity-10 rounded">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <i class="bx bx-info-circle text-success"></i>
-                                                <span class="text-success fw-medium small">This special memo is
-                                                    currently awaiting approval from the supervisor above.</span>
-                                            </div>
-                                        </div>
+                                <!-- Additional Info (if needed) -->
+                                @if($specialMemo->overall_status === 'pending')
+                                <div class="mt-3 p-2 bg-info bg-opacity-10 rounded">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bx bx-info-circle text-info"></i>
+                                        <span class="text-info fw-medium small">This special memo is currently awaiting approval from the supervisor above.</span>
                                     </div>
+                                </div>
                                 @endif
                             </div>
                         @endif
@@ -1300,7 +1300,8 @@
                 @endif
 
                 <!-- Enhanced Approval Actions -->
-                @if(can_take_action_generic($specialMemo))
+                {{-- {{ dd(can_take_action_generic($specialMemo)) }} --}}
+                @if(can_take_action_generic($specialMemo) || (is_with_creator_generic($specialMemo) && $specialMemo->overall_status != 'draft') || (isdivision_head($specialMemo) && $specialMemo->overall_status == 'returned'))
                     <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
@@ -1338,19 +1339,32 @@
                                     @endif
                                     <div class="col-md-4">
                                         <div class="d-grid gap-2 mt-4">
-                                            <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
-                                                <i class="bx bx-check"></i>
-                                                Approve
-                                            </button>
+                                            @php
+                                                $isHOD = isdivision_head($specialMemo);
+                                                $isReturnedToHOD = $isHOD && $specialMemo->overall_status == 'returned' && $specialMemo->approval_level == 1;
+                                                $isPendingAtHOD = $isHOD && $specialMemo->overall_status == 'pending' && $specialMemo->approval_level == 1;
+                                            @endphp
+                                            
+                                            {{-- Show Approve button only if not returned to HOD --}}
+                                            @if(!$isReturnedToHOD)
+                                                <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
+                                                    <i class="bx bx-check"></i>
+                                                    Approve
+                                                </button>
+                                            @endif
+                                            
+                                            {{-- Always show Return button --}}
                                             <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
                                                 <i class="bx bx-undo"></i>
                                                 Return
                                             </button>
-                                             @if(isdivision_head($specialMemo)&&($specialMemo->approval_level=='1'))
-                                            <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
-                                                <i class="bx bx-x"></i>
-                                                Cancel
-                                            </button>
+                                            
+                                            {{-- Show Cancel button only for HOD at level 1 --}}
+                                            @if($isHOD && $specialMemo->approval_level == 1)
+                                                <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                    <i class="bx bx-x"></i>
+                                                    Cancel
+                                                </button>
                                             @endif
                                         </div>
                                     </div>
@@ -1361,7 +1375,7 @@
                 @endif
 
                 <!-- Submit for Approval Section -->
-                @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id'))
+                @if($specialMemo->overall_status === 'draft' && $specialMemo->staff_id == user_session('staff_id') || $specialMemo->overall_status == 'draft' && $specialMemo->division->division_head == user_session('staff_id'))
                     <div class="card sidebar-card border-0"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
@@ -1390,6 +1404,33 @@
                         </div>
                     </div>
                 @endif
+
+                <!-- Resubmission Section for HODs when returned -->
+                @if(($specialMemo->overall_status === 'returned' || $specialMemo->overall_status === 'pending') && isdivision_head($specialMemo) && $specialMemo->approval_level <= 1)
+                    <div class="card sidebar-card border-0"
+                        style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-undo"></i>
+                                Resubmit for Approval
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">This memo was returned for revision. Ready to resubmit?</p>
+                            <button type="button" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2" 
+                                    data-bs-toggle="modal" data-bs-target="#resubmitModal">
+                                <i class="bx bx-undo"></i>
+                                Resubmit for Approval
+                            </button>
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <small class="text-muted">
+                                    <i class="bx bx-info-circle me-1"></i>
+                                    <strong>Note:</strong> This will resubmit the memo to the approver who returned it.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -1408,6 +1449,38 @@
       </div>
     </div>
   </div>
+</div>
+
+{{-- Resubmit Modal --}}
+<div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resubmitModalLabel">Resubmit for Approval</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('special-memo.resubmit', $specialMemo) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        <strong>Note:</strong> This will resubmit the memo to the approver who returned it for revision.
+                    </div>
+                    <div class="mb-3">
+                        <label for="resubmitComment" class="form-label">Comments (Optional)</label>
+                        <textarea class="form-control" id="resubmitComment" name="comment" rows="3" 
+                                  placeholder="Add any comments about the changes made..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bx bx-undo me-1"></i>Resubmit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 

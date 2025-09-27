@@ -217,11 +217,39 @@ class SpecialMemoController extends Controller
             'fund_type_id' => 'required|exists:fund_types,id',
             'budget_codes' => 'nullable|array',
             'budget_codes.*' => 'exists:fund_codes,id',
+            'activity_code' => 'nullable|string|max:255',
             'attachments.*.type' => 'required_with:attachments.*.file|string|max:255',
             'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
             'attachments.*.replace' => 'nullable|boolean',
             'attachments.*.delete' => 'nullable|boolean',
         ]);
+
+        // Custom validation: World Bank Activity Code is required when World Bank budget code (funder_id=1) is selected
+        $budgetCodes = $request->input('budget_codes', []);
+        $activityCode = $request->input('activity_code', '');
+        
+        if (!empty($budgetCodes)) {
+            // Check if any selected budget code belongs to World Bank (funder_id = 1)
+            $worldBankCodes = \App\Models\FundCode::whereIn('id', $budgetCodes)
+                ->where('funder_id', 1)
+                ->exists();
+            
+            if ($worldBankCodes && empty($activityCode)) {
+                $errorMessage = 'World Bank Activity Code is required when World Bank budget code is selected.';
+                
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $errorMessage
+                    ], 422);
+                }
+                
+                return redirect()->back()->withInput()->with([
+                    'msg' => $errorMessage,
+                    'type' => 'error'
+                ]);
+            }
+        }
 
         // Validate total participants and budget
         $totalParticipants = (int) $request->input('total_participants', 0);
@@ -333,12 +361,8 @@ class SpecialMemoController extends Controller
             // Get assigned workflow ID for SpecialMemo model
             $assignedWorkflowId = null;
             if (!$isDraft) {
-                $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('SpecialMemo');
-                // Fallback to default workflow ID if no assignment found
-                if (!$assignedWorkflowId) {
-                    $assignedWorkflowId = 1; // Default workflow ID
-                    Log::warning('No workflow assignment found for SpecialMemo model, using default workflow ID: 1');
-                }
+                $assignedWorkflowId = 1; // Default workflow ID
+                Log::warning('No workflow assignment found for SpecialMemo model, using default workflow ID: 1');
             }
 
             $specialMemo = SpecialMemo::create([
@@ -653,7 +677,14 @@ class SpecialMemoController extends Controller
      */
     public function update(Request $request, SpecialMemo $specialMemo): RedirectResponse
     {
-        //dd($request->all());
+        // Debug: Log the request data
+        \Log::info('Special Memo Update Request', [
+            'action' => $request->input('action'),
+            'overall_status' => $specialMemo->overall_status,
+            'is_draft' => $specialMemo->is_draft,
+            'all_request_data' => $request->all()
+        ]);
+        
         $validated = $request->validate([
             'activity_title' => 'required|string|max:255',
             'date_from' => 'required|date',
@@ -669,11 +700,32 @@ class SpecialMemoController extends Controller
             'fund_type_id' => 'required|exists:fund_types,id',
             'budget_codes' => 'nullable|array',
             'budget_codes.*' => 'exists:fund_codes,id',
+            'activity_code' => 'nullable|string|max:255',
             'attachments.*.type' => 'required_with:attachments.*.file|string|max:255',
             'attachments.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,ppt,pptx,xls,xlsx,doc,docx|max:10240',
             'attachments.*.replace' => 'nullable|boolean',
             'attachments.*.delete' => 'nullable|boolean',
         ]);
+
+        // Custom validation: World Bank Activity Code is required when World Bank budget code (funder_id=1) is selected
+        $budgetCodes = $request->input('budget_codes', []);
+        $activityCode = $request->input('activity_code', '');
+        
+        if (!empty($budgetCodes)) {
+            // Check if any selected budget code belongs to World Bank (funder_id = 1)
+            $worldBankCodes = \App\Models\FundCode::whereIn('id', $budgetCodes)
+                ->where('funder_id', 1)
+                ->exists();
+            
+            if ($worldBankCodes && empty($activityCode)) {
+                $errorMessage = 'World Bank Activity Code is required when World Bank budget code is selected.';
+                
+                return redirect()->back()->withInput()->with([
+                    'msg' => $errorMessage,
+                    'type' => 'error'
+                ]);
+            }
+        }
 
         // Validate total participants and budget
         $totalParticipants = (int) $request->input('total_participants', 0);
@@ -824,11 +876,8 @@ class SpecialMemoController extends Controller
             // Add workflow fields only when submitting for approval
             if (!$isDraft) {
                 // Get assigned workflow ID for SpecialMemo model
-                $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('SpecialMemo');
-                if (!$assignedWorkflowId) {
-                    $assignedWorkflowId = 1; // Default workflow ID
-                    Log::warning('No workflow assignment found for SpecialMemo model in update, using default workflow ID: 1');
-                }
+                $assignedWorkflowId = 1; // Default workflow ID
+                Log::warning('No workflow assignment found for SpecialMemo model in update, using default workflow ID: 1');
                 $updateData['forward_workflow_id'] = $assignedWorkflowId;
                 $updateData['approval_level'] = 1;
                 $updateData['next_approval_level'] = 2;
@@ -841,43 +890,34 @@ class SpecialMemoController extends Controller
             $specialMemo->update($updateData);
     
             // Handle submission for approval
-            if (($request->input('action') === 'submit') || ($specialMemo->overall_status === 'returned' && $specialMemo->responsible_person_id == user_session('staff_id'))) {
+            if ($request->input('action') === 'submit') {
+                \Log::info('Submit for approval triggered', [
+                    'action' => $request->input('action'),
+                    'overall_status' => $specialMemo->overall_status,
+                    'is_draft' => $specialMemo->is_draft
+                ]);
                 
-
-                    $specialMemo->submitForApproval();
-                 
-                
-
-                // Update the memo status for approval
-                $specialMemo->overall_status = 'pending';
-                $specialMemo->approval_level = 1;
-                // Get assigned workflow ID for SpecialMemo model
-                $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('SpecialMemo');
-                if (!$assignedWorkflowId) {
-                    $assignedWorkflowId = 1; // Default workflow ID
-                    Log::warning('No workflow assignment found for SpecialMemo model in submission, using default workflow ID: 1');
-                }
-                $specialMemo->forward_workflow_id = $assignedWorkflowId;
-                $specialMemo->next_approval_level = 2;
-                $specialMemo->is_draft = 0; // Set is_draft to 0 (false) when submitting for approval
-                $specialMemo->save();
-
-                // Save approval trail
-                $specialMemo->saveApprovalTrail('Submitted for approval', 'submitted');
-            }
-            else{
-                   DB::rollBack();
+                // Check if the memo is in draft status before submitting
+                if ($specialMemo->overall_status != 'draft') {
+                    \Log::warning('Submit for approval failed - not in draft status', [
+                        'overall_status' => $specialMemo->overall_status,
+                        'is_draft' => $specialMemo->is_draft
+                    ]);
+                    
+                    DB::rollBack();
                     return redirect()->back()->with([
                         'msg' => 'Only draft special memos can be submitted for approval.',
                         'type' => 'error',
                     ]);
+                }
+                
+                // Submit for approval
+                return $this->submitForApproval($specialMemo);
             }
     
             DB::commit();
     
-            $message = ($request->input('action') === 'submit') 
-                ? 'Special Memo updated and submitted for approval successfully.'
-                : 'Special Memo updated and saved as draft successfully.';
+            $message = 'Special Memo updated and saved as draft successfully.';
     
             return redirect()->route('special-memo.index')->with([
                 'msg' => $message,
@@ -974,11 +1014,8 @@ class SpecialMemoController extends Controller
         $specialMemo->overall_status = 'pending';
         $specialMemo->approval_level = 1;
         // Get assigned workflow ID for SpecialMemo model
-        $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('SpecialMemo');
-        if (!$assignedWorkflowId) {
-            $assignedWorkflowId = 1; // Default workflow ID
-            Log::warning('No workflow assignment found for SpecialMemo model in submitForApproval, using default workflow ID: 1');
-        }
+        $assignedWorkflowId = 1; // Default workflow ID
+        Log::warning('No workflow assignment found for SpecialMemo model in submitForApproval, using default workflow ID: 1');
         $specialMemo->forward_workflow_id = $assignedWorkflowId;
         $specialMemo->next_approval_level = 2;
         $specialMemo->is_draft = 0; // Set is_draft to 0 (false) when submitting for approval
@@ -1000,7 +1037,7 @@ class SpecialMemoController extends Controller
     public function updateStatus(Request $request, SpecialMemo $specialMemo): RedirectResponse
     {
         $request->validate([
-            'action' => 'required|in:approved,rejected,returned',
+            'action' => 'required|in:approved,rejected,returned,cancelled',
             'comment' => 'nullable|string|max:1000',
             'available_budget' => 'nullable|numeric|min:0'
         ]);
@@ -1008,6 +1045,75 @@ class SpecialMemoController extends Controller
         // Use the generic approval system
         $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
         return $genericController->updateStatus($request, 'SpecialMemo', $specialMemo->id);
+    }
+
+    /**
+     * Resubmit a returned special memo for approval.
+     */
+    public function resubmit(Request $request, SpecialMemo $specialMemo): RedirectResponse
+    {
+        $request->validate([
+            'comment' => 'nullable|string|max:1000'
+        ]);
+
+        // Check if the memo is in the correct status for resubmission
+        if (!in_array($specialMemo->overall_status, ['returned', 'pending'])) {
+            return redirect()->back()->with('error', 'Only returned or pending memos can be resubmitted.');
+        }
+
+        if (!isdivision_head($specialMemo)) {
+            return redirect()->back()->with('error', 'Only division heads can resubmit returned memos.');
+        }
+
+        // Check if memo is at the correct level for resubmission (0 or 1)
+        if ($specialMemo->approval_level > 1) {
+            return redirect()->back()->with('error', 'Memo must be at the correct level to be resubmitted.');
+        }
+
+        // Handle resubmission based on current level
+        if ($specialMemo->approval_level == 0) {
+            // Memo was returned by HOD to focal person - resubmit to HOD (level 1)
+            $specialMemo->approval_level = 1;
+            $specialMemo->forward_workflow_id = \App\Models\WorkflowModel::getWorkflowIdForModel('SpecialMemo');
+            $specialMemo->overall_status = 'pending';
+            $specialMemo->save();
+        } else {
+            // Memo was returned by other approver to HOD - resubmit to that approver
+            $lastApprovalTrail = \App\Models\ApprovalTrail::where('model_id', $specialMemo->id)
+                ->where('model_type', 'App\\Models\\SpecialMemo')
+                ->where('action', 'returned')
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if (!$lastApprovalTrail) {
+                return redirect()->back()->with('error', 'Could not find the approver who returned this memo.');
+            }
+
+            // Set the memo back to the approver who returned it
+            $specialMemo->approval_level = $lastApprovalTrail->approval_order;
+            $specialMemo->forward_workflow_id = $lastApprovalTrail->forward_workflow_id;
+            $specialMemo->overall_status = 'pending';
+            $specialMemo->save();
+        }
+
+        // Create a new approval trail for the resubmission
+        $resubmitTrail = new \App\Models\ApprovalTrail();
+        $resubmitTrail->model_id = $specialMemo->id;
+        $resubmitTrail->model_type = 'App\\Models\\SpecialMemo';
+        $resubmitTrail->remarks = $request->comment ?? 'Memo resubmitted for approval';
+        $resubmitTrail->forward_workflow_id = $specialMemo->forward_workflow_id;
+        $resubmitTrail->action = 'resubmitted';
+        $resubmitTrail->approval_order = $specialMemo->approval_level;
+        
+        // Always use the HOD (current user) as the resubmitter in the approval trail
+        // This shows who actually performed the resubmission action
+        $resubmitTrail->staff_id = user_session('staff_id');
+        
+        $resubmitTrail->is_archived = 0;
+        $resubmitTrail->save();
+
+        return redirect()->route('special-memo.show', $specialMemo)
+            ->with('success', 'Memo has been resubmitted for approval.');
     }
 
     /**

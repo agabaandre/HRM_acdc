@@ -106,7 +106,7 @@
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
                    
-                    <button type="submit" name="action" value="draft" class="btn btn-secondary btn-lg px-5">
+                    <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
                         <i class="bx bx-save me-1"></i> Save Special Memo
                     </button>
                     
@@ -478,7 +478,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             data.forEach(code => {
                 const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${code.budget_balance}">${label}</option>`
+                    `<option value="${code.id}" data-balance="${code.budget_balance}" data-funder-id="${code.funder_id}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
@@ -492,6 +492,24 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     const selected = $(this).find('option:selected');
     const container = $('#budgetGroupContainer');
     container.empty();
+
+    // Check if any selected budget code is World Bank (funder_id = 1)
+    let hasWorldBankCode = false;
+    selected.each(function () {
+        const funderId = $(this).data('funder-id');
+        if (funderId == 1) { // World Bank funder_id
+            hasWorldBankCode = true;
+        }
+    });
+
+    // Make World Bank Activity Code required if World Bank budget code is selected
+    if (hasWorldBankCode) {
+        $('#activity_code').prop('required', true);
+        $('.activity_code label .text-danger').show();
+    } else {
+        $('#activity_code').prop('required', false);
+        $('.activity_code label .text-danger').hide();
+    }
 
     selected.each(function () {
         const codeId = $(this).val();

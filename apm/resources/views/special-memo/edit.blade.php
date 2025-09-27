@@ -241,8 +241,8 @@
                 </div>
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center border-top pt-4 mt-5 gap-3">
-                    <button type="submit" name="action" value="draft" class="btn btn-secondary btn-lg px-5">
-                        <i class="bx bx-save me-1"></i> Save Special Memo
+                    <button type="submit" name="action" value="draft" class="btn btn-success btn-lg px-5">
+                        <i class="bx bx-save me-1"></i> Update Special Memo
                     </button>
                     
                     {{-- <button type="submit" name="action" value="submit" class="btn btn-success btn-lg px-5">

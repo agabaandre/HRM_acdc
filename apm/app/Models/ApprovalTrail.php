@@ -106,6 +106,12 @@ class ApprovalTrail extends Model
             return 'Unknown';
         }
 
+        // For resubmissions, always show "Head of Division" since resubmissions are typically done by HODs
+        if ($this->action === 'resubmitted') {
+            return 'Head of Division';
+        }
+
+        // For other actions, use the original logic
         $workflowDefinition = WorkflowDefinition::where('approval_order', $this->approval_order)
             ->where('workflow_id', $this->forward_workflow_id)
             ->first();

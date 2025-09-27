@@ -516,6 +516,19 @@
                             </tfoot>
                         </table>
                     </div>
+                    
+                    {{-- Available Budget --}}
+                    @if($nonTravel->available_budget)
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <h6 class="mb-0"><strong>Available Budget: {{ number_format($nonTravel->available_budget, 2) }}
+                                        USD</strong></h6>
+                                <small class="text-muted">Allocated by Finance Officer</small>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
                 </div>
 
                                     <!-- Request Remarks -->
@@ -573,62 +586,97 @@
                     </div>
                 @endif
 
-                <!-- Quick Approval Status -->
-                <div class="card sidebar-card border-0 mb-4">
-                    <div class="card-header border-0 py-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);">
-                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                            <i class="bx bx-trending-up text-info"></i>
-                            Approval Progress
+                <!-- Compact Approval Information -->
+                @if($nonTravel->overall_status !== 'approved')
+                <div class="card sidebar-card border-0 mb-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                    <div class="card-header bg-transparent border-0 py-3">
+                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                            <i class="bx bx-info-circle me-2 text-success"></i>Approval Information
                         </h6>
                     </div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="text-muted small">Current Level</span>
-                                <span class="badge bg-primary fs-6">{{ $nonTravel->approval_level ?? 0 }}</span>
+                        <!-- Compact Approval Info Row -->
+                        <div class="row g-3">
+                            <!-- Status -->
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                        <i class="bx bx-badge-check text-white"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark small">Status</div>
+                                        <div class="fw-bold text-purple">{{ ucfirst($nonTravel->overall_status ?? 'draft') }}</div>
+                                    </div>
+                                </div>
                             </div>
-                            @if($nonTravel->workflow_definition)
-                                <div class="mb-2">
-                                    <small class="text-muted">Role:</small><br>
-                                    <strong>{{ $nonTravel->workflow_definition->role ?? 'Not specified' }}</strong>
+
+                            <!-- Current Approver -->
+                            @if($nonTravel->overall_status !== 'draft' && $nonTravel->current_actor)
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                                        <i class="bx bx-user text-white"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark small">Current Approver</div>
+                                        <div class="fw-bold text-info">{{ $nonTravel->current_actor->fname . ' ' . $nonTravel->current_actor->lname }}</div>
+                                    </div>
                                 </div>
-                                <div class="mb-2">
-                                    <small class="text-muted">Division Specific:</small><br>
-                                    <span class="badge bg-{{ $nonTravel->workflow_definition->is_division_specific ? 'info' : 'secondary' }}">
-                                        {{ $nonTravel->workflow_definition->is_division_specific ? 'Yes' : 'No' }}
-                                    </span>
-                                </div>
+                            </div>
                             @endif
-                            @if($nonTravel->current_actor)
-                                <div class="mb-2">
-                                    <small class="text-muted">Current Supervisor:</small><br>
-                                    <strong class="text-primary">{{ $nonTravel->current_actor->fname . ' ' . $nonTravel->current_actor->lname }}</strong>
-                                    @if($nonTravel->current_actor->job_name)
-                                        <br><small class="text-muted">{{ $nonTravel->current_actor->job_name }}</small>
-                                    @endif
-                                    @if($nonTravel->current_actor->division_name)
-                                        <br><small class="text-muted">{{ $nonTravel->current_actor->division_name }}</small>
-                                    @endif
+
+                            <!-- Approval Role -->
+                            @if($nonTravel->workflow_definition)
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="p-2 rounded-circle" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                                        <i class="bx bx-crown text-white"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark small">Approval Role</div>
+                                        <div class="fw-bold text-orange">{{ $nonTravel->workflow_definition->role ?? 'Not specified' }}</div>
+                                    </div>
                                 </div>
+                            </div>
                             @endif
                         </div>
-                        <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-outline-info btn-sm w-100">
-                            <i class="bx bx-info-circle me-1"></i>View Full Status
-                        </a>
+
+                        <!-- Additional Info (if needed) -->
+                        @if($nonTravel->overall_status === 'pending')
+                        <div class="mt-3 p-2 bg-info bg-opacity-10 rounded">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bx bx-info-circle text-info"></i>
+                                <span class="text-info fw-medium small">This non-travel memo is currently awaiting approval from the supervisor above.</span>
+                            </div>
+                        </div>
+                        @endif
+
+                        <div class="mt-3">
+                            <a href="{{ route('non-travel.status', $nonTravel) }}" class="btn btn-success btn-sm w-100">
+                                <i class="bx bx-info-circle me-1"></i>View Full Status
+                            </a>
+                        </div>
                     </div>
                 </div>
+                @endif
    <!-- Enhanced Approval Actions -->
 
                 @if(can_take_action_generic($nonTravel)|| is_with_creator_generic($nonTravel) && $nonTravel->overall_status != 'draft')
-                    <div class="card border-0 shadow-sm">
+                    <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
                                 <i class="bx bx-check-circle"></i>
-                                
-                                Approval Actions
+                                Approval Actions - Level {{ $nonTravel->approval_level ?? 0 }}
                             </h6>
                         </div>
                         <div class="card-body">
+                            <div class="alert alert-info mb-3">
+                                <i class="bx bx-info-circle me-2"></i>
+                                <strong>Current Level:</strong> {{ $nonTravel->approval_level ?? 0 }}
+                                @if($nonTravel->workflow_definition)
+                                    - <strong>Role:</strong> {{ $nonTravel->workflow_definition->role ?? 'Not specified' }}
+                                @endif
+                            </div>
                             
                             <form action="{{ route('non-travel.update-status', $nonTravel) }}" method="POST" id="approvalForm">
                                 @csrf
@@ -654,22 +702,33 @@
         
                                     <div class="col-md-4">
                                         <div class="d-grid gap-2 mt-4">
-                                            <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
-                                                <i class="bx bx-check"></i>
-                                                Approve
-                                            </button>
-                                           
+                                            @php
+                                                $isHOD = isdivision_head($nonTravel);
+                                                $isReturnedToHOD = $isHOD && $nonTravel->overall_status == 'returned' && $nonTravel->approval_level == 1;
+                                                $isPendingAtHOD = $isHOD && $nonTravel->overall_status == 'pending' && $nonTravel->approval_level == 1;
+                                            @endphp
+                                            
+                                            {{-- Show Approve button only if not returned to HOD --}}
+                                            @if(!$isReturnedToHOD)
+                                                <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
+                                                    <i class="bx bx-check"></i>
+                                                    Approve
+                                                </button>
+                                            @endif
+                                            
+                                            {{-- Always show Return button --}}
                                             <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-2">
                                                 <i class="bx bx-undo"></i>
                                                 Return
                                             </button>
-                                            @if(isdivision_head($nonTravel)&&$nonTravel->approval_level=='1')
-                                            <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
-                                                <i class="bx bx-x"></i>
-                                                Cancel
-                                            </button>
+                                            
+                                            {{-- Show Cancel button only for HOD at level 1 --}}
+                                            @if($isHOD && $nonTravel->approval_level == 1)
+                                                <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                    <i class="bx bx-x"></i>
+                                                    Cancel
+                                                </button>
                                             @endif
-
                                         </div>
                                     </div>
                                 </div>
@@ -681,16 +740,21 @@
                 @include('partials.approval-trail', ['resource' => $nonTravel])
 
                 <!-- Submit for Approval -->
-                @if(in_array($nonTravel->overall_status,['draft','returned']) && is_with_creator_generic($nonTravel))
-                    <div class="card sidebar-card border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                @if($nonTravel->overall_status === 'draft' && $nonTravel->staff_id == user_session('staff_id') || $nonTravel->overall_status == 'draft' && $nonTravel->division->division_head == user_session('staff_id'))
+                    <div class="card sidebar-card border-0"
+                        style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
-                            
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-send"></i>
+                                Submit for Approval
+                            </h6>
                         </div>
                         <div class="card-body">
                             <p class="text-muted mb-3">Ready to submit this non-travel memo for approval?</p>
                             <form action="{{ route('non-travel.submit-for-approval', $nonTravel) }}" method="POST">
                                 @csrf
-                                <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
+                                <button type="submit"
+                                    class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2">
                                     <i class="bx bx-send"></i>
                                     Submit for Approval
                                 </button>
@@ -698,7 +762,35 @@
                             <div class="mt-3 p-3 bg-light rounded">
                                 <small class="text-muted">
                                     <i class="bx bx-info-circle me-1"></i>
-                                    <strong>Note:</strong> Once submitted, you won't be able to edit this memo until it's returned for revision.
+                                    <strong>Note:</strong> Once submitted, you won't be able to edit this memo until
+                                    it's returned for revision.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Resubmission Section for HODs when returned -->
+                @if(($nonTravel->overall_status === 'returned' || $nonTravel->overall_status === 'pending') && isdivision_head($nonTravel) && $nonTravel->approval_level <= 1)
+                    <div class="card sidebar-card border-0"
+                        style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-undo"></i>
+                                Resubmit for Approval
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">This memo was returned for revision. Ready to resubmit?</p>
+                            <button type="button" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2" 
+                                    data-bs-toggle="modal" data-bs-target="#resubmitModal">
+                                <i class="bx bx-undo"></i>
+                                Resubmit for Approval
+                            </button>
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <small class="text-muted">
+                                    <i class="bx bx-info-circle me-1"></i>
+                                    <strong>Note:</strong> This will resubmit the memo to the approver who returned it.
                                 </small>
                             </div>
                         </div>
@@ -766,5 +858,37 @@
             @endif
             
         @endif
+
+{{-- Resubmit Modal --}}
+<div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resubmitModalLabel">Resubmit for Approval</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('non-travel.resubmit', $nonTravel) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        <strong>Note:</strong> This will resubmit the memo to the approver who returned it for revision.
+                    </div>
+                    <div class="mb-3">
+                        <label for="resubmitComment" class="form-label">Comments (Optional)</label>
+                        <textarea class="form-control" id="resubmitComment" name="comment" rows="3" 
+                                  placeholder="Add any comments about the changes made..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bx bx-undo me-1"></i>Resubmit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
         
 @endsection

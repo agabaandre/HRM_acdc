@@ -292,17 +292,30 @@ trait HasApprovalWorkflow
        
         $this->saveApprovalTrail($comment ?? '', $action);
 
-        if ($action !== 'approved') {
-            // Get the assigned workflow ID for this model
-            $modelName = class_basename($this);
-            $assignedWorkflowId = \App\Models\WorkflowModel::getWorkflowIdForModel($modelName);
-            if (!$assignedWorkflowId) {
-                $assignedWorkflowId = 1; // Default fallback
+        if ($action === 'cancelled') {
+            // Cancelled action - only HOD can cancel
+            $this->forward_workflow_id = NULL;
+            $this->approval_level = 0;
+            $this->overall_status = 'cancelled';
+            
+            // Archive approval trails to restart approval process
+            archive_approval_trails($this);
+        } elseif ($action !== 'approved') {
+            // Check if HOD (level 1) is returning - if so, go to level 0 (focal person)
+            if ($this->approval_level == 1) {
+                // HOD returning: go to level 0 (focal person/creator)
+                $this->forward_workflow_id = NULL;
+                $this->approval_level = 0;
+                $this->overall_status = 'draft';
+            } else {
+                // Other approvers returning: go to level 1 (HOD)
+                $this->forward_workflow_id = NULL;
+                $this->approval_level = 1;
+                $this->overall_status = 'returned';
             }
             
-            $this->forward_workflow_id = $assignedWorkflowId;
-            $this->approval_level = 1;
-            $this->overall_status = 'returned';
+            // Archive approval trails to restart approval process
+            archive_approval_trails($this);
         } else {
             $next_approver = $this->getNextApprover();
             
@@ -348,8 +361,17 @@ trait HasApprovalWorkflow
         $last_approval_trail = ApprovalTrail::where('model_id',$this->id)->where('model_type', get_class($this))->whereNotIn('action',['approved','submitted'])->orderByDesc('id')->first();
         if($last_approval_trail){
             $workflow_defn       = WorkflowDefinition::where('approval_order', $last_approval_trail->approval_order)->first();
-            $last_workflow_id    = $workflow_defn->workflow_id;
+            $last_workflow_id    = $workflow_defn ? $workflow_defn->workflow_id : null;
             $last_approval_order = $last_approval_trail->approval_order;
+            
+            // If workflow definition not found or workflow_id is null, fall back to WorkflowModel
+            if (!$last_workflow_id) {
+                $modelName = class_basename($this);
+                $last_workflow_id = \App\Models\WorkflowModel::getWorkflowIdForModel($modelName);
+                if (!$last_workflow_id) {
+                    $last_workflow_id = 1; // Default fallback
+                }
+            }
         }
         else {
             // Get the assigned workflow ID for this model
@@ -410,7 +432,11 @@ trait HasApprovalWorkflow
     {
         if (method_exists($this, 'activities')) {
             // If the model has activities, check for any with fund_type_id = 1 (intramural)
-            return $this->activities()->where('fund_type_id', 1)->exists();
+            // Exclude single memos from the calculation
+            return $this->activities()
+                ->where('fund_type_id', 1)
+                ->where('is_single_memo', '!=', true) // Exclude single memos
+                ->exists();
             
         } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
             
@@ -445,7 +471,11 @@ trait HasApprovalWorkflow
     {
         if (method_exists($this, 'activities')) {
             // If the model has activities, check for any with fund_type_id = 2 (extramural)
-            return $this->activities()->where('fund_type_id', 2)->exists();
+            // Exclude single memos from the calculation
+            return $this->activities()
+                ->where('fund_type_id', 2)
+                ->where('is_single_memo', '!=', true) // Exclude single memos
+                ->exists();
             
         } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
             
