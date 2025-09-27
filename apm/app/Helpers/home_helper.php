@@ -518,7 +518,7 @@ $mpdf = new \Mpdf\Mpdf([
         $mpdf->SetHTMLHeader($header);    // allow auto page break with 30mm bottom margin for footer
 
         // Set footer exactly like CodeIgniter
-        $footer = ' <table width="100%" style="font-size: 8pt; color: #911C39; border:none;">
+        $footer = ' <table width="100%" style="font-size: 8pt; color: #911C39; border:none; margin-top: 4px; !important">
             <tr>
                 <td align="left" style="border: none;">
                     Africa CDC Headquarters, Ring Road, 16/17,<br>

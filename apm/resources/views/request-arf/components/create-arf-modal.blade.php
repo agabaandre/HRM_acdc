@@ -115,15 +115,15 @@
 
 <!-- Create ARF Modal Component -->
 <div class="modal fade" id="createArfModal" tabindex="-1" aria-labelledby="createArfModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 95vw; width: 95vw; height: 90vh;">
+        <div class="modal-content" style="height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header" style="background: var(--primary-green); color: white;">
                 <h5 class="modal-title fw-bold text-white" id="createArfModalLabel">
-                    <i class="bx bx-file-plus me-2"></i>Create ARF Request
+                    <i class="bx bx-file-plus me-2"></i>Create Activity Request
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-4" style="flex: 1; overflow-y: auto;">
                 <!-- Source Details Section -->
                 <div class="mb-4">
                     <div class="section-header">
@@ -380,7 +380,7 @@
                         @endphp
                         <input type="hidden" name="source_type" value="{{ $sourceTypeValue }}">
                         <input type="hidden" name="source_id" value="{{ $sourceId ?? '' }}">
-                        <input type="hidden" name="title" value="{{ $defaultTitle ?? 'ARF Request' }}">
+                        <input type="hidden" name="title" value="{{ $defaultTitle ?? 'Activity Request' }}">
                         <input type="hidden" name="total_budget" value="{{ $totalBudget ?? '0.00' }}">
                         <input type="hidden" name="fund_type_id" value="{{ $fundTypeId ?? '' }}">
                         <input type="hidden" name="model_type" value="{{ $modelType ?? 'App\\Models\\Activity' }}">
@@ -390,7 +390,7 @@
                                 <i class="bx bx-x me-1"></i>Cancel
                             </button>
                             <button type="button" id="submitApprovalBtn" class="btn btn-success">
-                                <i class="bx bx-send me-1"></i>Submit ARF Request
+                                <i class="bx bx-send me-1"></i>Submit Activity Request
                             </button>
                         </div>
                     </form>

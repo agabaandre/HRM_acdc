@@ -341,7 +341,7 @@
                                             <th style="width: 6%;">Document #</th>
                                             <th style="width: 20%;">Title</th>
                                             <th style="width: 7%;">Request Type</th>
-                                            <th style="width: 10%;">Responsible Staff</th>
+                                            <th style="width: 10%;">Responsible Person</th>
                                             <th style="width: 8%;">Division</th>
                                             <th style="width: 7%;">Fund Type</th>
                                             <th style="width: 7%;">Date</th>
@@ -372,8 +372,8 @@
                                                 </td>
                                                 <td>
                                                     <div class="text-wrap" style="max-width: 120px;">
-                                                        @if($memo->staff)
-                                                            {{ Str::limit($memo->staff->fname . ' ' . $memo->staff->lname, 15) }}
+                                                        @if($memo->responsiblePerson)
+                                                            {{ Str::limit($memo->responsiblePerson->fname . ' ' . $memo->responsiblePerson->lname, 15) }}
                                                         @else
                                                             <span class="text-muted">Not assigned</span>
                                                         @endif
@@ -511,7 +511,7 @@
                                         <th style="width: 6%;">Document #</th>
                                         <th style="width: 20%;">Title</th>
                                         <th style="width: 7%;">Request Type</th>
-                                        <th style="width: 10%;">Created By</th>
+                                        <th style="width: 10%;">Responsible Person</th>
                                         <th style="width: 8%;">Division</th>
                                         <th style="width: 7%;">Fund Type</th>
                                         <th style="width: 7%;">Date</th>
@@ -542,8 +542,8 @@
                                             </td>
                                             <td>
                                                 <div class="text-wrap" style="max-width: 120px;">
-                                                    @if($memo->staff)
-                                                        {{ Str::limit($memo->staff->fname . ' ' . $memo->staff->lname, 15) }}
+                                                    @if($memo->responsiblePerson)
+                                                        {{ Str::limit($memo->responsiblePerson->fname . ' ' . $memo->responsiblePerson->lname, 15) }}
                                                     @else
                                                         <span class="text-muted">Not assigned</span>
                                                     @endif

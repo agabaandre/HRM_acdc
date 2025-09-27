@@ -7,13 +7,14 @@
          body { 
          font-size: 14px; 
          font-family: "freesans",arial, sans-serif; 
-         background: #f6f8fb; 
+         background: #FFFFFF; 
          margin: 40px; 
          line-height: 1.8 !important;
          letter-spacing: 0.02em;
          word-spacing: 0.08em;
          margin-bottom: 1.2em;
      }
+
         /* Document container */
         .container {
             max-width: 900px;
@@ -234,6 +235,16 @@
             border-bottom: 1px solid #000;
             margin-top: 10px;
             width: 100%;
+        }
+
+        background-text{
+            text-align: justify;
+            text-justify: inter-word;
+            word-spacing: 0.1em;
+            margin-bottom: 10px;
+            line-height: 1.6;
+            font-size: 13px !important;
+            font-style: regular !important;
         }
         
         /* Page break for printing */
@@ -656,15 +667,47 @@
                 <td class="content"><?php echo htmlspecialchars($requestARF->funder->name ?? 'N/A'); ?></td>
             </tr>
             <tr>
-                <?php //dd($sourceModel);?>
+               
                 <td class="label">Partner:</td>
-                <td class="content">Clarify</td>
+                <td class="content">
+                    <?php
+                    // Extract partner from budget breakdown
+                    $partner = 'N/A';
+                    if (!empty($budgetBreakdown) && is_array($budgetBreakdown)) {
+                        // Get all fund code IDs from budget breakdown (excluding grand_total)
+                        $fundCodeIds = array_filter(array_keys($budgetBreakdown), function($key) {
+                            return $key !== 'grand_total';
+                        });
+                        
+                        if (!empty($fundCodeIds)) {
+                            $partners = [];
+                            foreach ($fundCodeIds as $fundCodeId) {
+                                if (isset($fundCodes[$fundCodeId]) && $fundCodes[$fundCodeId]->funder) {
+                                    $funderName = $fundCodes[$fundCodeId]->funder->name ?? null;
+                                    if ($funderName && !in_array($funderName, $partners)) {
+                                        $partners[] = $funderName;
+                                    }
+                                }
+                            }
+                            
+                            if (!empty($partners)) {
+                                $partner = implode(', ', $partners);
+                            }
+                        }
+                    }
+                    // Fallback to requestARF partner if budget breakdown doesn't have funder info
+                    if ($partner === 'N/A' && isset($requestARF->partner)) {
+                        $partner = $requestARF->partner;
+                    }
+                    echo htmlspecialchars($partner);
+                    ?>
+                </td>
                 <td class="label">Code:</td>
                 <td class="content"><?php echo htmlspecialchars($requestARF->extramural_code ?? 'N/A'); ?></td>
             </tr>
             <tr>
                 <td class="label">Project Title:</td>
-                <td class="content" colspan="3"><?php echo htmlspecialchars($requestARF->activity_title); ?></td>
+                <td class="content" colspan="3"><?php echo htmlspecialchars(to_sentence_case($requestARF->activity_title)); ?></td>
             </tr>
             <tr>
                 <td class="label">Currency:</td>
@@ -676,7 +719,7 @@
 
         <div class="section-label">Activity Brief</div>
     
-        <div><?php echo $sourceModel['background']; ?></div>
+        <div class="background-text justify-text"><?php echo $sourceModel['background']; ?></div>
 
  
     

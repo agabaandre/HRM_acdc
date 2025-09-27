@@ -1561,3 +1561,40 @@ function isdivision_head($memo)
     $staffId = $user['staff_id'] ?? null;
     return $memo->division->division_head == $staffId;
 }
+
+if (!function_exists('to_sentence_case')) {
+    /**
+     * Convert text to proper sentence case
+     * Capitalizes first letter of each word except for conjunctions, prepositions, and articles
+     */
+    function to_sentence_case($text) {
+        if (empty($text)) {
+            return $text;
+        }
+        
+        // Words to keep lowercase (conjunctions, prepositions, articles)
+        $lowercase_words = [
+            'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'with', 'yet', 'nor', 'yet', 'for', 'and', 'or', 'but', 'so', 'yet'
+        ];
+        
+        // Split into words
+        $words = explode(' ', $text);
+        $result = [];
+        
+        foreach ($words as $word) {
+            // Clean the word (remove punctuation for comparison)
+            $clean_word = preg_replace('/[^a-zA-Z]/', '', strtolower($word));
+            
+            // Keep lowercase for conjunctions/prepositions/articles
+            if (in_array($clean_word, $lowercase_words)) {
+                $result[] = strtolower($word);
+            } 
+            // Capitalize all other words
+            else {
+                $result[] = ucfirst($word);
+            }
+        }
+        
+        return implode(' ', $result);
+    }
+}

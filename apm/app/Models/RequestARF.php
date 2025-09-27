@@ -256,7 +256,6 @@ class RequestARF extends Model
     {
         return $this->belongsTo(Funder::class);
     }
-
     
 
     /**
