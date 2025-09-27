@@ -1616,7 +1616,7 @@ class ActivityController extends Controller
      */
     public function singlememos(Request $request): View
     {
-        $query = Activity::with(['staff', 'matrix.division', 'fundType', 'requestType'])
+        $query = Activity::with(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType'])
             ->where('is_single_memo', true)
             ->latest();
         
@@ -1624,7 +1624,10 @@ class ActivityController extends Controller
         $currentStaffId = user_session('staff_id');
 
         if ($request->has('staff_id') && $request->staff_id) {
-            $query->where('staff_id', $request->staff_id);
+            $query->where(function($q) use ($request) {
+                $q->where('staff_id', $request->staff_id)
+                  ->orWhere('responsible_person_id', $request->staff_id);
+            });
         }
     
         if ($request->has('division_id') && $request->division_id) {
@@ -1650,10 +1653,11 @@ class ActivityController extends Controller
             $query->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
         }
         
-        // Hide draft memos from non-creators
+        // Hide draft memos from non-creators and non-responsible persons
         $query->where(function ($q) use ($currentStaffId) {
             $q->where('overall_status', '!=', 'draft')
-              ->orWhere('staff_id', $currentStaffId);
+              ->orWhere('staff_id', $currentStaffId)
+              ->orWhere('responsible_person_id', $currentStaffId);
         });
         
         $singleMemos = $query->paginate(10);
@@ -1903,10 +1907,58 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
      */
     public function printSingleMemo(Activity $activity)
     {
-        // For now, redirect to the show page
-        // TODO: Implement PDF generation for single memos
-        return redirect()->route('activities.single-memos.show', $activity)
-            ->with('info', 'PDF generation for single memos is not yet implemented.');
+        // Eager load relations
+        $activity->load([
+            'staff', 
+            'responsiblePerson',
+            'matrix.division', 
+            'requestType',
+            'fundType',
+            'activity_budget.fundcode',
+            'activity_budget.fundcode.fundType',
+            'activityApprovalTrails.staff',
+            'activityApprovalTrails.oicStaff',
+            'activityApprovalTrails.workflowDefinition'
+        ]);
+
+        // Get the matrix for the activity
+        $matrix = $activity->matrix;
+        if (!$matrix) {
+            return redirect()->route('activities.single-memos.show', $activity)
+                ->with('error', 'Matrix not found for this activity.');
+        }
+
+        // Get fund codes
+        $fundCodes = $activity->activity_budget->pluck('fundcode')->unique()->filter();
+
+        // Get locations (if any)
+        $locations = collect(); // Single memos might not have locations
+
+        // Get internal participants (if any)
+        $internalParticipants = collect(); // Single memos might not have participants
+
+        // Get approval trails
+        $approvalTrails = $activity->activityApprovalTrails;
+
+        // Use mPDF helper function
+        $print = false;
+        $pdf = mpdf_print('activities.memo-pdf-simple', [
+            'activity' => $activity,
+            'matrix' => $matrix,
+            'locations' => $locations,
+            'fundCodes' => $fundCodes,
+            'internalParticipants' => $internalParticipants,
+            'matrix_approval_trails' => $approvalTrails, // For compatibility with template
+        ], ['preview_html' => $print]);
+
+        // Generate filename
+        $filename = 'Single_Memo_' . $activity->id . '_' . now()->format('Y-m-d') . '.pdf';
+
+        // Return PDF for display in browser using mPDF Output method
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
     }
 
     /**

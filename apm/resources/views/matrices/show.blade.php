@@ -573,10 +573,10 @@
     <div class="col-lg-5">
         <!-- Approval Actions Section -->
         @if(can_take_action($matrix) || (can_division_head_edit($matrix) && $matrix->overall_status === 'returned'))
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
-                    <h5 class="card-title mb-0 fw-bold text-dark">
-                        <i class="bx bx-check-circle me-2 text-primary"></i>Approval Actions
+            <div class="card shadow-lg border-0 mb-4" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
+                    <h5 class="card-title mb-0 fw-bold" style="color: #1f2937;">
+                        <i class="bx bx-check-circle me-2" style="color: #059669;"></i>Approval Actions
                     </h5>
                 </div>
                 <div class="card-body">

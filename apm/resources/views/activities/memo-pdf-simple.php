@@ -455,6 +455,18 @@
                         </table>
 
 
+    <?php 
+    // Check if any fund code is intramural (1) or extramural (2)
+    $hasBudgetSection = false;
+    foreach($fundCodes ?? [] as $fundCode) {
+        if($fundCode->fundType->id == 1 || $fundCode->fundType->id == 2) {
+            $hasBudgetSection = true;
+            break;
+        }
+    }
+    
+    if($hasBudgetSection): 
+    ?>
     <div class="page-break"></div>
               <div class="section-label mb-15"><strong>Budget Details</strong></div>
          
@@ -644,6 +656,7 @@
       endif;  
   endforeach; 
     
+    endif; // Close the budget section condition
     ?>
 </body>
 </html>

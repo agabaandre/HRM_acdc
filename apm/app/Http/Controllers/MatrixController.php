@@ -379,7 +379,7 @@ class MatrixController extends Controller
     //dd($matrix);
         // Separate regular activities and single memos
         $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
-        $singleMemosQuery = $matrix->activities()->where('is_single_memo', 1)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
+        $singleMemosQuery = $matrix->activities()->where('is_single_memo', 1)->where('overall_status', 'approved')->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
         
         // Apply document number filter if provided
         if ($request->filled('document_number')) {
@@ -917,6 +917,7 @@ class MatrixController extends Controller
         // Build single memos query with filtering
         $singleMemosQuery = $matrix->activities()
             ->where('is_single_memo', 1)
+            ->where('overall_status', 'approved')
             ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
         // Apply document number filter if provided
@@ -999,6 +1000,7 @@ class MatrixController extends Controller
         // Build single memos query without filtering
         $singleMemosQuery = $matrix->activities()
             ->where('is_single_memo', 1)
+            ->where('overall_status', 'approved')
             ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
         // Apply document number filter if provided
@@ -1719,47 +1721,25 @@ class MatrixController extends Controller
         $pickFirstCategoryNode = function (?string $category) use ($matrix, $pick, $approvalLevel) {
             $cat = $category ?: 'Other';
             
-            // First try to get category-specific approver
+            // Simple and elegant: Find workflow definition that matches the division category
+            // This approach is scalable and doesn't require hardcoded logic for each category
             $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
                 ->where('is_enabled', 1)
                 ->where('category', $cat)
+                ->where('approval_order', '>', $approvalLevel) // Only look for next level, not current
                 ->orderBy('approval_order', 'asc')
            ->first();
 
-            // If we found a category-specific approver, check if we've already passed it
-            if ($definition) {
-                // If current approval level is greater than or equal to the category approver level,
-                // we've already passed this approver, so go to the next available approval order
-                if ($approvalLevel >= $definition->approval_order) {
-                    // We've already passed the category approver, find the next available approval order
-                    $nextDefinition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                        ->where('is_enabled', 1)
-                        ->where('approval_order', '>', $approvalLevel)
-                        ->orderBy('approval_order', 'asc')
-                        ->first();
-                    
-                    if ($nextDefinition) {
-                        return $nextDefinition;
-                    }
-                } else {
-                    // We haven't reached the category approver yet, return it
-                    return $definition;
-                }
-            }
-            
             // If no category-specific approver found, find the next available approval order
-            $nextDefinition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('approval_order', '>', $approvalLevel)
-                ->orderBy('approval_order', 'asc')
-                ->first();
-            
-            if ($nextDefinition) {
-                return $nextDefinition;
+            if (!$definition) {
+                $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                    ->where('is_enabled', 1)
+                    ->where('approval_order', '>', $approvalLevel)
+                    ->orderBy('approval_order', 'asc')
+                    ->first();
             }
             
-            // Fallback: return null if no next approver found
-            return null;
+            return $definition;
         };
 
         // Get current workflow definition
@@ -1795,7 +1775,13 @@ class MatrixController extends Controller
                     if ($definition) return $definition;
                 }
                 
-                // External or fallback - go to next available step after Director
+                // External source - skip Director and go directly to division category check
+                if ($isExternal) {
+                    $definition = $pickFirstCategoryNode($division->category ?? null);
+                    if ($definition) return $definition;
+                }
+                
+                // Fallback - go to next available step after Director
                 $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
                     ->where('is_enabled', 1)
                     ->where('approval_order', '>', 2) // Skip Director step (order 2)
@@ -1859,7 +1845,13 @@ class MatrixController extends Controller
                 if ($definition) return $definition;
             }
 
-            // For external sources or mixed funding, go to next available step
+            // External source - go directly to division category check
+            if ($isExternal) {
+                $definition = $pickFirstCategoryNode($division->category ?? null);
+                if ($definition) return $definition;
+            }
+
+            // Fallback - go to next available step
             $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
                 ->where('is_enabled', 1)
                 ->where('approval_order', '>', $approvalLevel)
@@ -2005,6 +1997,14 @@ class MatrixController extends Controller
         }
 
         // STEP 7-11: Final Approval Chain (Head Operations/Programs -> DDG -> COP -> DG -> Registry)
+        // At level 7, use category-based routing to find the correct approver
+        if ($approvalLevel == 7) {
+            $definition = $pickFirstCategoryNode($division->category ?? null);
+            if ($definition) {
+                return $definition;
+            }
+        }
+        
         // Find the next available approval order
         $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
             ->where('is_enabled', 1)
