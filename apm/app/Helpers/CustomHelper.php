@@ -582,7 +582,7 @@ if (!function_exists('user_session')) {
             $hasReturnedActivities = has_user_returned_activity_as_single_memo($matrix, $userId);
             
             // User can proceed if they have converted activities to single memos and their approvable stack is empty
-            return $hasReturnedActivities && get_approvable_activities($matrix)->count() == 0;
+            return $hasReturnedActivities && get_visible_activities($matrix)->count() == 0;
         }
     }
 
@@ -723,12 +723,76 @@ if (!function_exists('user_session')) {
         }
     }
 
+    if (!function_exists('get_visible_activities')) {
+        function get_visible_activities($matrix){
+            $currentUserId = user_session('staff_id');
+            
+            // Simple cache key for this matrix and user
+            $cacheKey = "visible_activities_{$matrix->id}_{$currentUserId}_{$matrix->approval_level}";
+            
+            // Check cache first (cache for 5 minutes)
+            if (\Cache::has($cacheKey)) {
+                return \Cache::get($cacheKey);
+            }
+            
+            // Check if user is logged in
+            if (!$currentUserId) {
+                return collect(); // Return empty collection if not logged in
+            }
+            
+            // Get workflow definition based on matrix's current approval level
+            $currentApprovalLevel = $matrix->approval_level;
+            
+            // Find workflow definition for current approval level
+            $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                ->where('approval_order', $currentApprovalLevel)
+                ->first();
+                
+            if (!$workflowDefinition) {
+                // If no workflow definition found, return all activities
+                $allActivities = $matrix->activities->where('is_single_memo', 0);
+                \Cache::put($cacheKey, $allActivities, 300);
+                return $allActivities;
+            }
+            
+            // Check if user is an approver for this workflow definition (regular or OIC)
+            $isApprover = \App\Models\Approver::where('workflow_dfn_id', $workflowDefinition->id)
+                ->where(function($query) use ($currentUserId) {
+                    $query->where('staff_id', $currentUserId)
+                          ->orWhere('oic_staff_id', $currentUserId);
+                })
+                ->where(function($query) {
+                    $query->whereNull('end_date')
+                          ->orWhere('end_date', '>', now());
+                })
+                ->exists();
+                
+            // For now, we'll use the same logic as the original get_approvable_activities
+            // but we need to check if there are other approver types
+            $isOicApprover = false;
+            $isDivisionLevelApprover = false;
+            $isWorkflowOic = false;
+            
+            // If user is an approver at current level, use the existing get_approvable_activities logic
+            if ($isApprover || $isOicApprover || $isDivisionLevelApprover || $isWorkflowOic) {
+                $visibleActivities = get_approvable_activities($matrix);
+            } else {
+                // If user is not an approver at current level, return all activities
+                $visibleActivities = $matrix->activities->where('is_single_memo', 0);
+            }
+            
+            // Cache the result for 5 minutes
+            \Cache::put($cacheKey, $visibleActivities, 300);
+            return $visibleActivities;
+        }
+    }
+
     if (!function_exists('activities_approved_by_me')) {
         function activities_approved_by_me($matrix){
             $user = session('user', []);
             
-            // Get all activities that the user can approve (based on can_approve_activity logic)
-            $approvable_activities = get_approvable_activities($matrix);
+            // Get all activities that the user can see (based on get_visible_activities logic)
+            $approvable_activities = get_visible_activities($matrix);
             //dd($approvable_activities);
             $has_approved = false;
 
