@@ -1424,6 +1424,9 @@ class ActivityController extends Controller
                 'is_draft' => true, // Mark as draft so it can be edited
             ]);
 
+            // Assign new document number for single memo (SM type)
+            \App\Jobs\AssignDocumentNumberJob::dispatch($activity);
+
             // Note: Approval trail entry is already created in update_activity_status() 
             // No need to create a duplicate entry here
 
@@ -1624,51 +1627,69 @@ class ActivityController extends Controller
      */
     public function singlememos(Request $request): View
     {
-        $query = Activity::with(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType'])
-            ->where('is_single_memo', true)
-            ->latest();
-        
         // Get current user's staff ID
         $currentStaffId = user_session('staff_id');
+        
+        // Base query for all single memos
+        $baseQuery = Activity::with(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType'])
+            ->where('is_single_memo', true)
+            ->latest();
 
+        // Apply common filters
         if ($request->has('staff_id') && $request->staff_id) {
-            $query->where(function($q) use ($request) {
+            $baseQuery->where(function($q) use ($request) {
                 $q->where('staff_id', $request->staff_id)
                   ->orWhere('responsible_person_id', $request->staff_id);
             });
         }
     
         if ($request->has('division_id') && $request->division_id) {
-            $query->where('division_id', $request->division_id);
+            $baseQuery->where('division_id', $request->division_id);
         }
 
         if ($request->has('status') && $request->status) {
-            $query->where('overall_status', $request->status);
+            $baseQuery->where('overall_status', $request->status);
         }
 
         if ($request->has('document_number') && $request->document_number) {
-            $query->where('document_number', 'like', '%' . $request->document_number . '%');
+            $baseQuery->where('document_number', 'like', '%' . $request->document_number . '%');
         }
 
+        // Query for "My Single Memos" tab - filtered by user session
+        $myMemosQuery = clone $baseQuery;
+        
         // Check if user is division approver or has specific approval workflow
         if (isDivisionApprover() || !empty(user_session('division_id'))) {
-            $query->where('division_id', user_session('division_id'));
+            $myMemosQuery->where('division_id', user_session('division_id'));
         } else {
             // Check approval workflow
             $approvers = Approver::where('staff_id', user_session('staff_id'))->get();
             $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
             $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
-            $query->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
+            $myMemosQuery->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
         }
         
         // Hide draft memos from non-creators and non-responsible persons
-        $query->where(function ($q) use ($currentStaffId) {
+        $myMemosQuery->where(function ($q) use ($currentStaffId) {
             $q->where('overall_status', '!=', 'draft')
               ->orWhere('staff_id', $currentStaffId)
               ->orWhere('responsible_person_id', $currentStaffId);
         });
         
-        $singleMemos = $query->paginate(10);
+        $myMemos = $myMemosQuery->paginate(10);
+
+        // Query for "All Single Memos" tab - no session restrictions
+        $allMemosQuery = clone $baseQuery;
+        
+        // Only hide draft memos from non-creators and non-responsible persons
+        $allMemosQuery->where(function ($q) use ($currentStaffId) {
+            $q->where('overall_status', '!=', 'draft')
+              ->orWhere('staff_id', $currentStaffId)
+              ->orWhere('responsible_person_id', $currentStaffId);
+        });
+        
+        $allMemos = $allMemosQuery->paginate(10);
+        
         $staff = Staff::active()->get();
     
         // Get distinct divisions from staff table
@@ -1678,7 +1699,7 @@ class ActivityController extends Controller
             ->orderBy('division_name')
             ->get();
     
-        return view('activities.single-memos.index', compact('singleMemos', 'staff', 'divisions'));
+        return view('activities.single-memos.index', compact('myMemos', 'allMemos', 'staff', 'divisions'));
     }
 
     /**

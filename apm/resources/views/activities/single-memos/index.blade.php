@@ -9,6 +9,29 @@
 @endsection
 
 @section('content')
+<style>
+    .table-title-cell {
+        max-width: 300px;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        line-height: 1.4;
+    }
+    
+    .table {
+        table-layout: fixed;
+    }
+    
+    .table th:nth-child(1) { width: 5%; }   /* # */
+    .table th:nth-child(2) { width: 12%; }  /* Document # */
+    .table th:nth-child(3) { width: 25%; }  /* Title */
+    .table th:nth-child(4) { width: 15%; }  /* Division/Responsible Person */
+    .table th:nth-child(5) { width: 12%; }  /* Date Range */
+    .table th:nth-child(6) { width: 12%; }  /* Request Type */
+    .table th:nth-child(7) { width: 10%; }  /* Fund Type */
+    .table th:nth-child(8) { width: 8%; }   /* Status */
+    .table th:nth-child(9) { width: 6%; }   /* Actions */
+</style>
 <div class="card shadow-sm mb-4 border-0">
     <div class="card-body py-3 px-4 bg-light rounded-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
@@ -85,13 +108,13 @@
                 <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="mySubmitted-tab" data-bs-toggle="tab" data-bs-target="#mySubmitted" type="button" role="tab" aria-controls="mySubmitted" aria-selected="true">
                     <i class="bx bx-file-doc me-2"></i> My Single Memos
-                    <span class="badge bg-success text-white ms-2">{{ $singleMemos->where(function($memo) { return $memo->staff_id == user_session('staff_id') || $memo->responsible_person_id == user_session('staff_id'); })->count() }}</span>
+                    <span class="badge bg-success text-white ms-2">{{ $myMemos->total() }}</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                 <button class="nav-link" id="allMemos-tab" data-bs-toggle="tab" data-bs-target="#allMemos" type="button" role="tab" aria-controls="allMemos" aria-selected="false">
                     <i class="bx bx-grid me-2"></i> All Single Memos
-                    <span class="badge bg-primary text-white ms-2">{{ $singleMemos->count() }}</span>
+                    <span class="badge bg-primary text-white ms-2">{{ $allMemos->total() }}</span>
                     </button>
                 </li>
             </ul>
@@ -123,9 +146,7 @@
                     </div>
                     
                     @php 
-                        $myMemos = $singleMemos->where(function($memo) { 
-                            return $memo->staff_id == user_session('staff_id') || $memo->responsible_person_id == user_session('staff_id'); 
-                        });
+                        // $myMemos is already provided by the controller
                     @endphp
                     
                     @if($myMemos->count() > 0)
@@ -155,7 +176,7 @@
                                                     {{ $memo->document_number ?? 'N/A' }}
                                         </span>
                                     </td>
-                                            <td>
+                                            <td class="table-title-cell">
                                                 <div class="fw-bold text-primary">{!! $memo->activity_title !!}</div>
                                                 <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
                                             </td>
@@ -269,7 +290,7 @@
                         </div>
                     </div>
                     
-                    @if($singleMemos->count() > 0)
+                    @if($allMemos->count() > 0)
                 <div class="table-responsive">
                             <table class="table table-hover mb-0">
                                 <thead class="table-primary">
@@ -288,7 +309,7 @@
                         </thead>
                         <tbody>
                             @php $count = 1; @endphp
-                                    @foreach($singleMemos as $memo)
+                                    @foreach($allMemos as $memo)
                                 <tr>
                                     <td>{{ $count++ }}</td>
                                     <td>
@@ -297,7 +318,7 @@
                                                     {{ $memo->document_number ?? 'N/A' }}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="table-title-cell">
                                                 <div class="fw-bold text-primary">{!! $memo->activity_title !!}</div>
                                                 <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
                                     </td>
@@ -396,9 +417,9 @@
                         </div>
                         
                         <!-- Pagination -->
-                        @if($singleMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $singleMemos->hasPages())
+                        @if($allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMemos->hasPages())
                             <div class="d-flex justify-content-center mt-3">
-                                {{ $singleMemos->appends(request()->query())->links() }}
+                                {{ $allMemos->appends(request()->query())->links() }}
                             </div>
                         @endif
                     @else

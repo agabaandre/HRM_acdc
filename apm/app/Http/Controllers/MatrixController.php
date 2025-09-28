@@ -2597,8 +2597,23 @@ class MatrixController extends Controller
             $intramuralBudget = 0;
             $extramuralBudget = 0;
             $totalBudget = 0;
+            $activitiesCount = 0;
             
-            foreach($matrix->activities as $activity) {
+            // Get approvable activities using the helper function
+            $approvableActivities = get_approvable_activities($matrix);
+            
+            // Also include approved single memos for budget calculation
+            $currentStaffId = user_session('staff_id');
+            $approvedSingleMemos = $matrix->activities->filter(function($activity) use ($currentStaffId) {
+                return $activity->is_single_memo && 
+                       $activity->overall_status === 'approved' &&
+                       ($activity->staff_id == $currentStaffId || $activity->responsible_person_id == $currentStaffId);
+            });
+            
+            // Combine approvable activities and approved single memos
+            $visibleActivities = $approvableActivities->merge($approvedSingleMemos);
+            
+            foreach($visibleActivities as $activity) {
                 $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown, true);
                 
                 if (is_array($budget)) {
@@ -2640,8 +2655,8 @@ class MatrixController extends Controller
                 }
             }
 
-            // Get activities count
-            $activitiesCount = $matrix->activities->count();
+            // Count only visible activities
+            $activitiesCount = $visibleActivities->count();
 
             return response()->json([
                 'success' => true,
