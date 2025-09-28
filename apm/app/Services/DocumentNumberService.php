@@ -119,6 +119,7 @@ class DocumentNumberService
             'NonTravelMemo' => DocumentCounter::TYPE_NON_TRAVEL_MEMO,
             'SpecialMemo' => DocumentCounter::TYPE_SPECIAL_MEMO,
             'Activity' => self::getActivityDocumentType($model),
+            'ChangeRequest' => DocumentCounter::TYPE_CHANGE_REQUEST,
             'ServiceRequest' => DocumentCounter::TYPE_SERVICE_REQUEST,
             'RequestARF' => DocumentCounter::TYPE_ARF,
             default => 'UNKNOWN'
@@ -231,6 +232,7 @@ class DocumentNumberService
             'activities', 
             'non_travel_memos',
             'special_memos',
+            'change_request',
             'service_requests',
             'request_arfs'
         ];
@@ -295,6 +297,7 @@ class DocumentNumberService
             'activities', 
             'non_travel_memos',
             'special_memos',
+            'change_request',
             'service_requests',
             'request_arfs'
         ];

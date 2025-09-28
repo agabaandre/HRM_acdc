@@ -16,9 +16,15 @@
         <h5 class="mb-0"><i class="bx bx-edit me-2 text-primary"></i>Edit Memo Details</h5>
     </div>
     <div class="card-body p-4">
-        <form action="{{ route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
+        <form action="{{ request('change_request') ? route('change-requests.store') : route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
             @csrf
-            @method('PUT')
+            @if(request('change_request'))
+                @method('POST')
+                <input type="hidden" name="parent_memo_id" value="{{ $nonTravel->id }}">
+                <input type="hidden" name="parent_memo_model" value="App\Models\NonTravelMemo">
+            @else
+                @method('PUT')
+            @endif
 
             <div class="row g-4 mb-4">
                 <div class="col-md-12">
@@ -30,6 +36,30 @@
                     </div>
                 </div>
             </div>
+
+            @if(request('change_request'))
+                <div class="row g-4 mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-edit me-2"></i> Change Request Details
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label for="supporting_reasons" class="form-label fw-semibold">
+                                        <i class="fas fa-comment-alt me-1 text-warning"></i> Supporting Reasons <span class="text-danger">*</span>
+                                    </label>
+                                    <textarea name="supporting_reasons" id="supporting_reasons" class="form-control" rows="4" 
+                                        placeholder="Please explain why you are requesting changes to this memo..." required>{{ old('supporting_reasons') }}</textarea>
+                                    <small class="text-muted">Provide detailed justification for the requested changes.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
@@ -440,7 +470,7 @@
 
             <div class="d-flex justify-content-end mt-4 gap-2">
                 <button type="submit" class="btn btn-primary px-4">
-                    <i class="bx bx-save me-1"></i> Update Memo
+                    <i class="bx bx-save me-1"></i> {{ request('change_request') ? 'Submit Change Request' : 'Update Memo' }}
                 </button>
                 @if(($nonTravel->overall_status ?? 'draft') === 'draft')
                     <form action="{{ route('non-travel.submit-for-approval', $nonTravel) }}" method="POST" class="d-inline">

@@ -503,11 +503,27 @@ class ActivityController extends Controller
             'matrix_status' => $matrix->overall_status
         ]);
 
-        // Check if matrix is approved
-        if ($matrix->overall_status === 'approved') {
-            return redirect()
-                ->route('matrices.activities.show', [$matrix, $activity])
-                ->with('error', 'Cannot edit activity. The parent matrix has been approved.');
+        // Check if this is a change request
+        $isChangeRequest = request('change_request') == '1';
+        
+        // For change requests, allow access to approved activities if user is owner/responsible
+        if ($isChangeRequest) {
+            $user = (object) session('user', []);
+            $isOwner = isset($activity->staff_id, $user->staff_id) && $activity->staff_id == $user->staff_id;
+            $isResponsible = isset($activity->responsible_person_id, $user->staff_id) && $activity->responsible_person_id == $user->staff_id;
+            
+            if (!$isOwner && !$isResponsible) {
+                return redirect()
+                    ->route('matrices.activities.show', [$matrix, $activity])
+                    ->with('error', 'You can only create change requests for activities you own or are responsible for.');
+            }
+        } else {
+            // For normal edits, check if matrix is approved
+            if ($matrix->overall_status === 'approved') {
+                return redirect()
+                    ->route('matrices.activities.show', [$matrix, $activity])
+                    ->with('error', 'Cannot edit activity. The parent matrix has been approved.');
+            }
         }
 
         // Eager load the division relationship
@@ -613,12 +629,27 @@ class ActivityController extends Controller
      */
     public function editSingleMemo(Matrix $matrix, Activity $activity)
     {
-        // Temporary fix: Set up session for testing (remove in production)
-        // Check if user has privileges to edit this memo using can_edit_memo()
-        if (!can_edit_memo($activity)) {
-            return redirect()
-                ->route('activities.single-memos.show', $activity)
-                ->with('error', 'You do not have permission to edit this activity.');
+        // Check if this is a change request
+        $isChangeRequest = request('change_request') == '1';
+        
+        // For change requests, allow access to approved activities if user is owner/responsible
+        if ($isChangeRequest) {
+            $user = (object) session('user', []);
+            $isOwner = isset($activity->staff_id, $user->staff_id) && $activity->staff_id == $user->staff_id;
+            $isResponsible = isset($activity->responsible_person_id, $user->staff_id) && $activity->responsible_person_id == $user->staff_id;
+            
+            if (!$isOwner && !$isResponsible) {
+                return redirect()
+                    ->route('activities.single-memos.show', $activity)
+                    ->with('error', 'You can only create change requests for activities you own or are responsible for.');
+            }
+        } else {
+            // For normal edits, use the existing permission check
+            if (!can_edit_memo($activity)) {
+                return redirect()
+                    ->route('activities.single-memos.show', $activity)
+                    ->with('error', 'You do not have permission to edit this activity.');
+            }
         }
 
         // Eager load the division relationship

@@ -738,4 +738,81 @@ if (!function_exists('get_staff_recent_activities')) {
         
         return array_slice($activities, 0, $limit);
     }
+}
+
+if (!function_exists('get_pending_change_request_count')) {
+    /**
+     * Get count of pending change requests that require action from the current staff member
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_pending_change_request_count(int $staffId): int
+    {
+        $userDivisionId = user_session('division_id');
+        
+        // Use the same logic as other pending approval functions
+        $query = \App\Models\ChangeRequest::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($query) use ($userDivisionId, $staffId) {
+            // Case 1: Division-specific approval - check if user's division matches change request division
+            if ($userDivisionId) {
+                $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('change_request.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column
+            if ($staffId) {
+                $query->orWhere(function($subQ) use ($staffId, $userDivisionId) {
+                    $divisionsTable = (new \App\Models\Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = change_request.division_id 
+                        WHERE wd.workflow_id = change_request.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = change_request.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=change_request.division_id AND d.id=?)
+                        )
+                    )", [$staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($staffId) {
+                        $subQ2->where('approval_level', $staffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($staffId) {
+                                $trailQ->where('staff_id', '=',$staffId);
+                              });
+                    });
+                });
+            }
+            
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($staffId) {
+                $query->orWhere(function($subQ) use ($staffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($staffId) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('change_request.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($staffId) {
+                                      $approverQ->where('staff_id', $staffId);
+                                  });
+                    });
+                });
+            }
+
+            $query->orWhere('division_id', $userDivisionId);
+        });
+
+        return $query->count();
+    }
 } 

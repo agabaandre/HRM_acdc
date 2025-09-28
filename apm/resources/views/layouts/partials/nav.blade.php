@@ -136,6 +136,21 @@ $settingsMenuItems = [
                     class="nav-link {{ Request::is('pending-approvals*') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-clock"></i></div>
                     <div class="menu-title">Pending Approvals</div>
+                    @php
+                        $pendingCount = 0;
+                        if (user_session('staff_id')) {
+                            $pendingCount = get_pending_matrices_count(user_session('staff_id')) + 
+                                          get_pending_special_memo_count(user_session('staff_id')) + 
+                                          get_pending_non_travel_memo_count(user_session('staff_id')) + 
+                                          get_pending_single_memo_count(user_session('staff_id')) + 
+                                          get_pending_service_requests_count(user_session('staff_id')) + 
+                                          get_pending_request_arf_count(user_session('staff_id')) +
+                                          get_pending_change_request_count(user_session('staff_id'));
+                        }
+                    @endphp
+                    @if($pendingCount > 0)
+                        <span class="badge bg-danger ms-2">{{ $pendingCount }}</span>
+                    @endif
                 </a>
             </li>
 

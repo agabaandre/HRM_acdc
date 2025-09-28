@@ -5,25 +5,51 @@
 @section('header', "Edit Activity - {$matrix->quarter} {$matrix->year}")
 
 @section('header-actions')
-<a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary">
-    <i class="bx bx-arrow-back"></i> Back to Matrix
-</a>
 @endsection
 
 @section('content')
     <div class="card shadow-sm border-0 mb-5">
-        <div class="card-header bg-white border-bottom">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
             <h5 class="mb-0 text-success">
                 <i class="fas fa-calendar-plus me-2"></i> Activity Details
             </h5>
+            <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bx bx-arrow-back"></i> Back to Matrix
+            </a>
         </div>
 
         <div class="card-body p-4">
-            <form action="{{ $activity->is_single_memo ? route('activities.single-memos.update', [$matrix, $activity]) : route('matrices.activities.update', [$matrix, $activity]) }}" method="POST" id="activityForm" enctype="multipart/form-data">
+            <form action="{{ request('change_request') ? route('change-requests.store') : ($activity->is_single_memo ? route('activities.single-memos.update', [$matrix, $activity]) : route('matrices.activities.update', [$matrix, $activity])) }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf
-                @method('PUT')
+                @if(request('change_request'))
+                    @method('POST')
+                    <input type="hidden" name="parent_memo_id" value="{{ $activity->id }}">
+                    <input type="hidden" name="parent_memo_model" value="App\Models\Activity">
+                @else
+                    @method('PUT')
+                @endif
 
                 @includeIf('activities.form')
+
+                @if(request('change_request'))
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0">
+                                <i class="fas fa-edit me-2"></i> Change Request Details
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="supporting_reasons" class="form-label fw-semibold">
+                                    <i class="fas fa-comment-alt me-1 text-warning"></i> Supporting Reasons <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="supporting_reasons" id="supporting_reasons" class="form-control" rows="4" 
+                                    placeholder="Please explain why you are requesting changes to this activity..." required>{{ old('supporting_reasons') }}</textarea>
+                                <small class="text-muted">Provide detailed justification for the requested changes.</small>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <div class="card border-0 shadow-sm mb-5">
                     <div class="card-body">
@@ -209,7 +235,7 @@
                         <i class="bx bx-arrow-back me-1"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
-                        <i class="bx bx-check-circle me-1"></i> Update Activity
+                        <i class="bx bx-check-circle me-1"></i> {{ request('change_request') ? 'Submit Change Request' : 'Update Activity' }}
                     </button>
                 </div>
                     </div>
@@ -978,7 +1004,13 @@ $(document).ready(function () {
             submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
                 .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
         } else {
-            const buttonText = fundTypeId === 3 ? 'Update Activity (External Source)' : 'Update Activity';
+            const isChangeRequest = {{ request('change_request') ? 'true' : 'false' }};
+            let buttonText;
+            if (isChangeRequest) {
+                buttonText = 'Submit Change Request';
+            } else {
+                buttonText = fundTypeId === 3 ? 'Update Activity (External Source)' : 'Update Activity';
+            }
             submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success')
                 .html('<i class="bx bx-check-circle me-1"></i> ' + buttonText);
         }

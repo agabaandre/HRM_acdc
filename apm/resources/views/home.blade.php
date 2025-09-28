@@ -495,21 +495,23 @@ body {
           <div class="dashboard-icon me-2"><i class="fas fa-edit"></i></div>
           <h6>Change Request (CR)</h6>
         </div>
-        <p class="text-muted" style="font-size: 0.9rem;">View Submitted Change Requests.</p>
+        <p class="text-muted" style="font-size: 0.9rem;">Request changes to existing memos and activities.</p>
         
         <div class="menu-section">
           <h6>Quick Actions</h6>
           <div class="menu-links">
-            <a href="#" class="btn btn-success btn-sm">
-              <i class="fas fa-plus"></i> Open
+            <a href="{{ route('change-requests.index') }}" class="btn btn-success btn-sm">
+              <i class="fas fa-list"></i> View All
             </a>
             @if(get_staff_pending_action_count('change-request') >= 0)
-            <a href="#" class="btn btn-outline-primary btn-sm position-relative">
+            <a href="{{ route('change-requests.index') }}?status=submitted" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="change-request-pending-count">{{ get_staff_pending_action_count('change-request') }}</span>
             </a>
             @endif
-           
+            <a href="{{ route('change-requests.create') }}" class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-plus"></i> Create New
+            </a>
           </div>
         </div>
 

@@ -387,11 +387,27 @@ class NonTravelMemoController extends Controller
     /** Show edit form */
     public function edit(NonTravelMemo $nonTravel)
     {
-        // Check if user has privileges to edit this memo using can_edit_memo()
-        if (!can_edit_memo($nonTravel)) {
-            return redirect()
-                ->route('non-travel.show', $nonTravel)
-                ->with('error', 'You do not have permission to edit this memo.');
+        // Check if this is a change request
+        $isChangeRequest = request('change_request') == '1';
+        
+        // For change requests, allow access to approved memos if user is owner/responsible
+        if ($isChangeRequest) {
+            $user = (object) session('user', []);
+            $isOwner = isset($nonTravel->staff_id, $user->staff_id) && $nonTravel->staff_id == $user->staff_id;
+            $isResponsible = isset($nonTravel->responsible_person_id, $user->staff_id) && $nonTravel->responsible_person_id == $user->staff_id;
+            
+            if (!$isOwner && !$isResponsible) {
+                return redirect()
+                    ->route('non-travel.show', $nonTravel)
+                    ->with('error', 'You can only create change requests for memos you own or are responsible for.');
+            }
+        } else {
+            // For normal edits, use the existing permission check
+            if (!can_edit_memo($nonTravel)) {
+                return redirect()
+                    ->route('non-travel.show', $nonTravel)
+                    ->with('error', 'You do not have permission to edit this memo.');
+            }
         }
 
         // Retrieve budgets with funder details
