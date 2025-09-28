@@ -33,7 +33,7 @@ class ScheduleServiceProvider extends ServiceProvider
     protected function schedule(Schedule $schedule): void
     {
         // Set timezone to GMT+3 (East Africa Time)
-        $schedule->timezone('Africa/Nairobi');
+        $schedule->timezone('Africa/Addis_Ababa');
         
         // Early morning sync - 6:00 AM GMT+3
         $schedule->command('directorates:sync')
@@ -88,7 +88,6 @@ class ScheduleServiceProvider extends ServiceProvider
         // Daily pending approvals notifications
         $schedule->command('notifications:daily-pending-approvals')
             ->dailyAt('09:00')
-            ->timezone('Africa/Addis_Ababa')
             ->description('Send morning pending approvals notifications to all approvers')
             ->withoutOverlapping()
             ->runInBackground()
@@ -98,7 +97,6 @@ class ScheduleServiceProvider extends ServiceProvider
             
         $schedule->command('notifications:daily-pending-approvals')
             ->dailyAt('16:00')
-            ->timezone('Africa/Addis_Ababa')
             ->description('Send evening pending approvals notifications to all approvers')
             ->withoutOverlapping()
             ->runInBackground()
@@ -108,7 +106,6 @@ class ScheduleServiceProvider extends ServiceProvider
             
         $schedule->command('notifications:daily-pending-approvals')
             ->dailyAt('01:07')
-            ->timezone('Africa/Addis_Ababa')
             ->description('Send test pending approvals notifications to all approvers')
             ->withoutOverlapping()
             ->runInBackground()
