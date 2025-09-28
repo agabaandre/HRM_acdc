@@ -227,7 +227,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
-                             @if(can_take_action($matrix) && get_visible_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $matrix->approval_level != 5)
+                             @if(can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $matrix->approval_level != 5)
                                 <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">
                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                 </th>
@@ -973,7 +973,7 @@ function getActivityUrl(activityId) {
 
 // Check if checkbox column should be shown
 function canShowCheckbox() {
-    return {{ can_take_action($matrix) && get_visible_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $matrix->approval_level != 5 ? 'true' : 'false' }};
+    return {{ can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $matrix->approval_level != 5 ? 'true' : 'false' }};
 }
 
 // Check if current user is a finance officer at level 5

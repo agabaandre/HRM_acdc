@@ -443,17 +443,82 @@ class MatrixController extends Controller
     public function getActivitiesForApprover(Matrix $matrix, Request $request)
     {
         $userStaffId = user_session('staff_id');
+        $userDivisionId = user_session('division_id');
         
         // If user is not logged in, return all activities without filtering
         if (!$userStaffId) {
             return $this->getAllActivities($matrix, $request);
         }
 
-        // Use the new get_visible_activities helper which handles both approvers and non-approvers
-        $visibleActivities = get_visible_activities($matrix);
+        // Get user's workflow definition and approval order
+        $userWorkflowDefinition = $this->getUserWorkflowDefinition($matrix, $userStaffId, $userDivisionId);
         
-        // Apply search and document number filters to the visible activities
-        $activitiesQuery = $visibleActivities;
+        // If no workflow definition found for user, return all activities without filtering
+        if (!$userWorkflowDefinition) {
+            return $this->getAllActivities($matrix, $request);
+        }
+
+        // Build activities query with filtering and eager loading
+        $activitiesQuery = $matrix->activities()
+            ->where('is_single_memo', 0)
+            ->with([
+                'requestType', 
+                'fundType', 
+                'responsiblePerson', 
+                'activity_budget', 
+                'activity_budget.fundcode',
+                'matrix.division', // Eager load matrix division
+                'matrix.forwardWorkflow' // Eager load workflow
+            ]);
+
+        // Get all activities first, then filter using the same logic as get_approvable_activities
+        $allActivities = $matrix->activities()
+            ->where('is_single_memo', 0)
+            ->with([
+                'requestType', 
+                'fundType', 
+                'responsiblePerson', 
+                'activity_budget', 
+                'activity_budget.fundcode',
+                'matrix.division',
+                'matrix.forwardWorkflow'
+            ])
+            ->get();
+        
+        // Filter activities based on allowed_funders using the same logic as get_approvable_activities
+        $filteredActivities = collect();
+        if ($userWorkflowDefinition->allowed_funders) {
+            $allowedFunders = is_string($userWorkflowDefinition->allowed_funders) 
+                ? json_decode($userWorkflowDefinition->allowed_funders, true) 
+                : $userWorkflowDefinition->allowed_funders;
+            
+            if (is_array($allowedFunders) && !empty($allowedFunders)) {
+                foreach ($allActivities as $activity) {
+                    $canApprove = true;
+                    
+                    // Check if activity has budget data
+                    if (empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode) {
+                        // For external source activities (no budget data), only allow if fund type 3 is in allowed_funders
+                        $canApprove = in_array(3, $allowedFunders);
+                    } else {
+                        // Check if activity's fund type is in allowed_funders
+                        $activityFundTypeId = $activity->activity_budget[0]->fundcode->fund_type_id;
+                        $canApprove = in_array($activityFundTypeId, $allowedFunders);
+                    }
+                    
+                    if ($canApprove) {
+                        $filteredActivities->push($activity);
+                    }
+                }
+            } else {
+                $filteredActivities = $allActivities;
+            }
+        } else {
+            $filteredActivities = $allActivities;
+        }
+        
+        // Now apply search and document number filters to the filtered activities
+        $activitiesQuery = $filteredActivities;
 
         // Apply document number filter if provided
         if ($request->filled('document_number')) {
@@ -528,17 +593,12 @@ class MatrixController extends Controller
         $locations = Location::whereIn('id', array_unique($allLocationIds))->get()->keyBy('id');
         $staff = Staff::whereIn('staff_id', array_unique($allStaffIds))->get()->keyBy('staff_id');
 
-        // Get workflow definition data for the response
-        $matrix = Matrix::with('forwardWorkflow.workflowDefinitions')->find($matrix->id);
-        $workflowDefinition = $matrix->forwardWorkflow->workflowDefinitions
-            ->where('approval_order', $matrix->approval_level)
-            ->first();
-            
-        $workflowDefinitionData = $workflowDefinition ? [
-            'id' => $workflowDefinition->id,
-            'approval_order' => $workflowDefinition->approval_order,
-            'allowed_funders' => $workflowDefinition->allowed_funders
-        ] : null;
+        // Cache workflow definition data to avoid repeated queries
+        $workflowDefinitionData = [
+            'id' => $userWorkflowDefinition->id,
+            'approval_order' => $userWorkflowDefinition->approval_order,
+            'allowed_funders' => $userWorkflowDefinition->allowed_funders
+        ];
 
         // Process activities with pre-loaded data
         $processedActivities = collect();
@@ -557,7 +617,7 @@ class MatrixController extends Controller
             $activity->has_passed_at_current_level = $activity->has_passed_at_current_level ?? false;
             
             // Check if user's approval order has already passed this activity
-            $activity->user_has_passed = $this->hasUserPassedActivity($activity, $workflowDefinition);
+            $activity->user_has_passed = $this->hasUserPassedActivity($activity, $userWorkflowDefinition);
             
             $processedActivities->push($activity);
         }
@@ -567,13 +627,13 @@ class MatrixController extends Controller
 
         return response()->json([
             'activities' => $activities,
-            'user_workflow_definition' => $workflowDefinitionData ? [
-                'id' => $workflowDefinitionData['id'],
-                'role' => $workflowDefinition->role ?? 'Unknown',
-                'approval_order' => $workflowDefinitionData['approval_order'],
-                'allowed_funders' => $workflowDefinitionData['allowed_funders'],
-                'is_division_specific' => $workflowDefinition->is_division_specific ?? false,
-            ] : null,
+            'user_workflow_definition' => [
+                'id' => $userWorkflowDefinition->id,
+                'role' => $userWorkflowDefinition->role,
+                'approval_order' => $userWorkflowDefinition->approval_order,
+                'allowed_funders' => $userWorkflowDefinition->allowed_funders,
+                'is_division_specific' => $userWorkflowDefinition->is_division_specific,
+            ],
             'pagination' => [
                 'current_page' => $activities->currentPage(),
                 'last_page' => $activities->lastPage(),
@@ -2539,8 +2599,8 @@ class MatrixController extends Controller
             $totalBudget = 0;
             $activitiesCount = 0;
             
-            // Get visible activities using the new helper function
-            $visibleActivities = get_visible_activities($matrix);
+            // Get approvable activities using the helper function
+            $approvableActivities = get_approvable_activities($matrix);
             
             // Also include approved single memos for budget calculation
             $currentStaffId = user_session('staff_id');
@@ -2550,8 +2610,8 @@ class MatrixController extends Controller
                        ($activity->staff_id == $currentStaffId || $activity->responsible_person_id == $currentStaffId);
             });
             
-            // Combine visible activities and approved single memos
-            $visibleActivities = $visibleActivities->merge($approvedSingleMemos);
+            // Combine approvable activities and approved single memos
+            $visibleActivities = $approvableActivities->merge($approvedSingleMemos);
             
             foreach($visibleActivities as $activity) {
                 $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown, true);
