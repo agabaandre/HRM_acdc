@@ -541,8 +541,8 @@ public function getNextApprover($model)
             }
             
             if ($hasIntra && $hasExtra) {
-                // Mixed funding: skip Director, start with PIU Officer (4)
-                $definition = $pick(4, 1);
+                // Mixed funding: skip Director, start with Grants Officer (3)
+                $definition = $pick(3, 2);
                 if ($definition) return $definition;
             }
             
@@ -617,9 +617,9 @@ public function getNextApprover($model)
         }
 
         if ($hasIntra && $hasExtra) {
-            // Mixed funding: Both PIU and Grants Officer need to review
-            // Start with PIU Officer (4) for intramural activities
-            $definition = $pick(4, 1); // PIU Officer for intramural
+            // Mixed funding: Both Grants and PIU Officer need to review
+            // Start with Grants Officer (3) for extramural activities first
+            $definition = $pick(3, 2); // Grants Officer for extramural
             if ($definition) return $definition;
         }
 
@@ -659,13 +659,20 @@ public function getNextApprover($model)
         $hasExtra = $currentHasExtra;
         $isExternal = $currentIsExternal;
         
+        // Check if we have mixed funding (both intramural and extramural)
+        if ($hasIntra && $hasExtra) {
+            // Mixed funding: Go to PIU Officer (4) for intramural activities
+            $definition = $pick(4, 1); // PIU Officer for intramural
+            if ($definition) return $definition;
+        }
+        
         if ($hasIntra && !$hasExtra) {
             // Intramural: go to Finance Officer (5)
             $definition = $pick(5, 1); // Finance Officer for intramural
             if ($definition) return $definition;
         }
         
-        // For extramural or mixed cases, go to Director Finance (6)
+        // For extramural only, go to Director Finance (6)
         $definition = $pick(6);
         if ($definition) return $definition;
     }
@@ -691,14 +698,7 @@ public function getNextApprover($model)
         $hasExtra = $currentHasExtra;
         $isExternal = $currentIsExternal;
         
-        // Check if we have mixed funding (both intramural and extramural)
-        if ($hasIntra && $hasExtra) {
-            // Mixed funding: Go to Grants Officer (3) for extramural activities
-            $definition = $pick(3, 2); // Grants Officer for extramural
-            if ($definition) return $definition;
-        }
-        
-        // Go to Finance Officer (5) for intramural only
+        // Go to Finance Officer (5) for intramural activities
         $definition = $pick(5, 1); // Finance Officer for intramural
         if ($definition) return $definition;
     }
