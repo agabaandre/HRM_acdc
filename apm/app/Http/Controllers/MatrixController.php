@@ -458,6 +458,14 @@ class MatrixController extends Controller
             return $this->getAllActivities($matrix, $request);
         }
 
+        // Check if user is an approver at the current approval level
+        $isApprover = $this->isUserApproverAtCurrentLevel($matrix, $userStaffId, $userDivisionId);
+        
+        // If user is not an approver at current level, return all activities without filtering
+        if (!$isApprover) {
+            return $this->getAllActivities($matrix, $request);
+        }
+
         // Build activities query with filtering and eager loading
         $activitiesQuery = $matrix->activities()
             ->where('is_single_memo', 0)
@@ -715,6 +723,78 @@ class MatrixController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Check if user is an approver at the current approval level
+     */
+    private function isUserApproverAtCurrentLevel($matrix, $userStaffId, $userDivisionId)
+    {
+        if (!$matrix->forward_workflow_id) {
+            return false;
+        }
+
+        // Get current approval level workflow definitions
+        $workflowDefinitions = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+            ->where('approval_order', $matrix->approval_level)
+            ->where('is_enabled', 1)
+            ->get();
+
+        if ($workflowDefinitions->isEmpty()) {
+            return false;
+        }
+
+        // Check for division-specific workflow definition
+        if ($workflowDefinitions->count() > 1 && $matrix->division) {
+            $divisionSpecific = $workflowDefinitions->where('is_division_specific', 1)
+                ->where('category', $matrix->division->category)
+                ->first();
+            
+            if ($divisionSpecific) {
+                return $this->isDivisionSpecificApprover($matrix, $divisionSpecific, $userStaffId, $userDivisionId);
+            }
+        }
+
+        // Check if user is an approver for any of the workflow definitions
+        foreach ($workflowDefinitions as $definition) {
+            if ($definition->is_division_specific) {
+                // Check division-specific approvers
+                if ($this->isDivisionSpecificApprover($matrix, $definition, $userStaffId, $userDivisionId)) {
+                    return true;
+                }
+            } else {
+                // Check regular approvers
+                $today = \Carbon\Carbon::today();
+                
+                // Check for regular approver
+                $isApprover = Approver::where('workflow_dfn_id', $definition->id)
+                    ->where('staff_id', $userStaffId)
+                    ->where(function($query) use ($today) {
+                        $query->whereNull('end_date')
+                              ->orWhere('end_date', '>=', $today);
+                    })
+                    ->exists();
+                
+                if ($isApprover) {
+                    return true;
+                }
+                
+                // Check for OIC approver
+                $isOicApprover = Approver::where('workflow_dfn_id', $definition->id)
+                    ->where('oic_staff_id', $userStaffId)
+                    ->where(function($query) use ($today) {
+                        $query->whereNull('end_date')
+                              ->orWhere('end_date', '>=', $today);
+                    })
+                    ->exists();
+                
+                if ($isOicApprover) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -2599,19 +2679,29 @@ class MatrixController extends Controller
             $totalBudget = 0;
             $activitiesCount = 0;
             
-            // Get approvable activities using the helper function
-            $approvableActivities = get_approvable_activities($matrix);
-            
-            // Also include approved single memos for budget calculation
             $currentStaffId = user_session('staff_id');
-            $approvedSingleMemos = $matrix->activities->filter(function($activity) use ($currentStaffId) {
-                return $activity->is_single_memo && 
-                       $activity->overall_status === 'approved' &&
-                       ($activity->staff_id == $currentStaffId || $activity->responsible_person_id == $currentStaffId);
-            });
+            $userDivisionId = user_session('division_id');
             
-            // Combine approvable activities and approved single memos
-            $visibleActivities = $approvableActivities->merge($approvedSingleMemos);
+            // Check if user is an approver at the current approval level
+            $isApprover = $this->isUserApproverAtCurrentLevel($matrix, $currentStaffId, $userDivisionId);
+            
+            if ($isApprover) {
+                // If user is an approver, use the helper function to get approvable activities
+                $approvableActivities = get_approvable_activities($matrix);
+                
+                // Also include approved single memos for budget calculation
+                $approvedSingleMemos = $matrix->activities->filter(function($activity) use ($currentStaffId) {
+                    return $activity->is_single_memo && 
+                           $activity->overall_status === 'approved' &&
+                           ($activity->staff_id == $currentStaffId || $activity->responsible_person_id == $currentStaffId);
+                });
+                
+                // Combine approvable activities and approved single memos
+                $visibleActivities = $approvableActivities->merge($approvedSingleMemos);
+            } else {
+                // If user is not an approver at current level, show all activities
+                $visibleActivities = $matrix->activities->where('is_single_memo', false);
+            }
             
             foreach($visibleActivities as $activity) {
                 $budget = is_array($activity->budget_breakdown) ? $activity->budget_breakdown : json_decode($activity->budget_breakdown, true);

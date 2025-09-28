@@ -683,28 +683,9 @@ if (!function_exists('user_session')) {
                 })
                 ->exists();
             
-            // If user is not an approver for this level, check if they should see all activities
+            // If user is not an approver for this level, return empty collection
             if (!$isApprover && !$isOicApprover && !$isDivisionLevelApprover && !$isWorkflowOic) {
-                // Check if user is the matrix creator, focal person, or responsible person
-                $isMatrixCreator = $matrix->staff_id == $currentUserId;
-                $isFocalPerson = $matrix->focal_person_id == $currentUserId;
-                
-                // Check if user is involved in any activities (creator or responsible person)
-                $isInvolvedInActivities = $matrix->activities->where('staff_id', $currentUserId)->count() > 0 ||
-                                        $matrix->activities->where('responsible_person_id', $currentUserId)->count() > 0;
-                
-                // If user is not involved in the matrix at all, return empty collection
-                if (!$isMatrixCreator && !$isFocalPerson && !$isInvolvedInActivities) {
-                    return $approvable_activities;
-                }
-                
-                // If user is involved but not an approver, return all activities (no filtering by fund type)
-                foreach($matrix->activities as $activity) {
-                    $approvable_activities->push($activity);
-                }
-                
-                // Cache the result for 5 minutes
-                \Cache::put($cacheKey, $approvable_activities, 300);
+               // dd($isApprover,$isOicApprover);
                 return $approvable_activities;
             }
             
