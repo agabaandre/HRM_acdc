@@ -482,14 +482,14 @@
                     <h1 class="h2 fw-bold text-dark mb-0">Activity Details: {{ $activity->document_number }}</h1>
                     <p class="text-muted mb-0">Review and manage activity details</p>
 </div>
-                <div class="d-flex gap-3">
-                    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
                         <i class="bx bx-arrow-back"></i>
                         <span>Back to Matrix</span>
                     </a>
                     
                     @if (can_edit_memo($activity))
-                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning d-flex align-items-center gap-2">
+                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1">
                             <i class="bx bx-edit"></i>
                             <span>Edit Activity</span>
                         </a>
@@ -504,15 +504,15 @@
                     
                     @if($existingArf)
                         {{-- Show View ARF button if ARF exists --}}
-                        <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success d-flex align-items-center gap-2">
+                        <a href="{{ route('request-arf.show', $existingArf) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
                             <i class="bx bx-show"></i>
-                            <span>View Activity Request</span>
+                            <span>View ARF</span>
                         </a>
                     @elseif(can_request_arf($activity))
                         {{-- Show Create ARF button if memo is approved and no ARF exists --}}
-                        <button type="button" class="btn btn-success d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createArfModal">
+                        <button type="button" class="btn btn-success btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createArfModal">
                             <i class="bx bx-file-plus"></i>
-                            <span>Create Activity Request</span>
+                            <span>Create ARF</span>
                         </button>
                     @endif
                                 
@@ -527,24 +527,32 @@
                     
                     @if($existingServiceRequest)
                         {{-- Show View Service Request button if Service Request exists --}}
-                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
+                        <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-eye"></i>
-                            <span>View Service Request</span>
+                            <span>View RQS</span>
                         </a>
                     @elseif(can_request_services($activity))
                         {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
                         <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
-                           class="btn btn-info d-flex align-items-center gap-2">
+                           class="btn btn-info btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-tools"></i>
-                            <span>Create Service Request</span>
+                            <span>Create RQS</span>
                         </a>
                     @endif
                             {{-- @dd(can_print_memo($activity)) --}}
                     @if(can_print_memo($activity))
                         <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
-                           class="btn btn-primary d-flex align-items-center gap-2" target="_blank">
+                           class="btn btn-primary btn-sm d-flex align-items-center gap-1" target="_blank">
                             <i class="bx bx-printer"></i>
-                            <span>Print Activity</span>
+                            <span>Print</span>
+                        </a>
+                    @endif
+                    
+                    @if($activity->overall_status === 'approved')
+                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}?change_request=1" 
+                           class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1">
+                            <i class="fas fa-edit"></i>
+                            <span>Change Request</span>
                         </a>
                     @endif
                             </div>

@@ -690,7 +690,8 @@ if (!function_exists('user_session')) {
             }
             
             // Filter activities based on allowed_funders if specified
-            foreach($matrix->activities as $activity) {
+            if ($matrix->activities) {
+                foreach($matrix->activities as $activity) {
                 $canApprove = true;
                 
                 // Check if activity has budget data and allowed_funders is specified
@@ -713,6 +714,7 @@ if (!function_exists('user_session')) {
                 
                 if ($canApprove) {
                     $approvable_activities->push($activity);
+                }
                 }
             }
             

@@ -306,6 +306,10 @@ Route::get('special-memo/{specialMemo}/status', [App\Http\Controllers\SpecialMem
     Route::resource('service-requests', App\Http\Controllers\ServiceRequestController::class);
     Route::delete('service-requests/{serviceRequest}/remove-attachment', [App\Http\Controllers\ServiceRequestController::class, 'removeAttachment'])->name('service-requests.remove-attachment');
     Route::get('service-requests/{serviceRequest}/print', [App\Http\Controllers\ServiceRequestController::class, 'print'])->name('service-requests.print');
+    
+    // Change Request Routes
+    Route::resource('change-requests', App\Http\Controllers\ChangeRequestController::class);
+    Route::get('change-requests/pending-approvals', [App\Http\Controllers\ChangeRequestController::class, 'pendingApprovals'])->name('change-requests.pending-approvals');
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');

@@ -139,6 +139,16 @@
     0% { left: -100%; }
     100% { left: 100%; }
   }
+
+  /* Table Header Styling */
+  .table th {
+    background-color: white !important;
+    color: #2c3f51 !important;
+    border: none;
+    font-weight: 600;
+    padding: 1rem 0.75rem;
+    font-size: 0.9rem;
+  }
 </style>
 
 <div class="row mb-4">
@@ -223,11 +233,11 @@
 @foreach($pendingApprovals as $categoryName => $items)
     @if(count($items) > 0)
         <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-folder me-2"></i>
+            <div class="card-header bg-success">
+                <h5 class="mb-0 text-white">
+                    <i class="fas fa-folder me-2 text-white"></i>
                     {{ $categoryName }}
-                    <span class="badge bg-primary ms-2">{{ count($items) }}</span>
+                    <span class="badge bg-white text-success ms-2">{{ count($items) }}</span>
                 </h5>
             </div>
             <div class="card-body p-0">

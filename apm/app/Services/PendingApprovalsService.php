@@ -8,6 +8,7 @@ use App\Models\SpecialMemo;
 use App\Models\NonTravelMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
+use App\Models\ChangeRequest;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowModel;
 use App\Models\Approver;
@@ -66,6 +67,9 @@ class PendingApprovalsService
         // Get pending ARF requests
         $pendingItems = $pendingItems->merge($this->getPendingARFRequests());
 
+        // Get pending change requests
+        $pendingItems = $pendingItems->merge($this->getPendingChangeRequests());
+
         // Group by category and sort by date received
         return $this->groupByCategory($pendingItems);
     }
@@ -75,32 +79,77 @@ class PendingApprovalsService
      */
     protected function getPendingMatrices(): Collection
     {
-        $query = Matrix::with(['division', 'focalPerson', 'matrixApprovalTrails.staff'])
-            ->where('overall_status', 'pending');
+        // Use the same logic as MatrixController pendingApprovals method for consistency
+        $query = Matrix::with([
+            'division',
+            'staff',
+            'focalPerson',
+            'forwardWorkflow',
+            'activities' => function ($q) {
+                $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
+                  ->whereNotNull('matrix_id');
+            }
+        ]);
 
-        // Get all approval levels for this user (both division-specific and non-division-specific)
-        $approvalLevels = $this->getUserApprovalLevels('Matrix');
-        
-        if (!empty($approvalLevels)) {
-            $query->whereIn('approval_level', $approvalLevels);
-        } else {
-            // If no approval levels, return empty collection
-            return collect();
-        }
+        // Only show pending matrices (not draft)
+        $query->where('overall_status', 'pending')
+              ->where('forward_workflow_id', '!=', null)
+              ->where('approval_level', '>', 0);
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
-        }
+        // Apply the same filtering logic as MatrixController
+        $query->where(function($q) {
+            // Case 1: Division-specific approval - check if user's division matches matrix division
+            if ($this->currentDivisionId) {
+                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'));
+                })
+                ->where('division_id', $this->currentDivisionId);
+            }
 
-        return $query->get()->filter(function ($matrix) {
-            // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($matrix);
-        })->map(function ($matrix) {
+            // Case 1b: Division-specific approval with division_reference_column
+            if ($this->currentStaffId) {
+                $q->orWhere(function($subQ) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) {
+                        $workflowQ->where('is_division_specific', 1)
+                                  ->whereNotNull('division_reference_column')
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) {
+                                      $approverQ->where('staff_id', $this->currentStaffId);
+                                  });
+                    });
+                });
+            }
+
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($this->currentStaffId) {
+                $q->orWhere(function($subQ) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) {
+                                      $approverQ->where('staff_id', $this->currentStaffId);
+                                  });
+                    });
+                });
+            }
+
+            $q->orWhere('division_id', $this->currentDivisionId);
+        });
+
+        $pendingMatrices = $query->get();
+
+        // Note: We don't apply can_take_action filter here to match the helper functions
+        // The helper functions use the same logic as MatrixController without can_take_action filter
+
+        return $pendingMatrices->map(function ($matrix) {
             return $this->formatPendingItem($matrix, 'Matrix', [
                 'title' => "Matrix - {$matrix->quarter} {$matrix->year}",
                 'division' => $matrix->division->division_name ?? 'N/A',
-                'submitted_by' => $matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname ?? 'N/A',
+                'submitted_by' => $matrix->focalPerson ? 
+                    ($matrix->focalPerson->fname . ' ' . $matrix->focalPerson->lname) : 
+                    ($matrix->staff->fname . ' ' . $matrix->staff->lname ?? 'N/A'),
                 'date_received' => $this->getDateReceivedToCurrentLevel($matrix),
                 'view_url' => url(route('matrices.show', $matrix, false)),
                 'approval_level' => $matrix->approval_level,
@@ -157,28 +206,72 @@ class PendingApprovalsService
      */
     protected function getPendingNonTravelMemos(): Collection
     {
+        // Use the same logic as the helper function for consistency
         $query = NonTravelMemo::with(['staff', 'division', 'approvalTrails.staff'])
-            ->where('overall_status', 'pending');
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
 
-        // Get all approval levels for this user (both division-specific and non-division-specific)
-        $approvalLevels = $this->getUserApprovalLevels('NonTravelMemo');
-        
-        if (!empty($approvalLevels)) {
-            $query->whereIn('approval_level', $approvalLevels);
-        } else {
-            // If no approval levels, return empty collection
-            return collect();
-        }
+        $query->where(function($query) {
+            // Case 1: Division-specific approval - check if user's division matches memo division
+            if ($this->currentDivisionId) {
+                $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('non_travel_memos.approval_level'));
+                })
+                ->where('division_id', $this->currentDivisionId);
+            }
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
-        }
+            // Case 1b: Division-specific approval with division_reference_column
+            if ($this->currentStaffId) {
+                $query->orWhere(function($subQ) {
+                    $divisionsTable = (new \App\Models\Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = non_travel_memos.division_id 
+                        WHERE wd.workflow_id = non_travel_memos.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = non_travel_memos.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=non_travel_memos.division_id AND d.id=?)
+                        )
+                    )", [$this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentDivisionId])
+                    ->orWhere(function($subQ2) {
+                        $subQ2->where('approval_level', $this->currentStaffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) {
+                                $trailQ->where('staff_id', '=',$this->currentStaffId);
+                              });
+                    });
+                });
+            }
+            
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($this->currentStaffId) {
+                $query->orWhere(function($subQ) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('non_travel_memos.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) {
+                                      $approverQ->where('staff_id', $this->currentStaffId);
+                                  });
+                    });
+                });
+            }
 
-        return $query->get()->filter(function ($memo) {
-            // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($memo);
-        })->map(function ($memo) {
+            $query->orWhere('division_id', $this->currentDivisionId);
+        });
+
+        $pendingMemos = $query->get();
+
+        return $pendingMemos->map(function ($memo) {
             return $this->formatPendingItem($memo, 'Non-Travel Memo', [
                 'title' => $memo->activity_title ?? 'Non-Travel Memo',
                 'division' => $memo->division->division_name ?? 'N/A',
@@ -448,99 +541,12 @@ class PendingApprovalsService
 
     /**
      * Check if the current user is the current approver for the given item
-     * Based on the logic from GenericApprovalHelper::get_approval_recipient_generic
+     * Use the same logic as can_take_action for consistency
      */
     protected function isCurrentApprover($model): bool
     {
-        if (!$model->forward_workflow_id || $model->approval_level === null) {
-            return false;
-        }
-
-        // Special case: level 0 means returned to creator/focal person
-        if ($model->approval_level == 0) {
-            // Check if current user is the creator or focal person
-            if (method_exists($model, 'staff_id') && $model->staff_id == $this->currentStaffId) {
-                return true;
-            }
-            if (method_exists($model, 'focal_person_id') && $model->focal_person_id == $this->currentStaffId) {
-                return true;
-            }
-            // For level 0, only show to creator/focal person, not to division heads
-            return false;
-        }
-
-        $current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
-            ->where('workflow_id', $model->forward_workflow_id)
-            ->first();
-
-        if (!$current_approval_point) {
-            return false;
-        }
-
-        $today = Carbon::today();
-
-        // Check for regular approvers first
-        $approver = Approver::where('workflow_dfn_id', $current_approval_point->id)
-            ->where('staff_id', $this->currentStaffId)
-            ->where(function ($query) use ($today) {
-                $query->whereNull('end_date')
-                    ->orWhere('end_date', '>=', $today);
-            })
-            ->first();
-
-        if ($approver) {
-            return true;
-        }
-
-        // Check for OIC approvers
-        $oic_approver = Approver::where('workflow_dfn_id', $current_approval_point->id)
-            ->where('oic_staff_id', $this->currentStaffId)
-            ->where('end_date', '>=', $today)
-            ->first();
-
-        if ($oic_approver) {
-            return true;
-        }
-
-        // Check for division-specific approvers
-        if ($current_approval_point->is_division_specific && method_exists($model, 'division') && $model->division) {
-            $division = $model->division;
-            $referenceColumn = $current_approval_point->division_reference_column;
-            
-            // Check for active OIC first (if available)
-            // Map reference columns to their OIC column names
-            $oicColumnMap = [
-                'division_head' => 'head_oic_id',
-                'finance_officer' => 'finance_officer_oic_id', // This might need to be added to the division table
-                'director_id' => 'director_oic_id'
-            ];
-            
-            $oicColumn = $oicColumnMap[$referenceColumn] ?? $referenceColumn . '_oic_id';
-            $oicStartColumn = str_replace('_oic_id', '_oic_start_date', $oicColumn);
-            $oicEndColumn = str_replace('_oic_id', '_oic_end_date', $oicColumn);
-            
-            // Check if current user is the active OIC
-            if (isset($division->$oicColumn) && $division->$oicColumn == $this->currentStaffId) {
-                $isOicActive = true;
-                if (isset($division->$oicStartColumn) && $division->$oicStartColumn) {
-                    $isOicActive = $isOicActive && $division->$oicStartColumn <= $today;
-                }
-                if (isset($division->$oicEndColumn) && $division->$oicEndColumn) {
-                    $isOicActive = $isOicActive && $division->$oicEndColumn >= $today;
-                }
-                
-                if ($isOicActive) {
-                    return true;
-                }
-            }
-            
-            // If no active OIC, check primary approver
-            if (isset($division->$referenceColumn) && $division->$referenceColumn == $this->currentStaffId) {
-                return true;
-            }
-        }
-
-        return false;
+        // Use the existing can_take_action function for consistency
+        return can_take_action($model);
     }
 
     /**
@@ -859,6 +865,91 @@ class PendingApprovalsService
             \Log::error('Failed to send item notification: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Get pending change requests
+     */
+    protected function getPendingChangeRequests(): Collection
+    {
+        // Use the same logic as the helper function for consistency
+        $query = ChangeRequest::with(['staff', 'division', 'approvalTrails.staff'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($query) {
+            // Case 1: Division-specific approval - check if user's division matches change request division
+            if ($this->currentDivisionId) {
+                $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('change_request.approval_level'));
+                })
+                ->where('division_id', $this->currentDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column
+            if ($this->currentStaffId) {
+                $query->orWhere(function($subQ) {
+                    $divisionsTable = (new \App\Models\Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = change_request.division_id 
+                        WHERE wd.workflow_id = change_request.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = change_request.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=change_request.division_id AND d.id=?)
+                        )
+                    )", [$this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentStaffId, $this->currentDivisionId])
+                    ->orWhere(function($subQ2) {
+                        $subQ2->where('approval_level', $this->currentStaffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) {
+                                $trailQ->where('staff_id', '=',$this->currentStaffId);
+                              });
+                    });
+                });
+            }
+            
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($this->currentStaffId) {
+                $query->orWhere(function($subQ) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('change_request.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) {
+                                      $approverQ->where('staff_id', $this->currentStaffId);
+                                  });
+                    });
+                });
+            }
+
+            $query->orWhere('division_id', $this->currentDivisionId);
+        });
+
+        $pendingChangeRequests = $query->get();
+
+        return $pendingChangeRequests->map(function ($changeRequest) {
+            return $this->formatPendingItem($changeRequest, 'Change Request', [
+                'title' => $changeRequest->activity_title ?? 'Change Request',
+                'division' => $changeRequest->division->division_name ?? 'N/A',
+                'submitted_by' => $changeRequest->staff->fname . ' ' . $changeRequest->staff->lname ?? 'N/A',
+                'date_received' => $this->getDateReceivedToCurrentLevel($changeRequest),
+                'view_url' => url(route('change-requests.show', $changeRequest, false)),
+                'approval_level' => $changeRequest->approval_level,
+                'workflow_role' => $this->getCurrentApproverRole($changeRequest),
+                'item_id' => $changeRequest->id,
+                'item_type' => 'ChangeRequest'
+            ]);
+        });
     }
 
     /**
