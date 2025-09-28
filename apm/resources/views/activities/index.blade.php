@@ -276,7 +276,7 @@
                                     <h6 class="mb-0 text-primary fw-bold">
                                         <i class="bx bx-grid me-2"></i> All Activities
                                     </h6>
-                                    <small class="text-muted">All activities across all divisions for {{ $selectedQuarter }} {{ $selectedYear }}</small>
+                                    <small class="text-muted">All activities across all divisions for {{ $selectedQuarter }} {{ $selectedYear }}, sorted by most recent quarter and year</small>
                                 </div>
                             </div>
                             
@@ -404,7 +404,7 @@
                                 <h6 class="mb-0 text-success fw-bold">
                                     <i class="bx bx-home me-2"></i> My Division Activities
                                 </h6>
-                                <small class="text-muted">Activities in your division for {{ $selectedQuarter }} {{ $selectedYear }}</small>
+                                <small class="text-muted">Activities in your division for {{ $selectedQuarter }} {{ $selectedYear }}, sorted by most recent quarter and year</small>
                             </div>
                         </div>
                         
@@ -525,7 +525,7 @@
                                 <h6 class="mb-0 text-info fw-bold">
                                     <i class="bx bx-share me-2"></i> Shared Activities
                                 </h6>
-                                <small class="text-muted">Activities you're added to in other divisions for {{ $selectedQuarter }} {{ $selectedYear }}</small>
+                                <small class="text-muted">Activities you're added to in other divisions for {{ $selectedQuarter }} {{ $selectedYear }}, sorted by most recent quarter and year</small>
                                     </div>
                                 </div>
                         

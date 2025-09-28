@@ -1655,26 +1655,34 @@ class ActivityController extends Controller
             $baseQuery->where('document_number', 'like', '%' . $request->document_number . '%');
         }
 
-        // Query for "My Single Memos" tab - filtered by user session
+        // Query for "My Division Single Memos" tab - filtered by user's division
         $myMemosQuery = clone $baseQuery;
         
-        // Check if user is division approver or has specific approval workflow
-        if (isDivisionApprover() || !empty(user_session('division_id'))) {
-            $myMemosQuery->where('division_id', user_session('division_id'));
-        } else {
-            // Check approval workflow
-            $approvers = Approver::where('staff_id', user_session('staff_id'))->get();
-            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
-            $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
-            $myMemosQuery->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
+        // Filter by user's division
+        $userDivisionId = user_session('division_id');
+        if ($userDivisionId) {
+            $myMemosQuery->where('activities.division_id', $userDivisionId);
         }
         
         // Hide draft memos from non-creators and non-responsible persons
         $myMemosQuery->where(function ($q) use ($currentStaffId) {
-            $q->where('overall_status', '!=', 'draft')
-              ->orWhere('staff_id', $currentStaffId)
-              ->orWhere('responsible_person_id', $currentStaffId);
+            $q->where('activities.overall_status', '!=', 'draft')
+              ->orWhere('activities.staff_id', $currentStaffId)
+              ->orWhere('activities.responsible_person_id', $currentStaffId);
         });
+        
+        // Sort by most recent quarter and year from matrix, then by created_at
+        $myMemosQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
+            ->orderBy('matrices.year', 'desc')
+            ->orderByRaw("CASE 
+                WHEN matrices.quarter = 'Q4' THEN 4
+                WHEN matrices.quarter = 'Q3' THEN 3
+                WHEN matrices.quarter = 'Q2' THEN 2
+                WHEN matrices.quarter = 'Q1' THEN 1
+                ELSE 0
+            END DESC")
+            ->orderBy('activities.created_at', 'desc')
+            ->select('activities.*'); // Select only activity columns to avoid conflicts
         
         $myMemos = $myMemosQuery->paginate(10);
 
@@ -1683,12 +1691,49 @@ class ActivityController extends Controller
         
         // Only hide draft memos from non-creators and non-responsible persons
         $allMemosQuery->where(function ($q) use ($currentStaffId) {
-            $q->where('overall_status', '!=', 'draft')
-              ->orWhere('staff_id', $currentStaffId)
-              ->orWhere('responsible_person_id', $currentStaffId);
+            $q->where('activities.overall_status', '!=', 'draft')
+              ->orWhere('activities.staff_id', $currentStaffId)
+              ->orWhere('activities.responsible_person_id', $currentStaffId);
         });
         
         $allMemos = $allMemosQuery->paginate(10);
+        
+        // Query for "Shared Single Memos" tab - single memos from other divisions where user is involved
+        $sharedMemosQuery = clone $baseQuery;
+        
+        if ($currentStaffId) {
+            $sharedMemosQuery->where(function ($query) use ($currentStaffId, $userDivisionId) {
+                $query->where('activities.staff_id', $currentStaffId) // Single memos I created
+                      ->orWhere('activities.responsible_person_id', $currentStaffId) // Single memos I'm responsible for
+                      ->orWhereHas('participantSchedules', function ($scheduleQuery) use ($currentStaffId) {
+                          $scheduleQuery->where('participant_id', $currentStaffId); // Single memos I'm participating in
+                      });
+            })->whereHas('matrix', function ($query) use ($userDivisionId) {
+                $query->where('division_id', '!=', $userDivisionId); // From other divisions
+            });
+            
+            // Sort by most recent quarter and year from matrix, then by created_at
+            $sharedMemosQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
+                ->orderBy('matrices.year', 'desc')
+                ->orderByRaw("CASE 
+                    WHEN matrices.quarter = 'Q4' THEN 4
+                    WHEN matrices.quarter = 'Q3' THEN 3
+                    WHEN matrices.quarter = 'Q2' THEN 2
+                    WHEN matrices.quarter = 'Q1' THEN 1
+                    ELSE 0
+                END DESC")
+                ->orderBy('activities.created_at', 'desc')
+                ->select('activities.*'); // Select only activity columns to avoid conflicts
+            
+            // Hide draft memos from non-creators and non-responsible persons
+            $sharedMemosQuery->where(function ($q) use ($currentStaffId) {
+                $q->where('activities.overall_status', '!=', 'draft')
+                  ->orWhere('activities.staff_id', $currentStaffId)
+                  ->orWhere('activities.responsible_person_id', $currentStaffId);
+            });
+        }
+        
+        $sharedMemos = $sharedMemosQuery->paginate(10);
         
         $staff = Staff::active()->get();
     
@@ -1699,7 +1744,7 @@ class ActivityController extends Controller
             ->orderBy('division_name')
             ->get();
     
-        return view('activities.single-memos.index', compact('myMemos', 'allMemos', 'staff', 'divisions'));
+        return view('activities.single-memos.index', compact('myMemos', 'allMemos', 'sharedMemos', 'staff', 'divisions'));
     }
 
     /**
@@ -2028,11 +2073,11 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
 
         // Apply additional filters
         if ($selectedDocumentNumber) {
-            $baseQuery->where('document_number', 'like', '%' . $selectedDocumentNumber . '%');
+            $baseQuery->where('activities.document_number', 'like', '%' . $selectedDocumentNumber . '%');
         }
         
         if ($selectedStaffId) {
-            $baseQuery->where('responsible_person_id', $selectedStaffId);
+            $baseQuery->where('activities.responsible_person_id', $selectedStaffId);
         }
         
         // Debug: Check what matrices are found
@@ -2059,7 +2104,20 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 });
             }
             
-            $allActivities = $allActivitiesQuery->latest()->paginate(20);
+            // Sort by most recent quarter and year from matrix, then by created_at
+            $allActivitiesQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
+                ->orderBy('matrices.year', 'desc')
+                ->orderByRaw("CASE 
+                    WHEN matrices.quarter = 'Q4' THEN 4
+                    WHEN matrices.quarter = 'Q3' THEN 3
+                    WHEN matrices.quarter = 'Q2' THEN 2
+                    WHEN matrices.quarter = 'Q1' THEN 1
+                    ELSE 0
+                END DESC")
+                ->orderBy('activities.created_at', 'desc')
+                ->select('activities.*'); // Select only activity columns to avoid conflicts
+            
+            $allActivities = $allActivitiesQuery->paginate(20);
             
             // Debug: Log activities before filtering
             Log::info('All Activities Before Final Approval Filter', [
@@ -2101,9 +2159,23 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             $myDivisionQuery->where(function ($query) use ($userDivisionId, $userStaffId) {
                 $query->whereHas('matrix', function ($matrixQuery) use ($userDivisionId) {
                     $matrixQuery->where('division_id', $userDivisionId);
-                })->orWhere('responsible_person_id', $userStaffId); // Include activities where user is responsible
+                })->orWhere('activities.responsible_person_id', $userStaffId); // Include activities where user is responsible
             });
-            $myDivisionActivities = $myDivisionQuery->latest()->paginate(20);
+            
+            // Sort by most recent quarter and year from matrix, then by created_at
+            $myDivisionQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
+                ->orderBy('matrices.year', 'desc')
+                ->orderByRaw("CASE 
+                    WHEN matrices.quarter = 'Q4' THEN 4
+                    WHEN matrices.quarter = 'Q3' THEN 3
+                    WHEN matrices.quarter = 'Q2' THEN 2
+                    WHEN matrices.quarter = 'Q1' THEN 1
+                    ELSE 0
+                END DESC")
+                ->orderBy('activities.created_at', 'desc')
+                ->select('activities.*'); // Select only activity columns to avoid conflicts
+            
+            $myDivisionActivities = $myDivisionQuery->paginate(20);
             
             // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
             /*
@@ -2122,15 +2194,29 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         if ($userStaffId) {
             $sharedQuery = clone $baseQuery;
             $sharedQuery->where(function ($query) use ($userStaffId, $userDivisionId) {
-                $query->where('staff_id', $userStaffId) // Activities I created
-                      ->orWhere('responsible_person_id', $userStaffId) // Activities I'm responsible for
+                $query->where('activities.staff_id', $userStaffId) // Activities I created
+                      ->orWhere('activities.responsible_person_id', $userStaffId) // Activities I'm responsible for
                       ->orWhereHas('participantSchedules', function ($scheduleQuery) use ($userStaffId) {
                           $scheduleQuery->where('participant_id', $userStaffId); // Activities I'm participating in
                       });
             })->whereHas('matrix', function ($query) use ($userDivisionId) {
                 $query->where('division_id', '!=', $userDivisionId); // From other divisions
             });
-            $sharedActivities = $sharedQuery->latest()->paginate(20);
+            
+            // Sort by most recent quarter and year from matrix, then by created_at
+            $sharedQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
+                ->orderBy('matrices.year', 'desc')
+                ->orderByRaw("CASE 
+                    WHEN matrices.quarter = 'Q4' THEN 4
+                    WHEN matrices.quarter = 'Q3' THEN 3
+                    WHEN matrices.quarter = 'Q2' THEN 2
+                    WHEN matrices.quarter = 'Q1' THEN 1
+                    ELSE 0
+                END DESC")
+                ->orderBy('activities.created_at', 'desc')
+                ->select('activities.*'); // Select only activity columns to avoid conflicts
+            
+            $sharedActivities = $sharedQuery->paginate(20);
             
             // TEMPORARILY DISABLED: Filter to only show activities approved at the final level
             /*
