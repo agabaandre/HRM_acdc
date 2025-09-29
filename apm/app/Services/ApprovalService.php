@@ -524,6 +524,13 @@ public function getNextApprover($model)
     // STEP 1: HOD Review Logic
     // If at HOD level (approval_order = 1), check if we should skip directorate
     if ($approvalLevel == 1) {
+        // Special case: If division category is 'Other', go directly to Head of Other (order 8)
+        // This takes priority over all funding type checks
+        if ($division->category === 'Other') {
+            $definition = $pickFirstCategoryNode($division->category);
+            if ($definition) return $definition;
+        }
+        
         // For external source, first check if division has director
         if ($isExternal) {
             // Check if division has directorate (null or 0 means no director)
