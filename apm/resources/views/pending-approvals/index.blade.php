@@ -60,8 +60,8 @@
   }
 
   .stat-item.memos {
-    --stat-color: #6f42c1;
-    --stat-color-light: #9c7bff;
+    --stat-color:#272935;
+    --stat-color-light:hsl(240, 5.30%, 36.90%);
   }
 
   .stat-item.requests {
@@ -153,10 +153,26 @@
 
 <div class="row mb-4">
     <!-- Summary Cards -->
+    <style>
+        .stat-number-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            color: #032 !important;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            margin-top: 0.5rem;
+            box-shadow: 0 2px 8px rgba(44,63,81,0.08);
+        }
+    </style>
     <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="stat-item total">
-            <i class="fas fa-clock stat-icon"></i>
-            <span class="stat-number">{{ $summaryStats['total_pending'] }}</span>
+            <i class="fas fa-clock text-danger stat-icon"></i>
+            <span class="stat-number-circle">{{ $summaryStats['total_pending'] }}</span>
             <span class="stat-label">Total Pending</span>
             <div class="stat-progress">
                 <div class="stat-progress-bar" style="width: 100%"></div>
@@ -167,7 +183,7 @@
     <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="stat-item matrices">
             <i class="fas fa-calendar-alt stat-icon"></i>
-            <span class="stat-number">{{ $summaryStats['by_category']['Matrix'] ?? 0 }}</span>
+            <span class="stat-number-circle">{{ $summaryStats['by_category']['Matrix'] ?? 0 }}</span>
             <span class="stat-label">Matrices</span>
             <div class="stat-progress">
                 <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? (($summaryStats['by_category']['Matrix'] ?? 0) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
@@ -178,7 +194,7 @@
     <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="stat-item memos">
             <i class="fas fa-file-alt stat-icon"></i>
-            <span class="stat-number">{{ ($summaryStats['by_category']['Special Memo'] ?? 0) + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0) + ($summaryStats['by_category']['Single Memo'] ?? 0) }}</span>
+            <span class="stat-number-circle">{{ ($summaryStats['by_category']['Special Memo'] ?? 0) + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0) + ($summaryStats['by_category']['Single Memo'] ?? 0) }}</span>
             <span class="stat-label">Memos</span>
             <div class="stat-progress">
                 <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? ((($summaryStats['by_category']['Special Memo'] ?? 0) + ($summaryStats['by_category']['Non-Travel Memo'] ?? 0) + ($summaryStats['by_category']['Single Memo'] ?? 0)) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
@@ -189,7 +205,7 @@
     <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="stat-item requests">
             <i class="fas fa-cogs stat-icon"></i>
-            <span class="stat-number">{{ ($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0) }}</span>
+            <span class="stat-number-circle">{{ ($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0) }}</span>
             <span class="stat-label">Requests</span>
             <div class="stat-progress">
                 <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? ((($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0)) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
