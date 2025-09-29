@@ -47,21 +47,22 @@ class SendDailyPendingApprovalsCommand extends Command
         $this->info('🚀 Starting daily pending approvals notification job...');
 
         try {
-            // Run the job directly instead of dispatching to queue
-            $job = new SendDailyPendingApprovalsNotificationJob();
-            $job->handle();
+            // Use the new notification service
+            $notificationService = new \App\Services\NotificationService();
+            $notifications = $notificationService->createDailyPendingApprovalsNotifications();
             
-            $this->info('✅ Daily pending approvals notification job completed successfully!');
-            $this->info('📧 Notifications have been sent to all approvers with pending items.');
+            $this->info('✅ Daily pending approvals notifications created successfully!');
+            $this->info("📧 " . count($notifications) . " notifications have been created and queued for sending.");
             
-            Log::info('Daily pending approvals notification job completed via command', [
+            Log::info('Daily pending approvals notifications created via command', [
                 'timestamp' => now(),
-                'forced' => $isForced
+                'forced' => $isForced,
+                'notifications_created' => count($notifications)
             ]);
 
         } catch (\Exception $e) {
-            $this->error('❌ Failed to dispatch daily pending approvals notification job: ' . $e->getMessage());
-            Log::error('Failed to dispatch daily pending approvals notification job', [
+            $this->error('❌ Failed to create daily pending approvals notifications: ' . $e->getMessage());
+            Log::error('Failed to create daily pending approvals notifications', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

@@ -379,7 +379,7 @@ class MatrixController extends Controller
     //dd($matrix);
         // Separate regular activities and single memos
         $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
-        $singleMemosQuery = $matrix->activities()->where('is_single_memo', 1)->where('overall_status', 'approved')->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
+        $singleMemosQuery = $matrix->activities()->where('is_single_memo', 1)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget','activity_budget.fundcode']);
         
         // Apply document number filter if provided
         if ($request->filled('document_number')) {
@@ -997,7 +997,6 @@ class MatrixController extends Controller
         // Build single memos query with filtering
         $singleMemosQuery = $matrix->activities()
             ->where('is_single_memo', 1)
-            ->where('overall_status', 'approved')
             ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
         // Apply document number filter if provided
@@ -1080,7 +1079,6 @@ class MatrixController extends Controller
         // Build single memos query without filtering
         $singleMemosQuery = $matrix->activities()
             ->where('is_single_memo', 1)
-            ->where('overall_status', 'approved')
             ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
         // Apply document number filter if provided
@@ -1890,43 +1888,35 @@ class MatrixController extends Controller
         }
 
         // STEP 2: Directorate Check
-        // If at Director level (approval_order = 2), check if division has director
+        // If at Director level (approval_order = 2), perform all funding type checks like HOD level
         if ($approvalLevel == 2) {
-            // Check if division has director - if not, skip to next level
-            if ($division->director_id === null) {
-                // No director - skip to next available step
-                $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                    ->where('is_enabled', 1)
-                    ->where('approval_order', '>', $approvalLevel)
-                    ->orderBy('approval_order', 'asc')
-                    ->first();
-                return $definition;
+            // Perform the same funding type checks as HOD level, but without director existence check
+            
+            // For external source, go directly to division category check
+            if ($isExternal) {
+                $definition = $pickFirstCategoryNode($division->category ?? null);
+                if ($definition) return $definition;
             }
             
-            // Has director - proceed with fund source check
-            // For Gavi/CEPI/WB funding, determine fund type
+            // For intramural only
             if ($hasIntra && !$hasExtra) {
                 // Intramural: PIU Officer (4) -> Finance Officer (5) -> Director Finance (6)
                 $definition = $pick(4, 1); // PIU Officer for intramural
                 if ($definition) return $definition;
             }
 
+            // For extramural only
             if ($hasExtra && !$hasIntra) {
                 // Extramural: Grants Officer (3) -> Director Finance (6) (skips Finance Officer)
                 $definition = $pick(3, 2); // Grants Officer for extramural
                 if ($definition) return $definition;
             }
 
+            // For mixed funding
             if ($hasIntra && $hasExtra) {
                 // Mixed funding: Both Grants and PIU Officer need to review
                 // Start with Grants Officer (3) for extramural activities first
                 $definition = $pick(3, 2); // Grants Officer for extramural
-                if ($definition) return $definition;
-            }
-
-            // External source - go directly to division category check
-            if ($isExternal) {
-                $definition = $pickFirstCategoryNode($division->category ?? null);
                 if ($definition) return $definition;
             }
 

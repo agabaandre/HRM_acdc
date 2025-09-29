@@ -17,7 +17,8 @@ class Notification extends Model
      */
     protected $fillable = [
         'staff_id',
-        'matrix_id',
+        'model_id',
+        'model_type',
         'message',
         'type',
         'is_read',
@@ -43,10 +44,10 @@ class Notification extends Model
     }
 
     /**
-     * Get the matrix that the notification is for.
+     * Get the model that the notification is for (polymorphic).
      */
-    public function matrix(): BelongsTo
+    public function model()
     {
-        return $this->belongsTo(Matrix::class);
+        return $this->morphTo();
     }
 } 
