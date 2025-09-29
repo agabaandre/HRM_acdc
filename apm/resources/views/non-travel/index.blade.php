@@ -249,7 +249,7 @@
                                                        class="btn btn-sm btn-outline-info" title="View">
                                                         <i class="bx bx-show"></i>
                                                     </a>
-                                                    @if($memo->overall_status === 'draft' && $memo->staff_id === user_session('staff_id'))
+                                                    @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
                                     <a href="{{ route('non-travel.edit', $memo) }}"
                                                            class="btn btn-sm btn-outline-warning" title="Edit">
                                         <i class="bx bx-edit"></i>
@@ -406,7 +406,7 @@
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
-                                                        @if($memo->overall_status === 'draft' && $memo->staff_id === user_session('staff_id'))
+                                                        @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
                                                             <a href="{{ route('non-travel.edit', $memo) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>
