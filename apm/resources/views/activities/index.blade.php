@@ -349,8 +349,8 @@
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        <span class="badge {{ $activity->matrix->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
-                                                            {{ strtoupper($activity->matrix->overall_status ?? 'draft') }}
+                                                        <span class="badge {{ $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
+                                                            {{ strtoupper($activity->overall_status ?? 'draft') }}
                                                         </span>
                                                     </td>
                                                     <td class="text-center">
@@ -359,13 +359,13 @@
                                                                class="btn btn-sm btn-outline-info" title="View">
                                                                 <i class="bx bx-show"></i>
                                                             </a>
-                                                            @if($activity->matrix->overall_status !== 'approved')
+                                                            @if($activity->overall_status !== 'approved')
                                                                 <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
                                                                    class="btn btn-sm btn-outline-warning" title="Edit">
                                                                     <i class="bx bx-edit"></i>
                                                                 </a>
                                                             @endif
-                                                            @if($activity->overall_status === 'approved' && $activity->matrix->overall_status === 'approved')
+                                                            @if($activity->overall_status === 'approved')
                                                                 <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
                                                                    class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
                                                                     <i class="bx bx-printer"></i>
@@ -471,8 +471,8 @@
                                                     </span>
                             </td>
                             <td>
-                                                    <span class="badge {{ $activity->matrix->overall_status === 'approved' ? 'bg-success' : ($activity->matrix->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
-                                                        {{ strtoupper($activity->matrix->overall_status ?? 'draft') }}
+                                                    <span class="badge {{ $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
+                                                        {{ strtoupper($activity->overall_status ?? 'draft') }}
                                                     </span>
                             </td>
                                                 <td class="text-center">
@@ -481,13 +481,13 @@
                                                            class="btn btn-sm btn-outline-info" title="View">
                                         <i class="bx bx-show"></i>
                                     </a>
-                                                        @if($activity->matrix->overall_status !== 'approved')
+                                                        @if($activity->overall_status !== 'approved')
                                                             <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                             <i class="bx bx-edit"></i>
                                         </a>
                                                         @endif
-                                                        @if($activity->matrix->overall_status === 'approved' && $activity->matrix->overall_status === 'approved')
+                                                        @if($activity->overall_status === 'approved' && $activity->overall_status === 'approved')
                                                             <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
                                                                class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
                                                                 <i class="bx bx-printer"></i>
@@ -588,8 +588,8 @@
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <span class="badge {{ $activity->matrix->overall_status === 'approved' ? 'bg-success' : ($activity->matrix->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
-                                                        {{ strtoupper($activity->matrix->overall_status ?? 'draft') }}
+                                                    <span class="badge {{ $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
+                                                        {{ strtoupper($activity->overall_status ?? 'draft') }}
                                                     </span>
                                                 </td>
                                                 <td class="text-center">
@@ -598,7 +598,7 @@
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
-                                                        @if($activity->matrix->overall_status === 'approved' && $activity->matrix->overall_status === 'approved')
+                                                        @if($activity->overall_status === 'approved' && $activity->overall_status === 'approved')
                                                             <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
                                                                class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
                                                                 <i class="bx bx-printer"></i>

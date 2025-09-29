@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use App\Mail\MatrixNotification;
 use App\Models\Notification;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 if (!function_exists('get_matrix_notification_recipient')) {
     /**
@@ -175,8 +176,18 @@ if (!function_exists('send_matrix_email_notification')) {
      */
     function send_matrix_email_notification($model, $type = 'approval')
     {
-         sendMatrixNotificationWithJob( $model, $type);
-         return true;
+        try {
+            sendMatrixNotificationWithJob($model, $type);
+        } catch (Exception $e) {
+            // Log the error but don't break the approval process
+            Log::error('Email notification failed', [
+                'model_id' => $model->id,
+                'model_type' => get_class($model),
+                'type' => $type,
+                'error' => $e->getMessage()
+            ]);
+        }
+        return true;
     }
 }
 
