@@ -524,7 +524,39 @@ public function getNextApprover($model)
     // STEP 1: HOD Review Logic
     // If at HOD level (approval_order = 1), check if we should skip directorate
     if ($approvalLevel == 1) {
-        // Check if division has directorate (null or 0 means no director)
+        // For external source, first check if division has director
+        if ($isExternal) {
+            // Check if division has directorate (null or 0 means no director)
+            if ($division->director_id == null || $division->director_id == 0) {
+                // No director - go directly to division category check
+                $definition = $pickFirstCategoryNode($division->category ?? null);
+                if ($definition) return $definition;
+            } else {
+                // Has director - proceed to Director step (order 2)
+                $directorStep = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                    ->where('is_enabled', 1)
+                    ->where('approval_order', 2)
+                    ->first();
+                    
+                if ($directorStep) {
+                    return $directorStep;
+                } else {
+                    // No Director step in workflow - go to division category check
+                    $definition = $pickFirstCategoryNode($division->category ?? null);
+                    if ($definition) return $definition;
+                    
+                    // If no category-specific approver found, go to next available step
+                    $definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                        ->where('is_enabled', 1)
+                        ->where('approval_order', '>', $approvalLevel)
+                        ->orderBy('approval_order', 'asc')
+                        ->first();
+                    return $definition;
+                }
+            }
+        }
+        
+        // For non-external sources, check if division has directorate (null or 0 means no director)
         if ($division->director_id == null || $division->director_id == 0) {
             // No directorate - skip to next available step after Director (order 2)
             // But first check fund types to route correctly
@@ -543,12 +575,6 @@ public function getNextApprover($model)
             if ($hasIntra && $hasExtra) {
                 // Mixed funding: skip Director, start with Grants Officer (3)
                 $definition = $pick(3, 2);
-                if ($definition) return $definition;
-            }
-            
-            // External source - skip Director and go directly to division category check
-            if ($isExternal) {
-                $definition = $pickFirstCategoryNode($division->category ?? null);
                 if ($definition) return $definition;
             }
             
@@ -582,50 +608,38 @@ public function getNextApprover($model)
     }
 
     // STEP 2: Directorate Check
-    // If at Director level (approval_order = 2), check if division has director
+    // If at Director level (approval_order = 2), perform all funding type checks like HOD level
     if ($approvalLevel == 2) {
-        // Check if division has director - if not, skip to next level
-        if ($division->director_id == null) {
-            // No director - skip to next available step
-            $definition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('approval_order', '>', $approvalLevel)
-                ->orderBy('approval_order', 'asc')
-                ->first();
-            return $definition;
+        // Perform the same funding type checks as HOD level, but without director existence check
+        
+        // Debug output (remove in production)
+        // echo "DEBUG Director Level: hasIntra=" . ($hasIntra ? 'true' : 'false') . ", hasExtra=" . ($hasExtra ? 'true' : 'false') . ", isExternal=" . ($isExternal ? 'true' : 'false') . PHP_EOL;
+        
+        // For external source, go directly to division category check
+        if ($isExternal) {
+            $definition = $pickFirstCategoryNode($division->category ?? null);
+            if ($definition) return $definition;
         }
         
-        // Has director - proceed with fund source check
-        // For Gavi/CEPI/WB funding, determine fund type
-        // Debug: Log the funding status
-        // Log::info("Director level funding check", [
-        //     'hasIntra' => $hasIntra,
-        //     'hasExtra' => $hasExtra,
-        //     'isExternal' => $isExternal
-        // ]);
-        
+        // For intramural only
         if ($hasIntra && !$hasExtra) {
             // Intramural: PIU Officer (4) -> Finance Officer (5) -> Director Finance (6)
             $definition = $pick(4, 1); // PIU Officer for intramural
             if ($definition) return $definition;
         }
 
+        // For extramural only
         if ($hasExtra && !$hasIntra) {
             // Extramural: Grants Officer (3) -> Director Finance (6) (skips Finance Officer)
             $definition = $pick(3, 2); // Grants Officer for extramural
             if ($definition) return $definition;
         }
 
+        // For mixed funding
         if ($hasIntra && $hasExtra) {
             // Mixed funding: Both Grants and PIU Officer need to review
             // Start with Grants Officer (3) for extramural activities first
             $definition = $pick(3, 2); // Grants Officer for extramural
-            if ($definition) return $definition;
-        }
-
-        // External source - go directly to division category check
-        if ($isExternal) {
-            $definition = $pickFirstCategoryNode($division->category ?? null);
             if ($definition) return $definition;
         }
 
