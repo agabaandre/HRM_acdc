@@ -551,7 +551,11 @@ public function getNextApprover($model)
                         ->where('approval_order', '>', $approvalLevel)
                         ->orderBy('approval_order', 'asc')
                         ->first();
-                    return $definition;
+                    if ($definition) return $definition;
+                    
+                    // If no next step found due to activity changes, check division category again
+                    $definition = $pickFirstCategoryNode($division->category ?? null);
+                    if ($definition) return $definition;
                 }
             }
         }
@@ -584,7 +588,11 @@ public function getNextApprover($model)
                 ->where('approval_order', '>', 2) // Skip Director step (order 2)
                 ->orderBy('approval_order', 'asc')
                 ->first();
-            return $definition;
+            if ($definition) return $definition;
+            
+            // If no next step found due to activity changes, check division category
+            $definition = $pickFirstCategoryNode($division->category ?? null);
+            if ($definition) return $definition;
         }
         
         // Has directorate - check if there's a Director step (order 2)
@@ -603,7 +611,11 @@ public function getNextApprover($model)
                 ->where('approval_order', '>', $approvalLevel)
                 ->orderBy('approval_order', 'asc')
                 ->first();
-            return $definition;
+            if ($definition) return $definition;
+            
+            // If no next step found due to activity changes, check division category
+            $definition = $pickFirstCategoryNode($division->category ?? null);
+            if ($definition) return $definition;
         }
     }
 
@@ -649,7 +661,11 @@ public function getNextApprover($model)
             ->where('approval_order', '>', $approvalLevel)
             ->orderBy('approval_order', 'asc')
             ->first();
-        return $definition;
+        if ($definition) return $definition;
+        
+        // If no next step found due to activity changes, check division category
+        $definition = $pickFirstCategoryNode($division->category ?? null);
+        if ($definition) return $definition;
     }
 
     // STEP 3: Fund Source Split (Grants Officer)
@@ -689,6 +705,10 @@ public function getNextApprover($model)
         // For extramural only, go to Director Finance (6)
         $definition = $pick(6);
         if ($definition) return $definition;
+        
+        // If no specific approver found due to activity changes, check division category
+        $definition = $pickFirstCategoryNode($division->category ?? null);
+        if ($definition) return $definition;
     }
 
     // STEP 4: PIU Officer (Intramural only)
@@ -714,6 +734,10 @@ public function getNextApprover($model)
         
         // Go to Finance Officer (5) for intramural activities
         $definition = $pick(5, 1); // Finance Officer for intramural
+        if ($definition) return $definition;
+        
+        // If no Finance Officer found due to activity changes, check division category
+        $definition = $pickFirstCategoryNode($division->category ?? null);
         if ($definition) return $definition;
     }
 
@@ -741,6 +765,10 @@ public function getNextApprover($model)
         // If intramural activities still exist, go to Director Finance (6)
         $definition = $pick(6);
         if ($definition) return $definition;
+        
+        // If no Director Finance found due to activity changes, check division category
+        $definition = $pickFirstCategoryNode($division->category ?? null);
+        if ($definition) return $definition;
     }
 
     // STEP 6: Director Finance
@@ -762,8 +790,9 @@ public function getNextApprover($model)
         return $definition;
     }
 
-    // STEP 6: Division Category Check
+    // STEP 6: Division Category Check (Last option before Director Finance level)
     // Check if we should trigger category check based on current definition
+    // This should be the last check before Director Finance level (6)
     $shouldCategoryCheck = ($current_definition && $current_definition->triggers_category_check) 
         || ($isExternal && $approvalLevel >= 2);
 
