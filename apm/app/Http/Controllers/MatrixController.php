@@ -1857,7 +1857,11 @@ class MatrixController extends Controller
                             ->where('approval_order', '>', $approvalLevel)
                             ->orderBy('approval_order', 'asc')
                             ->first();
-                        return $definition;
+                        if ($definition) return $definition;
+                        
+                        // If no next step found due to activity changes, check division category again
+                        $definition = $pickFirstCategoryNode($division->category ?? null);
+                        if ($definition) return $definition;
                     }
                 }
             }
@@ -1884,13 +1888,17 @@ class MatrixController extends Controller
                     if ($definition) return $definition;
                 }
                 
-                // Fallback - go to next available step after Director
-                $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                    ->where('is_enabled', 1)
-                    ->where('approval_order', '>', 2) // Skip Director step (order 2)
-                    ->orderBy('approval_order', 'asc')
-                    ->first();
-                return $definition;
+            // Fallback - go to next available step after Director
+            $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', '>', 2) // Skip Director step (order 2)
+                ->orderBy('approval_order', 'asc')
+                ->first();
+            if ($definition) return $definition;
+            
+            // If no next step found due to activity changes, check division category
+            $definition = $pickFirstCategoryNode($division->category ?? null);
+            if ($definition) return $definition;
             }
             
             // Has directorate - check if there's a Director step (order 2)
@@ -1909,7 +1917,11 @@ class MatrixController extends Controller
                     ->where('approval_order', '>', $approvalLevel)
                     ->orderBy('approval_order', 'asc')
                     ->first();
-                return $definition;
+                if ($definition) return $definition;
+                
+                // If no next step found due to activity changes, check division category
+                $definition = $pickFirstCategoryNode($division->category ?? null);
+                if ($definition) return $definition;
             }
         }
 
@@ -1946,13 +1958,17 @@ class MatrixController extends Controller
                 if ($definition) return $definition;
             }
 
-            // Fallback - go to next available step
-            $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('approval_order', '>', $approvalLevel)
-                ->orderBy('approval_order', 'asc')
-                ->first();
-            return $definition;
+        // Fallback - go to next available step
+        $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where('approval_order', '>', $approvalLevel)
+            ->orderBy('approval_order', 'asc')
+            ->first();
+        if ($definition) return $definition;
+        
+        // If no next step found due to activity changes, check division category
+        $definition = $pickFirstCategoryNode($division->category ?? null);
+        if ($definition) return $definition;
         }
 
         // STEP 3: Fund Source Split (Grants Officer)
@@ -1983,9 +1999,13 @@ class MatrixController extends Controller
                 if ($definition) return $definition;
             }
             
-            // For extramural only, go to Director Finance (6)
-            $definition = $pick(6);
-            if ($definition) return $definition;
+        // For extramural only, go to Director Finance (6)
+        $definition = $pick(6);
+        if ($definition) return $definition;
+        
+        // If no specific approver found due to activity changes, check division category
+        $definition = $pickFirstCategoryNode($division->category ?? null);
+        if ($definition) return $definition;
         }
 
         // STEP 4: PIU Officer (Intramural only)
@@ -2009,9 +2029,13 @@ class MatrixController extends Controller
             $hasExtra = $currentHasExtra;
             $isExternal = $currentIsExternal;
             
-            // Go to Finance Officer (5) for intramural activities
-            $definition = $pick(5, 1); // Finance Officer for intramural
-            if ($definition) return $definition;
+        // Go to Finance Officer (5) for intramural activities
+        $definition = $pick(5, 1); // Finance Officer for intramural
+        if ($definition) return $definition;
+        
+        // If no Finance Officer found due to activity changes, check division category
+        $definition = $pickFirstCategoryNode($division->category ?? null);
+        if ($definition) return $definition;
         }
 
         // STEP 5: Finance Officer (Intramural only)
@@ -2035,9 +2059,13 @@ class MatrixController extends Controller
             $hasExtra = $currentHasExtra;
             $isExternal = $currentIsExternal;
             
-            // If intramural activities still exist, go to Director Finance (6)
-            $definition = $pick(6);
-            if ($definition) return $definition;
+        // If intramural activities still exist, go to Director Finance (6)
+        $definition = $pick(6);
+        if ($definition) return $definition;
+        
+        // If no Director Finance found due to activity changes, check division category
+        $definition = $pickFirstCategoryNode($division->category ?? null);
+        if ($definition) return $definition;
         }
 
         // STEP 6: Director Finance
