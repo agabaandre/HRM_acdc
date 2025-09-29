@@ -254,6 +254,13 @@
                                                            class="btn btn-sm btn-outline-warning" title="Edit">
                                         <i class="bx bx-edit"></i>
                                     </a>
+                                    <form action="{{ route('non-travel.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                    </form>
                                                     @endif
                                                     @if($memo->overall_status === 'approved')
                                                         <a href="{{ route('non-travel.print', $memo) }}" 
@@ -404,6 +411,13 @@
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>
                                                             </a>
+                                                            <form action="{{ route('non-travel.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                                    <i class="bx bx-trash"></i>
+                                                                </button>
+                                                            </form>
                                                         @endif
                                                         @if($memo->overall_status === 'approved')
                                                             <a href="{{ route('non-travel.print', $memo) }}" 
