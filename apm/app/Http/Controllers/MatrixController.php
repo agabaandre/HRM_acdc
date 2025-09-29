@@ -1830,7 +1830,39 @@ class MatrixController extends Controller
         // STEP 1: HOD Review Logic
         // If at HOD level (approval_order = 1), check if we should skip directorate
         if ($approvalLevel == 1) {
-            // Check if division has directorate (null or 0 means no director)
+            // For external source, first check if division has director
+            if ($isExternal) {
+                // Check if division has directorate (null or 0 means no director)
+                if ($division->director_id === null || $division->director_id == 0) {
+                    // No director - go directly to division category check
+                    $definition = $pickFirstCategoryNode($division->category ?? null);
+                    if ($definition) return $definition;
+                } else {
+                    // Has director - proceed to Director step (order 2)
+                    $directorStep = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                        ->where('is_enabled', 1)
+                        ->where('approval_order', 2)
+                        ->first();
+                        
+                    if ($directorStep) {
+                        return $directorStep;
+                    } else {
+                        // No Director step in workflow - go to division category check
+                        $definition = $pickFirstCategoryNode($division->category ?? null);
+                        if ($definition) return $definition;
+                        
+                        // If no category-specific approver found, go to next available step
+                        $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+                            ->where('is_enabled', 1)
+                            ->where('approval_order', '>', $approvalLevel)
+                            ->orderBy('approval_order', 'asc')
+                            ->first();
+                        return $definition;
+                    }
+                }
+            }
+            
+            // For non-external sources, check if division has directorate (null or 0 means no director)
             if ($division->director_id === null || $division->director_id == 0) {
                 // No directorate - skip to next available step after Director (order 2)
                 // But first check fund types to route correctly
@@ -1852,18 +1884,12 @@ class MatrixController extends Controller
                     if ($definition) return $definition;
                 }
                 
-                // External source - skip Director and go directly to division category check
-                if ($isExternal) {
-                    $definition = $pickFirstCategoryNode($division->category ?? null);
-                    if ($definition) return $definition;
-                }
-                
                 // Fallback - go to next available step after Director
                 $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
                     ->where('is_enabled', 1)
                     ->where('approval_order', '>', 2) // Skip Director step (order 2)
                     ->orderBy('approval_order', 'asc')
-            ->first();
+                    ->first();
                 return $definition;
             }
             
