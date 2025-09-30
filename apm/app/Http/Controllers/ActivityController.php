@@ -1698,23 +1698,8 @@ class ActivityController extends Controller
         // Show all single memos regardless of status
         // Removed draft filtering to show all single memos
         
-        // Sort by most recent quarter and year from matrix, then by created_at
-        $myMemosQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
-            ->orderBy('matrices.year', 'desc')
-            ->orderByRaw("CASE 
-                WHEN matrices.quarter = 'Q4' THEN 4
-                WHEN matrices.quarter = 'Q3' THEN 3
-                WHEN matrices.quarter = 'Q2' THEN 2
-                WHEN matrices.quarter = 'Q1' THEN 1
-                ELSE 0
-            END DESC")
-            ->orderBy('activities.created_at', 'desc')
-            ->select('activities.*'); // Select only activity columns to avoid conflicts
-        
+        // Use simple sorting like All Divisions tab to avoid relationship issues
         $myMemos = $myMemosQuery->paginate(10);
-        
-        // Reload relationships after pagination to ensure they're available
-        $myMemos->load(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType']);
 
         // Query for "All Single Memos" tab - no session restrictions
         $allMemosQuery = clone $baseQuery;
@@ -1738,27 +1723,12 @@ class ActivityController extends Controller
                 $query->where('division_id', '!=', $userDivisionId); // From other divisions
             });
             
-            // Sort by most recent quarter and year from matrix, then by created_at
-            $sharedMemosQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
-                ->orderBy('matrices.year', 'desc')
-                ->orderByRaw("CASE 
-                    WHEN matrices.quarter = 'Q4' THEN 4
-                    WHEN matrices.quarter = 'Q3' THEN 3
-                    WHEN matrices.quarter = 'Q2' THEN 2
-                    WHEN matrices.quarter = 'Q1' THEN 1
-                    ELSE 0
-                END DESC")
-                ->orderBy('activities.created_at', 'desc')
-                ->select('activities.*'); // Select only activity columns to avoid conflicts
-            
+            // Use simple sorting like All Divisions tab to avoid relationship issues
             // Show all single memos regardless of status
             // Removed draft filtering to show all single memos
         }
         
         $sharedMemos = $sharedMemosQuery->paginate(10);
-        
-        // Reload relationships after pagination to ensure they're available
-        $sharedMemos->load(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType']);
         
         $staff = Staff::active()->get();
     
