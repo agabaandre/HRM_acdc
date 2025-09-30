@@ -213,7 +213,6 @@
             <!-- Tab Content -->
             <div class="tab-content" id="matrixTabsContent">
                 <!-- My Division Matrices Tab -->
-                @if($myDivisionMatrices->count() > 0)
                 <div class="tab-pane fade show active" id="myDivision" role="tabpanel" aria-labelledby="myDivision-tab">
                     <div class="p-3">
                         <div class="d-flex align-items-center justify-content-between mb-3">
@@ -230,166 +229,9 @@
                             </div>
                         </div>
                         
-                        @if($myDivisionMatrices->count() > 0)
-                            <!-- Pagination Info -->
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="pagination-info text-muted small">
-                                    Showing {{ $myDivisionMatrices->firstItem() ?? 0 }} to {{ $myDivisionMatrices->lastItem() ?? 0 }} of {{ $myDivisionMatrices->total() }} results
-                                </div>
-                                <div class="text-muted small">
-                                    Page {{ $myDivisionMatrices->currentPage() }} of {{ $myDivisionMatrices->lastPage() }}
-                                </div>
-                            </div>
-                            
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-warning">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Year</th>
-                                            <th>Quarter</th>
-                                            <th>Division</th>
-                                            <th>Focal Person</th>       
-                                            <th>Key Result Areas</th>
-                                            <th>Activities</th>
-                                            <th>Level</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>    
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($myDivisionMatrices as $index => $matrix)
-                                            <tr>    
-                                                <td>{{ $myDivisionMatrices->firstItem() + $index }}</td>
-                                                <td>{{ $matrix->year }}</td>
-                                                <td>{{ $matrix->quarter }}</td>
-                                                <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
-                                                <td>{{ $matrix->focalPerson->name ?? 'N/A' }}</td>
-                                                <td>    
-                                                    @php
-                                                        $kras = is_string($matrix->key_result_area)
-                                                            ? json_decode($matrix->key_result_area, true)
-                                                            : $matrix->key_result_area;
-                                                    @endphp
-                                                    <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal"  
-                                                        data-bs-target="#kraModalMyDiv{{ $matrix->id }}">
-                                                        <i class="bx bx-list-check me-1"></i> {{ is_array($kras) ? count($kras) : 0 }}
-                                                        Area(s)
-                                                    </button>
-
-                                                    <!-- Modal -->
-                                                    <div class="modal fade" id="kraModalMyDiv{{ $matrix->id }}" tabindex="-1"
-                                                        aria-labelledby="kraModalLabelMyDiv{{ $matrix->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title" id="kraModalLabelMyDiv{{ $matrix->id }}">
-                                                                        Key Result Areas - {{ $matrix->year }} {{ $matrix->quarter }}
-                                                                    </h5>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                                        aria-label="Close"></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                    @if (is_array($kras) && count($kras))
-                                                                        <ul class="list-group">
-                                                                            @foreach ($kras as $kra)
-                                                                                <li class="list-group-item">
-                                                                                    <i class="bx bx-check-circle text-success me-2"></i>
-                                                                                    {{ $kra['description'] ?? '' }}
-                                                                                </li>
-                                                                            @endforeach
-                                                                        </ul>
-                                                                    @else
-                                                                        <p class="text-muted">No key result areas defined.</p>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    @php
-                                                        $activities = $matrix->activities;
-                                                    @endphp
-                                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-                                                        data-bs-target="#activitiesModalMyDiv{{ $matrix->id }}">
-                                                        <i class="bx bx-list-ul me-1"></i> {{ $activities->count() }} Activity(ies)
-                                                    </button>
-                                                    <!-- Modal -->
-                                                    <div class="modal fade" id="activitiesModalMyDiv{{ $matrix->id }}" tabindex="-1"
-                                                        aria-labelledby="activitiesModalLabelMyDiv{{ $matrix->id }}" aria-hidden="true">
-                                                        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title" id="activitiesModalLabelMyDiv{{ $matrix->id }}">
-                                                                        Activities - {{ $matrix->year }} {{ $matrix->quarter }}
-                                                                    </h5>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                                        aria-label="Close"></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                    @if ($activities->count())
-                                                                        <ul class="list-group">
-                                                                            @php $actCount = 1; @endphp
-                                                                            @foreach ($activities as $activity)
-                                                                                <li class="list-group-item">
-                                                                                    <span class="fw-bold">{{ $actCount++ }}.</span> <i
-                                                                                        class="bx bx-chevron-right text-primary me-2"></i>
-                                                                                    {{ $activity->activity_title ?? 'Untitled Activity' }}
-                                                                                </li>
-                                                                            @endforeach
-                                                                        </ul>
-                                                                    @else
-                                                                        <p class="text-muted">No activities defined.</p>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                    
-                                                <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : (($matrix->workflow_definition && $matrix->approval_level>0) ? $matrix->workflow_definition->role : 'Focal Person') }}
-                                                    <small
-                                                        class="text-muted">{{ $matrix->current_actor ? '(' . $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname . ')' : '' }}</small>
-                                                </td>
-                                                <td> <span
-                                                        class="p-1 rounded {{ config('approval_states')[$matrix->overall_status] }}">{{ strtoupper($matrix->overall_status) }}</span>
-                                                </td>
-                                                <td class="text-left">
-                                                    <div class="btn-group">
-                                                        <a href="{{ route('matrices.show', $matrix) }}"
-                                                            class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
-                                                        </a>
-                                                        @if (still_with_creator($matrix))   
-                                                            <a href="{{ route('matrices.edit', $matrix) }}"
-                                                                class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
-                                                            </a>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Pagination -->
-                            @if($myDivisionMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $myDivisionMatrices->hasPages())
-                                <div class="d-flex justify-content-center mt-3">
-                                    {{ $myDivisionMatrices->appends(request()->except('my_division_page'))->links() }}
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-check-circle fs-1 text-success opacity-50"></i>
-                                <p class="mb-0">No matrices found in your division.</p>
-                            </div>
-                        @endif
+                        @include('matrices.partials.my-division-tab')
                     </div>
                 </div>
-                @endif
 
                 <!-- All Matrices Tab -->
                 @if(in_array(87, user_session('permissions', [])))
@@ -409,163 +251,7 @@
                             </div>
                         </div>
                         
-                        @if($allMatrices->count() > 0)
-                            <!-- Pagination Info -->
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="pagination-info text-muted small">
-                                    Showing {{ $allMatrices->firstItem() ?? 0 }} to {{ $allMatrices->lastItem() ?? 0 }} of {{ $allMatrices->total() }} results
-                                </div>
-                                <div class="text-muted small">
-                                    Page {{ $allMatrices->currentPage() }} of {{ $allMatrices->lastPage() }}
-                                </div>
-                            </div>
-                            
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-primary">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Year</th>
-                                            <th>Quarter</th>
-                                            <th>Division</th>
-                                            <th>Focal Person</th>
-                                            <th>Key Result Areas</th>
-                                            <th>Activities</th>
-                                            <th>Level</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($allMatrices as $index => $matrix)
-                                                <tr>
-                                                    <td>{{ $allMatrices->firstItem() + $index }}</td>
-                                                    <td>{{ $matrix->year }}</td>
-                                                    <td>{{ $matrix->quarter }}</td>
-                                                    <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
-                                                    <td>{{ $matrix->focalPerson->name ?? 'N/A' }}</td>
-                                                    <td>
-                                                        @php
-                                                            $kras = is_string($matrix->key_result_area)
-                                                                ? json_decode($matrix->key_result_area, true)
-                                                                : $matrix->key_result_area;
-                                                        @endphp
-                                                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal"
-                                                            data-bs-target="#kraModalAll{{ $matrix->id }}">
-                                                            <i class="bx bx-list-check me-1"></i> {{ is_array($kras) ? count($kras) : 0 }}
-                                                            Area(s)
-                                                        </button>
-
-                                                        <!-- Modal -->
-                                                        <div class="modal fade" id="kraModalAll{{ $matrix->id }}" tabindex="-1"
-                                                            aria-labelledby="kraModalLabelAll{{ $matrix->id }}" aria-hidden="true">
-                                                            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                                                                <div class="modal-content">
-                                                                    <div class="modal-header">
-                                                                        <h5 class="modal-title" id="kraModalLabelAll{{ $matrix->id }}">
-                                                                            Key Result Areas - {{ $matrix->year }} {{ $matrix->quarter }}
-                                                                        </h5>
-                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                                            aria-label="Close"></button>
-                                                                    </div>
-                                                                    <div class="modal-body">
-                                                                        @if (is_array($kras) && count($kras))
-                                                                            <ul class="list-group">
-                                                                                @foreach ($kras as $kra)
-                                                                                    <li class="list-group-item">
-                                                                                        <i class="bx bx-check-circle text-success me-2"></i>
-                                                                                        {{ $kra['description'] ?? '' }}
-                                                                                    </li>
-                                                                                @endforeach
-                                                                            </ul>
-                                                                        @else
-                                                                            <p class="text-muted">No key result areas defined.</p>
-                                                                        @endif
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        @php
-                                                            $activities = $matrix->activities;
-                                                        @endphp
-                                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-                                                            data-bs-target="#activitiesModalAll{{ $matrix->id }}">
-                                                            <i class="bx bx-list-ul me-1"></i> {{ $activities->count() }} Activity(ies)
-                                                        </button>
-                                                        <!-- Modal -->
-                                                        <div class="modal fade" id="activitiesModalAll{{ $matrix->id }}" tabindex="-1"
-                                                            aria-labelledby="activitiesModalLabelAll{{ $matrix->id }}" aria-hidden="true">
-                                                            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                                                                <div class="modal-content">
-                                                                    <div class="modal-header">
-                                                                        <h5 class="modal-title" id="activitiesModalLabelAll{{ $matrix->id }}">
-                                                                            Activities - {{ $matrix->year }} {{ $matrix->quarter }}
-                                                                        </h5>
-                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                                            aria-label="Close"></button>
-                                                                    </div>
-                                                                    <div class="modal-body">
-                                                                        @if ($activities->count())
-                                                                            <ul class="list-group">
-                                                                                @php $actCount = 1; @endphp
-                                                                                @foreach ($activities as $activity)
-                                                                                    <li class="list-group-item">
-                                                                                        <span class="fw-bold">{{ $actCount++ }}.</span> <i
-                                                                            class="bx bx-chevron-right text-primary me-2"></i>
-                                                                                        {{ $activity->activity_title ?? 'Untitled Activity' }}
-                                                                                    </li>
-                                                                                @endforeach
-                                                                            </ul>
-                                                                        @else
-                                                                            <p class="text-muted">No activities defined.</p>
-                                                                        @endif
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                
-                                                    <td>{{ $matrix->overall_status == 'approved' ? 'Registry' : ($matrix->workflow_definition ? $matrix->workflow_definition->role : 'Focal Person') }}
-                                                        <small
-                                                            class="text-muted">{{ $matrix->current_actor ? '(' . $matrix->current_actor->fname . ' ' . $matrix->current_actor->lname . ')' : '' }}</small>
-                                                    </td>
-                                                    <td> <span
-                                                            class="p-1 rounded {{ config('approval_states')[$matrix->overall_status] }}">{{ strtoupper($matrix->overall_status) }}</span>
-                                                    </td>
-                                                    <td class="text-left">
-                                                        <div class="btn-group">
-                                                            <a href="{{ route('matrices.show', $matrix) }}"
-                                                                class="btn btn-sm btn-outline-info" title="View">
-                                                                <i class="bx bx-show"></i>
-                                                            </a>
-                                                            @if (still_with_creator($matrix))
-                                                                <a href="{{ route('matrices.edit', $matrix) }}"
-                                                                    class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                    <i class="bx bx-edit"></i>
-                                                                </a>
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Pagination -->
-                            @if($allMatrices instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMatrices->hasPages())
-                                <div class="d-flex justify-content-center mt-3">
-                                    {{ $allMatrices->appends(request()->except('all_matrices_page'))->links() }}
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-calendar-x fs-1 opacity-50"></i>
-                                <p class="mb-0">No matrices found in the system.</p>
-                            </div>
-                        @endif
+                        @include('matrices.partials.all-matrices-tab')
                     </div>
                 </div>
                 @endif
@@ -589,36 +275,119 @@
                 width: '100%'
             });
 
-            // Handle filter change
-            $('#applyFilters').on('click', function() {
-                const url = new URL(window.location.href);
-                ['year', 'quarter', 'division', 'focal_person'].forEach(id => {
-                    const val = $('#' + id + 'Filter').val();
-                    if (val) url.searchParams.set(id, val);
-                    else url.searchParams.delete(id);
-                });
-                
-                // Clear pagination parameters when applying filters
-                url.searchParams.delete('my_division_page');
-                url.searchParams.delete('all_matrices_page');
-                
-                window.location.href = url.toString();
-            });
+            // AJAX filtering - auto-update when filters change
+            function applyFilters() {
+                const activeTab = document.querySelector('.tab-pane.active');
+                if (activeTab) {
+                    const tabId = activeTab.id;
+                    loadTabData(tabId);
+                }
+            }
+            
+            // Manual filter button click
+            if (document.getElementById('applyFilters')) {
+                document.getElementById('applyFilters').addEventListener('click', applyFilters);
+            }
+            
+            // Auto-apply filters when they change
+            if (document.getElementById('yearFilter')) {
+                document.getElementById('yearFilter').addEventListener('change', applyFilters);
+            }
+            
+            if (document.getElementById('quarterFilter')) {
+                document.getElementById('quarterFilter').addEventListener('change', applyFilters);
+            }
+            
+            if (document.getElementById('divisionFilter')) {
+                document.getElementById('divisionFilter').addEventListener('change', applyFilters);
+            }
+            
+            if (document.getElementById('focalFilter')) {
+                document.getElementById('focalFilter').addEventListener('change', applyFilters);
+            }
 
-            // Handle tab switching to preserve pagination state
-            $('#matrixTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-                const target = $(e.target).attr('data-bs-target');
-                const url = new URL(window.location.href);
+            // Function to load tab data via AJAX
+            function loadTabData(tabId, page = 1) {
+                console.log('Loading matrices tab data for:', tabId, 'page:', page);
                 
-                // Clear the other tab's pagination parameter
-                if (target === '#myDivision') {
-                    url.searchParams.delete('all_matrices_page');
-                } else if (target === '#allMatrices') {
-                    url.searchParams.delete('my_division_page');
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('page', page);
+                currentUrl.searchParams.set('tab', tabId);
+                
+                // Include current filter values
+                const year = document.getElementById('yearFilter')?.value;
+                const quarter = document.getElementById('quarterFilter')?.value;
+                const division = document.getElementById('divisionFilter')?.value;
+                const focalPerson = document.getElementById('focalFilter')?.value;
+                
+                if (year) currentUrl.searchParams.set('year', year);
+                if (quarter) currentUrl.searchParams.set('quarter', quarter);
+                if (division) currentUrl.searchParams.set('division', division);
+                if (focalPerson) currentUrl.searchParams.set('focal_person', focalPerson);
+                
+                console.log('Matrices request URL:', currentUrl.toString());
+                
+                // Show loading indicator
+                const tabContent = document.getElementById(tabId);
+                if (tabContent) {
+                    tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
                 }
                 
-                // Update URL without reloading
-                window.history.replaceState({}, '', url.toString());
+                fetch(currentUrl.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('Matrices response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Matrices response data:', data);
+                    if (data.html) {
+                        if (tabContent) {
+                            tabContent.innerHTML = data.html;
+                            attachPaginationHandlers(tabId);
+                        }
+                    } else {
+                        console.error('No HTML data received for matrices');
+                        if (tabContent) {
+                            tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading matrices tab data:', error);
+                    if (tabContent) {
+                        tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
+                    }
+                });
+            }
+            
+            function attachPaginationHandlers(tabId) {
+                const tabContent = document.getElementById(tabId);
+                if (!tabContent) return;
+                
+                const paginationLinks = tabContent.querySelectorAll('.pagination a');
+                paginationLinks.forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const url = new URL(this.href);
+                        const page = url.searchParams.get('page') || 1;
+                        loadTabData(tabId, page);
+                    });
+                });
+            }
+
+            // Handle tab switching with AJAX
+            $('#matrixTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const target = $(e.target).attr('data-bs-target');
+                const tabId = target.replace('#', '');
+                
+                // Load tab data via AJAX
+                loadTabData(tabId);
             });
 
             // Show pagination info

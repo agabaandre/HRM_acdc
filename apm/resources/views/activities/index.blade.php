@@ -119,12 +119,6 @@
                                                        class="btn btn-sm btn-outline-info" title="View">
                                                         <i class="bx bx-show"></i>
                                                     </a>
-                                                    @if(can_edit_memo($activity))
-                                                        <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" 
-                                                           class="btn btn-sm btn-outline-warning" title="Edit">
-                                                            <i class="bx bx-edit"></i>
-                                                        </a>
-                                                    @endif
                                                     @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
                                                         <form action="{{ route('matrices.activities.destroy', [$matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
                                                             @csrf
@@ -151,7 +145,7 @@
                         <!-- Pagination -->
                         @if($activities instanceof \Illuminate\Pagination\LengthAwarePaginator && $activities->hasPages())
                             <div class="d-flex justify-content-center mt-3">
-                                {{ $activities->appends(request()->query())->links() }}
+                                {{ $activities->appends(array_merge(request()->query(), ['tab' => 'matrix']))->links() }}
                             </div>
                         @endif
                     @else
@@ -234,7 +228,7 @@
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
+                        <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
                             <i class="bx bx-search-alt-2 me-1"></i> Filter
                         </button>
                     </div>
@@ -280,393 +274,22 @@
                     @if(in_array(87, user_session('permissions', [])))
                     <div class="tab-pane fade show active" id="all-activities" role="tabpanel" aria-labelledby="all-activities-tab">
                         <div class="p-3">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <div>
-                                    <h6 class="mb-0 text-primary fw-bold">
-                                        <i class="bx bx-grid me-2"></i> All Activities
-                                    </h6>
-                                    <small class="text-muted">All activities across all divisions for {{ $selectedQuarter }} {{ $selectedYear }}, sorted by most recent quarter and year</small>
-                                </div>
-                            </div>
-                            
-                            @if($allActivities && $allActivities->count() > 0)
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
-                                        <thead class="table-primary">
-                                            <tr>
-                                                <th style="width: 5%;">#</th>
-                                                <th style="width: 20%;">Activity Title</th>
-                                                <th style="width: 8%;">Matrix</th>
-                                                <th style="width: 12%;">Division</th>
-                                                <th style="width: 10%;">Document #</th>
-                                                <th style="width: 10%;">Responsible Person</th>
-                                                <th style="width: 10%;">Date Range</th>
-                                                <th style="width: 8%;">Fund Type</th>
-                                                <th style="width: 7%;">Status</th>
-                                                <th style="width: 10%;" class="text-center">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @php $actCount = 1; @endphp
-                                            @foreach($allActivities as $activity)
-                                                <tr>
-                                                    <td>{{ $actCount++ }}</td>
-                                                    <td>
-                                                        <div class="text-wrap" style="max-width: 200px;">
-                                                            <strong>{{ Str::limit($activity->activity_title ?? 'Untitled Activity', 50) }}</strong>
-                                                            @if($activity->is_single_memo)
-                                                                <span class="badge bg-warning text-dark ms-1">SM</span>
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <a href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
-                                                            {{ $activity->matrix->year }} {{ $activity->matrix->quarter }}
-                                                        </a>
-                                                    </td>
-                                                    <td>
-                                                        <div class="text-wrap" style="max-width: 150px;">
-                                                            {{ Str::limit($activity->matrix->division->division_name ?? 'N/A', 20) }}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-info text-white">
-                                                            {{ $activity->document_number ?? 'N/A' }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div class="text-wrap" style="max-width: 120px;">
-                                                            @if($activity->responsiblePerson)
-                                                                {{ Str::limit($activity->responsiblePerson->fname . ' ' . $activity->responsiblePerson->lname, 15) }}
-                                                            @else
-                                                                <span class="text-muted">Not assigned</span>
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        @if($activity->date_from && $activity->date_to)
-                                                            {{ \Carbon\Carbon::parse($activity->date_from)->format('M d') }} - 
-                                                            {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}
-                                                        @else
-                                                            <span class="text-muted">Dates not set</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge bg-warning text-dark">
-                                                            <i class="bx bx-money me-1"></i>
-                                                            {{ $activity->fundType->name ?? 'N/A' }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge {{ $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
-                                                            {{ strtoupper($activity->overall_status ?? 'draft') }}
-                                                        </span>
-                                                    </td>
-                                                    <td class="text-center">
-                                                        <div class="d-flex gap-2 justify-content-center">
-                                                            <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
-                                                               class="btn btn-sm btn-outline-info" title="View">
-                                                                <i class="bx bx-show"></i>
-                                                            </a>
-                                                            @if(can_edit_memo($activity))
-                                                                <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
-                                                                   class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                    <i class="bx bx-edit"></i>
-                                                                </a>
-                                                            @endif
-                                                            @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
-                                                                <form action="{{ route('matrices.activities.destroy', [$activity->matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                        <i class="bx bx-trash"></i>
-                                                                    </button>
-                                                                </form>
-                                                            @endif
-                                                            @if($activity->overall_status === 'approved')
-                                                                <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
-                                                                   class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
-                                                                    <i class="bx bx-printer"></i>
-                                                                </a>
-                                                            @endif
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                                
-                                <!-- Pagination -->
-                                @if($allActivities instanceof \Illuminate\Pagination\LengthAwarePaginator && $allActivities->hasPages())
-                                    <div class="d-flex justify-content-center mt-3">
-                                        {{ $allActivities->appends(request()->query())->links() }}
-                                    </div>
-                                @endif
-                            @else
-                                <div class="text-center py-4 text-muted">
-                                    <i class="bx bx-task fs-1 text-primary opacity-50"></i>
-                                    <p class="mb-0">No activities found.</p>
-                                    <small>Activities will appear here once they are created in matrices.</small>
-                            </div>
-                        @endif
+                            @include('activities.partials.all-activities-tab')
                         </div>
                     </div>
-                @endif
+                    @endif
                 
                 <!-- My Division Activities Tab -->
                 <div class="tab-pane fade {{ !in_array(87, user_session('permissions', [])) ? 'show active' : '' }}" id="my-division" role="tabpanel" aria-labelledby="my-division-tab">
                     <div class="p-3">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div>
-                                <h6 class="mb-0 text-success fw-bold">
-                                    <i class="bx bx-home me-2"></i> My Division Activities
-                                </h6>
-                                <small class="text-muted">Activities in your division for {{ $selectedQuarter }} {{ $selectedYear }}, sorted by most recent quarter and year</small>
-                            </div>
-                        </div>
-                        
-                        @if($myDivisionActivities && $myDivisionActivities->count() > 0)
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                                    <thead class="table-success">
-                                        <tr>
-                                            <th style="width: 5%;">#</th>
-                                            <th style="width: 25%;">Activity Title</th>
-                                            <th style="width: 10%;">Matrix</th>
-                                            <th style="width: 12%;">Document #</th>
-                                            <th style="width: 15%;">Responsible Person</th>
-                                            <th style="width: 12%;">Date Range</th>
-                                            <th style="width: 8%;">Fund Type</th>
-                                            <th style="width: 8%;">Status</th>
-                                            <th style="width: 10%;" class="text-center">Actions</th>
-                                        </tr>
-                </thead>
-                <tbody>
-                                        @php $actCount = 1; @endphp
-                                        @foreach($myDivisionActivities as $activity)
-                                            <tr>
-                                                <td>{{ $actCount++ }}</td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 250px;">
-                                                        <strong>{{ Str::limit($activity->activity_title ?? 'Untitled Activity', 60) }}</strong>
-                                                        @if($activity->is_single_memo)
-                                                            <span class="badge bg-warning text-dark ms-1">SM</span>
-                                                        @endif
-                                                    </div>
-                            </td>
-                            <td>
-                                                    <a href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
-                                                        {{ $activity->matrix->year }} {{ $activity->matrix->quarter }}
-                                                    </a>
-                            </td>
-                            <td>
-                                                    <span class="badge bg-info text-white">
-                                                        {{ $activity->document_number ?? 'N/A' }}
-                                                    </span>
-                            </td>
-                            <td>
-                                                    <div class="text-wrap" style="max-width: 150px;">
-                                                        @if($activity->responsiblePerson)
-                                                            {{ Str::limit($activity->responsiblePerson->fname . ' ' . $activity->responsiblePerson->lname, 20) }}
-                                                        @else
-                                                            <span class="text-muted">Not assigned</span>
-                                                        @endif
-                                                    </div>
-                            </td>
-                            <td>
-                                                    @if($activity->date_from && $activity->date_to)
-                                                        {{ \Carbon\Carbon::parse($activity->date_from)->format('M d') }} - 
-                                                        {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}
-                                @else
-                                                        <span class="text-muted">Dates not set</span>
-                                @endif
-                            </td>
-                            <td>
-                                                    <span class="badge bg-warning text-dark">
-                                                        <i class="bx bx-money me-1"></i>
-                                                        {{ $activity->fundType->name ?? 'N/A' }}
-                                                    </span>
-                            </td>
-                            <td>
-                                                    <span class="badge {{ $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
-                                                        {{ strtoupper($activity->overall_status ?? 'draft') }}
-                                                    </span>
-                            </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex gap-2 justify-content-center">
-                                                        <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                        <i class="bx bx-show"></i>
-                                    </a>
-                                                        @if(can_edit_memo($activity))
-                                                            <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
-                                                               class="btn btn-sm btn-outline-warning" title="Edit">
-                                            <i class="bx bx-edit"></i>
-                                        </a>
-                                                        @endif
-                                                        @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
-                                                            <form action="{{ route('matrices.activities.destroy', [$activity->matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                    <i class="bx bx-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                        @if($activity->overall_status === 'approved')
-                                                            <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
-                                                               class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
-                                                                <i class="bx bx-printer"></i>
-                                                            </a>
-                                    @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Pagination -->
-                            @if($myDivisionActivities instanceof \Illuminate\Pagination\LengthAwarePaginator && $myDivisionActivities->hasPages())
-                                <div class="d-flex justify-content-center mt-3">
-                                    {{ $myDivisionActivities->appends(request()->query())->links() }}
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-home fs-1 text-success opacity-50"></i>
-                                <p class="mb-0">No activities found in your division.</p>
-                                <small>Activities will appear here once they are created in your division matrices.</small>
-                                            </div>
-                        @endif
-                                            </div>
-                                        </div>
+                        @include('activities.partials.my-division-activities-tab')
+                    </div>
+                </div>
 
                 <!-- Shared Activities Tab -->
                 <div class="tab-pane fade" id="shared-activities" role="tabpanel" aria-labelledby="shared-activities-tab">
                     <div class="p-3">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div>
-                                <h6 class="mb-0 text-info fw-bold">
-                                    <i class="bx bx-share me-2"></i> Shared Activities
-                                </h6>
-                                <small class="text-muted">Activities you're added to in other divisions for {{ $selectedQuarter }} {{ $selectedYear }}, sorted by most recent quarter and year</small>
-                                    </div>
-                                </div>
-                        
-                        @if($sharedActivities && $sharedActivities->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-info">
-                                        <tr>
-                                            <th style="width: 5%;">#</th>
-                                            <th style="width: 20%;">Activity Title</th>
-                                            <th style="width: 8%;">Matrix</th>
-                                            <th style="width: 12%;">Division</th>
-                                            <th style="width: 10%;">Document #</th>
-                                            <th style="width: 10%;">Date Range</th>
-                                            <th style="width: 8%;">Fund Type</th>
-                                            <th style="width: 7%;">Status</th>
-                                            <th style="width: 10%;" class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @php $actCount = 1; @endphp
-                                        @foreach($sharedActivities as $activity)
-                                            <tr>
-                                                <td>{{ $actCount++ }}</td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 200px;">
-                                                        <strong>{{ Str::limit($activity->activity_title ?? 'Untitled Activity', 50) }}</strong>
-                                                        @if($activity->is_single_memo)
-                                                            <span class="badge bg-warning text-dark ms-1">SM</span>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <a href="{{ route('matrices.show', $activity->matrix) }}" class="text-decoration-none">
-                                                        {{ $activity->matrix->year }} {{ $activity->matrix->quarter }}
-                                                    </a>
-                                                </td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 150px;">
-                                                        {{ Str::limit($activity->matrix->division->division_name ?? 'N/A', 20) }}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-info text-white">
-                                                        {{ $activity->document_number ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    @if($activity->date_from && $activity->date_to)
-                                                        {{ \Carbon\Carbon::parse($activity->date_from)->format('M d') }} - 
-                                                        {{ \Carbon\Carbon::parse($activity->date_to)->format('M d, Y') }}
-                                                    @else
-                                                        <span class="text-muted">Dates not set</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-warning text-dark">
-                                                        <i class="bx bx-money me-1"></i>
-                                                        {{ $activity->fundType->name ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge {{ $activity->overall_status === 'approved' ? 'bg-success' : ($activity->overall_status === 'pending' ? 'bg-warning' : 'bg-secondary') }}">
-                                                        {{ strtoupper($activity->overall_status ?? 'draft') }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex gap-2 justify-content-center">
-                                                        <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
-                                                        </a>
-                                                        @if(can_edit_memo($activity))
-                                                            <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
-                                                               class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
-                                                            </a>
-                                                        @endif
-                                                        @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
-                                                            <form action="{{ route('matrices.activities.destroy', [$activity->matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                    <i class="bx bx-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                        @if($activity->overall_status === 'approved')
-                                                            <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
-                                                               class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
-                                                                <i class="bx bx-printer"></i>
-                                                            </a>
-                                                        @endif
-                                </div>
-                            </td>
-                        </tr>
-                                        @endforeach
-                </tbody>
-            </table>
-        </div>
-                            
-                            <!-- Pagination -->
-                            @if($sharedActivities instanceof \Illuminate\Pagination\LengthAwarePaginator && $sharedActivities->hasPages())
-                                <div class="d-flex justify-content-center mt-3">
-                                    {{ $sharedActivities->appends(request()->query())->links() }}
-    </div>
-                            @endif
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-share fs-1 text-info opacity-50"></i>
-                                <p class="mb-0">No shared activities found.</p>
-                                <small>Activities you're added to in other divisions will appear here.</small>
-        </div>
-    @endif
+                        @include('activities.partials.shared-activities-tab')
                     </div>
                 </div>
             </div>
@@ -677,37 +300,205 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-submit form when filters change
+    // AJAX filtering - auto-update when filters change
+    function applyFilters() {
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (activeTab) {
+            const tabId = activeTab.id;
+            loadTabData(tabId);
+        }
+    }
+    
+    // Manual filter button click
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    }
+    
+    // Auto-apply filters when they change
     if (document.getElementById('year')) {
-        document.getElementById('year').addEventListener('change', function() {
-            this.form.submit();
-        });
+        document.getElementById('year').addEventListener('change', applyFilters);
     }
     
     if (document.getElementById('quarter')) {
-        document.getElementById('quarter').addEventListener('change', function() {
-            this.form.submit();
-        });
+        document.getElementById('quarter').addEventListener('change', applyFilters);
     }
     
     if (document.getElementById('division_id')) {
-        document.getElementById('division_id').addEventListener('change', function() {
-            this.form.submit();
-        });
+        document.getElementById('division_id').addEventListener('change', applyFilters);
     }
     
     if (document.getElementById('staff_id')) {
-        document.getElementById('staff_id').addEventListener('change', function() {
-            this.form.submit();
+        document.getElementById('staff_id').addEventListener('change', applyFilters);
+    }
+    
+    // Document number filter - apply on Enter key or after 1 second delay
+    if (document.getElementById('document_number')) {
+        let documentNumberTimeout;
+        document.getElementById('document_number').addEventListener('input', function() {
+            clearTimeout(documentNumberTimeout);
+            documentNumberTimeout = setTimeout(applyFilters, 1000);
+        });
+        
+        document.getElementById('document_number').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(documentNumberTimeout);
+                applyFilters();
+            }
         });
     }
     
-    // Document number filter - submit on Enter key
-    if (document.getElementById('document_number')) {
-        document.getElementById('document_number').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                this.form.submit();
+    // Handle tab switching based on URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    
+    if (tabParam) {
+        // Wait for DOM to be fully loaded, then switch to the appropriate tab
+        setTimeout(() => {
+            switch(tabParam) {
+                case 'all':
+                    const allTab = document.getElementById('all-activities-tab');
+                    if (allTab) {
+                        // Use Bootstrap's tab API to properly switch
+                        const tab = new bootstrap.Tab(allTab);
+                        tab.show();
+                    }
+                    break;
+                case 'my-division':
+                    const myDivisionTab = document.getElementById('my-division-tab');
+                    if (myDivisionTab) {
+                        const tab = new bootstrap.Tab(myDivisionTab);
+                        tab.show();
+                    }
+                    break;
+                case 'shared':
+                    const sharedTab = document.getElementById('shared-activities-tab');
+                    if (sharedTab) {
+                        const tab = new bootstrap.Tab(sharedTab);
+                        tab.show();
+                    }
+                    break;
             }
+        }, 100);
+        
+        // Remove the tab parameter from URL after switching to avoid confusion
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.delete('tab');
+        window.history.replaceState({}, '', newUrl);
+    }
+    
+    // Attach initial pagination handlers for all tabs
+    attachPaginationHandlers('all-activities');
+    attachPaginationHandlers('my-division');
+    attachPaginationHandlers('shared-activities');
+    
+    // Add click handlers to tabs to load data via AJAX
+    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent Bootstrap's default tab behavior
+            
+            // Remove active class from all tabs and buttons
+            document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
+            
+            // Add active class to clicked button and corresponding pane
+            this.classList.add('active');
+            const tabId = this.getAttribute('aria-controls');
+            const tabPane = document.getElementById(tabId);
+            if (tabPane) {
+                tabPane.classList.add('active', 'show');
+            }
+            
+            loadTabData(tabId);
+        });
+    });
+    
+    // Function to load tab data via AJAX
+    function loadTabData(tabId, page = 1) {
+        console.log('Loading tab data for:', tabId, 'page:', page);
+        
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('page', page);
+        currentUrl.searchParams.set('tab', tabId);
+        
+        // Include current filter values
+        const year = document.getElementById('year')?.value;
+        const quarter = document.getElementById('quarter')?.value;
+        const divisionId = document.getElementById('division_id')?.value;
+        const staffId = document.getElementById('staff_id')?.value;
+        const documentNumber = document.getElementById('document_number')?.value;
+        
+        if (year) currentUrl.searchParams.set('year', year);
+        if (quarter) currentUrl.searchParams.set('quarter', quarter);
+        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
+        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
+        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
+        
+        console.log('Request URL:', currentUrl.toString());
+        
+        // Show loading indicator
+        const tabContent = document.getElementById(tabId);
+        if (tabContent) {
+            tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        } else {
+            console.error('Tab content element not found:', tabId);
+        }
+        
+        // Make AJAX request
+        fetch(currentUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            if (data.html) {
+                // Replace tab content with new data
+                if (tabContent) {
+                    tabContent.innerHTML = data.html;
+                    
+                    // Re-attach pagination click handlers
+                    attachPaginationHandlers(tabId);
+                }
+            } else {
+                console.error('No HTML data received');
+                if (tabContent) {
+                    tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tab data:', error);
+            if (tabContent) {
+                tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
+            }
+        });
+    }
+    
+    // Function to attach pagination click handlers
+    function attachPaginationHandlers(tabId) {
+        const tabContent = document.getElementById(tabId);
+        if (!tabContent) return;
+        
+        // Find pagination links within this tab
+        const paginationLinks = tabContent.querySelectorAll('.pagination a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Extract page number from URL
+                const url = new URL(this.href);
+                const page = url.searchParams.get('page') || 1;
+                
+                // Load tab data with new page
+                loadTabData(tabId, page);
+            });
         });
     }
 });

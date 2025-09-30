@@ -100,10 +100,10 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="status" class="form-label fw-semibold mb-1">
+                    <label for="special_status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
-                    <select name="status" id="status" class="form-select select2" style="width: 100%;">
+                    <select name="status" id="special_status" class="form-select select2" style="width: 100%;">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -172,152 +172,7 @@
                         </div>
                     </div>
 
-                    @if($mySubmittedMemos && $mySubmittedMemos->count() > 0)
-                    <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-success">
-                                    <tr>
-                                        <th style="width: 5%;">#</th>
-                                        <th style="width: 6%;">Document #</th>
-                                        <th style="width: 22%;">Title</th>
-                                        <th style="width: 8%;">Request Type</th>
-                                        <th style="width: 10%;">Division</th>
-                                        <th style="width: 7%;">Fund Type</th>
-                                        <th style="width: 8%;">Date</th>
-                                        <th style="width: 8%;">Status</th>
-                                        <th style="width: 8%;" class="text-center">Actions</th>
-                                    </tr>
-                            </thead>
-                            <tbody>
-                                    @php $count = 1; @endphp
-                                    @foreach($mySubmittedMemos as $memo)
-                                        <tr>
-                                            <td>{{ $count++ }}</td>
-                                            <td>
-                                                <span class="badge bg-info text-dark">
-                                                    {{ $memo->document_number ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="text-wrap" style="max-width: 200px;">
-                                                    <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 50) }}</div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-info text-dark">
-                                                    <i class="bx bx-category me-1"></i>
-                                                    {{ $memo->requestType->name ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="text-wrap" style="max-width: 150px;">
-                                                    {{ Str::limit($memo->division->division_name ?? 'N/A', 20) }}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="bx bx-money me-1"></i>
-                                                    {{ $memo->fundType->name ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                @if($memo->date_from && $memo->date_to)
-                                                    <div class="small">
-                                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
-                                                        <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
-                                                    </div>
-                                                @elseif($memo->date_from)
-                                                    <div class="small">
-                                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
-                                                        <div class="text-muted">to N/A</div>
-                                                    </div>
-                                                @else
-                                                    <span class="text-muted">N/A</span>
-                                                @endif
-                                            </td>
-                                        <td>
-                                            @php
-                                                $statusBadgeClass = [
-                                                    'draft' => 'bg-secondary',
-                                                    'pending' => 'bg-warning',
-                                                    'approved' => 'bg-success',
-                                                    'rejected' => 'bg-danger',
-                                                    'returned' => 'bg-info',
-                                                    ];
-                                                    $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                    
-                                                    // Get workflow information
-                                                    $approvalLevel = $memo->approval_level ?? 'N/A';
-                                                    $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
-                                                    $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
-                                            @endphp
-                                                
-                                                @if($memo->overall_status === 'pending')
-                                                    <!-- Structured display for pending status -->
-                                                    <div class="text-center">
-                                                        <span class="badge {{ $statusClass }} mb-1">
-                                                            {{ strtoupper($memo->overall_status) }}
-                                                        </span>
-                                                        <br>
-                                                        
-                                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                        @if($actorName !== 'N/A')
-                                                            <small class="text-muted d-block">{{ $actorName }}</small>
-                                                @endif
-                                                    </div>
-                                                @else
-                                                    <!-- Standard badge for other statuses -->
-                                                    <span class="badge {{ $statusClass }}">
-                                                        {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                                    </span>
-                                                @endif
-                                        </td>
-                                        <td class="text-center">
-                                                <div class="btn-group">
-                                                    <a href="{{ route('special-memo.show', $memo) }}" 
-                                                       class="btn btn-sm btn-outline-info" title="View">
-                                                    <i class="bx bx-show"></i>
-                                                    </a>
-                                                    @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
-                                                        <a href="{{ route('special-memo.edit', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-warning" title="Edit">
-                                                            <i class="bx bx-edit"></i>
-                                                    </a>
-                                                    <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                            <i class="bx bx-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                                    @if($memo->overall_status === 'approved')
-                                                        <a href="{{ route('special-memo.print', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                            <i class="bx bx-printer"></i>
-                                                        </a>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        @if($mySubmittedMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $mySubmittedMemos->hasPages())
-                            <div class="d-flex justify-content-center mt-3">
-                                {{ $mySubmittedMemos->appends(request()->query())->links() }}
-                            </div>
-                        @endif
-                    @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="bx bx-file-alt fs-1 text-success opacity-50"></i>
-                            <p class="mb-0">No submitted special memos found.</p>
-                            <small>Your submitted special memos will appear here.</small>
-                        </div>
-                    @endif
+                    @include('special-memo.partials.my-submitted-tab')
                 </div>
             </div>
 
@@ -339,162 +194,7 @@
                             </div>
                         </div>
                         
-                        @if($allMemos && $allMemos->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-primary">
-                                        <tr>
-                                            <th style="width: 5%;">#</th>
-                                            <th style="width: 6%;">Document #</th>
-                                            <th style="width: 20%;">Title</th>
-                                            <th style="width: 7%;">Request Type</th>
-                                            <th style="width: 10%;">Responsible Person</th>
-                                            <th style="width: 8%;">Division</th>
-                                            <th style="width: 7%;">Fund Type</th>
-                                            <th style="width: 7%;">Date</th>
-                                            <th style="width: 8%;">Status</th>
-                                            <th style="width: 8%;" class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($allMemos as $memo)
-                                            <tr>
-                                                <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <span class="badge bg-info text-dark">
-                                                        {{ $memo->document_number ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 180px;">
-                                                        <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 45) }}</div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-info text-dark">
-                                                        <i class="bx bx-category me-1"></i>
-                                                        {{ $memo->requestType->name ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 120px;">
-                                                        @if($memo->responsiblePerson)
-                                                            {{ Str::limit($memo->responsiblePerson->fname . ' ' . $memo->responsiblePerson->lname, 15) }}
-                                                        @else
-                                                            <span class="text-muted">Not assigned</span>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 120px;">
-                                                        {{ Str::limit($memo->division->division_name ?? 'N/A', 15) }}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-warning text-dark">
-                                                        <i class="bx bx-money me-1"></i>
-                                                        {{ $memo->fundType->name ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    @if($memo->date_from && $memo->date_to)
-                                                        <div class="small">
-                                                            <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
-                                                            <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
-                                                        </div>
-                                                    @elseif($memo->date_from)
-                                                        <div class="small">
-                                                            <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
-                                                            <div class="text-muted">to N/A</div>
-                                                        </div>
-                                                    @else
-                                                        <span class="text-muted">N/A</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    @php
-                                                        $statusBadgeClass = [
-                                                            'draft' => 'bg-secondary',
-                                                            'pending' => 'bg-warning',
-                                                            'approved' => 'bg-success',
-                                                            'rejected' => 'bg-danger',
-                                                            'returned' => 'bg-info',
-                                                        ];
-                                                        $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                        
-                                                        // Get workflow information
-                                                        $approvalLevel = $memo->approval_level ?? 'N/A';
-                                                        $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
-                                                        $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
-                                                    @endphp
-                                                    
-                                                    @if($memo->overall_status === 'pending')
-                                                        <!-- Structured display for pending status -->
-                                                        <div class="text-center">
-                                                            <span class="badge {{ $statusClass }} mb-1">
-                                                                {{ strtoupper($memo->overall_status) }}
-                                                            </span>
-                                                            <br>
-                                                            <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
-                                                            <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                            @if($actorName !== 'N/A')
-                                                                <small class="text-muted d-block">{{ $actorName }}</small>
-                                                            @endif
-                                                        </div>
-                                                    @else
-                                                        <!-- Standard badge for other statuses -->
-                                                        <span class="badge {{ $statusClass }}">
-                                                            {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                                        </span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="btn-group">
-                                                        <a href="{{ route('special-memo.show', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
-                                                        </a>
-                                                        @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
-                                                            <a href="{{ route('special-memo.edit', $memo) }}" 
-                                                               class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
-                                                            </a>
-                                                            <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                    <i class="bx bx-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                        @if($memo->overall_status === 'approved')
-                                                            <a href="{{ route('special-memo.print', $memo) }}" 
-                                                               class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                                <i class="bx bx-printer"></i>
-                                                            </a>
-                                                        @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                        @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                            <!-- Pagination -->
-                            @if($allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMemos->hasPages())
-                                <div class="d-flex justify-content-center mt-3">
-                                    {{ $allMemos->appends(request()->query())->links() }}
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-grid fs-1 text-primary opacity-50"></i>
-                                <p class="mb-0">No special memos found.</p>
-                                <small>Special memos will appear here once they are created.</small>
-                            </div>
-                        @endif
+                        @include('special-memo.partials.all-memos-tab')
                     </div>
                 </div>
             @endif
@@ -516,149 +216,7 @@
                         </div>
                     </div>
                     
-                    @if($sharedMemos && $sharedMemos->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-info">
-                                    <tr>
-                                        <th style="width: 5%;">#</th>
-                                        <th style="width: 6%;">Document #</th>
-                                        <th style="width: 20%;">Title</th>
-                                        <th style="width: 7%;">Request Type</th>
-                                        <th style="width: 10%;">Responsible Person</th>
-                                        <th style="width: 8%;">Division</th>
-                                        <th style="width: 7%;">Fund Type</th>
-                                        <th style="width: 7%;">Date</th>
-                                        <th style="width: 8%;">Status</th>
-                                        <th style="width: 8%;" class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @php $count = 1; @endphp
-                                    @foreach($sharedMemos as $memo)
-                                        <tr>
-                                            <td>{{ $count++ }}</td>
-                                            <td>
-                                                <span class="badge bg-info text-dark">
-                                                    {{ $memo->document_number ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="text-wrap" style="max-width: 180px;">
-                                                    <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 45) }}</div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-info text-dark">
-                                                    <i class="bx bx-category me-1"></i>
-                                                    {{ $memo->requestType->name ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="text-wrap" style="max-width: 120px;">
-                                                    @if($memo->responsiblePerson)
-                                                        {{ Str::limit($memo->responsiblePerson->fname . ' ' . $memo->responsiblePerson->lname, 15) }}
-                                                    @else
-                                                        <span class="text-muted">Not assigned</span>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="text-wrap" style="max-width: 120px;">
-                                                    {{ Str::limit($memo->division->division_name ?? 'N/A', 15) }}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="bx bx-money me-1"></i>
-                                                    {{ $memo->fundType->name ?? 'N/A' }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                @if($memo->date_from && $memo->date_to)
-                                                    <div class="small">
-                                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
-                                                        <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
-                                                    </div>
-                                                @elseif($memo->date_from)
-                                                    <div class="small">
-                                                        <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
-                                                        <div class="text-muted">to N/A</div>
-                                                    </div>
-                                                @else
-                                                    <span class="text-muted">N/A</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                @php
-                                                    $statusBadgeClass = [
-                                                        'draft' => 'bg-secondary',
-                                                        'pending' => 'bg-warning',
-                                                        'approved' => 'bg-success',
-                                                        'rejected' => 'bg-danger',
-                                                        'returned' => 'bg-info',
-                                                    ];
-                                                    $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                    
-                                                    // Get workflow information
-                                                    $approvalLevel = $memo->approval_level ?? 'N/A';
-                                                    $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
-                                                    $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
-                                                @endphp
-                                                
-                                                @if($memo->overall_status === 'pending')
-                                                    <!-- Structured display for pending status -->
-                                                    <div class="text-center">
-                                                        <span class="badge {{ $statusClass }} mb-1">
-                                                            {{ strtoupper($memo->overall_status) }}
-                                                        </span>
-                                                        <br>
-                                                        <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
-                                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                        @if($actorName !== 'N/A')
-                                                            <small class="text-muted d-block">{{ $actorName }}</small>
-                                                        @endif
-                                                    </div>
-                                                @else
-                                                    <!-- Standard badge for other statuses -->
-                                                    <span class="badge {{ $statusClass }}">
-                                                        {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                                    </span>
-                                                @endif
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="btn-group">
-                                                    <a href="{{ route('special-memo.show', $memo) }}" 
-                                                       class="btn btn-sm btn-outline-info" title="View">
-                                                        <i class="bx bx-show"></i>
-                                                    </a>
-                                                    @if($memo->overall_status === 'approved')
-                                                        <a href="{{ route('special-memo.print', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                            <i class="bx bx-printer"></i>
-                                                        </a>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        @if($sharedMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $sharedMemos->hasPages())
-                            <div class="d-flex justify-content-center mt-3">
-                                {{ $sharedMemos->appends(request()->query())->links() }}
-                            </div>
-                        @endif
-                    @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="bx bx-share fs-1 text-info opacity-50"></i>
-                            <p class="mb-0">No shared special memos found.</p>
-                            <small>Special memos where you have been added as a participant will appear here.</small>
-                        </div>
-                    @endif
+                    @include('special-memo.partials.shared-memos-tab')
                 </div>
             </div>
         </div>
@@ -667,38 +225,156 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Document number filter - submit on Enter key
+    // AJAX filtering - auto-update when filters change
+    function applyFilters() {
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (activeTab) {
+            const tabId = activeTab.id;
+            loadTabData(tabId);
+        }
+    }
+    
+    // Manual filter button click
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    }
+    
+    // Auto-apply filters when they change
+    if (document.getElementById('request_type_id')) {
+        document.getElementById('request_type_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('staff_id')) {
+        document.getElementById('staff_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('division_id')) {
+        document.getElementById('division_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('special_status')) {
+        document.getElementById('special_status').addEventListener('change', applyFilters);
+    }
+    
+    // Document number filter - apply on Enter key or after 1 second delay
     if (document.getElementById('document_number')) {
+        let documentNumberTimeout;
+        document.getElementById('document_number').addEventListener('input', function() {
+            clearTimeout(documentNumberTimeout);
+            documentNumberTimeout = setTimeout(applyFilters, 1000);
+        });
+        
         document.getElementById('document_number').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                this.form.submit();
+                clearTimeout(documentNumberTimeout);
+                applyFilters();
+            }
+        });
+    }
+
+    // Function to load tab data via AJAX
+    function loadTabData(tabId, page = 1) {
+        console.log('Loading special memo tab data for:', tabId, 'page:', page);
+        
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('page', page);
+        currentUrl.searchParams.set('tab', tabId);
+        
+        // Include current filter values
+        const documentNumber = document.getElementById('document_number')?.value;
+        const requestTypeId = document.getElementById('request_type_id')?.value;
+        const staffId = document.getElementById('staff_id')?.value;
+        const divisionId = document.getElementById('division_id')?.value;
+        const status = document.getElementById('special_status')?.value;
+        
+        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
+        if (requestTypeId) currentUrl.searchParams.set('request_type_id', requestTypeId);
+        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
+        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
+        if (status) currentUrl.searchParams.set('status', status);
+        
+        console.log('Special memo request URL:', currentUrl.toString());
+        
+        // Show loading indicator
+        const tabContent = document.getElementById(tabId);
+        if (tabContent) {
+            tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        }
+        
+        fetch(currentUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Special memo response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Special memo response data:', data);
+            if (data.html) {
+                if (tabContent) {
+                    tabContent.innerHTML = data.html;
+                    attachPaginationHandlers(tabId);
+                }
+            } else {
+                console.error('No HTML data received for special memo');
+                if (tabContent) {
+                    tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading special memo tab data:', error);
+            if (tabContent) {
+                tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
             }
         });
     }
     
-    // Auto-submit for select filters
-    if (document.getElementById('request_type_id')) {
-        document.getElementById('request_type_id').addEventListener('change', function() {
-            this.form.submit();
+    function attachPaginationHandlers(tabId) {
+        const tabContent = document.getElementById(tabId);
+        if (!tabContent) return;
+        
+        const paginationLinks = tabContent.querySelectorAll('.pagination a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const url = new URL(this.href);
+                const page = url.searchParams.get('page') || 1;
+                loadTabData(tabId, page);
+            });
         });
     }
-    
-    if (document.getElementById('staff_id')) {
-        document.getElementById('staff_id').addEventListener('change', function() {
-            this.form.submit();
+
+    // Add click handlers to tabs to load data via AJAX
+    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent Bootstrap's default tab behavior
+            
+            // Remove active class from all tabs and buttons
+            document.querySelectorAll('#memoTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#memoTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
+            
+            // Add active class to clicked button and corresponding pane
+            this.classList.add('active');
+            const tabId = this.getAttribute('aria-controls');
+            const tabPane = document.getElementById(tabId);
+            if (tabPane) {
+                tabPane.classList.add('active', 'show');
+            }
+            
+            loadTabData(tabId);
         });
-    }
+    });
     
-    if (document.getElementById('division_id')) {
-        document.getElementById('division_id').addEventListener('change', function() {
-            this.form.submit();
-        });
-    }
-    
-    if (document.getElementById('status')) {
-        document.getElementById('status').addEventListener('change', function() {
-            this.form.submit();
-        });
+    // Load data for the default active tab
+    const activeTabButton = document.querySelector('#memoTabs .nav-link.active');
+    if (activeTabButton) {
+        loadTabData(activeTabButton.getAttribute('aria-controls'));
     }
 });
 </script>

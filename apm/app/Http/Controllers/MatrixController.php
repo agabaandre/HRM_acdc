@@ -25,7 +25,7 @@ class MatrixController extends Controller
     /**
      * Display a listing of matrices.
      */
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         $query = Matrix::with([
             'division',
@@ -210,6 +210,33 @@ class MatrixController extends Controller
 
         //  dd($filteredActionedMatrices->toArray());
 
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            \Log::info('AJAX request received in MatrixController index', [
+                'tab' => $request->get('tab'),
+                'all_params' => $request->all()
+            ]);
+            
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'myDivision':
+                    $html = view('matrices.partials.my-division-tab', compact(
+                        'myDivisionMatrices'
+                    ))->render();
+                    break;
+                case 'allMatrices':
+                    $html = view('matrices.partials.all-matrices-tab', compact(
+                        'allMatrices'
+                    ))->render();
+                    break;
+            }
+            
+            \Log::info('Generated HTML length for matrices', ['html_length' => strlen($html)]);
+            
+            return response()->json(['html' => $html]);
+        }
     
         return view('matrices.index', [
             'matrices' => $matrices,

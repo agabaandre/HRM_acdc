@@ -1656,10 +1656,16 @@ class ActivityController extends Controller
     /**
      * Display a listing of single memos (activities with is_single_memo = true).
      */
-    public function singlememos(Request $request): View
+    public function singlememos(Request $request)
     {
         // Get current user's staff ID
         $currentStaffId = user_session('staff_id');
+        $tab = $request->get('tab', '');
+        
+        // If switching tabs, reset page to 1
+        if ($tab) {
+            $request->merge(['page' => 1]);
+        }
         
         // Base query for all single memos
         $baseQuery = Activity::with(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType'])
@@ -1742,6 +1748,44 @@ class ActivityController extends Controller
             ->orderBy('division_name')
             ->get();
     
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            \Log::info('AJAX request received in singlememos', [
+                'tab' => $request->get('tab'),
+                'all_params' => $request->all(),
+                'has_session' => session()->has('user'),
+                'session_id' => session()->getId()
+            ]);
+            
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'mySubmitted':
+                    \Log::info('Rendering mySubmitted tab', ['myMemos_count' => $myMemos->count()]);
+                    $html = view('activities.single-memos.partials.my-division-memos-tab', compact(
+                        'myMemos'
+                    ))->render();
+                    break;
+                case 'allMemos':
+                    \Log::info('Rendering allMemos tab', ['allMemos_count' => $allMemos ? $allMemos->count() : 0]);
+                    $html = view('activities.single-memos.partials.all-memos-tab', compact(
+                        'allMemos'
+                    ))->render();
+                    break;
+                case 'sharedMemos':
+                    \Log::info('Rendering sharedMemos tab', ['sharedMemos_count' => $sharedMemos->count()]);
+                    $html = view('activities.single-memos.partials.shared-memos-tab', compact(
+                        'sharedMemos'
+                    ))->render();
+                    break;
+            }
+            
+            \Log::info('Generated HTML length', ['html_length' => strlen($html)]);
+            
+            return response()->json(['html' => $html]);
+        }
+        
         return view('activities.single-memos.index', compact('myMemos', 'allMemos', 'sharedMemos', 'staff', 'divisions'));
     }
 
@@ -1757,9 +1801,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ]);
         }
 
-        if ($activity->staff_id != user_session('staff_id')) {
+        // Check if user has privileges to edit this memo using can_edit_memo()
+        if (!can_edit_memo($activity)) {
             return redirect()->back()->with([
-                'msg' => 'Only the creator can submit this memo for approval.',
+                'msg' => 'You do not have permission to submit this memo for approval.',
                 'type' => 'error',
             ]);
         }
@@ -2036,7 +2081,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
     /**
      * Display the main activities page with three tabs.
      */
-    public function activitiesIndex(Request $request): View
+    public function activitiesIndex(Request $request)
     {
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
@@ -2052,6 +2097,12 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $selectedDivisionId = $request->get('division_id', '');
         $selectedDocumentNumber = $request->get('document_number', '');
         $selectedStaffId = $request->get('staff_id', '');
+        $tab = $request->get('tab', '');
+        
+        // If switching tabs, reset page to 1
+        if ($tab) {
+            $request->merge(['page' => 1]);
+        }
         
         // Ensure quarter is in correct format (Q1, Q2, Q3, Q4)
         if (!str_starts_with($selectedQuarter, 'Q')) {
@@ -2261,6 +2312,52 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 ];
             })->toArray()
         ]);
+        
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            \Log::info('AJAX request received in activitiesIndex', [
+                'tab' => $request->get('tab'),
+                'all_params' => $request->all()
+            ]);
+            
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'all-activities':
+                    $html = view('activities.partials.all-activities-tab', compact(
+                        'allActivities',
+                        'selectedYear',
+                        'selectedQuarter',
+                        'selectedDivisionId',
+                        'selectedDocumentNumber',
+                        'selectedStaffId'
+                    ))->render();
+                    break;
+                case 'my-division':
+                    $html = view('activities.partials.my-division-activities-tab', compact(
+                        'myDivisionActivities',
+                        'selectedYear',
+                        'selectedQuarter',
+                        'selectedDivisionId',
+                        'selectedDocumentNumber',
+                        'selectedStaffId'
+                    ))->render();
+                    break;
+                case 'shared-activities':
+                    $html = view('activities.partials.shared-activities-tab', compact(
+                        'sharedActivities',
+                        'selectedYear',
+                        'selectedQuarter',
+                        'selectedDivisionId',
+                        'selectedDocumentNumber',
+                        'selectedStaffId'
+                    ))->render();
+                    break;
+            }
+            
+            return response()->json(['html' => $html]);
+        }
         
         return view('activities.index', compact(
             'allActivities',
@@ -2766,7 +2863,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
     /**
      * Display pending approvals for single memos.
      */
-    public function singleMemoPendingApprovals(Request $request): View
+    public function singleMemoPendingApprovals(Request $request)
     {
         $currentStaffId = user_session('staff_id');
         
@@ -2794,6 +2891,20 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
             $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
             $pendingQuery->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
+        }
+
+        // Apply filters to both queries (for initial page load)
+        if ($request->filled('request_type')) {
+            $pendingQuery->where('request_type_id', $request->request_type);
+            $approvedQuery->where('request_type_id', $request->request_type);
+        }
+        if ($request->filled('division')) {
+            $pendingQuery->where('division_id', $request->division);
+            $approvedQuery->where('division_id', $request->division);
+        }
+        if ($request->filled('staff')) {
+            $pendingQuery->where('staff_id', $request->staff);
+            $approvedQuery->where('staff_id', $request->staff);
         }
 
         $pendingMemos = $pendingQuery->paginate(10);
@@ -2826,6 +2937,78 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             return $workflowInfo;
         };
 
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            \Log::info('AJAX request received in singleMemoPendingApprovals', [
+                'tab' => $request->get('tab'),
+                'all_params' => $request->all()
+            ]);
+            
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            // Rebuild queries with filters for AJAX requests
+            $pendingQuery = Activity::with(['staff', 'division', 'requestType', 'fundType'])
+                ->where('is_single_memo', true)
+                ->where('overall_status', 'pending')
+                ->latest();
+
+            $approvedQuery = Activity::with(['staff', 'division', 'requestType', 'fundType'])
+                ->where('is_single_memo', true)
+                ->whereHas('approvalTrails', function ($query) use ($currentStaffId) {
+                    $query->where('staff_id', $currentStaffId)
+                          ->where('action', 'approved');
+                })
+                ->latest();
+
+            // Apply approval level filtering for pending memos
+            if (isDivisionApprover() || !empty(user_session('division_id'))) {
+                $pendingQuery->where('division_id', user_session('division_id'));
+            } else {
+                // Check approval workflow
+                $approvers = Approver::where('staff_id', $currentStaffId)->get();
+                $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
+                $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
+                $pendingQuery->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
+            }
+
+            // Apply filters to both queries
+            if ($request->filled('request_type')) {
+                $pendingQuery->where('request_type_id', $request->request_type);
+                $approvedQuery->where('request_type_id', $request->request_type);
+            }
+            if ($request->filled('division')) {
+                $pendingQuery->where('division_id', $request->division);
+                $approvedQuery->where('division_id', $request->division);
+            }
+            if ($request->filled('staff')) {
+                $pendingQuery->where('staff_id', $request->staff);
+                $approvedQuery->where('staff_id', $request->staff);
+            }
+
+            $pendingMemos = $pendingQuery->paginate(10);
+            $approvedByMe = $approvedQuery->paginate(10);
+            
+            switch($tab) {
+                case 'pending':
+                    $html = view('activities.single-memos.partials.pending-approvals-tab', compact(
+                        'pendingMemos',
+                        'getWorkflowInfo'
+                    ))->render();
+                    break;
+                case 'approved':
+                    $html = view('activities.single-memos.partials.approved-by-me-tab', compact(
+                        'approvedByMe',
+                        'getWorkflowInfo'
+                    ))->render();
+                    break;
+            }
+            
+            \Log::info('Generated HTML length for pending approvals', ['html_length' => strlen($html)]);
+            
+            return response()->json(['html' => $html]);
+        }
+
         return view('activities.single-memos.pending-approvals', compact(
             'pendingMemos', 
             'approvedByMe', 
@@ -2850,19 +3033,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 ->with('error', 'Cannot delete single memo. The parent matrix has been approved.');
         }
 
-        // Check if user can delete the single memo
-        $currentUserId = user_session('staff_id');
-        $canDelete = false;
-
-        // Allow deletion if matrix is in draft or returned status
-        if (in_array($matrix->overall_status, ['draft', 'returned'])) {
-            // Allow if user is the responsible person or the creator
-            if ($activity->responsible_person_id == $currentUserId || $activity->staff_id == $currentUserId) {
-                $canDelete = true;
-            }
-        }
-
-        if (!$canDelete) {
+        // Check if user has privileges to edit this memo using can_edit_memo()
+        if (!can_edit_memo($activity)) {
             return redirect()
                 ->route('matrices.show', $matrix)
                 ->with('error', 'You do not have permission to delete this single memo.');

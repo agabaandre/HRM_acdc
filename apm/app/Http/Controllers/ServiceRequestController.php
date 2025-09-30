@@ -34,7 +34,7 @@ class ServiceRequestController extends Controller
     /**
      * Display a listing of service requests.
      */
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         $currentStaffId = user_session('staff_id');
         
@@ -71,6 +71,23 @@ class ServiceRequestController extends Controller
         
         $staff = Staff::all();
         $divisions = Division::all();
+        
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'mySubmitted':
+                    $html = view('service-requests.partials.my-submitted-tab', compact('mySubmittedRequests'))->render();
+                    break;
+                case 'allRequests':
+                    $html = view('service-requests.partials.all-requests-tab', compact('allRequests'))->render();
+                    break;
+            }
+            
+            return response()->json(['html' => $html]);
+        }
         
         return view('service-requests.index', compact('mySubmittedRequests', 'allRequests', 'staff', 'divisions'));
     }
@@ -952,7 +969,7 @@ class ServiceRequestController extends Controller
     /**
      * Display pending service requests for approvers
      */
-    public function pendingApprovals(Request $request): View
+    public function pendingApprovals(Request $request)
     {
         $userStaffId = user_session('staff_id');
 
@@ -1085,6 +1102,29 @@ class ServiceRequestController extends Controller
             ];
         };
 
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'pending':
+                    $html = view('service-requests.partials.pending-approvals-tab', compact(
+                        'pendingRequests',
+                        'getWorkflowInfo'
+                    ))->render();
+                    break;
+                case 'approved':
+                    $html = view('service-requests.partials.approved-by-me-tab', compact(
+                        'approvedByMe',
+                        'getWorkflowInfo'
+                    ))->render();
+                    break;
+            }
+            
+            return response()->json(['html' => $html]);
+        }
+        
         return view('service-requests.pending-approvals', compact(
             'pendingRequests',
             'approvedByMe',

@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Log;
 
 class SpecialMemoController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         // Cache lookup tables for 60 minutes
         $staff = Cache::remember('special_memo_staff', 60 * 60, fn() => Staff::active()->get());
@@ -126,6 +126,39 @@ class SpecialMemoController extends Controller
         }
 
         $sharedMemos = $sharedMemosQuery->latest()->paginate(20)->withQueryString();
+
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            \Log::info('AJAX request received in SpecialMemoController index', [
+                'tab' => $request->get('tab'),
+                'all_params' => $request->all()
+            ]);
+            
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'mySubmitted':
+                    $html = view('special-memo.partials.my-submitted-tab', compact(
+                        'mySubmittedMemos'
+                    ))->render();
+                    break;
+                case 'allMemos':
+                    $html = view('special-memo.partials.all-memos-tab', compact(
+                        'allMemos'
+                    ))->render();
+                    break;
+                case 'sharedMemos':
+                    $html = view('special-memo.partials.shared-memos-tab', compact(
+                        'sharedMemos'
+                    ))->render();
+                    break;
+            }
+            
+            \Log::info('Generated HTML length for special memo', ['html_length' => strlen($html)]);
+            
+            return response()->json(['html' => $html]);
+        }
 
         return view('special-memo.index', compact(
             'mySubmittedMemos', 
