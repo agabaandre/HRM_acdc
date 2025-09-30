@@ -114,16 +114,25 @@
                                                 </span>
                                             </td>
                                             <td class="text-center">
-                                                <div class="btn-group">
+                                                <div class="d-flex gap-2 justify-content-center">
                                                     <a href="{{ route('matrices.activities.show', [$matrix, $activity]) }}" 
                                                        class="btn btn-sm btn-outline-info" title="View">
                                                         <i class="bx bx-show"></i>
                                                     </a>
-                                                    @if($matrix->overall_status !== 'approved')
+                                                    @if(can_edit_memo($activity))
                                                         <a href="{{ route('matrices.activities.edit', [$matrix, $activity]) }}" 
                                                            class="btn btn-sm btn-outline-warning" title="Edit">
                                                             <i class="bx bx-edit"></i>
                                                         </a>
+                                                    @endif
+                                                    @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
+                                                        <form action="{{ route('matrices.activities.destroy', [$matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                                <i class="bx bx-trash"></i>
+                                                            </button>
+                                                        </form>
                                                     @endif
                                                     @if($activity->status === 'PASSED' && $matrix->overall_status === 'approved')
                                                         <a href="{{ route('matrices.activities.memo-pdf', [$matrix, $activity]) }}" 
@@ -354,16 +363,25 @@
                                                         </span>
                                                     </td>
                                                     <td class="text-center">
-                                                        <div class="btn-group">
+                                                        <div class="d-flex gap-2 justify-content-center">
                                                             <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
                                                                class="btn btn-sm btn-outline-info" title="View">
                                                                 <i class="bx bx-show"></i>
                                                             </a>
-                                                            @if($activity->overall_status !== 'approved')
+                                                            @if(can_edit_memo($activity))
                                                                 <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
                                                                    class="btn btn-sm btn-outline-warning" title="Edit">
                                                                     <i class="bx bx-edit"></i>
                                                                 </a>
+                                                            @endif
+                                                            @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
+                                                                <form action="{{ route('matrices.activities.destroy', [$activity->matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
+                                                                    @csrf
+                                                                    @method('DELETE')
+                                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                                        <i class="bx bx-trash"></i>
+                                                                    </button>
+                                                                </form>
                                                             @endif
                                                             @if($activity->overall_status === 'approved')
                                                                 <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
@@ -476,18 +494,27 @@
                                                     </span>
                             </td>
                                                 <td class="text-center">
-                                                    <div class="btn-group">
+                                                    <div class="d-flex gap-2 justify-content-center">
                                                         <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
                                         <i class="bx bx-show"></i>
                                     </a>
-                                                        @if($activity->overall_status !== 'approved')
+                                                        @if(can_edit_memo($activity))
                                                             <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                             <i class="bx bx-edit"></i>
                                         </a>
                                                         @endif
-                                                        @if($activity->overall_status === 'approved' && $activity->overall_status === 'approved')
+                                                        @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
+                                                            <form action="{{ route('matrices.activities.destroy', [$activity->matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                                    <i class="bx bx-trash"></i>
+                                                                </button>
+                                                            </form>
+                                                        @endif
+                                                        @if($activity->overall_status === 'approved')
                                                             <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
                                                                class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
                                                                 <i class="bx bx-printer"></i>
@@ -593,12 +620,27 @@
                                                     </span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <div class="btn-group">
+                                                    <div class="d-flex gap-2 justify-content-center">
                                                         <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
-                                                        @if($activity->overall_status === 'approved' && $activity->overall_status === 'approved')
+                                                        @if(can_edit_memo($activity))
+                                                            <a href="{{ route('matrices.activities.edit', [$activity->matrix, $activity]) }}" 
+                                                               class="btn btn-sm btn-outline-warning" title="Edit">
+                                                                <i class="bx bx-edit"></i>
+                                                            </a>
+                                                        @endif
+                                                        @if($activity->responsible_person_id == user_session('staff_id') && in_array($activity->overall_status, ['draft', 'returned']))
+                                                            <form action="{{ route('matrices.activities.destroy', [$activity->matrix, $activity]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this activity? This action cannot be undone.')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                                    <i class="bx bx-trash"></i>
+                                                                </button>
+                                                            </form>
+                                                        @endif
+                                                        @if($activity->overall_status === 'approved')
                                                             <a href="{{ route('matrices.activities.show', [$activity->matrix, $activity]) }}?print=pdf" 
                                                                class="btn btn-sm btn-outline-success" title="Print PDF" target="_blank">
                                                                 <i class="bx bx-printer"></i>
