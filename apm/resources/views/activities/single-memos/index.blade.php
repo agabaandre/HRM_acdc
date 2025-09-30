@@ -119,12 +119,14 @@
                     <span class="badge bg-success text-white ms-2">{{ $myMemos->total() }}</span>
                     </button>
                 </li>
+                @if(in_array(87, user_session('permissions', [])))
                 <li class="nav-item" role="presentation">
                 <button class="nav-link" id="allMemos-tab" data-bs-toggle="tab" data-bs-target="#allMemos" type="button" role="tab" aria-controls="allMemos" aria-selected="false">
                     <i class="bx bx-grid me-2"></i> All Single Memos
-                    <span class="badge bg-primary text-white ms-2">{{ $allMemos->total() }}</span>
+                    <span class="badge bg-primary text-white ms-2">{{ $allMemos ? $allMemos->total() : 0 }}</span>
                     </button>
                 </li>
+                @endif
                 <li class="nav-item" role="presentation">
                 <button class="nav-link" id="sharedMemos-tab" data-bs-toggle="tab" data-bs-target="#sharedMemos" type="button" role="tab" aria-controls="sharedMemos" aria-selected="false">
                     <i class="bx bx-share me-2"></i> Shared Single Memos
@@ -249,17 +251,11 @@
                                                 @endif
                                     </td>
                                             <td class="text-center">
-                                                <div class="btn-group">
+                                                <div class="d-flex gap-2 justify-content-center">
                                             <a href="{{ route('activities.single-memos.show', $memo) }}" 
                                                        class="btn btn-sm btn-outline-info" title="View">
                                                 <i class="bx bx-show"></i>
                                             </a>
-                                            @if(can_edit_memo($memo))
-                                                <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
-                                                           class="btn btn-sm btn-outline-warning" title="Edit">
-                                                    <i class="bx bx-edit"></i>
-                                                </a>
-                                            @endif
                                             @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
                                                 <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
                                                     @csrf
@@ -300,6 +296,7 @@
             </div>
             
             <!-- All Single Memos Tab -->
+            @if(in_array(87, user_session('permissions', [])))
             <div class="tab-pane fade" id="allMemos" role="tabpanel" aria-labelledby="allMemos-tab">
                 <div class="p-3">
                     <div class="d-flex align-items-center justify-content-between mb-3">
@@ -405,17 +402,11 @@
                                                 @endif
                                     </td>
                                             <td class="text-center">
-                                                <div class="btn-group">
+                                                <div class="d-flex gap-2 justify-content-center">
                                             <a href="{{ route('activities.single-memos.show', $memo) }}" 
                                                        class="btn btn-sm btn-outline-info" title="View">
                                                 <i class="bx bx-show"></i>
                                             </a>
-                                            @if(can_edit_memo($memo))
-                                                <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
-                                                           class="btn btn-sm btn-outline-warning" title="Edit">
-                                                    <i class="bx bx-edit"></i>
-                                                </a>
-                                                    @endif
                                                     @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
                                                         <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
                                                             @csrf
@@ -440,7 +431,7 @@
                         </div>
                         
                         <!-- Pagination -->
-                        @if($allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMemos->hasPages())
+                        @if($allMemos && $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMemos->hasPages())
                             <div class="d-flex justify-content-center mt-3">
                                 {{ $allMemos->appends(request()->query())->links() }}
                             </div>
@@ -454,6 +445,7 @@
                     @endif
                 </div>
             </div>
+            @endif
             
             <!-- Shared Single Memos Tab -->
             <div class="tab-pane fade" id="sharedMemos" role="tabpanel" aria-labelledby="sharedMemos-tab">
@@ -536,17 +528,11 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <div class="btn-group" role="group">
+                                        <div class="d-flex gap-2 justify-content-center">
                                             <a href="{{ route('activities.single-memos.show', $memo) }}" 
                                                        class="btn btn-sm btn-outline-info" title="View">
                                                 <i class="bx bx-show"></i>
                                             </a>
-                                            @if(can_edit_memo($memo))
-                                                <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
-                                                           class="btn btn-sm btn-outline-warning" title="Edit">
-                                                    <i class="bx bx-edit"></i>
-                                                </a>
-                                                    @endif
                                                     @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
                                                         <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
                                                             @csrf

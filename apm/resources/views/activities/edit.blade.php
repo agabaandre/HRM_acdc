@@ -13,9 +13,15 @@
             <h5 class="mb-0 text-success">
                 <i class="fas fa-calendar-plus me-2"></i> Activity Details
             </h5>
-            <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
-                <i class="bx bx-arrow-back"></i> Back to Matrix
-            </a>
+            @if($activity->is_single_memo)
+                <a href="{{ route('activities.single-memos.show', $activity) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bx bx-arrow-back"></i> Back to Single Memo
+                </a>
+            @else
+                <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bx bx-arrow-back"></i> Back to Matrix
+                </a>
+            @endif
         </div>
 
         <div class="card-body p-4">

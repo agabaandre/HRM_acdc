@@ -1701,13 +1701,16 @@ class ActivityController extends Controller
         // Use simple sorting like All Divisions tab to avoid relationship issues
         $myMemos = $myMemosQuery->paginate(10);
 
-        // Query for "All Single Memos" tab - no session restrictions
-        $allMemosQuery = clone $baseQuery;
-        
-        // Show all single memos regardless of status
-        // Removed draft filtering to show all single memos
-        
-        $allMemos = $allMemosQuery->paginate(10);
+        // Query for "All Single Memos" tab - only if user has permission
+        $allMemos = null;
+        if (in_array(87, user_session('permissions', []))) {
+            $allMemosQuery = clone $baseQuery;
+            
+            // Show all single memos regardless of status
+            // Removed draft filtering to show all single memos
+            
+            $allMemos = $allMemosQuery->paginate(10);
+        }
         
         // Query for "Shared Single Memos" tab - single memos from other divisions where user is involved
         $sharedMemosQuery = clone $baseQuery;
