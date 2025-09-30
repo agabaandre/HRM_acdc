@@ -1712,6 +1712,9 @@ class ActivityController extends Controller
             ->select('activities.*'); // Select only activity columns to avoid conflicts
         
         $myMemos = $myMemosQuery->paginate(10);
+        
+        // Reload relationships after pagination to ensure they're available
+        $myMemos->load(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType']);
 
         // Query for "All Single Memos" tab - no session restrictions
         $allMemosQuery = clone $baseQuery;
@@ -1753,6 +1756,9 @@ class ActivityController extends Controller
         }
         
         $sharedMemos = $sharedMemosQuery->paginate(10);
+        
+        // Reload relationships after pagination to ensure they're available
+        $sharedMemos->load(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType']);
         
         $staff = Staff::active()->get();
     
