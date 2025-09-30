@@ -1024,6 +1024,7 @@ class MatrixController extends Controller
         // Build single memos query with filtering
         $singleMemosQuery = $matrix->activities()
             ->where('is_single_memo', 1)
+            ->where('overall_status', 'approved')
             ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
         // Apply document number filter if provided
@@ -1106,6 +1107,7 @@ class MatrixController extends Controller
         // Build single memos query without filtering
         $singleMemosQuery = $matrix->activities()
             ->where('is_single_memo', 1)
+            ->where('overall_status', 'approved')
             ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
         // Apply document number filter if provided
