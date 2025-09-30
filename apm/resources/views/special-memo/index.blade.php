@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
+    
     // Function to load tab data via AJAX
     function loadTabData(tabId, page = 1) {
         console.log('Loading special memo tab data for:', tabId, 'page:', page);

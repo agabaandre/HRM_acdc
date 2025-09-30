@@ -161,9 +161,9 @@
             <div class="tab-pane fade" id="allMemos" role="tabpanel" aria-labelledby="allMemos-tab">
                 <div class="p-3">
                     @include('activities.single-memos.partials.all-memos-tab')
-                </div>
-            </div>
-            @endif
+                        </div>
+                    </div>
+                                                @endif
             
             <!-- Shared Single Memos Tab -->
             <div class="tab-pane fade" id="sharedMemos" role="tabpanel" aria-labelledby="sharedMemos-tab">

@@ -177,9 +177,9 @@
                             <div class="d-flex align-items-center">
                                 <label for="pageSizeSelect" class="form-label me-2 mb-0 text-muted small">Show:</label>
                                 <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 120px;">
-                                    <option value="10" selected>10 per page</option>
+                                    <option value="10">10 per page</option>
                                     <option value="20">20 per page</option>
-                                    <option value="50">50 per page</option>
+                                    <option value="50" selected>50 per page</option>
                                     <option value="100">100 per page</option>
                                 </select>
                             </div>
@@ -294,10 +294,10 @@
 </div>
 
 <!-- Single Memos Section -->
-@if($singleMemos->count() > 0)
+@if($singleMemos->where('overall_status', 'approved')->count() > 0)
 <div class="row mt-4">
     <div class="col-12">
-        <div class="card shadow-sm border-0">
+        <div id="single-memos-card" class="card shadow-sm border-0">
             <div class="card-header bg-light border-0 py-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -305,7 +305,7 @@
                             <i class="bx bx-file-text me-2 text-primary"></i>Single Memos
                         </h5>
                         <small class="text-muted d-block mt-1">
-                            <span id="single-memos-count">{{ $singleMemos->total() }}</span> single memos in this matrix
+                            <span id="single-memos-count">{{ $singleMemos->where('overall_status', 'approved')->count() }}</span> approved single memos in this matrix
                         </small>
                     </div>
                     <div class="col-md-6">
@@ -958,7 +958,7 @@
 let currentPage = 1;
 let isLoading = false;
 let currentSearchTerm = '';
-let pageSize = 10;
+let pageSize = 50;
 
 // Single memos AJAX variables
 let singleMemoCurrentPage = 1;
@@ -1610,19 +1610,20 @@ function loadSingleMemos(page = 1, search = '', documentNumber = '') {
 // Render single memos
 function renderSingleMemos(singleMemos) {
     const tbody = document.getElementById('single-memos-tbody');
+    const singleMemosCard = document.getElementById('single-memos-card');
     let html = '';
     
     if (singleMemos.length === 0) {
-        html = `
-            <tr>
-                <td colspan="8" class="text-center py-5">
-                    <i class="bx bx-file-text fs-1 text-muted mb-3 d-block"></i>
-                    <div class="text-muted">No single memos found for this matrix.</div>
-                    <small class="text-muted">Single memos will appear here once they are added.</small>
-                </td>
-            </tr>
-        `;
+        // Hide the entire single memos card if no approved single memos
+        if (singleMemosCard) {
+            singleMemosCard.style.display = 'none';
+        }
+        return;
     } else {
+        // Show the single memos card if there are approved single memos
+        if (singleMemosCard) {
+            singleMemosCard.style.display = 'block';
+        }
         singleMemos.forEach((memo, index) => {
             const count = ((singleMemoCurrentPage - 1) * singleMemoPageSize) + index + 1;
             const budget = calculateBudget(memo.budget_breakdown);

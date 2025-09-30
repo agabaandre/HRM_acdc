@@ -1021,7 +1021,7 @@ class MatrixController extends Controller
             return $this->getAllSingleMemos($matrix, $request);
         }
 
-        // Build single memos query with filtering
+        // Build single memos query with filtering - only show approved single memos
         $singleMemosQuery = $matrix->activities()
             ->where('is_single_memo', 1)
             ->where('overall_status', 'approved')
@@ -1104,7 +1104,7 @@ class MatrixController extends Controller
      */
     private function getAllSingleMemos(Matrix $matrix, Request $request)
     {
-        // Build single memos query without filtering
+        // Build single memos query without filtering - only show approved single memos
         $singleMemosQuery = $matrix->activities()
             ->where('is_single_memo', 1)
             ->where('overall_status', 'approved')
