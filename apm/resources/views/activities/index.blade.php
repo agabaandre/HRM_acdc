@@ -277,14 +277,14 @@
                             @include('activities.partials.all-activities-tab')
                         </div>
                     </div>
-                    @endif
+                @endif
                 
                 <!-- My Division Activities Tab -->
                 <div class="tab-pane fade {{ !in_array(87, user_session('permissions', [])) ? 'show active' : '' }}" id="my-division" role="tabpanel" aria-labelledby="my-division-tab">
                     <div class="p-3">
                         @include('activities.partials.my-division-activities-tab')
-                    </div>
-                </div>
+                                            </div>
+                                        </div>
 
                 <!-- Shared Activities Tab -->
                 <div class="tab-pane fade" id="shared-activities" role="tabpanel" aria-labelledby="shared-activities-tab">
