@@ -13,10 +13,19 @@
             <i class="bx bx-printer me-1"></i> Print PDF
         </a>
     @endif
-    @if($singleMemo->overall_status === 'draft')
-        <a href="{{ route('activities.single-memos.edit', $singleMemo) }}" class="btn btn-warning">
+    @if(can_edit_memo($singleMemo))
+        <a href="{{ route('activities.single-memos.edit', [$singleMemo->matrix, $singleMemo]) }}" class="btn btn-warning">
             <i class="bx bx-edit me-1"></i> Edit Memo
         </a>
+    @endif
+    @if($singleMemo->responsible_person_id == user_session('staff_id') && in_array($singleMemo->overall_status, ['draft', 'returned']))
+        <form action="{{ route('activities.single-memos.destroy', $singleMemo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger">
+                <i class="bx bx-trash me-1"></i> Delete Memo
+            </button>
+        </form>
     @endif
 @endsection
 
