@@ -95,7 +95,7 @@
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success w-100 fw-bold" id="applyFilters">
+                    <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -152,146 +152,7 @@
             <!-- My Single Memos Tab -->
             <div class="tab-pane fade show active" id="mySubmitted" role="tabpanel" aria-labelledby="mySubmitted-tab">
                 <div class="p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div>
-                            <h6 class="mb-0 text-success fw-bold">
-                                <i class="bx bx-file-doc me-2"></i> My Division Single Memos
-                            </h6>
-                            <small class="text-muted">Single memos from your division, sorted by most recent quarter and year</small>
-                        </div>
-                    </div>
-                    
-                    @php 
-                        // $myMemos is already provided by the controller
-                    @endphp
-                    
-                    @if($myMemos->count() > 0)
-                <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-success">
-                            <tr>
-                                <th>#</th>
-                                        <th>Document #</th>
-                                <th>Title</th>
-                                <th>Responsible Person</th>
-                                <th>Division</th>
-                                <th>Date Range</th>
-                                        <th>Fund Type</th>
-                                <th>Status</th>
-                                        <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                                    @php $count = 1; @endphp
-                                    @foreach($myMemos as $memo)
-                                <tr>
-                                    <td>{{ $count++ }}</td>
-                                    <td>
-                                                <span class="badge bg-primary text-white">
-                                                    <i class="bx bx-hash me-1"></i>
-                                                    {{ $memo->document_number ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                            <td class="table-title-cell">
-                                                <div class="fw-bold text-primary">{!! $memo->activity_title !!}</div>
-                                                <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
-                                            </td>
-                                            <td>
-                                                <div class="fw-bold text-dark">{{ $memo->responsiblePerson->fname ?? 'N/A' }} {{ $memo->responsiblePerson->lname ?? '' }}</div>
-                                                <small class="text-muted">{{ $memo->responsiblePerson->work_email ?? 'N/A' }}</small>
-                                            </td>
-                                            <td>{{ $memo->matrix->division->division_name ?? 'N/A' }}</td>
-                                    <td>
-                                        <small>
-                                            {{ $memo->date_from ? $memo->date_from->format('M d, Y') : 'N/A' }}<br>
-                                            <span class="text-muted">to</span><br>
-                                            {{ $memo->date_to ? $memo->date_to->format('M d, Y') : 'N/A' }}
-                                        </small>
-                                    </td>
-                                    <td>
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="bx bx-money me-1"></i>
-                                                    {{ $memo->fundType->name ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                                @php
-                                                    $statusBadgeClass = [
-                                                        'draft' => 'bg-secondary',
-                                                        'pending' => 'bg-warning',
-                                                        'approved' => 'bg-success',
-                                                        'rejected' => 'bg-danger',
-                                                        'returned' => 'bg-info',
-                                                    ];
-                                                    $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                    
-                                                    // Get workflow information
-                                                    $approvalLevel = $memo->approval_level ?? 'N/A';
-                                                    $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
-                                                    $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
-                                                @endphp
-                                                
-                                                @if($memo->overall_status === 'pending')
-                                                    <!-- Structured display for pending status -->
-                                                    <div class="text-start">
-                                                        <span class="badge {{ $statusClass }} mb-1">
-                                                            {{ strtoupper($memo->overall_status) }}
-                                                        </span>
-                                                        <br>
-                                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                        @if($actorName !== 'N/A')
-                                                            <small class="text-muted d-block">{{ $actorName }}</small>
-                                                        @endif
-                                                    </div>
-                                                @else
-                                                    <!-- Standard badge for other statuses -->
-                                                    <span class="badge {{ $statusClass }}">
-                                                        {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                                    </span>
-                                                @endif
-                                    </td>
-                                            <td class="text-center">
-                                                <div class="d-flex gap-2 justify-content-center">
-                                            <a href="{{ route('activities.single-memos.show', $memo) }}" 
-                                                       class="btn btn-sm btn-outline-info" title="View">
-                                                <i class="bx bx-show"></i>
-                                            </a>
-                                            @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
-                                                <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                        <i class="bx bx-trash"></i>
-                                                    </button>
-                                                </form>
-                                            @endif
-                                                    @if($memo->overall_status === 'approved')
-                                                        <a href="{{ route('activities.single-memos.show', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                            <i class="bx bx-printer"></i>
-                                                        </a>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                                    @endforeach
-                        </tbody>
-                    </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        @if($myMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $myMemos->hasPages())
-                            <div class="d-flex justify-content-center mt-3">
-                                {{ $myMemos->appends(request()->query())->links() }}
-                            </div>
-                        @endif
-                    @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="bx bx-file-doc fs-1 text-success opacity-50"></i>
-                            <p class="mb-0">No single memos found.</p>
-                            <small>Your single memos will appear here once they are created.</small>
-                        </div>
-                    @endif
+                    @include('activities.single-memos.partials.my-division-memos-tab')
                 </div>
             </div>
             
@@ -299,150 +160,7 @@
             @if(in_array(87, user_session('permissions', [])))
             <div class="tab-pane fade" id="allMemos" role="tabpanel" aria-labelledby="allMemos-tab">
                 <div class="p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div>
-                            <h6 class="mb-0 text-primary fw-bold">
-                                <i class="bx bx-grid me-2"></i> All Single Memos
-                            </h6>
-                            <small class="text-muted">All single memos in the system</small>
-                        </div>
-                    </div>
-                    
-                    @if($allMemos->count() > 0)
-                <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-primary">
-                            <tr>
-                                <th>#</th>
-                                        <th>Document #</th>
-                                <th>Title</th>
-                                <th>Responsible Person</th>
-                                <th>Division</th>
-                                <th>Date Range</th>
-                                        <th>Fund Type</th>
-                                <th>Status</th>
-                                        <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php $count = 1; @endphp
-                                    @foreach($allMemos as $memo)
-                                <tr>
-                                    <td>{{ $count++ }}</td>
-                                    <td>
-                                                <span class="badge bg-primary text-white">
-                                                    <i class="bx bx-hash me-1"></i>
-                                                    {{ $memo->document_number ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td class="table-title-cell">
-                                                <div class="fw-bold text-primary">{!! $memo->activity_title !!}</div>
-                                                <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
-                                    </td>
-                                            <td>
-                                                @if($memo->responsiblePerson)
-                                                    <div class="fw-bold text-primary">{{ $memo->responsiblePerson->fname }} {{ $memo->responsiblePerson->lname }}</div>
-                                                    <small class="text-muted">Responsible Person</small>
-                                                @elseif($memo->staff)
-                                                    <div class="fw-bold text-secondary">{{ $memo->staff->fname }} {{ $memo->staff->lname }}</div>
-                                                    <small class="text-muted">Creator</small>
-                                                @else
-                                                    <span class="text-muted">Not assigned</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $memo->matrix->division->division_name ?? 'N/A' }}</td>
-                                    <td>
-                                        <small>
-                                            {{ $memo->date_from ? $memo->date_from->format('M d, Y') : 'N/A' }}<br>
-                                            <span class="text-muted">to</span><br>
-                                            {{ $memo->date_to ? $memo->date_to->format('M d, Y') : 'N/A' }}
-                                        </small>
-                                    </td>
-                                    <td>
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="bx bx-money me-1"></i>
-                                                    {{ $memo->fundType->name ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                                @php
-                                                    $statusBadgeClass = [
-                                                        'draft' => 'bg-secondary',
-                                                        'pending' => 'bg-warning',
-                                                        'approved' => 'bg-success',
-                                                        'rejected' => 'bg-danger',
-                                                        'returned' => 'bg-info',
-                                                    ];
-                                                    $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                    
-                                                    // Get workflow information
-                                                    $approvalLevel = $memo->approval_level ?? 'N/A';
-                                                    $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
-                                                    $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
-                                                @endphp
-                                                
-                                                @if($memo->overall_status === 'pending')
-                                                    <!-- Structured display for pending status -->
-                                                    <div class="text-start">
-                                                        <span class="badge {{ $statusClass }} mb-1">
-                                                            {{ strtoupper($memo->overall_status) }}
-                                                        </span>
-                                                        <br>
-                                                        <small class="text-muted d-block">Level {{ $approvalLevel }}</small>
-                                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                        @if($actorName !== 'N/A')
-                                                            <small class="text-muted d-block">{{ $actorName }}</small>
-                                                        @endif
-                                                    </div>
-                                                @else
-                                                    <!-- Standard badge for other statuses -->
-                                                    <span class="badge {{ $statusClass }}">
-                                                        {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                                    </span>
-                                                @endif
-                                    </td>
-                                            <td class="text-center">
-                                                <div class="d-flex gap-2 justify-content-center">
-                                            <a href="{{ route('activities.single-memos.show', $memo) }}" 
-                                                       class="btn btn-sm btn-outline-info" title="View">
-                                                <i class="bx bx-show"></i>
-                                            </a>
-                                                    @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
-                                                        <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                <i class="bx bx-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                    @if($memo->overall_status === 'approved')
-                                                        <a href="{{ route('activities.single-memos.show', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                            <i class="bx bx-printer"></i>
-                                                        </a>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                                    @endforeach
-                        </tbody>
-                    </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        @if($allMemos && $allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMemos->hasPages())
-                            <div class="d-flex justify-content-center mt-3">
-                                {{ $allMemos->appends(request()->query())->links() }}
-                            </div>
-                        @endif
-                    @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="bx bx-grid fs-1 text-primary opacity-50"></i>
-                            <p class="mb-0">No single memos found.</p>
-                            <small>Single memos will appear here once they are created.</small>
-                        </div>
-                    @endif
+                    @include('activities.single-memos.partials.all-memos-tab')
                 </div>
             </div>
             @endif
@@ -450,125 +168,7 @@
             <!-- Shared Single Memos Tab -->
             <div class="tab-pane fade" id="sharedMemos" role="tabpanel" aria-labelledby="sharedMemos-tab">
                 <div class="p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div>
-                            <h6 class="mb-0 text-info fw-bold">
-                                <i class="bx bx-share me-2"></i> Shared Single Memos
-                            </h6>
-                            <small class="text-muted">Single memos from other divisions where you're involved, sorted by most recent quarter and year</small>
-                        </div>
-                    </div>
-                    
-                    @if($sharedMemos->count() > 0)
-                <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-info">
-                            <tr>
-                                <th>#</th>
-                                        <th>Document #</th>
-                                <th>Title</th>
-                                <th>Responsible Person</th>
-                                <th>Division</th>
-                                <th>Date Range</th>
-                                        <th>Fund Type</th>
-                                <th>Status</th>
-                                        <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php $count = 1; @endphp
-                                    @foreach($sharedMemos as $memo)
-                                <tr>
-                                    <td>{{ $count++ }}</td>
-                                    <td>
-                                                <span class="badge bg-primary text-white">
-                                                    <i class="bx bx-hash me-1"></i>
-                                                    {{ $memo->document_number ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td class="table-title-cell">
-                                                <div class="fw-bold text-primary">{!! $memo->activity_title !!}</div>
-                                                <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
-                                    </td>
-                                            <td>
-                                                @if($memo->responsiblePerson)
-                                                    <div class="fw-bold text-primary">{{ $memo->responsiblePerson->fname }} {{ $memo->responsiblePerson->lname }}</div>
-                                                    <small class="text-muted">Responsible Person</small>
-                                                @else
-                                                    <span class="text-muted">N/A</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $memo->matrix->division->division_name ?? 'N/A' }}</td>
-                                    <td>
-                                        <small>
-                                            {{ $memo->date_from ? $memo->date_from->format('M d, Y') : 'N/A' }}<br>
-                                            <span class="text-muted">to</span><br>
-                                            {{ $memo->date_to ? $memo->date_to->format('M d, Y') : 'N/A' }}
-                                        </small>
-                                    </td>
-                                    <td>
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="bx bx-money me-1"></i>
-                                                    {{ $memo->fundType->name ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                                @php
-                                                    $statusClass = match($memo->overall_status) {
-                                                        'draft' => 'bg-secondary',
-                                                        'pending' => 'bg-warning',
-                                                        'approved' => 'bg-success',
-                                                        'returned' => 'bg-danger',
-                                                        'cancelled' => 'bg-dark',
-                                                        default => 'bg-secondary'
-                                                    };
-                                                @endphp
-                                                <span class="badge {{ $statusClass }} text-white">
-                                                    {{ ucfirst($memo->overall_status) }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex gap-2 justify-content-center">
-                                            <a href="{{ route('activities.single-memos.show', $memo) }}" 
-                                                       class="btn btn-sm btn-outline-info" title="View">
-                                                <i class="bx bx-show"></i>
-                                            </a>
-                                                    @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
-                                                        <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                <i class="bx bx-trash"></i>
-                                                            </button>
-                                                        </form>
-                                                    @endif
-                                                    @if($memo->overall_status === 'approved')
-                                                        <a href="{{ route('activities.single-memos.show', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                            <i class="bx bx-printer"></i>
-                                                        </a>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                                    @endforeach
-                        </tbody>
-                    </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        @if($sharedMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $sharedMemos->hasPages())
-                            <div class="d-flex justify-content-center mt-3">
-                                {{ $sharedMemos->appends(request()->query())->links() }}
-                            </div>
-                        @endif
-                    @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="bx bx-share fs-1 text-info opacity-50"></i>
-                            <p class="mb-0">No shared single memos found.</p>
-                            <small>Single memos from other divisions where you're involved will appear here.</small>
-                        </div>
-                    @endif
+                    @include('activities.single-memos.partials.shared-memos-tab')
                 </div>
             </div>
         </div>
@@ -577,33 +177,201 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Document number filter - submit on Enter key
+    // AJAX filtering - auto-update when filters change
+    function applyFilters() {
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (activeTab) {
+            const tabId = activeTab.id;
+            loadTabData(tabId);
+        }
+    }
+    
+    // Manual filter button click
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    }
+    
+    // Auto-apply filters when they change
+    if (document.getElementById('staff_id')) {
+        document.getElementById('staff_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('division_id')) {
+        document.getElementById('division_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('statusFilter')) {
+        document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    }
+    
+    // Document number filter - apply on Enter key or after 1 second delay
     if (document.getElementById('document_number')) {
+        let documentNumberTimeout;
+        document.getElementById('document_number').addEventListener('input', function() {
+            clearTimeout(documentNumberTimeout);
+            documentNumberTimeout = setTimeout(applyFilters, 1000);
+        });
+        
         document.getElementById('document_number').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                this.form.submit();
+                clearTimeout(documentNumberTimeout);
+                applyFilters();
             }
         });
     }
     
-    // Auto-submit for select filters
-    if (document.getElementById('staff_id')) {
-        document.getElementById('staff_id').addEventListener('change', function() {
-            this.form.submit();
+    // Handle tab switching based on URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    
+    if (tabParam) {
+        // Wait for DOM to be fully loaded, then switch to the appropriate tab
+        setTimeout(() => {
+            switch(tabParam) {
+                case 'all':
+                    const allTab = document.getElementById('allMemos-tab');
+                    if (allTab) {
+                        // Use Bootstrap's tab API to properly switch
+                        const tab = new bootstrap.Tab(allTab);
+                        tab.show();
+                    }
+                    break;
+                case 'my-division':
+                    const myDivisionTab = document.getElementById('mySubmitted-tab');
+                    if (myDivisionTab) {
+                        const tab = new bootstrap.Tab(myDivisionTab);
+                        tab.show();
+                    }
+                    break;
+                case 'shared':
+                    const sharedTab = document.getElementById('sharedMemos-tab');
+                    if (sharedTab) {
+                        const tab = new bootstrap.Tab(sharedTab);
+                        tab.show();
+                    }
+                    break;
+            }
+        }, 100);
+        
+        // Remove the tab parameter from URL after switching to avoid confusion
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.delete('tab');
+        window.history.replaceState({}, '', newUrl);
+    }
+    
+    // Add click handlers to tabs to reset pagination when switching
+    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent Bootstrap's default tab behavior
+            
+            // Remove active class from all tabs and buttons
+            document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
+            
+            // Add active class to clicked button and corresponding pane
+            this.classList.add('active');
+            const tabId = this.getAttribute('aria-controls');
+            const tabPane = document.getElementById(tabId);
+            if (tabPane) {
+                tabPane.classList.add('active', 'show');
+            }
+            
+            loadTabData(tabId);
+        });
+    });
+    
+    // Function to load tab data via AJAX
+    function loadTabData(tabId, page = 1) {
+        console.log('Loading single memo tab data for:', tabId, 'page:', page);
+        
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('page', page);
+        currentUrl.searchParams.set('tab', tabId);
+        
+        // Include current filter values
+        const staffId = document.getElementById('staff_id')?.value;
+        const divisionId = document.getElementById('division_id')?.value;
+        const status = document.getElementById('statusFilter')?.value;
+        const documentNumber = document.getElementById('document_number')?.value;
+        
+        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
+        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
+        if (status) currentUrl.searchParams.set('status', status);
+        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
+        
+        console.log('Single memo request URL:', currentUrl.toString());
+        
+        // Show loading indicator
+        const tabContent = document.getElementById(tabId);
+        if (tabContent) {
+            tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        } else {
+            console.error('Single memo tab content element not found:', tabId);
+        }
+        
+        // Make AJAX request
+        fetch(currentUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Single memo response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Single memo response data:', data);
+            if (data.html) {
+                // Replace tab content with new data
+                if (tabContent) {
+                    tabContent.innerHTML = data.html;
+                    
+                    // Re-attach pagination click handlers
+                    attachPaginationHandlers(tabId);
+                }
+            } else {
+                console.error('No HTML data received for single memos');
+                if (tabContent) {
+                    tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading single memo tab data:', error);
+            if (tabContent) {
+                tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
+            }
         });
     }
     
-    if (document.getElementById('division_id')) {
-        document.getElementById('division_id').addEventListener('change', function() {
-            this.form.submit();
+    // Function to attach pagination click handlers
+    function attachPaginationHandlers(tabId) {
+        const tabContent = document.getElementById(tabId);
+        if (!tabContent) return;
+        
+        // Find pagination links within this tab
+        const paginationLinks = tabContent.querySelectorAll('.pagination a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Extract page number from URL
+                const url = new URL(this.href);
+                const page = url.searchParams.get('page') || 1;
+                
+                // Load tab data with new page
+                loadTabData(tabId, page);
+            });
         });
     }
     
-    if (document.getElementById('statusFilter')) {
-        document.getElementById('statusFilter').addEventListener('change', function() {
-            this.form.submit();
-        });
-    }
+    // Attach initial pagination handlers for all tabs
+    attachPaginationHandlers('mySubmitted');
+    attachPaginationHandlers('allMemos');
+    attachPaginationHandlers('sharedMemos');
 });
 </script>
 @endsection

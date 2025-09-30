@@ -27,7 +27,7 @@ class RequestARFController extends Controller
     /**
      * Display a listing of ARF requests.
      */
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         $currentStaffId = user_session('staff_id');
         
@@ -78,6 +78,23 @@ class RequestARFController extends Controller
         
         $divisions = Division::orderBy('division_name')->get();
         $staff = Staff::active()->get();
+        
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'mySubmitted':
+                    $html = view('request-arf.partials.my-submitted-tab', compact('mySubmittedArfs'))->render();
+                    break;
+                case 'allArfs':
+                    $html = view('request-arf.partials.all-arfs-tab', compact('allArfs'))->render();
+                    break;
+            }
+            
+            return response()->json(['html' => $html]);
+        }
         
         return view('request-arf.index', compact('mySubmittedArfs', 'allArfs', 'divisions', 'staff'));
     }

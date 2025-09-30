@@ -1,0 +1,143 @@
+@if($mySubmittedMemos && $mySubmittedMemos->count() > 0)
+<div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead class="table-success">
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 35%;">Title</th>
+                <th style="width: 8%;">Request Type</th>
+                <th style="width: 10%;">Division</th>
+                <th style="width: 8%;">Fund Type</th>
+                <th style="width: 6%;">Date</th>
+                <th style="width: 8%;">Status</th>
+                <th style="width: 8%;" class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php $count = 1; @endphp
+            @foreach($mySubmittedMemos as $memo)
+                <tr>
+                    <td>{{ $count++ }}</td>
+                    <td>
+                        <div class="text-wrap" style="max-width: 300px;">
+                            @if($memo->document_number)
+                                <small class="text-muted d-block">#{{ $memo->document_number }}</small>
+                            @endif
+                            <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 60) }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-info text-dark">
+                            <i class="bx bx-category me-1"></i>
+                            {{ $memo->requestType->name ?? 'N/A' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="text-wrap" style="max-width: 150px;">
+                            {{ Str::limit($memo->division->division_name ?? 'N/A', 20) }}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-warning text-dark">
+                            <i class="bx bx-money me-1"></i>
+                            {{ $memo->fundType->name ?? 'N/A' }}
+                        </span>
+                    </td>
+                    <td>
+                        @if($memo->date_from && $memo->date_to)
+                            <div class="small">
+                                <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                <div class="text-muted">to {{ \Carbon\Carbon::parse($memo->date_to)->format('M d, Y') }}</div>
+                            </div>
+                        @elseif($memo->date_from)
+                            <div class="small">
+                                <div class="fw-bold text-primary">{{ \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') }}</div>
+                                <div class="text-muted">to N/A</div>
+                            </div>
+                        @else
+                            <span class="text-muted">N/A</span>
+                        @endif
+                    </td>
+                    <td>
+                        @php
+                            $statusBadgeClass = [
+                                'draft' => 'bg-secondary',
+                                'pending' => 'bg-warning',
+                                'approved' => 'bg-success',
+                                'rejected' => 'bg-danger',
+                                'returned' => 'bg-info',
+                                ];
+                                $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
+                                
+                                // Get workflow information
+                                $approvalLevel = $memo->approval_level ?? 'N/A';
+                                $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
+                                $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
+                        @endphp
+                            
+                            @if($memo->overall_status === 'pending')
+                                <!-- Structured display for pending status -->
+                                <div class="text-center">
+                                    <span class="badge {{ $statusClass }} mb-1">
+                                        {{ strtoupper($memo->overall_status) }}
+                                    </span>
+                                    <br>
+                                    
+                                    <small class="text-muted d-block">{{ $workflowRole }}</small>
+                                    @if($actorName !== 'N/A')
+                                        <small class="text-muted d-block">{{ $actorName }}</small>
+                                    @endif
+                                </div>
+                            @else
+                                <!-- Standard badge for other statuses -->
+                                <span class="badge {{ $statusClass }}">
+                                    {{ strtoupper($memo->overall_status ?? 'draft') }}
+                                </span>
+                            @endif
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group">
+                            <a href="{{ route('special-memo.show', $memo) }}" 
+                               class="btn btn-sm btn-outline-info" title="View">
+                                <i class="bx bx-show"></i>
+                            </a>
+                            @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
+                                <a href="{{ route('special-memo.edit', $memo) }}" 
+                                   class="btn btn-sm btn-outline-warning" title="Edit">
+                                    <i class="bx bx-edit"></i>
+                                </a>
+                                <form action="{{ route('special-memo.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                        <i class="bx bx-trash"></i>
+                                    </button>
+                                </form>
+                            @endif
+                            @if($memo->overall_status === 'approved')
+                                <a href="{{ route('special-memo.print', $memo) }}" 
+                                   class="btn btn-sm btn-outline-success" title="Print" target="_blank">
+                                    <i class="bx bx-printer"></i>
+                                </a>
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+@if($mySubmittedMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $mySubmittedMemos->hasPages())
+    <div class="d-flex justify-content-center mt-3">
+        {{ $mySubmittedMemos->appends(request()->query())->links() }}
+    </div>
+@endif
+@else
+<div class="text-center py-4 text-muted">
+    <i class="bx bx-file-alt fs-1 text-success opacity-50"></i>
+    <p class="mb-0">No submitted special memos found.</p>
+    <small>Your submitted special memos will appear here.</small>
+</div>
+@endif

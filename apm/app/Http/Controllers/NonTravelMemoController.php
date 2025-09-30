@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Log;
 class NonTravelMemoController extends Controller
 {
     /** List all memos with optional filters */
-    public function index(Request $request): View
+    public function index(Request $request)
     {
             //  dd(ApprovalService::canTakeAction(new NonTravelMemo(),user_session('staff_id')));
         // Cache lookup tables for 60 minutes
@@ -54,6 +54,9 @@ class NonTravelMemoController extends Controller
         }
         if ($request->filled('division_id')) {
             $mySubmittedQuery->where('division_id', $request->division_id);
+        }
+        if ($request->filled('staff_id')) {
+            $mySubmittedQuery->where('staff_id', $request->staff_id);
         }
         if ($request->filled('status')) {
             $mySubmittedQuery->where('overall_status', $request->status);
@@ -93,6 +96,94 @@ class NonTravelMemoController extends Controller
             }
 
             $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
+        }
+
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            \Log::info('AJAX request received in NonTravelMemoController index', [
+                'tab' => $request->get('tab'),
+                'all_params' => $request->all()
+            ]);
+            
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            // Rebuild queries with filters for AJAX requests
+            $mySubmittedQuery = NonTravelMemo::with([
+                'staff', 
+                'division', 
+                'nonTravelMemoCategory', 
+                'fundType',
+                'forwardWorkflow.workflowDefinitions.approvers.staff'
+            ])
+                ->where('staff_id', $currentStaffId);
+
+            // Apply filters to my submitted memos
+            if ($request->filled('category_id')) {
+                $mySubmittedQuery->where('non_travel_memo_category_id', $request->category_id);
+            }
+            if ($request->filled('division_id')) {
+                $mySubmittedQuery->where('division_id', $request->division_id);
+            }
+            if ($request->filled('staff_id')) {
+                $mySubmittedQuery->where('staff_id', $request->staff_id);
+            }
+            if ($request->filled('status')) {
+                $mySubmittedQuery->where('overall_status', $request->status);
+            }
+            if ($request->filled('document_number')) {
+                $mySubmittedQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+            }
+
+            $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
+
+            // Tab 2: All Non-Travel Memos (visible to users with permission 87)
+            $allMemos = collect();
+            if (in_array(87, user_session('permissions', []))) {
+                $allMemosQuery = NonTravelMemo::with([
+                    'staff', 
+                    'division', 
+                    'nonTravelMemoCategory', 
+                    'fundType',
+                    'forwardWorkflow.workflowDefinitions.approvers.staff'
+                ]);
+
+                // Apply filters to all memos
+                if ($request->filled('staff_id')) {
+                    $allMemosQuery->where('staff_id', $request->staff_id);
+                }
+                if ($request->filled('category_id')) {
+                    $allMemosQuery->where('non_travel_memo_category_id', $request->category_id);
+                }
+                if ($request->filled('division_id')) {
+                    $allMemosQuery->where('division_id', $request->division_id);
+                }
+                if ($request->filled('status')) {
+                    $allMemosQuery->where('overall_status', $request->status);
+                }
+                if ($request->filled('document_number')) {
+                    $allMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+                }
+
+                $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
+            }
+            
+            switch($tab) {
+                case 'mySubmitted':
+                    $html = view('non-travel.partials.my-submitted-tab', compact(
+                        'mySubmittedMemos'
+                    ))->render();
+                    break;
+                case 'allMemos':
+                    $html = view('non-travel.partials.all-memos-tab', compact(
+                        'allMemos'
+                    ))->render();
+                    break;
+            }
+            
+            \Log::info('Generated HTML length for non-travel', ['html_length' => strlen($html)]);
+            
+            return response()->json(['html' => $html]);
         }
 
         return view('non-travel.index', compact(

@@ -128,133 +128,7 @@
                             </div>
                         </div>
                         
-                        @if($pendingMemos && $pendingMemos->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0" id="pendingTable">
-                                    <thead class="table-warning">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Title</th>
-                                            <th>Request Type</th>
-                                            <th>Staff Member</th>
-                                            <th>Division</th>
-                                            <th>Date</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($pendingMemos as $memo)
-                                            <tr>
-                                                <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                                    @if($memo->document_number)
-                                                        <small class="text-muted">#{{ $memo->document_number }}</small>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-info text-dark">
-                                                        <i class="bx bx-category me-1"></i>
-                                                        {{ $memo->requestType->name ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    @if($memo->staff)
-                                                        {{ $memo->staff->fname }} {{ $memo->staff->lname }}
-                                                    @else
-                                                        <span class="text-muted">Not assigned</span>
-                                                    @endif
-                                                </td>
-                                                <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
-                                                <td>{{ $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') : 'N/A' }}</td>
-                                                <td>
-                                                    @php
-                                                        $statusBadgeClass = [
-                                                            'draft' => 'bg-secondary',
-                                                            'pending' => 'bg-warning',
-                                                            'approved' => 'bg-success',
-                                                            'rejected' => 'bg-danger',
-                                                            'returned' => 'bg-info',
-                                                        ];
-                                                        $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                        
-                                                        // Get workflow information using helper function
-                                                        $workflowInfo = $getWorkflowInfo($memo);
-                                                        $approvalLevel = $workflowInfo['approvalLevel'];
-                                                        $workflowRole = $workflowInfo['workflowRole'];
-                                                        $actorName = $workflowInfo['actorName'];
-                                                    @endphp
-                                                    
-                                                    @if($memo->overall_status === 'pending')
-                                                        <!-- Structured display for pending status -->
-                                                        <div class="text-center">
-                                                            <span class="badge {{ $statusClass }} mb-1">
-                                                                {{ strtoupper($memo->overall_status) }}
-                                                            </span>
-                                                            <br>
-                                                          
-                                                            <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                            @if($actorName !== 'N/A')
-                                                                <small class="text-muted d-block">{{ $actorName }}</small>
-                                                            @endif
-                                                        </div>
-                                                    @else
-                                                        <!-- Standard badge for other statuses -->
-                                                        <span class="badge {{ $statusClass }}">
-                                                            {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                                        </span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="btn-group">
-                                                        <a href="{{ route('activities.single-memos.show', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
-                                                        </a>
-                                                        @if(can_edit_memo($memo))
-                                                            <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
-                                                               class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
-                                                            </a>
-                                                        @endif
-                                                        @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
-                                                            <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                    <i class="bx bx-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                        @if($memo->overall_status === 'approved')
-                                                            <a href="{{ route('activities.single-memos.print', $memo) }}" 
-                                                               class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                                <i class="bx bx-printer"></i>
-                                                            </a>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Pagination -->
-                            @if($pendingMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $pendingMemos->hasPages())
-                                <div class="d-flex justify-content-center mt-3">
-                                    {{ $pendingMemos->appends(request()->query())->links() }}
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-time fs-1 text-warning opacity-50"></i>
-                                <p class="mb-0">No pending single memos found.</p>
-                                <small>Single memos awaiting your approval will appear here.</small>
-                            </div>
-                        @endif
+                        @include('activities.single-memos.partials.pending-approvals-tab')
                     </div>
                 </div>
 
@@ -270,133 +144,7 @@
                             </div>
                         </div>
                         
-                        @if($approvedByMe && $approvedByMe->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0" id="approvedTable">
-                                    <thead class="table-success">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Title</th>
-                                            <th>Request Type</th>
-                                            <th>Staff Member</th>
-                                            <th>Division</th>
-                                            <th>Date</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($approvedByMe as $memo)
-                                            <tr>
-                                                <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
-                                                    @if($memo->document_number)
-                                                        <small class="text-muted">#{{ $memo->document_number }}</small>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-info text-dark">
-                                                        <i class="bx bx-category me-1"></i>
-                                                        {{ $memo->requestType->name ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    @if($memo->staff)
-                                                        {{ $memo->staff->fname }} {{ $memo->staff->lname }}
-                                                    @else
-                                                        <span class="text-muted">Not assigned</span>
-                                                    @endif
-                                                </td>
-                                                <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
-                                                <td>{{ $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') : 'N/A' }}</td>
-                                                <td>
-                                                    @php
-                                                        $statusBadgeClass = [
-                                                            'draft' => 'bg-secondary',
-                                                            'pending' => 'bg-warning',
-                                                            'approved' => 'bg-success',
-                                                            'rejected' => 'bg-danger',
-                                                            'returned' => 'bg-info',
-                                                        ];
-                                                        $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                        
-                                                        // Get workflow information using helper function
-                                                        $workflowInfo = $getWorkflowInfo($memo);
-                                                        $approvalLevel = $workflowInfo['approvalLevel'];
-                                                        $workflowRole = $workflowInfo['workflowRole'];
-                                                        $actorName = $workflowInfo['actorName'];
-                                                    @endphp
-                                                    
-                                                    @if($memo->overall_status === 'pending')
-                                                        <!-- Structured display for pending status -->
-                                                        <div class="text-center">
-                                                            <span class="badge {{ $statusClass }} mb-1">
-                                                                {{ strtoupper($memo->overall_status) }}
-                                                            </span>
-                                                            <br>
-                                                          
-                                                            <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                            @if($actorName !== 'N/A')
-                                                                <small class="text-muted d-block">{{ $actorName }}</small>
-                                                            @endif
-                                                        </div>
-                                                    @else
-                                                        <!-- Standard badge for other statuses -->
-                                                        <span class="badge {{ $statusClass }}">
-                                                            {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                                        </span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="btn-group">
-                                                        <a href="{{ route('activities.single-memos.show', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
-                                                        </a>
-                                                        @if(can_edit_memo($memo))
-                                                            <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
-                                                               class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
-                                                            </a>
-                                                        @endif
-                                                        @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
-                                                            <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                    <i class="bx bx-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                        @if($memo->overall_status === 'approved')
-                                                            <a href="{{ route('matrices.activities.memo-pdf', [$memo->matrix, $memo]) }}" 
-                                                               class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                                <i class="bx bx-printer"></i>
-                                                            </a>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Pagination -->
-                            @if($approvedByMe instanceof \Illuminate\Pagination\LengthAwarePaginator && $approvedByMe->hasPages())
-                                <div class="d-flex justify-content-center mt-3">
-                                    {{ $approvedByMe->appends(request()->query())->links() }}
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-check-circle fs-1 text-success opacity-50"></i>
-                                <p class="mb-0">No approved single memos found.</p>
-                                <small>Single memos you have approved will appear here.</small>
-                            </div>
-                        @endif
+                        @include('activities.single-memos.partials.approved-by-me-tab')
                     </div>
                 </div>
             </div>
@@ -413,35 +161,133 @@
             });
         }
 
-        // Filter functionality
-        $('#applyFilters').on('click', function() {
-            const requestType = $('#requestTypeFilter').val();
-            const division = $('#divisionFilter').val();
-            const staff = $('#staffFilter').val();
+        // AJAX filtering - auto-update when filters change
+        function applyFilters() {
+            const activeTab = document.querySelector('.tab-pane.active');
+            if (activeTab) {
+                const tabId = activeTab.id;
+                loadTabData(tabId);
+            }
+        }
+        
+        // Manual filter button click
+        if (document.getElementById('applyFilters')) {
+            document.getElementById('applyFilters').addEventListener('click', applyFilters);
+        }
+        
+        // Auto-apply filters when they change
+        if (document.getElementById('requestTypeFilter')) {
+            document.getElementById('requestTypeFilter').addEventListener('change', applyFilters);
+        }
+        
+        if (document.getElementById('divisionFilter')) {
+            document.getElementById('divisionFilter').addEventListener('change', applyFilters);
+        }
+        
+        if (document.getElementById('staffFilter')) {
+            document.getElementById('staffFilter').addEventListener('change', applyFilters);
+        }
 
-            $('#pendingTable tbody tr').each(function() {
-                let showRow = true;
-                const row = $(this);
-
-                if (requestType && row.find('td:nth-child(3) .badge').text().trim() !== requestType) {
-                    showRow = false;
+        // Function to load tab data via AJAX
+        function loadTabData(tabId, page = 1) {
+            console.log('Loading pending approvals tab data for:', tabId, 'page:', page);
+            
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('page', page);
+            currentUrl.searchParams.set('tab', tabId);
+            
+            // Include current filter values
+            const requestType = document.getElementById('requestTypeFilter')?.value;
+            const division = document.getElementById('divisionFilter')?.value;
+            const staff = document.getElementById('staffFilter')?.value;
+            
+            if (requestType) currentUrl.searchParams.set('request_type', requestType);
+            if (division) currentUrl.searchParams.set('division', division);
+            if (staff) currentUrl.searchParams.set('staff', staff);
+            
+            console.log('Pending approvals request URL:', currentUrl.toString());
+            
+            // Show loading indicator
+            const tabContent = document.getElementById(tabId);
+            if (tabContent) {
+                tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            }
+            
+            fetch(currentUrl.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 }
-
-                if (division && row.find('td:nth-child(5)').text().trim() !== division) {
-                    showRow = false;
+            })
+            .then(response => {
+                console.log('Pending approvals response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Pending approvals response data:', data);
+                if (data.html) {
+                    if (tabContent) {
+                        tabContent.innerHTML = data.html;
+                        attachPaginationHandlers(tabId);
+                    }
+                } else {
+                    console.error('No HTML data received for pending approvals');
+                    if (tabContent) {
+                        tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
+                    }
                 }
-
-                if (staff && row.find('td:nth-child(4)').text().trim() !== staff) {
-                    showRow = false;
+            })
+            .catch(error => {
+                console.error('Error loading pending approvals tab data:', error);
+                if (tabContent) {
+                    tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
                 }
-
-                row.toggle(showRow);
             });
+        }
+        
+        function attachPaginationHandlers(tabId) {
+            const tabContent = document.getElementById(tabId);
+            if (!tabContent) return;
+            
+            const paginationLinks = tabContent.querySelectorAll('.pagination a');
+            paginationLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const url = new URL(this.href);
+                    const page = url.searchParams.get('page') || 1;
+                    loadTabData(tabId, page);
+                });
+            });
+        }
 
-            // Update count
-            const visibleRows = $('#pendingTable tbody tr:visible').length;
-            $('#pending-tab .badge').text(visibleRows);
+        // Add click handlers to tabs to load data via AJAX
+        const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault(); // Prevent Bootstrap's default tab behavior
+                
+                // Remove active class from all tabs and buttons
+                document.querySelectorAll('#memoTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('#memoTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
+                
+                // Add active class to clicked button and corresponding pane
+                this.classList.add('active');
+                const tabId = this.getAttribute('aria-controls');
+                const tabPane = document.getElementById(tabId);
+                if (tabPane) {
+                    tabPane.classList.add('active', 'show');
+                }
+                
+                loadTabData(tabId);
+            });
         });
+        
+        // Load data for the default active tab
+        const activeTabButton = document.querySelector('#memoTabs .nav-link.active');
+        if (activeTabButton) {
+            loadTabData(activeTabButton.getAttribute('aria-controls'));
+        }
     });
     </script>
 @endsection

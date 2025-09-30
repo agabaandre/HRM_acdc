@@ -76,10 +76,10 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label for="request_status" class="form-label fw-semibold mb-1">
+                <label for="status" class="form-label fw-semibold mb-1">
                     <i class="bx bx-info-circle me-1 text-success"></i> Status
                 </label>
-                <select name="status" id="request_status" class="form-select">
+                <select name="status" id="status" class="form-select">
                     <option value="">All Statuses</option>
                     <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -199,8 +199,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('service_type').addEventListener('change', applyFilters);
     }
     
-    if (document.getElementById('request_status')) {
-        document.getElementById('request_status').addEventListener('change', applyFilters);
+    if (document.getElementById('status')) {
+        document.getElementById('status').addEventListener('change', applyFilters);
     }
 
     // Function to load tab data via AJAX
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const serviceType = document.getElementById('service_type')?.value;
-        const status = document.getElementById('request_status')?.value;
+        const status = document.getElementById('status')?.value;
         
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);

@@ -46,26 +46,13 @@
             </div>
 
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
-            <form action="{{ route('non-travel.index') }}" method="GET" class="row g-3 align-items-end w-100">
+            <div class="row g-3 align-items-end w-100">
                 <div class="col-md-2">
                     <label for="document_number" class="form-label fw-semibold mb-1">
                         <i class="bx bx-file me-1 text-success"></i> Document #
                     </label>
                     <input type="text" name="document_number" id="document_number" class="form-control" 
                            value="{{ request('document_number') }}" placeholder="Doc #" style="width: 100%;">
-                </div>
-                <div class="col-md-2">
-                    <label for="category_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-category me-1 text-success"></i> Category
-                    </label>
-                    <select name="category_id" id="category_id" class="form-select select2" style="width: 100%;">
-                        <option value="">All Categories</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
-                                {{ $category->name }}
-                            </option>
-                        @endforeach
-                    </select>
                 </div>
                  {{-- @php
                     dd($divisions);
@@ -97,10 +84,10 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="status" class="form-label fw-semibold mb-1">
+                    <label for="memo_status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
-                    <select name="status" id="status" class="form-select select2" style="width: 100%;">
+                    <select name="status" id="memo_status" class="form-select select2" style="width: 100%;">
                         <option value="">All Statuses</option>
                         <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -110,7 +97,7 @@
                     </select>
                 </div>
                 <div class="col-auto d-flex align-items-end">
-                    <button type="submit" class="btn btn-success btn-sm" id="applyFilters">
+                    <button type="button" class="btn btn-success btn-sm" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
@@ -119,7 +106,7 @@
                         <i class="bx bx-reset me-1"></i> Reset
                     </a>
                 </div>
-                </form>
+            </div>
             </div>
         </div>
     </div>
@@ -163,132 +150,7 @@
                         </div>
                     </div>
                     
-                    @if($mySubmittedMemos && $mySubmittedMemos->count() > 0)
-        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-success">
-                                    <tr>
-                                        <th style="width: 5%;">#</th>
-                                        <th style="width: 25%;">Title</th>
-                                        <th style="width: 10%;">Category</th>
-                                        <th style="width: 12%;">Division</th>
-                                        <th style="width: 8%;">Fund Type</th>
-                                        <th style="width: 10%;">Date</th>
-                                        <th style="width: 10%;">Status</th>
-                                        <th style="width: 10%;" class="text-center">Actions</th>
-                                    </tr>
-                </thead>
-                <tbody>
-                                    @php $count = 1; @endphp
-                                    @foreach($mySubmittedMemos as $memo)
-                        <tr>
-                                            <td>{{ $count++ }}</td>
-                            <td>
-                                <div class="text-wrap" style="max-width: 250px;">
-                                    <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 60) }}</div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-info text-dark">
-                                    <i class="bx bx-category me-1"></i>
-                                    {{ $memo->nonTravelMemoCategory->name ?? 'N/A' }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="text-wrap" style="max-width: 150px;">
-                                    {{ Str::limit($memo->division->division_name ?? 'N/A', 20) }}
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-warning text-dark">
-                                    <i class="bx bx-money me-1"></i>
-                                    {{ $memo->fundType->name ?? 'N/A' }}
-                                </span>
-                            </td>
-                                            <td>{{ $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('M d, Y') : 'N/A' }}</td>
-                                            <td>
-                                                @php
-                                                    $statusBadgeClass = [
-                                                        'draft' => 'bg-secondary',
-                                                        'pending' => 'bg-warning',
-                                                        'approved' => 'bg-success',
-                                                        'rejected' => 'bg-danger',
-                                                        'returned' => 'bg-info',
-                                                    ];
-                                                    $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                    
-                                                    // Get workflow information
-                                                    $approvalLevel = $memo->approval_level ?? 'N/A';
-                                                    $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
-                                                    $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
-                                                @endphp
-                                                
-                                                @if($memo->overall_status === 'pending')
-                                                    <!-- Structured display for pending status -->
-                                                    <div class="text-start">
-                                                        <span class="badge {{ $statusClass }} mb-1">
-                                                            {{ strtoupper($memo->overall_status) }}
-                                                        </span>
-                                                        <br>
-                                                      
-                                                        <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                        @if($actorName !== 'N/A')
-                                                            <small class="text-muted d-block">{{ $actorName }}</small>
-                                                        @endif
-                                                    </div>
-                                                @else
-                                                    <!-- Standard badge for other statuses -->
-                                                    <span class="badge {{ $statusClass }}">
-                                                        {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                </span>
-                                                @endif
-                            </td>
-                                            <td class="text-center">
-                                                <div class="btn-group">
-                                    <a href="{{ route('non-travel.show', $memo) }}" 
-                                                       class="btn btn-sm btn-outline-info" title="View">
-                                                        <i class="bx bx-show"></i>
-                                                    </a>
-                                                    @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
-                                    <a href="{{ route('non-travel.edit', $memo) }}"
-                                                           class="btn btn-sm btn-outline-warning" title="Edit">
-                                        <i class="bx bx-edit"></i>
-                                    </a>
-                                    <form action="{{ route('non-travel.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                            <i class="bx bx-trash"></i>
-                                        </button>
-                                    </form>
-                                                    @endif
-                                                    @if($memo->overall_status === 'approved')
-                                                        <a href="{{ route('non-travel.print', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                            <i class="bx bx-printer"></i>
-                                                        </a>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                                                    </div>
-                        
-                        <!-- Pagination -->
-                        @if($mySubmittedMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $mySubmittedMemos->hasPages())
-                            <div class="d-flex justify-content-center mt-3">
-                                {{ $mySubmittedMemos->appends(request()->query())->links() }}
-                                                </div>
-                        @endif
-                    @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="bx bx-file-alt fs-1 text-success opacity-50"></i>
-                            <p class="mb-0">No submitted memos found.</p>
-                            <small>Your submitted non-travel memos will appear here.</small>
-                                            </div>
-                    @endif
+                    @include('non-travel.partials.my-submitted-tab')
                                             </div>
                                         </div>
 
@@ -310,142 +172,7 @@
                             </div>
                         </div>
                         
-                        @if($allMemos && $allMemos->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0">
-                                    <thead class="table-primary">
-                                        <tr>
-                                            <th style="width: 5%;">#</th>
-                                            <th style="width: 20%;">Title</th>
-                                            <th style="width: 8%;">Category</th>
-                                            <th style="width: 12%;">Responsible Staff</th>
-                                            <th style="width: 10%;">Division</th>
-                                            <th style="width: 8%;">Fund Type</th>
-                                            <th style="width: 8%;">Date</th>
-                                            <th style="width: 9%;">Status</th>
-                                            <th style="width: 10%;" class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @php $count = 1; @endphp
-                                        @foreach($allMemos as $memo)
-                                            <tr>
-                                                <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 200px;">
-                                                        <div class="fw-bold text-primary">{{ Str::limit($memo->activity_title, 50) }}</div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-info text-dark">
-                                                        <i class="bx bx-category me-1"></i>
-                                                        {{ $memo->nonTravelMemoCategory->name ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 120px;">
-                                                        @if($memo->staff)
-                                                            {{ Str::limit($memo->staff->fname . ' ' . $memo->staff->lname, 15) }}
-                                                        @else
-                                                            <span class="text-muted">Not assigned</span>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="text-wrap" style="max-width: 120px;">
-                                                        {{ Str::limit($memo->division->division_name ?? 'N/A', 15) }}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-warning text-dark">
-                                                        <i class="bx bx-money me-1"></i>
-                                                        {{ $memo->fundType->name ?? 'N/A' }}
-                                                    </span>
-                                                </td>
-                                                <td>{{ $memo->memo_date ? \Carbon\Carbon::parse($memo->memo_date)->format('M d, Y') : 'N/A' }}</td>
-                                                <td>
-                                                    @php
-                                                        $statusBadgeClass = [
-                                                            'draft' => 'bg-secondary',
-                                                            'pending' => 'bg-warning',
-                                                            'approved' => 'bg-success',
-                                                            'rejected' => 'bg-danger',
-                                                            'returned' => 'bg-info',
-                                                        ];
-                                                        $statusClass = $statusBadgeClass[$memo->overall_status] ?? 'bg-secondary';
-                                                        
-                                                        // Get workflow information
-                                                        $approvalLevel = $memo->approval_level ?? 'N/A';
-                                                        $workflowRole = $memo->workflow_definition ? ($memo->workflow_definition->role ?? 'N/A') : 'N/A';
-                                                        $actorName = $memo->current_actor ? ($memo->current_actor->fname . ' ' . $memo->current_actor->lname) : 'N/A';
-                                                    @endphp
-                                                    
-                                                    @if($memo->overall_status === 'pending')
-                                                        <!-- Structured display for pending status -->
-                                                        <div class="text-start">
-                                                            <span class="badge {{ $statusClass }} mb-1">
-                                                                {{ strtoupper($memo->overall_status) }}
-                                                            </span>
-                                                            <br>
-                                                        
-                                                            <small class="text-muted d-block">{{ $workflowRole }}</small>
-                                                            @if($actorName !== 'N/A')
-                                                                <small class="text-muted d-block">{{ $actorName }}</small>
-                                                            @endif
-                                                        </div>
-                                                    @else
-                                                        <!-- Standard badge for other statuses -->
-                                                        <span class="badge {{ $statusClass }}">
-                                                            {{ strtoupper($memo->overall_status ?? 'draft') }}
-                                                        </span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="btn-group">
-                                                        <a href="{{ route('non-travel.show', $memo) }}" 
-                                                           class="btn btn-sm btn-outline-info" title="View">
-                                                            <i class="bx bx-show"></i>
-                                                        </a>
-                                                        @if(($memo->overall_status == 'draft' || $memo->overall_status == 'returned') && $memo->staff_id == user_session('staff_id'))
-                                                            <a href="{{ route('non-travel.edit', $memo) }}" 
-                                                               class="btn btn-sm btn-outline-warning" title="Edit">
-                                                                <i class="bx bx-edit"></i>
-                                                            </a>
-                                                            <form action="{{ route('non-travel.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this memo? This action cannot be undone.');">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                                    <i class="bx bx-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                        @if($memo->overall_status === 'approved')
-                                                            <a href="{{ route('non-travel.print', $memo) }}" 
-                                                               class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                                                <i class="bx bx-printer"></i>
-                                                            </a>
-                                                        @endif
-                                </div>
-                            </td>
-                        </tr>
-                                        @endforeach
-                </tbody>
-            </table>
-                            </div>
-                            
-                            <!-- Pagination -->
-                            @if($allMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $allMemos->hasPages())
-                                <div class="d-flex justify-content-center mt-3">
-                                    {{ $allMemos->appends(request()->query())->links() }}
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center py-4 text-muted">
-                                <i class="bx bx-grid fs-1 text-primary opacity-50"></i>
-                                <p class="mb-0">No non-travel memos found.</p>
-                                <small>Non-travel memos will appear here once they are created.</small>
-                            </div>
-                        @endif
+                        @include('non-travel.partials.all-memos-tab')
         </div>
     </div>
             @endif
@@ -455,38 +182,160 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Document number filter - submit on Enter key
+    // Prevent any form submissions
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            applyFilters();
+        });
+    });
+    
+    // AJAX filtering - auto-update when filters change
+    function applyFilters() {
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (activeTab) {
+            const tabId = activeTab.id;
+            loadTabData(tabId);
+        }
+    }
+    
+    // Manual filter button click
+    if (document.getElementById('applyFilters')) {
+        document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    }
+    
+    // Auto-apply filters when they change
+    
+    if (document.getElementById('staff_id')) {
+        document.getElementById('staff_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('division_id')) {
+        document.getElementById('division_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('memo_status')) {
+        document.getElementById('memo_status').addEventListener('change', applyFilters);
+    }
+    
+    // Document number filter - apply on Enter key or after 1 second delay
     if (document.getElementById('document_number')) {
+        let documentNumberTimeout;
+        document.getElementById('document_number').addEventListener('input', function() {
+            clearTimeout(documentNumberTimeout);
+            documentNumberTimeout = setTimeout(applyFilters, 1000);
+        });
+        
         document.getElementById('document_number').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                this.form.submit();
+                clearTimeout(documentNumberTimeout);
+                applyFilters();
             }
         });
     }
     
-    // Auto-submit for select filters
-    if (document.getElementById('category_id')) {
-        document.getElementById('category_id').addEventListener('change', function() {
-            this.form.submit();
+    // Function to load tab data via AJAX
+    function loadTabData(tabId, page = 1) {
+        console.log('Loading non-travel tab data for:', tabId, 'page:', page);
+        
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('page', page);
+        currentUrl.searchParams.set('tab', tabId);
+        
+        // Include current filter values
+        const documentNumber = document.getElementById('document_number')?.value;
+        const staffId = document.getElementById('staff_id')?.value;
+        const divisionId = document.getElementById('division_id')?.value;
+        const status = document.getElementById('memo_status')?.value;
+        
+        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
+        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
+        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
+        if (status) currentUrl.searchParams.set('status', status);
+        
+        console.log('Non-travel request URL:', currentUrl.toString());
+        
+        // Show loading indicator
+        const tabContent = document.getElementById(tabId);
+        if (tabContent) {
+            tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        }
+        
+        fetch(currentUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Non-travel response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Non-travel response data:', data);
+            if (data.html) {
+                if (tabContent) {
+                    tabContent.innerHTML = data.html;
+                    attachPaginationHandlers(tabId);
+                }
+            } else {
+                console.error('No HTML data received for non-travel');
+                if (tabContent) {
+                    tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading non-travel tab data:', error);
+            if (tabContent) {
+                tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
+            }
         });
     }
     
-    if (document.getElementById('staff_id')) {
-        document.getElementById('staff_id').addEventListener('change', function() {
-            this.form.submit();
+    function attachPaginationHandlers(tabId) {
+        const tabContent = document.getElementById(tabId);
+        if (!tabContent) return;
+        
+        const paginationLinks = tabContent.querySelectorAll('.pagination a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const url = new URL(this.href);
+                const page = url.searchParams.get('page') || 1;
+                loadTabData(tabId, page);
+            });
         });
     }
-    
-    if (document.getElementById('division_id')) {
-        document.getElementById('division_id').addEventListener('change', function() {
-            this.form.submit();
+
+    // Add click handlers to tabs to load data via AJAX
+    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent Bootstrap's default tab behavior
+            
+            // Remove active class from all tabs and buttons
+            document.querySelectorAll('#memoTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#memoTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
+            
+            // Add active class to clicked button and corresponding pane
+            this.classList.add('active');
+            const tabId = this.getAttribute('aria-controls');
+            const tabPane = document.getElementById(tabId);
+            if (tabPane) {
+                tabPane.classList.add('active', 'show');
+            }
+            
+            loadTabData(tabId);
         });
-    }
+    });
     
-    if (document.getElementById('status')) {
-        document.getElementById('status').addEventListener('change', function() {
-            this.form.submit();
-        });
+    // Load data for the default active tab
+    const activeTabButton = document.querySelector('#memoTabs .nav-link.active');
+    if (activeTabButton) {
+        loadTabData(activeTabButton.getAttribute('aria-controls'));
     }
     });
 </script>
