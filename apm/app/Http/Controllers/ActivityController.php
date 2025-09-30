@@ -1695,12 +1695,8 @@ class ActivityController extends Controller
             $myMemosQuery->where('activities.division_id', $userDivisionId);
         }
         
-        // Hide draft memos from non-creators and non-responsible persons
-        $myMemosQuery->where(function ($q) use ($currentStaffId) {
-            $q->where('activities.overall_status', '!=', 'draft')
-              ->orWhere('activities.staff_id', $currentStaffId)
-              ->orWhere('activities.responsible_person_id', $currentStaffId);
-        });
+        // Show all single memos regardless of status
+        // Removed draft filtering to show all single memos
         
         // Sort by most recent quarter and year from matrix, then by created_at
         $myMemosQuery->join('matrices', 'activities.matrix_id', '=', 'matrices.id')
@@ -1720,12 +1716,8 @@ class ActivityController extends Controller
         // Query for "All Single Memos" tab - no session restrictions
         $allMemosQuery = clone $baseQuery;
         
-        // Only hide draft memos from non-creators and non-responsible persons
-        $allMemosQuery->where(function ($q) use ($currentStaffId) {
-            $q->where('activities.overall_status', '!=', 'draft')
-              ->orWhere('activities.staff_id', $currentStaffId)
-              ->orWhere('activities.responsible_person_id', $currentStaffId);
-        });
+        // Show all single memos regardless of status
+        // Removed draft filtering to show all single memos
         
         $allMemos = $allMemosQuery->paginate(10);
         
@@ -1756,12 +1748,8 @@ class ActivityController extends Controller
                 ->orderBy('activities.created_at', 'desc')
                 ->select('activities.*'); // Select only activity columns to avoid conflicts
             
-            // Hide draft memos from non-creators and non-responsible persons
-            $sharedMemosQuery->where(function ($q) use ($currentStaffId) {
-                $q->where('activities.overall_status', '!=', 'draft')
-                  ->orWhere('activities.staff_id', $currentStaffId)
-                  ->orWhere('activities.responsible_person_id', $currentStaffId);
-            });
+            // Show all single memos regardless of status
+            // Removed draft filtering to show all single memos
         }
         
         $sharedMemos = $sharedMemosQuery->paginate(10);
