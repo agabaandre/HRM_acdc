@@ -213,11 +213,20 @@
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
-                                                        @if($memo->overall_status === 'draft' && $memo->staff_id === user_session('staff_id'))
-                                                            <a href="{{ route('activities.single-memos.edit', $memo) }}" 
+                                                        @if(can_edit_memo($memo))
+                                                            <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>
                                                             </a>
+                                                        @endif
+                                                        @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
+                                                            <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                                    <i class="bx bx-trash"></i>
+                                                                </button>
+                                                            </form>
                                                         @endif
                                                         @if($memo->overall_status === 'approved')
                                                             <a href="{{ route('activities.single-memos.print', $memo) }}" 
@@ -346,11 +355,20 @@
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
-                                                        @if($memo->overall_status === 'draft' && $memo->staff_id === user_session('staff_id'))
-                                                            <a href="{{ route('activities.single-memos.edit', $memo) }}" 
+                                                        @if(can_edit_memo($memo))
+                                                            <a href="{{ route('activities.single-memos.edit', [$memo->matrix, $memo]) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>
                                                             </a>
+                                                        @endif
+                                                        @if($memo->responsible_person_id == user_session('staff_id') && in_array($memo->overall_status, ['draft', 'returned']))
+                                                            <form action="{{ route('activities.single-memos.destroy', $memo) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this single memo? This action cannot be undone.')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                                    <i class="bx bx-trash"></i>
+                                                                </button>
+                                                            </form>
                                                         @endif
                                                         @if($memo->overall_status === 'approved')
                                                             <a href="{{ route('matrices.activities.memo-pdf', [$memo->matrix, $memo]) }}" 
