@@ -195,7 +195,7 @@
                                                 <small class="text-muted">{{ Str::limit(strip_tags($memo->background), 50) }}</small>
                                             </td>
                                             <td>
-                                                <div class="fw-bold text-dark">{{ $memo->responsiblePerson->first_name ?? 'N/A' }} {{ $memo->responsiblePerson->last_name ?? '' }}</div>
+                                                <div class="fw-bold text-dark">{{ $memo->responsiblePerson->fname ?? 'N/A' }} {{ $memo->responsiblePerson->lname ?? '' }}</div>
                                                 <small class="text-muted">{{ $memo->responsiblePerson->email ?? 'N/A' }}</small>
                                             </td>
                                             <td>{{ $memo->matrix->division->division_name ?? 'N/A' }}</td>
