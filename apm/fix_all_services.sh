@@ -26,7 +26,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
+User=andrew
 Group=www-data
 WorkingDirectory=$CURRENT_DIR
 ExecStart=$PHP_PATH artisan queue:work --sleep=3 --tries=3 --max-time=3600
@@ -57,7 +57,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
+User=andrew
 Group=www-data
 WorkingDirectory=$CURRENT_DIR
 ExecStart=$PHP_PATH artisan schedule:work
