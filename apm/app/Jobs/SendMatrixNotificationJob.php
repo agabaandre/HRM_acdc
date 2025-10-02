@@ -64,8 +64,8 @@ class SendMatrixNotificationJob implements ShouldQueue
                 'is_read' => false
             ]);
 
-            // Send email using custom PHPMailer
-            $this->sendMatrixNotificationWithPHPMailer($recipient);    
+            // Send email using Exchange (with PHPMailer fallback)
+            $this->sendMatrixNotificationWithExchange($recipient);    
             
             Log::info('Email notification sent successfully to '.$recipient->fname.' '.$recipient->lname, [
                 'model_id' => $this->model->id,
@@ -85,6 +85,36 @@ class SendMatrixNotificationJob implements ShouldQueue
             throw $e; // Re-throw to trigger retry
         }
     }
+    /**
+     * Send matrix notification email using Exchange (with PHPMailer fallback)
+     */
+    private function sendMatrixNotificationWithExchange($recipient): void
+    {
+        try {
+            // Try Exchange first
+            $result = sendMatrixNotificationWithExchange($this->model, $recipient, $this->type, $this->message);
+            
+            if ($result) {
+                Log::info('Matrix notification sent via Exchange', [
+                    'model_id' => $this->model->id,
+                    'recipient_id' => $recipient->staff_id,
+                    'type' => $this->type
+                ]);
+                return;
+            }
+            
+        } catch (\Exception $e) {
+            Log::warning('Exchange failed, falling back to PHPMailer', [
+                'model_id' => $this->model->id,
+                'recipient_id' => $recipient->staff_id,
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        // Fallback to PHPMailer
+        $this->sendMatrixNotificationWithPHPMailer($recipient);
+    }
+
     /**
      * Send matrix notification email using custom PHPMailer
      */
