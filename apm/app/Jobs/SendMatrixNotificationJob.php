@@ -86,33 +86,27 @@ class SendMatrixNotificationJob implements ShouldQueue
         }
     }
     /**
-     * Send matrix notification email using Exchange (with PHPMailer fallback)
+     * Send matrix notification email using Exchange exclusively
      */
     private function sendMatrixNotificationWithExchange($recipient): void
     {
-        try {
-            // Try Exchange first
-            $result = sendMatrixNotificationWithExchange($this->model, $recipient, $this->type, $this->message);
-            
-            if ($result) {
-                Log::info('Matrix notification sent via Exchange', [
-                    'model_id' => $this->model->id,
-                    'recipient_id' => $recipient->staff_id,
-                    'type' => $this->type
-                ]);
-                return;
-            }
-            
-        } catch (\Exception $e) {
-            Log::warning('Exchange failed, falling back to PHPMailer', [
+        // Use Exchange exclusively - no fallbacks
+        $result = sendMatrixNotificationWithExchange($this->model, $recipient, $this->type, $this->message);
+        
+        if ($result) {
+            Log::info('Matrix notification sent via Exchange', [
                 'model_id' => $this->model->id,
                 'recipient_id' => $recipient->staff_id,
-                'error' => $e->getMessage()
+                'type' => $this->type
             ]);
+        } else {
+            Log::error('Matrix notification failed via Exchange', [
+                'model_id' => $this->model->id,
+                'recipient_id' => $recipient->staff_id,
+                'type' => $this->type
+            ]);
+            throw new \Exception('Matrix notification failed via Exchange');
         }
-        
-        // Fallback to PHPMailer
-        $this->sendMatrixNotificationWithPHPMailer($recipient);
     }
 
     /**

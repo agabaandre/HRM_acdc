@@ -39,13 +39,8 @@ function sendEmail($to, $subject, $body, $fromEmail = null, $fromName = null, $c
         $bcc[] = $systemBcc;
     }
     
-    // Try Exchange first if configured
-    if (env('USE_EXCHANGE_EMAIL', false)) {
-        return sendEmailWithExchange($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments);
-    }
-    
-    // Fallback to PHPMailer
-    return sendEmailWithPHPMailer($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments);
+    // Use Exchange exclusively - no fallbacks
+    return sendEmailWithExchange($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments);
 }
 
 /**
@@ -99,8 +94,8 @@ function sendEmailWithExchange($to, $subject, $body, $fromEmail = null, $fromNam
         );
         
     } catch (Exception $e) {
-        \Log::error('Exchange email failed, falling back to PHPMailer: ' . $e->getMessage());
-        return sendEmailWithPHPMailer($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments);
+        \Log::error('Exchange email failed - Exchange is required for all emails: ' . $e->getMessage());
+        throw new \Exception('Exchange email failed: ' . $e->getMessage());
     }
 }
 
@@ -374,8 +369,8 @@ function sendMatrixNotificationWithExchange($matrix, Staff $recipient, string $t
         );
         
         if (!$oauth->isConfigured()) {
-            \Log::error('Exchange service not configured, falling back to PHPMailer');
-            return sendMatrixNotificationWithPHPMailer($matrix, $recipient, $type, $message);
+            \Log::error('Exchange service not configured - Exchange is required for all emails');
+            throw new \Exception('Exchange service not configured. Please check your Exchange credentials.');
         }
         
         // Get client credentials token
