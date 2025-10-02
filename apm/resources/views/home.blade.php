@@ -61,9 +61,9 @@ body {
 }
 
 .dashboard-card {
-  height: 320px;
+  height: 280px;
   border-radius: 10px;
-  padding: 2rem;
+  padding: 1.2rem;
   transition: var(--transition);
   font-size: 0.9rem;
   display: flex;
@@ -73,7 +73,7 @@ body {
   box-shadow: var(--shadow);
   position: relative;
   overflow: hidden;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .dashboard-card::before {
@@ -145,6 +145,95 @@ body {
   box-shadow: var(--shadow-lg);
 }
 
+/* Colored icons for different modules */
+.dashboard-icon.quarterly-matrix {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(52, 152, 219, 0.05) 100%);
+  color: #3498db;
+  border-color: rgba(52, 152, 219, 0.2);
+}
+
+.dashboard-card:hover .dashboard-icon.quarterly-matrix {
+  background: rgba(52, 152, 219, 0.15);
+  color: #2980b9;
+}
+
+.dashboard-icon.non-travel {
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.1) 0%, rgba(155, 89, 182, 0.05) 100%);
+  color: #9b59b6;
+  border-color: rgba(155, 89, 182, 0.2);
+}
+
+.dashboard-card:hover .dashboard-icon.non-travel {
+  background: rgba(155, 89, 182, 0.15);
+  color: #8e44ad;
+}
+
+.dashboard-icon.special-memo {
+  background: linear-gradient(135deg, rgba(230, 126, 34, 0.1) 0%, rgba(230, 126, 34, 0.05) 100%);
+  color: #e67e22;
+  border-color: rgba(230, 126, 34, 0.2);
+}
+
+.dashboard-card:hover .dashboard-icon.special-memo {
+  background: rgba(230, 126, 34, 0.15);
+  color: #d35400;
+}
+
+.dashboard-icon.request-services {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(46, 204, 113, 0.05) 100%);
+  color: #2ecc71;
+  border-color: rgba(46, 204, 113, 0.2);
+}
+
+.dashboard-card:hover .dashboard-icon.request-services {
+  background: rgba(46, 204, 113, 0.15);
+  color: #27ae60;
+}
+
+.dashboard-icon.request-arf {
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.05) 100%);
+  color: #e74c3c;
+  border-color: rgba(231, 76, 60, 0.2);
+}
+
+.dashboard-card:hover .dashboard-icon.request-arf {
+  background: rgba(231, 76, 60, 0.15);
+  color: #c0392b;
+}
+
+.dashboard-icon.single-memo {
+  background: linear-gradient(135deg, rgba(241, 196, 15, 0.1) 0%, rgba(241, 196, 15, 0.05) 100%);
+  color: #f1c40f;
+  border-color: rgba(241, 196, 15, 0.2);
+}
+
+.dashboard-card:hover .dashboard-icon.single-memo {
+  background: rgba(241, 196, 15, 0.15);
+  color: #f39c12;
+}
+
+.dashboard-icon.change-request {
+  background: linear-gradient(135deg, rgba(142, 68, 173, 0.1) 0%, rgba(142, 68, 173, 0.05) 100%);
+  color: #8e44ad;
+  border-color: rgba(142, 68, 173, 0.2);
+}
+
+.dashboard-card:hover .dashboard-icon.change-request {
+  background: rgba(142, 68, 173, 0.15);
+  color: #7d3c98;
+}
+
+.dashboard-icon.reports {
+  background: linear-gradient(135deg, rgba(52, 73, 94, 0.1) 0%, rgba(52, 73, 94, 0.05) 100%);
+  color: #34495e;
+  border-color: rgba(52, 73, 94, 0.2);
+}
+
+.dashboard-card:hover .dashboard-icon.reports {
+  background: rgba(52, 73, 94, 0.15);
+  color: #2c3e50;
+}
+
 .pending-badge {
   font-size: 0.75rem;
   padding: 0.3rem 0.5rem;
@@ -155,7 +244,7 @@ body {
 }
 
 .btn-sm {
-  padding: 0.5rem 1rem;
+  padding: 0.1rem 1rem;
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
   width: 100%;
@@ -188,7 +277,11 @@ body {
 }
 
 .menu-section {
-  margin-top: 1rem;
+  margin-top: 0.1rem;
+}
+
+.dashboard-card p.text-muted {
+  margin-bottom: 0.5rem;
 }
 
 .menu-section h6 {
@@ -322,7 +415,7 @@ body {
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon me-2"><i class="fas fa-calendar-alt"></i></div>
+          <div class="dashboard-icon quarterly-matrix me-2"><i class="fas fa-calendar-alt"></i></div>
           <h6>Quarterly Travel Matrix (QM)</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">Plan and track quarterly travel for all staff.</p>
@@ -349,7 +442,7 @@ body {
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon me-2"><i class="fas fa-file-alt"></i></div>
+          <div class="dashboard-icon non-travel me-2"><i class="fas fa-file-alt"></i></div>
           <h6>Non-Travel Memo (NT)</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">Manage activities that are not related to travel logistics.</p>
@@ -377,7 +470,7 @@ body {
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon me-2"><i class="fas fa-envelope-open-text"></i></div>
+          <div class="dashboard-icon special-memo me-2"><i class="fas fa-envelope-open-text"></i></div>
           <h6>Special Memo (SPM)</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">Create and send special memos for specific activities.</p>
@@ -405,7 +498,7 @@ body {
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon me-2"><i class="fas fa-tools"></i></div>
+          <div class="dashboard-icon request-services me-2"><i class="fas fa-tools"></i></div>
           <h6>Request for Services <br>(RQS)</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">Submit requests for tickets, DSA, procurement, or imprest.</p>
@@ -422,9 +515,6 @@ body {
               <span class="alert-count" id="service-requests-pending-count">{{ get_staff_pending_action_count('service-requests') }}</span>
             </a>
             @endif
-            <a href="{{ url('service-requests') }}" class="btn btn-outline-primary btn-sm">
-              <i class="fas fa-file-alt"></i> My Submitted RQS
-            </a>
           </div>
         </div>
 
@@ -435,7 +525,7 @@ body {
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon me-2"><i class="fas fa-file-signature"></i></div>
+          <div class="dashboard-icon request-arf me-2"><i class="fas fa-file-signature"></i></div>
           <h6>Request for ARF</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">Submit your Activity Request Form for approvals.</p>
@@ -464,7 +554,7 @@ body {
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon me-2"><i class="fas fa-file-alt"></i></div>
+          <div class="dashboard-icon single-memo me-2"><i class="fas fa-file-alt"></i></div>
           <h6>Single Memo (SM)</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">View Submitted Single Memos.</p>
@@ -492,7 +582,7 @@ body {
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon me-2"><i class="fas fa-edit"></i></div>
+          <div class="dashboard-icon change-request me-2"><i class="fas fa-edit"></i></div>
           <h6>Change Request (CR)</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">Request changes to existing memos and activities.</p>
@@ -509,9 +599,6 @@ body {
               <span class="alert-count" id="change-request-pending-count">{{ get_staff_pending_action_count('change-request') }}</span>
             </a>
             @endif
-            <a href="{{ route('change-requests.create') }}" class="btn btn-outline-primary btn-sm">
-              <i class="fas fa-plus"></i> Create New
-            </a>
           </div>
         </div>
 
@@ -522,7 +609,7 @@ body {
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
-          <div class="dashboard-icon me-2"><i class="fas fa-chart-bar"></i></div>
+          <div class="dashboard-icon reports me-2"><i class="fas fa-chart-bar"></i></div>
           <h6>Reports</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">View and download performance reports.</p>

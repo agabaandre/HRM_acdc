@@ -24,7 +24,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $actCount = 1; @endphp
+                @php $actCount = ($myDivisionActivities->currentPage() - 1) * $myDivisionActivities->perPage() + 1; @endphp
                 @foreach($myDivisionActivities as $activity)
                     <tr>
                         <td>{{ $actCount++ }}</td>
@@ -106,7 +106,7 @@
     <!-- Pagination -->
     @if($myDivisionActivities instanceof \Illuminate\Pagination\LengthAwarePaginator && $myDivisionActivities->hasPages())
         <div class="d-flex justify-content-center mt-3">
-            {{ $myDivisionActivities->appends(array_merge(request()->query(), ['tab' => 'my-division']))->links() }}
+            {{ $myDivisionActivities->appends(['tab' => 'my-division', 'year' => $selectedYear, 'quarter' => $selectedQuarter, 'division_id' => $selectedDivisionId, 'staff_id' => $selectedStaffId, 'document_number' => $selectedDocumentNumber, 'search' => $searchTerm])->links() }}
         </div>
     @endif
 @else

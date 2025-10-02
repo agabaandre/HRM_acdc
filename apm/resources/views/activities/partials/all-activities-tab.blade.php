@@ -25,7 +25,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $actCount = 1; @endphp
+                @php $actCount = ($allActivities->currentPage() - 1) * $allActivities->perPage() + 1; @endphp
                 @foreach($allActivities as $activity)
                     <tr>
                         <td>{{ $actCount++ }}</td>
@@ -112,7 +112,7 @@
     <!-- Pagination -->
     @if($allActivities instanceof \Illuminate\Pagination\LengthAwarePaginator && $allActivities->hasPages())
         <div class="d-flex justify-content-center mt-3">
-            {{ $allActivities->appends(array_merge(request()->query(), ['tab' => 'all']))->links() }}
+            {{ $allActivities->appends(['tab' => 'all-activities', 'year' => $selectedYear, 'quarter' => $selectedQuarter, 'division_id' => $selectedDivisionId, 'staff_id' => $selectedStaffId, 'document_number' => $selectedDocumentNumber, 'search' => $searchTerm])->links() }}
         </div>
     @endif
 @else

@@ -48,7 +48,11 @@ class RequestARFController extends Controller
             $mySubmittedArfsQuery->where('overall_status', $request->status);
         }
         
-        $mySubmittedArfs = $mySubmittedArfsQuery->latest()->get();
+        if ($request->filled('search')) {
+            $mySubmittedArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
+        }
+        
+        $mySubmittedArfs = $mySubmittedArfsQuery->latest()->paginate(20)->withQueryString();
         
         // Get All ARFs (only for users with permission 87)
         $allArfs = collect();
@@ -73,7 +77,11 @@ class RequestARFController extends Controller
                 $allArfsQuery->where('overall_status', $request->status);
             }
             
-            $allArfs = $allArfsQuery->get();
+            if ($request->filled('search')) {
+                $allArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
+            }
+            
+            $allArfs = $allArfsQuery->paginate(20)->withQueryString();
         }
         
         $divisions = Division::orderBy('division_name')->get();
@@ -1289,5 +1297,96 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             
             return redirect()->back()->with('error', 'Failed to update ARF request status. Please try again.');
         }
+    }
+
+    /**
+     * Show pending approvals for ARF requests
+     */
+    public function pendingApprovals(Request $request): View
+    {
+        $userStaffId = user_session('staff_id');
+
+        // Check if we have valid session data
+        if (!$userStaffId) {
+            return view('request-arf.pending-approvals', [
+                'pendingArfs' => collect(),
+                'approvedByMe' => collect(),
+                'divisions' => collect(),
+                'error' => 'No session data found. Please log in again.'
+            ]);
+        }
+
+        // Get filter parameters
+        $divisionId = $request->get('division_id');
+        $staffId = $request->get('staff_id');
+        
+        // Base query for pending ARF requests
+        $pendingQuery = RequestARF::with([
+            'staff',
+            'division',
+            'forwardWorkflow.workflowDefinitions.approvers.staff'
+        ])
+        ->where('overall_status', 'pending');
+
+        // Apply filters
+        if ($divisionId) {
+            $pendingQuery->where('division_id', $divisionId);
+        }
+        
+        if ($staffId) {
+            $pendingQuery->where('staff_id', $staffId);
+        }
+
+        // Get pending ARF requests
+        $pendingArfs = $pendingQuery->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+
+        // Get approved by me ARF requests
+        $approvedByMeQuery = RequestARF::with([
+            'staff',
+            'division',
+            'forwardWorkflow.workflowDefinitions.approvers.staff'
+        ])
+        ->where('overall_status', 'approved')
+        ->whereHas('approvalTrail', function($q) use ($userStaffId) {
+            $q->where('approver_staff_id', $userStaffId)
+              ->where('action', 'approved');
+        });
+
+        // Apply same filters to approved by me
+        if ($divisionId) {
+            $approvedByMeQuery->where('division_id', $divisionId);
+        }
+        
+        if ($staffId) {
+            $approvedByMeQuery->where('staff_id', $staffId);
+        }
+
+        $approvedByMe = $approvedByMeQuery->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+
+        // Get divisions for filter
+        $divisions = Division::orderBy('division_name')->get();
+
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'pending':
+                    $html = view('request-arf.partials.pending-approvals-tab', compact('pendingArfs'))->render();
+                    break;
+                case 'approved':
+                    $html = view('request-arf.partials.approved-by-me-tab', compact('approvedByMe'))->render();
+                    break;
+            }
+            
+            return response()->json(['html' => $html]);
+        }
+
+        return view('request-arf.pending-approvals', [
+            'pendingArfs' => $pendingArfs,
+            'approvedByMe' => $approvedByMe,
+            'divisions' => $divisions
+        ]);
     }
 }

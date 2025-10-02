@@ -76,6 +76,13 @@
                 </select>
             </div>
             <div class="col-md-2">
+            <label for="search" class="form-label fw-semibold mb-1">
+                <i class="bx bx-search me-1 text-success"></i> Search Activity Title
+            </label>
+            <input type="text" name="search" id="search" class="form-control" 
+                   value="{{ request('search') }}" placeholder="Enter activity title...">
+            </div>
+            <div class="col-md-2">
                 <label for="request_status" class="form-label fw-semibold mb-1">
                     <i class="bx bx-info-circle me-1 text-success"></i> Status
                 </label>
@@ -202,6 +209,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('request_status')) {
         document.getElementById('request_status').addEventListener('change', applyFilters);
     }
+    
+    if (document.getElementById('search')) {
+        document.getElementById('search').addEventListener('input', applyFilters);
+    }
 
     // Function to load tab data via AJAX
     function loadTabData(tabId) {
@@ -215,11 +226,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const staffId = document.getElementById('staff_id')?.value;
         const serviceType = document.getElementById('service_type')?.value;
         const status = document.getElementById('request_status')?.value;
+        const search = document.getElementById('search')?.value;
         
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (serviceType) currentUrl.searchParams.set('service_type', serviceType);
         if (status) currentUrl.searchParams.set('status', status);
+        if (search) currentUrl.searchParams.set('search', search);
         
         console.log('Service requests request URL:', currentUrl.toString());
         

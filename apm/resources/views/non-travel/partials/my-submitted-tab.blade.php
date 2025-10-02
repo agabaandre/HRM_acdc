@@ -13,7 +13,7 @@
             </tr>
         </thead>
         <tbody>
-            @php $count = 1; @endphp
+            @php $count = ($mySubmittedMemos->currentPage() - 1) * $mySubmittedMemos->perPage() + 1; @endphp
             @foreach($mySubmittedMemos as $memo)
                 <tr>
                     <td>{{ $count++ }}</td>

@@ -23,7 +23,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $count = 1; @endphp
+                @php $count = ($sharedMemos->currentPage() - 1) * $sharedMemos->perPage() + 1; @endphp
                 @foreach($sharedMemos as $memo)
                     <tr>
                         <td>{{ $count++ }}</td>
@@ -105,7 +105,7 @@
     <!-- Pagination -->
     @if($sharedMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $sharedMemos->hasPages())
         <div class="d-flex justify-content-center mt-3">
-            {{ $sharedMemos->appends(array_merge(request()->query(), ['tab' => 'shared']))->links() }}
+            {{ $sharedMemos->appends(['tab' => 'sharedMemos', 'staff_id' => request('staff_id'), 'division_id' => request('division_id'), 'status' => request('status'), 'document_number' => request('document_number'), 'search' => $searchTerm, 'year' => $selectedYear, 'quarter' => $selectedQuarter])->links() }}
         </div>
     @endif
 @else

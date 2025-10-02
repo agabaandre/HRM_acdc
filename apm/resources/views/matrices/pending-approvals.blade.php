@@ -165,7 +165,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php $count = 1; @endphp
+                                        @php $count = ($pendingMatrices->currentPage() - 1) * $pendingMatrices->perPage() + 1; @endphp
                                         @foreach($pendingMatrices as $matrix)
                                             <tr>    
                                                 <td>{{ $count }}</td>
@@ -341,7 +341,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php $count = 1; @endphp
+                                        @php $count = ($approvedByMe->currentPage() - 1) * $approvedByMe->perPage() + 1; @endphp
                                         @foreach($approvedByMe as $matrix)
                                             @php
                                                 $myApproval = $matrix->approvalTrails->where('staff_id', user_session('staff_id'))->first();

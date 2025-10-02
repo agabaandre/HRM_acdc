@@ -112,16 +112,23 @@
                         <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
                     </select>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="col-md-2">
+                    <label for="search" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-search me-1 text-success"></i> Search Title
+                    </label>
+                    <input type="text" name="search" id="search" class="form-control" 
+                           value="{{ request('search') }}" placeholder="Enter memo title...">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
                     <button type="submit" class="btn btn-success btn-sm w-100" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter
                     </button>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="col-md-1 d-flex align-items-end">
                     <a href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary w-100 fw-bold">
-                                        <i class="bx bx-reset me-1"></i> Reset
-                                    </a>
-                                </div>
+                        <i class="bx bx-reset me-1"></i> Reset
+                    </a>
+                </div>
             </form>
         </div>
     </div>

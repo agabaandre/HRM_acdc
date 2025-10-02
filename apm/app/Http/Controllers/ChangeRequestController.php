@@ -44,60 +44,71 @@ class ChangeRequestController extends Controller
         $staffId = (int) $request->get('staff_id');
         $memoType = $request->get('memo_type');
 
-        // Base query
-        $query = ChangeRequest::with([
+        // Base query with relationships
+        $baseQuery = ChangeRequest::with([
             'staff',
             'responsiblePerson',
             'division',
             'requestType',
             'fundType',
             'parentMemo'
-        ])
-        ->where(function ($q) use ($userStaffId, $userDivisionId) {
-            // Show all change requests if user is an admin or has specific permission
-            // For now, show all if user is logged in
-            if ($userStaffId) {
-                $q->where('staff_id', $userStaffId)
-                  ->orWhere('responsible_person_id', $userStaffId)
-                  ->orWhere('division_id', $userDivisionId);
-            }
-        });
+        ]);
 
-        // Apply filters
+        // Apply common filters
         if ($documentNumber) {
-            $query->where('document_number', 'like', '%' . $documentNumber . '%');
+            $baseQuery->where('document_number', 'like', '%' . $documentNumber . '%');
         }
 
         if ($staffId) {
-            $query->where(function ($q) use ($staffId) {
+            $baseQuery->where(function ($q) use ($staffId) {
                 $q->where('staff_id', $staffId)
                   ->orWhere('responsible_person_id', $staffId);
             });
         }
 
         if ($selectedYear) {
-            $query->whereYear('created_at', $selectedYear);
+            $baseQuery->whereYear('created_at', $selectedYear);
         }
 
         if ($status !== 'all') {
-            $query->where('overall_status', $status);
+            $baseQuery->where('overall_status', $status);
         }
 
         // Filter by memo type (parent_memo_model)
         if ($memoType) {
-            $query->where('parent_memo_model', $memoType);
+            $baseQuery->where('parent_memo_model', $memoType);
         }
 
         // Filter by division
         if ($selectedDivisionId) {
-            $query->where('division_id', (int) $selectedDivisionId);
+            $baseQuery->where('division_id', (int) $selectedDivisionId);
+        }
+
+        // Filter by search term
+        if ($request->filled('search')) {
+            $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
 
         // Order by most recent first
-        $query->orderBy('created_at', 'desc');
+        $baseQuery->orderBy('created_at', 'desc');
 
-        // Get paginated results
-        $changeRequests = $query->paginate(20);
+        // My Change Requests (created by current user)
+        $myChangeRequestsQuery = clone $baseQuery;
+        $myChangeRequests = $myChangeRequestsQuery->where('staff_id', $userStaffId)->paginate(20)->withQueryString();
+
+        // My Division Change Requests (change requests in user's division)
+        $myDivisionChangeRequestsQuery = clone $baseQuery;
+        $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->where('division_id', $userDivisionId)->paginate(20)->withQueryString();
+
+        // Shared Change Requests (where user is responsible person)
+        $sharedChangeRequestsQuery = clone $baseQuery;
+        $sharedChangeRequests = $sharedChangeRequestsQuery->where('responsible_person_id', $userStaffId)->paginate(20)->withQueryString();
+
+        // All Change Requests (for users with permission)
+        $allChangeRequests = null;
+        if (in_array(87, user_session('permissions', []))) {
+            $allChangeRequests = $baseQuery->paginate(20)->withQueryString();
+        }
 
         // Get filter options
         $years = range(now()->year - 2, now()->year + 2);
@@ -112,8 +123,34 @@ class ChangeRequestController extends Controller
             'rejected' => 'Rejected'
         ];
 
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'myChangeRequests':
+                    $html = view('change-requests.partials.my-change-requests-tab', compact('myChangeRequests'))->render();
+                    break;
+                case 'myDivisionChangeRequests':
+                    $html = view('change-requests.partials.my-division-change-requests-tab', compact('myDivisionChangeRequests'))->render();
+                    break;
+                case 'sharedChangeRequests':
+                    $html = view('change-requests.partials.shared-change-requests-tab', compact('sharedChangeRequests'))->render();
+                    break;
+                case 'allChangeRequests':
+                    $html = view('change-requests.partials.all-change-requests-tab', compact('allChangeRequests'))->render();
+                    break;
+            }
+            
+            return response()->json(['html' => $html]);
+        }
+
         return view('change-requests.index', [
-            'changeRequests' => $changeRequests,
+            'myChangeRequests' => $myChangeRequests,
+            'myDivisionChangeRequests' => $myDivisionChangeRequests,
+            'sharedChangeRequests' => $sharedChangeRequests,
+            'allChangeRequests' => $allChangeRequests,
             'years' => $years,
             'quarters' => $quarters,
             'divisions' => $divisions,
@@ -148,156 +185,89 @@ class ChangeRequestController extends Controller
         // Use the exact same logic as the home helper for consistency
         $userDivisionId = user_session('division_id');
         
+        // Get filter parameters
+        $memoType = $request->get('memo_type');
+        $divisionId = $request->get('division_id');
+        $staffId = $request->get('staff_id');
+        
+        // Base query for pending change requests
         $pendingQuery = ChangeRequest::with([
             'staff',
             'division',
             'requestType',
-            'forwardWorkflow.workflowDefinitions.approvers.staff',
-            'forwardWorkflow.workflowDefinitions'
+            'parentMemo'
         ])
-        ->where('overall_status', 'pending')
-        ->where('forward_workflow_id', '!=', null)
-        ->where('approval_level', '>', 0);
+        ->where('overall_status', 'submitted');
 
-        $pendingQuery->where(function($q) use ($userDivisionId, $userStaffId) {
-            
-            if ($userDivisionId) {
-                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
-                    $subQ->where('is_division_specific', 1)
-                    ->whereNull('division_reference_column')
-                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('change_request.approval_level'));
-                })
-                ->where('division_id', $userDivisionId);
-            }
-
-            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
-            if ($userStaffId) {
-                $q->orWhere(function($subQ) use ($userStaffId, $userDivisionId) {
-                    $divisionsTable = (new \App\Models\Division())->getTable();
-                    $subQ->whereRaw("EXISTS (
-                        SELECT 1 FROM workflow_definition wd 
-                        JOIN {$divisionsTable} d ON d.id = change_request.division_id 
-                        WHERE wd.workflow_id = change_request.forward_workflow_id 
-                        AND wd.is_division_specific = 1 
-                        AND wd.division_reference_column IS NOT NULL 
-                        AND wd.approval_order = change_request.approval_level
-                        AND ( d.focal_person = ? OR
-                            d.division_head = ? OR
-                            d.admin_assistant = ? OR
-                            d.finance_officer = ? OR
-                            d.head_oic_id = ? OR
-                            d.director_id = ? OR
-                            d.director_oic_id = ?
-                            OR (d.id=change_request.division_id AND d.id=?)
-                        )
-                    )", [$userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userStaffId, $userDivisionId])
-                    ->orWhere(function($subQ2) use ($userStaffId) {
-                        $subQ2->where('approval_level', $userStaffId)
-                              ->orWhereHas('approvalTrails', function($trailQ) use ($userStaffId) {
-                                $trailQ->where('staff_id', '=',$userStaffId);
-                              });
-                    });
-                });
-            }
-            
-            // Case 2: Non-division-specific approval - check workflow definition and approver
-            if ($userStaffId) {
-                $q->orWhere(function($subQ) use ($userStaffId) {
-                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userStaffId) {
-                        $workflowQ->where('is_division_specific','=', 0)
-                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('change_request.approval_level'))
-                                  ->whereHas('approvers', function($approverQ) use ($userStaffId) {
-                                      $approverQ->where('staff_id', $userStaffId);
-                                  });
-                    });
-                });
-            }
-
-            $q->orWhere('division_id', $userDivisionId);
-        });
-
-        // Get the change requests and apply the same filtering as the home helper
-        $changeRequests = $pendingQuery->get();
+        // Apply filters
+        if ($memoType) {
+            $pendingQuery->where('parent_memo_model', $memoType);
+        }
         
-        // Apply the same additional filtering as the home helper for consistency
-        $filteredChangeRequests = $changeRequests->filter(function ($changeRequest) {
-            return can_take_action_generic($changeRequest);
-        });
+        if ($divisionId) {
+            $pendingQuery->where('division_id', $divisionId);
+        }
         
-        // Manually paginate the filtered collection
-        $currentPage = \Illuminate\Pagination\Paginator::resolveCurrentPage();
-        $perPage = 20;
-        $currentPageItems = $filteredChangeRequests->slice(($currentPage - 1) * $perPage, $perPage)->values();
-        
-        $pendingChangeRequests = new \Illuminate\Pagination\LengthAwarePaginator($currentPageItems, $filteredChangeRequests->count(), $perPage, $currentPage, ['path' => request()->url()]);
+        if ($staffId) {
+            $pendingQuery->where('staff_id', $staffId);
+        }
 
-        // Get change requests approved by current user
+        // Get pending change requests
+        $pendingChangeRequests = $pendingQuery->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+
+        // Get approved by me change requests
         $approvedByMeQuery = ChangeRequest::with([
             'staff',
             'division',
             'requestType',
-            'forwardWorkflow.workflowDefinitions.approvers.staff',
-            'forwardWorkflow.workflowDefinitions'
+            'parentMemo'
         ])
-        ->whereHas('approvalTrails', function($q) use ($userStaffId) {
-            $q->where('staff_id', $userStaffId)
+        ->where('overall_status', 'approved')
+        ->whereHas('approvalTrail', function($q) use ($userStaffId) {
+            $q->where('approver_staff_id', $userStaffId)
               ->where('action', 'approved');
-        })
-        ->where('overall_status', 'approved');
+        });
 
-        $approvedByMe = $approvedByMeQuery->orderBy('updated_at', 'desc')->get();
+        // Apply same filters to approved by me
+        if ($memoType) {
+            $approvedByMeQuery->where('parent_memo_model', $memoType);
+        }
+        
+        if ($divisionId) {
+            $approvedByMeQuery->where('division_id', $divisionId);
+        }
+        
+        if ($staffId) {
+            $approvedByMeQuery->where('staff_id', $staffId);
+        }
 
-        // Get filter options
+        $approvedByMe = $approvedByMeQuery->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+
+        // Get divisions for filter
         $divisions = Division::orderBy('division_name')->get();
 
-        // Helper function to get workflow info
-        $getWorkflowInfo = function($changeRequest) {
-            $approvalLevel = $changeRequest->approval_level ?? 0;
-            $workflowRole = 'N/A';
-            $actorName = 'N/A';
-
-            if ($changeRequest->forwardWorkflow && $changeRequest->forwardWorkflow->workflowDefinitions) {
-                $currentDefinition = $changeRequest->forwardWorkflow->workflowDefinitions
-                    ->where('approval_order', $approvalLevel)
-                    ->first();
-                    
-                if ($currentDefinition) {
-                    $workflowRole = $currentDefinition->role ?? 'N/A';
-                    
-                    // Get actor name
-                    if ($currentDefinition->is_division_specific && $changeRequest->division) {
-                        $staffId = $changeRequest->division->{$currentDefinition->division_reference_column} ?? null;
-                        if ($staffId) {
-                            $actor = \App\Models\Staff::where('staff_id', $staffId)->first();
-                            if ($actor) {
-                                $actorName = $actor->fname . ' ' . $actor->lname;
-                            }
-                        }
-                    } else {
-                        $approver = \App\Models\Approver::where('workflow_dfn_id', $currentDefinition->id)->first();
-                        if ($approver) {
-                            $actor = \App\Models\Staff::where('staff_id', $approver->staff_id)->first();
-                            if ($actor) {
-                                $actorName = $actor->fname . ' ' . $actor->lname;
-                            }
-                        }
-                    }
-                }
+        // Handle AJAX requests for tab content
+        if ($request->ajax()) {
+            $tab = $request->get('tab', '');
+            $html = '';
+            
+            switch($tab) {
+                case 'pending':
+                    $html = view('change-requests.partials.pending-approvals-tab', compact('pendingChangeRequests'))->render();
+                    break;
+                case 'approved':
+                    $html = view('change-requests.partials.approved-by-me-tab', compact('approvedByMe'))->render();
+                    break;
             }
             
-            return [
-                'approvalLevel' => $approvalLevel,
-                'workflowRole' => $workflowRole,
-                'actorName' => $actorName
-            ];
-        };
+            return response()->json(['html' => $html]);
+        }
 
-        return view('change-requests.pending-approvals', compact(
-            'pendingChangeRequests',
-            'approvedByMe',
-            'divisions',
-            'getWorkflowInfo'
-        ));
+        return view('change-requests.pending-approvals', [
+            'pendingChangeRequests' => $pendingChangeRequests,
+            'approvedByMe' => $approvedByMe,
+            'divisions' => $divisions
+        ]);
     }
 
     /**
