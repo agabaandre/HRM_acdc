@@ -177,7 +177,45 @@ if (!function_exists('send_matrix_email_notification')) {
     function send_matrix_email_notification($model, $type = 'approval')
     {
         try {
-            sendMatrixNotificationWithJob($model, $type);
+            // Use the centralized email system
+            $recipient = get_matrix_notification_recipient($model);
+            
+            if (!$recipient || !$recipient->work_email) {
+                return false;
+            }
+
+            // Generate message based on type
+            $message = '';
+            $resource = ucfirst(class_basename($model));
+            switch($type) {
+                case 'approval':
+                    $message = sprintf(
+                        '%s #%d requires your approval. Created by %s %s.',
+                        $resource,
+                        $model->id,
+                        $model->staff->fname,
+                        $model->staff->lname
+                    );
+                    break;
+                case 'returned':
+                    $message = sprintf(
+                        '%s #%d has been returned for revision by %s %s.',
+                        $resource,
+                        $model->id,
+                        $model->staff->fname,
+                        $model->staff->lname
+                    );
+                    break;
+                default:
+                    $message = sprintf(
+                        '%s #%d requires your attention.',
+                        $resource,
+                        $model->id
+                    );
+            }
+
+            // Send email using centralized system
+            return sendMatrixNotification($model, $recipient, $type, $message);
         } catch (Exception $e) {
             // Log the error but don't break the approval process
             Log::error('Email notification failed', [
@@ -186,6 +224,7 @@ if (!function_exists('send_matrix_email_notification')) {
                 'type' => $type,
                 'error' => $e->getMessage()
             ]);
+            return false;
         }
         return true;
     }
