@@ -889,11 +889,14 @@
         );
     }
     
-    // Fallback to old method if PrintHelper doesn't return data
+    // Get financial approvers dynamically based on workflow definition
     $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
-    $approvalOrder1 = getLatestApprovalForOrder($sourceApprovalTrails, 1);
-    $approvalOrder9 = getLatestApprovalForOrder($sourceApprovalTrails, 9);
-    $approvalOrder10 = getLatestApprovalForOrder($sourceApprovalTrails, 10);
+    $financialApprovers = PrintHelper::getFinancialApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
+    
+    // Extract specific approvers for easier access
+    $divisionHeadApproval = $financialApprovers['Head of Division'] ?? null;
+    $ddgApproval = $financialApprovers['Deputy Director General'] ?? null;
+    $directorGeneralApproval = $financialApprovers['Director General'] ?? null;
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
  <div class="page-break"></div>
@@ -911,7 +914,7 @@
         </td>
         <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-            <?php renderBudgetSignature($approvalOrder1, $sourceModel, true, $sourceData); ?>
+            <?php renderBudgetSignature($divisionHeadApproval, $sourceModel, true, $sourceData); ?>
           </span>
         </td>
       </tr>
@@ -924,7 +927,7 @@
               $approver = $organizedApprovers['from'][0]; // Get first approver from 'from' section
               renderBudgetApproverInfoFromPrintHelper($approver);
           } else {
-              renderBudgetApproverInfo($approvalOrder1);
+              renderBudgetApproverInfo($divisionHeadApproval);
           }
           ?>
         </td>
@@ -935,7 +938,7 @@
                 $approver = $organizedApprovers['from'][0];
                 renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
             } else {
-                renderBudgetSignature($approvalOrder1, $sourceModel);
+                renderBudgetSignature($divisionHeadApproval, $sourceModel);
             }
             ?>
           </span>
@@ -951,7 +954,7 @@
                $approver = $organizedApprovers['through'][0]; // Get first approver from 'through' section
                renderBudgetApproverInfoFromPrintHelper($approver);
            } else {
-               renderBudgetApproverInfo($approvalOrder9);
+               renderBudgetApproverInfo($ddgApproval);
            }
            ?>
           </td>
@@ -962,7 +965,7 @@
                  $approver = $organizedApprovers['through'][0];
                  renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
              } else {
-                 renderBudgetSignature($approvalOrder9, $sourceModel);
+                 renderBudgetSignature($ddgApproval, $sourceModel);
              }
              ?>
             </span>
@@ -977,7 +980,7 @@
               $approver = $organizedApprovers['to'][0]; // Get first approver from 'to' section
               renderBudgetApproverInfoFromPrintHelper($approver);
           } else {
-              renderBudgetApproverInfo($approvalOrder10);
+              renderBudgetApproverInfo($directorGeneralApproval);
           }
           ?>
         </td>
@@ -988,7 +991,7 @@
                 $approver = $organizedApprovers['to'][0];
                 renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
             } else {
-                renderBudgetSignature($approvalOrder10, $sourceModel);
+                renderBudgetSignature($directorGeneralApproval, $sourceModel);
             }
             ?>
           </span>

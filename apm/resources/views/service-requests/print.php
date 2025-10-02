@@ -283,25 +283,36 @@
         $serviceRequest_reference = "AU/CDC/{$shortCode}/SR/{$year}/{$serviceRequestId}";
     }
 
-      // Define the order of sections: TO, FROM (excluding 'others')
-      $sectionOrderLabels = ['to', 'from'];
-      
-      // Filter out 'others' section if it exists
-      if (isset($organized_workflow_steps['others'])) {
-        unset($organized_workflow_steps['others']);
+      // Get division category safely
+      $divisionCategory = null;
+      if (isset($serviceRequest->division) && isset($serviceRequest->division->category)) {
+          $divisionCategory = $serviceRequest->division->category;
       }
 
+      // Organize approvers by section using helper
+      $organizedApprovers = PrintHelper::organizeApproversBySection(
+          $serviceRequest->id ?? null,
+          'App\Models\ServiceRequest',
+          $serviceRequest->division_id ?? null,
+          $serviceRequest->forward_workflow_id ?? null,
+          $divisionCategory
+      );
+
+      // Define the order of sections: TO, THROUGH, FROM
+      $sectionOrder = ['to', 'through', 'from'];
+
       // Section labels in sentence case
-      $serviceRequestsectionLabels = [
+      $sectionLabels = [
         'to' => 'To:',
+        'through' => 'Through:',
         'from' => 'From:'
       ];
 
-      // Calculate total rows needed for rowspan
+      // Calculate total rows needed for rowspan based on organized approvers
       $totalRows = 0;
-      foreach ($sectionOrderLabels as $section) {
-        if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0) {
-          $totalRows += $organized_workflow_steps[$section]->count();
+      foreach ($sectionOrder as $section) {
+        if (isset($organizedApprovers[$section]) && count($organizedApprovers[$section]) > 0) {
+          $totalRows += count($organizedApprovers[$section]);
         } else {
           $totalRows += 1; // At least one row per section
         }
@@ -309,64 +320,26 @@
       $dateFileRowspan = $totalRows;
     ?>
   <table class="mb-15">
-    <?php foreach ($sectionOrderLabels as $section): ?>
-      <?php if (isset($organized_workflow_steps[$section]) && $organized_workflow_steps[$section]->count() > 0): ?>
-        <?php foreach ($organized_workflow_steps[$section] as $index => $step): 
-                $order = $step['order'];
-                $role = $step['role'];
-          ?>
+    <?php foreach ($sectionOrder as $section): ?>
+      <?php if (isset($organizedApprovers[$section]) && count($organizedApprovers[$section]) > 0): ?>
+        <?php foreach ($organizedApprovers[$section] as $index => $approver): ?>
           <tr>
                 <td style="width: 12%; vertical-align: top;">
-                    <strong class="section-label"><?php echo $serviceRequestsectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
+                    <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
             </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-              <?php if ($section === 'from' && isset($sourceApprovers[1]) && count($sourceApprovers[1]) > 0): ?>
-                <?php foreach ($sourceApprovers[1] as $approver): ?>
-                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php elseif ($section === 'from' && isset($sourceApprovers['division_head']) && count($sourceApprovers['division_head']) > 0): ?>
-                <?php foreach ($sourceApprovers['division_head'] as $approver): ?>
-                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php elseif ($section === 'to' && isset($sourceApprovers[2]) && count($sourceApprovers[2]) > 0): ?>
-                <?php foreach ($sourceApprovers[2] as $approver): ?>
-                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php elseif ($section === 'through' && isset($sourceApprovers[3]) && count($sourceApprovers[3]) > 0): ?>
-                <?php foreach ($sourceApprovers[3] as $approver): ?>
-                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php elseif (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                            <?php renderApproverInfo($approver, $role, $section, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="approver-name"><?php echo htmlspecialchars($role); ?></div>
-                        <?php if ($section === 'from'): ?>
-                            <div class="approver-title"><?php echo htmlspecialchars($serviceRequest->division->division_name ?? ''); ?></div>
-                    <?php endif; ?>
-        <?php endif; ?>
+                    <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
       </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-              <?php if ($section === 'from' && isset($sourceApprovers[1]) && count($sourceApprovers[1]) > 0): ?>
-                <?php foreach ($sourceApprovers[1] as $approver): ?>
-                            <?php renderSignature($approver, 1, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
-          <?php endforeach; ?>
-                    <?php elseif ($section === 'from' && isset($sourceApprovers['division_head']) && count($sourceApprovers['division_head']) > 0): ?>
-                <?php foreach ($sourceApprovers['division_head'] as $approver): ?>
-                            <?php renderSignature($approver, 'division_head', $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
-          <?php endforeach; ?>
-                    <?php elseif ($section === 'to' && isset($sourceApprovers[2]) && count($sourceApprovers[2]) > 0): ?>
-                <?php foreach ($sourceApprovers[2] as $approver): ?>
-                            <?php renderSignature($approver, 2, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
-          <?php endforeach; ?>
-                    <?php elseif (isset($step['approvers']) && count($step['approvers']) > 0): ?>
-                <?php foreach ($step['approvers'] as $approver): ?>
-                            <?php renderSignature($approver, $order, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
-          <?php endforeach; ?>
-        <?php endif; ?>
+                    <?php 
+                    $order = $approver['order'];
+                    if ($order === 'division_head') {
+                        $order = 1; // Use level 1 for division head
+                    }
+                    renderSignature($approver, $order, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); 
+                    ?>
       </td>
-                <?php if ($section === $sectionOrderLabels[0] && $index === 0): // Only output the Date/FileNo cell once ?>
+                <?php if ($section === $sectionOrder[0] && $index === 0): // Only output the Date/FileNo cell once ?>
                     <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
                         <div class="text-right">
                   <div style="margin-bottom: 20px;">
@@ -386,44 +359,18 @@
       <?php else: ?>
         <tr>
                 <td style="width: 12%; vertical-align: top;">
-                    <strong class="section-label"><?php echo $serviceRequestsectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
+                    <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
           </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-                    <?php if ($section === 'from' && isset($sourceApprovers[1]) && count($sourceApprovers[1]) > 0): ?>
-                        <?php foreach ($sourceApprovers[1] as $approver): ?>
-                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php elseif ($section === 'from' && isset($sourceApprovers['division_head']) && count($sourceApprovers['division_head']) > 0): ?>
-                        <?php foreach ($sourceApprovers['division_head'] as $approver): ?>
-                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php elseif ($section === 'to' && isset($sourceApprovers[2]) && count($sourceApprovers[2]) > 0): ?>
-                        <?php foreach ($sourceApprovers[2] as $approver): ?>
-                            <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                    <div class="approver-name"><?php echo htmlspecialchars($section); ?></div>
+                    <div class="approver-name"><?php echo htmlspecialchars(ucfirst($section)); ?></div>
                     <?php if ($section === 'from'): ?>
                         <div class="approver-title"><?php echo htmlspecialchars($serviceRequest->division->division_name ?? ''); ?></div>
-                        <?php endif; ?>
                     <?php endif; ?>
           </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-                    <?php if ($section === 'from' && isset($sourceApprovers[1]) && count($sourceApprovers[1]) > 0): ?>
-                        <?php foreach ($sourceApprovers[1] as $approver): ?>
-                            <?php renderSignature($approver, 1, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php elseif ($section === 'from' && isset($sourceApprovers['division_head']) && count($sourceApprovers['division_head']) > 0): ?>
-                        <?php foreach ($sourceApprovers['division_head'] as $approver): ?>
-                            <?php renderSignature($approver, 'division_head', $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php elseif ($section === 'to' && isset($sourceApprovers[2]) && count($sourceApprovers[2]) > 0): ?>
-                        <?php foreach ($sourceApprovers[2] as $approver): ?>
-                            <?php renderSignature($approver, 2, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); ?>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                    <!-- Empty signature space -->
           </td>
-                <?php if ($section === $sectionOrderLabels[0]): // Only output the Date/FileNo cell once ?>
+                <?php if ($section === $sectionOrder[0]): // Only output the Date/FileNo cell once ?>
                     <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
                         <div class="text-right">
                 <div style="margin-bottom: 20px;">
