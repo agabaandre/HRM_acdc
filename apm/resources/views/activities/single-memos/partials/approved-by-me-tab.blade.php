@@ -14,7 +14,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $count = 1; @endphp
+                @php $count = ($approvedByMe->currentPage() - 1) * $approvedByMe->perPage() + 1; @endphp
                 @foreach($approvedByMe as $memo)
                     <tr>
                         <td>{{ $count++ }}</td>

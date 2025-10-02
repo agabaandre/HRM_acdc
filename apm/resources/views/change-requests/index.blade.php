@@ -123,6 +123,13 @@
                     </select>
                 </div>
                 <div class="col-md-2">
+            <label for="search" class="form-label fw-semibold mb-1">
+                <i class="bx bx-search me-1 text-success"></i> Search Activity Title
+            </label>
+            <input type="text" name="search" id="search" class="form-control" 
+                   value="{{ request('search') }}" placeholder="Enter activity title...">
+                </div>
+                <div class="col-md-2">
                     <label for="status" class="form-label fw-semibold mb-1">
                         <i class="bx bx-info-circle me-1 text-success"></i> Status
                     </label>
@@ -157,154 +164,98 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="myChangeRequests-tab" data-bs-toggle="tab" data-bs-target="#myChangeRequests" type="button" role="tab" aria-controls="myChangeRequests" aria-selected="true">
                     <i class="bx bx-edit me-2"></i> My Change Requests
-                    <span class="badge bg-success text-white ms-2">{{ $changeRequests->count() ?? 0 }}</span>
+                    <span class="badge bg-success text-white ms-2">{{ $myChangeRequests->count() ?? 0 }}</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="myDivisionChangeRequests-tab" data-bs-toggle="tab" data-bs-target="#myDivisionChangeRequests" type="button" role="tab" aria-controls="myDivisionChangeRequests" aria-selected="false">
+                    <i class="bx bx-building me-2"></i> My Division CRs
+                    <span class="badge bg-info text-white ms-2">{{ $myDivisionChangeRequests->count() ?? 0 }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sharedChangeRequests-tab" data-bs-toggle="tab" data-bs-target="#sharedChangeRequests" type="button" role="tab" aria-controls="sharedChangeRequests" aria-selected="false">
+                    <i class="bx bx-share me-2"></i> Shared CRs
+                    <span class="badge bg-warning text-white ms-2">{{ $sharedChangeRequests->count() ?? 0 }}</span>
+                </button>
+            </li>
+            @if(in_array(87, user_session('permissions', [])))
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="allChangeRequests-tab" data-bs-toggle="tab" data-bs-target="#allChangeRequests" type="button" role="tab" aria-controls="allChangeRequests" aria-selected="false">
+                        <i class="bx bx-grid me-2"></i> All CRs
+                        <span class="badge bg-primary text-white ms-2">{{ $allChangeRequests->count() ?? 0 }}</span>
+                    </button>
+                </li>
+            @endif
         </ul>
 
         <!-- Tab Content -->
         <div class="tab-content" id="changeRequestTabsContent">
+            <!-- My Change Requests Tab -->
             <div class="tab-pane fade show active" id="myChangeRequests" role="tabpanel" aria-labelledby="myChangeRequests-tab">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="text-center">#</th>
-                                <th class="text-center">Document #</th>
-                                <th class="text-center">Title</th>
-                                <th class="text-center">Parent Memo</th>
-                                <th class="text-center">Division</th>
-                                <th class="text-center">Date Range</th>
-                                <th class="text-center">Changes</th>
-                                <th class="text-center">Status</th>
-                                <th class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                <tbody>
-                    @forelse($changeRequests as $index => $changeRequest)
-                        <tr>
-                            <td class="text-center fw-bold">{{ $changeRequests->firstItem() + $index }}</td>
-                            <td class="text-center">
-                                @if($changeRequest->document_number)
-                                    <span class="badge bg-primary">{{ $changeRequest->document_number }}</span>
-                                @else
-                                    <span class="text-muted">Pending</span>
-                                @endif
-                            </td>
-                            <td class="table-title-cell">
-                                <div class="fw-semibold text-dark">{{ $changeRequest->activity_title }}</div>
-                                @if($changeRequest->supporting_reasons)
-                                    <small class="text-muted">{{ Str::limit($changeRequest->supporting_reasons, 50) }}</small>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                @if($changeRequest->parentMemo)
-                                    <span class="badge bg-info">{{ class_basename($changeRequest->parent_memo_model) }}</span>
-                                    <br>
-                                    <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
-                                @else
-                                    <span class="text-muted">N/A</span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <span class="fw-semibold">{{ $changeRequest->division->division_name ?? 'N/A' }}</span>
-                            </td>
-                            <td class="text-center">
-                                <div class="small">
-                                    <div class="fw-semibold">{{ \Carbon\Carbon::parse($changeRequest->date_from)->format('M d') }}</div>
-                                    <div class="text-muted">to</div>
-                                    <div class="fw-semibold">{{ \Carbon\Carbon::parse($changeRequest->date_to)->format('M d, Y') }}</div>
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                @if($changeRequest->hasAnyChanges())
-                                    <div class="d-flex flex-wrap gap-1 justify-content-center">
-                                        @if($changeRequest->has_budget_id_changed)
-                                            <span class="badge bg-warning text-dark">Budget</span>
-                                        @endif
-                                        @if($changeRequest->has_activity_title_changed)
-                                            <span class="badge bg-warning text-dark">Title</span>
-                                        @endif
-                                        @if($changeRequest->has_location_changed)
-                                            <span class="badge bg-warning text-dark">Location</span>
-                                        @endif
-                                        @if($changeRequest->has_internal_participants_changed)
-                                            <span class="badge bg-warning text-dark">Participants</span>
-                                        @endif
-                                        @if($changeRequest->has_request_type_id_changed)
-                                            <span class="badge bg-warning text-dark">Type</span>
-                                        @endif
-                                        @if($changeRequest->has_fund_type_id_changed)
-                                            <span class="badge bg-warning text-dark">Fund</span>
-                                        @endif
-                                    </div>
-                                @else
-                                    <span class="text-muted">No changes</span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                @switch($changeRequest->overall_status)
-                                    @case('draft')
-                                        <span class="badge bg-secondary">Draft</span>
-                                        @break
-                                    @case('submitted')
-                                        <span class="badge bg-warning text-dark">Submitted</span>
-                                        @break
-                                    @case('approved')
-                                        <span class="badge bg-success">Approved</span>
-                                        @break
-                                    @case('rejected')
-                                        <span class="badge bg-danger">Rejected</span>
-                                        @break
-                                    @default
-                                        <span class="badge bg-light text-dark">{{ ucfirst($changeRequest->overall_status) }}</span>
-                                @endswitch
-                            </td>
-                            <td class="text-center">
-                                <div class="btn-group" role="group">
-                                    <a href="{{ route('change-requests.show', $changeRequest) }}" 
-                                       class="btn btn-sm btn-outline-primary" 
-                                       title="View Details">
-                                        <i class="bx bx-show"></i>
-                                    </a>
-                                    @if($changeRequest->overall_status === 'draft')
-                                        <a href="{{ route('change-requests.edit', $changeRequest) }}" 
-                                           class="btn btn-sm btn-outline-warning" 
-                                           title="Edit">
-                                            <i class="bx bx-edit"></i>
-                                        </a>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="9" class="text-center py-4">
-                                <div class="text-muted">
-                                    <i class="bx bx-info-circle fs-1 d-block mb-2"></i>
-                                    <h5>No Change Requests Found</h5>
-                                    <p>No change requests match your current filters.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-                    </table>
-                </div>
-                
-                @if($changeRequests->hasPages())
-                    <div class="card-footer bg-white border-top-0">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="text-muted">
-                                Showing {{ $changeRequests->firstItem() }} to {{ $changeRequests->lastItem() }} of {{ $changeRequests->total() }} results
-                            </div>
-                            <div>
-                                {{ $changeRequests->links() }}
-                            </div>
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-success fw-bold">
+                                <i class="bx bx-edit me-2"></i> My Change Requests
+                            </h6>
+                            <small class="text-muted">All change requests you have created</small>
                         </div>
                     </div>
-                @endif
+
+                    @include('change-requests.partials.my-change-requests-tab')
+                </div>
             </div>
+
+            <!-- My Division Change Requests Tab -->
+            <div class="tab-pane fade" id="myDivisionChangeRequests" role="tabpanel" aria-labelledby="myDivisionChangeRequests-tab">
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-info fw-bold">
+                                <i class="bx bx-building me-2"></i> My Division Change Requests
+                            </h6>
+                            <small class="text-muted">Change requests in your division</small>
+                        </div>
+                    </div>
+
+                    @include('change-requests.partials.my-division-change-requests-tab')
+                </div>
+            </div>
+
+            <!-- Shared Change Requests Tab -->
+            <div class="tab-pane fade" id="sharedChangeRequests" role="tabpanel" aria-labelledby="sharedChangeRequests-tab">
+                <div class="p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0 text-warning fw-bold">
+                                <i class="bx bx-share me-2"></i> Shared Change Requests
+                            </h6>
+                            <small class="text-muted">Change requests where you are the responsible person</small>
+                        </div>
+                    </div>
+
+                    @include('change-requests.partials.shared-change-requests-tab')
+                </div>
+            </div>
+
+            <!-- All Change Requests Tab -->
+            @if(in_array(87, user_session('permissions', [])))
+                <div class="tab-pane fade" id="allChangeRequests" role="tabpanel" aria-labelledby="allChangeRequests-tab">
+                    <div class="p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div>
+                                <h6 class="mb-0 text-primary fw-bold">
+                                    <i class="bx bx-grid me-2"></i> All Change Requests
+                                </h6>
+                                <small class="text-muted">All change requests in the system</small>
+                            </div>
+                        </div>
+
+                        @include('change-requests.partials.all-change-requests-tab')
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </div>
@@ -313,17 +264,177 @@
 
 @push('scripts')
 <script>
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2
     $('.select2').select2({
         theme: 'bootstrap-5',
         width: '100%'
     });
     
-    // Auto-submit form on filter change
-    $('#statusFilter, #division_id, #staff_id').on('change', function() {
-        $(this).closest('form').submit();
+    // AJAX filtering - auto-update when filters change
+    function applyFilters() {
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (activeTab) {
+            const tabId = activeTab.id;
+            loadTabData(tabId);
+        }
+    }
+    
+    // Auto-apply filters when they change
+    if (document.getElementById('statusFilter')) {
+        document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('division_id')) {
+        document.getElementById('division_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('staff_id')) {
+        document.getElementById('staff_id').addEventListener('change', applyFilters);
+    }
+    
+    if (document.getElementById('memo_type')) {
+        document.getElementById('memo_type').addEventListener('change', applyFilters);
+    }
+    
+    // Document number filter - apply on Enter key or after 1 second delay
+    if (document.getElementById('document_number')) {
+        let documentNumberTimeout;
+        document.getElementById('document_number').addEventListener('input', function() {
+            clearTimeout(documentNumberTimeout);
+            documentNumberTimeout = setTimeout(applyFilters, 1000);
+        });
+        
+        document.getElementById('document_number').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(documentNumberTimeout);
+                applyFilters();
+            }
+        });
+    }
+    
+    // Search input - apply on Enter key or after 500ms delay
+    if (document.getElementById('search')) {
+        let searchTimeout;
+        document.getElementById('search').addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(applyFilters, 500);
+        });
+        
+        document.getElementById('search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                applyFilters();
+            }
+        });
+    }
+    
+    // Function to load tab data via AJAX
+    function loadTabData(tabId, page = 1) {
+        console.log('Loading change request tab data for:', tabId, 'page:', page);
+        
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('page', page);
+        currentUrl.searchParams.set('tab', tabId);
+        
+        // Include current filter values
+        const documentNumber = document.getElementById('document_number')?.value;
+        const staffId = document.getElementById('staff_id')?.value;
+        const divisionId = document.getElementById('division_id')?.value;
+        const status = document.getElementById('statusFilter')?.value;
+        const memoType = document.getElementById('memo_type')?.value;
+        const search = document.getElementById('search')?.value;
+        
+        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
+        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
+        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
+        if (status) currentUrl.searchParams.set('status', status);
+        if (memoType) currentUrl.searchParams.set('memo_type', memoType);
+        if (search) currentUrl.searchParams.set('search', search);
+        
+        console.log('Change request request URL:', currentUrl.toString());
+        
+        // Show loading indicator
+        const tabContent = document.getElementById(tabId);
+        if (tabContent) {
+            tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        }
+        
+        fetch(currentUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Change request response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Change request response data:', data);
+            if (data.html) {
+                if (tabContent) {
+                    tabContent.innerHTML = data.html;
+                    attachPaginationHandlers(tabId);
+                }
+            } else {
+                console.error('No HTML data received for change request');
+                if (tabContent) {
+                    tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading change request tab data:', error);
+            if (tabContent) {
+                tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
+            }
+        });
+    }
+    
+    function attachPaginationHandlers(tabId) {
+        const tabContent = document.getElementById(tabId);
+        if (!tabContent) return;
+        
+        const paginationLinks = tabContent.querySelectorAll('.pagination a');
+        paginationLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const url = new URL(this.href);
+                const page = url.searchParams.get('page') || 1;
+                loadTabData(tabId, page);
+            });
+        });
+    }
+
+    // Add click handlers to tabs to load data via AJAX
+    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent Bootstrap's default tab behavior
+            
+            // Remove active class from all tabs and buttons
+            document.querySelectorAll('#changeRequestTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#changeRequestTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
+            
+            // Add active class to clicked button and corresponding pane
+            this.classList.add('active');
+            const tabId = this.getAttribute('aria-controls');
+            const tabPane = document.getElementById(tabId);
+            if (tabPane) {
+                tabPane.classList.add('active', 'show');
+            }
+            
+            loadTabData(tabId);
+        });
     });
+    
+    // Load data for the default active tab
+    const activeTabButton = document.querySelector('#changeRequestTabs .nav-link.active');
+    if (activeTabButton) {
+        loadTabData(activeTabButton.getAttribute('aria-controls'));
+    }
 });
 </script>
 @endpush

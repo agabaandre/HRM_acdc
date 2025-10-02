@@ -15,7 +15,7 @@
             </tr>
         </thead>
         <tbody>
-            @php $count = 1; @endphp
+            @php $count = ($sharedMemos->currentPage() - 1) * $sharedMemos->perPage() + 1; @endphp
             @foreach($sharedMemos as $memo)
                 <tr>
                     <td>{{ $count++ }}</td>

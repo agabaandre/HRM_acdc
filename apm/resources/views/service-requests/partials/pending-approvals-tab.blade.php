@@ -15,7 +15,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $count = 1; @endphp
+                @php $count = ($pendingRequests->currentPage() - 1) * $pendingRequests->perPage() + 1; @endphp
                 @foreach($pendingRequests as $request)
                     @php
                         $workflowInfo = $getWorkflowInfo($request);
@@ -53,7 +53,7 @@
                                 <a href="{{ route('service-requests.show', $request) }}" class="btn btn-outline-primary btn-sm" title="View Details">
                                     <i class="bx bx-show"></i>
                                 </a>
-                                <a href="{{ route('service-requests.approve', $request) }}" class="btn btn-outline-success btn-sm" title="Approve/Reject">
+                                <a href="{{ route('service-requests.status', $request) }}" class="btn btn-outline-success btn-sm" title="Approve/Reject">
                                     <i class="bx bx-check-circle"></i>
                                 </a>
                             </div>

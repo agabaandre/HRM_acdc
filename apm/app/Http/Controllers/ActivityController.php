@@ -1661,11 +1661,21 @@ class ActivityController extends Controller
         // Get current user's staff ID
         $currentStaffId = user_session('staff_id');
         $tab = $request->get('tab', '');
+        $searchTerm = $request->get('search', '');
         
-        // If switching tabs, reset page to 1
-        if ($tab) {
-            $request->merge(['page' => 1]);
+        // Get current year and quarter as default
+        $currentYear = now()->year;
+        $currentQuarter = now()->quarter;
+        
+        $selectedYear = $request->get('year', $currentYear);
+        $selectedQuarter = $request->get('quarter', 'Q' . $currentQuarter);
+        
+        // Ensure quarter is in correct format (Q1, Q2, Q3, Q4)
+        if (!str_starts_with($selectedQuarter, 'Q')) {
+            $selectedQuarter = 'Q' . $selectedQuarter;
         }
+        
+        // Note: Removed tab-based page reset to allow proper pagination
         
         // Base query for all single memos
         $baseQuery = Activity::with(['staff', 'responsiblePerson', 'matrix.division', 'fundType', 'requestType'])
@@ -1692,6 +1702,16 @@ class ActivityController extends Controller
             $baseQuery->where('document_number', 'like', '%' . $request->document_number . '%');
         }
 
+        if ($searchTerm) {
+            $baseQuery->where('activity_title', 'like', '%' . $searchTerm . '%');
+        }
+
+        // Apply year and quarter filters
+        $baseQuery->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter) {
+            $query->where('year', $selectedYear)
+                  ->where('quarter', $selectedQuarter);
+        });
+
         // Query for "My Division Single Memos" tab - filtered by user's division
         $myMemosQuery = clone $baseQuery;
         
@@ -1704,8 +1724,8 @@ class ActivityController extends Controller
         // Show all single memos regardless of status
         // Removed draft filtering to show all single memos
         
-        // Use simple sorting like All Divisions tab to avoid relationship issues
-        $myMemos = $myMemosQuery->paginate(10);
+        // Order by latest entries first
+        $myMemos = $myMemosQuery->orderBy('activities.created_at', 'desc')->paginate(10);
 
         // Query for "All Single Memos" tab - only if user has permission
         $allMemos = null;
@@ -1715,7 +1735,8 @@ class ActivityController extends Controller
             // Show all single memos regardless of status
             // Removed draft filtering to show all single memos
             
-            $allMemos = $allMemosQuery->paginate(10);
+            // Order by latest entries first
+            $allMemos = $allMemosQuery->orderBy('activities.created_at', 'desc')->paginate(10);
         }
         
         // Query for "Shared Single Memos" tab - single memos from other divisions where user is involved
@@ -1737,7 +1758,8 @@ class ActivityController extends Controller
             // Removed draft filtering to show all single memos
         }
         
-        $sharedMemos = $sharedMemosQuery->paginate(10);
+        // Order by latest entries first
+        $sharedMemos = $sharedMemosQuery->orderBy('activities.created_at', 'desc')->paginate(10);
         
         $staff = Staff::active()->get();
     
@@ -1747,6 +1769,10 @@ class ActivityController extends Controller
             ->distinct()
             ->orderBy('division_name')
             ->get();
+        
+        // Prepare years and quarters for the view
+        $years = range(now()->year - 2, now()->year + 2);
+        $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
     
         // Handle AJAX requests for tab content
         if ($request->ajax()) {
@@ -1764,19 +1790,19 @@ class ActivityController extends Controller
                 case 'mySubmitted':
                     \Log::info('Rendering mySubmitted tab', ['myMemos_count' => $myMemos->count()]);
                     $html = view('activities.single-memos.partials.my-division-memos-tab', compact(
-                        'myMemos'
+                        'myMemos', 'searchTerm', 'selectedYear', 'selectedQuarter'
                     ))->render();
                     break;
                 case 'allMemos':
                     \Log::info('Rendering allMemos tab', ['allMemos_count' => $allMemos ? $allMemos->count() : 0]);
                     $html = view('activities.single-memos.partials.all-memos-tab', compact(
-                        'allMemos'
+                        'allMemos', 'searchTerm', 'selectedYear', 'selectedQuarter'
                     ))->render();
                     break;
                 case 'sharedMemos':
                     \Log::info('Rendering sharedMemos tab', ['sharedMemos_count' => $sharedMemos->count()]);
                     $html = view('activities.single-memos.partials.shared-memos-tab', compact(
-                        'sharedMemos'
+                        'sharedMemos', 'searchTerm', 'selectedYear', 'selectedQuarter'
                     ))->render();
                     break;
             }
@@ -1786,7 +1812,7 @@ class ActivityController extends Controller
             return response()->json(['html' => $html]);
         }
         
-        return view('activities.single-memos.index', compact('myMemos', 'allMemos', 'sharedMemos', 'staff', 'divisions'));
+        return view('activities.single-memos.index', compact('myMemos', 'allMemos', 'sharedMemos', 'staff', 'divisions', 'searchTerm', 'years', 'quarters', 'selectedYear', 'selectedQuarter'));
     }
 
     /**
@@ -2086,23 +2112,19 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
         
-        // Get next quarter as default
+        // Get current year and quarter as default
         $currentYear = now()->year;
         $currentQuarter = now()->quarter;
-        $nextQuarter = $currentQuarter == 4 ? 1 : $currentQuarter + 1;
-        $nextYear = $currentQuarter == 4 ? $currentYear + 1 : $currentYear;
         
-        $selectedYear = $request->get('year', $nextYear);
-        $selectedQuarter = $request->get('quarter', 'Q' . $nextQuarter);
+        $selectedYear = $request->get('year', $currentYear);
+        $selectedQuarter = $request->get('quarter', 'Q' . $currentQuarter);
         $selectedDivisionId = $request->get('division_id', '');
         $selectedDocumentNumber = $request->get('document_number', '');
         $selectedStaffId = $request->get('staff_id', '');
+        $searchTerm = $request->get('search', '');
         $tab = $request->get('tab', '');
         
-        // If switching tabs, reset page to 1
-        if ($tab) {
-            $request->merge(['page' => 1]);
-        }
+        // Note: Removed tab-based page reset to allow proper pagination
         
         // Ensure quarter is in correct format (Q1, Q2, Q3, Q4)
         if (!str_starts_with($selectedQuarter, 'Q')) {
@@ -2127,6 +2149,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         
         if ($selectedStaffId) {
             $baseQuery->where('activities.responsible_person_id', $selectedStaffId);
+        }
+        
+        if ($searchTerm) {
+            $baseQuery->where('activities.activity_title', 'like', '%' . $searchTerm . '%');
         }
         
         // Debug: Check what matrices are found
@@ -2331,7 +2357,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                         'selectedQuarter',
                         'selectedDivisionId',
                         'selectedDocumentNumber',
-                        'selectedStaffId'
+                        'selectedStaffId',
+                        'searchTerm'
                     ))->render();
                     break;
                 case 'my-division':
@@ -2341,7 +2368,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                         'selectedQuarter',
                         'selectedDivisionId',
                         'selectedDocumentNumber',
-                        'selectedStaffId'
+                        'selectedStaffId',
+                        'searchTerm'
                     ))->render();
                     break;
                 case 'shared-activities':
@@ -2351,7 +2379,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                         'selectedQuarter',
                         'selectedDivisionId',
                         'selectedDocumentNumber',
-                        'selectedStaffId'
+                        'selectedStaffId',
+                        'searchTerm'
                     ))->render();
                     break;
             }
@@ -2372,6 +2401,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             'selectedDivisionId',
             'selectedDocumentNumber',
             'selectedStaffId',
+            'searchTerm',
             'userDivisionId'
         ));
     }

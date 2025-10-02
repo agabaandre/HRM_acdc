@@ -96,6 +96,13 @@
                         <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
                     </select>
                 </div>
+                <div class="col-md-2">
+                    <label for="search" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-search me-1 text-success"></i> Search Title
+                    </label>
+                    <input type="text" name="search" id="search" class="form-control" 
+                           value="{{ request('search') }}" placeholder="Enter memo title..." style="width: 100%;">
+                </div>
                 <div class="col-auto d-flex align-items-end">
                     <button type="button" class="btn btn-success btn-sm" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Filter

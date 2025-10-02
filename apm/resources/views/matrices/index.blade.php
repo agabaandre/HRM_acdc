@@ -136,7 +136,7 @@
                         <select class="form-select" id="yearFilter">
                             <option value="">All Years</option>
                             @foreach (range(date('Y'), date('Y') - 5) as $year)
-                                <option value="{{ $year }}">{{ $year }}</option>
+                                <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -149,7 +149,7 @@
                         <select class="form-select" id="quarterFilter">
                             <option value="">All Quarters</option>
                             @foreach (['Q1', 'Q2', 'Q3', 'Q4'] as $quarter)
-                                <option value="{{ $quarter }}">{{ $quarter }}</option>
+                                <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>{{ $quarter }}</option>
                             @endforeach
                         </select>
                     </div>

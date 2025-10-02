@@ -63,6 +63,9 @@ class SpecialMemoController extends Controller
         if ($request->filled('document_number')) {
             $mySubmittedQuery->where('document_number', 'like', '%' . $request->document_number . '%');
         }
+        if ($request->filled('search')) {
+            $mySubmittedQuery->where('activity_title', 'like', '%' . $request->search . '%');
+        }
 
         $mySubmittedMemos = $mySubmittedQuery->latest()->paginate(20)->withQueryString();
 
@@ -92,6 +95,9 @@ class SpecialMemoController extends Controller
             }
             if ($request->filled('document_number')) {
                 $allMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+            }
+            if ($request->filled('search')) {
+                $allMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
             }
 
             $allMemos = $allMemosQuery->latest()->paginate(20)->withQueryString();
@@ -123,6 +129,9 @@ class SpecialMemoController extends Controller
         }
         if ($request->filled('document_number')) {
             $sharedMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+        if ($request->filled('search')) {
+            $sharedMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
 
         $sharedMemos = $sharedMemosQuery->latest()->paginate(20)->withQueryString();

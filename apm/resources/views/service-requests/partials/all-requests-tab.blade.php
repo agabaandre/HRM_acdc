@@ -14,9 +14,10 @@
                 </tr>
             </thead>
             <tbody>
+                @php $count = ($allRequests->currentPage() - 1) * $allRequests->perPage() + 1; @endphp
                 @foreach($allRequests as $index => $request)
                     <tr>
-                        <td>{{ $index + 1 }}</td>
+                        <td>{{ $count++ }}</td>
                         <td>
                             <span class="badge bg-info">{{ $request->service_type ?? 'N/A' }}</span>
                         </td>

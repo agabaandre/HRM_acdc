@@ -168,6 +168,17 @@
                     <h4 class="mb-0 text-success fw-bold"><i class="bx bx-task me-2 text-success"></i> Activity Details</h4>
                 </div>
 
+                <!-- Search Row -->
+                <div class="row g-3 mb-3">
+                    <div class="col-12">
+                        <label for="search" class="form-label fw-semibold mb-1">
+                            <i class="bx bx-search me-1 text-success"></i> Search Activity Title
+                        </label>
+                        <input type="text" name="search" id="search" class="form-control" 
+                               value="{{ $searchTerm ?? '' }}" placeholder="Enter activity title to search...">
+                    </div>
+                </div>
+
                 <div class="row g-3 align-items-end" id="activityFilters" autocomplete="off">
                     <form action="{{ route('activities.index') }}" method="GET" class="row g-3 align-items-end w-100">
                     <div class="col-md-2">
@@ -427,12 +438,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const documentNumber = document.getElementById('document_number')?.value;
+        const search = document.getElementById('search')?.value;
         
         if (year) currentUrl.searchParams.set('year', year);
         if (quarter) currentUrl.searchParams.set('quarter', quarter);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
+        if (search) currentUrl.searchParams.set('search', search);
         
         console.log('Request URL:', currentUrl.toString());
         

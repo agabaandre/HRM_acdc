@@ -24,7 +24,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $actCount = 1; @endphp
+                @php $actCount = ($sharedActivities->currentPage() - 1) * $sharedActivities->perPage() + 1; @endphp
                 @foreach($sharedActivities as $activity)
                     <tr>
                         <td>{{ $actCount++ }}</td>
@@ -93,7 +93,7 @@
     <!-- Pagination -->
     @if($sharedActivities instanceof \Illuminate\Pagination\LengthAwarePaginator && $sharedActivities->hasPages())
         <div class="d-flex justify-content-center mt-3">
-            {{ $sharedActivities->appends(array_merge(request()->query(), ['tab' => 'shared']))->links() }}
+            {{ $sharedActivities->appends(['tab' => 'shared-activities', 'year' => $selectedYear, 'quarter' => $selectedQuarter, 'division_id' => $selectedDivisionId, 'staff_id' => $selectedStaffId, 'document_number' => $selectedDocumentNumber, 'search' => $searchTerm])->links() }}
         </div>
     @endif
 @else

@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Change Request Pending Approvals')
-@section('header', 'Change Request Pending Approvals')
+@section('title', 'ARF Pending Approvals')
+@section('header', 'ARF Pending Approvals')
 
 @section('header-actions')
-    <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary">
-        <i class="bx bx-arrow-back"></i> Back to Change Requests
+    <a href="{{ route('request-arf.index') }}" class="btn btn-outline-secondary">
+        <i class="bx bx-arrow-back"></i> Back to ARF Requests
     </a>
 @endsection
 
@@ -23,42 +23,26 @@
             <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
                 <div>
                     <h4 class="mb-0 text-success fw-bold">
-                        <i class="bx bx-time me-2 text-success"></i> Change Request Approval Management
+                        <i class="bx bx-time me-2 text-success"></i> ARF Request Approval Management
                     </h4>
-                    <small class="text-muted">Showing change requests at your current approval level</small>
+                    <small class="text-muted">Showing ARF requests at your current approval level</small>
                 </div>
                 <div class="text-end">
                     <div class="badge bg-warning fs-6 me-3">
                         <i class="bx bx-time me-1"></i>
-                        {{ $pendingChangeRequests->count() }} Pending
+                        {{ $pendingArfs->count() }} Pending
                     </div>
                 </div>
             </div>
 
-            <div class="row g-3 align-items-end" id="changeRequestFilters" autocomplete="off">
+            <div class="row g-3 align-items-end" id="arfFilters" autocomplete="off">
                 <div class="col-12 mb-2">
                     <small class="text-muted">
                         <i class="bx bx-info-circle me-1"></i>
-                        <strong>Note:</strong> These filters apply to change requests currently at your approval level (excluding draft change requests).
+                        <strong>Note:</strong> These filters apply to ARF requests currently at your approval level (excluding draft ARF requests).
                     </small>
                 </div>
-                <div class="col-md-3">
-                    <label for="memoTypeFilter" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-category me-1 text-success"></i> Memo Type
-                    </label>
-                    <div class="input-group select2-flex w-100">
-                        <select class="form-select select2" id="memoTypeFilter">
-                            <option value="">All Memo Types</option>
-                            <option value="App\Models\Activity">Activity</option>
-                            <option value="App\Models\SpecialMemo">Special Memo</option>
-                            <option value="App\Models\NonTravelMemo">Non-Travel Memo</option>
-                            <option value="App\Models\RequestArf">Request ARF</option>
-                            <option value="App\Models\ServiceRequest">Service Request</option>
-                        </select>
-                    </div>
-                </div>
-               
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label for="divisionFilter" class="form-label fw-semibold mb-1">
                         <i class="bx bx-building me-1 text-success"></i> Division
                     </label>
@@ -66,27 +50,27 @@
                         <select class="form-select select2" id="divisionFilter">
                             <option value="">All Divisions</option>
                             @foreach ($divisions as $division)
-                                <option value="{{ $division->division_id }}">{{ $division->division_name }}</option>
+                                <option value="{{ $division->id }}">{{ $division->division_name }}</option>
                             @endforeach
                         </select>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label for="staffFilter" class="form-label fw-semibold mb-1">
                         <i class="bx bx-user me-1 text-success"></i> Staff Member
                     </label>
                     <div class="input-group select2-flex w-100">
                         <select class="form-select select2" id="staffFilter">
                             <option value="">All Staff</option>
-                            @foreach ($pendingChangeRequests as $changeRequest)
-                                @if($changeRequest->staff)
-                                    <option value="{{ $changeRequest->staff->staff_id }}">{{ $changeRequest->staff->fname }} {{ $changeRequest->staff->lname }}</option>
+                            @foreach ($pendingArfs as $arf)
+                                @if($arf->staff)
+                                    <option value="{{ $arf->staff->staff_id }}">{{ $arf->staff->fname }} {{ $arf->staff->lname }}</option>
                                 @endif
                             @endforeach
                         </select>
                     </div>
                 </div>
-                <div class="col-md-3 d-flex align-items-end">
+                <div class="col-md-4 d-flex align-items-end">
                     <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
                         <i class="bx bx-search-alt-2 me-1"></i> Apply Filters
                     </button>
@@ -98,11 +82,11 @@
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <!-- Bootstrap Tabs Navigation -->
-            <ul class="nav nav-tabs nav-fill" id="changeRequestTabs" role="tablist">
+            <ul class="nav nav-tabs nav-fill" id="arfTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true">
                         <i class="bx bx-time me-2"></i> Pending Approval
-                        <span class="badge bg-warning text-white ms-2">{{ $pendingChangeRequests->total() ?? 0 }}</span>
+                        <span class="badge bg-warning text-white ms-2">{{ $pendingArfs->total() ?? 0 }}</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -114,7 +98,7 @@
             </ul>
 
             <!-- Tab Content -->
-            <div class="tab-content" id="changeRequestTabsContent">
+            <div class="tab-content" id="arfTabsContent">
                 <!-- Pending Approval Tab -->
                 <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
                     <div class="p-3">
@@ -123,84 +107,86 @@
                                 <h6 class="mb-0 text-warning fw-bold">
                                     <i class="bx bx-time me-2"></i> Pending Approval
                                 </h6>
-                                <small class="text-muted">Change requests awaiting your approval</small>
+                                <small class="text-muted">ARF requests awaiting your approval</small>
                             </div>
                         </div>
                         
-                        @if($pendingChangeRequests && $pendingChangeRequests->count() > 0)
+                        @if($pendingArfs && $pendingArfs->count() > 0)
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0" id="pendingTable">
                                     <thead class="table-warning">
                                         <tr>
                                             <th>#</th>
-                                            <th>Title</th>
-                                            <th>Parent Memo</th>
+                                            <th>ARF Number</th>
+                                            <th>Activity Title</th>
                                             <th>Staff Member</th>
                                             <th>Division</th>
-                                            <th>Date</th>
+                                            <th>Request Date</th>
                                             <th>Status</th>
                                             <th class="text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php $count = ($pendingChangeRequests->currentPage() - 1) * $pendingChangeRequests->perPage() + 1; @endphp
-                                        @foreach($pendingChangeRequests as $changeRequest)
+                                        @php $count = ($pendingArfs->currentPage() - 1) * $pendingArfs->perPage() + 1; @endphp
+                                        @foreach($pendingArfs as $arf)
                                             <tr>
                                                 <td>{{ $count++ }}</td>
                                                 <td>
-                                                    <div class="fw-bold text-primary">{{ $changeRequest->activity_title }}</div>
+                                                    <span class="badge bg-primary">{{ $arf->arf_number }}</span>
                                                 </td>
                                                 <td>
-                                                    @if($changeRequest->parentMemo)
-                                                        <span class="badge bg-info">{{ class_basename($changeRequest->parent_memo_model) }}</span>
-                                                        <br>
-                                                        <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
-                                                    @else
-                                                        <span class="text-muted">N/A</span>
-                                                    @endif
+                                                    <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
+                                                    <small class="text-muted">{{ Str::limit($arf->purpose, 50) }}</small>
                                                 </td>
                                                 <td>
-                                                    @if($changeRequest->staff)
-                                                        {{ $changeRequest->staff->fname }} {{ $changeRequest->staff->lname }}
+                                                    @if($arf->staff)
+                                                        {{ $arf->staff->fname }} {{ $arf->staff->lname }}
                                                     @else
                                                         <span class="text-muted">Not assigned</span>
                                                     @endif
                                                 </td>
-                                                <td>{{ $changeRequest->division->division_name ?? 'N/A' }}</td>
-                                                <td>{{ $changeRequest->date_from ? \Carbon\Carbon::parse($changeRequest->date_from)->format('M d, Y') : 'N/A' }}</td>
+                                                <td>{{ $arf->division->division_name ?? 'N/A' }}</td>
+                                                <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
                                                 <td>
                                                     @php
                                                         $statusBadgeClass = [
                                                             'draft' => 'bg-secondary',
-                                                            'submitted' => 'bg-warning',
+                                                            'pending' => 'bg-warning',
                                                             'approved' => 'bg-success',
                                                             'rejected' => 'bg-danger',
+                                                            'returned' => 'bg-info',
                                                         ];
-                                                        $statusClass = $statusBadgeClass[$changeRequest->overall_status] ?? 'bg-secondary';
+                                                        $statusClass = $statusBadgeClass[$arf->overall_status] ?? 'bg-secondary';
                                                     @endphp
                                                     
-                                                    @if($changeRequest->overall_status === 'submitted')
+                                                    @if($arf->overall_status === 'pending')
                                                         <div class="text-center">
                                                             <span class="badge {{ $statusClass }} mb-1">
-                                                                {{ strtoupper($changeRequest->overall_status) }}
+                                                                {{ strtoupper($arf->overall_status) }}
                                                             </span>
                                                         </div>
                                                     @else
                                                         <span class="badge {{ $statusClass }}">
-                                                            {{ strtoupper($changeRequest->overall_status ?? 'draft') }}
+                                                            {{ strtoupper($arf->overall_status ?? 'draft') }}
                                                         </span>
                                                     @endif
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('change-requests.show', $changeRequest) }}" 
+                                                        <a href="{{ route('request-arf.show', $arf) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
-                                                        @if($changeRequest->overall_status === 'draft' && $changeRequest->staff_id === user_session('staff_id'))
-                                                            <a href="{{ route('change-requests.edit', $changeRequest) }}" 
+                                                        @if($arf->overall_status === 'draft' && $arf->staff_id === user_session('staff_id'))
+                                                            <a href="{{ route('request-arf.edit', $arf) }}" 
                                                                class="btn btn-sm btn-outline-warning" title="Edit">
                                                                 <i class="bx bx-edit"></i>
+                                                            </a>
+                                                        @endif
+                                                        @if($arf->overall_status === 'approved')
+                                                            <a href="{{ route('request-arf.print', $arf) }}" 
+                                                               class="btn btn-sm btn-outline-success" title="Print" target="_blank">
+                                                                <i class="bx bx-printer"></i>
                                                             </a>
                                                         @endif
                                                     </div>
@@ -212,16 +198,16 @@
                             </div>
                             
                             <!-- Pagination -->
-                            @if($pendingChangeRequests instanceof \Illuminate\Pagination\LengthAwarePaginator && $pendingChangeRequests->hasPages())
+                            @if($pendingArfs instanceof \Illuminate\Pagination\LengthAwarePaginator && $pendingArfs->hasPages())
                                 <div class="d-flex justify-content-center mt-3">
-                                    {{ $pendingChangeRequests->appends(request()->query())->links() }}
+                                    {{ $pendingArfs->appends(request()->query())->links() }}
                                 </div>
                             @endif
                         @else
                             <div class="text-center py-4 text-muted">
                                 <i class="bx bx-time fs-1 text-warning opacity-50"></i>
-                                <p class="mb-0">No pending change requests found.</p>
-                                <small>Change requests awaiting your approval will appear here.</small>
+                                <p class="mb-0">No pending ARF requests found.</p>
+                                <small>ARF requests awaiting your approval will appear here.</small>
                             </div>
                         @endif
                     </div>
@@ -235,7 +221,7 @@
                                 <h6 class="mb-0 text-success fw-bold">
                                     <i class="bx bx-check-circle me-2"></i> Approved by Me
                                 </h6>
-                                <small class="text-muted">Change requests you have approved</small>
+                                <small class="text-muted">ARF requests you have approved</small>
                             </div>
                         </div>
                         
@@ -245,52 +231,53 @@
                                     <thead class="table-success">
                                         <tr>
                                             <th>#</th>
-                                            <th>Title</th>
-                                            <th>Parent Memo</th>
+                                            <th>ARF Number</th>
+                                            <th>Activity Title</th>
                                             <th>Staff Member</th>
                                             <th>Division</th>
-                                            <th>Date</th>
+                                            <th>Request Date</th>
                                             <th>Status</th>
                                             <th class="text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @php $count = ($approvedByMe->currentPage() - 1) * $approvedByMe->perPage() + 1; @endphp
-                                        @foreach($approvedByMe as $changeRequest)
+                                        @foreach($approvedByMe as $arf)
                                             <tr>
                                                 <td>{{ $count++ }}</td>
                                                 <td>
-                                                    <div class="fw-bold text-primary">{{ $changeRequest->activity_title }}</div>
+                                                    <span class="badge bg-primary">{{ $arf->arf_number }}</span>
                                                 </td>
                                                 <td>
-                                                    @if($changeRequest->parentMemo)
-                                                        <span class="badge bg-info">{{ class_basename($changeRequest->parent_memo_model) }}</span>
-                                                        <br>
-                                                        <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
-                                                    @else
-                                                        <span class="text-muted">N/A</span>
-                                                    @endif
+                                                    <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
+                                                    <small class="text-muted">{{ Str::limit($arf->purpose, 50) }}</small>
                                                 </td>
                                                 <td>
-                                                    @if($changeRequest->staff)
-                                                        {{ $changeRequest->staff->fname }} {{ $changeRequest->staff->lname }}
+                                                    @if($arf->staff)
+                                                        {{ $arf->staff->fname }} {{ $arf->staff->lname }}
                                                     @else
                                                         <span class="text-muted">Not assigned</span>
                                                     @endif
                                                 </td>
-                                                <td>{{ $changeRequest->division->division_name ?? 'N/A' }}</td>
-                                                <td>{{ $changeRequest->date_from ? \Carbon\Carbon::parse($changeRequest->date_from)->format('M d, Y') : 'N/A' }}</td>
+                                                <td>{{ $arf->division->division_name ?? 'N/A' }}</td>
+                                                <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
                                                 <td>
                                                     <span class="badge bg-success">
-                                                        {{ strtoupper($changeRequest->overall_status ?? 'approved') }}
+                                                        {{ strtoupper($arf->overall_status ?? 'approved') }}
                                                     </span>
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
-                                                        <a href="{{ route('change-requests.show', $changeRequest) }}" 
+                                                        <a href="{{ route('request-arf.show', $arf) }}" 
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
+                                                        @if($arf->overall_status === 'approved')
+                                                            <a href="{{ route('request-arf.print', $arf) }}" 
+                                                               class="btn btn-sm btn-outline-success" title="Print" target="_blank">
+                                                                <i class="bx bx-printer"></i>
+                                                            </a>
+                                                        @endif
                                                     </div>
                                                 </td>
                                             </tr>
@@ -308,8 +295,8 @@
                         @else
                             <div class="text-center py-4 text-muted">
                                 <i class="bx bx-check-circle fs-1 text-success opacity-50"></i>
-                                <p class="mb-0">No approved change requests found.</p>
-                                <small>Change requests you have approved will appear here.</small>
+                                <p class="mb-0">No approved ARF requests found.</p>
+                                <small>ARF requests you have approved will appear here.</small>
                             </div>
                         @endif
                     </div>
@@ -339,10 +326,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Auto-apply filters when they change
-    if (document.getElementById('memoTypeFilter')) {
-        document.getElementById('memoTypeFilter').addEventListener('change', applyFilters);
-    }
-    
     if (document.getElementById('divisionFilter')) {
         document.getElementById('divisionFilter').addEventListener('change', applyFilters);
     }
@@ -358,22 +341,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to load tab data via AJAX
     function loadTabData(tabId, page = 1) {
-        console.log('Loading change request pending approval tab data for:', tabId, 'page:', page);
+        console.log('Loading ARF pending approval tab data for:', tabId, 'page:', page);
         
         const currentUrl = new URL(window.location);
         currentUrl.searchParams.set('page', page);
         currentUrl.searchParams.set('tab', tabId);
         
         // Include current filter values
-        const memoType = document.getElementById('memoTypeFilter')?.value;
         const divisionId = document.getElementById('divisionFilter')?.value;
         const staffId = document.getElementById('staffFilter')?.value;
         
-        if (memoType) currentUrl.searchParams.set('memo_type', memoType);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         
-        console.log('Change request pending approval request URL:', currentUrl.toString());
+        console.log('ARF pending approval request URL:', currentUrl.toString());
         
         // Show loading indicator
         const tabContent = document.getElementById(tabId);
@@ -389,25 +370,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .then(response => {
-            console.log('Change request pending approval response status:', response.status);
+            console.log('ARF pending approval response status:', response.status);
             return response.json();
         })
         .then(data => {
-            console.log('Change request pending approval response data:', data);
+            console.log('ARF pending approval response data:', data);
             if (data.html) {
                 if (tabContent) {
                     tabContent.innerHTML = data.html;
                     attachPaginationHandlers(tabId);
                 }
             } else {
-                console.error('No HTML data received for change request pending approval');
+                console.error('No HTML data received for ARF pending approval');
                 if (tabContent) {
                     tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
                 }
             }
         })
         .catch(error => {
-            console.error('Error loading change request pending approval tab data:', error);
+            console.error('Error loading ARF pending approval tab data:', error);
             if (tabContent) {
                 tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
             }
@@ -436,8 +417,8 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault(); // Prevent Bootstrap's default tab behavior
             
             // Remove active class from all tabs and buttons
-            document.querySelectorAll('#changeRequestTabs .nav-link').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('#changeRequestTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
+            document.querySelectorAll('#arfTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#arfTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
             
             // Add active class to clicked button and corresponding pane
             this.classList.add('active');
@@ -452,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Load data for the default active tab
-    const activeTabButton = document.querySelector('#changeRequestTabs .nav-link.active');
+    const activeTabButton = document.querySelector('#arfTabs .nav-link.active');
     if (activeTabButton) {
         loadTabData(activeTabButton.getAttribute('aria-controls'));
     }

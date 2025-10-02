@@ -13,9 +13,10 @@
                 </tr>
             </thead>
             <tbody>
+                @php $count = ($mySubmittedArfs->currentPage() - 1) * $mySubmittedArfs->perPage() + 1; @endphp
                 @foreach($mySubmittedArfs as $index => $arf)
                     <tr>
-                        <td>{{ $index + 1 }}</td>
+                        <td>{{ $count++ }}</td>
                         <td>
                             <span class="badge bg-info">{{ $arf->arf_number ?? 'N/A' }}</span>
                         </td>

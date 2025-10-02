@@ -5,7 +5,14 @@
 @section('header', 'Request for ARF')
 
 @section('header-actions')
-<!-- Create functionality removed - requests will be handled from activities -->
+<div class="d-flex gap-2">
+    <a href="{{ route('request-arf.pending-approvals') }}" class="btn btn-warning shadow-sm">
+        <i class="bx bx-time me-1"></i> Pending Approvals
+        @if(get_pending_arf_count(user_session('staff_id')) > 0)
+            <span class="badge bg-danger ms-1">{{ get_pending_arf_count(user_session('staff_id')) }}</span>
+        @endif
+    </a>
+</div>
 @endsection
 
 @section('content')
@@ -39,6 +46,13 @@
                             </option>
                         @endforeach
                     </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="search" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-search me-1 text-success"></i> Search Title
+                    </label>
+                    <input type="text" name="search" id="search" class="form-control" 
+                           value="{{ request('search') }}" placeholder="Enter ARF title...">
                 </div>
                 <div class="col-md-2">
                     <label for="overall_status" class="form-label fw-semibold mb-1"><i
@@ -162,6 +176,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('overall_status')) {
         document.getElementById('overall_status').addEventListener('change', applyFilters);
     }
+    
+    if (document.getElementById('search')) {
+        document.getElementById('search').addEventListener('input', applyFilters);
+    }
 
     // Function to load tab data via AJAX
     function loadTabData(tabId) {
@@ -174,10 +192,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const divisionId = document.getElementById('division_id')?.value;
         const staffId = document.getElementById('staff_id')?.value;
         const status = document.getElementById('overall_status')?.value;
+        const search = document.getElementById('search')?.value;
         
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (status) currentUrl.searchParams.set('overall_status', status);
+        if (search) currentUrl.searchParams.set('search', search);
         
         console.log('ARF requests request URL:', currentUrl.toString());
         

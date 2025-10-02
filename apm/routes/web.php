@@ -270,6 +270,7 @@ Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoContro
     // ARF Export Routes  
     Route::get('request-arf/export/my-submitted', [App\Http\Controllers\RequestARFController::class, 'exportMySubmittedCsv'])->name('request-arf.export.my-submitted');
     Route::get('request-arf/export/all', [App\Http\Controllers\RequestARFController::class, 'exportAllCsv'])->name('request-arf.export.all');
+    Route::get('request-arf/pending-approvals', [App\Http\Controllers\RequestARFController::class, 'pendingApprovals'])->name('request-arf.pending-approvals');
     
     Route::post('request-arf/store-from-modal', [App\Http\Controllers\RequestARFController::class, 'storeFromModal'])->name('request-arf.store-from-modal');
     Route::resource('request-arf', App\Http\Controllers\RequestARFController::class);

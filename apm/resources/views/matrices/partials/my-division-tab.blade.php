@@ -153,7 +153,7 @@
                                 <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-info" title="View">
                                     <i class="bx bx-show"></i>
                                 </a>
-                                @if($matrix->overall_status !== 'approved')
+                                @if(in_array($matrix->overall_status, ['draft', 'returned']))
                                     <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-sm btn-outline-warning" title="Edit">
                                         <i class="bx bx-edit"></i>
                                     </a>

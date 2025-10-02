@@ -59,14 +59,18 @@ class ServiceRequestController extends Controller
             $baseQuery->where('overall_status', $request->status);
         }
         
+        if ($request->filled('search')) {
+            $baseQuery->where('activity_title', 'like', '%' . $request->search . '%');
+        }
+        
         // My Submitted Requests (current user's requests)
         $mySubmittedQuery = clone $baseQuery;
-        $mySubmittedRequests = $mySubmittedQuery->where('staff_id', $currentStaffId)->get();
+        $mySubmittedRequests = $mySubmittedQuery->where('staff_id', $currentStaffId)->paginate(20)->withQueryString();
         
         // All Requests (for users with permission)
         $allRequests = null;
         if (in_array(87, user_session('permissions', []))) {
-            $allRequests = $baseQuery->get();
+            $allRequests = $baseQuery->paginate(20)->withQueryString();
         }
         
         $staff = Staff::all();

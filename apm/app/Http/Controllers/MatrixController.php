@@ -101,11 +101,22 @@ class MatrixController extends Controller
             $q->orWhere('division_id', $userDivisionId);
         });
 
+        // Get current year and quarter as default
+        $currentYear = now()->year;
+        $currentQuarter = 'Q' . now()->quarter;
        
+        $selectedYear = $request->get('year', $currentYear);
+        $selectedQuarter = $request->get('quarter', $currentQuarter);
+
+        // Apply year filter (default to current year)
+        $query->where('year', $selectedYear);
         
         if ($request->filled('year')) {
             $query->where('year', $request->year);
         }
+    
+        // Apply quarter filter (default to current quarter)
+        $query->where('quarter', $selectedQuarter);
     
         if ($request->filled('quarter')) {
             $query->where('quarter', $request->quarter);
@@ -154,7 +165,10 @@ class MatrixController extends Controller
             }
         ])->where('division_id', user_session('division_id'));
 
-        // Apply filters to my division query
+        // Apply filters to my division query (default to current year and quarter)
+        $myDivisionQuery->where('year', $selectedYear);
+        $myDivisionQuery->where('quarter', $selectedQuarter);
+        
         if ($request->filled('year')) {
             $myDivisionQuery->where('year', $request->year);
         }
@@ -186,7 +200,10 @@ class MatrixController extends Controller
                 }
             ]);
 
-            // Apply same filters to all matrices query
+            // Apply same filters to all matrices query (default to current year and quarter)
+            $allMatricesQuery->where('year', $selectedYear);
+            $allMatricesQuery->where('quarter', $selectedQuarter);
+            
             if ($request->filled('year')) {
                 $allMatricesQuery->where('year', $request->year);
             }
@@ -223,12 +240,12 @@ class MatrixController extends Controller
             switch($tab) {
                 case 'myDivision':
                     $html = view('matrices.partials.my-division-tab', compact(
-                        'myDivisionMatrices'
+                        'myDivisionMatrices', 'selectedYear', 'selectedQuarter'
                     ))->render();
                     break;
                 case 'allMatrices':
                     $html = view('matrices.partials.all-matrices-tab', compact(
-                        'allMatrices'
+                        'allMatrices', 'selectedYear', 'selectedQuarter'
                     ))->render();
                     break;
             }
@@ -246,6 +263,8 @@ class MatrixController extends Controller
             'module' => 'Quarterly Matrix',
             'divisions' => \App\Models\Division::all(),
             'focalPersons' => \App\Models\Staff::active()->get(),
+            'selectedYear' => $selectedYear,
+            'selectedQuarter' => $selectedQuarter,
         ]);
     }
     
@@ -1302,6 +1321,12 @@ class MatrixController extends Controller
      */
     public function edit(Matrix $matrix): View
     {
+        // Only allow editing if matrix is in draft or returned status
+        if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
+            return redirect()
+                ->route('matrices.index')
+                ->with('error', 'Only draft or returned matrices can be edited.');
+        }
         $divisions = Division::all();
         $staff = Staff::active()->get();
         $focalPersons = $staff;
@@ -1399,6 +1424,13 @@ class MatrixController extends Controller
      */
     public function update(Request $request, Matrix $matrix): RedirectResponse
     {
+        // Only allow updating if matrix is in draft or returned status
+        if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
+            return redirect()
+                ->route('matrices.index')
+                ->with('error', 'Only draft or returned matrices can be updated.');
+        }
+
         $isAdmin = session('user.user_role') == 10;
         $userDivisionId = session('user.division_id');
         $userStaffId = session('user.auth_staff_id');
@@ -1521,6 +1553,13 @@ class MatrixController extends Controller
      */
     public function destroy(Matrix $matrix): RedirectResponse
     {
+        // Only allow deletion if matrix is in draft or returned status
+        if (!in_array($matrix->overall_status, ['draft', 'returned'])) {
+            return redirect()
+                ->route('matrices.index')
+                ->with('error', 'Only draft or returned matrices can be deleted.');
+        }
+
         $matrix->delete();
 
         return redirect()

@@ -14,7 +14,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $count = 1; @endphp
+                @php $count = ($pendingMemos->currentPage() - 1) * $pendingMemos->perPage() + 1; @endphp
                 @foreach($pendingMemos as $memo)
                     <tr>
                         <td>{{ $count++ }}</td>

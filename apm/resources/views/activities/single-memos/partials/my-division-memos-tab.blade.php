@@ -23,7 +23,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $count = 1; @endphp
+                @php $count = ($myMemos->currentPage() - 1) * $myMemos->perPage() + 1; @endphp
                 @foreach($myMemos as $memo)
                     <tr>
                         <td>{{ $count++ }}</td>
@@ -122,7 +122,7 @@
     <!-- Pagination -->
     @if($myMemos instanceof \Illuminate\Pagination\LengthAwarePaginator && $myMemos->hasPages())
         <div class="d-flex justify-content-center mt-3">
-            {{ $myMemos->appends(array_merge(request()->query(), ['tab' => 'my-division']))->links() }}
+            {{ $myMemos->appends(['tab' => 'mySubmitted', 'staff_id' => request('staff_id'), 'division_id' => request('division_id'), 'status' => request('status'), 'document_number' => request('document_number'), 'search' => $searchTerm, 'year' => $selectedYear, 'quarter' => $selectedQuarter])->links() }}
         </div>
     @endif
 @else

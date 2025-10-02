@@ -16,6 +16,7 @@ use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use App\Models\Division;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 
 
@@ -470,7 +471,7 @@ $haveArial =
     file_exists($arialFiles['BI']);
 
 if (!$haveArial) {
-    \Log::warning('Arial fonts not found or incomplete. Falling back to DejaVuSans.', [
+    Log::warning('Arial fonts not found or incomplete. Falling back to DejaVuSans.', [
         'dir_exists' => is_dir($arialFontDir),
         'files'      => $arialFiles
     ]);
@@ -659,6 +660,64 @@ if (!function_exists('get_pending_single_memo_count')) {
     }
 }
 
+if (!function_exists('get_pending_request_arf_count')) {
+    /**
+     * Get count of pending ARF requests that require action from the current staff member
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_pending_request_arf_count(int $staffId): int
+    {
+        $userDivisionId = user_session('division_id');
+        
+        // Use the same logic as other pending approval functions
+        $query = \App\Models\RequestARF::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($q) use ($userDivisionId, $staffId) {
+            // Case 1: Division-specific approval - check if user's division matches ARF division
+            if ($userDivisionId) {
+                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) use ($userDivisionId) {
+                    $subQ->where('is_division_specific', 1)
+                        ->whereNull('division_reference_column')
+                        ->where('approval_order', \Illuminate\Support\Facades\DB::raw('request_arfs.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($staffId) {
+                $q->orWhere(function($subQ) use ($staffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($staffId) {
+                        $workflowQ->where('is_division_specific', 0)
+                            ->where('approval_order', \Illuminate\Support\Facades\DB::raw('request_arfs.approval_level'))
+                            ->whereHas('approvers', function($approverQ) use ($staffId) {
+                                $approverQ->where('staff_id', $staffId);
+                            });
+                    });
+                });
+            }
+        });
+
+        return $query->count();
+    }
+}
+
+if (!function_exists('get_pending_arf_count')) {
+    /**
+     * Alias for get_pending_request_arf_count for consistency
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_pending_arf_count(int $staffId): int
+    {
+        return get_pending_request_arf_count($staffId);
+    }
+}
+
 if (!function_exists('get_pending_change_request_count')) {
     /**
      * Get count of pending change requests that require action from the current staff member
@@ -738,7 +797,7 @@ if (!function_exists('get_staff_recent_activities')) {
         
         return array_slice($activities, 0, $limit);
     }
-}
+} 
 
 if (!function_exists('get_pending_change_request_count')) {
     /**

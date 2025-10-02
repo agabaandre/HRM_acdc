@@ -46,6 +46,17 @@
             <h4 class="mb-0 text-success fw-bold"><i class="bx bx-file-doc me-2 text-success"></i> Single Memo Management</h4>
                     </div>
 
+        <!-- Search Row -->
+        <div class="row g-3 mb-3">
+            <div class="col-12">
+                <label for="search" class="form-label fw-semibold mb-1">
+                    <i class="bx bx-search me-1 text-success"></i> Search Single Memo Title
+                </label>
+                <input type="text" name="search" id="search" class="form-control" 
+                       value="{{ $searchTerm ?? '' }}" placeholder="Enter single memo title to search...">
+            </div>
+        </div>
+
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
             <form action="{{ route('activities.single-memos.index') }}" method="GET" class="row g-3 align-items-end w-100">
                 <div class="col-md-2">
@@ -77,6 +88,30 @@
                         @foreach($divisions as $division)
                             <option value="{{ $division->division_id }}" {{ request('division_id') == $division->division_id ? 'selected' : '' }}>
                                 {{ $division->division_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label for="year" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-calendar me-1 text-success"></i> Year
+                    </label>
+                    <select name="year" id="year" class="form-select select2" style="width: 100%;">
+                        @foreach($years as $year)
+                            <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>
+                                {{ $year }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label for="quarter" class="form-label fw-semibold mb-1">
+                        <i class="bx bx-time-five me-1 text-success"></i> Quarter
+                    </label>
+                    <select name="quarter" id="quarter" class="form-select select2" style="width: 100%;">
+                        @foreach($quarters as $quarter)
+                            <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>
+                                {{ $quarter }}
                             </option>
                         @endforeach
                     </select>
@@ -294,11 +329,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const divisionId = document.getElementById('division_id')?.value;
         const status = document.getElementById('statusFilter')?.value;
         const documentNumber = document.getElementById('document_number')?.value;
+        const search = document.getElementById('search')?.value;
+        const year = document.getElementById('year')?.value;
+        const quarter = document.getElementById('quarter')?.value;
         
         if (staffId) currentUrl.searchParams.set('staff_id', staffId);
         if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
         if (status) currentUrl.searchParams.set('status', status);
         if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
+        if (search) currentUrl.searchParams.set('search', search);
+        if (year) currentUrl.searchParams.set('year', year);
+        if (quarter) currentUrl.searchParams.set('quarter', quarter);
         
         console.log('Single memo request URL:', currentUrl.toString());
         
