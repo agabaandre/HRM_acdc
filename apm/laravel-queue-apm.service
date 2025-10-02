@@ -1,5 +1,5 @@
 [Unit]
-Description=Laravel Scheduler for Africa CDC APM
+Description=Laravel Queue Worker for Africa CDC APM
 After=network.target
 
 [Service]
@@ -7,20 +7,20 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/var/lib/ACDC_SYSTEMS/staff/apm
-ExecStart=/usr/bin/php artisan schedule:work
+ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3 --max-time=3600
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=laravel-scheduler
+SyslogIdentifier=laravel-queue-apm
 
 # Environment variables
 Environment=APP_ENV=production
 Environment=APP_DEBUG=false
 
-# Resource limits
+# Resource limits (using MemoryMax instead of MemoryLimit)
 LimitNOFILE=65536
-MemoryMax=256M
+MemoryMax=512M
 
 [Install]
 WantedBy=multi-user.target
