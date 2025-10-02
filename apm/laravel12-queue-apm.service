@@ -1,0 +1,26 @@
+[Unit]
+Description=Laravel 12 Queue Worker for Africa CDC APM
+After=network.target
+
+[Service]
+Type=simple
+User=andrew
+Group=www-data
+WorkingDirectory=/var/lib/ACDC_SYSTEMS/staff/apm
+ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=60
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=laravel-queue-apm
+
+# Environment variables
+Environment=APP_ENV=production
+Environment=APP_DEBUG=false
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
