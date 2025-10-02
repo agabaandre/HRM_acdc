@@ -534,7 +534,7 @@ public function getNextApprover($model)
         // For external source, first check if division has director
         if ($isExternal) {
             // Check if division has directorate (null or 0 means no director)
-            if ($division->director_id == null || $division->director_id == 0) {
+            if ($division->director_id === null || $division->director_id == 0) {
                 // No director - go directly to division category check
                 $definition = $pickFirstCategoryNode($division->category ?? null);
                 if ($definition) return $definition;
@@ -568,7 +568,7 @@ public function getNextApprover($model)
         }
         
         // For non-external sources, check if division has directorate (null or 0 means no director)
-        if ($division->director_id == null || $division->director_id == 0) {
+        if ($division->director_id === null || $division->director_id == 0) {
             // No directorate - skip to next available step after Director (order 2)
             // But first check fund types to route correctly
             if ($hasIntra && !$hasExtra) {

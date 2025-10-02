@@ -7,7 +7,7 @@ Type=simple
 User=andrew
 Group=www-data
 WorkingDirectory=/var/lib/ACDC_SYSTEMS/staff/apm
-ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=60
+ExecStart=/usr/bin/php artisan queue:work database --sleep=3 --tries=3 --timeout=90 --verbose
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -17,6 +17,7 @@ SyslogIdentifier=laravel-queue-apm
 # Environment variables
 Environment=APP_ENV=production
 Environment=APP_DEBUG=false
+Environment=QUEUE_CONNECTION=database
 
 # Resource limits
 LimitNOFILE=65536
