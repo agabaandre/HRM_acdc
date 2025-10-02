@@ -568,11 +568,14 @@
       </tr>
     </table>
 <?php
-    // Get latest approvals for each order
-    $approvalOrder5 = getLatestApprovalForOrder($activity->activityApprovalTrails, 5);
-    $approvalOrder1 = getLatestApprovalForOrder($activity->activityApprovalTrails, 1);
-    $approvalOrder6 = getLatestApprovalForOrder($activity->activityApprovalTrails, 6);
-    $approvalOrder8 = getLatestApprovalForOrder($activity->activityApprovalTrails, 8);
+    // Get financial approvers dynamically based on workflow definition
+    $financialApprovers = PrintHelper::getFinancialApprovers($activity->activityApprovalTrails, $matrix->forward_workflow_id ?? 1);
+    
+    // Extract specific approvers for easier access
+    $sfoApproval = $financialApprovers['Finance Officer'] ?? null;
+    $divisionHeadApproval = $financialApprovers['Head of Division'] ?? null;
+    $directorFinanceApproval = $financialApprovers['Director Finance'] ?? null;
+    $ddgApproval = $financialApprovers['Deputy Director General'] ?? null;
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
     <table class="budget-table" role="table" aria-label="Budget and Certification">
@@ -580,7 +583,7 @@
         <td class="head">Strategic Axis Budget Balance (Certified by SFO)</td>
         <td>USD</td>
         <td>$ <?=number_format($activity->available_budget ?? 0, 2);?></td>
-        <td>Date: <?=$approvalOrder5 ? (is_object($approvalOrder5->created_at) ? $approvalOrder5->created_at->format('j F Y') : date('j F Y', strtotime($approvalOrder5->created_at))) : 'N/A';?></td>
+        <td>Date: <?=$sfoApproval ? (is_object($sfoApproval->created_at) ? $sfoApproval->created_at->format('j F Y') : date('j F Y', strtotime($sfoApproval->created_at))) : 'N/A';?></td>
       </tr>
       <tr>
         <td></td>
@@ -588,7 +591,7 @@
         <td></td>
         <td>
            
-            <?php renderBudgetSignature($approvalOrder5, $activity); ?>
+            <?php renderBudgetSignature($sfoApproval, $activity); ?>
         </td>
       </tr>
       <tr>
@@ -596,15 +599,15 @@
         <td>USD</td>
         <td><?php echo number_format($grandTotal, 2); ?></td>
         <td>Name: <?php 
-            if ($approvalOrder5) {
-                $isOic = !empty($approvalOrder5->oic_staff_id);
-                $staff = $isOic ? $approvalOrder5->oicStaff : $approvalOrder5->staff;
+            if ($sfoApproval) {
+                $isOic = !empty($sfoApproval->oic_staff_id);
+                $staff = $isOic ? $sfoApproval->oicStaff : $sfoApproval->staff;
                 if ($staff) {
                     $name = $staff->title.' '.$staff->fname.' '.$staff->lname.' '.$staff->oname;
                    
                     if ($isOic) $name .= ' (OIC)';
                     echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
-                    echo '<div class="approver-title">' . htmlspecialchars($approvalOrder5->workflowDefinition->role) . '</div>';
+                    echo '<div class="approver-title">' . htmlspecialchars($sfoApproval->workflowDefinition->role) . '</div>';
                 } else {
                     echo 'N/A';
                 }
@@ -618,35 +621,35 @@
     <!-- Signatures (borderless by default). Last column adds ONLY a left border inline -->
     <table class="sig-table" role="table" aria-label="Approvals">
       <tr>
-        <td>Signded (Prepared by):</td>
+        <td>Signed (Prepared by):</td>
         <td>
-          <?php renderBudgetApproverInfo($approvalOrder1); ?>
+          <?php renderBudgetApproverInfo($divisionHeadApproval); ?>
         </td>
         <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-            <?php renderBudgetSignature($approvalOrder1, $activity); ?>
+            <?php renderBudgetSignature($divisionHeadApproval, $activity); ?>
           </span>
         </td>
       </tr>
       <tr>
         <td>Signed (Endorsed by):</td>
         <td>
-          <?php renderBudgetApproverInfo($approvalOrder6); ?>
+          <?php renderBudgetApproverInfo($directorFinanceApproval); ?>
         </td>
         <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-            <?php renderBudgetSignature($approvalOrder6, $activity); ?>
+            <?php renderBudgetSignature($directorFinanceApproval, $activity); ?>
           </span>
         </td>
       </tr>
       <tr>
         <td>Signed (Approved by):</td>
         <td>
-          <?php renderBudgetApproverInfo($approvalOrder8); ?>
+          <?php renderBudgetApproverInfo($ddgApproval); ?>
         </td>
         <td style="border-left:1px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
-            <?php renderBudgetSignature($approvalOrder8, $activity); ?>
+            <?php renderBudgetSignature($ddgApproval, $activity); ?>
           </span>
         </td>
       </tr>

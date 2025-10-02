@@ -418,13 +418,15 @@ class PrintHelper
             // Get workflow definitions with category filtering
             $workflowDefinitions = self::getWorkflowDefinitionsForMemo($workflowId, $divisionCategory);
 
+            // First, collect all approvers by section
+            $sectionApprovers = [];
             foreach ($workflowDefinitions as $definition) {
                 $section = $definition->memo_print_section ?? 'through';
                 
                 // Map approval orders to sections
-                if ($definition->approval_order == 10) {
+                if ($definition->approval_order == 11) {
                     $section = 'to';
-                } elseif (in_array($definition->approval_order, [7, 8, 9])) {
+                } elseif (in_array($definition->approval_order, [7, 8, 9, 10])) {
                     $section = 'through';
                 } elseif ($definition->approval_order == 1) {
                     $section = 'from';
@@ -436,22 +438,67 @@ class PrintHelper
                 }
 
                 // Get approvers for this definition from approval trails
-                $sectionApprovers = [];
+                $approversForOrder = [];
                 if (isset($approvers[$definition->approval_order])) {
-                    $sectionApprovers = $approvers[$definition->approval_order];
+                    $approversForOrder = $approvers[$definition->approval_order];
                 } elseif ($definition->approval_order == 1 && isset($approvers['division_head'])) {
-                    $sectionApprovers = $approvers['division_head'];
+                    $approversForOrder = $approvers['division_head'];
                 }
 
-                if (!empty($sectionApprovers)) {
-                    if (!isset($organizedApprovers[$section])) {
-                        $organizedApprovers[$section] = [];
+                if (!empty($approversForOrder)) {
+                    if (!isset($sectionApprovers[$section])) {
+                        $sectionApprovers[$section] = [];
                     }
-                    $organizedApprovers[$section] = array_merge($organizedApprovers[$section], $sectionApprovers);
+                    
+                    // Add print_order and approval_order to each approver for sorting
+                    foreach ($approversForOrder as $approver) {
+                        $approver['print_order'] = $definition->print_order;
+                        $approver['approval_order'] = $definition->approval_order;
+                        $sectionApprovers[$section][] = $approver;
+                    }
                 }
+            }
+            
+            // Sort each section by print_order first, then by approval_order as fallback
+            foreach ($sectionApprovers as $section => $approvers) {
+                usort($approvers, function($a, $b) {
+                    $aPrintOrder = $a['print_order'] ?? 0;
+                    $bPrintOrder = $b['print_order'] ?? 0;
+                    if ($aPrintOrder != $bPrintOrder) {
+                        return $aPrintOrder <=> $bPrintOrder;
+                    }
+                    return ($a['approval_order'] ?? 0) <=> ($b['approval_order'] ?? 0);
+                });
+                $organizedApprovers[$section] = $approvers;
             }
         }
 
         return $organizedApprovers;
+    }
+
+    /**
+     * Get financial approvers for budget section based on workflow definition
+     * This method dynamically gets the correct approvers for budget signatures
+     */
+    public static function getFinancialApprovers($activityApprovalTrails, $workflowId = 1)
+    {
+        $financialApprovers = [];
+        
+        // Define the financial approver roles and their expected approval orders
+        $financialRoles = [
+            'Head of Division' => 1,      // Prepared by
+            'Finance Officer' => 5,       // Endorsed by (SFO)
+            'Director Finance' => 6,      // Endorsed by (Director Finance)
+            'Deputy Director General' => 9 // Approved by
+        ];
+        
+        foreach ($financialRoles as $role => $expectedOrder) {
+            $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
+            if ($approval) {
+                $financialApprovers[$role] = $approval;
+            }
+        }
+        
+        return $financialApprovers;
     }
 }
