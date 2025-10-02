@@ -1,0 +1,20 @@
+[Unit]
+Description=Laravel Queue Cleanup Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=andrew
+Group=www-data
+WorkingDirectory=/var/lib/ACDC_SYSTEMS/staff/apm
+ExecStart=/bin/bash /var/lib/ACDC_SYSTEMS/staff/apm/cleanup_deleted_jobs.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=laravel-queue-cleanup
+
+# Environment variables
+Environment=APP_ENV=production
+Environment=APP_DEBUG=false
+
+[Install]
+WantedBy=multi-user.target
