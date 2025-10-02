@@ -244,7 +244,7 @@ body {
 }
 
 .btn-sm {
-  padding: 0.1rem 1rem;
+  padding: 0.4rem 1rem;
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
   width: 100%;
