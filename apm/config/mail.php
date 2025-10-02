@@ -79,6 +79,11 @@ return [
             'transport' => 'array',
         ],
 
+        'exchange' => [
+            'transport' => 'exchange',
+            'service' => \App\Services\EmailService::class,
+        ],
+
         'failover' => [
             'transport' => 'failover',
             'mailers' => [

@@ -48,7 +48,7 @@ class SendNotificationEmailJob implements ShouldQueue
                 return;
             }
 
-            // Send email based on notification type
+            // Send email based on notification type using centralized system
             switch ($this->notification->type) {
                 case 'daily_pending_approvals':
                     $this->sendDailyPendingApprovalsEmail($staff);
@@ -76,25 +76,23 @@ class SendNotificationEmailJob implements ShouldQueue
     }
 
     /**
-     * Send daily pending approvals email
+     * Send daily pending approvals email using centralized system
      */
     private function sendDailyPendingApprovalsEmail(Staff $staff): void
     {
         try {
-            // Use Laravel's mail system
-            Mail::to($staff->work_email)
-                ->bcc('system@africacdc.org')
-                ->send(new \App\Mail\DailyPendingApprovalsMail([
-                    'approver' => $staff->toArray(),
-                    'pendingApprovals' => $this->data['pending_approvals'] ?? [],
-                    'summaryStats' => $this->data['summary_stats'] ?? [],
-                    'approverName' => $staff->fname . ' ' . $staff->lname,
-                    'approverTitle' => $staff->title ?? 'Mr',
-                    'baseUrl' => config('app.url')
-                ]));
+            // Use centralized email system
+            $pendingApprovals = $this->data['pending_approvals'] ?? [];
+            $summaryStats = $this->data['summary_stats'] ?? [];
+            
+            $result = sendDailyPendingApprovalsEmail($staff, $pendingApprovals, $summaryStats);
+            
+            if (!$result) {
+                throw new \Exception('Failed to send daily pending approvals email');
+            }
 
         } catch (\Exception $e) {
-            Log::error('Laravel Mail error in notification email', [
+            Log::error('Error in daily pending approvals notification email', [
                 'notification_id' => $this->notification->id,
                 'staff_id' => $this->notification->staff_id,
                 'error' => $e->getMessage()
@@ -104,23 +102,24 @@ class SendNotificationEmailJob implements ShouldQueue
     }
 
     /**
-     * Send generic notification email
+     * Send generic notification email using centralized system
      */
     private function sendGenericNotificationEmail(Staff $staff): void
     {
         try {
-            // Use Laravel's mail system
-            Mail::to($staff->work_email)
-                ->bcc('system@africacdc.org')
-                ->send(new \App\Mail\GenericNotificationMail([
-                    'staff' => $staff,
-                    'notification' => $this->notification,
-                    'message' => $this->notification->message,
-                    'type' => $this->notification->type
-                ]));
+            // Use centralized email system
+            $title = $this->data['title'] ?? 'APM Notification';
+            $message = $this->data['message'] ?? $this->notification->message;
+            $data = $this->data['data'] ?? [];
+            
+            $result = sendGenericNotificationEmail($staff, $title, $message, $data);
+            
+            if (!$result) {
+                throw new \Exception('Failed to send generic notification email');
+            }
 
         } catch (\Exception $e) {
-            Log::error('Laravel Mail error in generic notification email', [
+            Log::error('Error in generic notification email', [
                 'notification_id' => $this->notification->id,
                 'staff_id' => $this->notification->staff_id,
                 'error' => $e->getMessage()

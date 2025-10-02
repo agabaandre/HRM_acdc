@@ -2,19 +2,12 @@
 
 namespace App\Jobs;
 
-use App\Services\PendingApprovalsService;
-use App\Models\Staff;
-use App\Models\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Bus\Queueable as BusQueueable;
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 
 class SendDailyPendingApprovalsNotificationJob implements ShouldQueue
 {
@@ -39,34 +32,13 @@ class SendDailyPendingApprovalsNotificationJob implements ShouldQueue
         try {
             Log::info('Starting daily pending approvals notification job');
 
-            // Get all staff who are approvers (either division-specific or regular approvers)
-            $approvers = $this->getAllApprovers();
+            // Use the NotificationService to create notifications and dispatch email jobs
+            $notificationService = new \App\Services\NotificationService();
+            $notifications = $notificationService->createDailyPendingApprovalsNotifications();
             
-            $totalNotifications = 0;
-            $successCount = 0;
-            $failureCount = 0;
-
-            foreach ($approvers as $approver) {
-                try {
-                    $notificationSent = $this->processApproverNotification($approver);
-                    if ($notificationSent) {
-                        $successCount++;
-                        $totalNotifications++;
-                    }
-                } catch (\Exception $e) {
-                    $failureCount++;
-                    Log::error('Failed to send notification to approver', [
-                        'staff_id' => $approver['staff_id'],
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-
             Log::info('Daily pending approvals notification job completed', [
-                'total_approvers' => count($approvers),
-                'successful_notifications' => $successCount,
-                'failed_notifications' => $failureCount,
-                'total_notifications' => $totalNotifications
+                'notifications_created' => count($notifications),
+                'message' => 'All notifications have been queued for processing'
             ]);
 
         } catch (\Exception $e) {
@@ -79,171 +51,6 @@ class SendDailyPendingApprovalsNotificationJob implements ShouldQueue
         }
     }
 
-    /**
-     * Get all staff who are approvers
-     */
-    private function getAllApprovers(): array
-    {
-        $approvers = [];
-
-        // 1. Get division-specific approvers from divisions table
-        $divisionApprovers = DB::table('divisions')
-            ->select('division_head as staff_id')
-            ->whereNotNull('division_head')
-            ->union(
-                DB::table('divisions')
-                    ->select('focal_person as staff_id')
-                    ->whereNotNull('focal_person')
-            )
-            ->union(
-                DB::table('divisions')
-                    ->select('admin_assistant as staff_id')
-                    ->whereNotNull('admin_assistant')
-            )
-            ->union(
-                DB::table('divisions')
-                    ->select('finance_officer as staff_id')
-                    ->whereNotNull('finance_officer')
-            )
-            ->get()
-            ->pluck('staff_id')
-            ->unique()
-            ->filter()
-            ->toArray();
-
-        // 2. Get regular approvers from approvers table
-        $regularApprovers = DB::table('approvers')
-            ->distinct()
-            ->pluck('staff_id')
-            ->toArray();
-
-        // 3. Combine and get unique staff IDs
-        $allApproverIds = array_unique(array_merge($divisionApprovers, $regularApprovers));
-
-        // 4. Get staff details for all approvers
-        $approvers = Staff::whereIn('staff_id', $allApproverIds)
-            ->where('active', 1)
-            ->whereNotNull('work_email')
-            ->get()
-            ->toArray();
-
-        return $approvers;
-    }
-
-    /**
-     * Process notification for a single approver
-     * @return bool True if notification was sent, false if no pending items
-     */
-    private function processApproverNotification($approver): bool
-    {
-        // Create session data for the approver
-        $sessionData = [
-            'staff_id' => $approver['staff_id'],
-            'division_id' => $approver['division_id'],
-            'permissions' => [],
-            'name' => $approver['fname'] . ' ' . $approver['lname'],
-            'email' => $approver['work_email'],
-            'base_url' => config('app.url')
-        ];
-
-        // Get pending approvals for this approver using the service
-        $pendingApprovalsService = new PendingApprovalsService($sessionData);
-        $pendingApprovals = $pendingApprovalsService->getPendingApprovals();
-        $summaryStats = $pendingApprovalsService->getSummaryStats();
-
-        // Only send notification if there are pending items
-        if ($summaryStats['total_pending'] === 0) {
-            return false; // No pending items, no notification sent
-        }
-
-        // Create notification record
-        Notification::create([
-            'staff_id' => $approver['staff_id'],
-            'model_id' => null, // No specific model for daily summary
-            'message' => "You have {$summaryStats['total_pending']} pending approval(s) requiring your attention.",
-            'type' => 'daily_pending_approvals',
-            'is_read' => false
-        ]);
-
-        // Send email notification
-        $this->sendDailyPendingApprovalsEmail($approver, $pendingApprovals, $summaryStats);
-        
-        return true; // Notification was sent
-    }
-
-    /**
-     * Send daily pending approvals email
-     */
-    private function sendDailyPendingApprovalsEmail($approver, $pendingApprovals, $summaryStats): void
-    {
-        $mail = new PHPMailer(true);
-
-        try {
-            // Server settings
-            $mail->SMTPDebug = 0;
-            $mail->isSMTP();
-            $mail->Host = env('MAIL_HOST');
-            $mail->SMTPAuth = true;
-            $mail->Username = env('MAIL_USERNAME');
-            $mail->Password = env('MAIL_PASSWORD');
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port = env('MAIL_PORT');
-
-            // Recipients
-            $mail->setFrom(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME', 'Africa CDC APM'));
-            $mail->addAddress($approver['work_email'], $approver['fname'] . ' ' . $approver['lname']);
-            $mail->addBCC('system@africacdc.org');
-            
-            // Log BCC addition for debugging
-            Log::info("Daily notification BCC added", [
-                'staff_id' => $approver['staff_id'],
-                'bcc_email' => 'system@africacdc.org',
-                'recipient_email' => $approver['work_email']
-            ]);
-
-            // Subject - Dynamic based on time of day
-            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM') . ": ";
-            $currentHour = (int) date('H');
-            $timeOfDay = $currentHour < 12 ? 'Morning' : 'Evening';
-            $mail->Subject = $prefix . "{$timeOfDay} Pending Approvals Reminder - {$summaryStats['total_pending']} items";
-
-            // Render email template
-            $htmlContent = View::make('emails.daily-pending-approvals-notification', [
-                'approver' => $approver,
-                'pendingApprovals' => $pendingApprovals,
-                'summaryStats' => $summaryStats,
-                'approverName' => $approver['fname'] . ' ' . $approver['lname'],
-                'approverTitle' => $approver['title'] ?? 'Mr',
-                'baseUrl' => config('app.url')
-            ])->render();
-
-            // Content
-            $mail->isHTML(true);
-            $mail->Body = $htmlContent;
-            
-            // Create plain text version
-            $plainText = strip_tags($htmlContent);
-            $mail->AltBody = $plainText;
-
-            $result = $mail->send();
-
-            Log::info("Daily pending approvals email sent successfully", [
-                'staff_id' => $approver['staff_id'],
-                'recipient_email' => $approver['work_email'],
-                'bcc_email' => 'system@africacdc.org',
-                'total_pending' => $summaryStats['total_pending'],
-                'result' => $result,
-                'subject' => $mail->Subject
-            ]);
-
-        } catch (Exception $e) {
-            Log::error('PHPMailer error in daily pending approvals notification', [
-                'staff_id' => $approver['staff_id'],
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
-        }
-    }
 
     /**
      * Handle a job failure.
