@@ -220,7 +220,7 @@
                                 <h6 class="mb-0 text-success fw-bold">
                                     <i class="bx bx-home me-2"></i> My Division Matrices
                                 </h6>
-                                <small class="text-muted">All Matrices in your division</small>
+                                <small class="text-muted">Matrices in your division and divisions where you are the head</small>
                             </div>
                             <div>
                                 <a href="{{ route('matrices.export.division-csv') }}" class="btn btn-outline-success btn-sm">
