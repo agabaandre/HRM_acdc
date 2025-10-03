@@ -530,6 +530,7 @@
                     @php
                         // Check if Service Request already exists for this memo
                         $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $specialMemo->id)
+                            ->whereIn('overall_status', ['pending', 'approved'])
                             ->where('model_type', 'App\\Models\\SpecialMemo')
                             ->first();
                     @endphp
