@@ -197,6 +197,7 @@
                     @php
                         // Check if ARF already exists for this non-travel memo
                         $existingArf = \App\Models\RequestARF::where('source_id', $nonTravel->id)
+                            ->whereIn('overall_status', ['pending', 'approved'])
                             ->where('model_type', 'App\\Models\\NonTravelMemo')
                             ->first();
                     @endphp
@@ -219,6 +220,7 @@
                     @php
                         // Check if Service Request already exists for this non-travel memo
                         $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $nonTravel->id)
+                            ->whereIn('overall_status', ['pending', 'approved'])
                             ->where('model_type', 'App\\Models\\NonTravelMemo')
                             ->first();
                     @endphp

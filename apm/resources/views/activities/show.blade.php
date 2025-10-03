@@ -498,6 +498,7 @@
                     @php
                         // Check if ARF already exists for this activity
                         $existingArf = \App\Models\RequestARF::where('source_id', $activity->id)
+                            ->whereIn('overall_status', ['pending', 'approved'])
                             ->where('model_type', 'App\\Models\\Activity')
                             ->first();
                     @endphp
@@ -521,6 +522,7 @@
                     @php
                         // Check if Service Request already exists for this activity
                         $existingServiceRequest = \App\Models\ServiceRequest::where('source_id', $activity->id)
+                            ->whereIn('overall_status', ['pending', 'approved'])
                             ->where('model_type', 'App\\Models\\Activity')
                             ->first();
                     @endphp
