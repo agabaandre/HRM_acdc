@@ -1,6 +1,6 @@
 <?php
 $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && in_array('83', $permissions));
-$isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) @$ppa->supervisor2_id]);
+$isSupervisor = in_array($session->staff_id, [(int) @$ppa->midterm_supervisor_1, (int) @$ppa->midterm_supervisor_2]);
 
 // $hasMidtermObjectives = false;
 // if (!empty($ppa->midterm_objectives)) {
