@@ -19,9 +19,9 @@
 
           if ($log->staff_id == $ppa->staff_id) {
               $role = 'Staff';
-          } elseif ($log->staff_id == $ppa->supervisor_id) {
+          } elseif ($log->staff_id == $ppa->midterm_supervisor_1) {
               $role = 'First Supervisor';
-          } elseif (!empty($ppa->supervisor2_id) && $log->staff_id == $ppa->supervisor2_id) {
+          } elseif (!empty($ppa->midterm_supervisor_1) && $log->staff_id == $ppa->midterm_supervisor_1) {
               $role = 'Second Supervisor';
           }
         ?>
