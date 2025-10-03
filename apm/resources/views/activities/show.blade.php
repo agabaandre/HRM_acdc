@@ -529,14 +529,14 @@
                         {{-- Show View Service Request button if Service Request exists --}}
                         <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-eye"></i>
-                            <span>View RQS</span>
+                            <span>View Request</span>
                         </a>
                     @elseif(can_request_services($activity))
                         {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
                         <a href="{{ route('service-requests.create') }}?source_type=activity&source_id={{ $activity->id }}" 
                            class="btn btn-info btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-tools"></i>
-                            <span>Create RQS</span>
+                            <span>Request Services</span>
                         </a>
                     @endif
                             {{-- @dd(can_print_memo($activity)) --}}
