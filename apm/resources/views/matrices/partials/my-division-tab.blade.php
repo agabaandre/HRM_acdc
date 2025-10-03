@@ -48,7 +48,7 @@
                             <!-- Modal -->
                             <div class="modal fade" id="kraModalMyDiv{{ $matrix->id }}" tabindex="-1"
                                 aria-labelledby="kraModalLabelMyDiv{{ $matrix->id }}" aria-hidden="true">
-                                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                                <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h5 class="modal-title" id="kraModalLabelMyDiv{{ $matrix->id }}">
@@ -110,14 +110,46 @@
                                                         <tbody>
                                                             @foreach ($activities as $activity)
                                                                 <tr>
-                                                                    <td>{{ $activity->activity_title }}</td>
+                                                                    <td style="width: 80%; word-wrap: break-word; white-space: normal;">{{ $activity->activity_title }}</td>
                                                                     <td>{{ $activity->total_participants ?? 0 }}</td>
                                                                     <td>
-                                                                        @if (is_array($activity->budget_breakdown) && isset($activity->budget_breakdown['total']))
-                                                                            ${{ number_format($activity->budget_breakdown['total'], 2) }}
-                                                                        @else
-                                                                            $0.00
-                                                                        @endif
+                                                                        @php
+                                                                            $totalBudget = 0;
+                                                                            
+                                                                            // First try to get from total_budget field if it exists
+                                                                            if (isset($activity->total_budget) && $activity->total_budget > 0) {
+                                                                                $totalBudget = floatval($activity->total_budget);
+                                                                            } else {
+                                                                                // Try to calculate from budget_breakdown
+                                                                                $budgetBreakdown = $activity->budget_breakdown;
+                                                                                
+                                                                                // Handle JSON string
+                                                                                if (is_string($budgetBreakdown)) {
+                                                                                    $budgetBreakdown = json_decode($budgetBreakdown, true);
+                                                                                }
+                                                                                
+                                                                                if (is_array($budgetBreakdown)) {
+                                                                                    foreach ($budgetBreakdown as $key => $entries) {
+                                                                                        if ($key === 'grand_total') continue;
+                                                                                        
+                                                                                        if (is_array($entries)) {
+                                                                                            foreach ($entries as $item) {
+                                                                                                $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                                                                $units = floatval($item['units'] ?? 0);
+                                                                                                $days = floatval($item['days'] ?? 1);
+                                                                                                
+                                                                                                if ($days > 1) {
+                                                                                                    $totalBudget += $unitCost * $units * $days;
+                                                                                                } else {
+                                                                                                    $totalBudget += $unitCost * $units;
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        @endphp
+                                                                        ${{ number_format($totalBudget, 2) }}
                                                                     </td>
                                                                 </tr>
                                                             @endforeach
@@ -156,11 +188,6 @@
                                 @if(in_array($matrix->overall_status, ['draft', 'returned']))
                                     <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-sm btn-outline-warning" title="Edit">
                                         <i class="bx bx-edit"></i>
-                                    </a>
-                                @endif
-                                @if($matrix->overall_status === 'approved')
-                                    <a href="#" class="btn btn-sm btn-outline-success" title="Print" target="_blank">
-                                        <i class="bx bx-printer"></i>
                                     </a>
                                 @endif
                             </div>
