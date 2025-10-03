@@ -538,14 +538,14 @@
                         {{-- Show View Service Request button if Service Request exists --}}
                         <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info d-flex align-items-center gap-2">
                             <i class="fas fa-eye"></i>
-                            <span>View Service Request</span>
+                            <span>View Request</span>
                         </a>
                     @elseif(can_request_services($specialMemo))
                         {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
                         <a href="{{ route('service-requests.create') }}?source_type=special_memo&source_id={{ $specialMemo->id }}" 
                            class="btn btn-info d-flex align-items-center gap-2">
                             <i class="fas fa-tools"></i>
-                            <span>Create Service Request</span>
+                            <span>Request Services</span>
                         </a>
                     @endif
                 </div>

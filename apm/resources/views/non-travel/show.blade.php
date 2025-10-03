@@ -227,14 +227,14 @@
                         {{-- Show View Service Request button if Service Request exists --}}
                         <a href="{{ route('service-requests.show', $existingServiceRequest) }}" class="btn btn-outline-info btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-eye"></i>
-                            <span>View RQS</span>
+                            <span>View Requests</span>
                         </a>
                     @elseif(can_request_services($nonTravel))
                         {{-- Show Create Service Request button if memo is approved and no Service Request exists --}}
                         <a href="{{ route('service-requests.create') }}?source_type=non_travel&source_id={{ $nonTravel->id }}" 
                            class="btn btn-info btn-sm d-flex align-items-center gap-1">
                             <i class="fas fa-tools"></i>
-                            <span>Create RQS</span>
+                            <span>Request Services</span>
                         </a>
                     @endif
                     
