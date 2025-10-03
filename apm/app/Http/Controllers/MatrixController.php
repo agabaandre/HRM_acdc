@@ -163,7 +163,20 @@ class MatrixController extends Controller
                 $q->select('id', 'matrix_id', 'activity_title', 'total_participants', 'budget_breakdown')
                   ->whereNotNull('matrix_id');
             }
-        ])->where('division_id', user_session('division_id'));
+        ])->where(function($q) {
+            $userDivisionId = user_session('division_id');
+            $userStaffId = user_session('staff_id');
+            
+            // Show matrices from user's own division
+            $q->where('division_id', $userDivisionId);
+            
+            // Also show matrices where user is the division head of other divisions
+            if ($userStaffId) {
+                $q->orWhereHas('division', function($divisionQuery) use ($userStaffId) {
+                    $divisionQuery->where('division_head', $userStaffId);
+                });
+            }
+        });
 
         // Apply filters to my division query (default to current year and quarter)
         $myDivisionQuery->where('year', $selectedYear);
