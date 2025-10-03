@@ -323,31 +323,62 @@
                                 </div>
                             </div>
                         @elseif ($sourceType == 'non_travel_memo')
-                            {{-- Simple budget breakdown for non-travel memos --}}
+                            {{-- Budget breakdown for non-travel memos in table format --}}
                             <div class="table-responsive">
                                 <table class="table table-bordered table-sm mb-0">
                                     <thead class="table-secondary">
-                                <tr>
-                                            <th>Budget Item</th>
-                                            <th>Value</th>
-                                </tr>
+                                        <tr>
+                                            <th class="text-center">#</th>
+                                            <th>Item</th>
+                                            <th class="text-end">Unit Cost</th>
+                                            <th class="text-center">Days</th>
+                                            <th>Description</th>
+                                            <th class="text-end">Total</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
+                                        @php
+                                            $itemCount = 1;
+                                            $grandTotal = 0;
+                                        @endphp
                                         @foreach ($budgetBreakdown as $key => $value)
-                                            @if ($key !== 'grand_total')
-                                                <tr>
-                                                    <td>{{ $key }}</td>
-                                                    <td>
-                                                        @if (is_array($value))
-                                                            <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                        @else
-                                                            {{ $value }}
-                                                        @endif
-                                                    </td>
-                                                </tr>
+                                            @if ($key !== 'grand_total' && is_array($value))
+                                                @foreach ($value as $item)
+                                                    @php
+                                                        $unitCost = floatval($item['unit_cost'] ?? 0);
+                                                        $days = floatval($item['days'] ?? 1);
+                                                        $total = $unitCost * $days;
+                                                        $grandTotal += $total;
+                                                    @endphp
+                                                    <tr>
+                                                        <td class="text-center">{{ $itemCount }}</td>
+                                                        <td>{{ $item['cost'] ?? $key }}</td>
+                                                        <td class="text-end">${{ number_format($unitCost, 2) }}</td>
+                                                        <td class="text-center">{{ $days }}</td>
+                                                        <td>{{ $item['description'] ?? '' }}</td>
+                                                        <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
+                                                    </tr>
+                                                    @php $itemCount++; @endphp
+                                                @endforeach
                                             @endif
                                         @endforeach
+                                        @if ($itemCount == 1)
+                                            <tr>
+                                                <td class="text-center">1</td>
+                                                <td>Conference</td>
+                                                <td class="text-end">$0.00</td>
+                                                <td class="text-center">1</td>
+                                                <td></td>
+                                                <td class="text-end fw-bold">$0.00</td>
+                                            </tr>
+                                        @endif
                                     </tbody>
+                                    <tfoot class="table-group-divider">
+                                        <tr class="table-secondary">
+                                            <th colspan="5" class="text-end">Other Total:</th>
+                                            <th class="text-end">${{ number_format($grandTotal, 2) }}</th>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         @else
@@ -852,6 +883,7 @@
 <script>
 // Make participant names available to JavaScript
 const participantNames = @json($participantNames ?? []);
+const sourceType = '{{ $sourceType }}';
 
 document.addEventListener('DOMContentLoaded', function() {
     let internalParticipantCount = 1;
@@ -1204,7 +1236,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Validate budget - check if requested funds exceed original budget (skip for non-travel memos)
-        const sourceType = '{{ $sourceType }}';
         if (sourceType !== 'non_travel_memo') {
             // Update totals before validation to ensure values are current
             updateTotals();
@@ -1406,7 +1437,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // For non-travel memos, new total should always equal original budget since there's no user input
-        const sourceType = '{{ $sourceType }}';
         if (sourceType === 'non_travel_memo') {
             newTotal = baseBudget; // Always use original budget for non-travel memos
             // Update the hidden field for form validation
@@ -1462,7 +1492,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Store budget validation state globally
         // For non-travel memos, budget is never exceeded since newTotal = baseBudget
-        const sourceType = '{{ $sourceType }}';
         if (sourceType === 'non_travel_memo') {
             window.isBudgetExceeded = false; // Never exceeded for non-travel memos
         } else {
@@ -1492,7 +1521,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Note: Form validation is handled in the first form submission handler above
     
     // Initialize budget for non-travel memos on page load
-    const sourceType = '{{ $sourceType }}';
     if (sourceType === 'non_travel_memo') {
         updateTotals(); // Initialize the budget display
     }
