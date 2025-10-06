@@ -537,7 +537,7 @@ body {
               <i class="fas fa-plus"></i> Open
             </a>
             @if(get_staff_pending_action_count('request-arf') >= 0)
-            <a href="{{ url('request-arf') }}" class="btn btn-outline-primary btn-sm position-relative">
+            <a href="{{ route('request-arf.pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="arf-pending-count">{{ get_staff_pending_action_count('request-arf') }}</span>
             </a>
