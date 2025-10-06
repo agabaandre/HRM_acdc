@@ -144,8 +144,10 @@ class PendingApprovalsService
         // Apply the same additional filtering as MatrixController for consistency
         $pendingMatrices = $pendingMatrices->filter(function ($matrix) {
             // Only show items the user can approve AND that are not submitted by the user
-            // (unless the user needs to approve their own submission)
-            return $this->isCurrentApprover($matrix) && !$this->isSubmittedByCurrentUser($matrix);
+            // AND that the user hasn't already approved this item
+            return $this->isCurrentApprover($matrix) && 
+                   !$this->isSubmittedByCurrentUser($matrix) && 
+                   !$this->hasUserApproved($matrix);
         });
 
         return $pendingMatrices->map(function ($matrix) {
@@ -191,7 +193,10 @@ class PendingApprovalsService
         return $query->get()->filter(function ($memo) {
             // Check if the current user is actually the current approver for this item
             // AND that it's not submitted by the user (unless they need to approve their own submission)
-            return $this->isCurrentApprover($memo) && !$this->isSubmittedByCurrentUser($memo);
+            // AND that the user hasn't already approved this item
+            return $this->isCurrentApprover($memo) && 
+                   !$this->isSubmittedByCurrentUser($memo) && 
+                   !$this->hasUserApproved($memo);
         })->map(function ($memo) {
             return $this->formatPendingItem($memo, 'Special Memo', [
                 'title' => $memo->activity_title ?? 'Special Memo',
@@ -277,9 +282,9 @@ class PendingApprovalsService
 
         $pendingMemos = $query->get();
 
-        // Apply filtering to exclude items submitted by current user
+        // Apply filtering to exclude items submitted by current user and already approved
         $pendingMemos = $pendingMemos->filter(function ($memo) {
-            return !$this->isSubmittedByCurrentUser($memo);
+            return !$this->isSubmittedByCurrentUser($memo) && !$this->hasUserApproved($memo);
         });
 
         return $pendingMemos->map(function ($memo) {
@@ -324,7 +329,10 @@ class PendingApprovalsService
         return $query->get()->filter(function ($activity) {
             // Check if the current user is actually the current approver for this item
             // AND that it's not submitted by the user (unless they need to approve their own submission)
-            return $this->isCurrentApprover($activity) && !$this->isSubmittedByCurrentUser($activity);
+            // AND that the user hasn't already approved this item
+            return $this->isCurrentApprover($activity) && 
+                   !$this->isSubmittedByCurrentUser($activity) && 
+                   !$this->hasUserApproved($activity);
         })->map(function ($activity) {
             return $this->formatPendingItem($activity, 'Single Memo', [
                 'title' => $activity->activity_title ?? 'Single Memo',
@@ -368,7 +376,10 @@ class PendingApprovalsService
         return $query->get()->filter(function ($serviceRequest) {
             // Check if the current user is actually the current approver for this item
             // AND that it's not submitted by the user (unless they need to approve their own submission)
-            return $this->isCurrentApprover($serviceRequest) && !$this->isSubmittedByCurrentUser($serviceRequest);
+            // AND that the user hasn't already approved this item
+            return $this->isCurrentApprover($serviceRequest) && 
+                   !$this->isSubmittedByCurrentUser($serviceRequest) && 
+                   !$this->hasUserApproved($serviceRequest);
         })->map(function ($serviceRequest) {
             return $this->formatPendingItem($serviceRequest, 'Service Request', [
                 'title' => $serviceRequest->title ?? 'Service Request',
@@ -414,7 +425,10 @@ class PendingApprovalsService
         $results = $query->get()->filter(function ($arfRequest) {
             // Check if the current user is actually the current approver for this item
             // AND that it's not submitted by the user (unless they need to approve their own submission)
-            return $this->isCurrentApprover($arfRequest) && !$this->isSubmittedByCurrentUser($arfRequest);
+            // AND that the user hasn't already approved this item
+            return $this->isCurrentApprover($arfRequest) && 
+                   !$this->isSubmittedByCurrentUser($arfRequest) && 
+                   !$this->hasUserApproved($arfRequest);
         })->map(function ($arfRequest) {
             return $this->formatPendingItem($arfRequest, 'ARF', [
                 'title' => $arfRequest->activity_title ?? 'ARF Request',
@@ -602,6 +616,15 @@ class PendingApprovalsService
                 // Fallback: check staff_id if it exists
                 return isset($model->staff_id) && $model->staff_id == $this->currentStaffId;
         }
+    }
+
+    /**
+     * Check if the current user has already approved this item
+     */
+    protected function hasUserApproved($model): bool
+    {
+        // Use the existing done_approving function for consistency
+        return done_approving($model);
     }
 
     /**
@@ -996,7 +1019,10 @@ class PendingApprovalsService
         $pendingChangeRequests = $pendingChangeRequests->filter(function ($changeRequest) {
             // Check if the current user is actually the current approver for this item
             // AND that it's not submitted by the user (unless they need to approve their own submission)
-            return $this->isCurrentApprover($changeRequest) && !$this->isSubmittedByCurrentUser($changeRequest);
+            // AND that the user hasn't already approved this item
+            return $this->isCurrentApprover($changeRequest) && 
+                   !$this->isSubmittedByCurrentUser($changeRequest) && 
+                   !$this->hasUserApproved($changeRequest);
         });
 
         return $pendingChangeRequests->map(function ($changeRequest) {
