@@ -566,6 +566,7 @@ if (!function_exists('user_session')) {
         /**
          * Check if a user can proceed even when their approvable stack is empty
          * This considers if the user has returned any activities as single memos
+         * OR if the user is a division-specific officer with no approvable activities
          * 
          * @param object $matrix The matrix to check
          * @param int|null $userId Optional user ID, defaults to current user
@@ -581,8 +582,23 @@ if (!function_exists('user_session')) {
             // Check if user has returned any activities as single memos
             $hasReturnedActivities = has_user_returned_activity_as_single_memo($matrix, $userId);
             
-            // User can proceed if they have converted activities to single memos and their approvable stack is empty
-            return $hasReturnedActivities && get_approvable_activities($matrix)->count() == 0;
+            // Check if user is a division-specific officer
+            $isDivisionSpecificOfficer = false;
+            if ($matrix->division) {
+                $division = $matrix->division;
+                $isDivisionSpecificOfficer = in_array($userId, [
+                    $division->division_head,
+                    $division->focal_person,
+                    $division->admin_assistant,
+                    $division->finance_officer,
+                    $division->director_id
+                ]);
+            }
+            
+            // User can proceed if:
+            // 1. They have converted activities to single memos and their approvable stack is empty, OR
+            // 2. They are a division-specific officer and their approvable stack is empty
+            return ($hasReturnedActivities || $isDivisionSpecificOfficer) && get_approvable_activities($matrix)->count() == 0;
         }
     }
 
