@@ -398,7 +398,7 @@ class PendingApprovalsService
             $query->where('division_id', $this->currentDivisionId);
         }
 
-        return $query->get()->filter(function ($arfRequest) {
+        $results = $query->get()->filter(function ($arfRequest) {
             // Check if the current user is actually the current approver for this item
             return $this->isCurrentApprover($arfRequest);
         })->map(function ($arfRequest) {
@@ -409,13 +409,15 @@ class PendingApprovalsService
                     ($arfRequest->responsiblePerson->fname . ' ' . $arfRequest->responsiblePerson->lname) : 
                     ($arfRequest->staff->fname . ' ' . $arfRequest->staff->lname ?? 'N/A'),
                 'date_received' => $this->getDateReceivedToCurrentLevel($arfRequest),
-                'view_url' => url(route('request-arfs.show', $arfRequest, false)),
+                'view_url' => url(route('request-arf.show', $arfRequest, false)),
                 'approval_level' => $arfRequest->approval_level,
                 'workflow_role' => $this->getCurrentApproverRole($arfRequest),
                 'item_id' => $arfRequest->id,
                 'item_type' => 'RequestARF'
             ]);
         });
+        
+        return $results;
     }
 
     /**

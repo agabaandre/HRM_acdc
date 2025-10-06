@@ -6665,3 +6665,41 @@ body {
     background-color: #ffffff;
     color: #333c56;
 }
+
+/* Custom styling for student and Non African icons to match theme */
+.icofont-student,
+.icofont-student-alt,
+.icofont-group-students,
+.flaticon-student-housing,
+.flaticon-student-housing-1 {
+    color: #9F2241 !important; /* Eastern color from theme */
+}
+
+/* Non African icon styling - assuming it uses a similar class pattern */
+.icofont-non-african,
+.flaticon-non-african,
+[class*="non-african"],
+[class*="Non African"] {
+    color: #9F2241 !important; /* Eastern color from theme */
+}
+
+/* Additional styling for better visibility */
+.icofont-student:before,
+.icofont-student-alt:before,
+.icofont-group-students:before,
+.flaticon-student-housing:before,
+.flaticon-student-housing-1:before {
+    color: #9F2241 !important;
+    font-size: 1.2em;
+}
+
+/* Hover effects for student icons */
+.icofont-student:hover,
+.icofont-student-alt:hover,
+.icofont-group-students:hover,
+.flaticon-student-housing:hover,
+.flaticon-student-housing-1:hover {
+    color: #7a1a33 !important; /* Darker shade on hover */
+    transform: scale(1.1);
+    transition: all 0.3s ease;
+}

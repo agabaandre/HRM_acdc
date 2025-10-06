@@ -113,17 +113,16 @@
                         
                         @if($pendingArfs && $pendingArfs->count() > 0)
                             <div class="table-responsive">
-                                <table class="table table-hover mb-0" id="pendingTable">
+                                <table class="table table-hover mb-0" id="pendingTable" style="table-layout: fixed; width: 100%;">
                                     <thead class="table-warning">
                                         <tr>
-                                            <th>#</th>
-                                            <th>ARF Number</th>
-                                            <th>Activity Title</th>
-                                            <th>Staff Member</th>
-                                            <th>Division</th>
-                                            <th>Request Date</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
+                                            <th style="width: 40px;">#</th>
+                                            <th style="max-width: 250px; width: 250px;">Activity Details</th>
+                                            <th style="width: 100px;">Staff Member</th>
+                                            <th style="width: 125px;">Division</th>
+                                            <th style="width: 100px;">Request Date</th>
+                                            <th style="width: 80px;">Status</th>
+                                            <th class="text-center" style="width: 100px;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -131,11 +130,11 @@
                                         @foreach($pendingArfs as $arf)
                                             <tr>
                                                 <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <span class="badge bg-primary">{{ $arf->arf_number }}</span>
-                                                </td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
+                                                <td style="max-width: 250px; width: 250px; word-wrap: break-word; white-space: normal;">
+                                                    <div class="mb-1">
+                                                        <span class="badge bg-primary">{{ $arf->arf_number }}</span>
+                                                    </div>
+                                                    <div class="fw-bold text-primary" style="word-wrap: break-word; word-break: break-word; max-width: 250px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $arf->activity_title }}</div>
                                                     <small class="text-muted">{{ Str::limit($arf->purpose, 50) }}</small>
                                                 </td>
                                                 <td>
@@ -145,7 +144,7 @@
                                                         <span class="text-muted">Not assigned</span>
                                                     @endif
                                                 </td>
-                                                <td>{{ $arf->division->division_name ?? 'N/A' }}</td>
+                                                <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">{{ $arf->division->division_name ?? 'N/A' }}</td>
                                                 <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
                                                 <td>
                                                     @php
@@ -227,17 +226,16 @@
                         
                         @if($approvedByMe && $approvedByMe->count() > 0)
                             <div class="table-responsive">
-                                <table class="table table-hover mb-0" id="approvedTable">
+                                <table class="table table-hover mb-0" id="approvedTable" style="table-layout: fixed; width: 100%;">
                                     <thead class="table-success">
                                         <tr>
-                                            <th>#</th>
-                                            <th>ARF Number</th>
-                                            <th>Activity Title</th>
-                                            <th>Staff Member</th>
-                                            <th>Division</th>
-                                            <th>Request Date</th>
-                                            <th>Status</th>
-                                            <th class="text-center">Actions</th>
+                                            <th style="width: 40px;">#</th>
+                                            <th style="max-width: 250px; width: 250px;">Activity Details</th>
+                                            <th style="width: 100px;">Staff Member</th>
+                                            <th style="width: 125px;">Division</th>
+                                            <th style="width: 100px;">Request Date</th>
+                                            <th style="width: 80px;">Status</th>
+                                            <th class="text-center" style="width: 100px;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -245,11 +243,11 @@
                                         @foreach($approvedByMe as $arf)
                                             <tr>
                                                 <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <span class="badge bg-primary">{{ $arf->arf_number }}</span>
-                                                </td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $arf->activity_title }}</div>
+                                                <td style="max-width: 250px; width: 250px; word-wrap: break-word; white-space: normal;">
+                                                    <div class="mb-1">
+                                                        <span class="badge bg-primary">{{ $arf->arf_number }}</span>
+                                                    </div>
+                                                    <div class="fw-bold text-primary" style="word-wrap: break-word; word-break: break-word; max-width: 250px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $arf->activity_title }}</div>
                                                     <small class="text-muted">{{ Str::limit($arf->purpose, 50) }}</small>
                                                 </td>
                                                 <td>
@@ -259,12 +257,31 @@
                                                         <span class="text-muted">Not assigned</span>
                                                     @endif
                                                 </td>
-                                                <td>{{ $arf->division->division_name ?? 'N/A' }}</td>
+                                                <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">{{ $arf->division->division_name ?? 'N/A' }}</td>
                                                 <td>{{ $arf->request_date ? \Carbon\Carbon::parse($arf->request_date)->format('M d, Y') : 'N/A' }}</td>
                                                 <td>
-                                                    <span class="badge bg-success">
-                                                        {{ strtoupper($arf->overall_status ?? 'approved') }}
-                                                    </span>
+                                                    @php
+                                                        $statusBadgeClass = [
+                                                            'draft' => 'bg-secondary',
+                                                            'pending' => 'bg-warning',
+                                                            'approved' => 'bg-success',
+                                                            'rejected' => 'bg-danger',
+                                                            'returned' => 'bg-info',
+                                                        ];
+                                                        $statusClass = $statusBadgeClass[$arf->overall_status] ?? 'bg-secondary';
+                                                    @endphp
+                                                    
+                                                    @if($arf->overall_status === 'approved')
+                                                        <div class="text-center">
+                                                            <span class="badge {{ $statusClass }} mb-1">
+                                                                {{ strtoupper($arf->overall_status) }}
+                                                            </span>
+                                                        </div>
+                                                    @else
+                                                        <span class="badge {{ $statusClass }}">
+                                                            {{ strtoupper($arf->overall_status ?? 'approved') }}
+                                                        </span>
+                                                    @endif
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
@@ -272,6 +289,12 @@
                                                            class="btn btn-sm btn-outline-info" title="View">
                                                             <i class="bx bx-show"></i>
                                                         </a>
+                                                        @if($arf->overall_status === 'draft' && $arf->staff_id === user_session('staff_id'))
+                                                            <a href="{{ route('request-arf.edit', $arf) }}" 
+                                                               class="btn btn-sm btn-outline-warning" title="Edit">
+                                                                <i class="bx bx-edit"></i>
+                                                            </a>
+                                                        @endif
                                                         @if($arf->overall_status === 'approved')
                                                             <a href="{{ route('request-arf.print', $arf) }}" 
                                                                class="btn btn-sm btn-outline-success" title="Print" target="_blank">

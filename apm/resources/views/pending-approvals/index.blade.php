@@ -258,29 +258,29 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
                         <thead class="table-light">
                             <tr>
-                                <th>Title</th>
-                                <th>Division</th>
-                                <th>Submitted By</th>
-                                <th>Date Received</th>
-                                <th>Current Level</th>
-                                <th>Workflow Role</th>
-                                <th>Actions</th>
+                                <th style="width: 274px; max-width: 274px;">Title</th>
+                                <th style="width: 164px;">Division</th>
+                                <th style="width: 150px;">Submitted By</th>
+                                <th style="width: 120px;">Date Received</th>
+                                <th style="width: 100px;">Current Level</th>
+                                <th style="width: 120px;">Workflow Role</th>
+                                <th style="width: 100px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($items as $item)
                                 <tr data-item-id="{{ $item['item_id'] }}" data-item-type="{{ $item['item_type'] }}">
-                                    <td>
-                                        <div class="fw-semibold">{{ $item['title'] }}</div>
+                                    <td style="max-width: 274px; width: 274px; word-wrap: break-word; white-space: normal;">
+                                        <div class="fw-semibold" style="word-wrap: break-word; word-break: break-word; max-width: 274px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $item['title'] }}</div>
                                         <small class="text-muted">{{ $item['category'] }}</small>
                                     </td>
-                                    <td>
+                                    <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">
                                         <span class="badge bg-secondary">{{ $item['division'] }}</span>
                                     </td>
-                                    <td>{{ $item['submitted_by'] }}</td>
+                                    <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">{{ $item['submitted_by'] }}</td>
                                     <td>
                                         <div>{{ $item['date_received'] ? \Carbon\Carbon::parse($item['date_received'])->format('M d, Y') : 'N/A' }}</div>
                                         <small class="text-muted">{{ $item['date_received'] ? \Carbon\Carbon::parse($item['date_received'])->diffForHumans() : '' }}</small>

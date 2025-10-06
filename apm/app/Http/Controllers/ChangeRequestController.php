@@ -223,8 +223,8 @@ class ChangeRequestController extends Controller
             'parentMemo'
         ])
         ->where('overall_status', 'approved')
-        ->whereHas('approvalTrail', function($q) use ($userStaffId) {
-            $q->where('approver_staff_id', $userStaffId)
+        ->whereHas('approvalTrails', function($q) use ($userStaffId) {
+            $q->where('staff_id', $userStaffId)
               ->where('action', 'approved');
         });
 
