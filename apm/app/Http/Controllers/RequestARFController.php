@@ -1302,7 +1302,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
     /**
      * Show pending approvals for ARF requests
      */
-    public function pendingApprovals(Request $request): View
+    public function pendingApprovals(Request $request)
     {
         $userStaffId = user_session('staff_id');
 
@@ -1316,6 +1316,9 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             ]);
         }
 
+        // Use the exact same logic as the home helper for consistency
+        $userDivisionId = user_session('division_id');
+        
         // Get filter parameters
         $divisionId = $request->get('division_id');
         $staffId = $request->get('staff_id');
@@ -1324,9 +1327,36 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         $pendingQuery = RequestARF::with([
             'staff',
             'division',
-            'forwardWorkflow.workflowDefinitions.approvers.staff'
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
+            'forwardWorkflow.workflowDefinitions'
         ])
-        ->where('overall_status', 'pending');
+        ->where('overall_status', 'pending')
+        ->where('forward_workflow_id', '!=', null)
+        ->where('approval_level', '>', 0);
+
+        $pendingQuery->where(function($q) use ($userDivisionId, $userStaffId) {
+            // Check if user can approve at current level
+            $q->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQuery) use ($userDivisionId, $userStaffId) {
+                $workflowQuery->where('is_enabled', 1)
+                ->whereColumn('approval_order', 'request_arfs.approval_level')
+                ->where(function($approverQuery) use ($userDivisionId, $userStaffId) {
+                    // Division-specific approvers
+                    $approverQuery->where(function($divQuery) use ($userDivisionId, $userStaffId) {
+                        $divQuery->where('is_division_specific', 1)
+                            ->whereHas('approvers', function($approverSubQuery) use ($userStaffId) {
+                                $approverSubQuery->where('staff_id', $userStaffId);
+                            });
+                    })
+                    // General approvers
+                    ->orWhere(function($genQuery) use ($userStaffId) {
+                        $genQuery->where('is_division_specific', 0)
+                            ->whereHas('approvers', function($approverSubQuery) use ($userStaffId) {
+                                $approverSubQuery->where('staff_id', $userStaffId);
+                            });
+                    });
+                });
+            });
+        });
 
         // Apply filters
         if ($divisionId) {
@@ -1347,8 +1377,8 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             'forwardWorkflow.workflowDefinitions.approvers.staff'
         ])
         ->where('overall_status', 'approved')
-        ->whereHas('approvalTrail', function($q) use ($userStaffId) {
-            $q->where('approver_staff_id', $userStaffId)
+        ->whereHas('approvalTrails', function($q) use ($userStaffId) {
+            $q->where('staff_id', $userStaffId)
               ->where('action', 'approved');
         });
 

@@ -581,22 +581,6 @@ if (!function_exists('allow_activity_operations')) {
     }
 }
 
-if (!function_exists('get_pending_request_arf_count')) {
-    /**
-     * Get count of pending ARF requests that require action from the current staff member
-     *
-     * @param int $staffId
-     * @return int
-     */
-    function get_pending_request_arf_count(int $staffId): int
-    {
-        // For now, just return count of pending ARF requests
-        // TODO: Implement proper approval logic when RequestARF approval system is added
-        return RequestARF::where('overall_status', 'submitted')
-            ->where('forward_workflow_id', '!=', null)
-            ->count();
-    }
-}
 
 if (!function_exists('get_pending_single_memo_count')) {
     /**
@@ -669,39 +653,23 @@ if (!function_exists('get_pending_request_arf_count')) {
      */
     function get_pending_request_arf_count(int $staffId): int
     {
-        $userDivisionId = user_session('division_id');
-        
-        // Use the same logic as other pending approval functions
-        $query = \App\Models\RequestARF::where('overall_status', 'pending')
-            ->where('forward_workflow_id', '!=', null)
-            ->where('approval_level', '>', 0);
-
-        $query->where(function($q) use ($userDivisionId, $staffId) {
-            // Case 1: Division-specific approval - check if user's division matches ARF division
-            if ($userDivisionId) {
-                $q->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) use ($userDivisionId) {
-                    $subQ->where('is_division_specific', 1)
-                        ->whereNull('division_reference_column')
-                        ->where('approval_order', \Illuminate\Support\Facades\DB::raw('request_arfs.approval_level'));
-                })
-                ->where('division_id', $userDivisionId);
-            }
-
-            // Case 2: Non-division-specific approval - check workflow definition and approver
-            if ($staffId) {
-                $q->orWhere(function($subQ) use ($staffId) {
-                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($staffId) {
-                        $workflowQ->where('is_division_specific', 0)
-                            ->where('approval_order', \Illuminate\Support\Facades\DB::raw('request_arfs.approval_level'))
-                            ->whereHas('approvers', function($approverQ) use ($staffId) {
-                                $approverQ->where('staff_id', $staffId);
-                            });
-                    });
-                });
-            }
-        });
-
-        return $query->count();
+        try {
+            // Use the PendingApprovalsService for consistency
+            $pendingApprovalsService = new \App\Services\PendingApprovalsService([
+                'staff_id' => $staffId,
+                'division_id' => user_session('division_id'),
+                'permissions' => user_session('permissions', []),
+                'name' => user_session('name', ''),
+                'email' => user_session('email', ''),
+                'base_url' => config('app.url')
+            ]);
+            
+            $summaryStats = $pendingApprovalsService->getSummaryStats();
+            return $summaryStats['by_category']['ARF'] ?? 0;
+        } catch (\Exception $e) {
+            \Log::error('Error getting pending ARF count: ' . $e->getMessage());
+            return 0;
+        }
     }
 }
 
