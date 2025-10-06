@@ -119,23 +119,79 @@ if (!function_exists('get_pending_matrices_count')) {
      */
     function get_pending_matrices_count(int $staffId): int
     {
-        try {
-            // Use the PendingApprovalsService for consistency
-            $pendingApprovalsService = new \App\Services\PendingApprovalsService([
-                'staff_id' => $staffId,
-                'division_id' => user_session('division_id'),
-                'permissions' => user_session('permissions', []),
-                'name' => user_session('name', ''),
-                'email' => user_session('email', ''),
-                'base_url' => config('app.url')
-            ]);
+        $userDivisionId = user_session('division_id');
+        
+        // Use the same logic as the pendingApprovals method for consistency
+        $query = Matrix::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($query) use ($userDivisionId, $staffId) {
+            // Case 1: Division-specific approval - check if user's division matches matrix division
+            if ($userDivisionId) {
+                $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
+            if ($staffId) {
+                $query->orWhere(function($subQ) use ($staffId, $userDivisionId) {
+                    $divisionsTable = (new Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = matrices.division_id 
+                        WHERE wd.workflow_id = matrices.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = matrices.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=matrices.division_id AND d.id=?)
+                        )
+                    )", [$staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($staffId) {
+                        $subQ2->where('approval_level', $staffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($staffId) {
+                                $trailQ->where('staff_id', '=',$staffId);
+                              });
+                    });
+                });
+            }
             
-            $summaryStats = $pendingApprovalsService->getSummaryStats();
-            return $summaryStats['by_category']['Matrix'] ?? 0;
-        } catch (\Exception $e) {
-            \Log::error('Error getting pending matrices count: ' . $e->getMessage());
-            return 0;
-        }
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($staffId) {
+                $query->orWhere(function($subQ) use ($staffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($staffId) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('matrices.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($staffId) {
+                                      $approverQ->where('staff_id', $staffId);
+                                  });
+                    });
+                });
+            }
+
+            $query->orWhere('division_id', $userDivisionId);
+        });
+
+        // Get the matrices and apply the same filtering as pendingApprovals method
+        $matrices = $query->get();
+        
+        // Apply the same additional filtering as pendingApprovals method for consistency
+        $filteredMatrices = $matrices->filter(function ($matrix) {
+            return can_take_action($matrix);
+        });
+        
+        return $filteredMatrices->count();
     }
 }
 
@@ -148,23 +204,79 @@ if (!function_exists('get_pending_non_travel_memo_count')) {
      */
     function get_pending_non_travel_memo_count(int $staffId): int
     {
-        try {
-            // Use the PendingApprovalsService for consistency
-            $pendingApprovalsService = new \App\Services\PendingApprovalsService([
-                'staff_id' => $staffId,
-                'division_id' => user_session('division_id'),
-                'permissions' => user_session('permissions', []),
-                'name' => user_session('name', ''),
-                'email' => user_session('email', ''),
-                'base_url' => config('app.url')
-            ]);
+        $userDivisionId = user_session('division_id');
+        
+        // Use the same logic as the pendingApprovals method for consistency
+        $query = NonTravelMemo::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($query) use ($userDivisionId, $staffId) {
+            // Case 1: Division-specific approval - check if user's division matches memo division
+            if ($userDivisionId) {
+                $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ): void {
+                    $subQ->where('is_division_specific', 1)
+                    ->whereNull('division_reference_column')
+                          ->where('approval_order', \Illuminate\Support\Facades\DB::raw('non_travel_memos.approval_level'));
+                })
+                ->where('division_id', $userDivisionId);
+            }
+
+            // Case 1b: Division-specific approval with division_reference_column - check if user's staff_id matches the value in the division_reference_column
+            if ($staffId) {
+                $query->orWhere(function($subQ) use ($staffId, $userDivisionId) {
+                    $divisionsTable = (new \App\Models\Division())->getTable();
+                    $subQ->whereRaw("EXISTS (
+                        SELECT 1 FROM workflow_definition wd 
+                        JOIN {$divisionsTable} d ON d.id = non_travel_memos.division_id 
+                        WHERE wd.workflow_id = non_travel_memos.forward_workflow_id 
+                        AND wd.is_division_specific = 1 
+                        AND wd.division_reference_column IS NOT NULL 
+                        AND wd.approval_order = non_travel_memos.approval_level
+                        AND ( d.focal_person = ? OR
+                            d.division_head = ? OR
+                            d.admin_assistant = ? OR
+                            d.finance_officer = ? OR
+                            d.head_oic_id = ? OR
+                            d.director_id = ? OR
+                            d.director_oic_id = ?
+                            OR (d.id=non_travel_memos.division_id AND d.id=?)
+                        )
+                    )", [$staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $userDivisionId])
+                    ->orWhere(function($subQ2) use ($staffId) {
+                        $subQ2->where('approval_level', $staffId)
+                              ->orWhereHas('approvalTrails', function($trailQ) use ($staffId) {
+                                $trailQ->where('staff_id', '=',$staffId);
+                              });
+                    });
+                });
+            }
             
-            $summaryStats = $pendingApprovalsService->getSummaryStats();
-            return $summaryStats['by_category']['Non-Travel Memo'] ?? 0;
-        } catch (\Exception $e) {
-            \Log::error('Error getting pending non-travel memo count: ' . $e->getMessage());
-            return 0;
-        }
+            // Case 2: Non-division-specific approval - check workflow definition and approver
+            if ($staffId) {
+                $query->orWhere(function($subQ) use ($staffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($staffId) {
+                        $workflowQ->where('is_division_specific','=', 0)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('non_travel_memos.approval_level'))
+                                  ->whereHas('approvers', function($approverQ) use ($staffId) {
+                                      $approverQ->where('staff_id', $staffId);
+                                  });
+                    });
+                });
+            }
+
+            $query->orWhere('division_id', $userDivisionId);
+        });
+
+        // Get the memos and apply the same filtering as pendingApprovals method
+        $memos = $query->get();
+        
+        // Apply the same additional filtering as pendingApprovals method for consistency
+        $filteredMemos = $memos->filter(function ($memo) {
+            return can_take_action_generic($memo);
+        });
+        
+        return $filteredMemos->count();
     }
 }
 
@@ -177,23 +289,64 @@ if (!function_exists('get_pending_special_memo_count')) {
      */
     function get_pending_special_memo_count(int $staffId): int
     {
-        try {
-            // Use the PendingApprovalsService for consistency
-            $pendingApprovalsService = new \App\Services\PendingApprovalsService([
-                'staff_id' => $staffId,
-                'division_id' => user_session('division_id'),
-                'permissions' => user_session('permissions', []),
-                'name' => user_session('name', ''),
-                'email' => user_session('email', ''),
-                'base_url' => config('app.url')
-            ]);
-            
-            $summaryStats = $pendingApprovalsService->getSummaryStats();
-            return $summaryStats['by_category']['Special Memo'] ?? 0;
-        } catch (\Exception $e) {
-            \Log::error('Error getting pending special memo count: ' . $e->getMessage());
-            return 0;
-        }
+        $userDivisionId = user_session('division_id');
+        
+        // Simplified query that directly checks if the user can approve the memo
+        $query = SpecialMemo::where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($query) use ($userDivisionId, $staffId) {
+            // Case 1: Check if user is an approver for the current approval level
+            $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) use ($staffId) {
+                $subQ->where('approval_order', \Illuminate\Support\Facades\DB::raw('special_memos.approval_level'))
+                      ->where(function($workflowQ) use ($staffId) {
+                          // Check if user is in approvers table
+                          $workflowQ->whereHas('approvers', function($approverQ) use ($staffId) {
+                              $approverQ->where('staff_id', $staffId);
+                          });
+                      });
+            });
+
+            // Case 2: Check if user has division-specific role for the current approval level
+            if ($userDivisionId) {
+                $query->orWhere(function($subQ) use ($userDivisionId, $staffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userDivisionId, $staffId) {
+                        $workflowQ->where('is_division_specific', 1)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('special_memos.approval_level'))
+                                  ->where(function($divQ) use ($userDivisionId, $staffId) {
+
+                                    $divisionsTable = (new \App\Models\Division())->getTable();
+                                      // Check division roles
+                                      $divQ->whereRaw("EXISTS (
+                                          SELECT 1 FROM {$divisionsTable} d 
+                                          WHERE d.id = special_memos.division_id 
+                                          AND d.id = ?
+                                          AND (
+                                              d.focal_person = ? OR
+                                              d.division_head = ? OR
+                                              d.admin_assistant = ? OR
+                                              d.finance_officer = ? OR
+                                              d.head_oic_id = ? OR
+                                              d.director_id = ? OR
+                                              d.director_oic_id = ?
+                                          )
+                                      )", [$userDivisionId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId]);
+                                  });
+                    });
+                });
+            }
+        });
+
+        // Get the memos and apply the can_take_action_generic filter
+        $memos = $query->get();
+        
+        // Apply the same additional filtering as pendingApprovals method for consistency
+        $filteredMemos = $memos->filter(function ($memo) use ($staffId) {
+            return can_take_action_generic($memo, $staffId);
+        });
+        
+        return $filteredMemos->count();
     }
 }
 
@@ -206,23 +359,42 @@ if (!function_exists('get_pending_service_requests_count')) {
      */
     function get_pending_service_requests_count(int $staffId): int
     {
-        try {
-            // Use the PendingApprovalsService for consistency
-            $pendingApprovalsService = new \App\Services\PendingApprovalsService([
-                'staff_id' => $staffId,
-                'division_id' => user_session('division_id'),
-                'permissions' => user_session('permissions', []),
-                'name' => user_session('name', ''),
-                'email' => user_session('email', ''),
-                'base_url' => config('app.url')
-            ]);
-            
-            $summaryStats = $pendingApprovalsService->getSummaryStats();
-            return $summaryStats['by_category']['Service Request'] ?? 0;
-        } catch (\Exception $e) {
-            \Log::error('Error getting pending service requests count: ' . $e->getMessage());
-            return 0;
-        }
+        $userDivisionId = user_session('division_id');
+        
+        $pendingQuery = ServiceRequest::with([
+            'staff',
+            'division',
+            'forwardWorkflow.workflowDefinitions.approvers.staff',
+            'forwardWorkflow.workflowDefinitions'
+        ])
+        ->where('overall_status', 'pending')
+        ->where('forward_workflow_id', '!=', null)
+        ->where('approval_level', '>', 0);
+
+        $pendingQuery->where(function($q) use ($userDivisionId, $staffId) {
+            // Check if user can approve at current level
+            $q->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQuery) use ($userDivisionId, $staffId) {
+                $workflowQuery->whereColumn('approval_order', 'service_requests.approval_level')
+                ->where(function($approverQuery) use ($userDivisionId, $staffId) {
+                    // Division-specific approvers
+                    $approverQuery->where(function($divQuery) use ($userDivisionId, $staffId) {
+                        $divQuery->where('is_division_specific', 1)
+                            ->whereHas('approvers', function($approverSubQuery) use ($staffId) {
+                                $approverSubQuery->where('staff_id', $staffId);
+                            });
+                    })
+                    // General approvers
+                    ->orWhere(function($genQuery) use ($staffId) {
+                        $genQuery->where('is_division_specific', 0)
+                            ->whereHas('approvers', function($approverSubQuery) use ($staffId) {
+                                $approverSubQuery->where('staff_id', $staffId);
+                            });
+                    });
+                });
+            });
+        });
+
+        return $pendingQuery->count();
     }
 }
 
@@ -419,23 +591,56 @@ if (!function_exists('get_pending_single_memo_count')) {
      */
     function get_pending_single_memo_count(int $staffId): int
     {
-        try {
-            // Use the PendingApprovalsService for consistency
-            $pendingApprovalsService = new \App\Services\PendingApprovalsService([
-                'staff_id' => $staffId,
-                'division_id' => user_session('division_id'),
-                'permissions' => user_session('permissions', []),
-                'name' => user_session('name', ''),
-                'email' => user_session('email', ''),
-                'base_url' => config('app.url')
-            ]);
-            
-            $summaryStats = $pendingApprovalsService->getSummaryStats();
-            return $summaryStats['by_category']['Single Memo'] ?? 0;
-        } catch (\Exception $e) {
-            \Log::error('Error getting pending single memo count: ' . $e->getMessage());
-            return 0;
-        }
+        $userDivisionId = user_session('division_id');
+        
+        // Use the same approach as special memo for consistency
+        $query = \App\Models\Activity::where('overall_status', 'pending')
+            ->where('is_single_memo', true)
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+
+        $query->where(function($query) use ($userDivisionId, $staffId) {
+            // Case 1: Check if user is an approver for the current approval level
+            $query->whereHas('forwardWorkflow.workflowDefinitions', function($subQ) use ($staffId) {
+                $subQ->where('approval_order', \Illuminate\Support\Facades\DB::raw('activities.approval_level'))
+                      ->where(function($workflowQ) use ($staffId) {
+                          // Check if user is in approvers table
+                          $workflowQ->whereHas('approvers', function($approverQ) use ($staffId) {
+                              $approverQ->where('staff_id', $staffId);
+                          });
+                      });
+            });
+
+            // Case 2: Check if user has division-specific role for the current approval level
+            if ($userDivisionId) {
+                $query->orWhere(function($subQ) use ($userDivisionId, $staffId) {
+                    $subQ->whereHas('forwardWorkflow.workflowDefinitions', function($workflowQ) use ($userDivisionId, $staffId) {
+                        $workflowQ->where('is_division_specific', 1)
+                                  ->where('approval_order', \Illuminate\Support\Facades\DB::raw('activities.approval_level'))
+                                  ->where(function($divQ) use ($userDivisionId, $staffId) {
+                                    $divisionsTable = (new \App\Models\Division())->getTable();
+                                      // Check division roles
+                                      $divQ->whereRaw("EXISTS (
+                                          SELECT 1 FROM {$divisionsTable} d 
+                                          WHERE d.id = activities.division_id 
+                                          AND d.id = ?
+                                          AND (
+                                              d.focal_person = ? OR
+                                              d.division_head = ? OR
+                                              d.admin_assistant = ? OR
+                                              d.finance_officer = ? OR
+                                              d.head_oic_id = ? OR
+                                              d.director_id = ? OR
+                                              d.director_oic_id = ?
+                                          )
+                                      )", [$userDivisionId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId, $staffId]);
+                                  });
+                    });
+                });
+            }
+        });
+
+        return $query->count();
     }
 }
 
@@ -490,23 +695,9 @@ if (!function_exists('get_pending_change_request_count')) {
      */
     function get_pending_change_request_count(int $staffId): int
     {
-        try {
-            // Use the PendingApprovalsService for consistency
-            $pendingApprovalsService = new \App\Services\PendingApprovalsService([
-                'staff_id' => $staffId,
-                'division_id' => user_session('division_id'),
-                'permissions' => user_session('permissions', []),
-                'name' => user_session('name', ''),
-                'email' => user_session('email', ''),
-                'base_url' => config('app.url')
-            ]);
-            
-            $summaryStats = $pendingApprovalsService->getSummaryStats();
-            return $summaryStats['by_category']['Change Request'] ?? 0;
-        } catch (\Exception $e) {
-            \Log::error('Error getting pending change request count: ' . $e->getMessage());
-            return 0;
-        }
+        // Change requests are typically activities with specific request types
+        // For now, return 0 as this needs to be implemented based on your change request structure
+        return 0;
     }
 }
 
