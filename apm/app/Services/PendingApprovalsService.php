@@ -17,6 +17,7 @@ use App\Models\Division;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class PendingApprovalsService
@@ -140,8 +141,12 @@ class PendingApprovalsService
 
         $pendingMatrices = $query->get();
 
-        // Note: We don't apply can_take_action filter here to match the helper functions
-        // The helper functions use the same logic as MatrixController without can_take_action filter
+        // Apply the same additional filtering as MatrixController for consistency
+        $pendingMatrices = $pendingMatrices->filter(function ($matrix) {
+            // Only show items the user can approve AND that are not submitted by the user
+            // (unless the user needs to approve their own submission)
+            return $this->isCurrentApprover($matrix) && !$this->isSubmittedByCurrentUser($matrix);
+        });
 
         return $pendingMatrices->map(function ($matrix) {
             return $this->formatPendingItem($matrix, 'Matrix', [
@@ -185,7 +190,8 @@ class PendingApprovalsService
 
         return $query->get()->filter(function ($memo) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($memo);
+            // AND that it's not submitted by the user (unless they need to approve their own submission)
+            return $this->isCurrentApprover($memo) && !$this->isSubmittedByCurrentUser($memo);
         })->map(function ($memo) {
             return $this->formatPendingItem($memo, 'Special Memo', [
                 'title' => $memo->activity_title ?? 'Special Memo',
@@ -271,6 +277,11 @@ class PendingApprovalsService
 
         $pendingMemos = $query->get();
 
+        // Apply filtering to exclude items submitted by current user
+        $pendingMemos = $pendingMemos->filter(function ($memo) {
+            return !$this->isSubmittedByCurrentUser($memo);
+        });
+
         return $pendingMemos->map(function ($memo) {
             return $this->formatPendingItem($memo, 'Non-Travel Memo', [
                 'title' => $memo->activity_title ?? 'Non-Travel Memo',
@@ -312,7 +323,8 @@ class PendingApprovalsService
 
         return $query->get()->filter(function ($activity) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($activity);
+            // AND that it's not submitted by the user (unless they need to approve their own submission)
+            return $this->isCurrentApprover($activity) && !$this->isSubmittedByCurrentUser($activity);
         })->map(function ($activity) {
             return $this->formatPendingItem($activity, 'Single Memo', [
                 'title' => $activity->activity_title ?? 'Single Memo',
@@ -355,7 +367,8 @@ class PendingApprovalsService
 
         return $query->get()->filter(function ($serviceRequest) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($serviceRequest);
+            // AND that it's not submitted by the user (unless they need to approve their own submission)
+            return $this->isCurrentApprover($serviceRequest) && !$this->isSubmittedByCurrentUser($serviceRequest);
         })->map(function ($serviceRequest) {
             return $this->formatPendingItem($serviceRequest, 'Service Request', [
                 'title' => $serviceRequest->title ?? 'Service Request',
@@ -400,7 +413,8 @@ class PendingApprovalsService
 
         $results = $query->get()->filter(function ($arfRequest) {
             // Check if the current user is actually the current approver for this item
-            return $this->isCurrentApprover($arfRequest);
+            // AND that it's not submitted by the user (unless they need to approve their own submission)
+            return $this->isCurrentApprover($arfRequest) && !$this->isSubmittedByCurrentUser($arfRequest);
         })->map(function ($arfRequest) {
             return $this->formatPendingItem($arfRequest, 'ARF', [
                 'title' => $arfRequest->activity_title ?? 'ARF Request',
@@ -549,6 +563,45 @@ class PendingApprovalsService
     {
         // Use the existing can_take_action function for consistency
         return can_take_action($model);
+    }
+
+    /**
+     * Check if an item was submitted by the current user
+     */
+    protected function isSubmittedByCurrentUser($model): bool
+    {
+        $modelClass = get_class($model);
+        
+        switch ($modelClass) {
+            case 'App\Models\Matrix':
+                // For matrices, check both staff_id (creator) and focal_person_id (focal person)
+                return $model->staff_id == $this->currentStaffId || 
+                       $model->focal_person_id == $this->currentStaffId;
+                       
+            case 'App\Models\Activity':
+                // For activities (single memos), check both staff_id and responsible_person_id
+                return $model->staff_id == $this->currentStaffId || 
+                       $model->responsible_person_id == $this->currentStaffId;
+                       
+            case 'App\Models\SpecialMemo':
+            case 'App\Models\NonTravelMemo':
+                // For memos, check staff_id (creator)
+                return $model->staff_id == $this->currentStaffId;
+                
+            case 'App\Models\ServiceRequest':
+            case 'App\Models\RequestARF':
+                // For requests, check both staff_id and responsible_person_id
+                return $model->staff_id == $this->currentStaffId || 
+                       $model->responsible_person_id == $this->currentStaffId;
+                       
+            case 'App\Models\ChangeRequest':
+                // For change requests, check staff_id (creator)
+                return $model->staff_id == $this->currentStaffId;
+                
+            default:
+                // Fallback: check staff_id if it exists
+                return isset($model->staff_id) && $model->staff_id == $this->currentStaffId;
+        }
     }
 
     /**
@@ -747,7 +800,7 @@ class PendingApprovalsService
 
             return true;
         } catch (\Exception $e) {
-            \Log::error('Failed to send pending approvals notification: ' . $e->getMessage());
+            Log::error('Failed to send pending approvals notification: ' . $e->getMessage());
             return false;
         }
     }
@@ -864,7 +917,7 @@ class PendingApprovalsService
 
             return true;
         } catch (\Exception $e) {
-            \Log::error('Failed to send item notification: ' . $e->getMessage());
+            Log::error('Failed to send item notification: ' . $e->getMessage());
             return false;
         }
     }
@@ -938,6 +991,13 @@ class PendingApprovalsService
         });
 
         $pendingChangeRequests = $query->get();
+
+        // Apply the same additional filtering as other memo types for consistency
+        $pendingChangeRequests = $pendingChangeRequests->filter(function ($changeRequest) {
+            // Check if the current user is actually the current approver for this item
+            // AND that it's not submitted by the user (unless they need to approve their own submission)
+            return $this->isCurrentApprover($changeRequest) && !$this->isSubmittedByCurrentUser($changeRequest);
+        });
 
         return $pendingChangeRequests->map(function ($changeRequest) {
             return $this->formatPendingItem($changeRequest, 'Change Request', [

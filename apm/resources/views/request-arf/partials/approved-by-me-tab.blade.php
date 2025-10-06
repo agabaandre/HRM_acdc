@@ -4,9 +4,9 @@
             <thead class="table-success">
                 <tr>
                     <th style="width: 40px;">#</th>
-                    <th style="max-width: 200px; width: 200px;">Activity Details</th>
-                    <th style="width: 120px;">Staff Member</th>
-                    <th style="width: 120px;">Division</th>
+                    <th style="max-width: 274px; width: 274px;">Activity Details</th>
+                    <th style="width: 100px;">Staff Member</th>
+                    <th style="width: 164px;">Division</th>
                     <th style="width: 100px;">Request Date</th>
                     <th style="width: 80px;">Status</th>
                     <th class="text-center" style="width: 100px;">Actions</th>
@@ -17,11 +17,11 @@
                 @foreach($approvedByMe as $arf)
                     <tr>
                         <td>{{ $count++ }}</td>
-                        <td style="max-width: 200px; width: 200px; word-wrap: break-word; white-space: normal;">
+                        <td style="max-width: 274px; width: 274px; word-wrap: break-word; white-space: normal;">
                             <div class="mb-1">
                                 <span class="badge bg-primary">{{ $arf->arf_number }}</span>
                             </div>
-                            <div class="fw-bold text-primary" style="word-wrap: break-word; word-break: break-word; max-width: 200px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $arf->activity_title }}</div>
+                            <div class="fw-bold text-primary" style="word-wrap: break-word; word-break: break-word; max-width: 274px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $arf->activity_title }}</div>
                             <small class="text-muted">{{ Str::limit($arf->purpose, 50) }}</small>
                         </td>
                         <td>

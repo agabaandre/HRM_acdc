@@ -1,16 +1,16 @@
 @if($approvedByMe && $approvedByMe->count() > 0)
     <div class="table-responsive">
-        <table class="table table-hover mb-0" id="approvedTable">
+        <table class="table table-hover mb-0" id="approvedTable" style="table-layout: fixed; width: 100%;">
             <thead class="table-success">
                 <tr>
-                    <th>#</th>
-                    <th>Title</th>
-                    <th>Request Type</th>
-                    <th>Staff Member</th>
-                    <th>Division</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th class="text-center">Actions</th>
+                    <th style="width: 40px;">#</th>
+                    <th style="max-width: 269px; width: 269px;">Title</th>
+                    <th style="width: 120px;">Request Type</th>
+                    <th style="width: 144px;">Staff Member</th>
+                    <th style="width: 171px;">Division</th>
+                    <th style="width: 120px;">Date</th>
+                    <th style="width: 100px;">Status</th>
+                    <th class="text-center" style="width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -18,26 +18,26 @@
                 @foreach($approvedByMe as $memo)
                     <tr>
                         <td>{{ $count++ }}</td>
-                        <td>
+                        <td style="max-width: 269px; width: 269px; word-wrap: break-word; white-space: normal;">
                             @if($memo->document_number)
                                 <small class="text-muted d-block">#{{ $memo->document_number }}</small>
                             @endif
-                            <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                            <div class="fw-bold text-primary" style="word-wrap: break-word; word-break: break-word; max-width: 269px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $memo->activity_title }}</div>
                         </td>
-                        <td>
+                        <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">
                             <span class="badge bg-info text-dark">
                                 <i class="bx bx-category me-1"></i>
                                 {{ $memo->requestType->name ?? 'N/A' }}
                             </span>
                         </td>
-                        <td>
+                        <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">
                             @if($memo->staff)
                                 {{ $memo->staff->fname }} {{ $memo->staff->lname }}
                             @else
                                 <span class="text-muted">Not assigned</span>
                             @endif
                         </td>
-                        <td>{{ $memo->division->division_name ?? 'N/A' }}</td>
+                        <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">{{ $memo->division->division_name ?? 'N/A' }}</td>
                         <td>{{ $memo->date_from ? \Carbon\Carbon::parse($memo->date_from)->format('M d, Y') : 'N/A' }}</td>
                         <td>
                             @php

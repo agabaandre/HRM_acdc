@@ -2897,11 +2897,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
     {
         $currentStaffId = user_session('staff_id');
         
-        // Get pending memos at current user's approval level
-        $pendingQuery = Activity::with(['staff', 'division', 'requestType', 'fundType'])
-            ->where('is_single_memo', true)
-            ->where('overall_status', 'pending')
-            ->latest();
+        // Get approved memos by current user (for approved tab)
 
         // Get approved memos by current user
         $approvedQuery = Activity::with(['staff', 'division', 'requestType', 'fundType'])
@@ -2912,33 +2908,53 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             })
             ->latest();
 
-        // Apply approval level filtering for pending memos
-        if (isDivisionApprover() || !empty(user_session('division_id'))) {
-            $pendingQuery->where('division_id', user_session('division_id'));
-        } else {
-            // Check approval workflow
-            $approvers = Approver::where('staff_id', $currentStaffId)->get();
-            $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
-            $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
-            $pendingQuery->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
-        }
+        // Use the same filtering approach as the main pending approvals page
+        // First, get all pending single memos
+        $allPendingMemos = Activity::with(['staff', 'division', 'requestType', 'fundType'])
+            ->where('is_single_memo', true)
+            ->where('overall_status', 'pending')
+            ->latest()
+            ->get();
+        
+        // Filter using the same logic as PendingApprovalsService
+        $filteredMemos = $allPendingMemos->filter(function ($memo) use ($currentStaffId) {
+            // Check if user can take action on this item
+            if (!can_take_action($memo)) {
+                return false;
+            }
+            
+            // Check if item was submitted by current user (exclude unless they need to approve their own submission)
+            $isSubmittedByUser = $memo->staff_id == $currentStaffId || 
+                                $memo->responsible_person_id == $currentStaffId;
+            if ($isSubmittedByUser) {
+                return false;
+            }
+            
+            return true;
+        });
+        
+        // Convert back to paginated collection
+        $pendingMemos = new \Illuminate\Pagination\LengthAwarePaginator(
+            $filteredMemos->forPage(1, 10),
+            $filteredMemos->count(),
+            10,
+            1,
+            ['path' => request()->url()]
+        );
 
-        // Apply filters to both queries (for initial page load)
+        // Apply filters to approved query (for initial page load)
         if ($request->filled('request_type')) {
-            $pendingQuery->where('request_type_id', $request->request_type);
             $approvedQuery->where('request_type_id', $request->request_type);
         }
         if ($request->filled('division')) {
-            $pendingQuery->where('division_id', $request->division);
             $approvedQuery->where('division_id', $request->division);
         }
         if ($request->filled('staff')) {
-            $pendingQuery->where('staff_id', $request->staff);
             $approvedQuery->where('staff_id', $request->staff);
         }
 
-        $pendingMemos = $pendingQuery->paginate(10);
         $approvedByMe = $approvedQuery->paginate(10);
+        
 
         // Get filter data
         $requestTypes = RequestType::all();
@@ -2977,11 +2993,7 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             $tab = $request->get('tab', '');
             $html = '';
             
-            // Rebuild queries with filters for AJAX requests
-            $pendingQuery = Activity::with(['staff', 'division', 'requestType', 'fundType'])
-                ->where('is_single_memo', true)
-                ->where('overall_status', 'pending')
-                ->latest();
+            // Get approved memos by current user (for approved tab)
 
             $approvedQuery = Activity::with(['staff', 'division', 'requestType', 'fundType'])
                 ->where('is_single_memo', true)
@@ -2991,33 +3003,53 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 })
                 ->latest();
 
-            // Apply approval level filtering for pending memos
-            if (isDivisionApprover() || !empty(user_session('division_id'))) {
-                $pendingQuery->where('division_id', user_session('division_id'));
-            } else {
-                // Check approval workflow
-                $approvers = Approver::where('staff_id', $currentStaffId)->get();
-                $approvers = $approvers->pluck('workflow_dfn_id')->toArray();
-                $workflow_dfns = WorkflowDefinition::whereIn('id', $approvers)->get();
-                $pendingQuery->whereIn('approval_level', $workflow_dfns->pluck('approval_order')->toArray());
-            }
+            // Use the same filtering approach as the main pending approvals page
+            // First, get all pending single memos
+            $allPendingMemos = Activity::with(['staff', 'division', 'requestType', 'fundType'])
+                ->where('is_single_memo', true)
+                ->where('overall_status', 'pending')
+                ->latest()
+                ->get();
+            
+            // Filter using the same logic as PendingApprovalsService
+            $filteredMemos = $allPendingMemos->filter(function ($memo) use ($currentStaffId) {
+                // Check if user can take action on this item
+                if (!can_take_action($memo)) {
+                    return false;
+                }
+                
+                // Check if item was submitted by current user (exclude unless they need to approve their own submission)
+                $isSubmittedByUser = $memo->staff_id == $currentStaffId || 
+                                    $memo->responsible_person_id == $currentStaffId;
+                if ($isSubmittedByUser) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // Convert back to paginated collection
+            $pendingMemos = new \Illuminate\Pagination\LengthAwarePaginator(
+                $filteredMemos->forPage(1, 10),
+                $filteredMemos->count(),
+                10,
+                1,
+                ['path' => request()->url()]
+            );
 
-            // Apply filters to both queries
+            // Apply filters to approved query
             if ($request->filled('request_type')) {
-                $pendingQuery->where('request_type_id', $request->request_type);
                 $approvedQuery->where('request_type_id', $request->request_type);
             }
             if ($request->filled('division')) {
-                $pendingQuery->where('division_id', $request->division);
                 $approvedQuery->where('division_id', $request->division);
             }
             if ($request->filled('staff')) {
-                $pendingQuery->where('staff_id', $request->staff);
                 $approvedQuery->where('staff_id', $request->staff);
             }
 
-            $pendingMemos = $pendingQuery->paginate(10);
             $approvedByMe = $approvedQuery->paginate(10);
+            
             
             switch($tab) {
                 case 'pending':
