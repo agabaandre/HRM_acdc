@@ -884,13 +884,14 @@
                                 style="background: linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 100%);">
 
                                 <div class="d-flex gap-3" style="float: right;">
-                                   
+                                    @if($requestARF->overall_status === 'approved')
 
                                     <a href="{{ route('request-arf.print', $requestARF) }}"
                                         class="btn btn-primary d-flex align-items-center gap-2" target="_blank">
                                         <i class="bx bx-printer"></i>
                                         <span>Print PDF</span>
                                     </a>
+                                    @endif
                                 </div>
                                 <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                                     <i class="bx bx-trending-up text-success"></i>
