@@ -69,27 +69,27 @@ class ApprovalService
            $division_specific_access=false;
            $is_at_my_approval_level =false;
 
+           // Always check for division-specific access first
+           $current_approval_point = $current_approval_point->first();
+           
+           if($current_approval_point && $current_approval_point->is_division_specific) {
+               $division = $model->division;
+               
+               // Check if staff holds current approval role in division
+               if ($division && $division->{$current_approval_point->division_reference_column} == $userId) {
+                   $division_specific_access = true;
+               }
+           }
+           
+           // If user has division-specific access, they can approve
+           if ($division_specific_access) {
+               return true;
+           }
            
           //if user is not defined in the approver table, $workflow_dfns will be empty
            if ($workflow_dfns->isEmpty()) {
                //dd("here");
-               $division_specific_access = false;
-
-               $current_approval_point = $current_approval_point->first();
-
-               if(!$current_approval_point)
-                return false;
-               
-               if ($current_approval_point && $current_approval_point->is_division_specific) {
-                   $division = $model->division;
-                 
-                   //staff holds current approval role in division
-                   if ($division && $division->{$current_approval_point->division_reference_column} == user_session()['staff_id']) {
-                       $division_specific_access = true;
-                   }
-               }
-
-               //how to check approval levels against approver in approvers table???
+               return false;
                
            }else{
                // dd("here2");

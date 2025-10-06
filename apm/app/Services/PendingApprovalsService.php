@@ -105,9 +105,10 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
+        // For division-specific approvers, show items from all divisions where they are assigned
+        $divisionIds = $this->getUserDivisionIds();
+        if (!empty($divisionIds)) {
+            $query->whereIn('division_id', $divisionIds);
         }
 
         return $query->get()->filter(function ($matrix) {
@@ -148,9 +149,10 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
+        // For division-specific approvers, show items from all divisions where they are assigned
+        $divisionIds = $this->getUserDivisionIds();
+        if (!empty($divisionIds)) {
+            $query->whereIn('division_id', $divisionIds);
         }
 
         return $query->get()->filter(function ($memo) {
@@ -191,9 +193,10 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
+        // For division-specific approvers, show items from all divisions where they are assigned
+        $divisionIds = $this->getUserDivisionIds();
+        if (!empty($divisionIds)) {
+            $query->whereIn('division_id', $divisionIds);
         }
 
         return $query->get()->filter(function ($memo) {
@@ -233,9 +236,10 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
+        // For division-specific approvers, show items from all divisions where they are assigned
+        $divisionIds = $this->getUserDivisionIds();
+        if (!empty($divisionIds)) {
+            $query->whereIn('division_id', $divisionIds);
         }
 
         return $query->get()->filter(function ($activity) {
@@ -276,9 +280,10 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
+        // For division-specific approvers, show items from all divisions where they are assigned
+        $divisionIds = $this->getUserDivisionIds();
+        if (!empty($divisionIds)) {
+            $query->whereIn('division_id', $divisionIds);
         }
 
         return $query->get()->filter(function ($serviceRequest) {
@@ -321,9 +326,10 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
+        // For division-specific approvers, show items from all divisions where they are assigned
+        $divisionIds = $this->getUserDivisionIds();
+        if (!empty($divisionIds)) {
+            $query->whereIn('division_id', $divisionIds);
         }
 
         $results = $query->get()->filter(function ($arfRequest) {
@@ -353,60 +359,73 @@ class PendingApprovalsService
      */
     protected function isDivisionSpecificApprover(): bool
     {
-        if (!$this->currentStaffId || !$this->currentDivisionId) {
+        if (!$this->currentStaffId) {
             return false;
         }
 
-        // Check if user is a division approver according to the Division table
-        $division = Division::find($this->currentDivisionId);
-        if (!$division) {
-            return false;
+        // Check if user is a division approver in ANY division (not just their primary division)
+        $divisionIds = $this->getUserDivisionIds();
+        
+        // If user is assigned to any division as a division-specific officer, return true
+        return !empty($divisionIds);
+    }
+
+    /**
+     * Get all division IDs where the current user is assigned as a division-specific approver
+     */
+    protected function getUserDivisionIds(): array
+    {
+        if (!$this->currentStaffId) {
+            return [];
         }
 
-        // Check if user is division head, focal person, admin assistant, or finance officer
-        $primaryApprovers = [
-            $division->division_head,
-            $division->focal_person,
-            $division->admin_assistant,
-            $division->finance_officer
-        ];
+        $divisionIds = [];
         
-        if (in_array($this->currentStaffId, $primaryApprovers)) {
-            return true;
+        // Get all divisions where the user is assigned as a division-specific approver
+        $divisions = Division::where(function ($query) {
+            $query->where('division_head', $this->currentStaffId)
+                  ->orWhere('focal_person', $this->currentStaffId)
+                  ->orWhere('admin_assistant', $this->currentStaffId)
+                  ->orWhere('finance_officer', $this->currentStaffId)
+                  ->orWhere('director_id', $this->currentStaffId);
+        })->get();
+
+        foreach ($divisions as $division) {
+            $divisionIds[] = $division->id;
         }
-        
-        // Also check if user is an active OIC for any of these roles
+
+        // Also check for active OIC assignments
         $today = Carbon::today();
         
-        // Check head OIC
-        if ($division->head_oic_id == $this->currentStaffId) {
-            $isOicActive = true;
-            if ($division->head_oic_start_date) {
-                $isOicActive = $isOicActive && $division->head_oic_start_date <= $today;
-            }
-            if ($division->head_oic_end_date) {
-                $isOicActive = $isOicActive && $division->head_oic_end_date >= $today;
-            }
-            if ($isOicActive) {
-                return true;
+        $oicDivisions = Division::where(function ($query) use ($today) {
+            $query->where('head_oic_id', $this->currentStaffId)
+                  ->where(function ($q) use ($today) {
+                      $q->whereNull('head_oic_start_date')
+                        ->orWhere('head_oic_start_date', '<=', $today);
+                  })
+                  ->where(function ($q) use ($today) {
+                      $q->whereNull('head_oic_end_date')
+                        ->orWhere('head_oic_end_date', '>=', $today);
+                  });
+        })->orWhere(function ($query) use ($today) {
+            $query->where('director_oic_id', $this->currentStaffId)
+                  ->where(function ($q) use ($today) {
+                      $q->whereNull('director_oic_start_date')
+                        ->orWhere('director_oic_start_date', '<=', $today);
+                  })
+                  ->where(function ($q) use ($today) {
+                      $q->whereNull('director_oic_end_date')
+                        ->orWhere('director_oic_end_date', '>=', $today);
+                  });
+        })->get();
+
+        foreach ($oicDivisions as $division) {
+            if (!in_array($division->id, $divisionIds)) {
+                $divisionIds[] = $division->id;
             }
         }
-        
-        // Check director OIC
-        if ($division->director_oic_id == $this->currentStaffId) {
-            $isOicActive = true;
-            if ($division->director_oic_start_date) {
-                $isOicActive = $isOicActive && $division->director_oic_start_date <= $today;
-            }
-            if ($division->director_oic_end_date) {
-                $isOicActive = $isOicActive && $division->director_oic_end_date >= $today;
-            }
-            if ($isOicActive) {
-                return true;
-            }
-        }
-        
-        return false;
+
+        return $divisionIds;
     }
 
     /**
@@ -818,9 +837,10 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, only show items from their division
-        if ($this->isDivisionSpecificApprover()) {
-            $query->where('division_id', $this->currentDivisionId);
+        // For division-specific approvers, show items from all divisions where they are assigned
+        $divisionIds = $this->getUserDivisionIds();
+        if (!empty($divisionIds)) {
+            $query->whereIn('division_id', $divisionIds);
         }
 
         return $query->get()->filter(function ($changeRequest) {
