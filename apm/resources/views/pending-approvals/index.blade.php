@@ -261,9 +261,9 @@
                     <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 274px; max-width: 274px;">Title</th>
-                                <th style="width: 164px;">Division</th>
-                                <th style="width: 150px;">Submitted By</th>
+                                <th style="width: 269px; max-width: 269px;">Title</th>
+                                <th style="width: 171px;">Division</th>
+                                <th style="width: 144px;">Submitted By</th>
                                 <th style="width: 120px;">Date Received</th>
                                 <th style="width: 100px;">Current Level</th>
                                 <th style="width: 120px;">Workflow Role</th>
@@ -273,8 +273,8 @@
                         <tbody>
                             @foreach($items as $item)
                                 <tr data-item-id="{{ $item['item_id'] }}" data-item-type="{{ $item['item_type'] }}">
-                                    <td style="max-width: 274px; width: 274px; word-wrap: break-word; white-space: normal;">
-                                        <div class="fw-semibold" style="word-wrap: break-word; word-break: break-word; max-width: 274px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $item['title'] }}</div>
+                                    <td style="max-width: 269px; width: 269px; word-wrap: break-word; white-space: normal;">
+                                        <div class="fw-semibold" style="word-wrap: break-word; word-break: break-word; max-width: 269px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $item['title'] }}</div>
                                         <small class="text-muted">{{ $item['category'] }}</small>
                                     </td>
                                     <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">
