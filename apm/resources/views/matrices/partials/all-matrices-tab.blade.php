@@ -178,7 +178,17 @@
                                     default => 'bg-secondary'
                                 };
                             @endphp
-                            <div class="fw-bold text-uppercase mb-1" style="color: var(--bs-{{ $matrix->overall_status === 'pending' ? 'warning' : ($matrix->overall_status === 'approved' ? 'success' : ($matrix->overall_status === 'rejected' ? 'danger' : ($matrix->overall_status === 'returned' ? 'info' : 'secondary')) }});">
+                            @php
+                                $statusColor = match($matrix->overall_status) {
+                                    'pending' => 'text-warning',
+                                    'approved' => 'text-success',
+                                    'rejected' => 'text-danger',
+                                    'returned' => 'text-info',
+                                    'draft' => 'text-secondary',
+                                    default => 'text-secondary'
+                                };
+                            @endphp
+                            <div class="fw-bold text-uppercase mb-1 {{ $statusColor }}">
                                 {{ $matrix->overall_status ?? 'draft' }}
                             </div>
                             @if($matrix->workflow_definition)
