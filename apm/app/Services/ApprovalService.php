@@ -393,8 +393,10 @@ class ApprovalService
 
     //at finance Director level and no intramural and no extramural
     $withfinance_no_intra_extra = ($definition  && !$has_intramural && !$has_extramural && $definition->approval_order==7);
+
+
     //other category, skip by intramural and extramural roles & if the $definition->approval_order==7, skip by other roles
-    if($withfinance_no_intra_extra || $with_hod_no_intra_extra || $definition->approval_order==7){
+    if($withfinance_no_intra_extra || $with_hod_no_intra_extra || (!empty($definition) && $definition->approval_order==7)){
         if($division->category=='Other'){
             return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
               ->where('is_enabled',1)
