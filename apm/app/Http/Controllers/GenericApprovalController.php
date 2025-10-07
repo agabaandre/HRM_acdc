@@ -234,7 +234,7 @@ class GenericApprovalController extends Controller
      */
     protected function sendNotification(Model $model, string $action): void
     {
-        send_matrix_email_notification($model, $action);
+        send_generic_email_notification($model, $action);
     }
 
     /**

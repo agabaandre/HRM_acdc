@@ -399,7 +399,7 @@ class RequestARFController extends Controller
             $arf->saveApprovalTrail('ARF request created and submitted for approval', 'submitted');
             
             // Send email notification for approval request
-            send_matrix_email_notification($arf, 'approval');
+            send_generic_email_notification($arf, 'approval');
             
             Log::info('ARF Created and Submitted Successfully', [
                 'arf_id' => $arf->id, 

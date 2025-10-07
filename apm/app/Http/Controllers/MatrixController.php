@@ -1534,7 +1534,7 @@ class MatrixController extends Controller
 
         // Update matrix
         $matrix->update($update_data);
-        send_matrix_email_notification($matrix, 'approval');
+        send_generic_email_notification($matrix, 'approval');
     }
 
     public function request_approval(Request $request, Matrix $matrix){
@@ -1633,7 +1633,7 @@ class MatrixController extends Controller
         $matrix->update();
 
         //notify and save notification
-        send_matrix_email_notification($matrix, $notification_type);
+        send_generic_email_notification($matrix, $notification_type);
         $message = "Matrix Updated successfully";
 
         return redirect()
