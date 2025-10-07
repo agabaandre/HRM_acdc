@@ -230,6 +230,115 @@ if (!function_exists('send_matrix_email_notification')) {
     }
 }
 
+if (!function_exists('send_generic_email_notification')) {
+    /**
+     * Send an email notification using the appropriate template based on model type
+     * 
+     * @param Model $model
+     * @param string $type The type of notification
+     * @return bool
+     */
+    function send_generic_email_notification($model, $type = 'approval')
+    {
+        try {
+            // Get the recipient
+            $recipient = get_matrix_notification_recipient($model);
+            
+            if (!$recipient || !$recipient->work_email) {
+                return false;
+            }
+
+            // Generate message based on type
+            $message = '';
+            $resource = ucfirst(class_basename($model));
+            switch($type) {
+                case 'approval':
+                    $message = sprintf(
+                        '%s #%d requires your approval. Created by %s %s.',
+                        $resource,
+                        $model->id,
+                        $model->staff->fname,
+                        $model->staff->lname
+                    );
+                    break;
+                case 'returned':
+                    $message = sprintf(
+                        '%s #%d has been returned for revision by %s %s.',
+                        $resource,
+                        $model->id,
+                        $model->staff->fname,
+                        $model->staff->lname
+                    );
+                    break;
+                case 'submitted':
+                    $message = sprintf(
+                        '%s #%d has been submitted for approval by %s %s.',
+                        $resource,
+                        $model->id,
+                        $model->staff->fname,
+                        $model->staff->lname
+                    );
+                    break;
+                default:
+                    $message = sprintf(
+                        '%s #%d requires your attention.',
+                        $resource,
+                        $model->id
+                    );
+            }
+
+            // Determine the appropriate email template based on model type
+            $modelClass = get_class($model);
+            $template = 'emails.generic-notification'; // Default template
+            
+            switch ($modelClass) {
+                case 'App\Models\Matrix':
+                    $template = 'emails.matrix-notification';
+                    break;
+                case 'App\Models\RequestARF':
+                    $template = 'emails.arf-notification';
+                    break;
+                case 'App\Models\SpecialMemo':
+                    $template = 'emails.special-memo-notification';
+                    break;
+                case 'App\Models\NonTravelMemo':
+                    $template = 'emails.matrix-notification'; // Use matrix template for Non-Travel Memo
+                    break;
+                case 'App\Models\Activity':
+                    $template = 'emails.matrix-notification'; // Use matrix template for Single Memo
+                    break;
+                case 'App\Models\ServiceRequest':
+                    $template = 'emails.matrix-notification'; // Use matrix template for Service Request
+                    break;
+                case 'App\Models\ChangeRequest':
+                    $template = 'emails.matrix-notification'; // Use matrix template for Change Request
+                    break;
+                default:
+                    $template = 'emails.generic-notification';
+            }
+
+            // Send email using the appropriate template
+            return sendEmailWithTemplate($recipient->work_email, $template, [
+                'resource' => $model,
+                'resource_type' => $resource,
+                'recipient' => $recipient,
+                'message' => $message,
+                'type' => $type
+            ]);
+
+        } catch (Exception $e) {
+            // Log the error but don't break the approval process
+            Log::error('Generic email notification failed', [
+                'model_id' => $model->id,
+                'model_type' => get_class($model),
+                'type' => $type,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+}
+
 if (!function_exists('mark_matrix_notifications_read')) {
     /**
      * Mark all notifications as read for a staff member on a specific matrix

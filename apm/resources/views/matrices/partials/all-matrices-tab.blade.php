@@ -21,8 +21,8 @@
                     <th>Key Result Areas</th>
                     <th>Activities</th>
                     <th>Level</th>
-                    <th>Status</th>
-                    <th class="text-center">Actions</th>
+                            <th>Status</th>
+                            <th class="text-center">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -178,7 +178,17 @@
                                     default => 'bg-secondary'
                                 };
                             @endphp
-                            <span class="badge {{ $statusClass }}">{{ strtoupper($matrix->overall_status ?? 'draft') }}</span>
+                            <div class="fw-bold text-uppercase mb-1" style="color: var(--bs-{{ $matrix->overall_status === 'pending' ? 'warning' : ($matrix->overall_status === 'approved' ? 'success' : ($matrix->overall_status === 'rejected' ? 'danger' : ($matrix->overall_status === 'returned' ? 'info' : 'secondary')) }});">
+                                {{ $matrix->overall_status ?? 'draft' }}
+                            </div>
+                            @if($matrix->workflow_definition)
+                                <div class="fw-semibold text-dark mb-1">
+                                    {{ $matrix->workflow_definition->role ?? 'N/A' }}
+                                    @if($matrix->current_actor)
+                                        <br><span class="text-muted small">{{ $matrix->current_actor->fname }} {{ $matrix->current_actor->lname }}</span>
+                                    @endif
+                                </div>
+                            @endif
                         </td>
                         <td class="text-center">
                             <div class="btn-group">

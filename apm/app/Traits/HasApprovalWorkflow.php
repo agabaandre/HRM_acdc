@@ -349,7 +349,7 @@ trait HasApprovalWorkflow
         }
 
         $this->update();
-        send_matrix_email_notification($this, $action);
+        send_generic_email_notification($this, $action);
     }
 
     /**
@@ -394,7 +394,7 @@ trait HasApprovalWorkflow
         
         $this->save();
 
-        send_matrix_email_notification($this, 'approval');
+        send_generic_email_notification($this, 'approval');
 
         $this->saveApprovalTrail('Submitted for approval', 'submitted');
     }

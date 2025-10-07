@@ -846,18 +846,18 @@ class ActivityController extends Controller
         $userStaffId = session('user.auth_staff_id');
         
         // Temporary fix for testing: If no session, create a test session
-        if (!$userStaffId) {
-            // Create a test session for staff ID 558
-            session(['user' => [
-                'staff_id' => 558,
-                'auth_staff_id' => 558,
-                'user_id' => 558,
-                'fname' => 'Test',
-                'lname' => 'User',
-                'division_id' => 1
-            ]]);
-            $userStaffId = 558;
-        }
+        // if (!$userStaffId) {
+        //     // Create a test session for staff ID 558
+        //     session(['user' => [
+        //         'staff_id' => 558,
+        //         'auth_staff_id' => 558,
+        //         'user_id' => 558,
+        //         'fname' => 'Test',
+        //         'lname' => 'User',
+        //         'division_id' => 1
+        //     ]]);
+        //     $userStaffId = 558;
+        // }
 
         return DB::transaction(function () use ($request, $matrix, $activity, $userStaffId) {
             try {

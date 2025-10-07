@@ -348,6 +348,9 @@ class ApprovalService
         $nextStepIncrement = 1;
     }
 
+
+
+
      if(!$model->forward_workflow_id)// null
         $model->forward_workflow_id = 1;
 
@@ -384,6 +387,29 @@ class ApprovalService
         return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
           ->where('is_enabled',1)
           ->where('approval_order', $definition->approval_order+2)->first();
+    }
+    // at Hod level or director and no intramural and no extramural
+    $with_hod_no_intra_extra = ($definition  && !$has_intramural && !$has_extramural && ($definition->approval_order==2|| $definition->approval_order==3));
+
+    //at finance Director level and no intramural and no extramural
+    $withfinance_no_intra_extra = ($definition  && !$has_intramural && !$has_extramural && $definition->approval_order==7);
+    //other category, skip by intramural and extramural roles & if the $definition->approval_order==7, skip by other roles
+    if($withfinance_no_intra_extra || $with_hod_no_intra_extra || $definition->approval_order==7){
+        if($division->category=='Other'){
+            return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+              ->where('is_enabled',1)
+              ->where('approval_order', 9)->first();
+        }
+        else if($division->category=='Operations'){
+            return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+              ->where('is_enabled',1)
+              ->where('approval_order', 7)->first();
+        }
+        else if($division->category=='Programs'){
+            return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+              ->where('is_enabled',1)
+              ->where('approval_order', 8)->first();
+        }
     }
 //dd($definition);
    

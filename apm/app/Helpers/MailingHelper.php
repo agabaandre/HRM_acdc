@@ -197,6 +197,50 @@ function sendSimpleEmail($to, $subject, $message, $fromEmail = null, $fromName =
 }
 
 /**
+ * Send email using a specific template
+ * 
+ * @param string $to Email address
+ * @param string $template Template name (e.g., 'emails.matrix-notification')
+ * @param array $data Template data
+ * @param string $subject Email subject (optional, will be generated from template)
+ * @return bool
+ */
+function sendEmailWithTemplate($to, $template, $data = [], $subject = null)
+{
+    try {
+        // Generate subject if not provided
+        if (!$subject) {
+            $resourceType = $data['resource_type'] ?? 'Document';
+            $type = $data['type'] ?? 'notification';
+            
+            switch($type) {
+                case 'approval':
+                    $subject = "{$resourceType} Approval Required - Africa CDC";
+                    break;
+                case 'returned':
+                    $subject = "{$resourceType} Returned for Revision - Africa CDC";
+                    break;
+                case 'submitted':
+                    $subject = "{$resourceType} Submitted for Approval - Africa CDC";
+                    break;
+                default:
+                    $subject = "{$resourceType} Notification - Africa CDC";
+            }
+        }
+
+        // Render the template
+        $htmlContent = View::make($template, $data)->render();
+        
+        // Send email using centralized system
+        return sendEmail($to, $subject, $htmlContent);
+        
+    } catch (Exception $e) {
+        \Log::error('Template email failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Send notification email to staff member
  * 
  * @param Staff $staff Staff member
