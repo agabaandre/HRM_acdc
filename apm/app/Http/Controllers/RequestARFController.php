@@ -177,16 +177,16 @@ class RequestARFController extends Controller
             $validated['status'] = 'draft';
         }
         
-            // Set approval levels and overall status
-            $validated['approval_level'] = 0;
-            $validated['next_approval_level'] = null;
-            $validated['overall_status'] = 'draft';
-            
-            if ($validated['status'] === 'submitted') {
-                $validated['approval_level'] = 1;
-                $validated['next_approval_level'] = 2;
-                $validated['overall_status'] = 'pending';
-            }
+        // Set approval levels and overall status
+        $validated['approval_level'] = 0;
+        $validated['next_approval_level'] = null;
+        $validated['overall_status'] = 'draft';
+        
+        if ($validated['status'] === 'submitted') {
+            $validated['approval_level'] = 21; // Start at level 21 for ARF (Partnerships Officer)
+            $validated['next_approval_level'] = 22; // Next level to be approved
+            $validated['overall_status'] = 'pending';
+        }
             
             $arf = RequestARF::create($validated);
             
@@ -334,8 +334,8 @@ class RequestARFController extends Controller
             }
             
             // Set approval levels and workflow IDs for immediate submission
-            $approvalLevel = 1; // Start at level 1 for pending
-            $nextApprovalLevel = 2; // Next level to be approved
+            $approvalLevel = 21; // Start at level 21 for ARF (Partnerships Officer)
+            $nextApprovalLevel = 22; // Next level to be approved
             $overallStatus = 'pending'; // Set to pending immediately
             $forwardWorkflowId = $assignedWorkflowId; // Set the assigned workflow ID
             $reverseWorkflowId = $assignedWorkflowId; // Set the same for reverse workflow

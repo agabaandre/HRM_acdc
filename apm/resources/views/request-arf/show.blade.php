@@ -919,10 +919,19 @@
                             <div class="card-body">
                                 <div class="mb-3">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
-
-
                                         <span class="text-muted small">Current Level</span>
-                                        <span class="badge bg-primary fs-6">{{ $requestARF->approval_level ?? 0 }}</span>
+                                        @php
+                                            $currentStepNumber = 1;
+                                            if (!empty($approvalLevels) && is_array($approvalLevels)) {
+                                                foreach ($approvalLevels as $index => $level) {
+                                                    if ($level['is_current']) {
+                                                        $currentStepNumber = $index + 1;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        @endphp
+                                        <span class="badge bg-primary fs-6">Step {{ $currentStepNumber }}</span>
                                     </div>
                                     @if ($requestARF->workflow_definition)
                                         <div class="mb-2">
@@ -937,29 +946,36 @@
                                                 {{ $requestARF->current_actor->lname }}</strong>
                                         </div>
                                     @endif
-                                </div>
-                                <div class="progress mb-2" style="height: 8px;">
+                                    
                                     @php
-                                        $totalLevels = count($approvalLevels);
-                                        $currentLevel = $requestARF->approval_level ?? 0;
-                                        $progressPercentage =
-                                            $totalLevels > 0 ? min(($currentLevel / $totalLevels) * 100, 100) : 0;
+                                        $nextApprover = null;
+                                        if (!empty($approvalLevels) && is_array($approvalLevels)) {
+                                            foreach ($approvalLevels as $index => $level) {
+                                                if ($level['is_current'] && isset($approvalLevels[$index + 1])) {
+                                                    $nextLevel = $approvalLevels[$index + 1];
+                                                    $nextApprover = $nextLevel['approver'] ?? null;
+                                                    break;
+                                                }
+                                            }
+                                        }
                                     @endphp
-                                    <div class="progress-bar bg-primary" role="progressbar"
-                                        style="width: {{ $progressPercentage }}%"></div>
+                                    
+                                    @if($nextApprover)
+                                        <div class="mb-2">
+                                            <small class="text-muted">Next Approver:</small><br>
+                                            <strong>{{ $nextApprover->fname ?? '' }} {{ $nextApprover->lname ?? '' }}</strong>
+                                        </div>
+                                    @endif
                                 </div>
-                                <small class="text-muted">
-                                    Level {{ max(0, ($requestARF->approval_level ?? 0) - 1) }} of {{ $totalLevels }}
-                                </small>
 
                                 @if (!empty($approvalLevels))
                                     <div class="mt-3">
                                         <small class="text-muted d-block mb-2">Approval Levels:</small>
                                         <div class="d-flex flex-wrap gap-1">
-                                            @foreach ($approvalLevels as $level)
+                                            @foreach ($approvalLevels as $index => $level)
                                                 <span
                                                     class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_current'] ? 'primary' : 'secondary') }} small">
-                                                    {{ $level['order'] }}. {{ $level['role'] }}
+                                                    Step {{ $index + 1 }}. {{ $level['role'] }}
                                                 </span>
                                             @endforeach
                                         </div>

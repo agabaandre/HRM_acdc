@@ -294,8 +294,8 @@ class ServiceRequestController extends Controller
         }
         
         // Set approval levels and workflow IDs for immediate submission
-        $approvalLevel = 1; // Start at level 1 for pending
-        $nextApprovalLevel = 2; // Next level to be approved
+        $approvalLevel = 31; // Start at level 31 for ServiceRequest (Director Finance)
+        $nextApprovalLevel = 32; // Next level to be approved (Director Administration)
         $overallStatus = 'pending'; // Set to pending immediately
         $forwardWorkflowId = $assignedWorkflowId; // Set the assigned workflow ID
         $reverseWorkflowId = $assignedWorkflowId; // Set the same for reverse workflow
@@ -1507,6 +1507,7 @@ class ServiceRequestController extends Controller
      */
     public function submitForApproval(ServiceRequest $serviceRequest): RedirectResponse
     {
+        
         $serviceRequest->submitForApproval();
 
         return redirect()->route('service-requests.show', $serviceRequest)->with([
