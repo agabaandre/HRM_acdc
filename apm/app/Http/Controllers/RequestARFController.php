@@ -1074,7 +1074,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
             // Load necessary relationships based on model type
             if ($requestARF->model_type === 'App\\Models\\Activity') {
                 // Load activity approval trails (activities use ActivityApprovalTrail table)
-                $sourceModel->load(['matrix.division.divisionHead', 'staff', 'activity_budget', 'activityApprovalTrails.staff', 'activityApprovalTrails.approverRole']);
+                $sourceModel->load(['matrix.division.divisionHead', 'matrix.matrixApprovalTrails.staff', 'matrix.matrixApprovalTrails.approverRole', 'staff', 'activity_budget', 'activityApprovalTrails.staff', 'activityApprovalTrails.approverRole']);
                 
                 // Get fund codes for budget display
                 $fundCodes = [];
@@ -1099,6 +1099,7 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
                     'total_budget' => $sourceModel->total_budget ?? 0,
                     'matrix_id' => $sourceModel->matrix_id ?? null,
+                    'matrix' => $sourceModel->matrix ?? null, // Include the matrix object with approval trails
                     'approval_trails' => $sourceModel->activityApprovalTrails,
                     'created_at' => $sourceModel->created_at,
                     'updated_at' => $sourceModel->updated_at,
@@ -1159,6 +1160,37 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
                     'total_budget' => $sourceModel->total_budget ?? 0,
                     'matrix_id' => null,
+                    'approval_trails' => $sourceModel->approvalTrails,
+                    'created_at' => $sourceModel->created_at,
+                    'updated_at' => $sourceModel->updated_at,
+                ];
+            } elseif ($requestARF->model_type === 'App\\Models\\ChangeRequest') {
+                $sourceModel->load(['division.divisionHead', 'staff', 'fundType', 'matrix.division.divisionHead', 'matrix.matrixApprovalTrails.staff', 'matrix.matrixApprovalTrails.approverRole', 'approvalTrails.staff', 'approvalTrails.approverRole']);
+                
+                // Get fund codes for budget display
+                $fundCodes = [];
+                if ($sourceModel->budget_id) {
+                    $budgetIds = is_string($sourceModel->budget_id) ? json_decode($sourceModel->budget_id, true) : $sourceModel->budget_id;
+                    if (is_array($budgetIds)) {
+                        $fundCodes = \App\Models\FundCode::whereIn('id', $budgetIds)->with('fundType', 'funder')->get()->keyBy('id');
+                    }
+                }
+                
+                $sourceData = [
+                    'title' => $this->formatArfTitle($sourceModel, 'Change Request'),
+                    'start_date' => $sourceModel->date_from ?? null,
+                    'end_date' => $sourceModel->date_to ?? null,
+                    'location' => $sourceModel->location ?? 'N/A',
+                    'division' => $sourceModel->division ?? null,
+                    'division_head' => $sourceModel->division->divisionHead ?? null,
+                    'responsible_person' => $sourceModel->staff ?? null,
+                    'budget_breakdown' => is_string($sourceModel->budget_breakdown) ? json_decode($sourceModel->budget_breakdown, true) ?? [] : ($sourceModel->budget_breakdown ?? []),
+                    'fund_codes' => $fundCodes,
+                    'internal_participants' => [],
+                    'activity_request_remarks' => $sourceModel->activity_request_remarks ?? 'N/A',
+                    'total_budget' => $sourceModel->total_budget ?? 0,
+                    'matrix_id' => $sourceModel->matrix_id ?? null,
+                    'matrix' => $sourceModel->matrix ?? null, // Include matrix object with approval trails
                     'approval_trails' => $sourceModel->approvalTrails,
                     'created_at' => $sourceModel->created_at,
                     'updated_at' => $sourceModel->updated_at,

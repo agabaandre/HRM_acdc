@@ -501,4 +501,25 @@ class PrintHelper
         
         return $financialApprovers;
     }
+    public static function getARFApprovers($activityApprovalTrails, $workflowId = 1)
+    {
+        $ARFApprovers = [];
+        
+        // Define the financial approver roles and their expected approval orders
+        $ARFRoles = [
+             
+            'Grants' => 3,       // Endorsed by (SFO)
+            'Chief of Staff' => 10,      // Endorsed by (Director Finance)
+            'Director General' => 11, // Approved by
+        ];
+        
+        foreach ($ARFRoles as $role => $expectedOrder) {
+            $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
+            if ($approval) {
+                $ARFApprovers[$role] = $approval;
+            }
+        }
+        
+        return $ARFApprovers;
+    }
 }
