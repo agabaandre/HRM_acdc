@@ -193,10 +193,22 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, show items from all divisions where they are assigned
-        $divisionIds = $this->getUserDivisionIds();
-        if (!empty($divisionIds)) {
-            $query->whereIn('division_id', $divisionIds);
+        // For users who are BOTH regular and division-specific approvers, show items from ALL divisions
+        // For users who are ONLY division-specific approvers, show items from their assigned divisions
+        // For users who are ONLY regular approvers, show items from ALL divisions
+        
+        // Check if user has regular approver assignments (non-division-specific)
+        $hasRegularApproverAssignments = $this->hasRegularApproverAssignments('NonTravelMemo');
+        
+        if ($hasRegularApproverAssignments) {
+            // User is a regular approver - show items from ALL divisions at their approval levels
+            // Don't apply division filter
+        } else if ($this->isDivisionSpecificApprover()) {
+            // User is only a division-specific approver - show items from their assigned divisions
+            $divisionIds = $this->getUserDivisionIds();
+            if (!empty($divisionIds)) {
+                $query->whereIn('division_id', $divisionIds);
+            }
         }
 
         return $query->get()->filter(function ($memo) {
@@ -462,6 +474,34 @@ class PendingApprovalsService
         }
 
         return array_unique($approvalLevels);
+    }
+
+    /**
+     * Check if user has regular approver assignments (non-division-specific)
+     */
+    protected function hasRegularApproverAssignments(string $modelType): bool
+    {
+        // Get workflow ID for this model type
+        $workflowId = \App\Models\WorkflowModel::getWorkflowIdForModel($modelType);
+        
+        if (!$workflowId) {
+            return false;
+        }
+
+        // Check if user has any non-division-specific approver assignments
+        $approvers = Approver::where('staff_id', $this->currentStaffId)->get();
+        $workflowDfnIds = $approvers->pluck('workflow_dfn_id')->toArray();
+        
+        if (!empty($workflowDfnIds)) {
+            $workflowDefinitions = WorkflowDefinition::whereIn('id', $workflowDfnIds)
+                ->where('workflow_id', $workflowId)
+                ->where('is_division_specific', 0) // Only non-division-specific
+                ->exists();
+            
+            return $workflowDefinitions;
+        }
+
+        return false;
     }
 
     /**
