@@ -15,6 +15,7 @@ use App\Models\Matrix;
 use App\Models\Location;
 use App\Models\Staff;
 use App\Models\FundCode;
+use App\Services\ApprovalService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
@@ -412,6 +413,11 @@ class MatrixController extends Controller
             'forward_workflow_id' => null,
             'overall_status' => 'draft'
         ]);
+        
+        // Generate approval order map for new matrix
+        $approvalService = new \App\Services\ApprovalService();
+        $approvalService->updateApprovalOrderMap($matrix);
+        
         $recipients = Staff::where('division_id', $validated['division_id'])->get();
        
         send_matrix_notification( $matrix,  'created',$recipients);
@@ -1497,7 +1503,7 @@ class MatrixController extends Controller
 
             if($last_approval_trail){
                 $workflow_defn       = WorkflowDefinition::where('approval_order', $last_approval_trail->approval_order)->first();
-                $last_workflow_id    = $workflow_defn->workflow_id;
+                $last_workflow_id    = $workflow_defn->workflow_id??1;
                 $last_approval_order = $last_approval_trail->approval_order;
             }
             else
@@ -1534,6 +1540,11 @@ class MatrixController extends Controller
 
         // Update matrix
         $matrix->update($update_data);
+        
+        // Update approval order map
+        $approvalService = new \App\Services\ApprovalService();
+        $approvalService->updateApprovalOrderMap($matrix);
+        
         send_generic_email_notification($matrix, 'approval');
     }
 
@@ -1582,6 +1593,12 @@ class MatrixController extends Controller
 
     public function update_status(Request $request, Matrix $matrix): RedirectResponse
     {
+
+        $approvalservice = new ApprovalService();
+        $next_approval_point = $approvalservice->getNextApprover($matrix);
+
+       // dd($next_approval_point);
+        
         $request->validate(['action' => 'required']);
 //dd($request->all());
         $this->saveMatrixTrail($matrix,$request->comment,$request->action);
@@ -1603,8 +1620,9 @@ class MatrixController extends Controller
    
           //dd('here2');
             //move to next
-            $next_approval_point = $this->get_next_approver($matrix);
-           // dd($next_approval_point);
+            $approvalservice = new ApprovalService();
+            $next_approval_point = $approvalservice->getNextApprover($matrix);
+            //$next_approval_point;
          
            
            if($next_approval_point){
@@ -1631,6 +1649,10 @@ class MatrixController extends Controller
         }
         
         $matrix->update();
+        
+        // Update approval order map
+        $approvalService = new \App\Services\ApprovalService();
+        $approvalService->updateApprovalOrderMap($matrix);
 
         //notify and save notification
         send_generic_email_notification($matrix, $notification_type);
@@ -1660,100 +1682,100 @@ class MatrixController extends Controller
         mark_matrix_notifications_read(user_session('staff_id'), $matrix->id);
     }
 
-    // private function get_next_approver($matrix){
+    private function get_next_approver($matrix){
 
-    //     $division   = $matrix->division;
+        $division   = $matrix->division;
 
-    //     ///dd($division);
+        ///dd($division);
 
-    //     $current_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
-    //        ->where('is_enabled',1)
-    //        ->where('approval_order',$matrix->approval_level)
-    //        ->first();
+        $current_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+           ->where('is_enabled',1)
+           ->where('approval_order',$matrix->approval_level)
+           ->first();
 
-    //     $nextStepIncrement = 1;
-    //     $go_to_category_check_for_external =(!$matrix->has_extramural && !$matrix->has_intramural && ($matrix->approval_level!=null && $current_definition->approval_order > $matrix->approval_level));
+        $nextStepIncrement = 1;
+        $go_to_category_check_for_external =(!$matrix->has_extramural && !$matrix->has_intramural && ($matrix->approval_level!=null && $current_definition->approval_order > $matrix->approval_level));
 
-    //    /// dd($go_to_category_check_for_external);
+       /// dd($go_to_category_check_for_external);
 
-    //      //triger checks at piu, grants, finance
-    //      //skip Director finance if approver at approval order 4 or 5 extramural or intramural activities are oved
+         //triger checks at piu, grants, finance
+         //skip Director finance if approver at approval order 4 or 5 extramural or intramural activities are oved
 
-    //     //Skip Directorate from HOD if no directorate && skips programs and operations to go to other
-    //     if(($matrix->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)|| ($current_definition && $current_definition->triggers_category_check && $division->category=='Other')){
-    //         $nextStepIncrement = 2;
-    //     }
+        //Skip Directorate from HOD if no directorate && skips programs and operations to go to other
+        if(($matrix->forward_workflow_id>0 && $current_definition->approval_order==1 && !$division->director_id)|| ($current_definition && $current_definition->triggers_category_check && $division->category=='Other')){
+            $nextStepIncrement = 2;
+        }
           
-    //     //dd($nextStepIncrement);
+        //dd($nextStepIncrement);
        
-    //     //if it's time to trigger categroy check, just check and continue
-    //     if(($current_definition && $current_definition->triggers_category_check && $division->category!='Other')||$go_to_category_check_for_external){
+        //if it's time to trigger categroy check, just check and continue
+        if(($current_definition && $current_definition->triggers_category_check && $division->category!='Other')||$go_to_category_check_for_external){
     
-    //       //dd($category_definition)
-    //     $category_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
-    //         ->where('is_enabled',1)
-    //         ->where('category',$division->category)
-    //         ->orderBy('approval_order','asc')
-    //         ->first();
+          //dd($category_definition)
+        $category_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+            ->where('is_enabled',1)
+            ->where('category',$division->category)
+            ->orderBy('approval_order','asc')
+            ->first();
 
-    //     return $category_definition;
+        return $category_definition;
 
-    //     }
+        }
 
       
        
 
    
 
-    //      if(!$matrix->forward_workflow_id) { // null
-    //         // Get assigned workflow ID for Matrix model
-    //         $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix');
-    //         if (!$assignedWorkflowId) {
-    //             $assignedWorkflowId = 1; // Default workflow ID
-    //             Log::warning('No workflow assignment found for Matrix model in workflow processing, using default workflow ID: 1');
-    //         }
-    //         $matrix->forward_workflow_id = $assignedWorkflowId;
-    //     }
+         if(!$matrix->forward_workflow_id) { // null
+            // Get assigned workflow ID for Matrix model
+            $assignedWorkflowId = WorkflowModel::getWorkflowIdForModel('Matrix');
+            if (!$assignedWorkflowId) {
+                $assignedWorkflowId = 1; // Default workflow ID
+                Log::warning('No workflow assignment found for Matrix model in workflow processing, using default workflow ID: 1');
+            }
+            $matrix->forward_workflow_id = $assignedWorkflowId;
+        }
    
-    //     $next_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
-    //        ->where('is_enabled',1)
-    //        ->where('approval_order',$matrix->approval_level +$nextStepIncrement)->get();
+        $next_definition = WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+           ->where('is_enabled',1)
+           ->where('approval_order',$matrix->approval_level +$nextStepIncrement)->get();
 
-    //   //dd($next_definition);
+      //dd($next_definition);
             
-    //     //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
-    //     // get from $definition where fund_type=2, else where fund_type=2
-    //     //if one, just return the one available
-    //     if ($next_definition->count() > 1) {
+        //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
+        // get from $definition where fund_type=2, else where fund_type=2
+        //if one, just return the one available
+        if ($next_definition->count() > 1) {
 
-    //         if ($matrix->has_extramural && $matrix->approval_level !== $next_definition->first()->approval_order) {
-    //             return $next_definition->where('fund_type', 2);
-    //         } 
-    //         else {
-    //             return $next_definition->where('fund_type', 1);
-    //         }
-    //     }
+            if ($matrix->has_extramural && $matrix->approval_level !== $next_definition->first()->approval_order) {
+                return $next_definition->where('fund_type', 2);
+            } 
+            else {
+                return $next_definition->where('fund_type', 1);
+            }
+        }
 
-    //     $definition = ($next_definition->count()>0)?$next_definition[0]:null;
-    //     //dd($definition);
-    //     //intramural only, skip extra mural role
-    //     if($definition  && !$matrix->has_extramural &&  $definition->fund_type==2){
-    //       return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
-    //         ->where('is_enabled',1)
-    //         ->where('approval_order',$definition->approval_order+1)->first();
-    //     }
+        $definition = ($next_definition->count()>0)?$next_definition[0]:null;
+        //dd($definition);
+        //intramural only, skip extra mural role
+        if($definition  && !$matrix->has_extramural &&  $definition->fund_type==2){
+          return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+            ->where('is_enabled',1)
+            ->where('approval_order',$definition->approval_order+1)->first();
+        }
 
-    //     //only extramural, skip by intramural roles
-    //     if($definition  && !$matrix->has_intramural &&  $definition->fund_type==1){
-    //         return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
-    //           ->where('is_enabled',1)
-    //           ->where('approval_order', $definition->approval_order+2)->first();
-    //     }
+        //only extramural, skip by intramural roles
+        if($definition  && !$matrix->has_intramural &&  $definition->fund_type==1){
+            return WorkflowDefinition::where('workflow_id',$matrix->forward_workflow_id)
+              ->where('is_enabled',1)
+              ->where('approval_order', $definition->approval_order+2)->first();
+        }
 
-    //   // dd($nextStepIncrement);
-    //     return  $definition;
+      // dd($nextStepIncrement);
+        return  $definition;
 
-    // }
+    }
 
      /**
      * Determine the next approver in the workflow based on the approval process diagram.
@@ -1781,498 +1803,498 @@ class MatrixController extends Controller
      * @param Matrix $matrix The matrix being processed
      * @return WorkflowDefinition|null The next workflow definition to process
      */
-    private function get_next_approver($matrix)
-    {
-        // Input validation
-        if (!$matrix || !$matrix->division) {
-            Log::error('Invalid matrix or division in get_next_approver');
-            return null;
-        }
+    // private function get_next_approver($matrix)
+    // {
+    //     // Input validation
+    //     if (!$matrix || !$matrix->division) {
+    //         Log::error('Invalid matrix or division in get_next_approver');
+    //         return null;
+    //     }
 
-        $division = $matrix->division;
-        $approvalLevel = (int) ($matrix->approval_level ?? 0);
+    //     $division = $matrix->division;
+    //     $approvalLevel = (int) ($matrix->approval_level ?? 0);
         
-        // Determine funding types based on matrix properties
-        // Note: These values can change dynamically as activities are processed
-        $hasIntra = (bool) ($matrix->has_intramural ?? false);
-        $hasExtra = (bool) ($matrix->has_extramural ?? false);
-        $isExternal = (!$hasIntra && !$hasExtra); // External source if neither intra nor extra
+    //     // Determine funding types based on matrix properties
+    //     // Note: These values can change dynamically as activities are processed
+    //     $hasIntra = (bool) ($matrix->has_intramural ?? false);
+    //     $hasExtra = (bool) ($matrix->has_extramural ?? false);
+    //     $isExternal = (!$hasIntra && !$hasExtra); // External source if neither intra nor extra
         
-        // Dynamic funding status check: Re-evaluate funding status at each level
-        // This handles cases where activities are removed during the workflow
-        if ($approvalLevel >= 3) {
-            // Refresh the matrix to get the latest funding status
-            $matrix->refresh();
+    //     // Dynamic funding status check: Re-evaluate funding status at each level
+    //     // This handles cases where activities are removed during the workflow
+    //     if ($approvalLevel >= 3) {
+    //         // Refresh the matrix to get the latest funding status
+    //         $matrix->refresh();
             
-            // Recalculate funding status to detect changes
-            $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
-            $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
-            $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
+    //         // Recalculate funding status to detect changes
+    //         $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
+    //         $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
+    //         $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
             
-            // If funding status changed to external, update the flags
-            if ($currentIsExternal && !$isExternal) {
-                $isExternal = true;
-                $hasIntra = false;
-                $hasExtra = false;
+    //         // If funding status changed to external, update the flags
+    //         if ($currentIsExternal && !$isExternal) {
+    //             $isExternal = true;
+    //             $hasIntra = false;
+    //             $hasExtra = false;
                 
-                // Log the change for debugging
-                Log::info("Funding status changed to external at level {$approvalLevel} for matrix {$matrix->id}", [
-                    'previous_status' => 'had_funding',
-                    'current_status' => 'external',
-                    'approval_level' => $approvalLevel
-                ]);
-            }
+    //             // Log the change for debugging
+    //             Log::info("Funding status changed to external at level {$approvalLevel} for matrix {$matrix->id}", [
+    //                 'previous_status' => 'had_funding',
+    //                 'current_status' => 'external',
+    //                 'approval_level' => $approvalLevel
+    //             ]);
+    //         }
             
-            // If funding status changed from external to having funding, update the flags
-            if (!$currentIsExternal && $isExternal) {
-                $isExternal = false;
-                $hasIntra = $currentHasIntra;
-                $hasExtra = $currentHasExtra;
+    //         // If funding status changed from external to having funding, update the flags
+    //         if (!$currentIsExternal && $isExternal) {
+    //             $isExternal = false;
+    //             $hasIntra = $currentHasIntra;
+    //             $hasExtra = $currentHasExtra;
                 
-                // Log the change for debugging
-                Log::info("Funding status changed from external at level {$approvalLevel} for matrix {$matrix->id}", [
-                    'previous_status' => 'external',
-                    'current_status' => 'has_funding',
-                    'has_intramural' => $hasIntra,
-                    'has_extramural' => $hasExtra,
-                    'approval_level' => $approvalLevel
-                ]);
-            }
-        }
+    //             // Log the change for debugging
+    //             Log::info("Funding status changed from external at level {$approvalLevel} for matrix {$matrix->id}", [
+    //                 'previous_status' => 'external',
+    //                 'current_status' => 'has_funding',
+    //                 'has_intramural' => $hasIntra,
+    //                 'has_extramural' => $hasExtra,
+    //                 'approval_level' => $approvalLevel
+    //             ]);
+    //         }
+    //     }
         
-        // Debug logging (commented out due to permission issues)
-        // Log::info("Matrix {$matrix->id} workflow check", [
-        //     'approval_level' => $approvalLevel,
-        //     'has_intramural' => $hasIntra,
-        //     'has_extramural' => $hasExtra,
-        //     'is_external' => $isExternal,
-        //     'division_category' => $division->category ?? 'null',
-        //     'division_director_id' => $division->director_id ?? 'null'
-        // ]);
+    //     // Debug logging (commented out due to permission issues)
+    //     // Log::info("Matrix {$matrix->id} workflow check", [
+    //     //     'approval_level' => $approvalLevel,
+    //     //     'has_intramural' => $hasIntra,
+    //     //     'has_extramural' => $hasExtra,
+    //     //     'is_external' => $isExternal,
+    //     //     'division_category' => $division->category ?? 'null',
+    //     //     'division_director_id' => $division->director_id ?? 'null'
+    //     // ]);
         
-        // Debug output for testing (remove in production)
-        // echo "DEBUG: Matrix {$matrix->id} - Level: {$approvalLevel}, HasIntra: " . ($hasIntra ? 'true' : 'false') . ", HasExtra: " . ($hasExtra ? 'true' : 'false') . ", IsExternal: " . ($isExternal ? 'true' : 'false') . ", Category: " . ($division->category ?? 'null') . PHP_EOL;
+    //     // Debug output for testing (remove in production)
+    //     // echo "DEBUG: Matrix {$matrix->id} - Level: {$approvalLevel}, HasIntra: " . ($hasIntra ? 'true' : 'false') . ", HasExtra: " . ($hasExtra ? 'true' : 'false') . ", IsExternal: " . ($isExternal ? 'true' : 'false') . ", Category: " . ($division->category ?? 'null') . PHP_EOL;
 
-        // Ensure workflow ID is set - get from matrix's workflow_id property or use default
-        if (!$matrix->forward_workflow_id) {
-            $assignedWorkflowId = $matrix->workflow_id ?? 1; // Use matrix's workflow_id or default to 1
-            if (!$assignedWorkflowId) {
-                $assignedWorkflowId = 1;
-                Log::warning('No workflow assignment found for Matrix; using default workflow_id=1');
-            }
-            $matrix->forward_workflow_id = $assignedWorkflowId;
-        }
+    //     // Ensure workflow ID is set - get from matrix's workflow_id property or use default
+    //     if (!$matrix->forward_workflow_id) {
+    //         $assignedWorkflowId = $matrix->workflow_id ?? 1; // Use matrix's workflow_id or default to 1
+    //         if (!$assignedWorkflowId) {
+    //             $assignedWorkflowId = 1;
+    //             Log::warning('No workflow assignment found for Matrix; using default workflow_id=1');
+    //         }
+    //         $matrix->forward_workflow_id = $assignedWorkflowId;
+    //     }
 
-        // Helper function to get workflow definition by order, fund type, and category
-        $pick = function (int $order, ?int $fundType = null, ?string $category = null) use ($matrix) {
-            $query = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('approval_order', $order);
+    //     // Helper function to get workflow definition by order, fund type, and category
+    //     $pick = function (int $order, ?int $fundType = null, ?string $category = null) use ($matrix) {
+    //         $query = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //             ->where('is_enabled', 1)
+    //             ->where('approval_order', $order);
 
-            if ($fundType !== null) $query->where('fund_type', $fundType); // 1=intramural, 2=extramural, 3=external
-            if ($category !== null) $query->where('category', $category);
+    //         if ($fundType !== null) $query->where('fund_type', $fundType); // 1=intramural, 2=extramural, 3=external
+    //         if ($category !== null) $query->where('category', $category);
 
-            return $query->first();
-        };
+    //         return $query->first();
+    //     };
 
-        // Helper function to get first category-based approver
-        $pickFirstCategoryNode = function (?string $category) use ($matrix, $pick, $approvalLevel) {
-            $cat = $category ?: 'Other';
+    //     // Helper function to get first category-based approver
+    //     $pickFirstCategoryNode = function (?string $category) use ($matrix, $pick, $approvalLevel) {
+    //         $cat = $category ?: 'Other';
             
-            // Simple and elegant: Find workflow definition that matches the division category
-            // This approach is scalable and doesn't require hardcoded logic for each category
-            $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('category', $cat)
-                ->where('approval_order', '>', $approvalLevel) // Only look for next level, not current
-                ->orderBy('approval_order', 'asc')
-           ->first();
+    //         // Simple and elegant: Find workflow definition that matches the division category
+    //         // This approach is scalable and doesn't require hardcoded logic for each category
+    //         $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //             ->where('is_enabled', 1)
+    //             ->where('category', $cat)
+    //             ->where('approval_order', '>', $approvalLevel) // Only look for next level, not current
+    //             ->orderBy('approval_order', 'asc')
+    //        ->first();
 
-            // If no category-specific approver found, find the next available approval order
-            if (!$definition) {
-                $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                    ->where('is_enabled', 1)
-                    ->where('approval_order', '>', $approvalLevel)
-                    ->orderBy('approval_order', 'asc')
-                    ->first();
-            }
+    //         // If no category-specific approver found, find the next available approval order
+    //         if (!$definition) {
+    //             $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //                 ->where('is_enabled', 1)
+    //                 ->where('approval_order', '>', $approvalLevel)
+    //                 ->orderBy('approval_order', 'asc')
+    //                 ->first();
+    //         }
             
-            return $definition;
-        };
+    //         return $definition;
+    //     };
 
-        // Get current workflow definition
-        $current_definition = $approvalLevel > 0
-            ? WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('approval_order', $approvalLevel)
-                ->first()
-            : null;
+    //     // Get current workflow definition
+    //     $current_definition = $approvalLevel > 0
+    //         ? WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //             ->where('is_enabled', 1)
+    //             ->where('approval_order', $approvalLevel)
+    //             ->first()
+    //         : null;
 
-        // STEP 1: HOD Review Logic
-        // If at HOD level (approval_order = 1), check if we should skip directorate
-        if ($approvalLevel == 1) {
-            // Special case: If division category is 'Other', go directly to DDG who doubles as Head of Other (order 9)
-            // This takes priority over all funding type checks
-            if ($division->category === 'Other') {
-                $definition = $pickFirstCategoryNode($division->category);
-                if ($definition) return $definition;
-            }
+    //     // STEP 1: HOD Review Logic
+    //     // If at HOD level (approval_order = 1), check if we should skip directorate
+    //     if ($approvalLevel == 1) {
+    //         // Special case: If division category is 'Other', go directly to DDG who doubles as Head of Other (order 9)
+    //         // This takes priority over all funding type checks
+    //         if ($division->category === 'Other') {
+    //             $definition = $pickFirstCategoryNode($division->category);
+    //             if ($definition) return $definition;
+    //         }
             
-            // For external source, first check if division has director
-            if ($isExternal) {
-                // Check if division has directorate (null or 0 means no director)
-                if ($division->director_id === null || $division->director_id == 0) {
-                    // No director - go directly to division category check
-                    $definition = $pickFirstCategoryNode($division->category ?? null);
-                    if ($definition) return $definition;
-                } else {
-                    // Has director - proceed to Director step (order 2)
-                    $directorStep = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                        ->where('is_enabled', 1)
-                        ->where('approval_order', 2)
-                        ->first();
+    //         // For external source, first check if division has director
+    //         if ($isExternal) {
+    //             // Check if division has directorate (null or 0 means no director)
+    //             if ($division->director_id === null || $division->director_id == 0) {
+    //                 // No director - go directly to division category check
+    //                 $definition = $pickFirstCategoryNode($division->category ?? null);
+    //                 if ($definition) return $definition;
+    //             } else {
+    //                 // Has director - proceed to Director step (order 2)
+    //                 $directorStep = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //                     ->where('is_enabled', 1)
+    //                     ->where('approval_order', 2)
+    //                     ->first();
                         
-                    if ($directorStep) {
-                        return $directorStep;
-                    } else {
-                        // No Director step in workflow - go to division category check
-                        $definition = $pickFirstCategoryNode($division->category ?? null);
-                        if ($definition) return $definition;
+    //                 if ($directorStep) {
+    //                     return $directorStep;
+    //                 } else {
+    //                     // No Director step in workflow - go to division category check
+    //                     $definition = $pickFirstCategoryNode($division->category ?? null);
+    //                     if ($definition) return $definition;
                         
-                        // If no category-specific approver found, go to next available step
-                        $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                            ->where('is_enabled', 1)
-                            ->where('approval_order', '>', $approvalLevel)
-                            ->orderBy('approval_order', 'asc')
-            ->first();
-                        if ($definition) return $definition;
+    //                     // If no category-specific approver found, go to next available step
+    //                     $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //                         ->where('is_enabled', 1)
+    //                         ->where('approval_order', '>', $approvalLevel)
+    //                         ->orderBy('approval_order', 'asc')
+    //         ->first();
+    //                     if ($definition) return $definition;
                         
-                        // If no next step found due to activity changes, check division category again
-                        $definition = $pickFirstCategoryNode($division->category ?? null);
-                        if ($definition) return $definition;
-                    }
-                }
-            }
+    //                     // If no next step found due to activity changes, check division category again
+    //                     $definition = $pickFirstCategoryNode($division->category ?? null);
+    //                     if ($definition) return $definition;
+    //                 }
+    //             }
+    //         }
             
-            // For non-external sources, check if division has directorate (null or 0 means no director)
-            if ($division->director_id === null || $division->director_id == 0) {
-                // No directorate - skip to next available step after Director (order 2)
-                // But first check fund types to route correctly
-                if ($hasIntra && !$hasExtra) {
-                    // Intramural: skip Director, go to PIU Officer (4)
-                    $definition = $pick(4, 1);
-                    if ($definition) return $definition;
-                }
+    //         // For non-external sources, check if division has directorate (null or 0 means no director)
+    //         if ($division->director_id === null || $division->director_id == 0) {
+    //             // No directorate - skip to next available step after Director (order 2)
+    //             // But first check fund types to route correctly
+    //             if ($hasIntra && !$hasExtra) {
+    //                 // Intramural: skip Director, go to PIU Officer (4)
+    //                 $definition = $pick(4, 1);
+    //                 if ($definition) return $definition;
+    //             }
                 
-                if ($hasExtra && !$hasIntra) {
-                    // Extramural: skip Director, go to Grants Officer (3)
-                    $definition = $pick(3, 2);
-                    if ($definition) return $definition;
-                }
+    //             if ($hasExtra && !$hasIntra) {
+    //                 // Extramural: skip Director, go to Grants Officer (3)
+    //                 $definition = $pick(3, 2);
+    //                 if ($definition) return $definition;
+    //             }
                 
-                if ($hasIntra && $hasExtra) {
-                    // Mixed funding: skip Director, start with Grants Officer (3)
-                    $definition = $pick(3, 2);
-                    if ($definition) return $definition;
-                }
+    //             if ($hasIntra && $hasExtra) {
+    //                 // Mixed funding: skip Director, start with Grants Officer (3)
+    //                 $definition = $pick(3, 2);
+    //                 if ($definition) return $definition;
+    //             }
                 
-            // Fallback - go to next available step after Director
-            $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('approval_order', '>', 2) // Skip Director step (order 2)
-                ->orderBy('approval_order', 'asc')
-                ->first();
-            if ($definition) return $definition;
+    //         // Fallback - go to next available step after Director
+    //         $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //             ->where('is_enabled', 1)
+    //             ->where('approval_order', '>', 2) // Skip Director step (order 2)
+    //             ->orderBy('approval_order', 'asc')
+    //             ->first();
+    //         if ($definition) return $definition;
             
-            // If no next step found due to activity changes, check division category
-            $definition = $pickFirstCategoryNode($division->category ?? null);
-            if ($definition) return $definition;
-            }
+    //         // If no next step found due to activity changes, check division category
+    //         $definition = $pickFirstCategoryNode($division->category ?? null);
+    //         if ($definition) return $definition;
+    //         }
             
-            // Has directorate - check if there's a Director step (order 2)
-            $directorStep = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('approval_order', 2)
-                ->first();
+    //         // Has directorate - check if there's a Director step (order 2)
+    //         $directorStep = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //             ->where('is_enabled', 1)
+    //             ->where('approval_order', 2)
+    //             ->first();
                 
-            if ($directorStep) {
-                // This workflow has a Director step - proceed to it
-                return $directorStep;
-            } else {
-                // This workflow doesn't have a Director step - go to next available step
-                $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                    ->where('is_enabled', 1)
-                    ->where('approval_order', '>', $approvalLevel)
-                    ->orderBy('approval_order', 'asc')
-                    ->first();
-                if ($definition) return $definition;
+    //         if ($directorStep) {
+    //             // This workflow has a Director step - proceed to it
+    //             return $directorStep;
+    //         } else {
+    //             // This workflow doesn't have a Director step - go to next available step
+    //             $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //                 ->where('is_enabled', 1)
+    //                 ->where('approval_order', '>', $approvalLevel)
+    //                 ->orderBy('approval_order', 'asc')
+    //                 ->first();
+    //             if ($definition) return $definition;
                 
-                // If no next step found due to activity changes, check division category
-                $definition = $pickFirstCategoryNode($division->category ?? null);
-                if ($definition) return $definition;
-            }
-        }
+    //             // If no next step found due to activity changes, check division category
+    //             $definition = $pickFirstCategoryNode($division->category ?? null);
+    //             if ($definition) return $definition;
+    //         }
+    //     }
 
-        // STEP 2: Directorate Check
-        // If at Director level (approval_order = 2), perform all funding type checks like HOD level
-        if ($approvalLevel == 2) {
-            // Perform the same funding type checks as HOD level, but without director existence check
+    //     // STEP 2: Directorate Check
+    //     // If at Director level (approval_order = 2), perform all funding type checks like HOD level
+    //     if ($approvalLevel == 2) {
+    //         // Perform the same funding type checks as HOD level, but without director existence check
             
-            // For external source, go directly to division category check
-            if ($isExternal) {
-                $definition = $pickFirstCategoryNode($division->category ?? null);
-                if ($definition) return $definition;
-            }
+    //         // For external source, go directly to division category check
+    //         if ($isExternal) {
+    //             $definition = $pickFirstCategoryNode($division->category ?? null);
+    //             if ($definition) return $definition;
+    //         }
             
-            // For intramural only
-            if ($hasIntra && !$hasExtra) {
-                // Intramural: PIU Officer (4) -> Finance Officer (5) -> Director Finance (6)
-                $definition = $pick(4, 1); // PIU Officer for intramural
-                if ($definition) return $definition;
-            }
+    //         // For intramural only
+    //         if ($hasIntra && !$hasExtra) {
+    //             // Intramural: PIU Officer (4) -> Finance Officer (5) -> Director Finance (6)
+    //             $definition = $pick(4, 1); // PIU Officer for intramural
+    //             if ($definition) return $definition;
+    //         }
 
-            // For extramural only
-            if ($hasExtra && !$hasIntra) {
-                // Extramural: Grants Officer (3) -> Director Finance (6) (skips Finance Officer)
-                $definition = $pick(3, 2); // Grants Officer for extramural
-                if ($definition) return $definition;
-            }
+    //         // For extramural only
+    //         if ($hasExtra && !$hasIntra) {
+    //             // Extramural: Grants Officer (3) -> Director Finance (6) (skips Finance Officer)
+    //             $definition = $pick(3, 2); // Grants Officer for extramural
+    //             if ($definition) return $definition;
+    //         }
 
-            // For mixed funding
-            if ($hasIntra && $hasExtra) {
-                // Mixed funding: Both Grants and PIU Officer need to review
-                // Start with Grants Officer (3) for extramural activities first
-                $definition = $pick(3, 2); // Grants Officer for extramural
-                if ($definition) return $definition;
-            }
+    //         // For mixed funding
+    //         if ($hasIntra && $hasExtra) {
+    //             // Mixed funding: Both Grants and PIU Officer need to review
+    //             // Start with Grants Officer (3) for extramural activities first
+    //             $definition = $pick(3, 2); // Grants Officer for extramural
+    //             if ($definition) return $definition;
+    //         }
 
-        // Fallback - go to next available step
-        $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-            ->where('is_enabled', 1)
-            ->where('approval_order', '>', $approvalLevel)
-            ->orderBy('approval_order', 'asc')
-            ->first();
-        if ($definition) return $definition;
+    //     // Fallback - go to next available step
+    //     $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //         ->where('is_enabled', 1)
+    //         ->where('approval_order', '>', $approvalLevel)
+    //         ->orderBy('approval_order', 'asc')
+    //         ->first();
+    //     if ($definition) return $definition;
         
-        // If no next step found due to activity changes, check division category
-        $definition = $pickFirstCategoryNode($division->category ?? null);
-        if ($definition) return $definition;
-        }
+    //     // If no next step found due to activity changes, check division category
+    //     $definition = $pickFirstCategoryNode($division->category ?? null);
+    //     if ($definition) return $definition;
+    //     }
 
-        // STEP 3: Fund Source Split (Grants Officer)
-        // After Grants Officer (approval_order = 3)
-        if ($approvalLevel == 3) {
-            // PIU/Grants Officer can remove activities - check for funding status changes
-            $matrix->refresh();
-            $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
-            $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
-            $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
+    //     // STEP 3: Fund Source Split (Grants Officer)
+    //     // After Grants Officer (approval_order = 3)
+    //     if ($approvalLevel == 3) {
+    //         // PIU/Grants Officer can remove activities - check for funding status changes
+    //         $matrix->refresh();
+    //         $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
+    //         $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
+    //         $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
             
-            // If funding status changed to external, go to category check
-            if ($currentIsExternal) {
-                // Log::info("PIU/Grants Officer removed all activities - switching to external source for matrix {$matrix->id}");
-                $definition = $pickFirstCategoryNode($division->category ?? null);
-                return $definition;
-            }
+    //         // If funding status changed to external, go to category check
+    //         if ($currentIsExternal) {
+    //             // Log::info("PIU/Grants Officer removed all activities - switching to external source for matrix {$matrix->id}");
+    //             $definition = $pickFirstCategoryNode($division->category ?? null);
+    //             return $definition;
+    //         }
             
-            // Update funding flags based on current status
-            $hasIntra = $currentHasIntra;
-            $hasExtra = $currentHasExtra;
-            $isExternal = $currentIsExternal;
+    //         // Update funding flags based on current status
+    //         $hasIntra = $currentHasIntra;
+    //         $hasExtra = $currentHasExtra;
+    //         $isExternal = $currentIsExternal;
             
-            // Check if we have mixed funding (both intramural and extramural)
-            if ($hasIntra && $hasExtra) {
-                // Mixed funding: Go to PIU Officer (4) for intramural activities
-                $definition = $pick(4, 1); // PIU Officer for intramural
-                if ($definition) return $definition;
-            }
+    //         // Check if we have mixed funding (both intramural and extramural)
+    //         if ($hasIntra && $hasExtra) {
+    //             // Mixed funding: Go to PIU Officer (4) for intramural activities
+    //             $definition = $pick(4, 1); // PIU Officer for intramural
+    //             if ($definition) return $definition;
+    //         }
             
-        // For extramural only, go to Director Finance (6)
-        $definition = $pick(6);
-        if ($definition) return $definition;
+    //     // For extramural only, go to Director Finance (6)
+    //     $definition = $pick(6);
+    //     if ($definition) return $definition;
         
-        // If no specific approver found due to activity changes, check division category
-        $definition = $pickFirstCategoryNode($division->category ?? null);
-        if ($definition) return $definition;
-        }
+    //     // If no specific approver found due to activity changes, check division category
+    //     $definition = $pickFirstCategoryNode($division->category ?? null);
+    //     if ($definition) return $definition;
+    //     }
 
-        // STEP 4: PIU Officer (Intramural only)
-        // After PIU Officer (approval_order = 4), check if intramural activities were removed
-        if ($approvalLevel == 4) {
-            // PIU Officer can remove activities - check for funding status changes
-            $matrix->refresh();
-            $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
-            $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
-            $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
+    //     // STEP 4: PIU Officer (Intramural only)
+    //     // After PIU Officer (approval_order = 4), check if intramural activities were removed
+    //     if ($approvalLevel == 4) {
+    //         // PIU Officer can remove activities - check for funding status changes
+    //         $matrix->refresh();
+    //         $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
+    //         $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
+    //         $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
             
-            // If funding status changed to external, go to category check
-            if ($currentIsExternal) {
-                // Log::info("PIU Officer removed all activities - switching to external source for matrix {$matrix->id}");
-                $definition = $pickFirstCategoryNode($division->category ?? null);
-                return $definition;
-            }
+    //         // If funding status changed to external, go to category check
+    //         if ($currentIsExternal) {
+    //             // Log::info("PIU Officer removed all activities - switching to external source for matrix {$matrix->id}");
+    //             $definition = $pickFirstCategoryNode($division->category ?? null);
+    //             return $definition;
+    //         }
             
-            // Update funding flags based on current status
-            $hasIntra = $currentHasIntra;
-            $hasExtra = $currentHasExtra;
-            $isExternal = $currentIsExternal;
+    //         // Update funding flags based on current status
+    //         $hasIntra = $currentHasIntra;
+    //         $hasExtra = $currentHasExtra;
+    //         $isExternal = $currentIsExternal;
             
-        // Go to Finance Officer (5) for intramural activities
-        $definition = $pick(5, 1); // Finance Officer for intramural
-        if ($definition) return $definition;
+    //     // Go to Finance Officer (5) for intramural activities
+    //     $definition = $pick(5, 1); // Finance Officer for intramural
+    //     if ($definition) return $definition;
         
-        // If no Finance Officer found due to activity changes, check division category
-        $definition = $pickFirstCategoryNode($division->category ?? null);
-        if ($definition) return $definition;
-        }
+    //     // If no Finance Officer found due to activity changes, check division category
+    //     $definition = $pickFirstCategoryNode($division->category ?? null);
+    //     if ($definition) return $definition;
+    //     }
 
-        // STEP 5: Finance Officer (Intramural only)
-        // After Finance Officer (approval_order = 5), check if intramural activities were removed
-        if ($approvalLevel == 5) {
-            // Finance Officer can remove activities - check for funding status changes
-            $matrix->refresh();
-            $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
-            $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
-            $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
+    //     // STEP 5: Finance Officer (Intramural only)
+    //     // After Finance Officer (approval_order = 5), check if intramural activities were removed
+    //     if ($approvalLevel == 5) {
+    //         // Finance Officer can remove activities - check for funding status changes
+    //         $matrix->refresh();
+    //         $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
+    //         $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
+    //         $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
             
-            // If funding status changed to external, go to category check
-            if ($currentIsExternal) {
-                // Log::info("Finance Officer removed all activities - switching to external source for matrix {$matrix->id}");
-                $definition = $pickFirstCategoryNode($division->category ?? null);
-                return $definition;
-            }
+    //         // If funding status changed to external, go to category check
+    //         if ($currentIsExternal) {
+    //             // Log::info("Finance Officer removed all activities - switching to external source for matrix {$matrix->id}");
+    //             $definition = $pickFirstCategoryNode($division->category ?? null);
+    //             return $definition;
+    //         }
             
-            // Update funding flags based on current status
-            $hasIntra = $currentHasIntra;
-            $hasExtra = $currentHasExtra;
-            $isExternal = $currentIsExternal;
+    //         // Update funding flags based on current status
+    //         $hasIntra = $currentHasIntra;
+    //         $hasExtra = $currentHasExtra;
+    //         $isExternal = $currentIsExternal;
             
-        // If intramural activities still exist, go to Director Finance (6)
-        $definition = $pick(6);
-        if ($definition) return $definition;
+    //     // If intramural activities still exist, go to Director Finance (6)
+    //     $definition = $pick(6);
+    //     if ($definition) return $definition;
         
-        // If no Director Finance found due to activity changes, check division category
-        $definition = $pickFirstCategoryNode($division->category ?? null);
-        if ($definition) return $definition;
-        }
+    //     // If no Director Finance found due to activity changes, check division category
+    //     $definition = $pickFirstCategoryNode($division->category ?? null);
+    //     if ($definition) return $definition;
+    //     }
 
-        // STEP 6: Director Finance
-        // After Director Finance (approval_order = 6), go to division category check
-        if ($approvalLevel == 6) {
-            // Director Finance can remove activities - check for funding status changes
-            $matrix->refresh();
-            $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
-            $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
-            $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
+    //     // STEP 6: Director Finance
+    //     // After Director Finance (approval_order = 6), go to division category check
+    //     if ($approvalLevel == 6) {
+    //         // Director Finance can remove activities - check for funding status changes
+    //         $matrix->refresh();
+    //         $currentHasIntra = (bool) ($matrix->has_intramural ?? false);
+    //         $currentHasExtra = (bool) ($matrix->has_extramural ?? false);
+    //         $currentIsExternal = (!$currentHasIntra && !$currentHasExtra);
             
-            // Update funding flags based on current status
-            $hasIntra = $currentHasIntra;
-            $hasExtra = $currentHasExtra;
-            $isExternal = $currentIsExternal;
+    //         // Update funding flags based on current status
+    //         $hasIntra = $currentHasIntra;
+    //         $hasExtra = $currentHasExtra;
+    //         $isExternal = $currentIsExternal;
             
-            // Go to division category check
-            $definition = $pickFirstCategoryNode($division->category ?? null);
-            return $definition;
-        }
+    //         // Go to division category check
+    //         $definition = $pickFirstCategoryNode($division->category ?? null);
+    //         return $definition;
+    //     }
 
-        // STEP 6: Division Category Check
-        // Check if we should trigger category check based on current definition
-        $shouldCategoryCheck = ($current_definition && $current_definition->triggers_category_check) 
-            || ($isExternal && $approvalLevel >= 2);
+    //     // STEP 6: Division Category Check
+    //     // Check if we should trigger category check based on current definition
+    //     $shouldCategoryCheck = ($current_definition && $current_definition->triggers_category_check) 
+    //         || ($isExternal && $approvalLevel >= 2);
 
-        if ($shouldCategoryCheck) {
-            // Log::info("Triggering category check for matrix {$matrix->id}", [
-            //     'category' => $division->category ?? 'null',
-            //     'approval_level' => $approvalLevel,
-            //     'is_external' => $isExternal
-            // ]);
-            $definition = $pickFirstCategoryNode($division->category ?? null);
-            // Log::info("Category check result for matrix {$matrix->id}", [
-            //     'found_definition' => $definition ? $definition->role : 'null',
-            //     'approval_order' => $definition ? $definition->approval_order : 'null'
-            // ]);
-            return $definition;
-        }
+    //     if ($shouldCategoryCheck) {
+    //         // Log::info("Triggering category check for matrix {$matrix->id}", [
+    //         //     'category' => $division->category ?? 'null',
+    //         //     'approval_level' => $approvalLevel,
+    //         //     'is_external' => $isExternal
+    //         // ]);
+    //         $definition = $pickFirstCategoryNode($division->category ?? null);
+    //         // Log::info("Category check result for matrix {$matrix->id}", [
+    //         //     'found_definition' => $definition ? $definition->role : 'null',
+    //         //     'approval_order' => $definition ? $definition->approval_order : 'null'
+    //         // ]);
+    //         return $definition;
+    //     }
 
-        // Additional check: If external source and at any level after Director, go to category check
-        if ($isExternal && $approvalLevel > 2) {
-            $definition = $pickFirstCategoryNode($division->category ?? null);
-            return $definition;
-        }
+    //     // Additional check: If external source and at any level after Director, go to category check
+    //     if ($isExternal && $approvalLevel > 2) {
+    //         $definition = $pickFirstCategoryNode($division->category ?? null);
+    //         return $definition;
+    //     }
 
-        // Special case: If at Finance Officer level (4) and no intramural activities remain,
-        // treat as external source and go to category check
-        if ($approvalLevel == 4 && !$hasIntra && !$hasExtra) {
-            $definition = $pickFirstCategoryNode($division->category ?? null);
-            return $definition;
-        }
+    //     // Special case: If at Finance Officer level (4) and no intramural activities remain,
+    //     // treat as external source and go to category check
+    //     if ($approvalLevel == 4 && !$hasIntra && !$hasExtra) {
+    //         $definition = $pickFirstCategoryNode($division->category ?? null);
+    //         return $definition;
+    //     }
 
-        // STEP 7-11: Final Approval Chain (Head Operations/Programs -> DDG -> COP -> DG -> Registry)
-        // At level 7, use category-based routing to find the correct approver
-        if ($approvalLevel == 7) {
-            $definition = $pickFirstCategoryNode($division->category ?? null);
-            if ($definition) {
-                return $definition;
-            }
-        }
+    //     // STEP 7-11: Final Approval Chain (Head Operations/Programs -> DDG -> COP -> DG -> Registry)
+    //     // At level 7, use category-based routing to find the correct approver
+    //     if ($approvalLevel == 7) {
+    //         $definition = $pickFirstCategoryNode($division->category ?? null);
+    //         if ($definition) {
+    //             return $definition;
+    //         }
+    //     }
         
-        // Find the next available approval order
-        $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-            ->where('is_enabled', 1)
-            ->where('approval_order', '>', $approvalLevel)
-            ->orderBy('approval_order', 'asc')
-            ->first();
+    //     // Find the next available approval order
+    //     $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //         ->where('is_enabled', 1)
+    //         ->where('approval_order', '>', $approvalLevel)
+    //         ->orderBy('approval_order', 'asc')
+    //         ->first();
 
-        if ($definition) {
-            // External: skip finance/PIU/Grants nodes (fund_type 1/2) -> jump to category
-            if ($isExternal && in_array((int)$definition->fund_type, [1, 2])) {
-                $definition = $pickFirstCategoryNode($division->category ?? null);
-                return $definition;
-            }
+    //     if ($definition) {
+    //         // External: skip finance/PIU/Grants nodes (fund_type 1/2) -> jump to category
+    //         if ($isExternal && in_array((int)$definition->fund_type, [1, 2])) {
+    //             $definition = $pickFirstCategoryNode($division->category ?? null);
+    //             return $definition;
+    //         }
 
-            // Intramural only -> skip extramural row
-            if ($hasIntra && !$hasExtra && (int)$definition->fund_type == 2) {
-                // Find next approver after skipping extramural
-                $nextDefinition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                    ->where('is_enabled', 1)
-                    ->where('approval_order', '>', $definition->approval_order)
-                    ->orderBy('approval_order', 'asc')
-                    ->first();
+    //         // Intramural only -> skip extramural row
+    //         if ($hasIntra && !$hasExtra && (int)$definition->fund_type == 2) {
+    //             // Find next approver after skipping extramural
+    //             $nextDefinition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //                 ->where('is_enabled', 1)
+    //                 ->where('approval_order', '>', $definition->approval_order)
+    //                 ->orderBy('approval_order', 'asc')
+    //                 ->first();
                 
-                if ($nextDefinition) {
-                    return $nextDefinition;
-                } else {
-                    return $pickFirstCategoryNode($division->category ?? null);
-                }
-            }
+    //             if ($nextDefinition) {
+    //                 return $nextDefinition;
+    //             } else {
+    //                 return $pickFirstCategoryNode($division->category ?? null);
+    //             }
+    //         }
 
-            // Extramural only -> skip intramural row
-            if ($hasExtra && !$hasIntra && (int)$definition->fund_type == 1) {
-                // Find next approver after skipping intramural
-                $nextDefinition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-                    ->where('is_enabled', 1)
-                    ->where('approval_order', '>', $definition->approval_order)
-                    ->orderBy('approval_order', 'asc')
-                    ->first();
+    //         // Extramural only -> skip intramural row
+    //         if ($hasExtra && !$hasIntra && (int)$definition->fund_type == 1) {
+    //             // Find next approver after skipping intramural
+    //             $nextDefinition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //                 ->where('is_enabled', 1)
+    //                 ->where('approval_order', '>', $definition->approval_order)
+    //                 ->orderBy('approval_order', 'asc')
+    //                 ->first();
                 
-                if ($nextDefinition) {
-                    return $nextDefinition;
-                } else {
-                    return $pickFirstCategoryNode($division->category ?? null);
-                }
-            }
-        }
+    //             if ($nextDefinition) {
+    //                 return $nextDefinition;
+    //             } else {
+    //                 return $pickFirstCategoryNode($division->category ?? null);
+    //             }
+    //         }
+    //     }
 
-        // Generic fallback for any workflow that doesn't match the specific patterns above
-        // This handles simple sequential workflows like ARF (workflow_id=2) or Service Requests (workflow_id=3)
-        $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-            ->where('is_enabled', 1)
-            ->where('approval_order', '>', $approvalLevel)
-            ->orderBy('approval_order', 'asc')
-            ->first();
+    //     // Generic fallback for any workflow that doesn't match the specific patterns above
+    //     // This handles simple sequential workflows like ARF (workflow_id=2) or Service Requests (workflow_id=3)
+    //     $definition = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
+    //         ->where('is_enabled', 1)
+    //         ->where('approval_order', '>', $approvalLevel)
+    //         ->orderBy('approval_order', 'asc')
+    //         ->first();
 
-        return $definition; // null if end (e.g., after Registry)
-    }
+    //     return $definition; // null if end (e.g., after Registry)
+    // }
 
 
 
@@ -2416,10 +2438,17 @@ class MatrixController extends Controller
     {
         $matrix->load(['staff', 'division', 'forwardWorkflow', 'approvalTrails.staff']);
         
-        // Get approval level information
-        $approvalLevels = $this->getApprovalLevels($matrix);
+        // Get approval order map from the matrix
+        $approvalOrderMap = [];
+        if ($matrix->approval_order_map) {
+            $approvalOrderMap = json_decode($matrix->approval_order_map, true);
+        } else {
+            // Generate approval order map if not exists
+            $approvalService = new \App\Services\ApprovalService();
+            $approvalOrderMap = $approvalService->generateApprovalOrderMap($matrix);
+        }
         
-        return view('matrices.status', compact('matrix', 'approvalLevels'));
+        return view('matrices.status', compact('matrix', 'approvalOrderMap'));
     }
 
     /**

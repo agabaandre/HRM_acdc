@@ -1987,13 +1987,20 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
     {
         $activity->load(['staff', 'matrix.division', 'forwardWorkflow']);
         
-        // Get approval level information
-        $approvalLevels = $this->getApprovalLevels($activity);
+        // Get approval order map from the activity
+        $approvalOrderMap = [];
+        if ($activity->approval_order_map) {
+            $approvalOrderMap = json_decode($activity->approval_order_map, true);
+        } else {
+            // Generate approval order map if not exists
+            $approvalService = new \App\Services\ApprovalService();
+            $approvalOrderMap = $approvalService->generateApprovalOrderMap($activity);
+        }
         
         // Pass as singleMemo for the view
         $singleMemo = $activity;
         
-        return view('activities.single-memos.status', compact('singleMemo', 'approvalLevels'));
+        return view('activities.single-memos.status', compact('singleMemo', 'approvalOrderMap'));
     }
 
     /**
@@ -2011,6 +2018,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ->get();
 
         $approvalLevels = [];
+        $displayOrder = 1;
+        
         foreach ($levels as $level) {
             $isCurrentLevel = $level->approval_order == $activity->approval_level;
             $isCompleted = $activity->approval_level > $level->approval_order;
@@ -2029,17 +2038,22 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
                 }
             }
 
-            $approvalLevels[] = [
-                'order' => $level->approval_order,
-                'role' => $level->role,
-                'approver' => $approver,
-                'is_current' => $isCurrentLevel,
-                'is_completed' => $isCompleted,
-                'is_pending' => $isPending,
-                'is_division_specific' => $level->is_division_specific,
-                'division_reference' => $level->division_reference_column,
-                'category' => $level->category,
-            ];
+            // Only include levels that have approvers
+            if ($approver) {
+                $approvalLevels[] = [
+                    'order' => $level->approval_order,
+                    'display_order' => $displayOrder,
+                    'role' => $level->role,
+                    'approver' => $approver,
+                    'is_current' => $isCurrentLevel,
+                    'is_completed' => $isCompleted,
+                    'is_pending' => $isPending,
+                    'is_division_specific' => $level->is_division_specific,
+                    'division_reference' => $level->division_reference_column,
+                    'category' => $level->category,
+                ];
+                $displayOrder++;
+            }
         }
 
         return $approvalLevels;

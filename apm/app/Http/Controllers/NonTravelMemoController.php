@@ -987,10 +987,17 @@ class NonTravelMemoController extends Controller
     {
         $nonTravel->load(['staff', 'division', 'forwardWorkflow']);
         
-        // Get approval level information
-        $approvalLevels = $this->getApprovalLevels($nonTravel);
+        // Get approval order map from the non-travel memo
+        $approvalOrderMap = [];
+        if ($nonTravel->approval_order_map) {
+            $approvalOrderMap = json_decode($nonTravel->approval_order_map, true);
+        } else {
+            // Generate approval order map if not exists
+            $approvalService = new \App\Services\ApprovalService();
+            $approvalOrderMap = $approvalService->generateApprovalOrderMap($nonTravel);
+        }
         
-        return view('non-travel.status', compact('nonTravel', 'approvalLevels'));
+        return view('non-travel.status', compact('nonTravel', 'approvalOrderMap'));
     }
 
     public function pendingApprovals(Request $request): View

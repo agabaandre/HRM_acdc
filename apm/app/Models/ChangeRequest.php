@@ -76,6 +76,7 @@ class ChangeRequest extends Model
         'approval_level',
         'next_approval_level',
         'overall_status',
+        'approval_order_map',
     ];
 
     protected $hidden = ['created_at', 'updated_at'];

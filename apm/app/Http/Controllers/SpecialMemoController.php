@@ -1180,10 +1180,17 @@ class SpecialMemoController extends Controller
     {
         $specialMemo->load(['staff', 'division', 'forwardWorkflow']);
         
-        // Get approval level information
-        $approvalLevels = $this->getApprovalLevels($specialMemo);
+        // Get approval order map from the special memo
+        $approvalOrderMap = [];
+        if ($specialMemo->approval_order_map) {
+            $approvalOrderMap = json_decode($specialMemo->approval_order_map, true);
+        } else {
+            // Generate approval order map if not exists
+            $approvalService = new \App\Services\ApprovalService();
+            $approvalOrderMap = $approvalService->generateApprovalOrderMap($specialMemo);
+        }
         
-        return view('special-memo.status', compact('specialMemo', 'approvalLevels'));
+        return view('special-memo.status', compact('specialMemo', 'approvalOrderMap'));
     }
 
     /**
