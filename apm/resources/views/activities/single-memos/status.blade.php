@@ -104,40 +104,6 @@
                 </div>
             </div>
 
-            <!-- Current Supervisor Information -->
-            @if($singleMemo->overall_status !== 'approved' && $singleMemo->overall_status !== 'rejected' && $singleMemo->current_actor)
-                <div class="card shadow-sm border-0 mb-4 rounded-3" style="border-left: 4px solid #28a745;">
-                    <div class="card-header bg-white border-bottom">
-                        <h6 class="mb-0 text-success">
-                            <i class="fas fa-user-check me-2"></i>Current Approver Information
-                        </h6>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label fw-semibold text-muted">
-                                        <i class="bx bx-user me-1 text-success"></i>Current Approver Name
-                                    </label>
-                                    <div class="fw-bold text-success fs-5">{{ $singleMemo->current_actor->fname . ' ' . $singleMemo->current_actor->lname }}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                @if($singleMemo->workflow_definition)
-                                    <div class="form-group">
-                                        <label class="form-label fw-semibold text-muted">
-                                            <i class="bx bx-shield me-1 text-success"></i>Approval Role
-                                        </label>
-                                        <div>
-                                            <span class="badge bg-info fs-6 px-3 py-2">{{ $singleMemo->workflow_definition->role ?? 'Not specified' }}</span>
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
 
             <!-- Approval Workflow Overview -->
             @include('partials.approval-workflow-overview')
