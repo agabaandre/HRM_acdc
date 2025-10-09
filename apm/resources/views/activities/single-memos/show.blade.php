@@ -1340,7 +1340,7 @@
                         @endif
 
                         <!-- Submit for Approval Section -->
-                        @if ($activity->overall_status == 'draft' && can_edit_memo($activity)&&!isdivision_head($activity))
+                        @if ($activity->overall_status == 'draft'|| $activity->overall_status == 'returned' && can_edit_memo($activity)&&!isdivision_head($activity))
                             <div class="card sidebar-card border-0 mt-4"
                                 style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                                 <div class="card-header bg-transparent border-0 py-3">

@@ -1820,9 +1820,12 @@ class ActivityController extends Controller
      */
 public function submitSingleMemoForApproval(Activity $activity): RedirectResponse
     {
-        if ($activity->overall_status != 'draft') {
+
+       // dd($activity->overall_status);
+        // Only allow submission if status is 'draft' OR 'returned'
+        if (!in_array(trim($activity->overall_status), ['draft', 'returned'])) {
             return redirect()->back()->with([
-                'msg' => 'Only draft single memos can be submitted for approval.',
+                'msg' => 'Only draft and returned single memos can be submitted for approval.',
                 'type' => 'error',
             ]);
         }
