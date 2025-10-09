@@ -105,10 +105,22 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, show items from all divisions where they are assigned
-        $divisionIds = $this->getUserDivisionIds();
-        if (!empty($divisionIds)) {
-            $query->whereIn('division_id', $divisionIds);
+        // For users who are BOTH regular and division-specific approvers, show items from ALL divisions
+        // For users who are ONLY division-specific approvers, show items from their assigned divisions
+        // For users who are ONLY regular approvers, show items from ALL divisions
+        
+        // Check if user has regular approver assignments (non-division-specific)
+        $hasRegularApproverAssignments = $this->hasRegularApproverAssignments('Matrix');
+        
+        if ($hasRegularApproverAssignments) {
+            // User is a regular approver - show items from ALL divisions at their approval levels
+            // Don't apply division filter
+        } else if ($this->isDivisionSpecificApprover()) {
+            // User is only a division-specific approver - show items from their assigned divisions
+            $divisionIds = $this->getUserDivisionIds();
+            if (!empty($divisionIds)) {
+                $query->whereIn('division_id', $divisionIds);
+            }
         }
 
         return $query->get()->filter(function ($matrix) {
@@ -149,10 +161,22 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, show items from all divisions where they are assigned
-        $divisionIds = $this->getUserDivisionIds();
-        if (!empty($divisionIds)) {
-            $query->whereIn('division_id', $divisionIds);
+        // For users who are BOTH regular and division-specific approvers, show items from ALL divisions
+        // For users who are ONLY division-specific approvers, show items from their assigned divisions
+        // For users who are ONLY regular approvers, show items from ALL divisions
+        
+        // Check if user has regular approver assignments (non-division-specific)
+        $hasRegularApproverAssignments = $this->hasRegularApproverAssignments('SpecialMemo');
+        
+        if ($hasRegularApproverAssignments) {
+            // User is a regular approver - show items from ALL divisions at their approval levels
+            // Don't apply division filter
+        } else if ($this->isDivisionSpecificApprover()) {
+            // User is only a division-specific approver - show items from their assigned divisions
+            $divisionIds = $this->getUserDivisionIds();
+            if (!empty($divisionIds)) {
+                $query->whereIn('division_id', $divisionIds);
+            }
         }
 
         return $query->get()->filter(function ($memo) {
@@ -248,10 +272,22 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, show items from all divisions where they are assigned
-        $divisionIds = $this->getUserDivisionIds();
-        if (!empty($divisionIds)) {
-            $query->whereIn('division_id', $divisionIds);
+        // For users who are BOTH regular and division-specific approvers, show items from ALL divisions
+        // For users who are ONLY division-specific approvers, show items from their assigned divisions
+        // For users who are ONLY regular approvers, show items from ALL divisions
+        
+        // Check if user has regular approver assignments (non-division-specific)
+        $hasRegularApproverAssignments = $this->hasRegularApproverAssignments('Activity');
+        
+        if ($hasRegularApproverAssignments) {
+            // User is a regular approver - show items from ALL divisions at their approval levels
+            // Don't apply division filter
+        } else if ($this->isDivisionSpecificApprover()) {
+            // User is only a division-specific approver - show items from their assigned divisions
+            $divisionIds = $this->getUserDivisionIds();
+            if (!empty($divisionIds)) {
+                $query->whereIn('division_id', $divisionIds);
+            }
         }
 
         return $query->get()->filter(function ($activity) {
@@ -292,10 +328,22 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, show items from all divisions where they are assigned
-        $divisionIds = $this->getUserDivisionIds();
-        if (!empty($divisionIds)) {
-            $query->whereIn('division_id', $divisionIds);
+        // For users who are BOTH regular and division-specific approvers, show items from ALL divisions
+        // For users who are ONLY division-specific approvers, show items from their assigned divisions
+        // For users who are ONLY regular approvers, show items from ALL divisions
+        
+        // Check if user has regular approver assignments (non-division-specific)
+        $hasRegularApproverAssignments = $this->hasRegularApproverAssignments('ServiceRequest');
+        
+        if ($hasRegularApproverAssignments) {
+            // User is a regular approver - show items from ALL divisions at their approval levels
+            // Don't apply division filter
+        } else if ($this->isDivisionSpecificApprover()) {
+            // User is only a division-specific approver - show items from their assigned divisions
+            $divisionIds = $this->getUserDivisionIds();
+            if (!empty($divisionIds)) {
+                $query->whereIn('division_id', $divisionIds);
+            }
         }
 
         return $query->get()->filter(function ($serviceRequest) {
@@ -338,10 +386,22 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, show items from all divisions where they are assigned
-        $divisionIds = $this->getUserDivisionIds();
-        if (!empty($divisionIds)) {
-            $query->whereIn('division_id', $divisionIds);
+        // For users who are BOTH regular and division-specific approvers, show items from ALL divisions
+        // For users who are ONLY division-specific approvers, show items from their assigned divisions
+        // For users who are ONLY regular approvers, show items from ALL divisions
+        
+        // Check if user has regular approver assignments (non-division-specific)
+        $hasRegularApproverAssignments = $this->hasRegularApproverAssignments('RequestARF');
+        
+        if ($hasRegularApproverAssignments) {
+            // User is a regular approver - show items from ALL divisions at their approval levels
+            // Don't apply division filter
+        } else if ($this->isDivisionSpecificApprover()) {
+            // User is only a division-specific approver - show items from their assigned divisions
+            $divisionIds = $this->getUserDivisionIds();
+            if (!empty($divisionIds)) {
+                $query->whereIn('division_id', $divisionIds);
+            }
         }
 
         $results = $query->get()->filter(function ($arfRequest) {
@@ -882,10 +942,22 @@ class PendingApprovalsService
             return collect();
         }
 
-        // For division-specific approvers, show items from all divisions where they are assigned
-        $divisionIds = $this->getUserDivisionIds();
-        if (!empty($divisionIds)) {
-            $query->whereIn('division_id', $divisionIds);
+        // For users who are BOTH regular and division-specific approvers, show items from ALL divisions
+        // For users who are ONLY division-specific approvers, show items from their assigned divisions
+        // For users who are ONLY regular approvers, show items from ALL divisions
+        
+        // Check if user has regular approver assignments (non-division-specific)
+        $hasRegularApproverAssignments = $this->hasRegularApproverAssignments('ChangeRequest');
+        
+        if ($hasRegularApproverAssignments) {
+            // User is a regular approver - show items from ALL divisions at their approval levels
+            // Don't apply division filter
+        } else if ($this->isDivisionSpecificApprover()) {
+            // User is only a division-specific approver - show items from their assigned divisions
+            $divisionIds = $this->getUserDivisionIds();
+            if (!empty($divisionIds)) {
+                $query->whereIn('division_id', $divisionIds);
+            }
         }
 
         return $query->get()->filter(function ($changeRequest) {
