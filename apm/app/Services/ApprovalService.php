@@ -187,7 +187,20 @@ class ApprovalService
             return null;
         }
 
-        // Check for regular approvers first
+        // Check for division-specific approvers FIRST if this is a division-specific level
+        if ($current_approval_point->is_division_specific && method_exists($model, 'division') && $model->division) {
+            $division = $model->division;
+            $referenceColumn = $current_approval_point->division_reference_column;
+            
+            if ($referenceColumn && isset($division->$referenceColumn)) {
+                $staff_id = $division->$referenceColumn;
+                if ($staff_id) {
+                    return Staff::where('staff_id', $staff_id)->first();
+                }
+            }
+        }
+
+        // Check for regular approvers
         $approver = Approver::where('workflow_dfn_id', $current_approval_point->id)
             ->where(function ($query) use ($today) {
                 $query->whereNull('end_date')
@@ -210,19 +223,6 @@ class ApprovalService
 
         if ($oic_approver) {
             return Staff::where('staff_id', $oic_approver->oic_staff_id)->first();
-        }
-
-        // Check for division-specific approvers
-        if ($current_approval_point->is_division_specific && method_exists($model, 'division') && $model->division) {
-            $division = $model->division;
-            $referenceColumn = $current_approval_point->division_reference_column;
-            
-            if ($referenceColumn && isset($division->$referenceColumn)) {
-                $staff_id = $division->$referenceColumn;
-                if ($staff_id) {
-                    return Staff::where('staff_id', $staff_id)->first();
-                }
-            }
         }
 
         return null;
