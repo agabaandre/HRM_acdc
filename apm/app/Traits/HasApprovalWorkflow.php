@@ -349,6 +349,11 @@ trait HasApprovalWorkflow
         }
 
         $this->update();
+        
+        // Update approval order map when status changes
+        $approvalService = new \App\Services\ApprovalService();
+        $approvalService->updateApprovalOrderMap($this);
+        
         send_generic_email_notification($this, $action);
     }
 
@@ -394,6 +399,10 @@ trait HasApprovalWorkflow
         
         $this->save();
 
+        // Update approval order map
+        $approvalService = new \App\Services\ApprovalService();
+        $approvalService->updateApprovalOrderMap($this);
+
         send_generic_email_notification($this, 'approval');
 
         $this->saveApprovalTrail('Submitted for approval', 'submitted');
@@ -419,7 +428,7 @@ trait HasApprovalWorkflow
             ->orderBy('id')
             ->get();
     }
-    public function hasActivities(): bool
+    public function hasActivities()
     { 
         if(method_exists($this, 'activities')){
             return $this->activities()->exists();
@@ -435,7 +444,7 @@ trait HasApprovalWorkflow
             // Exclude single memos from the calculation
             return $this->activities()
                 ->where('fund_type_id', 1)
-                ->where('is_single_memo', '!=', true) // Exclude single memos
+                ->where('is_single_memo', '!=', 1) // Use 1 instead of true for database comparison
                 ->exists();
             
         } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
@@ -467,14 +476,14 @@ trait HasApprovalWorkflow
         return false;
     }
 
-    public function getHasExtramuralAttribute(): bool
+    public function getHasExtramuralAttribute()
     {
         if (method_exists($this, 'activities')) {
             // If the model has activities, check for any with fund_type_id = 2 (extramural)
             // Exclude single memos from the calculation
             return $this->activities()
                 ->where('fund_type_id', 2)
-                ->where('is_single_memo', '!=', true) // Exclude single memos
+                ->where('is_single_memo', '!=', 1) // Use 1 instead of true for database comparison
                 ->exists();
             
         } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
@@ -497,6 +506,45 @@ trait HasApprovalWorkflow
                     }
                     $fundCode = \App\Models\FundCode::find($fund_code_id);
                     if ($fundCode && $fundCode->fund_type_id == 2) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    public function getHasExternalSourceAttribute()
+    {
+        if (method_exists($this, 'activities')) {
+            // If the model has activities, check for any with fund_type_id = 3 (external source)
+            // Exclude single memos from the calculation
+            return $this->activities()
+                ->where('fund_type_id', 3)
+                ->where('is_single_memo', '!=', 1) // Use 1 instead of true for database comparison
+                ->exists();
+            
+        } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
+            
+            // If the model has a budget_breakdown property, check for any fund_code with fund_type_id = 3 (external source)
+            // Handle both JSON string and PHP array formats
+            $breakdown = $this->budget_breakdown;
+            
+            // If it's a string, decode it to array
+            if (is_string($breakdown)) {
+                $breakdown = json_decode($breakdown, true);
+            }
+            
+            // If it's an array, process it
+            if (is_array($breakdown)) {
+                foreach ($breakdown as $fund_code_id => $items) {
+                    // Skip non-numeric keys (like 'grand_total')
+                    if (!is_numeric($fund_code_id)) {
+                        continue;
+                    }
+                    $fundCode = \App\Models\FundCode::find($fund_code_id);
+                    if ($fundCode && $fundCode->fund_type_id == 3) {
                         return true;
                     }
                 }

@@ -63,8 +63,7 @@ class ServiceRequest extends Model
         'model_type',
         'source_id',
         'source_type',
-        'approval_level',
-        'next_approval_level',
+        'approval_order_map',
     ];
 
     /**

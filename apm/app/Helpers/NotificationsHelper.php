@@ -14,90 +14,25 @@ if (!function_exists('get_matrix_notification_recipient')) {
      * Get the staff member who should be notified for matrix approval
      * This should return the NEXT approver, not the current one
      * 
-     * @param Modal $matrix
+     * @param Model $model
      * @return Staff|null
      */
-    function get_matrix_notification_recipient($matrix)
+    function get_matrix_notification_recipient($model)
     {
-        if ($matrix->overall_status === 'approved') {
+        if ($model->overall_status === 'approved') {
             return null;
         }
 
         // Use the ApprovalService to get the next approver
         $approvalService = new \App\Services\ApprovalService();
-        $nextApprover = $approvalService->getNextApprover($matrix);
+        $nextApprover = $approvalService->getNextApprover($model);
         
         if (!$nextApprover) {
             return null;
         }
 
-        $today = Carbon::today();
-        
-        // Check for active OIC approvers first (they have priority)
-        $oic_approver = Approver::where('workflow_dfn_id', $nextApprover->id)
-            ->whereNotNull('oic_staff_id')
-            ->where(function ($query) use ($today) {
-                $query->whereNull('end_date')
-                    ->orWhere('end_date', '>=', $today);
-            })
-            ->first();
-
-        if ($oic_approver) {
-            return Staff::where('staff_id', $oic_approver->oic_staff_id)->first();
-        }
-
-        // Check for regular approvers if no active OIC found
-        $approver = Approver::where('workflow_dfn_id', $nextApprover->id)
-            ->where(function ($query) use ($today) {
-                $query->whereNull('end_date')
-                    ->orWhere('end_date', '>=', $today);
-            })
-            ->first();
-
-        if ($approver) {
-            return Staff::where('staff_id', $approver->staff_id)->first();
-        }
-
-        // Check for division-specific approvers
-        if ($nextApprover->is_division_specific) {
-            $division = $matrix->division;
-            if ($division) {
-                $referenceColumn = $nextApprover->division_reference_column;
-                
-                // Check for active OIC first (if available)
-                // Map reference columns to their OIC column names
-                $oicColumnMap = [
-                    'division_head' => 'head_oic_id',
-                    'finance_officer' => 'finance_officer_oic_id', // This might need to be added to the division table
-                    'director_id' => 'director_oic_id'
-                ];
-                
-                $oicColumn = $oicColumnMap[$referenceColumn] ?? $referenceColumn . '_oic_id';
-                $oicStartColumn = str_replace('_oic_id', '_oic_start_date', $oicColumn);
-                $oicEndColumn = str_replace('_oic_id', '_oic_end_date', $oicColumn);
-                
-                if ($division->$oicColumn) {
-                    $isOicActive = true;
-                    if ($division->$oicStartColumn) {
-                        $isOicActive = $isOicActive && $division->$oicStartColumn <= $today;
-                    }
-                    if ($division->$oicEndColumn) {
-                        $isOicActive = $isOicActive && $division->$oicEndColumn >= $today;
-                    }
-                    
-                    if ($isOicActive) {
-                        return Staff::where('staff_id', $division->$oicColumn)->first();
-                    }
-                }
-                
-                // If no active OIC, check primary approver
-                if ($division->$referenceColumn) {
-                    return Staff::where('staff_id', $division->$referenceColumn)->first();
-                }
-            }
-        }
-
-        return null;
+        // Get the actual staff member who should receive the notification
+        return $approvalService->getNotificationRecipient($model);
     }
 }
 
@@ -317,14 +252,20 @@ if (!function_exists('send_generic_email_notification')) {
                     $template = 'emails.generic-notification';
             }
 
-            // Send email using the appropriate template
-            return sendEmailWithTemplate($recipient->work_email, $template, [
-                'resource' => $model,
-                'resource_type' => $resource,
-                'recipient' => $recipient,
+            // Queue the email notification instead of sending directly
+            \App\Jobs\SendNotificationEmailJob::dispatch($model, $recipient, $type, $message, $template);
+            
+            // Also create a database notification
+            \App\Models\Notification::create([
+                'staff_id' => $recipient->staff_id,
+                'model_id' => $model->id,
+                'model_type' => get_class($model),
                 'message' => $message,
-                'type' => $type
+                'type' => $type,
+                'is_read' => false
             ]);
+            
+            return true;
 
         } catch (Exception $e) {
             // Log the error but don't break the approval process

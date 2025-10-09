@@ -505,7 +505,7 @@ if (!function_exists('get_pending_change_request_count')) {
             return $summaryStats['by_category']['Change Request'] ?? 0;
         } catch (\Exception $e) {
             \Log::error('Error getting pending change request count: ' . $e->getMessage());
-            return 0;
+        return 0;
         }
     }
 }

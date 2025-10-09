@@ -32,6 +32,7 @@ class Matrix extends Model
         'approval_level',
         'next_approval_level',
         'overall_status',
+        'approval_order_map',
     ];
 
     protected $appends =['workflow_definition','has_intramural','has_extramural','current_actor','division_schedule','division_staff',"intramural_budget","extramural_budget"];

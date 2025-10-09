@@ -46,6 +46,7 @@ class Activity extends Model
         'document_number',
         'approval_level',
         'next_approval_level',
+        'approval_order_map',
 
         // JSON fields
         'location_id',

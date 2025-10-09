@@ -36,14 +36,14 @@ class ExchangeOAuth
 
     public function __construct($tenantId = null, $clientId = null, $clientSecret = null, $redirectUri = null, $scope = null, $authMethod = null)
     {
-        $this->tenantId = $tenantId ?: getenv('EXCHANGE_TENANT_ID');
-        $this->clientId = $clientId ?: getenv('EXCHANGE_CLIENT_ID');
-        $this->clientSecret = $clientSecret ?: getenv('EXCHANGE_CLIENT_SECRET');
-        $this->redirectUri = $redirectUri ?: getenv('EXCHANGE_REDIRECT_URI');
-        $this->scope = $scope ?: getenv('EXCHANGE_SCOPE') ?: 'https://graph.microsoft.com/Mail.Send';
-        $this->authMethod = $authMethod ?: getenv('EXCHANGE_AUTH_METHOD') ?: self::AUTH_AUTHORIZATION_CODE;
-        $this->fromEmail = getenv('MAIL_FROM_ADDRESS');
-        $this->fromName = getenv('MAIL_FROM_NAME');
+        // $this->tenantId = $tenantId ?: getenv('EXCHANGE_TENANT_ID');
+        // $this->clientId = $clientId ?: getenv('EXCHANGE_CLIENT_ID');
+        // $this->clientSecret = $clientSecret ?: getenv('EXCHANGE_CLIENT_SECRET');
+        // $this->redirectUri = $redirectUri ?: getenv('EXCHANGE_REDIRECT_URI');
+        // $this->scope = $scope ?: getenv('EXCHANGE_SCOPE') ?: 'https://graph.microsoft.com/Mail.Send';
+        // $this->authMethod = $authMethod ?: getenv('EXCHANGE_AUTH_METHOD') ?: self::AUTH_AUTHORIZATION_CODE;
+        // $this->fromEmail = getenv('MAIL_FROM_ADDRESS');
+        // $this->fromName = getenv('MAIL_FROM_NAME');
         
         // Set token file path
         $this->tokenFile = __DIR__ . '/../tokens/oauth_tokens.json';

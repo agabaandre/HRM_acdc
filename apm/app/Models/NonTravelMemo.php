@@ -25,6 +25,7 @@ class NonTravelMemo extends Model
         'overall_status',
         'approval_level',
         'next_approval_level',
+        'approval_order_map',
         'workplan_activity_code',
         'staff_id',
         'division_id',

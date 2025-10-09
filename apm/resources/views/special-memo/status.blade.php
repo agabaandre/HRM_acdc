@@ -82,7 +82,7 @@
 
             <!-- Status Overview -->
             <div class="row">
-                <div class="col-lg-8">
+                <div class="col-12">
                     <!-- Current Status Card -->
                     <div class="card matrix-card mb-4">
                         <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
@@ -131,108 +131,8 @@
                         </div>
                     </div>
 
-                    <!-- Approval Levels Overview -->
-                    @if(!empty($approvalLevels))
-                        <div class="card matrix-card mb-4">
-                            <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                                <h6 class="m-0 fw-semibold text-primary"><i class="bx bx-layer-group me-2"></i>Approval Levels Overview</h6>
-                            </div>
-                            <div class="card-body p-4">
-                                <div class="row">
-                                    @foreach($approvalLevels as $level)
-                                        <div class="col-md-6 col-lg-4 mb-3">
-                                            <div class="card border-0 h-100 {{ $level['is_current'] ? 'border-primary border-2' : '' }}" 
-                                                 style="background: {{ $level['is_completed'] ? '#d1fae5' : ($level['is_pending'] ? '#fef3c7' : '#f3f4f6') }};">
-                                                <div class="card-body p-3">
-                                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                                        <span class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_pending'] ? 'warning' : 'secondary') }} fs-6">
-                                                            Level {{ $level['order'] }}
-                                                        </span>
-                                                        @if($level['is_current'])
-                                                            <span class="badge bg-primary">Current</span>
-                                                        @elseif($level['is_completed'])
-                                                            <span class="badge bg-success">✓ Completed</span>
-                                                        @elseif($level['is_pending'])
-                                                            <span class="badge bg-warning">⏳ Pending</span>
-                                                        @else
-                                                            <span class="badge bg-secondary">Waiting</span>
-                                                        @endif
-                                                    </div>
-                                                    
-                                                    <h6 class="fw-bold mb-2">{{ $level['role'] ?? 'Role Not Specified' }}</h6>
-                                                    
-                                                    @if($level['approver'])
-                                                        <div class="mb-2">
-                                                            <small class="text-muted">Supervisor/Approver:</small><br>
-                                                            <strong>{{ $level['approver']->fname . ' ' . $level['approver']->lname }}</strong>
-                                                            @if($level['approver']->job_name)
-                                                                <br><small class="text-muted">{{ $level['approver']->job_name }}</small>
-                                                            @endif
-                                                        </div>
-                                                    @else
-                                                        <div class="mb-2">
-                                                            <small class="text-muted">Supervisor/Approver:</small><br>
-                                                            <span class="text-muted">Not assigned</span>
-                                                        </div>
-                                                    @endif
-                                                    
-                                                    @if($level['is_division_specific'])
-                                                        <div class="mb-2">
-                                                            <span class="badge bg-info">Division Specific</span>
-                                                            @if($level['division_reference'])
-                                                                <br><small class="text-muted">{{ ucfirst(str_replace('_', ' ', $level['division_reference'])) }}</small>
-                                                            @endif
-                                                        </div>
-                                                    @endif
-                                                    
-                                                    @if($level['category'])
-                                                        <div class="mb-2">
-                                                            <small class="text-muted">Category:</small><br>
-                                                            <span class="fw-medium">{{ $level['category'] }}</span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                                
-                                <!-- Current Level Summary -->
-                                @if($specialMemo->overall_status !== 'approved' && $specialMemo->overall_status !== 'rejected')
-                                    <div class="mt-4 p-3 bg-light rounded">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <strong class="text-muted">Current Approval Level:</strong> 
-                                                <span class="badge bg-primary fs-6">{{ $specialMemo->approval_level ?? 0 }}</span>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <strong class="text-muted">Total Levels:</strong> 
-                                                <span class="badge bg-secondary fs-6">{{ count($approvalLevels) }}</span>
-                                            </div>
-                                        </div>
-                                        @if($specialMemo->workflow_definition)
-                                            <div class="mt-2">
-                                                <strong class="text-muted">Current Role:</strong> 
-                                                <span class="fw-bold">{{ $specialMemo->workflow_definition->role ?? 'Not specified' }}</span>
-                                            </div>
-                                        @endif
-                                        @if($specialMemo->current_actor)
-                                            <div class="mt-2">
-                                                <strong class="text-muted">Current Supervisor:</strong> 
-                                                <span class="fw-bold text-primary">{{ $specialMemo->current_actor->fname . ' ' . $specialMemo->current_actor->lname }}</span>
-                                                @if($specialMemo->current_actor->job_name)
-                                                    <br><small class="text-muted">{{ $specialMemo->current_actor->job_name }}</small>
-                                                @endif
-                                                @if($specialMemo->current_actor->division_name)
-                                                    <br><small class="text-muted">{{ $specialMemo->current_actor->division_name }}</small>
-                                                @endif
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endif
+                    <!-- Approval Workflow Overview -->
+                    @include('partials.approval-workflow-overview')
 
                     <!-- Approval Actions -->
                     @if(can_take_action_generic($specialMemo))
@@ -304,61 +204,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="col-lg-4">
-                    <!-- Quick Info -->
-                    <div class="card matrix-card mb-4">
-                        <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                            <h6 class="m-0 fw-semibold text-success"><i class="bx bx-detail me-2"></i>Quick Info</h6>
-                        </div>
-                        <div class="card-body p-4">
-                            <div class="mb-3">
-                                <span class="text-muted small">Activity Title</span>
-                                <div class="fw-bold">{{ $specialMemo->activity_title ?? '-' }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <span class="text-muted small">Date Range</span>
-                                <div class="fw-bold">{{ $specialMemo->formatted_dates ?: '-' }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <span class="text-muted small">Total Participants</span>
-                                <div class="fw-bold">{{ $specialMemo->total_participants ?? 0 }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <span class="text-muted small">Request Type</span>
-                                <div class="fw-bold">{{ optional($specialMemo->requestType)->name ?? '-' }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Next Approver Info -->
-                    @if($specialMemo->overall_status === 'pending')
-                        <div class="card matrix-card">
-                            <div class="card-header bg-opacity-10 d-flex align-items-center rounded-top">
-                                <h6 class="m-0 fw-semibold text-success"><i class="bx bx-user-check me-2"></i>Next Approver</h6>
-                            </div>
-                            <div class="card-body p-4">
-                                @php
-                                    $nextApprover = $specialMemo->currentActor;
-                                @endphp
-                                @if($nextApprover)
-                                    <div class="text-center">
-                                        <div class="mb-3">
-                                            <i class="bx bx-user-circle bx-lg text-primary"></i>
-                                        </div>
-                                        <div class="fw-bold">{{ $nextApprover->fname }} {{ $nextApprover->lname }}</div>
-                                        <div class="text-muted small">Staff ID: {{ $nextApprover->staff_id }}</div>
-                                    </div>
-                                @else
-                                    <div class="text-center text-muted">
-                                        <i class="bx bx-user-x bx-lg mb-2"></i>
-                                        <p class="mb-0">No next approver assigned</p>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endif
-                </div>
             </div>
         </div>
     </div>
@@ -380,6 +225,62 @@
 }
 .matrix-card .card-body {
     border-radius: 0 0 1.25rem 1.25rem;
+}
+
+.approver-item {
+    transition: all 0.2s ease;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.approver-item:hover {
+    background: rgba(0,0,0,0.08) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card {
+    transition: all 0.3s ease;
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+}
+
+.card .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+.approvers-section {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.approvers-section::-webkit-scrollbar {
+    width: 4px;
+}
+
+.approvers-section::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.1);
+    border-radius: 2px;
+}
+
+.approvers-section::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.3);
+    border-radius: 2px;
+}
+
+.approvers-section::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.5);
 }
 </style>
 @endpush 

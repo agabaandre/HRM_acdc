@@ -169,6 +169,7 @@ class ApprovalService
 
     /**
      * Get the notification recipient for a model.
+     * This should return the approver for the CURRENT approval level (which is the next approver after approval).
      */
     public function getNotificationRecipient(Model $model)
     {
@@ -179,6 +180,7 @@ class ApprovalService
         $today = Carbon::today();
         $current_approval_point = WorkflowDefinition::where('approval_order', $model->approval_level)
             ->where('workflow_id', $model->forward_workflow_id)
+            ->where('is_enabled', 1)
             ->first();
 
         if (!$current_approval_point) {
@@ -200,7 +202,10 @@ class ApprovalService
         // Check for OIC approvers
         $oic_approver = Approver::where('workflow_dfn_id', $current_approval_point->id)
             ->where('oic_staff_id', '!=', null)
-            ->where('end_date', '>=', $today)
+            ->where(function ($query) use ($today) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>=', $today);
+            })
             ->first();
 
         if ($oic_approver) {
@@ -210,9 +215,13 @@ class ApprovalService
         // Check for division-specific approvers
         if ($current_approval_point->is_division_specific && method_exists($model, 'division') && $model->division) {
             $division = $model->division;
-            $staff_id = $division->{$current_approval_point->division_reference_column};
-            if ($staff_id) {
-                return Staff::where('staff_id', $staff_id)->first();
+            $referenceColumn = $current_approval_point->division_reference_column;
+            
+            if ($referenceColumn && isset($division->$referenceColumn)) {
+                $staff_id = $division->$referenceColumn;
+                if ($staff_id) {
+                    return Staff::where('staff_id', $staff_id)->first();
+                }
             }
         }
 
@@ -309,7 +318,7 @@ class ApprovalService
    
 
 
-    public function getNextApprover($model){
+ public function getNextApprover($model){
 
         $division   = $model->division;
         //dd($division);
@@ -321,30 +330,49 @@ class ApprovalService
       //dd($current_definition);
 
     // Check if model has extramural/intramural properties (for matrices/activities)
-    $has_extramural = property_exists($model, 'has_extramural') ? $model->has_extramural : false;
-    $has_intramural = property_exists($model, 'has_intramural') ? $model->has_intramural : true; // Default to true for service requests
+    // Use method_exists to check for accessor methods, not properties
+    $has_extramural = method_exists($model, 'getHasExtramuralAttribute') ? $model->has_extramural : false;
+    $has_intramural = method_exists($model, 'getHasIntramuralAttribute') ? $model->has_intramural : true; 
+    
+    //dd($has_intramural);// Default to true for service requests
 
-    $go_to_category_check_for_external = (!$has_extramural && !$has_intramural && ($model->approval_level!=null && $current_definition->approval_order > $model->approval_level));
-//dd($go_to_category_check_for_external);
-    //if it's time to trigger categroy check, just check and continue
-    if(($current_definition && $current_definition->triggers_category_check) || $go_to_category_check_for_external){
-
-        $category_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-                    ->where('is_enabled',1)
-                    ->where('category',$division->category)
-                    ->orderBy('approval_order','asc')
-                    ->first();
-
-        return $category_definition;
+    // Check if we should trigger category check
+    $should_trigger_category_check = false;
+    
+    // Trigger category check if current definition has triggers_category_check flag
+    if ($current_definition && $current_definition->triggers_category_check) {
+        $should_trigger_category_check = true;
+    }
+    
+    // For external source only (no intramural or extramural), check category at HOD or Director level
+    if (!$has_extramural && !$has_intramural) {
+        // Check if we're at HOD level (1) or Director level (2)
+        if ($model->approval_level == 1 || $model->approval_level == 2) {
+            $should_trigger_category_check = true;
+        }
+    }
+    
+    // Trigger category check after Director Finance level (approval_order >= 6) for other cases
+    // But only if we're not already at a category-specific level and not beyond DDG level
+    if ($model->approval_level >= 6 && $model->approval_level <= 8 && !$current_definition->category) {
+        $should_trigger_category_check = true;
+    }
+    
+    if ($should_trigger_category_check) {
+        // Get category-specific approver based on division category
+        $category_definition = $this->getCategoryApprover($model, $division->category);
+        if ($category_definition) {
+            return $category_definition;
+        }
     }
    // dd($current_definition);
 
     $nextStepIncrement = 1;
 
     //Skip Directorate from HOD if no directorate
-    if($model->forward_workflow_id==1 && $current_definition->approval_order==1 && !$division->director_id)
+    if($model->forward_workflow_id==1 && $current_definition && $current_definition->approval_order==1 && !$division->director_id)
         $nextStepIncrement = 2;
-    else if($model->forward_workflow_id>0 && $current_definition->approval_order==1){
+    else if($model->forward_workflow_id>0 && $current_definition && $current_definition->approval_order==1){
         $nextStepIncrement = 1;
     }
 
@@ -358,6 +386,15 @@ class ApprovalService
     $next_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
        ->where('is_enabled',1)
        ->where('approval_order',$model->approval_level +$nextStepIncrement)->get();
+       
+    // If no next definition found with the increment, look for the next available order
+    if ($next_definition->isEmpty()) {
+        $next_definition = WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
+           ->where('is_enabled',1)
+           ->where('approval_order','>',$model->approval_level)
+           ->orderBy('approval_order','asc')
+           ->get();
+    }
     //dd($next_definition);
         
     //if matrix has_extramural is true and matrix->approval_level !==definition_approval_order, 
@@ -375,6 +412,31 @@ class ApprovalService
 
     $definition = ($next_definition->count()>0)?$next_definition[0]:null;
     //dd($definition);
+    
+    // Check if we're currently at Head of Operations (approval_level = 7) BEFORE other logic
+    if($model->approval_level == 7){
+        // For Operations division, go directly to DDG (order 9)
+        if ($division->category === 'Operations') {
+            $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 9) // DDG
+                ->first();
+                
+            if ($nextApprover) {
+                return $nextApprover;
+            }
+        }
+        
+        // For other divisions, follow normal flow
+        $nextApprover = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where('approval_order', '>', $model->approval_level)
+            ->orderBy('approval_order', 'asc')
+            ->first();
+            
+        return $nextApprover;
+    }
+    
     //intramural only, skip extra mural role
     if($definition  && !$has_extramural &&  $definition->fund_type==2){
       return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
@@ -396,23 +458,11 @@ class ApprovalService
 
 
     //other category, skip by intramural and extramural roles & if the $definition->approval_order==7, skip by other roles
-    if($withfinance_no_intra_extra || $with_hod_no_intra_extra || (!empty($definition) && $definition->approval_order==7)){
-        if($division->category=='Other'){
-            return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-              ->where('is_enabled',1)
-              ->where('approval_order', 9)->first();
-        }
-        else if($division->category=='Operations'){
-            return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-              ->where('is_enabled',1)
-              ->where('approval_order', 7)->first();
-        }
-        else if($division->category=='Programs'){
-            return WorkflowDefinition::where('workflow_id',$model->forward_workflow_id)
-              ->where('is_enabled',1)
-              ->where('approval_order', 8)->first();
-        }
+    if($withfinance_no_intra_extra || $with_hod_no_intra_extra){
+        // Use the new category approver method
+        return $this->getCategoryApprover($model, $division->category);
     }
+    
 //dd($definition);
    
    return $definition;
@@ -925,6 +975,51 @@ class ApprovalService
 //     return $definition; // null if end (e.g., after Registry)
 // }
     /**
+     * Get category-specific approver based on division category
+     * 
+     * @param Model $model
+     * @param string $category
+     * @return WorkflowDefinition|null
+     */
+    private function getCategoryApprover(Model $model, string $category): ?WorkflowDefinition
+    {
+        // Map categories to their specific approval orders
+        $categoryApprovalOrders = [
+            'Operations' => 7,  // Head of Operations
+            'Programs' => 8,    // Head of Programs  
+            'Other' => 9,       // DDG (Deputy Director General)
+        ];
+        
+        // Default to DDG (order 9) for any category not explicitly mapped
+        $approvalOrder = $categoryApprovalOrders[$category] ?? 9;
+        
+        // Find the workflow definition for this category and approval order
+        $categoryDefinition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->where('approval_order', $approvalOrder)
+            ->where('category', $category)
+            ->first();
+            
+        // If no category-specific definition found, try to find by approval order only
+        if (!$categoryDefinition) {
+            $categoryDefinition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', $approvalOrder)
+                ->first();
+        }
+        
+        // If still no definition found, fallback to DDG (order 9) for any category
+        if (!$categoryDefinition) {
+            $categoryDefinition = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('approval_order', 9)
+                ->first();
+        }
+        
+        return $categoryDefinition;
+    }
+
+    /**
      * Get approval trails for a model.
      */
     public function getApprovalTrails(Model $model)
@@ -1063,5 +1158,169 @@ class ApprovalService
     {
         // Use the existing isdivision_head helper function
         return isdivision_head($model);
+    }
+
+    /**
+     * Generate approval order map JSON for a model
+     * This creates a map of approval orders with their corresponding roles and approver names
+     * 
+     * @param Model $model The model to generate the approval map for
+     * @return array The approval order map
+     */
+    public function generateApprovalOrderMap(Model $model): array
+    {
+        $approvalMap = [];
+        
+        if (!$model->forward_workflow_id) {
+            return $approvalMap;
+        }
+
+        // Get all workflow definitions for this model's workflow
+        $workflowDefinitions = WorkflowDefinition::where('workflow_id', $model->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order')
+            ->get();
+
+        foreach ($workflowDefinitions as $definition) {
+            $approvers = $this->getApproversForDefinition($definition, $model);
+            
+            $approvalMap[] = [
+                'approval_order' => $definition->approval_order,
+                'role' => $definition->role,
+                'fund_type' => $definition->fund_type,
+                'is_division_specific' => $definition->is_division_specific,
+                'division_reference_column' => $definition->division_reference_column,
+                'approvers' => $approvers,
+                'is_current_level' => $definition->approval_order == $model->approval_level,
+                'is_completed' => $definition->approval_order < $model->approval_level,
+                'is_pending' => $definition->approval_order == $model->approval_level,
+                'is_future' => $definition->approval_order > $model->approval_level,
+            ];
+        }
+
+        return $approvalMap;
+    }
+
+    /**
+     * Get approvers for a specific workflow definition
+     * 
+     * @param WorkflowDefinition $definition
+     * @param Model $model
+     * @return array
+     */
+    private function getApproversForDefinition(WorkflowDefinition $definition, Model $model): array
+    {
+        $approvers = [];
+
+        // If this is a division-specific role, prioritize division-specific approvers
+        if ($definition->is_division_specific && method_exists($model, 'division') && $model->division) {
+            $division = $model->division;
+            $referenceColumn = $definition->division_reference_column;
+            
+            if ($referenceColumn && isset($division->$referenceColumn)) {
+                $staffId = $division->$referenceColumn;
+                $divisionStaff = Staff::where('staff_id', $staffId)->first();
+                
+                if ($divisionStaff) {
+                    $approvers[] = [
+                        'staff_id' => $divisionStaff->staff_id,
+                        'name' => $divisionStaff->fname . ' ' . $divisionStaff->lname,
+                        'email' => $divisionStaff->work_email,
+                        'job_title' => $divisionStaff->job_name,
+                        'type' => 'division_specific',
+                        'is_oic' => false,
+                        'division_reference_column' => $referenceColumn,
+                    ];
+                }
+            }
+            
+            // For division-specific roles, return only the division-specific approver
+            return $approvers;
+        }
+
+        // For non-division-specific roles, get regular approvers
+        $regularApprovers = Approver::where('workflow_dfn_id', $definition->id)
+            ->where(function ($query) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>=', Carbon::today());
+            })
+            ->get();
+            
+        // If no regular approvers found and this is a category-specific role, 
+        // check if there are approvers for this category
+        if ($regularApprovers->isEmpty() && $definition->category) {
+            // Look for approvers in the same category but different workflow definitions
+            $categoryApprovers = Approver::whereHas('workflowDefinition', function($query) use ($definition) {
+                $query->where('workflow_id', $definition->workflow_id)
+                      ->where('category', $definition->category)
+                      ->where('is_enabled', 1);
+            })
+            ->where(function ($query) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>=', Carbon::today());
+            })
+            ->get();
+            
+            if ($categoryApprovers->isNotEmpty()) {
+                $regularApprovers = $categoryApprovers;
+            }
+        }
+
+        foreach ($regularApprovers as $approver) {
+            $staff = Staff::where('staff_id', $approver->staff_id)->first();
+            if ($staff) {
+                $approvers[] = [
+                    'staff_id' => $staff->staff_id,
+                    'name' => $staff->fname . ' ' . $staff->lname,
+                    'email' => $staff->work_email,
+                    'job_title' => $staff->job_name,
+                    'type' => 'regular',
+                    'is_oic' => false,
+                ];
+            }
+
+            // Add OIC approver if exists
+            if ($approver->oic_staff_id) {
+                $oicStaff = Staff::where('staff_id', $approver->oic_staff_id)->first();
+                if ($oicStaff) {
+                    $approvers[] = [
+                        'staff_id' => $oicStaff->staff_id,
+                        'name' => $oicStaff->fname . ' ' . $oicStaff->lname,
+                        'email' => $oicStaff->work_email,
+                        'job_title' => $oicStaff->job_name,
+                        'type' => 'oic',
+                        'is_oic' => true,
+                        'regular_staff_id' => $approver->staff_id,
+                    ];
+                }
+            }
+        }
+
+        return $approvers;
+    }
+
+    /**
+     * Update the approval order map for a model
+     * 
+     * @param Model $model The model to update
+     * @return bool Success status
+     */
+    public function updateApprovalOrderMap(Model $model): bool
+    {
+        try {
+            $approvalMap = $this->generateApprovalOrderMap($model);
+            
+            $model->approval_order_map = json_encode($approvalMap);
+            $model->save();
+            
+            return true;
+        } catch (\Exception $e) {
+            \Log::error('Failed to update approval order map', [
+                'model_id' => $model->id,
+                'model_type' => get_class($model),
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 }

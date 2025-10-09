@@ -681,17 +681,19 @@ class PendingApprovalsService
             // Get approver title
             $approverTitle = $this->getApproverTitle();
 
-            // Send notification email
-            Mail::send('emails.pending-approvals-notification', [
-                'pendingApprovals' => $pendingApprovals,
-                'summaryStats' => $summaryStats,
-                'approverName' => $this->sessionData['name'] ?? 'Approver',
-                'approverTitle' => $approverTitle,
-                'baseUrl' => $this->sessionData['base_url'] ?? url('/')
-            ], function ($message) use ($approverEmails) {
-                $message->to($approverEmails)
-                    ->subject('Pending Approvals Notification - ' . $this->sessionData['name'] ?? 'System');
-            });
+            // Queue notification emails for each approver
+            foreach ($approverEmails as $email) {
+                $staff = \App\Models\Staff::where('work_email', $email)->first();
+                if ($staff) {
+                    \App\Jobs\SendNotificationEmailJob::dispatch(
+                        (object)['id' => 'daily-pending', 'type' => 'daily_pending_approvals'],
+                        $staff,
+                        'daily_pending_approvals',
+                        'You have pending approvals that require your attention.',
+                        'emails.pending-approvals-notification'
+                    );
+                }
+            }
 
             return true;
         } catch (\Exception $e) {
@@ -799,16 +801,19 @@ class PendingApprovalsService
             // Get approver title
             $approverTitle = $this->getApproverTitle();
 
-            Mail::send('emails.pending-item-notification', [
-                'item' => $item,
-                'itemType' => $itemType,
-                'approverName' => $this->sessionData['name'] ?? 'Approver',
-                'approverTitle' => $approverTitle,
-                'baseUrl' => $this->sessionData['base_url'] ?? url('/')
-            ], function ($message) use ($approverEmails, $itemType) {
-                $message->to($approverEmails)
-                    ->subject("New {$itemType} Pending Approval - " . ($item->activity_title ?? $itemType));
-            });
+            // Queue notification emails for each approver
+            foreach ($approverEmails as $email) {
+                $staff = \App\Models\Staff::where('work_email', $email)->first();
+                if ($staff) {
+                    \App\Jobs\SendNotificationEmailJob::dispatch(
+                        $item,
+                        $staff,
+                        'pending_item',
+                        "New {$itemType} pending approval - " . ($item->activity_title ?? $itemType),
+                        'emails.pending-item-notification'
+                    );
+                }
+            }
 
             return true;
         } catch (\Exception $e) {

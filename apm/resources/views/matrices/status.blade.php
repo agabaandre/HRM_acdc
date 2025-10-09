@@ -131,61 +131,12 @@
 
           
 
-            <!-- Approval Levels Overview -->
-            @if(!empty($approvalLevels))
-                <div class="card shadow-sm border-0 mb-4 rounded-3">
-                    <div class="card-header bg-white border-bottom">
-                        <h6 class="mb-0 text-success">
-                            <i class="fas fa-layer-group me-2"></i>Approval Levels Overview
-                        </h6>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="row g-2">
-                            @foreach($approvalLevels as $level)
-                                <div class="col-md-3 col-lg-2">
-                                    <div class="card border-0 shadow-sm rounded-circle {{ $level['is_current'] ? 'border-success border-2' : '' }}" 
-                                         style="background: {{ $level['is_completed'] ? '#d1fae5' : ($level['is_pending'] ? '#fef3c7' : '#f8f9fa') }}; width: 120px; height: 120px; margin: 0 auto;">
-                                        <div class="card-body p-2 d-flex flex-column justify-content-center align-items-center text-center">
-                                            <div class="mb-1">
-                                                <span class="badge bg-{{ $level['is_completed'] ? 'success' : ($level['is_pending'] ? 'warning' : 'secondary') }} fs-6 px-1 py-1">
-                                                    {{ $level['order'] }}
-                                                </span>
-                                            </div>
-                                            
-                                            <h6 class="fw-bold mb-1 text-dark small" style="font-size: 0.7rem; line-height: 1.1;">{{ $level['role'] ?? 'Role' }}</h6>
-                                            
-                                            @if($level['approver'])
-                                                <div class="mb-1">
-                                                    <div class="fw-bold text-dark small" style="font-size: 0.6rem; line-height: 1.1;">{{ $level['approver']->fname . ' ' . $level['approver']->lname }}</div>
-                                                </div>
-                                            @else
-                                                <div class="mb-1">
-                                                    <div class="text-muted small" style="font-size: 0.6rem;">Not assigned</div>
-                                                </div>
-                                            @endif
-                                            
-                                            @if($level['is_current'])
-                                                <span class="badge bg-success px-1 py-1 small" style="font-size: 0.5rem;">Current</span>
-                                            @elseif($level['is_completed'])
-                                                <span class="badge bg-success px-1 py-1 small" style="font-size: 0.5rem;">✓</span>
-                                            @elseif($level['is_pending'])
-                                                <span class="badge bg-warning px-1 py-1 small" style="font-size: 0.5rem;">⏳</span>
-                                            @else
-                                                <span class="badge bg-secondary px-1 py-1 small" style="font-size: 0.5rem;">⏸</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                        
-
-                    </div>
-                </div>
-            @endif
+            <!-- Approval Workflow Overview -->
+            @include('partials.approval-workflow-overview')
 
          
         </div>
     </div>
 </div>
 @endsection
+
