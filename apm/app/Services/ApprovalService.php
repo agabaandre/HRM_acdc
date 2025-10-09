@@ -17,14 +17,8 @@ class ApprovalService
     
     public function canTakeAction(Model $model, int $userId):bool
     {
-           $user = session('user', []);
-           
-
-           //dd($user);
-           //dd(done_approving($model));
-          // dd($this->hasUserApproved($model, $user['staff_id']));
-
-          if (empty($user['staff_id']) || $this->hasUserApproved($model, $user['staff_id']) || in_array($model->overall_status,['approved','draft'])) {
+          // Use the userId parameter instead of session data
+          if (empty($userId) || $this->hasUserApproved($model, $userId) || in_array($model->overall_status,['approved','draft'])) {
               return false;
           }
 
@@ -38,7 +32,7 @@ class ApprovalService
               return false;
           }
 
-           $still_with_creator = $this->isWithCreator($model);
+           $still_with_creator = $this->isWithCreator($model, false, $userId);
            //dd($still_with_creator);
 
            if($still_with_creator || !$model->forward_workflow_id)
@@ -52,11 +46,11 @@ class ApprovalService
            ->where('workflow_id',$model->forward_workflow_id);
 
          
-           $workflow_dfns = Approver::where('staff_id',"=", $user['staff_id'])
+           $workflow_dfns = Approver::where('staff_id',"=", $userId)
            ->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
-           ->orWhere(function ($query) use ($today, $user,$current_approval_point) {
+           ->orWhere(function ($query) use ($today, $userId,$current_approval_point) {
                    $query ->whereIn('workflow_dfn_id',$current_approval_point->pluck('id'))
-                   ->where('oic_staff_id', "=", $user['staff_id'])
+                   ->where('oic_staff_id', "=", $userId)
                    ->where('end_date', '>=', $today);
                })
            ->orderBy('id','desc')
@@ -187,20 +181,7 @@ class ApprovalService
             return null;
         }
 
-        // Check for division-specific approvers FIRST if this is a division-specific level
-        if ($current_approval_point->is_division_specific && method_exists($model, 'division') && $model->division) {
-            $division = $model->division;
-            $referenceColumn = $current_approval_point->division_reference_column;
-            
-            if ($referenceColumn && isset($division->$referenceColumn)) {
-                $staff_id = $division->$referenceColumn;
-                if ($staff_id) {
-                    return Staff::where('staff_id', $staff_id)->first();
-                }
-            }
-        }
-
-        // Check for regular approvers
+        // Check for regular approvers first
         $approver = Approver::where('workflow_dfn_id', $current_approval_point->id)
             ->where(function ($query) use ($today) {
                 $query->whereNull('end_date')
@@ -223,6 +204,19 @@ class ApprovalService
 
         if ($oic_approver) {
             return Staff::where('staff_id', $oic_approver->oic_staff_id)->first();
+        }
+
+        // Check for division-specific approvers
+        if ($current_approval_point->is_division_specific && method_exists($model, 'division') && $model->division) {
+            $division = $model->division;
+            $referenceColumn = $current_approval_point->division_reference_column;
+            
+            if ($referenceColumn && isset($division->$referenceColumn)) {
+                $staff_id = $division->$referenceColumn;
+                if ($staff_id) {
+                    return Staff::where('staff_id', $staff_id)->first();
+                }
+            }
         }
 
         return null;
@@ -1033,21 +1027,27 @@ class ApprovalService
     /**
      * Check if model is still with creator.
      */
-        function isWithCreator($model,$has_activity=false)
+        function isWithCreator($model,$has_activity=false,$userId=null)
         {
-            return  ($this->canDivisionHeadEdit($model,$has_activity) ||  ((in_array(session('user')['staff_id'],
+            if (!$userId) {
+                $userId = session('user')['staff_id'] ?? null;
+            }
+            
+            return  ($this->canDivisionHeadEdit($model,$has_activity,$userId) ||  ((in_array($userId,
             [$model->staff_id,$model->focal_person_id])
              && ($model->forward_workflow_id==null)))) && in_array($model->overall_status,['draft','returned']);
         }
 
 
 
-        function canDivisionHeadEdit($model,$has_activity=false){
-            $user = (Object) session('user', []);
+        function canDivisionHeadEdit($model,$has_activity=false,$userId=null){
+            if (!$userId) {
+                $userId = session('user')['staff_id'] ?? null;
+            }
            // dd(activities_approved_by_me($model));
             //dd($has_activity && activities_approved_by_me($model));
             
-            return ($model->division->division_head==$user->staff_id && $model->approval_level==1 && in_array($model->overall_status,['returned']));
+            return ($model->division->division_head==$userId && $model->approval_level==1 && in_array($model->overall_status,['returned']));
         }
 
      

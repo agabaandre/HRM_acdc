@@ -80,10 +80,12 @@ if (!function_exists('get_staff_pending_action_count')) {
      * @param string $module The module to check (matrices, non-travel, special-memo, service-requests, request-arf)
      * @return int
      */
-    function get_staff_pending_action_count(string $module): int
+    function get_staff_pending_action_count(string $module, int $staffId = null): int
     {
-        $user = session('user', []);
-        $staffId = $user['staff_id'] ?? null;
+        if (!$staffId) {
+            $user = session('user', []);
+            $staffId = $user['staff_id'] ?? null;
+        }
         
         if (!$staffId) {
             return 0;
@@ -516,13 +518,22 @@ if (!function_exists('get_staff_total_pending_count')) {
      *
      * @return int
      */
-    function get_staff_total_pending_count(): int
+    function get_staff_total_pending_count(int $staffId = null): int
     {
+        if (!$staffId) {
+            $user = session('user', []);
+            $staffId = $user['staff_id'] ?? null;
+        }
+        
+        if (!$staffId) {
+            return 0;
+        }
+        
         $modules = ['matrices', 'non-travel', 'special-memo', 'service-requests', 'request-arf', 'single-memo', 'change-request'];
         $total = 0;
         
         foreach ($modules as $module) {
-            $total += get_staff_pending_action_count($module);
+            $total += get_staff_pending_action_count($module, $staffId);
         }
         
         return $total;
