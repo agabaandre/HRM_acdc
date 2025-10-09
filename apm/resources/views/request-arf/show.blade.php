@@ -255,20 +255,38 @@
         if ($requestARF->model_type === 'App\\Models\\Activity') {
             // For activities, use activity_budget relationship
             $budgetItems = $sourceData['budget_breakdown'] ?? [];
+            // Decode JSON string if needed
+            if (is_string($budgetItems)) {
+                $budgetItems = json_decode($budgetItems, true) ?? [];
+            }
             if (!empty($budgetItems)) {
                 if (is_array($budgetItems)) {
-                    foreach ($budgetItems as $item) {
-                        if (is_object($item)) {
-                            $totalBudget += $item->unit_cost * $item->units;
+                    // Check if it has grand_total first
+                    if (isset($budgetItems['grand_total'])) {
+                        $totalBudget = floatval($budgetItems['grand_total']);
+                    } else {
+                        // Process individual items
+                        foreach ($budgetItems as $key => $item) {
+                            if ($key === 'grand_total') {
+                                $totalBudget = floatval($item);
+                            } elseif (is_array($item)) {
+                                foreach ($item as $budgetItem) {
+                                    if (is_object($budgetItem)) {
+                                        $totalBudget += $budgetItem->unit_cost * $budgetItem->units * $budgetItem->days;
+                                    } elseif (is_array($budgetItem)) {
+                                        $totalBudget += floatval($budgetItem['unit_cost'] ?? 0) * floatval($budgetItem['units'] ?? 0) * floatval($budgetItem['days'] ?? 0);
+                                    }
+                                }
+                            }
                         }
                     }
                 } elseif (is_object($budgetItems) && method_exists($budgetItems, 'each')) {
                     // It's a collection
-            foreach ($budgetItems as $item) {
-                $totalBudget += $item->unit_cost * $item->units * $item->days;
+                    foreach ($budgetItems as $item) {
+                        $totalBudget += $item->unit_cost * $item->units * $item->days;
+                    }
+                }
             }
-        }
-    }
 } else {
     // For memos, use budget_breakdown array
     $budget = $sourceData['budget_breakdown'] ?? [];
@@ -408,7 +426,7 @@
                                             <i class="bx bx-dollar text-success me-2"></i>Total Budget
                                         </td>
                                         <td class="field-value">
-                                            ${{ number_format($requestARF->total_amount ?? ($totalBudget ?? ($sourceData['total_budget'] ?? 0)), 2) }}
+                                            ${{ number_format($totalBudget ?? $requestARF->total_amount ?? ($sourceData['total_budget'] ?? 0), 2) }}
                                         </td>
                                     </tr>
                                     <tr>

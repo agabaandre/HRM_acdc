@@ -636,7 +636,70 @@
         $year = date('Y', strtotime($sourceModel->created_at ?? 'now'));
         $activityId = $sourceModel->id ?? 'N/A';
         $activity_refernce = "AU/CDC/{$shortCode}/IM/Q{$requestARF->quarter}/{$year}/{$activityId}";
-    } 
+    }
+    
+    // Calculate budget total for display
+    $totalBudget = 0;
+    if ($requestARF->model_type === 'App\\Models\\Activity') {
+        $budgetItems = $sourceData['budget_breakdown'] ?? [];
+        // Decode JSON string if needed
+        if (is_string($budgetItems)) {
+            $budgetItems = json_decode($budgetItems, true) ?? [];
+        }
+        if (!empty($budgetItems) && is_array($budgetItems)) {
+            // Check if it has grand_total first
+            if (isset($budgetItems['grand_total'])) {
+                $totalBudget = floatval($budgetItems['grand_total']);
+            } else {
+                // Process individual items
+                foreach ($budgetItems as $key => $item) {
+                    if ($key === 'grand_total') {
+                        $totalBudget = floatval($item);
+                    } elseif (is_array($item)) {
+                        foreach ($item as $budgetItem) {
+                            if (is_object($budgetItem)) {
+                                $totalBudget += $budgetItem->unit_cost * $budgetItem->units * $budgetItem->days;
+                            } elseif (is_array($budgetItem)) {
+                                $totalBudget += floatval($budgetItem['unit_cost'] ?? 0) * floatval($budgetItem['units'] ?? 0) * floatval($budgetItem['days'] ?? 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // For memos, use budget_breakdown array
+        $budget = $sourceData['budget_breakdown'] ?? [];
+        // Decode JSON string if needed
+        if (is_string($budget)) {
+            $budget = json_decode($budget, true) ?? [];
+        }
+        if (!empty($budget) && is_array($budget)) {
+            // Check if it's a simple array of budget items
+            if (isset($budget[0]) && is_array($budget[0])) {
+                // Simple array structure: [0 => {item1}, 1 => {item2}]
+                foreach ($budget as $item) {
+                    $totalBudget += floatval(
+                        $item['total'] ?? ($item['unit_price'] ?? 0) * ($item['quantity'] ?? 1),
+                    );
+                }
+            } else {
+                // Keyed structure: {fund_code_id => [items]}
+                foreach ($budget as $key => $item) {
+                    if ($key === 'grand_total') {
+                        $totalBudget = floatval($item);
+                    } elseif (is_array($item)) {
+                        foreach ($item as $budgetItem) {
+                            $totalBudget += floatval(
+                                $budgetItem['total'] ??
+                                    ($budgetItem['unit_price'] ?? 0) * ($budgetItem['quantity'] ?? 1),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     ?>
 
@@ -667,6 +730,7 @@
                 <td class="content"><?php echo htmlspecialchars($requestARF->funder->name ?? 'N/A'); ?></td>
             </tr>
             <tr>
+
                
                 <td class="label">Partner:</td>
                 <td class="content">
@@ -713,7 +777,7 @@
                 <td class="label">Currency:</td>
                 <td class="content">USD</td>
                 <td class="label">Amount:</td>
-                <td class="content">$<?php echo number_format($requestARF->total_amount ?? 0, 2); ?></td>
+                <td class="content">$<?php echo number_format($totalBudget ?? $requestARF->total_amount ?? 0, 2); ?></td>
             </tr>
         </table>
 
@@ -723,7 +787,18 @@
 
  
     
-    <?php if (!empty($internalParticipants) && is_array($internalParticipants)): ?>
+    <?php
+    // Process internal participants like the web view does
+    $internalParticipants = $sourceData['internal_participants'] ?? [];
+    if (is_string($internalParticipants)) {
+        $internalParticipants = json_decode($internalParticipants, true) ?? [];
+    }
+    if (!is_array($internalParticipants)) {
+        $internalParticipants = [];
+    }
+    ?>
+    
+    <?php if (!empty($internalParticipants)): ?>
     <div class="section-label mb-15"><strong>Internal Participants</strong></div>     
     <table class="bordered-table mb-15">
                             <thead>
@@ -740,26 +815,23 @@
                                 <?php
                                 $count = 1;
                                 foreach($internalParticipants as $participantId => $participantData):
-                                    // Handle different data structures
-                                    $staff = null;
-                                    $days = 0;
-                                    
-                                    if (is_array($participantData) && isset($participantData['staff'])) {
-                                        $staff = $participantData['staff'];
-                                        $days = $participantData['participant_days'] ?? 0;
-                                    } elseif (is_object($participantData)) {
-                                        $staff = $participantData;
-                                        $days = $participantData->participant_days ?? 0;
-                                    }
+                                    // Fetch staff data from database like the web view does
+                                    $staff = \App\Models\Staff::where('staff_id', $participantId)
+                                        ->with(['division'])
+                                        ->first();
                                     
                                     if ($staff):
+                                        $participantName = $staff->fname . ' ' . $staff->lname;
+                                        $division = $staff->division ? $staff->division->division_name : 'N/A';
+                                        $dutyStation = $staff->duty_station_name ?? $staff->duty_station ?? 'N/A';
+                                        $days = is_array($participantData) ? ($participantData['days'] ?? 1) : 1;
                                 ?>
                                     <tr>
                                         <td><?php echo $count; ?></td>
-                                        <td><?php echo htmlspecialchars($staff->fname . ' ' . $staff->lname ?? 'N/A'); ?></td>
-                                        <td><?php echo htmlspecialchars($staff->division_name ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($participantName); ?></td>
+                                        <td><?php echo htmlspecialchars($division); ?></td>
                                         <td><?php echo htmlspecialchars($staff->job_name ?? 'N/A'); ?></td>
-                                        <td><?php echo htmlspecialchars($staff->duty_station_name ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($dutyStation); ?></td>
                                         <td><?php echo htmlspecialchars($days); ?></td>
                                     </tr>
                                 <?php 
@@ -861,6 +933,15 @@
             
             <?php endif; ?>
 
+            <!-- Grand Total Display -->
+            <?php if ($totalBudget > 0): ?>
+                <div style="margin-top: 20px; text-align: right; padding: 15px; background-color: #f8f9fa; border: 2px solid #007e33; border-radius: 5px;">
+                    <h3 style="margin: 0; color: #007e33; font-size: 18px; font-weight: bold;">
+                        Grand Total: $<?php echo number_format($totalBudget, 2); ?>
+                    </h3>
+                </div>
+            <?php endif; ?>
+
 <?php
     // Use PrintHelper for consistent approver display
     use App\Helpers\PrintHelper;
@@ -889,14 +970,36 @@
         );
     }
     
-    // Get financial approvers dynamically based on workflow definition
-    $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
-    $financialApprovers = PrintHelper::getFinancialApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
+    // Get approval trails based on source model type
+    $sourceApprovalTrails = collect();
     
+    if ($sourceModelType === 'App\\Models\\Activity') {
+        // For matrix activities, use matrix approval trails
+        if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
+            $sourceApprovalTrails = $sourceData['matrix']->approvalTrails;
+        } elseif (isset($sourceData['approval_trails'])) {
+            $sourceApprovalTrails = $sourceData['approval_trails'];
+        }
+    } elseif ($sourceModelType === 'App\\Models\\SpecialMemo' || 
+              $sourceModelType === 'App\\Models\\NonTravelMemo' || 
+              $sourceModelType === 'App\\Models\\ServiceRequest' || 
+              $sourceModelType === 'App\\Models\\ChangeRequest') {
+        // For single memos and other memo types, use their approval trails
+        if (isset($sourceData['approval_trails'])) {
+            $sourceApprovalTrails = $sourceData['approval_trails'];
+        }
+    } else {
+        // Fallback to general approval trails
+        $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
+    }
+    
+    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
+
+    //dd($memo_approvers);
     // Extract specific approvers for easier access
-    $divisionHeadApproval = $financialApprovers['Head of Division'] ?? null;
-    $ddgApproval = $financialApprovers['Deputy Director General'] ?? null;
-    $directorGeneralApproval = $financialApprovers['Director General'] ?? null;
+    $grants = $memo_approvers['Grants'] ?? null;
+    $chief_of_staff = $memo_approvers['Chief of Staff'] ?? null;
+    $directorGeneralApproval = $memo_approvers['Director General'] ?? null;
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
  <div class="page-break"></div>
@@ -910,88 +1013,298 @@
     <tr>
         <td>Prepared by:</td>
         <td>
-          <?php renderBudgetApproverInfo(null, $sourceData['responsible_person']); ?>
-        </td>
-        <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
-          <span class="fill">
-            <?php renderBudgetSignature($divisionHeadApproval, $sourceModel, true, $sourceData); ?>
-          </span>
-        </td>
-      </tr>
-      <tr>
-        <td>Signed (Endorsed by):</td>
-        <td>
           <?php 
-          // Use PrintHelper data if available, otherwise fallback to old method
-          if (!empty($organizedApprovers['from']) && count($organizedApprovers['from']) > 0) {
-              $approver = $organizedApprovers['from'][0]; // Get first approver from 'from' section
-              renderBudgetApproverInfoFromPrintHelper($approver);
+          // Get the last approver from approval trails
+          $lastApprover = $requestARF->approvalTrails->last();
+          if ($lastApprover) {
+              // Check if OIC signed instead of regular approver
+              $actualSigner = null;
+              $isOic = false;
+              
+              if ($lastApprover->oic_staff_id) {
+                  // OIC signed
+                  $actualSigner = \App\Models\Staff::find($lastApprover->oic_staff_id);
+                  $isOic = true;
+              } else {
+                  // Regular approver signed
+                  $actualSigner = \App\Models\Staff::find($lastApprover->staff_id);
+              }
+              
+              if ($actualSigner) {
+                  // Get the role from workflow definition instead of job title
+                  $workflowId = $requestARF->forward_workflow_id ?? 1;
+                  $workflowDefinition = \App\Models\WorkflowDefinition::where('workflow_id', $workflowId)
+                      ->where('approval_order', $lastApprover->approval_order)
+                      ->first();
+                  
+                  $role = $workflowDefinition ? $workflowDefinition->role : ($actualSigner->job_name ?? 'N/A');
+                  
+                  // Render approver info without division, with OIC indicator if applicable
+                  $name = trim(($actualSigner->title ?? '') . ' ' . ($actualSigner->fname ?? '') . ' ' . ($actualSigner->lname ?? '') . ' ' . ($actualSigner->oname ?? ''));
+                  if ($isOic) {
+                      $name .= ' (OIC)';
+                  }
+                  
+                  echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+                  echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+                  echo '<span class="fill line"></span>';
+              } else {
+                  renderBudgetApproverInfo(null, $sourceData['responsible_person']);
+              }
           } else {
-              renderBudgetApproverInfo($divisionHeadApproval);
+              renderBudgetApproverInfo(null, $sourceData['responsible_person']);
           }
           ?>
         </td>
         <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
             <?php 
-            if (!empty($organizedApprovers['from']) && count($organizedApprovers['from']) > 0) {
-                $approver = $organizedApprovers['from'][0];
-                renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
+            // Use the actual signer for the signature
+            if (isset($actualSigner) && $actualSigner) {
+                renderBudgetSignature($lastApprover, $sourceModel, false, $sourceData);
             } else {
-                renderBudgetSignature($divisionHeadApproval, $sourceModel);
+                renderBudgetSignature(null, $sourceModel, true, $sourceData);
             }
             ?>
           </span>
         </td>
       </tr>
       <tr>
-        
-          <td>Approved  By:</td>
-          <td>
-           <?php 
-           // Use PrintHelper data if available, otherwise fallback to old method
-           if (!empty($organizedApprovers['through']) && count($organizedApprovers['through']) > 0) {
-               $approver = $organizedApprovers['through'][0]; // Get first approver from 'through' section
-               renderBudgetApproverInfoFromPrintHelper($approver);
-           } else {
-               renderBudgetApproverInfo($ddgApproval);
-           }
-           ?>
-          </td>
-          <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
-            <span class="fill">
-             <?php 
-             if (!empty($organizedApprovers['through']) && count($organizedApprovers['through']) > 0) {
-                 $approver = $organizedApprovers['through'][0];
-                 renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
-             } else {
-                 renderBudgetSignature($ddgApproval, $sourceModel);
-             }
-             ?>
-            </span>
-          </td>
-      </tr>
-      <tr>
-        <td>Approved by:</td>
+        <td>Reviewed By:</td>
         <td>
           <?php 
-          // Use PrintHelper data if available, otherwise fallback to old method
-          if (!empty($organizedApprovers['to']) && count($organizedApprovers['to']) > 0) {
-              $approver = $organizedApprovers['to'][0]; // Get first approver from 'to' section
-              renderBudgetApproverInfoFromPrintHelper($approver);
+          // Use Grants approver with role display
+          if (!empty($grants)) {
+              $isOic = isset($grants['oic_staff']);
+              $staff = $isOic ? $grants['oic_staff'] : $grants['staff'];
+              
+              if ($staff) {
+                  $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                  if ($isOic) {
+                      $name .= ' (OIC)';
+                  }
+                  $role = $grants['role'] ?? 'Grants';
+                  
+                  echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+                  echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+                  echo '<span class="fill line"></span>';
+              } else {
+                  renderBudgetApproverInfo(null);
+              }
           } else {
-              renderBudgetApproverInfo($directorGeneralApproval);
+              renderBudgetApproverInfo(null);
           }
           ?>
         </td>
         <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
           <span class="fill">
             <?php 
-            if (!empty($organizedApprovers['to']) && count($organizedApprovers['to']) > 0) {
-                $approver = $organizedApprovers['to'][0];
-                renderBudgetSignatureFromPrintHelper($approver, $sourceModel);
+            if (!empty($grants)) {
+                $isOic = isset($grants['oic_staff']);
+                $staff = $isOic ? $grants['oic_staff'] : $grants['staff'];
+                
+                if ($staff) {
+                    $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                    if ($isOic) {
+                        $name .= ' (OIC)';
+                    }
+                    $role = $grants['role'] ?? 'Grants';
+                    
+                    echo '<div style="line-height: 1.2;">';
+                    echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+                    if (!empty($staff['signature'])) {
+                        echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+                    } else {
+                        echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+                    }
+                    echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
+                    echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
+                    echo '</div>';
+                } else {
+                    renderBudgetSignature(null, $sourceModel);
+                }
             } else {
-                renderBudgetSignature($directorGeneralApproval, $sourceModel);
+                renderBudgetSignature(null, $sourceModel);
+            }
+            ?>
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td>Endorsed By:</td>
+        <td>
+          <?php 
+          // Use Chief of Staff approver with role display
+          if (!empty($chief_of_staff)) {
+              $isOic = isset($chief_of_staff['oic_staff']);
+              $staff = $isOic ? $chief_of_staff['oic_staff'] : $chief_of_staff['staff'];
+              
+              if ($staff) {
+                  $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                  if ($isOic) {
+                      $name .= ' (OIC)';
+                  }
+                  $role = $chief_of_staff['role'] ?? 'Chief of Staff';
+                  
+                  echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+                  echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+                  echo '<span class="fill line"></span>';
+              } else {
+                  renderBudgetApproverInfo(null);
+              }
+          } else {
+              renderBudgetApproverInfo(null);
+          }
+          ?>
+        </td>
+        <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
+          <span class="fill">
+            <?php 
+            if (!empty($chief_of_staff)) {
+                // Check if it's a structured array (from PrintHelper) or direct approval object
+                if (isset($chief_of_staff['staff']) || isset($chief_of_staff['oic_staff'])) {
+                    // Structured data from PrintHelper
+                    $isOic = isset($chief_of_staff['oic_staff']);
+                    $staff = $isOic ? $chief_of_staff['oic_staff'] : $chief_of_staff['staff'];
+                    
+                    if ($staff) {
+                        $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                        if ($isOic) {
+                            $name .= ' (OIC)';
+                        }
+                        
+                        echo '<div style="line-height: 1.2;">';
+                        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+                        if (!empty($staff['signature'])) {
+                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+                        } else {
+                            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+                        }
+                        echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
+                        echo '</div>';
+                    } else {
+                        renderBudgetSignature(null, $sourceModel);
+                    }
+                } else {
+                    // Direct approval object from getARFApprovers
+                    $isOic = !empty($chief_of_staff->oic_staff_id);
+                    $staff = $isOic ? $chief_of_staff->oicStaff : $chief_of_staff->staff;
+                    
+                    if ($staff) {
+                        $name = trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
+                        if ($isOic) {
+                            $name .= ' (OIC)';
+                        }
+                        
+                        echo '<div style="line-height: 1.2;">';
+                        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+                        if (!empty($staff->signature)) {
+                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff->signature) . '" alt="Signature">';
+                        } else {
+                            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
+                        }
+                        $approvalDate = is_object($chief_of_staff->created_at) ? $chief_of_staff->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($chief_of_staff->created_at));
+                        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
+                        $hash = generateVerificationHash($sourceModel->id, $isOic ? $chief_of_staff->oic_staff_id : $chief_of_staff->staff_id, $chief_of_staff->created_at);
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars($hash) . '</div>';
+                        echo '</div>';
+                    } else {
+                        renderBudgetSignature(null, $sourceModel);
+                    }
+                }
+            } else {
+                renderBudgetSignature(null, $sourceModel);
+            }
+            ?>
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td>Approved By:</td>
+        <td>
+          <?php 
+          // Use Director General approver with role display
+          if (!empty($directorGeneralApproval)) {
+              $isOic = isset($directorGeneralApproval['oic_staff']);
+              $staff = $isOic ? $directorGeneralApproval['oic_staff'] : $directorGeneralApproval['staff'];
+              
+              if ($staff) {
+                  $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                  if ($isOic) {
+                      $name .= ' (OIC)';
+                  }
+                  $role = $directorGeneralApproval['role'] ?? 'Director General';
+                  
+                  echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
+                  echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
+                  echo '<span class="fill line"></span>';
+              } else {
+                  renderBudgetApproverInfo(null);
+              }
+          } else {
+              renderBudgetApproverInfo(null);
+          }
+          ?>
+        </td>
+        <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
+          <span class="fill">
+            <?php 
+            if (!empty($directorGeneralApproval)) {
+                // Check if it's a structured array (from PrintHelper) or direct approval object
+                if (isset($directorGeneralApproval['staff']) || isset($directorGeneralApproval['oic_staff'])) {
+                    // Structured data from PrintHelper
+                    $isOic = isset($directorGeneralApproval['oic_staff']);
+                    $staff = $isOic ? $directorGeneralApproval['oic_staff'] : $directorGeneralApproval['staff'];
+                    
+                    if ($staff) {
+                        $name = trim(($staff['fname'] ?? '') . ' ' . ($staff['lname'] ?? '') . ' ' . ($staff['oname'] ?? ''));
+                        if ($isOic) {
+                            $name .= ' (OIC)';
+                        }
+                        
+                        echo '<div style="line-height: 1.2;">';
+                        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+                        if (!empty($staff['signature'])) {
+                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+                        } else {
+                            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+                        }
+                        echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staff['id'] ?? '', date('Y-m-d H:i:s'))) . '</div>';
+                        echo '</div>';
+                    } else {
+                        renderBudgetSignature(null, $sourceModel);
+                    }
+                } else {
+                    // Direct approval object from getARFApprovers
+                    $isOic = !empty($directorGeneralApproval->oic_staff_id);
+                    $staff = $isOic ? $directorGeneralApproval->oicStaff : $directorGeneralApproval->staff;
+                    
+                    if ($staff) {
+                        $name = trim(($staff->title ?? '') . ' ' . ($staff->fname ?? '') . ' ' . ($staff->lname ?? '') . ' ' . ($staff->oname ?? ''));
+                        if ($isOic) {
+                            $name .= ' (OIC)';
+                        }
+                        
+                        echo '<div style="line-height: 1.2;">';
+                        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
+                        if (!empty($staff->signature)) {
+                            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff->signature) . '" alt="Signature">';
+                        } else {
+                            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
+                        }
+                        $approvalDate = is_object($directorGeneralApproval->created_at) ? $directorGeneralApproval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($directorGeneralApproval->created_at));
+                        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
+                        $hash = generateVerificationHash($sourceModel->id, $isOic ? $directorGeneralApproval->oic_staff_id : $directorGeneralApproval->staff_id, $directorGeneralApproval->created_at);
+                        echo '<div class="signature-hash">Hash: ' . htmlspecialchars($hash) . '</div>';
+                        echo '</div>';
+                    } else {
+                        renderBudgetSignature(null, $sourceModel);
+                    }
+                }
+            } else {
+                renderBudgetSignature(null, $sourceModel);
             }
             ?>
           </span>
