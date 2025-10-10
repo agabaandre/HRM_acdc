@@ -135,12 +135,25 @@ class SessionController extends Controller
             // Check if user has session data (even if not fully authenticated)
             $userSession = session('user', []);
             
+            // Debug logging
+            Log::info('SessionController: getSessionStatus called', [
+                'user_session' => $userSession,
+                'session_id' => session()->getId(),
+                'has_user_session' => !empty($userSession),
+                'staff_id' => $userSession['staff_id'] ?? 'not_set'
+            ]);
+            
             if (empty($userSession) || !isset($userSession['staff_id'])) {
                 return response()->json([
                     'success' => false,
                     'authenticated' => false,
                     'session_expired' => true,
-                    'message' => 'No session data found'
+                    'message' => 'No session data found',
+                    'debug' => [
+                        'session_id' => session()->getId(),
+                        'user_session_keys' => array_keys($userSession),
+                        'has_staff_id' => isset($userSession['staff_id'])
+                    ]
                 ]);
             }
 
@@ -165,6 +178,40 @@ class SessionController extends Controller
                 'success' => false,
                 'message' => 'Failed to check session status',
                 'session_expired' => true
+            ], 500);
+        }
+    }
+
+    /**
+     * Get session debug information
+     */
+    public function getSessionDebug(Request $request)
+    {
+        try {
+            $userSession = session('user', []);
+            $allSessionData = session()->all();
+            
+            return response()->json([
+                'success' => true,
+                'debug' => [
+                    'session_id' => session()->getId(),
+                    'user_session' => $userSession,
+                    'all_session_keys' => array_keys($allSessionData),
+                    'has_user_session' => !empty($userSession),
+                    'staff_id' => $userSession['staff_id'] ?? 'not_set',
+                    'session_lifetime' => config('session.lifetime', 120),
+                    'last_activity' => session('last_activity', 'not_set'),
+                    'request_headers' => $request->headers->all(),
+                    'cookies' => $request->cookies->all()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Session debug failed', ['error' => $e->getMessage()]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get session debug info',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

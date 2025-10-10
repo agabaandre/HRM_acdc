@@ -8,3 +8,4 @@ use Illuminate\Support\Facades\Route;
 Route::get('/validate-session', [SessionController::class, 'validateSession'])->name('api.validate-session');
 Route::post('/extend-session', [SessionController::class, 'extendSession'])->name('api.extend-session');
 Route::get('/session-status', [SessionController::class, 'getSessionStatus'])->name('api.session-status');
+Route::get('/session-debug', [SessionController::class, 'getSessionDebug'])->name('api.session-debug');

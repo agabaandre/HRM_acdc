@@ -708,7 +708,7 @@
                         @if($specialMemo->workplan_activity_code && $specialMemo->fund_type_id == 1)
                         <tr>
                             <td class="field-label">
-                                <i class="bx bx-code-block me-2 text-warning"></i>AMERT Code
+                                <i class="bx bx-code-block me-2 text-warning"></i>World Bank Activity Code
                             </td>
                             <td class="field-value" colspan="3">
                                 <span class="text-warning fw-bold">{{ $specialMemo->workplan_activity_code }}</span>
