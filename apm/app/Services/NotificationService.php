@@ -99,7 +99,34 @@ class NotificationService
     private function dispatchEmailNotification(Notification $notification, array $data): void
     {
         try {
-            SendNotificationEmailJob::dispatch($notification, $data)
+            // Get the recipient staff member
+            $recipient = Staff::find($notification->staff_id);
+            if (!$recipient) {
+                Log::warning('Recipient not found for notification', [
+                    'notification_id' => $notification->id,
+                    'staff_id' => $notification->staff_id
+                ]);
+                return;
+            }
+
+            // Extract the model from the notification
+            $model = $this->getModelFromNotification($notification);
+            if (!$model) {
+                Log::warning('Model not found for notification', [
+                    'notification_id' => $notification->id,
+                    'model_type' => $notification->model_type,
+                    'model_id' => $notification->model_id
+                ]);
+                return;
+            }
+
+            SendNotificationEmailJob::dispatch(
+                $model,
+                $recipient,
+                $notification->type ?? 'notification',
+                $notification->message ?? 'You have a new notification',
+                'emails.generic-notification'
+            )
                 ->onQueue('notifications')
                 ->delay(now()->addSeconds(5)); // Small delay to prevent overwhelming the queue
 
@@ -112,6 +139,28 @@ class NotificationService
                 'notification_id' => $notification->id,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Get the model instance from notification
+     */
+    private function getModelFromNotification(Notification $notification)
+    {
+        if (!$notification->model_type || !$notification->model_id) {
+            return null;
+        }
+
+        try {
+            return $notification->model_type::find($notification->model_id);
+        } catch (\Exception $e) {
+            Log::error('Failed to load model from notification', [
+                'notification_id' => $notification->id,
+                'model_type' => $notification->model_type,
+                'model_id' => $notification->model_id,
+                'error' => $e->getMessage()
+            ]);
+            return null;
         }
     }
 

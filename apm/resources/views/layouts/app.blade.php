@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="user-logged-in" content="{{ Auth::check() ? 'true' : 'false' }}">
+    <meta name="user-logged-in" content="{{ !empty(session('user')) ? 'true' : 'false' }}">
     <meta name="api-base-url" content="{{ url('/api') }}">
     <title>@yield('title', config('app.name', 'Business Management System'))</title>
 
@@ -13,7 +13,7 @@
     <!-- @stack('styles') -->
 </head>
 
-<body>
+<body class="{{ !empty(session('user')) ? 'logged-in' : '' }}">
     @include('layouts.partials.header')
 
     <!-- Include the breadcrumbs partial -->

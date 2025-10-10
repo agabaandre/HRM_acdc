@@ -26,13 +26,11 @@ class CheckSessionExpiry
             return $next($request);
         }
 
-        // Check if user is logged in
-        if (!Auth::check()) {
+        // Check if user is logged in (using CI session data)
+        $userSession = session('user', []);
+        if (empty($userSession)) {
             return $next($request);
         }
-
-        // Get session data
-        $userSession = session('user', []);
         $lastActivity = session('last_activity', now());
         $sessionTimeout = config('session.lifetime', 120) * 60; // Convert to seconds
 

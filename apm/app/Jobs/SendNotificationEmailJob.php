@@ -53,20 +53,14 @@ class SendNotificationEmailJob implements ShouldQueue
                 return;
             }
 
-            // Send email using the template system
-            $result = sendEmailWithTemplate($this->recipient->work_email, $this->template, [
-                'resource' => $this->model,
-                'resource_type' => ucfirst(class_basename($this->model)),
-                'recipient' => $this->recipient,
-                'message' => $this->message,
-                'type' => $this->type
-            ]);
+            // Use the same Exchange service that works for matrix notifications
+            $result = $this->sendWithExchange();
 
             if (!$result) {
-                throw new \Exception('Failed to send email notification');
+                throw new \Exception('Failed to send email notification via Exchange');
             }
 
-            Log::info('Notification email sent successfully', [
+            Log::info('Notification email sent successfully via Exchange', [
                 'model_id' => $this->model->id,
                 'model_type' => get_class($this->model),
                 'recipient_id' => $this->recipient->staff_id,
@@ -83,6 +77,60 @@ class SendNotificationEmailJob implements ShouldQueue
             ]);
             
             throw $e;
+        }
+    }
+
+    /**
+     * Send email using Exchange service (same as matrix notifications)
+     */
+    private function sendWithExchange(): bool
+    {
+        try {
+            $config = config('exchange-email');
+            
+            // Use the working implementation from local ExchangeEmailService
+            require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
+            
+            $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
+                $config['tenant_id'],
+                $config['client_id'],
+                $config['client_secret'],
+                $config['redirect_uri'] ?? 'http://localhost:8000/oauth/callback',
+                'https://graph.microsoft.com/.default', // Correct scope for client credentials
+                'client_credentials' // Force client credentials
+            );
+            
+            if (!$oauth->isConfigured()) {
+                Log::error('Exchange service not configured - Exchange is required for all emails');
+                throw new \Exception('Exchange service not configured. Please check your Exchange credentials.');
+            }
+
+            // Generate subject
+            $prefix = env('MAIL_SUBJECT_PREFIX', 'APM') . ": ";
+            $subject = $prefix . $this->message;
+
+            // Generate HTML content
+            $htmlContent = view($this->template, [
+                'resource' => $this->model,
+                'resource_type' => ucfirst(class_basename($this->model)),
+                'recipient' => $this->recipient,
+                'message' => $this->message,
+                'type' => $this->type
+            ])->render();
+
+            // Send via Exchange
+            return $oauth->sendEmail(
+                $this->recipient->work_email,
+                $subject,
+                $htmlContent
+            );
+
+        } catch (\Exception $e) {
+            Log::error('Exchange email sending failed', [
+                'recipient' => $this->recipient->work_email,
+                'error' => $e->getMessage()
+            ]);
+            return false;
         }
     }
 
