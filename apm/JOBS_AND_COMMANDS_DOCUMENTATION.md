@@ -103,6 +103,16 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **Usage**: `php artisan notifications:send-test 558`
 - **Output**: Sends personalized notification to specified staff member
 
+#### `reminders:send-instant`
+- **Purpose**: Send instant pending approval reminders to staff members
+- **Usage**: 
+  - `php artisan reminders:send-instant --staff-id=558` (specific staff by ID)
+  - `php artisan reminders:send-instant --email=user@example.com` (specific staff by email)
+  - `php artisan reminders:send-instant --all` (all approvers with pending items)
+  - `php artisan reminders:send-instant --test` (dry run mode)
+  - `php artisan reminders:send-instant --force` (force send even if no pending items)
+- **Output**: Sends instant reminders with pending items breakdown
+
 #### `notifications:test-email`
 - **Purpose**: Test email notification system
 - **Usage**: `php artisan notifications:test-email`

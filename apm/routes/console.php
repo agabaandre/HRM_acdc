@@ -105,3 +105,5 @@ Artisan::command('notifications:test-all', function () {
     $this->call('test:notification');
 })->purpose('Test all notification systems');
 
+// Instant Reminders Command - Registered in SendInstantRemindersCommand.php
+

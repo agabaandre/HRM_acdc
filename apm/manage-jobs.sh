@@ -57,6 +57,9 @@ show_help() {
     echo "  health          - Run comprehensive health check"
     echo "  test-notifications - Test notification system (dry run)"
     echo "  send-test <staff_id> - Send test notification to specific staff member"
+    echo "  send-reminder <staff_id> - Send instant reminder to specific staff member"
+    echo "  send-reminder-email <email> - Send instant reminder to specific email"
+    echo "  send-reminder-all - Send instant reminders to all approvers"
     echo "  dispatch-daily  - Dispatch daily pending approvals job"
     echo "  process-queue   - Process one job from the queue"
     echo "  monitor-queue   - Monitor and process queue jobs"
@@ -120,6 +123,35 @@ dispatch_daily() {
     log "Dispatching daily pending approvals job..."
     php artisan jobs:dispatch-daily-notifications
     log_success "Daily notifications job dispatched"
+}
+
+# Function to send instant reminder to specific staff
+send_reminder() {
+    if [ -z "$2" ]; then
+        log_error "Staff ID required. Usage: $0 send-reminder <staff_id>"
+        exit 1
+    fi
+    log "Sending instant reminder to staff ID: $2"
+    php artisan reminders:send-instant --staff-id="$2"
+    log_success "Instant reminder sent to staff ID: $2"
+}
+
+# Function to send instant reminder to specific email
+send_reminder_email() {
+    if [ -z "$2" ]; then
+        log_error "Email required. Usage: $0 send-reminder-email <email>"
+        exit 1
+    fi
+    log "Sending instant reminder to email: $2"
+    php artisan reminders:send-instant --email="$2"
+    log_success "Instant reminder sent to email: $2"
+}
+
+# Function to send instant reminders to all approvers
+send_reminder_all() {
+    log "Sending instant reminders to all approvers..."
+    php artisan reminders:send-instant --all
+    log_success "Instant reminders sent to all approvers"
 }
 
 # Function to process queue
@@ -250,6 +282,15 @@ case "${1:-help}" in
         log "Sending test notification to staff ID: $2"
         php artisan notifications:send-test "$2"
         log_success "Test notification sent to staff ID: $2"
+        ;;
+    send-reminder)
+        send_reminder "$@"
+        ;;
+    send-reminder-email)
+        send_reminder_email "$@"
+        ;;
+    send-reminder-all)
+        send_reminder_all
         ;;
     dispatch-daily)
         dispatch_daily
