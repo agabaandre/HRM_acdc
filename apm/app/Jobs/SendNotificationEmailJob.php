@@ -46,9 +46,9 @@ class SendNotificationEmailJob implements ShouldQueue
         try {
             if (!$this->recipient || !$this->recipient->work_email) {
                 Log::warning('Recipient not found or no email address', [
-                    'model_id' => $this->model->id,
-                    'model_type' => get_class($this->model),
-                    'recipient_id' => $this->recipient->staff_id ?? 'unknown'
+                    'model_id' => $this->model ? $this->model->id : 'null',
+                    'model_type' => $this->model ? get_class($this->model) : 'null',
+                    'recipient_id' => $this->recipient ? ($this->recipient->staff_id ?? 'unknown') : 'null'
                 ]);
                 return;
             }
@@ -61,18 +61,18 @@ class SendNotificationEmailJob implements ShouldQueue
             }
 
             Log::info('Notification email sent successfully via Exchange', [
-                'model_id' => $this->model->id,
-                'model_type' => get_class($this->model),
-                'recipient_id' => $this->recipient->staff_id,
-                'email' => $this->recipient->work_email,
+                'model_id' => $this->model ? $this->model->id : 'null',
+                'model_type' => $this->model ? get_class($this->model) : 'null',
+                'recipient_id' => $this->recipient ? $this->recipient->staff_id : 'null',
+                'email' => $this->recipient ? $this->recipient->work_email : 'null',
                 'type' => $this->type
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to send notification email', [
-                'model_id' => $this->model->id,
-                'model_type' => get_class($this->model),
-                'recipient_id' => $this->recipient->staff_id ?? 'unknown',
+                'model_id' => $this->model ? $this->model->id : 'null',
+                'model_type' => $this->model ? get_class($this->model) : 'null',
+                'recipient_id' => $this->recipient ? ($this->recipient->staff_id ?? 'unknown') : 'null',
                 'error' => $e->getMessage()
             ]);
             
@@ -127,7 +127,7 @@ class SendNotificationEmailJob implements ShouldQueue
 
         } catch (\Exception $e) {
             Log::error('Exchange email sending failed', [
-                'recipient' => $this->recipient->work_email,
+                'recipient' => $this->recipient ? $this->recipient->work_email : 'null',
                 'error' => $e->getMessage()
             ]);
             return false;
@@ -141,9 +141,9 @@ class SendNotificationEmailJob implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error('Notification email job failed permanently', [
-            'model_id' => $this->model->id,
-            'model_type' => get_class($this->model),
-            'recipient_id' => $this->recipient->staff_id ?? 'unknown',
+            'model_id' => $this->model ? $this->model->id : 'null',
+            'model_type' => $this->model ? get_class($this->model) : 'null',
+            'recipient_id' => $this->recipient ? ($this->recipient->staff_id ?? 'unknown') : 'null',
             'error' => $exception->getMessage()
         ]);
     }
