@@ -127,7 +127,7 @@ class NotificationService
                 $notification->message ?? 'You have a new notification',
                 'emails.generic-notification'
             )
-                ->onQueue('notifications')
+                ->onQueue('default')
                 ->delay(now()->addSeconds(5)); // Small delay to prevent overwhelming the queue
 
             Log::info('Email notification job dispatched', [

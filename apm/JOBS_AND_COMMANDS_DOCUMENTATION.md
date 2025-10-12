@@ -27,7 +27,7 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 
 #### 2. `SendNotificationEmailJob`
 - **Purpose**: Sends individual email notifications using Exchange service
-- **Queue**: `notifications`
+- **Queue**: `default`
 - **Tries**: 3
 - **Timeout**: 120 seconds
 - **Dependencies**: Exchange OAuth service, email templates
