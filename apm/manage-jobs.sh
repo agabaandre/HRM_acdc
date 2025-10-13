@@ -60,6 +60,10 @@ show_help() {
     echo "  send-reminder <staff_id> - Send instant reminder to specific staff member"
     echo "  send-reminder-email <email> - Send instant reminder to specific email"
     echo "  send-reminder-all - Send instant reminders to all approvers"
+    echo "  schedule-reminder <type> [time] - Schedule reminder job (daily, morning, evening, urgent)"
+    echo "  schedule-reminder-delay <type> <minutes> - Schedule reminder with delay in minutes"
+    echo "  list-scheduled - List all scheduled reminders"
+    echo "  clear-scheduled - Clear all scheduled reminders"
     echo "  dispatch-daily  - Dispatch daily pending approvals job"
     echo "  process-queue   - Process one job from the queue"
     echo "  monitor-queue   - Monitor and process queue jobs"
@@ -152,6 +156,57 @@ send_reminder_all() {
     log "Sending instant reminders to all approvers..."
     php artisan reminders:send-instant --all
     log_success "Instant reminders sent to all approvers"
+}
+
+# Function to schedule reminder
+schedule_reminder() {
+    if [ -z "$2" ]; then
+        log_error "Reminder type required. Usage: $0 schedule-reminder <type> [time]"
+        log "Available types: daily, morning, evening, urgent"
+        exit 1
+    fi
+    
+    local reminder_type="$2"
+    local time="$3"
+    
+    if [ -n "$time" ]; then
+        log "Scheduling $reminder_type reminder at $time..."
+        php artisan reminders:schedule --type="$reminder_type" --time="$time"
+    else
+        log "Scheduling $reminder_type reminder at default time..."
+        php artisan reminders:schedule --type="$reminder_type"
+    fi
+    
+    log_success "$reminder_type reminder scheduled successfully"
+}
+
+# Function to schedule reminder with delay
+schedule_reminder_delay() {
+    if [ -z "$2" ] || [ -z "$3" ]; then
+        log_error "Reminder type and delay required. Usage: $0 schedule-reminder-delay <type> <minutes>"
+        exit 1
+    fi
+    
+    local reminder_type="$2"
+    local delay="$3"
+    
+    log "Scheduling $reminder_type reminder with $delay minute delay..."
+    php artisan reminders:schedule --type="$reminder_type" --delay="$delay"
+    log_success "$reminder_type reminder scheduled with $delay minute delay"
+}
+
+# Function to list scheduled reminders
+list_scheduled() {
+    log "Listing scheduled reminders..."
+    php artisan reminders:schedule --list
+    log_success "Scheduled reminders listed"
+}
+
+# Function to clear scheduled reminders
+clear_scheduled() {
+    log "Clearing scheduled reminders..."
+    php artisan reminders:schedule --clear
+    log_success "Scheduled reminders cleared"
 }
 
 # Function to process queue
@@ -291,6 +346,18 @@ case "${1:-help}" in
         ;;
     send-reminder-all)
         send_reminder_all
+        ;;
+    schedule-reminder)
+        schedule_reminder "$@"
+        ;;
+    schedule-reminder-delay)
+        schedule_reminder_delay "$@"
+        ;;
+    list-scheduled)
+        list_scheduled
+        ;;
+    clear-scheduled)
+        clear_scheduled
         ;;
     dispatch-daily)
         dispatch_daily

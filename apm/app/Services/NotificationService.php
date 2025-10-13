@@ -246,4 +246,55 @@ class NotificationService
             ->where('is_read', false)
             ->count();
     }
+
+    /**
+     * Create urgent pending approvals notifications (items pending > 3 days)
+     */
+    public function createUrgentPendingApprovalsNotifications(): array
+    {
+        $approvers = $this->getAllApprovers();
+        $notifications = [];
+        $urgentThreshold = now()->subDays(3);
+
+        foreach ($approvers as $approver) {
+            $pendingApprovalsService = new PendingApprovalsService([
+                'staff_id' => $approver['staff_id'],
+                'division_id' => $approver['division_id'],
+                'permissions' => [],
+                'name' => $approver['fname'] . ' ' . $approver['lname'],
+                'email' => $approver['work_email'],
+                'base_url' => config('app.url')
+            ]);
+
+            $pendingApprovals = $pendingApprovalsService->getPendingApprovals();
+            $urgentItems = [];
+
+            // Filter for urgent items (pending > 3 days)
+            foreach ($pendingApprovals as $category => $items) {
+                foreach ($items as $item) {
+                    if (isset($item['date_received']) && $item['date_received'] < $urgentThreshold) {
+                        $urgentItems[] = $item;
+                    }
+                }
+            }
+
+            // Only create notification if there are urgent items
+            if (count($urgentItems) > 0) {
+                $notification = $this->createNotification([
+                    'staff_id' => $approver['staff_id'],
+                    'model_id' => null,
+                    'model_type' => null,
+                    'message' => "URGENT: You have " . count($urgentItems) . " pending approval(s) that have been waiting for more than 3 days and require immediate attention.",
+                    'type' => 'urgent_pending_approvals',
+                    'send_email' => true,
+                    'pending_approvals' => $urgentItems,
+                    'summary_stats' => ['total_pending' => count($urgentItems), 'urgent_count' => count($urgentItems)]
+                ]);
+
+                $notifications[] = $notification;
+            }
+        }
+
+        return $notifications;
+    }
 }
