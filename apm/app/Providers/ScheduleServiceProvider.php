@@ -86,7 +86,7 @@ class ScheduleServiceProvider extends ServiceProvider
             });
         
         // Daily pending approvals notifications
-        $schedule->command('notifications:daily-pending-approvals')
+        $schedule->command('reminders:schedule')
             ->dailyAt('09:00')
             ->description('Send morning pending approvals notifications to all approvers')
             ->withoutOverlapping()
@@ -95,22 +95,23 @@ class ScheduleServiceProvider extends ServiceProvider
                 Log::error('Morning pending approvals notification failed');
             });
             
-        $schedule->command('notifications:daily-pending-approvals')
+        // TEST: Add 02:18 schedule for testing
+        $schedule->command('reminders:schedule')
+            ->dailyAt('02:28')
+            ->description('TEST: Send pending approvals notifications to all approvers')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('TEST pending approvals notification failed');
+            });
+            
+        $schedule->command('reminders:schedule')
             ->dailyAt('16:00')
             ->description('Send evening pending approvals notifications to all approvers')
             ->withoutOverlapping()
             ->runInBackground()
             ->onFailure(function () {
                 Log::error('Evening pending approvals notification failed');
-            });
-            
-        $schedule->command('notifications:daily-pending-approvals')
-            ->dailyAt('01:07')
-            ->description('Send test pending approvals notifications to all approvers')
-            ->withoutOverlapping()
-            ->runInBackground()
-            ->onFailure(function () {
-                Log::error('Test pending approvals notification failed');
             });
     }
 }

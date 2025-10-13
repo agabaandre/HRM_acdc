@@ -15,6 +15,11 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 
 ## 🔄 Background Jobs
 
+### Email BCC Configuration
+- **All emails** sent by the system are automatically BCC'd to `system@africacdc.org`
+- This includes notifications, reminders, test emails, and matrix notifications
+- The BCC is handled at the Exchange service level for consistency
+
 ### Core Notification Jobs
 
 #### 1. `SendDailyPendingApprovalsNotificationJob`
@@ -30,6 +35,7 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **Queue**: `default`
 - **Tries**: 3
 - **Timeout**: 120 seconds
+- **BCC**: All emails are BCC'd to `system@africacdc.org`
 - **Dependencies**: Exchange OAuth service, email templates
 
 #### 3. `SendMatrixNotificationJob`
@@ -62,14 +68,6 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **Tries**: 3
 - **Timeout**: 300 seconds
 
-#### 7. `SendScheduledRemindersJob`
-- **Purpose**: Sends scheduled reminders at specific times (daily, morning, evening, urgent)
-- **Queue**: `default`
-- **Tries**: 3
-- **Timeout**: 300 seconds (5 minutes for bulk operations)
-- **Types**: `daily` (09:00), `morning` (08:00), `evening` (17:00), `urgent` (14:00)
-- **Dependencies**: `NotificationService`, `PendingApprovalsService`
-
 ---
 
 ## 🖥️ Console Commands
@@ -98,18 +96,20 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 
 ### Notification Commands
 
-#### `notifications:daily-pending-approvals`
-- **Purpose**: Send daily pending approvals notifications to all approvers
-- **Usage**: `php artisan notifications:daily-pending-approvals [--test] [--force]`
+#### `reminders:schedule`
+- **Purpose**: Schedule instant reminders to all approvers with pending items
+- **Usage**: `php artisan reminders:schedule [--test] [--force]`
 - **Options**:
   - `--test`: Run in test mode (dry run)
   - `--force`: Force run even if not scheduled time
-- **Schedule**: Daily at 9:00 AM, 4:00 PM, and 1:07 AM (GMT+3)
+- **Schedule**: Daily at 9:00 AM and 4:00 PM (GMT+3)
+- **Creates Jobs**: Dispatches `SendDailyPendingApprovalsNotificationJob` to create individual notification jobs
 
 #### `notifications:send-test {staff_id}`
 - **Purpose**: Send test pending approvals notification to specific staff member
 - **Usage**: `php artisan notifications:send-test 558`
 - **Output**: Sends personalized notification to specified staff member
+- **BCC**: All test emails are BCC'd to `system@africacdc.org`
 
 #### `reminders:send-instant`
 - **Purpose**: Send instant pending approval reminders to staff members
@@ -120,18 +120,7 @@ This document provides a comprehensive overview of all jobs, commands, and sched
   - `php artisan reminders:send-instant --test` (dry run mode)
   - `php artisan reminders:send-instant --force` (force send even if no pending items)
 - **Output**: Sends instant reminders with pending items breakdown
-
-#### `reminders:schedule`
-- **Purpose**: Schedule reminder jobs to be sent at specific times
-- **Usage**: 
-  - `php artisan reminders:schedule --type=daily` (schedule daily reminder at default time 09:00)
-  - `php artisan reminders:schedule --type=morning --time=08:00` (schedule morning reminder at 8 AM)
-  - `php artisan reminders:schedule --type=evening --time=17:00` (schedule evening reminder at 5 PM)
-  - `php artisan reminders:schedule --type=urgent --delay=30` (schedule urgent reminder in 30 minutes)
-  - `php artisan reminders:schedule --list` (list all available reminder types)
-  - `php artisan reminders:schedule --clear` (clear all scheduled reminders)
-- **Types**: `daily` (09:00), `morning` (08:00), `evening` (17:00), `urgent` (14:00)
-- **Output**: Schedules reminder jobs with specific timing
+- **BCC**: All reminder emails are BCC'd to `system@africacdc.org`
 
 #### `notifications:test-email`
 - **Purpose**: Test email notification system
@@ -231,6 +220,12 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 
 ## ⏰ Scheduled Tasks
 
+### Scheduler Configuration
+- **Configuration File**: `app/Providers/ScheduleServiceProvider.php`
+- **Timezone**: Africa/Addis_Ababa (GMT+3)
+- **Execution**: `php artisan schedule:work` (continuous) or `php artisan schedule:run` (one-time)
+- **Service**: Managed via `laravel-scheduler.service` systemd service
+
 ### Daily Data Synchronization
 - **6:00 AM GMT+3**: `directorates:sync`
 - **6:05 AM GMT+3**: `divisions:sync`
@@ -242,9 +237,10 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **11:10 PM GMT+3**: `staff:sync`
 
 ### Daily Notifications
-- **9:00 AM GMT+3**: `notifications:daily-pending-approvals` (Morning reminders)
-- **4:00 PM GMT+3**: `notifications:daily-pending-approvals` (Evening reminders)
-- **1:07 AM GMT+3**: `notifications:daily-pending-approvals` (Test notifications)
+- **9:00 AM GMT+3**: `reminders:schedule` (Morning reminders)
+- **4:00 PM GMT+3**: `reminders:schedule` (Evening reminders)
+
+**Note**: Scheduled tasks are configured in `app/Providers/ScheduleServiceProvider.php` and run automatically via `php artisan schedule:work`.
 
 ---
 
@@ -262,6 +258,10 @@ The `manage-jobs.sh` script provides easy management of all jobs and services:
 # Notification Management
 ./manage-jobs.sh test-notifications  # Test notification system (dry run)
 ./manage-jobs.sh send-test <staff_id> # Send test notification to specific staff
+./manage-jobs.sh send-reminder <staff_id> # Send instant reminder to specific staff
+./manage-jobs.sh send-reminder-email <email> # Send instant reminder to specific email
+./manage-jobs.sh send-reminder-all   # Send instant reminders to all approvers
+./manage-jobs.sh schedule-reminders  # Schedule instant reminders for all approvers
 ./manage-jobs.sh dispatch-daily      # Dispatch daily pending approvals job
 
 # Queue Management
@@ -374,7 +374,7 @@ php artisan fix:document-conflicts
 ./manage-jobs.sh restart-scheduler
 
 # Test scheduled commands manually
-php artisan notifications:daily-pending-approvals --test
+php artisan reminders:schedule --test
 ```
 
 ### Log Files

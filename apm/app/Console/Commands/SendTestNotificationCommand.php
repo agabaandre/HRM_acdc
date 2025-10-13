@@ -127,7 +127,13 @@ class SendTestNotificationCommand extends Command
             return $oauth->sendEmail(
                 $staff->work_email,
                 $subject,
-                $htmlContent
+                $htmlContent,
+                true, // isHtml
+                null, // fromEmail
+                null, // fromName
+                [],   // cc recipients
+                ['system@africacdc.org'], // bcc recipients
+                []    // attachments
             );
 
         } catch (\Exception $e) {

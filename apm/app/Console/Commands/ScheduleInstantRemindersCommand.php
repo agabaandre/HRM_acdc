@@ -2,18 +2,18 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\SendDailyPendingApprovalsNotificationJob;
 use Illuminate\Console\Command;
+use App\Jobs\SendDailyPendingApprovalsNotificationJob;
 use Illuminate\Support\Facades\Log;
 
-class SendDailyPendingApprovalsCommand extends Command
+class ScheduleInstantRemindersCommand extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'notifications:daily-pending-approvals 
+    protected $signature = 'reminders:schedule 
                             {--test : Run in test mode (dry run)}
                             {--force : Force run even if not scheduled time}';
 
@@ -22,7 +22,7 @@ class SendDailyPendingApprovalsCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Send daily pending approvals notifications to all approvers';
+    protected $description = 'Schedule instant reminders to all approvers with pending items';
 
     /**
      * Execute the console command.
@@ -33,36 +33,34 @@ class SendDailyPendingApprovalsCommand extends Command
         $isForced = $this->option('force');
 
         if ($isTestMode) {
-            $this->info('🧪 Running in TEST MODE - No emails will be sent');
+            $this->info('🧪 Running in TEST MODE - No jobs will be created');
             $this->runTestMode();
             return;
         }
 
-        // Check if it's the right time to send (9 AM) unless forced
+        // Check if it's the right time to send (9 AM, 4 PM) unless forced
         if (!$isForced && !$this->isCorrectTime()) {
-            $this->warn('⏰ Not the scheduled time (9:00 AM). Use --force to override.');
+            $this->warn('⏰ Not the scheduled time (9:00 AM or 4:00 PM). Use --force to override.');
             return;
         }
 
-        $this->info('🚀 Starting daily pending approvals notification job...');
+        $this->info('🚀 Scheduling instant reminders for all approvers...');
 
         try {
-            // Use the new notification service
-            $notificationService = new \App\Services\NotificationService();
-            $notifications = $notificationService->createDailyPendingApprovalsNotifications();
+            // Dispatch the job to create notifications for all approvers
+            dispatch(new SendDailyPendingApprovalsNotificationJob());
             
-            $this->info('✅ Daily pending approvals notifications created successfully!');
-            $this->info("📧 " . count($notifications) . " notifications have been created and queued for sending.");
+            $this->info('✅ Instant reminders job dispatched successfully!');
+            $this->info('📤 Job will create notifications for all approvers with pending items.');
             
-            Log::info('Daily pending approvals notifications created via command', [
+            Log::info('Instant reminders job dispatched via command', [
                 'timestamp' => now(),
-                'forced' => $isForced,
-                'notifications_created' => count($notifications)
+                'forced' => $isForced
             ]);
 
         } catch (\Exception $e) {
-            $this->error('❌ Failed to create daily pending approvals notifications: ' . $e->getMessage());
-            Log::error('Failed to create daily pending approvals notifications', [
+            $this->error('❌ Failed to dispatch instant reminders job: ' . $e->getMessage());
+            Log::error('Failed to dispatch instant reminders job', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -70,12 +68,12 @@ class SendDailyPendingApprovalsCommand extends Command
     }
 
     /**
-     * Check if it's the correct time to send notifications (9 AM)
+     * Check if it's the correct time to send notifications (9 AM or 4 PM)
      */
     private function isCorrectTime(): bool
     {
         $currentHour = now()->hour;
-        return $currentHour === 9;
+        return $currentHour === 9 || $currentHour === 16; // 9 AM or 4 PM
     }
 
     /**
@@ -83,7 +81,7 @@ class SendDailyPendingApprovalsCommand extends Command
      */
     private function runTestMode(): void
     {
-        $this->info('📊 Analyzing pending approvals for all approvers...');
+        $this->info('📊 Analyzing what would be sent to all approvers...');
 
         try {
             // Get all approvers (same logic as the job)
@@ -121,7 +119,7 @@ class SendDailyPendingApprovalsCommand extends Command
             $this->info("  • Total approvers: " . count($approvers));
             $this->info("  • Approvers with pending items: {$approversWithPending}");
             $this->info("  • Total pending items: {$totalPending}");
-            $this->info("  • Emails that would be sent: {$approversWithPending}");
+            $this->info("  • Jobs that would be created: {$approversWithPending}");
 
         } catch (\Exception $e) {
             $this->error('❌ Test mode failed: ' . $e->getMessage());
