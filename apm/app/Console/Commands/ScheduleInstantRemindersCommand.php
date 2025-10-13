@@ -32,6 +32,14 @@ class ScheduleInstantRemindersCommand extends Command
         $isTestMode = $this->option('test');
         $isForced = $this->option('force');
 
+        // Add debugging for scheduler context
+        Log::info('ScheduleInstantRemindersCommand started', [
+            'test_mode' => $isTestMode,
+            'forced' => $isForced,
+            'timestamp' => now(),
+            'is_scheduled' => !$isForced
+        ]);
+
         if ($isTestMode) {
             $this->info('🧪 Running in TEST MODE - No jobs will be created');
             $this->runTestMode();
@@ -41,6 +49,10 @@ class ScheduleInstantRemindersCommand extends Command
         // Check if it's the right time to send (9 AM, 4 PM) unless forced
         if (!$isForced && !$this->isCorrectTime()) {
             $this->warn('⏰ Not the scheduled time (9:00 AM or 4:00 PM). Use --force to override.');
+            Log::info('Command skipped - not scheduled time', [
+                'current_hour' => now()->hour,
+                'is_correct_time' => $this->isCorrectTime()
+            ]);
             return;
         }
 
@@ -48,6 +60,7 @@ class ScheduleInstantRemindersCommand extends Command
 
         try {
             // Dispatch the job to create notifications for all approvers
+            Log::info('About to dispatch SendDailyPendingApprovalsNotificationJob');
             dispatch(new SendDailyPendingApprovalsNotificationJob());
             
             $this->info('✅ Instant reminders job dispatched successfully!');
@@ -55,7 +68,8 @@ class ScheduleInstantRemindersCommand extends Command
             
             Log::info('Instant reminders job dispatched via command', [
                 'timestamp' => now(),
-                'forced' => $isForced
+                'forced' => $isForced,
+                'jobs_in_queue_after' => \DB::table('jobs')->count()
             ]);
 
         } catch (\Exception $e) {
@@ -68,12 +82,20 @@ class ScheduleInstantRemindersCommand extends Command
     }
 
     /**
-     * Check if it's the correct time to send notifications (9 AM or 4 PM)
+     * Check if it's the correct time to send notifications (9 AM, 4 PM, or test times)
      */
     private function isCorrectTime(): bool
     {
         $currentHour = now()->hour;
-        return $currentHour === 9 || $currentHour === 16; // 9 AM or 4 PM
+        $isCorrect = $currentHour === 9 || $currentHour === 16 || $currentHour === 2; // 9 AM, 4 PM, or 2 AM (for testing)
+        
+        Log::info('Time check', [
+            'current_hour' => $currentHour,
+            'is_correct_time' => $isCorrect,
+            'expected_hours' => [9, 16, 2]
+        ]);
+        
+        return $isCorrect;
     }
 
     /**
