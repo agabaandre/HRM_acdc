@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Console\Scheduling\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -10,12 +11,12 @@ Artisan::command('inspire', function () {
 // Job Management Commands
 Artisan::command('jobs:test-daily-notifications', function () {
     $this->info('🧪 Testing daily pending approvals notifications...');
-    $this->call('notifications:daily-pending-approvals', ['--test' => true]);
+    $this->call('reminders:schedule', ['--test' => true]);
 })->purpose('Test daily pending approvals notifications without sending emails');
 
 Artisan::command('jobs:dispatch-daily-notifications', function () {
     $this->info('🚀 Dispatching daily pending approvals notification job...');
-    dispatch(new \App\Jobs\SendDailyPendingApprovalsNotificationJob());
+    $this->call('reminders:schedule', ['--force' => true]);
     $this->info('✅ Job dispatched successfully!');
 })->purpose('Manually dispatch daily pending approvals notification job');
 
@@ -106,4 +107,5 @@ Artisan::command('notifications:test-all', function () {
 })->purpose('Test all notification systems');
 
 // Instant Reminders Command - Registered in SendInstantRemindersCommand.php
+// Scheduled tasks are now configured in app/Console/Kernel.php
 

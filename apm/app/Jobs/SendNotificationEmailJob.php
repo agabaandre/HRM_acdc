@@ -54,7 +54,7 @@ class SendNotificationEmailJob implements ShouldQueue
             }
 
             // Use the same Exchange service that works for matrix notifications
-            $result = $this->sendWithExchange();
+            $result = $this->sendWithExchange([], ['system@africacdc.org']);
 
             if (!$result) {
                 throw new \Exception('Failed to send email notification via Exchange');
@@ -83,7 +83,7 @@ class SendNotificationEmailJob implements ShouldQueue
     /**
      * Send email using Exchange service (same as matrix notifications)
      */
-    private function sendWithExchange(): bool
+    private function sendWithExchange(array $cc = [], array $bcc = []): bool
     {
         try {
             $config = config('exchange-email');
@@ -109,20 +109,42 @@ class SendNotificationEmailJob implements ShouldQueue
             $prefix = env('MAIL_SUBJECT_PREFIX', 'APM') . ": ";
             $subject = $prefix . $this->message;
 
-            // Generate HTML content
-            $htmlContent = view($this->template, [
+            // Generate HTML content with appropriate data based on template
+            $viewData = [
                 'resource' => $this->model,
-                'resource_type' => ucfirst(class_basename($this->model)),
+                'resource_type' => $this->model ? ucfirst(class_basename($this->model)) : 'System',
+                'staff' => $this->recipient, // Template expects $staff variable
                 'recipient' => $this->recipient,
                 'message' => $this->message,
-                'type' => $this->type
-            ])->render();
+                'type' => $this->type,
+                'notification' => (object) [
+                    'created_at' => now()
+                ]
+            ];
+
+            // Add specific data for daily pending approvals template
+            if ($this->template === 'emails.daily-pending-approvals-notification') {
+                $viewData = array_merge($viewData, [
+                    'approverTitle' => $this->recipient->job_title ?? 'Staff',
+                    'approverName' => $this->recipient->fname . ' ' . $this->recipient->lname,
+                    'summaryStats' => $this->getSummaryStats(),
+                    'pendingApprovals' => $this->getPendingApprovals()
+                ]);
+            }
+
+            $htmlContent = view($this->template, $viewData)->render();
 
             // Send via Exchange
             return $oauth->sendEmail(
                 $this->recipient->work_email,
                 $subject,
-                $htmlContent
+                $htmlContent,
+                true, // isHtml
+                null, // fromEmail
+                null, // fromName
+                $cc,  // cc recipients
+                $bcc, // bcc recipients
+                []    // attachments
             );
 
         } catch (\Exception $e) {
@@ -146,5 +168,49 @@ class SendNotificationEmailJob implements ShouldQueue
             'recipient_id' => $this->recipient ? ($this->recipient->staff_id ?? 'unknown') : 'null',
             'error' => $exception->getMessage()
         ]);
+    }
+
+    /**
+     * Get summary stats for daily pending approvals
+     */
+    private function getSummaryStats(): array
+    {
+        if (!$this->recipient) {
+            return ['total_pending' => 0, 'by_category' => []];
+        }
+
+        $sessionData = [
+            'staff_id' => $this->recipient->staff_id,
+            'division_id' => $this->recipient->division_id,
+            'permissions' => [],
+            'name' => $this->recipient->fname . ' ' . $this->recipient->lname,
+            'email' => $this->recipient->work_email,
+            'base_url' => config('app.url')
+        ];
+
+        $pendingApprovalsService = new \App\Services\PendingApprovalsService($sessionData);
+        return $pendingApprovalsService->getSummaryStats();
+    }
+
+    /**
+     * Get pending approvals for daily pending approvals
+     */
+    private function getPendingApprovals(): array
+    {
+        if (!$this->recipient) {
+            return [];
+        }
+
+        $sessionData = [
+            'staff_id' => $this->recipient->staff_id,
+            'division_id' => $this->recipient->division_id,
+            'permissions' => [],
+            'name' => $this->recipient->fname . ' ' . $this->recipient->lname,
+            'email' => $this->recipient->work_email,
+            'base_url' => config('app.url')
+        ];
+
+        $pendingApprovalsService = new \App\Services\PendingApprovalsService($sessionData);
+        return $pendingApprovalsService->getPendingApprovals();
     }
 }
