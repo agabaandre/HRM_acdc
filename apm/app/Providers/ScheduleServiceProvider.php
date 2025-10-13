@@ -97,7 +97,7 @@ class ScheduleServiceProvider extends ServiceProvider
             
         // TEST: Add 02:18 schedule for testing
         $schedule->command('reminders:schedule')
-            ->dailyAt('02:28')
+            ->dailyAt('02:34')
             ->description('TEST: Send pending approvals notifications to all approvers')
             ->withoutOverlapping()
             ->runInBackground()
