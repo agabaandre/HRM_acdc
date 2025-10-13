@@ -985,7 +985,7 @@
                         </div>
 
                         <!-- Enhanced Approval Actions -->
-                        @if (can_take_action_generic($requestARF) || is_with_creator_generic($requestARF))
+                 @if (can_take_action_generic($requestARF))
                             <div class="card border-0 shadow-lg mb-4"
                                 style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
                                 <div class="card-header bg-transparent border-0 py-4"

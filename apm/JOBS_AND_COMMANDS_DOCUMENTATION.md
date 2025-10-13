@@ -62,6 +62,14 @@ This document provides a comprehensive overview of all jobs, commands, and sched
 - **Tries**: 3
 - **Timeout**: 300 seconds
 
+#### 7. `SendScheduledRemindersJob`
+- **Purpose**: Sends scheduled reminders at specific times (daily, morning, evening, urgent)
+- **Queue**: `default`
+- **Tries**: 3
+- **Timeout**: 300 seconds (5 minutes for bulk operations)
+- **Types**: `daily` (09:00), `morning` (08:00), `evening` (17:00), `urgent` (14:00)
+- **Dependencies**: `NotificationService`, `PendingApprovalsService`
+
 ---
 
 ## 🖥️ Console Commands
@@ -112,6 +120,18 @@ This document provides a comprehensive overview of all jobs, commands, and sched
   - `php artisan reminders:send-instant --test` (dry run mode)
   - `php artisan reminders:send-instant --force` (force send even if no pending items)
 - **Output**: Sends instant reminders with pending items breakdown
+
+#### `reminders:schedule`
+- **Purpose**: Schedule reminder jobs to be sent at specific times
+- **Usage**: 
+  - `php artisan reminders:schedule --type=daily` (schedule daily reminder at default time 09:00)
+  - `php artisan reminders:schedule --type=morning --time=08:00` (schedule morning reminder at 8 AM)
+  - `php artisan reminders:schedule --type=evening --time=17:00` (schedule evening reminder at 5 PM)
+  - `php artisan reminders:schedule --type=urgent --delay=30` (schedule urgent reminder in 30 minutes)
+  - `php artisan reminders:schedule --list` (list all available reminder types)
+  - `php artisan reminders:schedule --clear` (clear all scheduled reminders)
+- **Types**: `daily` (09:00), `morning` (08:00), `evening` (17:00), `urgent` (14:00)
+- **Output**: Schedules reminder jobs with specific timing
 
 #### `notifications:test-email`
 - **Purpose**: Test email notification system
