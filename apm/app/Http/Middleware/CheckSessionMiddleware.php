@@ -19,7 +19,7 @@ class CheckSessionMiddleware
         // Check if user session exists
         if (!session()->has('user')) {
             // Get the parent URL from config or environment, fallback to a default if not set
-            $parentUrl = env('PARENT_APP_URL', 'http://localhost');
+            $parentUrl = env('BASE_URL', 'http://localhost');
             $staffRoute = '/staff';
             
             // If no session, redirect to parent application's staff route
