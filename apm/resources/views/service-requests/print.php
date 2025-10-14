@@ -299,12 +299,11 @@
       );
 
       // Define the order of sections: TO, THROUGH, FROM
-      $sectionOrder = ['to', 'through', 'from'];
+      $sectionOrder = ['to', 'from'];
 
       // Section labels in sentence case
       $sectionLabels = [
         'to' => 'To:',
-        'through' => 'Through:',
         'from' => 'From:'
       ];
 
