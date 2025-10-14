@@ -69,8 +69,9 @@ class CheckSessionExpiry
     private function isCiSessionExpired(array $userSession): bool
     {
         try {
-            // Get CI app base URL from config
-            $ciBaseUrl = config('app.ci_base_url', 'http://localhost/staff');
+            // Get CI app base URL from confi
+            $base_url = env('BASE_URL');
+            $ciBaseUrl = config('app.ci_base_url', $base_url);
             $ciToken = $userSession['ci_token'] ?? null;
             
             if (!$ciToken) {
