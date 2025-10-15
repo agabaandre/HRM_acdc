@@ -235,6 +235,9 @@
                 This is an automated notification from the Africa CDC Approvals Management System.<br>
                 Please log in to the system to take action on pending items.
             </p>
+            <p style="font-style: italic; color: #119A48; font-weight: 500; margin: 15px 0;">
+                <strong>Prompt approvals enhance staff and organisational efficiency.</strong>
+            </p>
             <p>&copy; {{ date('Y') }} Africa CDC. All rights reserved.</p>
         </div>
     </div>

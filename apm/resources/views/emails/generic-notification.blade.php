@@ -63,6 +63,9 @@
     <div class="footer">
         <p>This is an automated notification from the Africa CDC APM system.</p>
         <p>Please ignore if you received this in error.</p>
+        <p style="font-style: italic; color: #119A48; font-weight: 500; margin: 15px 0;">
+            <strong>Prompt approvals enhance staff and organisational efficiency.</strong>
+        </p>
     </div>
 </body>
 </html>
