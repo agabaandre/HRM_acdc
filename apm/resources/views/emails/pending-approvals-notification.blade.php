@@ -168,6 +168,9 @@
             <p>Please review and take action on these pending approvals.</p>
             <a href="{{ $baseUrl }}/pending-approvals" class="btn">View All Pending Approvals</a>
             <p><small>This is an automated notification. Please do not reply to this email.</small></p>
+            <p style="font-style: italic; color: #119A48; font-weight: 500; margin: 15px 0;">
+                <strong>Prompt approvals enhance staff and organisational efficiency.</strong>
+            </p>
             <p>&copy; {{ date('Y') }} Africa CDC. All rights reserved.</p>
         </div>
     </div>

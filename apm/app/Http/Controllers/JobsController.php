@@ -338,10 +338,10 @@ class JobsController extends Controller
     public function executeRemindersSchedule(Request $request): JsonResponse
     {
         $request->validate([
-            'force' => 'boolean'
+            'force' => 'nullable|in:true,false,1,0'
         ]);
 
-        $force = $request->input('force', false);
+        $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
         $startTime = microtime(true);
 
         try {
