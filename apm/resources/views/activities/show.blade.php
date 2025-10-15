@@ -872,7 +872,6 @@
             </div>
         @endif
 
-        @if($activity->fund_type_id != 1)
         <div class="row">
             <!-- Participants & Location -->
             <div class="card content-section bg-green border-0 mb-4 w-100">
@@ -959,7 +958,7 @@
                         </table>
                     </div>
                 </div>
-                    @endif
+                
 
                     <!-- Participants Summary Table -->
                     <div class="mt-4">

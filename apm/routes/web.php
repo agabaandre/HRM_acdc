@@ -151,6 +151,7 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::get('/jobs/document-counters', [App\Http\Controllers\JobsController::class, 'getDocumentCounters'])->name('jobs.document-counters');
     Route::post('/jobs/reset-document-counters', [App\Http\Controllers\JobsController::class, 'resetDocumentCounters'])->name('jobs.reset-document-counters');
     Route::get('/jobs/document-counter-filters', [App\Http\Controllers\JobsController::class, 'getDocumentCounterFilters'])->name('jobs.document-counter-filters');
+    Route::post('/jobs/reminders-schedule', [App\Http\Controllers\JobsController::class, 'executeRemindersSchedule'])->name('jobs.reminders-schedule');
 
     // Approver Dashboard Routes
 Route::get('/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'index'])->name('approver-dashboard.index');
