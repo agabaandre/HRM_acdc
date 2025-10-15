@@ -328,6 +328,92 @@
             </div>
         </div>
 
+        <!-- Notification & Reminders Commands -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bx bx-bell me-2 text-primary"></i>Notification & Reminders Commands</h6>
+                <div class="text-muted small mt-1">
+                    <i class="bx bx-info-circle me-1"></i>Manage email notifications and reminder schedules
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <!-- Reminders Schedule Command -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-calendar text-primary" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Schedule Reminders</h6>
+                                <p class="card-text small text-muted">Schedule daily pending approval reminders for all approvers</p>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" 
+                                            onclick="executeRemindersSchedule(false)">
+                                        <i class="bx bx-play me-1"></i> Schedule Now
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning btn-sm" 
+                                            onclick="executeRemindersSchedule(true)">
+                                        <i class="bx bx-send me-1"></i> Force Schedule
+                                    </button>
+                                </div>
+                                <small class="text-muted mt-2 d-block">
+                                    <i class="bx bx-info-circle me-1"></i>
+                                    Force mode bypasses time restrictions
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Send Instant Reminders Command -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-send text-success" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Send Instant Reminders</h6>
+                                <p class="card-text small text-muted">Send immediate reminders to specific staff or all approvers</p>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-outline-success btn-sm" 
+                                            onclick="showInstantRemindersModal()">
+                                        <i class="bx bx-send me-1"></i> Send Now
+                                    </button>
+                                </div>
+                                <small class="text-muted mt-2 d-block">
+                                    <i class="bx bx-info-circle me-1"></i>
+                                    Send to specific staff or all approvers
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Queue Status Command -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="bx bx-data text-info" style="font-size: 2rem;"></i>
+                                </div>
+                                <h6 class="card-title">Queue Status</h6>
+                                <p class="card-text small text-muted">Check queue status and pending jobs</p>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-outline-info btn-sm" 
+                                            onclick="executeCommand('queue:work --once')">
+                                        <i class="bx bx-play me-1"></i> Process Queue
+                                    </button>
+                                </div>
+                                <small class="text-muted mt-2 d-block">
+                                    <i class="bx bx-info-circle me-1"></i>
+                                    Process one job from the queue
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Document Counter Management -->
         <div class="card mb-4">
             <div class="card-header bg-light">
@@ -875,6 +961,70 @@ function cancelReset() {
     $('#resetDivision').val('');
     $('#resetType').val('');
     $('#syncMode').prop('checked', false);
+}
+
+// Reminders Schedule Functions
+function executeRemindersSchedule(force = false) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Executing...';
+    button.disabled = true;
+
+    // Show output card
+    $('#outputCard').show();
+    $('#commandOutput').html('<div class="text-info">Executing reminders schedule command' + (force ? ' (force mode)' : '') + '...</div>');
+
+    $.ajax({
+        url: '{{ route("jobs.reminders-schedule") }}',
+        type: 'POST',
+        data: {
+            force: force,
+            _token: '{{ csrf_token() }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                $('#commandOutput').html(`
+                    <div class="text-success">✓ Reminders schedule executed successfully</div>
+                    <div class="text-light">Execution time: ${response.execution_time}ms</div>
+                    <div class="text-light">Force mode: ${response.force_mode ? 'Yes' : 'No'}</div>
+                    <div class="text-light mt-2">Output:</div>
+                    <div class="text-light">${response.output || 'No output'}</div>
+                `);
+                showAlert('Reminders schedule executed successfully', 'success');
+            } else {
+                $('#commandOutput').html(`
+                    <div class="text-danger">✗ Reminders schedule failed</div>
+                    <div class="text-light">Execution time: ${response.execution_time}ms</div>
+                    <div class="text-light">Force mode: ${response.force_mode ? 'Yes' : 'No'}</div>
+                    <div class="text-light mt-2">Error:</div>
+                    <div class="text-danger">${response.output || 'Unknown error'}</div>
+                `);
+                showAlert('Reminders schedule execution failed', 'danger');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            $('#commandOutput').html(`
+                <div class="text-danger">✗ Reminders schedule failed</div>
+                <div class="text-danger mt-2">Error:</div>
+                <div class="text-danger">${response?.message || 'Network error'}</div>
+            `);
+            showAlert('Reminders schedule execution failed', 'danger');
+        },
+        complete: function() {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    });
+}
+
+function showInstantRemindersModal() {
+    // For now, just show an alert with instructions
+    // In a full implementation, you could create a modal with options
+    showAlert('To send instant reminders, use the command line: php artisan reminders:send-instant --all', 'info');
 }
 </script>
 @endpush

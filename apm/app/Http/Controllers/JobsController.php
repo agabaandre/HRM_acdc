@@ -30,7 +30,7 @@ class JobsController extends Controller
     public function executeCommand(Request $request): JsonResponse
     {
         $request->validate([
-            'command' => 'required|string|in:cache:clear,config:clear,route:clear,view:clear,storage:link,storage:unlink,optimize,config:cache,route:cache,view:cache,divisions:sync,staff:sync,directorates:sync,audit:cleanup'
+            'command' => 'required|string|in:cache:clear,config:clear,route:clear,view:clear,storage:link,storage:unlink,optimize,config:cache,route:cache,view:cache,divisions:sync,staff:sync,directorates:sync,audit:cleanup,reminders:schedule'
         ]);
 
         $command = $request->input('command');
@@ -142,7 +142,7 @@ class JobsController extends Controller
 
             Log::info('Environment file updated', [
                 'backup_created' => $backupPath,
-                'updated_by' => auth()->id() ?? 'system'
+                'updated_by' => 'system'
             ]);
 
             return response()->json([
@@ -171,7 +171,7 @@ class JobsController extends Controller
             $info = [
                 'php_version' => PHP_VERSION,
                 'laravel_version' => app()->version(),
-                'server_time' => now()->format('Y-m-d H:i:s'),
+                'server_time' => date('Y-m-d H:i:s'),
                 'timezone' => config('app.timezone'),
                 'environment' => config('app.env'),
                 'debug_mode' => config('app.debug'),
@@ -328,6 +328,79 @@ class JobsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get filters: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Execute reminders schedule command with force option.
+     */
+    public function executeRemindersSchedule(Request $request): JsonResponse
+    {
+        $request->validate([
+            'force' => 'boolean'
+        ]);
+
+        $force = $request->input('force', false);
+        $startTime = microtime(true);
+
+        try {
+            // Build the command with optional --force flag
+            $command = 'reminders:schedule';
+            if ($force) {
+                $command .= ' --force';
+            }
+
+            // Execute the artisan command
+            $exitCode = Artisan::call($command);
+            $output = Artisan::output();
+            $executionTime = round((microtime(true) - $startTime) * 1000, 2);
+
+            if ($exitCode === 0) {
+                Log::info("Reminders schedule command executed successfully: {$command}", [
+                    'output' => $output,
+                    'execution_time' => $executionTime,
+                    'force_mode' => $force
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Reminders schedule executed successfully',
+                    'output' => $output,
+                    'execution_time' => $executionTime,
+                    'command' => $command,
+                    'force_mode' => $force
+                ]);
+            } else {
+                Log::error("Reminders schedule command failed: {$command}", [
+                    'exit_code' => $exitCode,
+                    'output' => $output,
+                    'force_mode' => $force
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Reminders schedule command failed to execute',
+                    'output' => $output,
+                    'execution_time' => $executionTime,
+                    'command' => $command,
+                    'force_mode' => $force
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error("Reminders schedule command exception: {$command}", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'force_mode' => $force
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Reminders schedule command execution failed: ' . $e->getMessage(),
+                'output' => $e->getMessage(),
+                'execution_time' => round((microtime(true) - $startTime) * 1000, 2),
+                'command' => $command,
+                'force_mode' => $force
             ], 500);
         }
     }
