@@ -338,6 +338,32 @@ class ServiceRequestController extends Controller
     {
         $budgetData = [];
         
+        // For non-travel memos, preserve the original budget structure
+        if ($request->input('source_type') === 'non_travel_memo') {
+            $originalBudgetBreakdown = $request->input('budget_breakdown');
+            if ($originalBudgetBreakdown) {
+                $budgetBreakdown = is_string($originalBudgetBreakdown) 
+                    ? json_decode($originalBudgetBreakdown, true) 
+                    : $originalBudgetBreakdown;
+                
+                return [
+                    'internal_participants_cost' => json_encode([]),
+                    'external_participants_cost' => json_encode([]),
+                    'other_costs' => json_encode([]),
+                    'original_total_budget' => $request->input('original_total_budget', 0),
+                    'new_total_budget' => $request->input('new_total_budget', 0),
+                    'budget_breakdown' => json_encode($budgetBreakdown),
+                    'title' => $request->input('service_title'),
+                    'source_type' => $request->input('source_type'),
+                    'source_id' => $request->input('source_id'),
+                    'model_type' => $request->input('model_type'),
+                    'fund_type_id' => $request->input('fund_type_id'),
+                    'responsible_person_id' => $request->input('responsible_person_id'),
+                    'budget_id' => $request->input('budget_id'),
+                ];
+            }
+        }
+        
         // Get cost items mapping (ID to name)
         $costItems = CostItem::where('cost_type', 'Individual Cost')->get()->keyBy('id');
         $costItemMapping = $costItems->mapWithKeys(function ($item) {
@@ -365,7 +391,7 @@ class ServiceRequestController extends Controller
                 $costsWithNames = [];
                 $total = 0;
                 foreach ($costs as $costId => $costValue) {
-                    $costName = $costItemMapping[$costId] ?? "Unknown Cost (ID: $costId)";
+                    $costName = $costItemMapping[$costId] ?? $costId;
                     $costsWithNames[$costName] = floatval($costValue);
                     $total += floatval($costValue);
                 }
@@ -404,7 +430,7 @@ class ServiceRequestController extends Controller
                 $costsWithNames = [];
                 $total = 0;
                 foreach ($costs as $costId => $costValue) {
-                    $costName = $costItemMapping[$costId] ?? "Unknown Cost (ID: $costId)";
+                    $costName = $costItemMapping[$costId] ?? $costId;
                     $costsWithNames[$costName] = floatval($costValue);
                     $total += floatval($costValue);
                 }
@@ -660,6 +686,9 @@ class ServiceRequestController extends Controller
         if ($serviceRequest->source_type && $serviceRequest->source_id) {
             $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
         }
+        
+        // Clean up stored budget data to remove "Unknown Cost" text
+        $this->cleanupStoredBudgetData($serviceRequest);
         
         // Get approval levels for progress bar
         $approvalLevels = $this->getApprovalLevels($serviceRequest);
@@ -2173,5 +2202,126 @@ class ServiceRequestController extends Controller
         }
 
         return $workflowInfo;
+    }
+
+    /**
+     * Clean up stored budget data to remove "Unknown Cost" text
+     */
+    private function cleanupStoredBudgetData(ServiceRequest $serviceRequest): void
+    {
+        // Process internal participants cost data
+        if ($serviceRequest->internal_participants_cost) {
+            $internalCosts = is_string($serviceRequest->internal_participants_cost) 
+                ? json_decode($serviceRequest->internal_participants_cost, true) 
+                : $serviceRequest->internal_participants_cost;
+            
+            if (is_array($internalCosts)) {
+                $cleaned = false;
+                foreach ($internalCosts as &$participant) {
+                    if (isset($participant['costs']) && is_array($participant['costs'])) {
+                        $newCosts = [];
+                        foreach ($participant['costs'] as $costName => $costValue) {
+                            // Remove "Unknown Cost (ID: " prefix and ")" suffix
+                            if (strpos($costName, 'Unknown Cost (ID: ') === 0 && substr($costName, -1) === ')') {
+                                $newCostName = substr($costName, 18, -1); // Remove "Unknown Cost (ID: " and ")"
+                                $newCosts[$newCostName] = $costValue;
+                                $cleaned = true;
+                            } else {
+                                $newCosts[$costName] = $costValue;
+                            }
+                        }
+                        $participant['costs'] = $newCosts;
+                    }
+                }
+                
+                if ($cleaned) {
+                    $serviceRequest->internal_participants_cost = json_encode($internalCosts);
+                }
+            }
+        }
+        
+        // Process external participants cost data
+        if ($serviceRequest->external_participants_cost) {
+            $externalCosts = is_string($serviceRequest->external_participants_cost) 
+                ? json_decode($serviceRequest->external_participants_cost, true) 
+                : $serviceRequest->external_participants_cost;
+            
+            if (is_array($externalCosts)) {
+                $cleaned = false;
+                foreach ($externalCosts as &$participant) {
+                    if (isset($participant['costs']) && is_array($participant['costs'])) {
+                        $newCosts = [];
+                        foreach ($participant['costs'] as $costName => $costValue) {
+                            // Remove "Unknown Cost (ID: " prefix and ")" suffix
+                            if (strpos($costName, 'Unknown Cost (ID: ') === 0 && substr($costName, -1) === ')') {
+                                $newCostName = substr($costName, 18, -1); // Remove "Unknown Cost (ID: " and ")"
+                                $newCosts[$newCostName] = $costValue;
+                                $cleaned = true;
+                            } else {
+                                $newCosts[$costName] = $costValue;
+                            }
+                        }
+                        $participant['costs'] = $newCosts;
+                    }
+                }
+                
+                if ($cleaned) {
+                    $serviceRequest->external_participants_cost = json_encode($externalCosts);
+                }
+            }
+        }
+        
+        // Process budget breakdown data
+        if ($serviceRequest->budget_breakdown) {
+            $budgetData = is_string($serviceRequest->budget_breakdown) 
+                ? json_decode($serviceRequest->budget_breakdown, true) 
+                : $serviceRequest->budget_breakdown;
+            
+            if (is_array($budgetData)) {
+                $cleaned = false;
+                
+                // Clean internal participants
+                if (isset($budgetData['internal_participants']) && is_array($budgetData['internal_participants'])) {
+                    foreach ($budgetData['internal_participants'] as &$participant) {
+                        if (isset($participant['costs']) && is_array($participant['costs'])) {
+                            $newCosts = [];
+                            foreach ($participant['costs'] as $costName => $costValue) {
+                                if (strpos($costName, 'Unknown Cost (ID: ') === 0 && substr($costName, -1) === ')') {
+                                    $newCostName = substr($costName, 18, -1);
+                                    $newCosts[$newCostName] = $costValue;
+                                    $cleaned = true;
+                                } else {
+                                    $newCosts[$costName] = $costValue;
+                                }
+                            }
+                            $participant['costs'] = $newCosts;
+                        }
+                    }
+                }
+                
+                // Clean external participants
+                if (isset($budgetData['external_participants']) && is_array($budgetData['external_participants'])) {
+                    foreach ($budgetData['external_participants'] as &$participant) {
+                        if (isset($participant['costs']) && is_array($participant['costs'])) {
+                            $newCosts = [];
+                            foreach ($participant['costs'] as $costName => $costValue) {
+                                if (strpos($costName, 'Unknown Cost (ID: ') === 0 && substr($costName, -1) === ')') {
+                                    $newCostName = substr($costName, 18, -1);
+                                    $newCosts[$newCostName] = $costValue;
+                                    $cleaned = true;
+                                } else {
+                                    $newCosts[$costName] = $costValue;
+                                }
+                            }
+                            $participant['costs'] = $newCosts;
+                        }
+                    }
+                }
+                
+                if ($cleaned) {
+                    $serviceRequest->budget_breakdown = json_encode($budgetData);
+                }
+            }
+        }
     }
 }

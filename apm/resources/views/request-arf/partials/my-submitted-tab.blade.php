@@ -20,9 +20,9 @@
                         <td>
                             <span class="badge bg-info">{{ $arf->arf_number ?? 'N/A' }}</span>
                         </td>
-                        <td>
-                            <div class="text-truncate" style="max-width: 200px;" title="{{ $arf->title ?? 'No title' }}">
-                                {{ $arf->title ?? 'No title' }}
+                        <td style="width: 25%;">
+                            <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;" title="{{ $arf->activity_title ?? 'No activity title' }}">
+                                {{ $arf->activity_title ?? 'No activity title' }}
                             </div>
                         </td>
                         <td>{{ $arf->division->division_name ?? 'N/A' }}</td>

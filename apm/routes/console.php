@@ -106,6 +106,53 @@ Artisan::command('notifications:test-all', function () {
     $this->call('test:notification');
 })->purpose('Test all notification systems');
 
+// Returned Memos Commands
+Artisan::command('jobs:test-returned-memos', function () {
+    $this->info('🧪 Testing returned memos notifications...');
+    
+    try {
+        // Get all staff who have returned memos
+        $staffIds = collect();
+        
+        $matrixStaffIds = \App\Models\Matrix::where('overall_status', 'returned')->pluck('staff_id')->unique();
+        $specialMemoStaffIds = \App\Models\SpecialMemo::where('overall_status', 'returned')->pluck('responsible_person_id')->unique();
+        $nonTravelStaffIds = \App\Models\NonTravelMemo::where('overall_status', 'returned')->pluck('staff_id')->unique();
+        $singleMemoStaffIds = \App\Models\Activity::where('is_single_memo', true)->whereIn('overall_status', ['returned', 'draft'])->pluck('staff_id')->merge(\App\Models\Activity::where('is_single_memo', true)->whereIn('overall_status', ['returned', 'draft'])->pluck('responsible_person_id'))->unique();
+        $serviceRequestStaffIds = \App\Models\ServiceRequest::where('overall_status', 'returned')->pluck('staff_id')->unique();
+        $arfStaffIds = \App\Models\RequestARF::where('overall_status', 'returned')->pluck('staff_id')->unique();
+        $changeRequestStaffIds = \App\Models\ChangeRequest::where('overall_status', 'returned')->pluck('responsible_person_id')->unique();
+        
+        $allStaffIds = $staffIds->merge($matrixStaffIds)->merge($specialMemoStaffIds)->merge($nonTravelStaffIds)->merge($singleMemoStaffIds)->merge($serviceRequestStaffIds)->merge($arfStaffIds)->merge($changeRequestStaffIds)->unique()->filter()->values()->toArray();
+        
+        $staff = \App\Models\Staff::whereIn('staff_id', $allStaffIds)->where('active', 1)->whereNotNull('work_email')->get()->toArray();
+        
+        $this->info("Found " . count($staff) . " staff with returned memos");
+        
+        foreach ($staff as $s) {
+            $sessionData = ['staff_id' => $s['staff_id'], 'division_id' => $s['division_id'] ?? null, 'permissions' => []];
+            $service = new \App\Services\ReturnedMemosService($sessionData);
+            $stats = $service->getSummaryStats();
+            
+            if ($stats['total_returned'] > 0) {
+                $this->line("  📧 {$s['fname']} {$s['lname']} - {$stats['total_returned']} returned items");
+            }
+        }
+    } catch (\Exception $e) {
+        $this->error('❌ Test failed: ' . $e->getMessage());
+    }
+})->purpose('Test returned memos notifications without sending emails');
+
+Artisan::command('jobs:dispatch-returned-memos', function () {
+    $this->info('🚀 Dispatching returned memos notification job...');
+    
+    try {
+        dispatch(new \App\Jobs\SendReturnedMemosNotificationJob());
+        $this->info('✅ Job dispatched successfully!');
+    } catch (\Exception $e) {
+        $this->error('❌ Failed: ' . $e->getMessage());
+    }
+})->purpose('Manually dispatch returned memos notification job');
+
 // Instant Reminders Command - Registered in SendInstantRemindersCommand.php
 // Scheduled tasks are now configured in app/Console/Kernel.php
 

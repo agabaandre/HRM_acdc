@@ -21,9 +21,9 @@
                         <td>
                             <span class="badge bg-info">{{ $request->service_type ?? 'N/A' }}</span>
                         </td>
-                        <td>
-                            <div class="text-truncate" style="max-width: 200px;" title="{{ $request->description ?? 'No description' }}">
-                                {{ $request->description ?? 'No description' }}
+                        <td style="width: 25%;">
+                            <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;" title="{{ $request->service_title ?? 'No title' }}">
+                                {{ $request->service_title ?? 'No title' }}
                             </div>
                         </td>
                         <td>{{ $request->staff->name ?? 'N/A' }}</td>

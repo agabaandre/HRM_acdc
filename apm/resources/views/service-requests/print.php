@@ -361,9 +361,21 @@
                     <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
           </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-                    <div class="approver-name"><?php echo htmlspecialchars(ucfirst($section)); ?></div>
                     <?php if ($section === 'from'): ?>
+                        <?php
+                        // Get division head name
+                        $divisionHeadName = '';
+                        if ($serviceRequest->division && $serviceRequest->division->division_head) {
+                            $divisionHead = \App\Models\Staff::find($serviceRequest->division->division_head);
+                            if ($divisionHead) {
+                                $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
+                            }
+                        }
+                        ?>
+                        <div class="approver-name"><?php echo htmlspecialchars($divisionHeadName ?: 'Division Head'); ?></div>
                         <div class="approver-title"><?php echo htmlspecialchars($serviceRequest->division->division_name ?? ''); ?></div>
+                    <?php else: ?>
+                        <div class="approver-name"><?php echo htmlspecialchars(ucfirst($section)); ?></div>
                     <?php endif; ?>
           </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
@@ -702,7 +714,7 @@
                                 <h6 class="fw-bold text-success mb-2">
                                     <i class="fas fa-comment me-2"></i>Internal Participants Comments
                                 </h6>
-                                <p class="mb-0 text-muted"><?php echo htmlspecialchars($serviceRequest->internal_participants_comment); ?></p>
+                                <p class="mb-0 text-muted"><?php echo html_entity_decode($serviceRequest->internal_participants_comment); ?></p>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -924,7 +936,7 @@
                                 <h6 class="fw-bold text-warning mb-2">
                                     <i class="fas fa-comment me-2"></i>External Participants Comments
                                 </h6>
-                                <p class="mb-0 text-muted"><?php echo htmlspecialchars($serviceRequest->external_participants_comment); ?></p>
+                                <p class="mb-0 text-muted"><?php echo html_entity_decode($serviceRequest->external_participants_comment); ?></p>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -987,7 +999,7 @@
                                 <h6 class="fw-bold text-info mb-2">
                                     <i class="fas fa-comment me-2"></i>Other Costs Comments
                                 </h6>
-                                <p class="mb-0 text-muted"><?php echo htmlspecialchars($serviceRequest->other_costs_comment); ?></p>
+                                <p class="mb-0 text-muted"><?php echo html_entity_decode($serviceRequest->other_costs_comment); ?></p>
                             </div>
                             <?php endif; ?>
                         </div>

@@ -83,8 +83,8 @@ if (!function_exists('get_staff_pending_action_count')) {
     function get_staff_pending_action_count(string $module, int $staffId = null): int
     {
         if (!$staffId) {
-            $user = session('user', []);
-            $staffId = $user['staff_id'] ?? null;
+        $user = session('user', []);
+        $staffId = $user['staff_id'] ?? null;
         }
         
         if (!$staffId) {
@@ -135,7 +135,7 @@ if (!function_exists('get_pending_matrices_count')) {
             $summaryStats = $pendingApprovalsService->getSummaryStats();
             return $summaryStats['by_category']['Matrix'] ?? 0;
         } catch (\Exception $e) {
-            \Log::error('Error getting pending matrices count: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error getting pending matrices count: ' . $e->getMessage());
             return 0;
         }
     }
@@ -164,7 +164,7 @@ if (!function_exists('get_pending_non_travel_memo_count')) {
             $summaryStats = $pendingApprovalsService->getSummaryStats();
             return $summaryStats['by_category']['Non-Travel Memo'] ?? 0;
         } catch (\Exception $e) {
-            \Log::error('Error getting pending non-travel memo count: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error getting pending non-travel memo count: ' . $e->getMessage());
             return 0;
         }
     }
@@ -193,7 +193,7 @@ if (!function_exists('get_pending_special_memo_count')) {
             $summaryStats = $pendingApprovalsService->getSummaryStats();
             return $summaryStats['by_category']['Special Memo'] ?? 0;
         } catch (\Exception $e) {
-            \Log::error('Error getting pending special memo count: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error getting pending special memo count: ' . $e->getMessage());
             return 0;
         }
     }
@@ -222,7 +222,7 @@ if (!function_exists('get_pending_service_requests_count')) {
             $summaryStats = $pendingApprovalsService->getSummaryStats();
             return $summaryStats['by_category']['Service Request'] ?? 0;
         } catch (\Exception $e) {
-            \Log::error('Error getting pending service requests count: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error getting pending service requests count: ' . $e->getMessage());
             return 0;
         }
     }
@@ -435,7 +435,7 @@ if (!function_exists('get_pending_single_memo_count')) {
             $summaryStats = $pendingApprovalsService->getSummaryStats();
             return $summaryStats['by_category']['Single Memo'] ?? 0;
         } catch (\Exception $e) {
-            \Log::error('Error getting pending single memo count: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error getting pending single memo count: ' . $e->getMessage());
             return 0;
         }
     }
@@ -464,7 +464,7 @@ if (!function_exists('get_pending_request_arf_count')) {
             $summaryStats = $pendingApprovalsService->getSummaryStats();
             return $summaryStats['by_category']['ARF'] ?? 0;
         } catch (\Exception $e) {
-            \Log::error('Error getting pending ARF count: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error getting pending ARF count: ' . $e->getMessage());
             return 0;
         }
     }
@@ -506,7 +506,7 @@ if (!function_exists('get_pending_change_request_count')) {
             $summaryStats = $pendingApprovalsService->getSummaryStats();
             return $summaryStats['by_category']['Change Request'] ?? 0;
         } catch (\Exception $e) {
-            \Log::error('Error getting pending change request count: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error getting pending change request count: ' . $e->getMessage());
         return 0;
         }
     }
@@ -683,3 +683,199 @@ if (!function_exists('get_base_url')) {
         return $base_url;
     }
 }
+
+// ============================================================================
+// RETURNED MEMOS COUNT FUNCTIONS
+// ============================================================================
+
+if (!function_exists('get_my_returned_matrices_count')) {
+    /**
+     * Get count of returned matrices for the current staff member (including division staff)
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_my_returned_matrices_count(int $staffId): int
+    {
+        try {
+            return \App\Models\Matrix::where('overall_status', 'returned')
+                ->where(function($q) use ($staffId) {
+                    $q->where('staff_id', $staffId)
+                      ->orWhereHas('division', function($divisionQuery) use ($staffId) {
+                          $divisionQuery->where('division_head', $staffId)
+                                       ->orWhere('focal_person', $staffId)
+                                       ->orWhere('admin_assistant', $staffId);
+                      });
+                })
+                ->count();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error getting returned matrices count: ' . $e->getMessage());
+            return 0;
+        }
+    }
+}
+
+if (!function_exists('get_my_returned_special_memo_count')) {
+    /**
+     * Get count of returned special memos for the current staff member (including division staff)
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_my_returned_special_memo_count(int $staffId): int
+    {
+        try {
+            return \App\Models\SpecialMemo::where('overall_status', 'returned')
+                ->where(function($q) use ($staffId) {
+                    $q->where('responsible_person_id', $staffId)
+                      ->orWhereHas('division', function($divisionQuery) use ($staffId) {
+                          $divisionQuery->where('division_head', $staffId)
+                                       ->orWhere('focal_person', $staffId)
+                                       ->orWhere('admin_assistant', $staffId);
+                      });
+                })
+                ->count();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error getting returned special memos count: ' . $e->getMessage());
+            return 0;
+        }
+    }
+}
+
+if (!function_exists('get_my_returned_non_travel_memo_count')) {
+    /**
+     * Get count of returned non-travel memos for the current staff member (including division staff)
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_my_returned_non_travel_memo_count(int $staffId): int
+    {
+        try {
+            return \App\Models\NonTravelMemo::where('overall_status', 'returned')
+                ->where(function($q) use ($staffId) {
+                    $q->where('staff_id', $staffId)
+                      ->orWhereHas('division', function($divisionQuery) use ($staffId) {
+                          $divisionQuery->where('division_head', $staffId)
+                                       ->orWhere('focal_person', $staffId)
+                                       ->orWhere('admin_assistant', $staffId);
+                      });
+                })
+                ->count();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error getting returned non-travel memos count: ' . $e->getMessage());
+            return 0;
+        }
+    }
+}
+
+if (!function_exists('get_my_returned_single_memo_count')) {
+    /**
+     * Get count of returned single memos for the current staff member (including division staff)
+     * Note: For single memos, includes both 'returned' and 'draft' status since returned single memos become draft for immediate editing
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_my_returned_single_memo_count(int $staffId): int
+    {
+        try {
+            return \App\Models\Activity::where('is_single_memo', true)
+                ->whereIn('overall_status', ['returned', 'draft'])
+                ->where(function($q) use ($staffId) {
+                    $q->where('staff_id', $staffId)
+                      ->orWhere('responsible_person_id', $staffId)
+                      ->orWhereHas('division', function($divisionQuery) use ($staffId) {
+                          $divisionQuery->where('division_head', $staffId)
+                                       ->orWhere('focal_person', $staffId)
+                                       ->orWhere('admin_assistant', $staffId);
+                      });
+                })
+                ->count();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error getting returned single memos count: ' . $e->getMessage());
+            return 0;
+        }
+    }
+}
+
+if (!function_exists('get_my_returned_service_requests_count')) {
+    /**
+     * Get count of returned service requests for the current staff member (including division staff)
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_my_returned_service_requests_count(int $staffId): int
+    {
+        try {
+            return \App\Models\ServiceRequest::where('overall_status', 'returned')
+                ->where(function($q) use ($staffId) {
+                    $q->where('staff_id', $staffId)
+                      ->orWhereHas('division', function($divisionQuery) use ($staffId) {
+                          $divisionQuery->where('division_head', $staffId)
+                                       ->orWhere('focal_person', $staffId)
+                                       ->orWhere('admin_assistant', $staffId);
+                      });
+                })
+                ->count();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error getting returned service requests count: ' . $e->getMessage());
+            return 0;
+        }
+    }
+}
+
+if (!function_exists('get_my_returned_request_arf_count')) {
+    /**
+     * Get count of returned ARF requests for the current staff member (including division staff)
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_my_returned_request_arf_count(int $staffId): int
+    {
+        try {
+            return \App\Models\RequestARF::where('overall_status', 'returned')
+                ->where(function($q) use ($staffId) {
+                    $q->where('staff_id', $staffId)
+                      ->orWhereHas('division', function($divisionQuery) use ($staffId) {
+                          $divisionQuery->where('division_head', $staffId)
+                                       ->orWhere('focal_person', $staffId)
+                                       ->orWhere('admin_assistant', $staffId);
+                      });
+                })
+                ->count();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error getting returned ARF requests count: ' . $e->getMessage());
+            return 0;
+        }
+    }
+}
+
+if (!function_exists('get_my_returned_change_request_count')) {
+    /**
+     * Get count of returned change requests for the current staff member (including division staff)
+     *
+     * @param int $staffId
+     * @return int
+     */
+    function get_my_returned_change_request_count(int $staffId): int
+    {
+        try {
+            return \App\Models\ChangeRequest::where('overall_status', 'returned')
+                ->where(function($q) use ($staffId) {
+                    $q->where('responsible_person_id', $staffId)
+                      ->orWhereHas('division', function($divisionQuery) use ($staffId) {
+                          $divisionQuery->where('division_head', $staffId)
+                                       ->orWhere('focal_person', $staffId)
+                                       ->orWhere('admin_assistant', $staffId);
+                      });
+                })
+                ->count();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error getting returned change requests count: ' . $e->getMessage());
+            return 0;
+        }
+    }
+} 

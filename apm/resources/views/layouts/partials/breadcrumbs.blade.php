@@ -152,13 +152,39 @@
 
 
             </div>
-            <div class="ms-auto">
+            <div class="ms-auto d-flex align-items-center gap-3">
+                @if(env('SHOW_QUOTES', true))
+                    <button class="btn btn-sm quote-button" onclick="showQuoteModal()" title="Daily Work Inspiration">
+                        <i class="fas fa-lightbulb"></i>
+                        <span class="quote-button-text">iQuote</span>
+                    </button>
+                @endif
                 @yield('header-actions')
             </div>
         </div>
         <!--end breadcrumb-->
+
+        {{-- Daily Work Inspiration Modal --}}
+        @if(env('SHOW_QUOTES', true))
+        <div id="quoteModal" class="quote-modal">
+            <div class="quote-modal-content">
+                <div class="quote-modal-header">
+                    <h5><i class="fas fa-quote-left"></i> Daily Work Inspiration</h5>
+                    <button type="button" class="quote-close" onclick="hideQuoteModal()">&times;</button>
+                </div>
+                <div class="quote-modal-body">
+                    <blockquote class="quote-text">
+                        {!! strip_tags(\Illuminate\Foundation\Inspiring::quote(), '<br><strong><em>') !!}
+                    </blockquote>
+                    <div class="quote-progress-bar">
+                        <div class="quote-progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <div id="preloader">
             <div id="status"></div>
         </div>
         <div class="card">
-            <div class="card-body">

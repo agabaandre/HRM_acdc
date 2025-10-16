@@ -234,9 +234,32 @@ if (!function_exists('user_session')) {
     
  
 
-     if (!function_exists('can_edit_memo')) {
-        function can_edit_memo($memo) {
-            $user = (object) session('user', []);
+     if (!function_exists('can_delete_memo')) {
+        function can_delete_memo($memo, $user = null) {
+            if ($user === null) {
+                $user = (object) session('user', []);
+            }
+            
+            // Check if user is the owner (staff_id for Matrix/Non-Travel, responsible_person_id for others)
+            $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
+            $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
+            
+            // For Matrix and Non-Travel Memo: only staff_id (owner)
+            if   (isset($memo) &&  (get_class($memo) === 'App\Models\NonTravelMemo' || get_class($memo) === 'App\Models\Matrix')) {
+                // Single memo - use staff_id
+                return $isOwner;
+            }
+            
+            // For other memos: use responsible_person_id
+            return $isResponsible;
+        }
+    }
+
+    if (!function_exists('can_edit_memo')) {
+        function can_edit_memo($memo, $user = null) {
+            if ($user === null) {
+                $user = (object) session('user', []);
+            }
             $session_division_id = isset($user->division_id) ? $user->division_id : null;
 
             // Check if this is a single memo (Activity model with is_single_memo = true)

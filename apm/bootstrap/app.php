@@ -20,4 +20,27 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
+    })
+    ->withSchedule(function (Schedule $schedule) {
+        // Schedule instant reminders at 9 AM and 4 PM
+        $schedule->command('reminders:schedule')
+            ->dailyAt('09:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+            
+        $schedule->command('reminders:schedule')
+            ->dailyAt('16:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+            
+        // Schedule returned memos reminders at 10 AM and 3 PM
+        $schedule->command('reminders:returned-memos')
+            ->dailyAt('10:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+            
+        $schedule->command('reminders:returned-memos')
+            ->dailyAt('15:00')
+            ->withoutOverlapping()
+            ->runInBackground();
     })->create();

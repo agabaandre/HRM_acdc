@@ -2584,7 +2584,11 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         // Generate PDF using the comprehensive data
         //$print=true;
         $print=false;
-        $pdf = mpdf_print('activities.memo-pdf-simple', [
+        
+        // Use different template for single memos
+        $template = $activity->is_single_memo ? 'activities.single-memos.single-memo-pdf-simple' : 'activities.memo-pdf-simple';
+        
+        $pdf = mpdf_print($template, [
             'activity' => $activity,
             'matrix' => $matrix,
             'locations' => $locations,
