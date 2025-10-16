@@ -132,6 +132,6 @@ return [
     |
     */
 
-    'ci_base_url' => env('CI_BASE_URL', 'http://localhost/staff'),
+    'ci_base_url' => env('BASE_URL', 'http://localhost/staff/auth/login'),
 
 ];
