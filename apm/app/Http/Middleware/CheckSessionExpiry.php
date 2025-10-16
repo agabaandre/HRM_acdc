@@ -70,8 +70,8 @@ class CheckSessionExpiry
     {
         try {
             // Get CI app base URL from confi
-            $base_url = env('BASE_URL');
-            $ciBaseUrl = config('app.ci_base_url', $base_url);
+            $base_url = env('BASE_URL','http://localhost/staff/');
+            $ciBaseUrl = config('app.ci_base_url', $base_url.'/auth/login');
             $ciToken = $userSession['ci_token'] ?? null;
             
             if (!$ciToken) {

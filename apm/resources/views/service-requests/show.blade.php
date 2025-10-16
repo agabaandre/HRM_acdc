@@ -376,11 +376,66 @@
                     @endif
 
                     <!-- Service Request Budget Breakdown -->
-                    @if($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs'])))
+                    @if($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs']) || (is_array($budgetData) && !isset($budgetData['internal_participants']) && !isset($budgetData['external_participants']) && !isset($budgetData['other_costs']))))
                     <div class="mb-4">
                         <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
                             <i class="fas fa-calculator me-2"></i>Budget Breakdown
                         </h6>
+                        
+                        <!-- Non-Travel Memo Budget Structure (when budgetData is a simple array) -->
+                        @if(is_array($budgetData) && !isset($budgetData['internal_participants']) && !isset($budgetData['external_participants']) && !isset($budgetData['other_costs']) && isset($budgetData['grand_total']))
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-info mb-3">
+                                <i class="fas fa-list me-2"></i>Budget Items
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table budget-table table-hover table-bordered">
+                                    <thead class="table-info">
+                                        <tr>
+                                            <th class="text-center">#</th>
+                                            <th>Description</th>
+                                            <th>Unit</th>
+                                            <th>Quantity</th>
+                                            <th>Unit Cost</th>
+                                            <th class="text-end">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @php $itemIndex = 1; @endphp
+                                        @foreach($budgetData as $key => $items)
+                                            @if(is_array($items) && $key !== 'grand_total')
+                                                @foreach($items as $item)
+                                                @php
+                                                    $quantity = $item['quantity'] ?? 1;
+                                                    $unitCost = $item['unit_cost'] ?? 0;
+                                                    $total = $unitCost * $quantity;
+                                                @endphp
+                                                <tr>
+                                                    <td class="text-center">{{ $itemIndex++ }}</td>
+                                                    <td><strong>{{ $item['description'] ?? 'N/A' }}</strong></td>
+                                                    <td>{{ $item['unit'] ?? 'N/A' }}</td>
+                                                    <td>{{ $quantity }}</td>
+                                                    <td>${{ number_format($unitCost, 2) }}</td>
+                                                    <td class="text-end">
+                                                        <strong class="text-success h6">${{ number_format($total, 2) }}</strong>
+                                                    </td>
+                                                </tr>
+                                                @endforeach
+                                            @endif
+                                        @endforeach
+                                    </tbody>
+                                    @if(isset($budgetData['grand_total']))
+                                    <tfoot class="table-group-divider">
+                                        <tr class="budget-total-row">
+                                            <th colspan="5" class="text-end">Grand Total:</th>
+                                            <th class="text-end">${{ number_format($budgetData['grand_total'], 2) }}</th>
+                                        </tr>
+                                    </tfoot>
+                                    @endif
+                                </table>
+                            </div>
+                        </div>
+                        @else
                         
                         <!-- Internal Participants -->
                         @if(isset($budgetData['internal_participants']) && is_array($budgetData['internal_participants']) && count($budgetData['internal_participants']) > 0)
@@ -536,21 +591,27 @@
                                             <th class="text-center">#</th>
                                             <th>Item</th>
                                             <th>Unit Cost</th>
-                                            <th>Days</th>
+                                            <th>Quantity</th>
                                             <th>Description</th>
                                             <th class="text-end">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($budgetData['other_costs'] as $index => $cost)
+                                        @php
+                                            // Handle both old format (days) and new format (quantity)
+                                            $quantity = $cost['quantity'] ?? $cost['days'] ?? 1;
+                                            $unitCost = $cost['unit_cost'] ?? 0;
+                                            $total = $unitCost * $quantity;
+                                        @endphp
                                         <tr>
                                             <td class="text-center">{{ $index + 1 }}</td>
                                             <td><strong>{{ $cost['cost_type'] ?? 'N/A' }}</strong></td>
-                                            <td>${{ number_format($cost['unit_cost'] ?? 0, 2) }}</td>
-                                            <td>{{ $cost['days'] ?? 0 }}</td>
+                                            <td>${{ number_format($unitCost, 2) }}</td>
+                                            <td>{{ $quantity }}</td>
                                             <td>{{ $cost['description'] ?? 'N/A' }}</td>
                                             <td class="text-end">
-                                                <strong class="text-success h6">${{ number_format(($cost['unit_cost'] ?? 0) * ($cost['days'] ?? 0), 2) }}</strong>
+                                                <strong class="text-success h6">${{ number_format($total, 2) }}</strong>
                                             </td>
                                         </tr>
                                         @endforeach
@@ -576,6 +637,7 @@
                             </div>
                             @endif
                         </div>
+                        @endif
                         @endif
                     </div>
                     @endif

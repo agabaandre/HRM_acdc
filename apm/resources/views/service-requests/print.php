@@ -943,8 +943,7 @@
                                         <th class="bg-highlight">#</th>
                                         <th class="bg-highlight">Cost Item</th>
                                         <th class="bg-highlight">Unit Cost</th>
-                                        <th class="bg-highlight">Units</th>
-                                        <th class="bg-highlight">Days</th>
+                                        <th class="bg-highlight">Quantity</th>
                                         <th class="bg-highlight">Total</th>
                                         <th class="bg-highlight">Description</th>
                                     </tr>
@@ -957,17 +956,16 @@
                                     <?php foreach ($budgetData['other_costs'] as $index => $cost): ?>
                                         <?php
                                         $unitCost = $cost['unit_cost'] ?? 0;
-                                        $units = $cost['units'] ?? 1;
-                                        $days = $cost['days'] ?? 1;
-                                        $total = $unitCost * $units * $days;
+                                        // Handle both old format (days) and new format (quantity)
+                                        $quantity = $cost['quantity'] ?? $cost['days'] ?? 1;
+                                        $total = $unitCost * $quantity;
                                         $otherGrandTotal += $total;
                                         ?>
                                         <tr>
                                             <td><?php echo $count; ?></td>
                                             <td><?php echo htmlspecialchars($cost['cost_type'] ?? 'N/A'); ?></td>
                                             <td class="text-right">$<?php echo number_format($unitCost, 2); ?></td>
-                                            <td class="text-right"><?php echo $units; ?></td>
-                                            <td class="text-right"><?php echo $days; ?></td>
+                                            <td class="text-right"><?php echo $quantity; ?></td>
                                             <td class="text-right">$<?php echo number_format($total, 2); ?></td>
                                             <td><?php echo htmlspecialchars($cost['description'] ?? 'N/A'); ?></td>
       </tr>
@@ -976,7 +974,7 @@
                                 </tbody>
                                 <tfoot>
       <tr>
-                                        <th class="bg-highlight text-right" colspan="5">Other Costs Total</th>
+                                        <th class="bg-highlight text-right" colspan="4">Other Costs Total</th>
                                         <th class="bg-highlight text-right">$<?php echo number_format($otherGrandTotal, 2); ?></th>
                                         <th class="bg-highlight"></th>
       </tr>
