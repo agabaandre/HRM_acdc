@@ -390,6 +390,14 @@ body {
   }
 }
 
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-title {
+    font-size: 1.5rem;
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -402,6 +410,7 @@ body {
 
 <div class="container-fluid">
   <h2 class="dashboard-title text-muted">Approvals Management</h2>
+
   
   <div class="row justify-content-center dashboard-container">
     
@@ -629,4 +638,5 @@ body {
 
   </div>
 </div>
+
 @endsection

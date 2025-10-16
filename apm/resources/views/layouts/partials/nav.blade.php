@@ -129,6 +129,29 @@ $settingsMenuItems = [
                 </a>
             </li>
            
+              <!-- Pending Approvals -->
+            <li class="nav-item">
+                <a href="{{ route('returned-memos.index') }}"
+                    class="nav-link {{ Request::is('returned-memos*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="fas fa-clock"></i></div>
+                    <div class="menu-title">Returns</div>
+                    @php
+                        $pendingCount = 0;
+                        if (user_session('staff_id')) {
+                            $pendingCount =get_my_returned_matrices_count(user_session('staff_id')) + 
+                                           get_my_returned_special_memo_count(user_session('staff_id')) + 
+                                           get_my_returned_non_travel_memo_count(user_session('staff_id')) + 
+                                           get_my_returned_single_memo_count(user_session('staff_id')) + 
+                                           get_my_returned_service_requests_count(user_session('staff_id')) + 
+                                           get_my_returned_request_arf_count(user_session('staff_id')) +
+                                           get_my_returned_change_request_count(user_session('staff_id'));
+                        }
+                    @endphp
+                    @if($pendingCount > 0)
+                        <span class="badge bg-danger ms-2">{{ $pendingCount }}</span>
+                    @endif
+                </a>
+            </li>
 
             <!-- Pending Approvals -->
             <li class="nav-item">
@@ -195,7 +218,7 @@ $settingsMenuItems = [
                 <a class="nav-link dropdown-toggle {{ Request::is('service-requests*') || Request::is('request-arf*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-boxes"></i></div>
-                    <div class="menu-title">Request for Services</div>
+                    <div class="menu-title">Requests</div>
                 </a>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}" href="{{ url('service-requests') }}">Request DSA,  Imprest and Ticket</a></li>
@@ -210,7 +233,7 @@ $settingsMenuItems = [
                 <a class="nav-link dropdown-toggle {{ Request::is('workflows*') || Request::is('approvals*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-tasks"></i></div>
-                    <div class="menu-title">Workflow Management</div>
+                    <div class="menu-title">Workflows</div>
                 </a>
                 <ul class="dropdown-menu">
                     @foreach($workflowMenuItems as $item)

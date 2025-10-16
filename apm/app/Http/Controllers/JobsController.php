@@ -30,7 +30,7 @@ class JobsController extends Controller
     public function executeCommand(Request $request): JsonResponse
     {
         $request->validate([
-            'command' => 'required|string|in:cache:clear,config:clear,route:clear,view:clear,storage:link,storage:unlink,optimize,config:cache,route:cache,view:cache,divisions:sync,staff:sync,directorates:sync,audit:cleanup,reminders:schedule'
+            'command' => 'required|string|in:cache:clear,config:clear,route:clear,view:clear,storage:link,storage:unlink,optimize,config:cache,route:cache,view:cache,divisions:sync,staff:sync,directorates:sync,audit:cleanup,reminders:schedule,reminders:returned-memos'
         ]);
 
         $command = $request->input('command');
@@ -397,6 +397,79 @@ class JobsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Reminders schedule command execution failed: ' . $e->getMessage(),
+                'output' => $e->getMessage(),
+                'execution_time' => round((microtime(true) - $startTime) * 1000, 2),
+                'command' => $command,
+                'force_mode' => $force
+            ], 500);
+        }
+    }
+
+    /**
+     * Execute returned memos reminders command with force option.
+     */
+    public function executeReturnedMemosReminders(Request $request): JsonResponse
+    {
+        $request->validate([
+            'force' => 'nullable|in:true,false,1,0'
+        ]);
+
+        $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
+        $startTime = microtime(true);
+
+        try {
+            // Build the command with optional --force flag
+            $command = 'reminders:returned-memos';
+            if ($force) {
+                $command .= ' --force';
+            }
+
+            // Execute the artisan command
+            $exitCode = Artisan::call($command);
+            $output = Artisan::output();
+            $executionTime = round((microtime(true) - $startTime) * 1000, 2);
+
+            if ($exitCode === 0) {
+                Log::info("Returned memos reminders command executed successfully: {$command}", [
+                    'output' => $output,
+                    'execution_time' => $executionTime,
+                    'force_mode' => $force
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Returned memos reminders executed successfully',
+                    'output' => $output,
+                    'execution_time' => $executionTime,
+                    'command' => $command,
+                    'force_mode' => $force
+                ]);
+            } else {
+                Log::error("Returned memos reminders command failed: {$command}", [
+                    'exit_code' => $exitCode,
+                    'output' => $output,
+                    'force_mode' => $force
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Returned memos reminders command failed to execute',
+                    'output' => $output,
+                    'execution_time' => $executionTime,
+                    'command' => $command,
+                    'force_mode' => $force
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error("Returned memos reminders command exception: {$command}", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'force_mode' => $force
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Returned memos reminders command execution failed: ' . $e->getMessage(),
                 'output' => $e->getMessage(),
                 'execution_time' => round((microtime(true) - $startTime) * 1000, 2),
                 'command' => $command,

@@ -329,10 +329,9 @@
                                     <thead class="table-secondary">
                                         <tr>
                                             <th class="text-center">#</th>
-                                            <th>Item</th>
-                                            <th class="text-end">Unit Cost</th>
-                                            <th class="text-center">Days</th>
                                             <th>Description</th>
+                                            <th class="text-center">Quantity</th>
+                                            <th class="text-end">Unit Price</th>
                                             <th class="text-end">Total</th>
                                         </tr>
                                     </thead>
@@ -340,45 +339,49 @@
                                         @php
                                             $itemCount = 1;
                                             $grandTotal = 0;
+                                            // Remove grand_total from budget data if it exists
+                                            $budgetItems = $budgetBreakdown;
+                                            unset($budgetItems['grand_total']);
                                         @endphp
-                                        @foreach ($budgetBreakdown as $key => $value)
-                                            @if ($key !== 'grand_total' && is_array($value))
-                                                @foreach ($value as $item)
+                                        @forelse($budgetItems as $codeId => $items)
+                                            @if(is_array($items))
+                                                @foreach($items as $item)
                                                     @php
-                                                        $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                        $days = floatval($item['days'] ?? 1);
-                                                        $total = $unitCost * $days;
+                                                        $quantity = $item['quantity'] ?? 1;
+                                                        $unitCost = $item['unit_cost'] ?? 0;
+                                                        $total = $unitCost * $quantity;
                                                         $grandTotal += $total;
                                                     @endphp
                                                     <tr>
-                                                        <td class="text-center">{{ $itemCount }}</td>
-                                                        <td>{{ $item['cost'] ?? $key }}</td>
+                                                        <td class="text-center">{{ $itemCount++ }}</td>
+                                                        <td>
+                                                            <div>
+                                                                <p class="mb-1 fw-medium">{{ $item['description'] ?? 'N/A' }}</p>
+                                                                @if(isset($item['notes']) && !empty($item['notes']))
+                                                                    <small class="text-muted">{{ $item['notes'] }}</small>
+                                                                @endif
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center fw-medium">{{ $quantity }}</td>
                                                         <td class="text-end">${{ number_format($unitCost, 2) }}</td>
-                                                        <td class="text-center">{{ $days }}</td>
-                                                        <td>{{ $item['description'] ?? '' }}</td>
                                                         <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
                                                     </tr>
-                                                    @php $itemCount++; @endphp
                                                 @endforeach
                                             @endif
-                                        @endforeach
-                                        @if ($itemCount == 1)
+                                        @empty
                                             <tr>
-                                                <td class="text-center">1</td>
-                                                <td>Conference</td>
-                                                <td class="text-end">$0.00</td>
-                                                <td class="text-center">1</td>
-                                                <td></td>
-                                                <td class="text-end fw-bold">$0.00</td>
+                                                <td colspan="5" class="text-center text-muted">No budget breakdown available.</td>
                                             </tr>
-                                        @endif
+                                        @endforelse
                                     </tbody>
+                                    @if($grandTotal > 0)
                                     <tfoot class="table-group-divider">
                                         <tr class="table-secondary">
-                                            <th colspan="5" class="text-end">Other Total:</th>
-                                            <th class="text-end">${{ number_format($grandTotal, 2) }}</th>
+                                            <th colspan="4" class="text-end fw-bold">Grand Total</th>
+                                            <th class="text-end fw-bold">${{ number_format($grandTotal, 2) }}</th>
                                         </tr>
                                     </tfoot>
+                                    @endif
                                 </table>
                             </div>
                         @else

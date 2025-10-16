@@ -113,5 +113,24 @@ class ScheduleServiceProvider extends ServiceProvider
             ->onFailure(function () {
                 Log::error('Evening pending approvals notification failed');
             });
+            
+        // Daily returned memos notifications
+        $schedule->command('reminders:returned-memos')
+            ->dailyAt('10:00')
+            ->description('Send morning returned memos notifications to all staff')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Morning returned memos notification failed');
+            });
+            
+        $schedule->command('reminders:returned-memos')
+            ->dailyAt('15:00')
+            ->description('Send afternoon returned memos notifications to all staff')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Afternoon returned memos notification failed');
+            });
     }
 }

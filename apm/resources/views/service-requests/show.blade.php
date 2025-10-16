@@ -195,7 +195,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <h1 class="h3 mb-2 text-gray-800">
-                                <i class="fas fa-concierge-bell me-2 text-success"></i>
+                                <i class="fas fa-concierge-bell me-2 text-muted"></i>
                                 Service Request Details
                             </h1>
                             @if($serviceRequest->document_number)
@@ -219,7 +219,7 @@
             <!-- Activity Details -->
             <div class="card content-section bg-blue">
                 <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 text-success">
+                    <h5 class="mb-0 text-muted">
                         <i class="fas fa-calendar-alt me-2 info-icon"></i>Activity Details
                     </h5>
                 </div>
@@ -331,7 +331,7 @@
                         <div class="col-md-3">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">Original Memo Budget</label>
-                                <p class="h4 mb-0 text-success">${{ number_format($serviceRequest->original_total_budget ?? 0, 2) }}</p>
+                                <p class="h4 mb-0 text-muted">${{ number_format($serviceRequest->original_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
                         @if($sourceData && isset($sourceData->available_budget) && $sourceData->available_budget)
@@ -345,7 +345,7 @@
                         <div class="col-md-3">
                             <div class="meta-card text-center">
                                 <label class="form-label text-muted small fw-semibold">Total Requested Funds</label>
-                                <p class="h4 mb-0 text-success">${{ number_format($serviceRequest->new_total_budget ?? 0, 2) }}</p>
+                                <p class="h4 mb-0 text-muted">${{ number_format($serviceRequest->new_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -358,11 +358,11 @@
                                         : ($serviceRequest->original_total_budget ?? 0);
                                     $difference = $allocatedBudget - ($serviceRequest->new_total_budget ?? 0);
                                 @endphp
-                                <p class="h4 mb-0 {{ $difference >= 0 ? 'text-success' : 'text-danger' }}">
+                                <p class="h4 mb-0 {{ $difference >= 0 ? 'text-muted' : 'text-danger' }}">
                                     {{ $difference >= 0 ? '+' : '' }}${{ number_format($difference, 2) }}
                                 </p>
                                 @if($difference >= 0)
-                                    <small class="text-success fw-semibold">
+                                    <small class="text-muted fw-semibold">
                                         <i class="fas fa-check-circle me-1"></i>Within Allocated Budget
                                     </small>
                                 @else
@@ -378,12 +378,12 @@
                     <!-- Service Request Budget Breakdown -->
                     @if($budgetData && (isset($budgetData['internal_participants']) || isset($budgetData['external_participants']) || isset($budgetData['other_costs']) || (is_array($budgetData) && !isset($budgetData['internal_participants']) && !isset($budgetData['external_participants']) && !isset($budgetData['other_costs']))))
                     <div class="mb-4">
-                        <h6 class="fw-bold text-success mb-4 border-bottom pb-2">
+                        <h6 class="fw-bold text-muted mb-4 border-bottom pb-2">
                             <i class="fas fa-calculator me-2"></i>Budget Breakdown
                         </h6>
                         
                         <!-- Non-Travel Memo Budget Structure (when budgetData is a simple array) -->
-                        @if(is_array($budgetData) && !isset($budgetData['internal_participants']) && !isset($budgetData['external_participants']) && !isset($budgetData['other_costs']) && isset($budgetData['grand_total']))
+                        @if($serviceRequest->source_type === 'non_travel_memo' && is_array($budgetData) && !isset($budgetData['internal_participants']) && !isset($budgetData['external_participants']) && !isset($budgetData['other_costs']))
                         <div class="mb-4">
                             <h6 class="fw-bold text-info mb-3">
                                 <i class="fas fa-list me-2"></i>Budget Items
@@ -394,41 +394,55 @@
                                         <tr>
                                             <th class="text-center">#</th>
                                             <th>Description</th>
-                                            <th>Unit</th>
-                                            <th>Quantity</th>
-                                            <th>Unit Cost</th>
+                                            <th class="text-center">Quantity</th>
+                                            <th class="text-end">Unit Price</th>
                                             <th class="text-end">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php $itemIndex = 1; @endphp
-                                        @foreach($budgetData as $key => $items)
-                                            @if(is_array($items) && $key !== 'grand_total')
+                                        @php 
+                                            $itemIndex = 1;
+                                            $grandTotal = 0;
+                                            // Remove grand_total from budget data if it exists
+                                            $budgetItems = $budgetData;
+                                            unset($budgetItems['grand_total']);
+                                        @endphp
+                                        @forelse($budgetItems as $codeId => $items)
+                                            @if(is_array($items))
                                                 @foreach($items as $item)
                                                 @php
                                                     $quantity = $item['quantity'] ?? 1;
                                                     $unitCost = $item['unit_cost'] ?? 0;
                                                     $total = $unitCost * $quantity;
+                                                    $grandTotal += $total;
                                                 @endphp
                                                 <tr>
                                                     <td class="text-center">{{ $itemIndex++ }}</td>
-                                                    <td><strong>{{ $item['description'] ?? 'N/A' }}</strong></td>
-                                                    <td>{{ $item['unit'] ?? 'N/A' }}</td>
-                                                    <td>{{ $quantity }}</td>
-                                                    <td>${{ number_format($unitCost, 2) }}</td>
-                                                    <td class="text-end">
-                                                        <strong class="text-success h6">${{ number_format($total, 2) }}</strong>
+                                                    <td>
+                                                        <div>
+                                                            <p class="mb-1 fw-medium">{{ $item['description'] ?? 'N/A' }}</p>
+                                                            @if(isset($item['notes']) && !empty($item['notes']))
+                                                                <small class="text-muted">{{ $item['notes'] }}</small>
+                                                            @endif
+                                                        </div>
                                                     </td>
+                                                    <td class="text-center fw-medium">{{ $quantity }}</td>
+                                                    <td class="text-end">${{ number_format($unitCost, 2) }}</td>
+                                                    <td class="text-end fw-bold">${{ number_format($total, 2) }}</td>
                                                 </tr>
                                                 @endforeach
                                             @endif
-                                        @endforeach
+                                        @empty
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted">No budget breakdown available.</td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
-                                    @if(isset($budgetData['grand_total']))
+                                    @if($grandTotal > 0)
                                     <tfoot class="table-group-divider">
                                         <tr class="budget-total-row">
-                                            <th colspan="5" class="text-end">Grand Total:</th>
-                                            <th class="text-end">${{ number_format($budgetData['grand_total'], 2) }}</th>
+                                            <th colspan="4" class="text-end fw-bold">Grand Total</th>
+                                            <th class="text-end fw-bold">${{ number_format($grandTotal, 2) }}</th>
                                         </tr>
                                     </tfoot>
                                     @endif
@@ -440,7 +454,7 @@
                         <!-- Internal Participants -->
                         @if(isset($budgetData['internal_participants']) && is_array($budgetData['internal_participants']) && count($budgetData['internal_participants']) > 0)
                         <div class="mb-4">
-                            <h6 class="fw-bold text-success mb-3">
+                            <h6 class="fw-bold text-muted mb-3">
                                 <i class="fas fa-users me-2"></i>Internal Participants
                             </h6>
                             <div class="table-responsive">
@@ -478,7 +492,7 @@
                                                     @foreach($participant['costs'] as $costName => $costValue)
                                                         <div class="d-flex justify-content-between mb-1">
                                                             <span><strong>{{ $costName }}:</strong></span>
-                                                            <span class="text-success fw-bold">${{ number_format($costValue, 2) }}</span>
+                                                            <span class="text-muted fw-bold">${{ number_format($costValue, 2) }}</span>
                                                         </div>
                                                     @endforeach
                                                 @else
@@ -486,7 +500,7 @@
                                                 @endif
                                             </td>
                                             <td class="text-end">
-                                                <strong class="text-success h6">${{ number_format($participant['total'] ?? 0, 2) }}</strong>
+                                                <strong class="text-muted h6">${{ number_format($participant['total'] ?? 0, 2) }}</strong>
                                             </td>
                                         </tr>
                                         @endforeach
@@ -508,7 +522,7 @@
                                 <h6 class="fw-bold text-success mb-2">
                                     <i class="fas fa-comment me-2"></i>Internal Participants Comments
                                 </h6>
-                                <p class="mb-0 text-muted">{{ $serviceRequest->internal_participants_comment }}</p>
+                                <p class="mb-0 text-muted">{!! $serviceRequest->internal_participants_comment !!}</p>
                             </div>
                             @endif
                         </div>
@@ -517,12 +531,12 @@
                         <!-- External Participants -->
                         @if(isset($budgetData['external_participants']) && is_array($budgetData['external_participants']) && count($budgetData['external_participants']) > 0)
                         <div class="mb-4">
-                            <h6 class="fw-bold text-warning mb-3">
+                            <h6 class="fw-bold text-muted mb-3">
                                 <i class="fas fa-user-friends me-2"></i>External Participants
                             </h6>
                             <div class="table-responsive">
                                 <table class="table budget-table table-hover table-bordered">
-                                    <thead class="table-warning">
+                                    <thead class="table-secondary">
                                         <tr>
                                             <th class="text-center">#</th>
                                             <th>Name</th>
@@ -542,7 +556,7 @@
                                                     @foreach($participant['costs'] as $costName => $costValue)
                                                         <div class="d-flex justify-content-between mb-1">
                                                             <span><strong>{{ $costName }}:</strong></span>
-                                                            <span class="text-success fw-bold">${{ number_format($costValue, 2) }}</span>
+                                                            <span class="text-muted fw-bold">${{ number_format($costValue, 2) }}</span>
                                                         </div>
                                                     @endforeach
                                                 @else
@@ -550,7 +564,7 @@
                                                 @endif
                                             </td>
                                             <td class="text-end">
-                                                <strong class="text-success h6">${{ number_format($participant['total'] ?? 0, 2) }}</strong>
+                                                <strong class="text-muted h6">${{ number_format($participant['total'] ?? 0, 2) }}</strong>
                                             </td>
                                         </tr>
                                         @endforeach
@@ -568,11 +582,11 @@
                             
                             <!-- External Participants Comments -->
                             @if($serviceRequest->external_participants_comment)
-                            <div class="mt-3 p-3 bg-light rounded border-start border-warning border-4">
-                                <h6 class="fw-bold text-warning mb-2">
+                            <div class="mt-3 p-3 bg-light rounded border-start border-secondary border-4">
+                                <h6 class="fw-bold text-muted mb-2">
                                     <i class="fas fa-comment me-2"></i>External Participants Comments
                                 </h6>
-                                <p class="mb-0 text-muted">{{ $serviceRequest->external_participants_comment }}</p>
+                                <p class="mb-0 text-muted">{!! $serviceRequest->external_participants_comment !!}</p>
                             </div>
                             @endif
                         </div>
@@ -611,7 +625,7 @@
                                             <td>{{ $quantity }}</td>
                                             <td>{{ $cost['description'] ?? 'N/A' }}</td>
                                             <td class="text-end">
-                                                <strong class="text-success h6">${{ number_format($total, 2) }}</strong>
+                                                <strong class="text-muted h6">${{ number_format($total, 2) }}</strong>
                                             </td>
                                         </tr>
                                         @endforeach
@@ -633,7 +647,7 @@
                                 <h6 class="fw-bold text-info mb-2">
                                     <i class="fas fa-comment me-2"></i>Other Costs Comments
                                 </h6>
-                                <p class="mb-0 text-muted">{{ $serviceRequest->other_costs_comment }}</p>
+                                <p class="mb-0 text-muted">{!! $serviceRequest->other_costs_comment !!}</p>
                             </div>
                             @endif
                         </div>
@@ -657,7 +671,7 @@
                     <ul class="list-unstyled mb-0">
                         @foreach($serviceRequest->specifications as $spec)
                         <li class="mb-3 p-3 bg-white rounded border">
-                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <i class="fas fa-check-circle text-muted me-2"></i>
                             {{ $spec }}
                         </li>
                         @endforeach
@@ -670,7 +684,7 @@
             @if($serviceRequest->attachments && is_array($serviceRequest->attachments) && count($serviceRequest->attachments) > 0)
             <div class="card content-section bg-blue">
                 <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 text-success">
+                    <h5 class="mb-0 text-muted">
                         <i class="fas fa-paperclip me-2"></i>Attachments
                     </h5>
                 </div>
@@ -679,7 +693,7 @@
                         @foreach($serviceRequest->attachments as $attachment)
                         <div class="col-md-6 mb-3">
                             <div class="attachment-item d-flex align-items-center">
-                                <i class="fas fa-file me-3 text-success fs-4"></i>
+                                <i class="fas fa-file me-3 text-muted fs-4"></i>
                                 <div class="flex-grow-1">
                                     <p class="mb-1 fw-semibold">{{ $attachment['name'] ?? 'Unknown File' }}</p>
                                     <small class="text-muted">{{ $attachment['size'] ?? 'Unknown size' }}</small>
@@ -699,12 +713,12 @@
             @if($serviceRequest->remarks)
             <div class="card content-section bg-orange">
                 <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 text-warning">
+                    <h5 class="mb-0 text-muted">
                         <i class="fas fa-comment me-2"></i>Remarks
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="mb-0 p-3 bg-white rounded border">{{ $serviceRequest->remarks }}</p>
+                    <p class="mb-0 p-3 bg-white rounded border">{!! $serviceRequest->remarks !!}</p>
                 </div>
             </div>
             @endif
@@ -714,7 +728,7 @@
         <div class="col-lg-4">
             <!-- Action Buttons -->
             <div class="card sidebar-card mb-4">
-                <div class="card-header bg-success text-white">
+                <div class="card-header bg-secondary text-white">
                     <h6 class="mb-0 text-white">
                         <i class="fas fa-cogs me-2"></i>Actions
                     </h6>

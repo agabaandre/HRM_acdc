@@ -636,7 +636,7 @@
         $year = date('Y', strtotime($sourceModel->created_at ?? 'now'));
         $activityId = $sourceModel->id ?? 'N/A';
         $activity_refernce = "AU/CDC/{$shortCode}/IM/Q{$requestARF->quarter}/{$year}/{$activityId}";
-    }
+    } 
     
     // Calculate budget total for display
     $totalBudget = 0;
@@ -990,7 +990,7 @@
         }
     } else {
         // Fallback to general approval trails
-        $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
+    $sourceApprovalTrails = $sourceData['approval_trails'] ?? collect();
     }
     
     $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
@@ -1088,7 +1088,7 @@
                   echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
                   echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
                   echo '<span class="fill line"></span>';
-              } else {
+          } else {
                   renderBudgetApproverInfo(null);
               }
           } else {
@@ -1114,7 +1114,7 @@
                     echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                     if (!empty($staff['signature'])) {
                         echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-                    } else {
+            } else {
                         echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                     }
                     echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
@@ -1132,8 +1132,8 @@
       </tr>
       <tr>
         <td>Endorsed By:</td>
-        <td>
-          <?php 
+          <td>
+           <?php 
           // Use Chief of Staff approver with role display
           if (!empty($chief_of_staff)) {
               $isOic = isset($chief_of_staff['oic_staff']);
@@ -1149,17 +1149,17 @@
                   echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
                   echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
                   echo '<span class="fill line"></span>';
-              } else {
+           } else {
                   renderBudgetApproverInfo(null);
               }
           } else {
               renderBudgetApproverInfo(null);
-          }
-          ?>
-        </td>
-        <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
-          <span class="fill">
-            <?php 
+           }
+           ?>
+          </td>
+          <td style="border-left:0px solid #d8dee9; border-top:none; border-right:none; border-bottom:none;">
+            <span class="fill">
+             <?php 
             if (!empty($chief_of_staff)) {
                 // Check if it's a structured array (from PrintHelper) or direct approval object
                 if (isset($chief_of_staff['staff']) || isset($chief_of_staff['oic_staff'])) {
@@ -1177,7 +1177,7 @@
                         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                         if (!empty($staff['signature'])) {
                             echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-                        } else {
+             } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
                         echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';
@@ -1215,10 +1215,10 @@
                 }
             } else {
                 renderBudgetSignature(null, $sourceModel);
-            }
-            ?>
-          </span>
-        </td>
+             }
+             ?>
+            </span>
+          </td>
       </tr>
       <tr>
         <td>Approved By:</td>
@@ -1239,7 +1239,7 @@
                   echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
                   echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
                   echo '<span class="fill line"></span>';
-              } else {
+          } else {
                   renderBudgetApproverInfo(null);
               }
           } else {
@@ -1267,7 +1267,7 @@
                         echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
                         if (!empty($staff['signature'])) {
                             echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-                        } else {
+            } else {
                             echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
                         }
                         echo '<div class="signature-date">' . htmlspecialchars(date('j F Y H:i')) . '</div>';

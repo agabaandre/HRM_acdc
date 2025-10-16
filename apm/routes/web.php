@@ -152,6 +152,7 @@ Route::group(['middleware' => ['web', CheckSessionMiddleware::class]], function 
     Route::post('/jobs/reset-document-counters', [App\Http\Controllers\JobsController::class, 'resetDocumentCounters'])->name('jobs.reset-document-counters');
     Route::get('/jobs/document-counter-filters', [App\Http\Controllers\JobsController::class, 'getDocumentCounterFilters'])->name('jobs.document-counter-filters');
     Route::post('/jobs/reminders-schedule', [App\Http\Controllers\JobsController::class, 'executeRemindersSchedule'])->name('jobs.reminders-schedule');
+    Route::post('/jobs/returned-memos-reminders', [App\Http\Controllers\JobsController::class, 'executeReturnedMemosReminders'])->name('jobs.returned-memos-reminders');
 
     // Approver Dashboard Routes
 Route::get('/approver-dashboard', [App\Http\Controllers\ApproverDashboardController::class, 'index'])->name('approver-dashboard.index');
@@ -174,6 +175,11 @@ Route::get('/api/pending-approvals/summary', [App\Http\Controllers\PendingApprov
 Route::get('/api/pending-approvals/recent', [App\Http\Controllers\PendingApprovalsController::class, 'getRecentPending'])->name('pending-approvals.recent');
 Route::post('/api/pending-approvals/mark-viewed', [App\Http\Controllers\PendingApprovalsController::class, 'markAsViewed'])->name('pending-approvals.mark-viewed');
 Route::post('/api/pending-approvals/send-notification', [App\Http\Controllers\PendingApprovalsController::class, 'sendNotification'])->name('pending-approvals.send-notification');
+
+// Returned Memos Routes
+Route::get('/returned-memos', [App\Http\Controllers\ReturnedMemosController::class, 'index'])->name('returned-memos.index');
+Route::get('/api/returned-memos', [App\Http\Controllers\ReturnedMemosController::class, 'getReturnedMemosData'])->name('returned-memos.api');
+Route::get('/api/returned-memos/filter-options', [App\Http\Controllers\ReturnedMemosController::class, 'getFilterOptions'])->name('returned-memos.filter-options');
 
 
 

@@ -131,6 +131,16 @@ class SendNotificationEmailJob implements ShouldQueue
                     'pendingApprovals' => $this->getPendingApprovals()
                 ]);
             }
+            
+            // Add specific data for returned memos template
+            if ($this->template === 'emails.returned-memos-notification') {
+                $viewData = array_merge($viewData, [
+                    'staffName' => $this->recipient->fname . ' ' . $this->recipient->lname,
+                    'summaryStats' => $this->getReturnedMemosSummaryStats(),
+                    'returnedItems' => $this->getReturnedMemosItems(),
+                    'returnedMemosUrl' => config('app.url') . '/apm/returned-memos'
+                ]);
+            }
 
             $htmlContent = view($this->template, $viewData)->render();
 
@@ -212,5 +222,49 @@ class SendNotificationEmailJob implements ShouldQueue
 
         $pendingApprovalsService = new \App\Services\PendingApprovalsService($sessionData);
         return $pendingApprovalsService->getPendingApprovals();
+    }
+
+    /**
+     * Get summary stats for returned memos
+     */
+    private function getReturnedMemosSummaryStats(): array
+    {
+        if (!$this->recipient) {
+            return ['total_returned' => 0, 'by_category' => []];
+        }
+
+        $sessionData = [
+            'staff_id' => $this->recipient->staff_id,
+            'division_id' => $this->recipient->division_id ?? null,
+            'permissions' => [],
+            'name' => $this->recipient->fname . ' ' . $this->recipient->lname,
+            'email' => $this->recipient->work_email,
+            'base_url' => config('app.url')
+        ];
+
+        $returnedMemosService = new \App\Services\ReturnedMemosService($sessionData);
+        return $returnedMemosService->getSummaryStats();
+    }
+
+    /**
+     * Get returned memos items
+     */
+    private function getReturnedMemosItems(): array
+    {
+        if (!$this->recipient) {
+            return [];
+        }
+
+        $sessionData = [
+            'staff_id' => $this->recipient->staff_id,
+            'division_id' => $this->recipient->division_id ?? null,
+            'permissions' => [],
+            'name' => $this->recipient->fname . ' ' . $this->recipient->lname,
+            'email' => $this->recipient->work_email,
+            'base_url' => config('app.url')
+        ];
+
+        $returnedMemosService = new \App\Services\ReturnedMemosService($sessionData);
+        return $returnedMemosService->getReturnedMemos();
     }
 }
