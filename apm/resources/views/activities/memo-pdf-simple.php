@@ -495,21 +495,58 @@
                               $grandTotal = 0;
                             ?>
                            
-                            <?php foreach($activity->activity_budget as $item): ?>
-                                <?php
-                                    $total = $item->unit_cost * $item->units*$item->days;
-                                    $grandTotal+=$total;
-                                ?>
-                                <tr>
-                                    <td><?php echo $count; ?></td>
-                                    <td class="text-right"><?php echo htmlspecialchars($item->cost); ?></td>
-                                    <td class="text-right"><?php echo number_format($item->unit_cost, 2); ?></td>
-                                    <td class="text-right"><?php echo $item->units; ?></td>
-                                    <td class="text-right"><?php echo $item->days; ?></td>
-                                    <td class="text-right"><?php echo number_format($item->total, 2); ?></td>
-                                    <td><?php echo htmlspecialchars($item->description); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
+                            <?php
+                            // Parse budget breakdown from activity
+                            $budgetBreakdown = null;
+                            if ($activity->budget_breakdown) {
+                                $budgetBreakdown = is_string($activity->budget_breakdown) 
+                                    ? json_decode($activity->budget_breakdown, true) 
+                                    : $activity->budget_breakdown;
+                            }
+                            
+                            // Display budget items from budget_breakdown
+                            if ($budgetBreakdown && is_array($budgetBreakdown)) {
+                                unset($budgetBreakdown['grand_total']); // Remove grand total from iteration
+                                
+                                foreach ($budgetBreakdown as $codeId => $items) {
+                                    if (is_array($items)) {
+                                        foreach ($items as $item) {
+                                            $itemTotal = ($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0);
+                                            $grandTotal += $itemTotal;
+                                            ?>
+                                            <tr>
+                                                <td><?php echo $count; ?></td>
+                                                <td class="text-right"><?php echo htmlspecialchars($item['cost'] ?? ''); ?></td>
+                                                <td class="text-right"><?php echo number_format($item['unit_cost'] ?? 0, 2); ?></td>
+                                                <td class="text-right"><?php echo $item['quantity'] ?? 1; ?></td>
+                                                <td class="text-right"><?php echo $item['days'] ?? 1; ?></td>
+                                                <td class="text-right"><?php echo number_format($itemTotal, 2); ?></td>
+                                                <td><?php echo htmlspecialchars($item['description'] ?? ''); ?></td>
+                                            </tr>
+                                            <?php
+                                            $count++;
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Fallback to activity_budget if budget_breakdown is not available
+                                foreach($activity->activity_budget as $item): ?>
+                                    <?php
+                                        $total = $item->unit_cost * $item->units*$item->days;
+                                        $grandTotal+=$total;
+                                    ?>
+                                    <tr>
+                                        <td><?php echo $count; ?></td>
+                                        <td class="text-right"><?php echo htmlspecialchars($item->cost); ?></td>
+                                        <td class="text-right"><?php echo number_format($item->unit_cost, 2); ?></td>
+                                        <td class="text-right"><?php echo $item->units; ?></td>
+                                        <td class="text-right"><?php echo $item->days; ?></td>
+                                        <td class="text-right"><?php echo number_format($item->total, 2); ?></td>
+                                        <td><?php echo htmlspecialchars($item->description); ?></td>
+                                    </tr>
+                                <?php endforeach;
+                            }
+                            ?>
 
                             <?php
                                 $count++;
