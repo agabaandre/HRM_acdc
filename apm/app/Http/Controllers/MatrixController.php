@@ -569,14 +569,24 @@ class MatrixController extends Controller
                 foreach ($allActivities as $activity) {
                     $canApprove = true;
                     
-                    // Check if activity has budget data
-                    if (empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode) {
-                        // For external source activities (no budget data), only allow if fund type 3 is in allowed_funders
-                        $canApprove = in_array(3, $allowedFunders);
+                    // Use budget_breakdown JSON to determine fund type instead of activity_budget model
+                    if ($activity->budget_breakdown) {
+                        // Parse budget_breakdown JSON
+                        $budgetBreakdown = is_string($activity->budget_breakdown) 
+                            ? json_decode($activity->budget_breakdown, true) 
+                            : $activity->budget_breakdown;
+                        
+                        if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
+                            // Check if activity's fund type is in allowed_funders
+                            $activityFundTypeId = $activity->fund_type_id;
+                            $canApprove = in_array($activityFundTypeId, $allowedFunders);
+                        } else {
+                            // For activities with empty budget_breakdown, only allow if fund type 3 is in allowed_funders
+                            $canApprove = in_array(3, $allowedFunders);
+                        }
                     } else {
-                        // Check if activity's fund type is in allowed_funders
-                        $activityFundTypeId = $activity->activity_budget[0]->fundcode->fund_type_id;
-                        $canApprove = in_array($activityFundTypeId, $allowedFunders);
+                        // For activities with no budget_breakdown, only allow if fund type 3 is in allowed_funders
+                        $canApprove = in_array(3, $allowedFunders);
                     }
                     
                     if ($canApprove) {
