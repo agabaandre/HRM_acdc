@@ -261,6 +261,22 @@
                     </div>
                 </div>
 
+                <!-- Important Disclaimer -->
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 20px; margin: 25px 0; border-left: 4px solid #f39c12;">
+                    <h4 style="margin: 0 0 15px 0; color: #856404; font-size: 16px; font-weight: 600;">
+                        ⚠️ Important Notice - HOD Authorization Required
+                    </h4>
+                    <p style="margin: 0; color: #856404; line-height: 1.5; font-size: 14px;">
+                        <strong>For non-draft memos (memos that have been submitted for approval):</strong><br>
+                        You must liaise with your <strong>Head of Division (HOD)</strong> to make any changes before resubmitting. 
+                        Only HODs have the authority to modify and resubmit memos that have reached the approval workflow. 
+                        Please contact your HOD immediately to discuss the required changes and resubmission process.
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #856404; line-height: 1.5; font-size: 14px;">
+                        <strong>For draft memos:</strong> You can make changes directly without HOD authorization.
+                    </p>
+                </div>
+
                 <div class="returned-items">
                     <h3>Returned Items Requiring Your Attention</h3>
                     
