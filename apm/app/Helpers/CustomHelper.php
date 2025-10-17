@@ -528,11 +528,33 @@ if (!function_exists('user_session')) {
             if(!$activity->matrix->workflow_definition->allowed_funders||empty($activity->matrix->workflow_definition->allowed_funders))
                 return true;
 
-            // Check if activity has budget data before accessing it
-            if(empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode)
-                return true;
-
-            return  in_array($activity->activity_budget[0]->fundcode->fund_type_id, $activity->matrix->workflow_definition->allowed_funders ?? []);
+            // Use budget_breakdown JSON to determine fund type instead of activity_budget model
+            if ($activity->budget_breakdown) {
+                // Parse budget_breakdown JSON
+                $budgetBreakdown = is_string($activity->budget_breakdown) 
+                    ? json_decode($activity->budget_breakdown, true) 
+                    : $activity->budget_breakdown;
+                
+                if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
+                    // Check if activity's fund type is in allowed_funders
+                    $allowedFunders = is_string($activity->matrix->workflow_definition->allowed_funders) 
+                        ? json_decode($activity->matrix->workflow_definition->allowed_funders, true) 
+                        : $activity->matrix->workflow_definition->allowed_funders;
+                    return in_array($activity->fund_type_id, $allowedFunders ?? []);
+                } else {
+                    // For activities with empty budget_breakdown, allow if fund type 3 is in allowed_funders
+                    $allowedFunders = is_string($activity->matrix->workflow_definition->allowed_funders) 
+                        ? json_decode($activity->matrix->workflow_definition->allowed_funders, true) 
+                        : $activity->matrix->workflow_definition->allowed_funders;
+                    return in_array(3, $allowedFunders ?? []);
+                }
+            } else {
+                // For activities with no budget_breakdown, allow if fund type 3 is in allowed_funders
+                $allowedFunders = is_string($activity->matrix->workflow_definition->allowed_funders) 
+                    ? json_decode($activity->matrix->workflow_definition->allowed_funders, true) 
+                    : $activity->matrix->workflow_definition->allowed_funders;
+                return in_array(3, $allowedFunders ?? []);
+            }
         }
     }
 
@@ -735,14 +757,32 @@ if (!function_exists('user_session')) {
                 
                 // Check if activity has budget data and allowed_funders is specified
                 if ($workflowDefinition->allowed_funders && !empty($workflowDefinition->allowed_funders)) {
-                    // Check if activity has budget data
-                    if (empty($activity->activity_budget) || !isset($activity->activity_budget[0]) || !$activity->activity_budget[0]->fundcode) {
-                        // For external source activities (no budget data), only allow if fund type 3 is in allowed_funders
-                        $canApprove = in_array(3, $workflowDefinition->allowed_funders);
+                    // Use budget_breakdown JSON to determine fund type instead of activity_budget model
+                    if ($activity->budget_breakdown) {
+                        // Parse budget_breakdown JSON
+                        $budgetBreakdown = is_string($activity->budget_breakdown) 
+                            ? json_decode($activity->budget_breakdown, true) 
+                            : $activity->budget_breakdown;
+                        
+                        if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
+                            // Check if activity's fund type is in allowed_funders
+                            $allowedFunders = is_string($workflowDefinition->allowed_funders) 
+                                ? json_decode($workflowDefinition->allowed_funders, true) 
+                                : $workflowDefinition->allowed_funders;
+                            $canApprove = in_array($activity->fund_type_id, $allowedFunders ?? []);
+                        } else {
+                            // For activities with empty budget_breakdown, only allow if fund type 3 is in allowed_funders
+                            $allowedFunders = is_string($workflowDefinition->allowed_funders) 
+                                ? json_decode($workflowDefinition->allowed_funders, true) 
+                                : $workflowDefinition->allowed_funders;
+                            $canApprove = in_array(3, $allowedFunders ?? []);
+                        }
                     } else {
-                        // Check if activity's fund type is in allowed_funders
-                        $activityFundTypeId = $activity->activity_budget[0]->fundcode->fund_type_id;
-                        $canApprove = in_array($activityFundTypeId, $workflowDefinition->allowed_funders);
+                        // For activities with no budget_breakdown, only allow if fund type 3 is in allowed_funders
+                        $allowedFunders = is_string($workflowDefinition->allowed_funders) 
+                            ? json_decode($workflowDefinition->allowed_funders, true) 
+                            : $workflowDefinition->allowed_funders;
+                        $canApprove = in_array(3, $allowedFunders ?? []);
                     }
                 }
                 
