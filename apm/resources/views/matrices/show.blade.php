@@ -129,7 +129,17 @@
                         <i class="bx bx-calendar-event me-2 text-primary"></i>Activities
                     </h5>
                     <small class="text-muted d-block mt-1">
-                        {{ $matrix->activities->count() }} activities in this matrix
+                        @php
+                            $activities = $matrix->activities;
+                            $intramuralCount = $activities->where('fund_type_id', 1)->count();
+                            $extramuralCount = $activities->where('fund_type_id', 2)->count();
+                            $externalCount = $activities->where('fund_type_id', 3)->count();
+                            $totalCount = $activities->count();
+                        @endphp
+                        {{ $totalCount }} activities in this matrix 
+                        @if($intramuralCount > 0 || $extramuralCount > 0 || $externalCount > 0)
+                            ({{ $intramuralCount }} intramural, {{ $extramuralCount }} extramural, {{ $externalCount }} external source)
+                        @endif
                     </small>
                 </div>
                 <div class="col-md-6">
@@ -238,7 +248,7 @@
                             <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 12%;">Date Range</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 12%;">Responsible Person</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Participants</th>
-                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Fund Type</th>
+                            <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 12%;">Funding</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Budget (Est./Avail.)</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Status</th>
                             <th class="border-0 px-3 py-3 text-muted fw-semibold text-center" style="width: 8%;">Actions</th>
@@ -1157,8 +1167,37 @@ function renderActivities(activities) {
             html += '</td>';
             
             html += '<td class="px-3 py-3 text-center">';
+            html += `<div class="text-wrap" style="max-width: 140px;">`;
+            
+            // Display fund type
+            html += `<div class="mb-1">`;
             html += `<span class="badge bg-info rounded-pill">${activity.fund_type ? activity.fund_type.name : 'N/A'}</span>`;
-            html += '</td>';
+            html += `</div>`;
+            
+            // Get funder information - try activity_budget first, then funder_from_budget_breakdown
+            let funderInfo = null;
+            
+            // Try to get funder from activity_budget
+            if (activity.activity_budget && activity.activity_budget.length > 0 && activity.activity_budget[0].fundcode && activity.activity_budget[0].fundcode.funder) {
+                funderInfo = activity.activity_budget[0].fundcode.funder;
+            } else if (activity.funder_from_budget_breakdown) {
+                // Use funder info from budget_breakdown processing
+                funderInfo = activity.funder_from_budget_breakdown;
+            }
+            
+            // Display funder information
+            if (funderInfo) {
+                html += `<div class="small">`;
+                html += `<div class="fw-semibold text-primary">${funderInfo.name}</div>`;
+                if (funderInfo.code && funderInfo.code !== funderInfo.name) {
+                    html += `<small class="text-muted">${funderInfo.code}</small>`;
+                }
+                html += `</div>`;
+            } else {
+                html += `<div class="small text-muted">N/A</div>`;
+            }
+            
+            html += '</div></td>';
             
             html += '<td class="px-3 py-3 text-center">';
             html += `<div class="budget-display">`;
