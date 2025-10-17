@@ -135,10 +135,15 @@
                             $extramuralCount = $activities->where('fund_type_id', 2)->count();
                             $externalCount = $activities->where('fund_type_id', 3)->count();
                             $totalCount = $activities->count();
+                            $regularActivitiesCount = $activities->where('is_single_memo', 0)->count();
+                            $singleMemosCount = $activities->where('is_single_memo', 1)->count();
                         @endphp
                         {{ $totalCount }} activities in this matrix 
+                        @if($singleMemosCount > 0)
+                            ({{ $singleMemosCount }} single memo{{ $singleMemosCount > 1 ? 's' : '' }})
+                        @endif
                         @if($intramuralCount > 0 || $extramuralCount > 0 || $externalCount > 0)
-                            ({{ $intramuralCount }} intramural, {{ $extramuralCount }} extramural, {{ $externalCount }} external source)
+                            - {{ $intramuralCount }} intramural, {{ $extramuralCount }} extramural, {{ $externalCount }} external source
                         @endif
                     </small>
                 </div>
