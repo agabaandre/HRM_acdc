@@ -45,6 +45,10 @@ class PrintHelper
      */
     public static function getApprovalDate($staffId, $approvalTrails, $order)
     {
+        if (!$staffId || !$approvalTrails || $approvalTrails->isEmpty()) {
+            return 'Not Signed';
+        }
+
         // Try to find approval by staff_id and approval_order first
         $approval = $approvalTrails
             ->where('approval_order', $order)
@@ -61,7 +65,7 @@ class PrintHelper
                 ->first();
         }
 
-        // If still not found, try to find by staff_id only
+        // If still not found, try to find by staff_id only (any order)
         if (!$approval) {
             $approval = $approvalTrails
                 ->where('staff_id', $staffId)
@@ -69,7 +73,7 @@ class PrintHelper
                 ->first();
         }
 
-        // If still not found, try to find by oic_staff_id only
+        // If still not found, try to find by oic_staff_id only (any order)
         if (!$approval) {
             $approval = $approvalTrails
                 ->where('oic_staff_id', $staffId)
@@ -77,10 +81,21 @@ class PrintHelper
                 ->first();
         }
 
-        $date = ($approval && isset($approval->created_at))
-            ? (is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at)))
-            : date('j F Y H:i');
-        return $date;
+        // If still not found, try to find by order only (any staff)
+        if (!$approval) {
+            $approval = $approvalTrails
+                ->where('approval_order', $order)
+                ->sortByDesc('created_at')
+                ->first();
+        }
+
+        if ($approval && isset($approval->created_at)) {
+            return is_object($approval->created_at) 
+                ? $approval->created_at->format('j F Y H:i') 
+                : date('j F Y H:i', strtotime($approval->created_at));
+        }
+
+        return 'Not Signed';
     }
 
     /**
@@ -123,15 +138,20 @@ class PrintHelper
 
         echo '<div style="line-height: 1.2;">';
         
-        if (isset($staff['signature']) && !empty($staff['signature'])) {
-            echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+        if ($approvalDate === 'Not Signed') {
+            echo '<small style="color: #999; font-style: italic;">Not Signed</small>';
         } else {
-            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+            if (isset($staff['signature']) && !empty($staff['signature'])) {
+                echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
+                echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+            } else {
+                echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+            }
+            
+            echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
+            echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars(self::generateVerificationHash($item->id, $staffId, $approvalDate)) . '</div>';
         }
         
-        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-        echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars(self::generateVerificationHash($item->id, $staffId, $approvalDate)) . '</div>';
         echo '</div>';
     }
 
