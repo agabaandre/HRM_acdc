@@ -575,7 +575,7 @@
                    
                 </div>
      <div class="section-label"><strong>Request for Approval</strong></div>
-     <div class="justify-text" style="padding: 10px;"><?php echo $activity->activity_request_remarks ?? 'N/A'; ?></div>
+     <div class="justify-text" style="padding: 2px;"><?php echo $activity->activity_request_remarks ?? 'N/A'; ?></div>
 
     <?php if($fundCode->fundType->id == 1): ?>
     <div class="page-break"></div>
