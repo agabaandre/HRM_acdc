@@ -511,15 +511,25 @@
                                 foreach ($budgetBreakdown as $codeId => $items) {
                                     if (is_array($items)) {
                                         foreach ($items as $item) {
-                                            $itemTotal = ($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0);
+                                            $unitCost = floatval($item['unit_cost'] ?? 0);
+                                            $units = floatval($item['units'] ?? 0);
+                                            $days = floatval($item['days'] ?? 1);
+                                            
+                                            // Use days when greater than 1, otherwise just unit_cost * units
+                                            if ($days > 1) {
+                                                $itemTotal = $unitCost * $units * $days;
+                                            } else {
+                                                $itemTotal = $unitCost * $units;
+                                            }
+                                            
                                             $grandTotal += $itemTotal;
                                             ?>
                                             <tr>
                                                 <td><?php echo $count; ?></td>
                                                 <td class="text-right"><?php echo htmlspecialchars($item['cost'] ?? ''); ?></td>
-                                                <td class="text-right"><?php echo number_format($item['unit_cost'] ?? 0, 2); ?></td>
-                                                <td class="text-right"><?php echo $item['quantity'] ?? 1; ?></td>
-                                                <td class="text-right"><?php echo $item['days'] ?? 1; ?></td>
+                                                <td class="text-right"><?php echo number_format($unitCost, 2); ?></td>
+                                                <td class="text-right"><?php echo $units; ?></td>
+                                                <td class="text-right"><?php echo $days; ?></td>
                                                 <td class="text-right"><?php echo number_format($itemTotal, 2); ?></td>
                                                 <td><?php echo htmlspecialchars($item['description'] ?? ''); ?></td>
                                             </tr>
