@@ -29,18 +29,28 @@ return Application::configure(basePath: dirname(__DIR__))
             ->runInBackground();
             
         $schedule->command('reminders:schedule')
+            ->dailyAt('12:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+            
+        $schedule->command('reminders:schedule')
             ->dailyAt('16:00')
             ->withoutOverlapping()
             ->runInBackground();
             
-        // Schedule returned memos reminders at 10 AM and 3 PM
+        // Schedule returned memos reminders at 8 AM, 1 PM, and 5 PM
         $schedule->command('reminders:returned-memos')
-            ->dailyAt('10:00')
+            ->dailyAt('08:00')
             ->withoutOverlapping()
             ->runInBackground();
             
         $schedule->command('reminders:returned-memos')
-            ->dailyAt('15:00')
+            ->dailyAt('13:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+            
+        $schedule->command('reminders:returned-memos')
+            ->dailyAt('17:00')
             ->withoutOverlapping()
             ->runInBackground();
     })->create();

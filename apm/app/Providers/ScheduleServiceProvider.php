@@ -95,14 +95,14 @@ class ScheduleServiceProvider extends ServiceProvider
                 Log::error('Morning pending approvals notification failed');
             });
             
-        // TEST: Add 02:40 schedule for testing
+        // Midday pending approvals notifications
         $schedule->command('reminders:schedule')
-            ->dailyAt('02:50')
-            ->description('TEST: Send pending approvals notifications to all approvers')
+            ->dailyAt('12:00')
+            ->description('Send midday pending approvals notifications to all approvers')
             ->withoutOverlapping()
             ->runInBackground()
             ->onFailure(function () {
-                Log::error('TEST pending approvals notification failed');
+                Log::error('Midday pending approvals notification failed');
             });
             
         $schedule->command('reminders:schedule')
@@ -116,7 +116,7 @@ class ScheduleServiceProvider extends ServiceProvider
             
         // Daily returned memos notifications
         $schedule->command('reminders:returned-memos')
-            ->dailyAt('10:00')
+            ->dailyAt('08:00')
             ->description('Send morning returned memos notifications to all staff')
             ->withoutOverlapping()
             ->runInBackground()
@@ -125,12 +125,21 @@ class ScheduleServiceProvider extends ServiceProvider
             });
             
         $schedule->command('reminders:returned-memos')
-            ->dailyAt('15:00')
-            ->description('Send afternoon returned memos notifications to all staff')
+            ->dailyAt('13:00')
+            ->description('Send midday returned memos notifications to all staff')
             ->withoutOverlapping()
             ->runInBackground()
             ->onFailure(function () {
-                Log::error('Afternoon returned memos notification failed');
+                Log::error('Midday returned memos notification failed');
+            });
+            
+        $schedule->command('reminders:returned-memos')
+            ->dailyAt('17:00')
+            ->description('Send evening returned memos notifications to all staff')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Evening returned memos notification failed');
             });
     }
 }

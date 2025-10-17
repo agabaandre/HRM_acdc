@@ -290,12 +290,10 @@
       }
 
       // Organize approvers by section using helper
-      $organizedApprovers = PrintHelper::organizeApproversBySection(
-          $serviceRequest->id ?? null,
-          'App\Models\ServiceRequest',
-          $serviceRequest->division_id ?? null,
+      // Service Requests always use their own workflow (ID 3) regardless of source data
+      $organizedApprovers = PrintHelper::getServiceRequestApprovers(
           $serviceRequest->forward_workflow_id ?? null,
-          $divisionCategory
+          $serviceRequest->division_id ?? null
       );
 
       // Define the order of sections: TO, THROUGH, FROM
@@ -327,7 +325,8 @@
                     <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
             </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-                    <?php renderApproverInfo($approver, $approver['role'], $section, $serviceRequest); ?>
+                    <div style="font-size: 14px; font-weight: bold; line-height: 1.2; margin-bottom: 2px; color: #000;"><?php echo htmlspecialchars(trim(($approver['staff']['title'] ?? '') . ' ' . ($approver['staff']['name'] ?? ''))); ?></div>
+                    <div style="color: #666; font-size: 12px; line-height: 1.1; margin-top: 1px;"><?php echo htmlspecialchars($approver['role']); ?></div>
       </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
                     <?php 
@@ -335,7 +334,9 @@
                     if ($order === 'division_head') {
                         $order = 1; // Use level 1 for division head
                     }
-                    renderSignature($approver, $order, $serviceRequest->serviceRequestApprovalTrails, $serviceRequest); 
+                    // Use source data approval trails for signatures since division head comes from source
+                    $approvalTrails = $sourceData->approval_trails ?? $serviceRequest->serviceRequestApprovalTrails;
+                    renderSignature($approver, $order, $approvalTrails, $serviceRequest); 
                     ?>
       </td>
                 <?php if ($section === $sectionOrder[0] && $index === 0): // Only output the Date/FileNo cell once ?>
@@ -363,23 +364,61 @@
                 <td style="width: 30%; vertical-align: top; text-align: left;">
                     <?php if ($section === 'from'): ?>
                         <?php
-                        // Get division head name
+                        // Get division head name from source memo
                         $divisionHeadName = '';
-                        if ($serviceRequest->division && $serviceRequest->division->division_head) {
+                        $divisionName = '';
+                        
+                        if ($sourceData && $sourceData->division && $sourceData->division->division_head) {
+                            // Use source memo's division head
+                            $divisionHead = \App\Models\Staff::find($sourceData->division->division_head);
+                            if ($divisionHead) {
+                                $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
+                            }
+                            $divisionName = $sourceData->division->division_name ?? '';
+                        } elseif ($serviceRequest->division && $serviceRequest->division->division_head) {
+                            // Fallback to Service Request's division head if no source data
                             $divisionHead = \App\Models\Staff::find($serviceRequest->division->division_head);
                             if ($divisionHead) {
                                 $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
                             }
+                            $divisionName = $serviceRequest->division->division_name ?? '';
                         }
                         ?>
                         <div class="approver-name"><?php echo htmlspecialchars($divisionHeadName ?: 'Division Head'); ?></div>
-                        <div class="approver-title"><?php echo htmlspecialchars($serviceRequest->division->division_name ?? ''); ?></div>
+                        <div class="approver-title">Head of Division (HOD)</div>
+                        <div class="approver-title"><?php echo htmlspecialchars($divisionName); ?></div>
                     <?php else: ?>
                         <div class="approver-name"><?php echo htmlspecialchars(ucfirst($section)); ?></div>
                     <?php endif; ?>
           </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-                    <!-- Empty signature space -->
+                    <?php if ($section === 'from'): ?>
+                        <?php
+                        // Render signature for division head from source memo
+                        if ($sourceData && $sourceData->approval_trails && $sourceData->division && $sourceData->division->division_head) {
+                            // Find division head in source memo approval trails by staff ID
+                            $divisionHeadTrail = null;
+                            $divisionHeadId = $sourceData->division->division_head;
+                            
+                            foreach ($sourceData->approval_trails as $trail) {
+                                if (isset($trail->staff_id) && $trail->staff_id == $divisionHeadId) {
+                                    $divisionHeadTrail = $trail;
+                                    break;
+                                }
+                            }
+                            
+                            if ($divisionHeadTrail) {
+                                renderSignature($divisionHeadTrail, 1, $sourceData->approval_trails, $serviceRequest);
+                            } else {
+                                echo '<!-- Division head (ID: ' . $divisionHeadId . ') not found in source memo approval trails -->';
+                            }
+                        } else {
+                            echo '<!-- No source data approval trails available -->';
+                        }
+                        ?>
+                    <?php else: ?>
+                        <!-- Empty signature space for other sections -->
+                    <?php endif; ?>
           </td>
                 <?php if ($section === $sectionOrder[0]): // Only output the Date/FileNo cell once ?>
                     <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
