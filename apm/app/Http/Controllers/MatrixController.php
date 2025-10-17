@@ -540,6 +540,7 @@ class MatrixController extends Controller
                 'responsiblePerson', 
                 'activity_budget', 
                 'activity_budget.fundcode',
+                'activity_budget.fundcode.funder',
                 'matrix.division', // Eager load matrix division
                 'matrix.forwardWorkflow' // Eager load workflow
             ]);
@@ -553,6 +554,7 @@ class MatrixController extends Controller
                 'responsiblePerson', 
                 'activity_budget', 
                 'activity_budget.fundcode',
+                'activity_budget.fundcode.funder',
                 'matrix.division',
                 'matrix.forwardWorkflow'
             ])
@@ -691,6 +693,32 @@ class MatrixController extends Controller
             // Attach related models from pre-loaded collections
             $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
             $activity->internalParticipants = $staff->whereIn('staff_id', $data['staff_ids'])->values();
+            
+            // Add funder information from budget_breakdown if not available from activity_budget
+            if (!$activity->activity_budget || count($activity->activity_budget) === 0) {
+                if ($activity->budget_breakdown) {
+                    $budgetBreakdown = is_string($activity->budget_breakdown) 
+                        ? json_decode($activity->budget_breakdown, true) 
+                        : $activity->budget_breakdown;
+                    
+                    if (is_array($budgetBreakdown)) {
+                        // Get the first fund code ID from budget breakdown
+                        $fundCodeIds = array_filter(array_keys($budgetBreakdown), function($key) {
+                            return $key !== 'grand_total';
+                        });
+                        
+                        if (!empty($fundCodeIds)) {
+                            $firstFundCodeId = $fundCodeIds[0];
+                            $fundCode = \App\Models\FundCode::with('funder')->find($firstFundCodeId);
+                            if ($fundCode && $fundCode->funder) {
+                                // Add funder info to activity
+                                $activity->funder_from_budget_breakdown = $fundCode->funder;
+                                $activity->fund_code_from_budget_breakdown = $fundCode;
+                            }
+                        }
+                    }
+                }
+            }
             
             // Add approval-related data (optimized with caching)
             $activity->can_approve = can_approve_activity($activity);
@@ -956,6 +984,7 @@ class MatrixController extends Controller
                 'responsiblePerson', 
                 'activity_budget', 
                 'activity_budget.fundcode',
+                'activity_budget.fundcode.funder',
                 'matrix.division',
                 'matrix.forwardWorkflow'
             ]);
@@ -1026,6 +1055,32 @@ class MatrixController extends Controller
             // Attach related models from pre-loaded collections
             $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
             $activity->internalParticipants = $staff->whereIn('staff_id', $data['staff_ids'])->values();
+            
+            // Add funder information from budget_breakdown if not available from activity_budget
+            if (!$activity->activity_budget || count($activity->activity_budget) === 0) {
+                if ($activity->budget_breakdown) {
+                    $budgetBreakdown = is_string($activity->budget_breakdown) 
+                        ? json_decode($activity->budget_breakdown, true) 
+                        : $activity->budget_breakdown;
+                    
+                    if (is_array($budgetBreakdown)) {
+                        // Get the first fund code ID from budget breakdown
+                        $fundCodeIds = array_filter(array_keys($budgetBreakdown), function($key) {
+                            return $key !== 'grand_total';
+                        });
+                        
+                        if (!empty($fundCodeIds)) {
+                            $firstFundCodeId = $fundCodeIds[0];
+                            $fundCode = \App\Models\FundCode::with('funder')->find($firstFundCodeId);
+                            if ($fundCode && $fundCode->funder) {
+                                // Add funder info to activity
+                                $activity->funder_from_budget_breakdown = $fundCode->funder;
+                                $activity->fund_code_from_budget_breakdown = $fundCode;
+                            }
+                        }
+                    }
+                }
+            }
             
             // Add approval-related data (default to false for non-authenticated users)
             $activity->can_approve = false;
