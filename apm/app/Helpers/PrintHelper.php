@@ -125,7 +125,7 @@ class PrintHelper
         
         if (isset($staff['signature']) && !empty($staff['signature'])) {
             echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+            echo '<img class="signature-image" src="' . htmlspecialchars(config('app.url') . '/uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
         } else {
             echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
         }
@@ -444,6 +444,13 @@ class PrintHelper
                 } elseif ($definition->approval_order == 1 && isset($approvers['division_head'])) {
                     $approversForOrder = $approvers['division_head'];
                 }
+                
+                // If this is a HOD role and we have a division head, include them
+                if ((strtolower($definition->role) === 'head of division' || 
+                     strtolower($definition->role) === 'head of division (hod)') && 
+                    isset($approvers['division_head'])) {
+                    $approversForOrder = $approvers['division_head'];
+                }
 
                 if (!empty($approversForOrder)) {
                     if (!isset($sectionApprovers[$section])) {
@@ -521,5 +528,74 @@ class PrintHelper
         }
         
         return $ARFApprovers;
+    }
+
+    /**
+     * Get approvers for Service Request based on workflow definition
+     */
+    public static function getServiceRequestApprovers($workflowId, $divisionId = null)
+    {
+        $organizedApprovers = [
+            'to' => [],
+            'from' => []
+        ];
+
+        if (!$workflowId) {
+            return $organizedApprovers;
+        }
+
+        // Get workflow definitions for the workflow
+        $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $workflowId)
+            ->orderBy('approval_order')
+            ->get();
+
+        foreach ($workflowDefinitions as $definition) {
+            // Map workflow roles to job title patterns
+            $roleJobPatterns = [
+                'Director Finance' => ['Director Finance', 'Senior Finance Officer', 'Finance Officer'],
+                'Director Administration' => ['Director Administration', 'Director Management', 'Administration'],
+                'Head of Division' => ['Head of Division', 'Division Head', 'HOD'],
+                'Finance Officer' => ['Finance Officer', 'Senior Finance Officer'],
+                'Deputy Director General' => ['Deputy Director General', 'DDG'],
+                'Director General' => ['Director General', 'DG']
+            ];
+            
+            $patterns = $roleJobPatterns[$definition->role] ?? [$definition->role];
+            
+            // Find staff matching any of the patterns
+            $staff = null;
+            foreach ($patterns as $pattern) {
+                $staffQuery = \App\Models\Staff::where('job_name', 'like', '%' . $pattern . '%')
+                    ->orWhere('title', 'like', '%' . $pattern . '%');
+                
+                // If it's division specific, filter by division
+                if ($definition->is_division_specific && $divisionId) {
+                    $staffQuery->where('division_id', $divisionId);
+                }
+                
+                $staff = $staffQuery->first();
+                if ($staff) break;
+            }
+            
+            if ($staff) {
+                $approver = [
+                    'staff' => [
+                        'id' => $staff->id,
+                        'name' => trim($staff->fname . ' ' . $staff->lname),
+                        'title' => $staff->title ?? '',
+                        'signature' => $staff->signature ?? null
+                    ],
+                    'role' => $definition->role,
+                    'order' => $definition->approval_order,
+                    'is_oic' => false,
+                    'oic_staff' => null
+                ];
+                
+                // Add to 'to' section (approvers)
+                $organizedApprovers['to'][] = $approver;
+            }
+        }
+
+        return $organizedApprovers;
     }
 }

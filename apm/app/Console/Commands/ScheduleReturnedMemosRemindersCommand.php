@@ -26,7 +26,7 @@ class ScheduleReturnedMemosRemindersCommand extends Command
         }
 
         if (!$isForced && !$this->isCorrectTime()) {
-            $this->warn('⏰ Not the scheduled time (10:00 AM or 3:00 PM). Use --force to override.');
+            $this->warn('⏰ Not the scheduled time (8:00 AM, 1:00 PM, or 5:00 PM). Use --force to override.');
             return;
         }
 
@@ -43,7 +43,7 @@ class ScheduleReturnedMemosRemindersCommand extends Command
     private function isCorrectTime(): bool
     {
         $currentHour = now()->hour;
-        return $currentHour === 10 || $currentHour === 15 || $currentHour === 2;
+        return $currentHour === 8 || $currentHour === 13 || $currentHour === 17;
     }
 
     private function runTestMode(): void

@@ -1595,6 +1595,21 @@ class ServiceRequestController extends Controller
         if ($serviceRequest->source_type && $serviceRequest->source_id) {
             $sourceData = $this->getSourceDataForForm($serviceRequest->source_type, $serviceRequest->source_id);
             
+            // Load approval trails for the source data
+            if ($sourceData) {
+                if ($serviceRequest->source_type === 'activity') {
+                    $sourceData->load(['activityApprovalTrails.staff', 'activityApprovalTrails.oicStaff', 'matrix.matrixApprovalTrails.staff']);
+                    // Add approval trails to source data for template access
+                    $sourceData->approval_trails = $sourceData->is_single_memo ? $sourceData->activityApprovalTrails : $sourceData->matrix->matrixApprovalTrails;
+                } elseif ($serviceRequest->source_type === 'special_memo') {
+                    $sourceData->load(['approvalTrails.staff', 'approvalTrails.oicStaff']);
+                    $sourceData->approval_trails = $sourceData->approvalTrails;
+                } elseif ($serviceRequest->source_type === 'non_travel_memo') {
+                    $sourceData->load(['approvalTrails.staff', 'approvalTrails.oicStaff']);
+                    $sourceData->approval_trails = $sourceData->approvalTrails;
+                }
+            }
+            
             // Generate source memo HTML using existing controllers' data preparation
             if ($serviceRequest->source_type === 'activity') {
                 $activity = \App\Models\Activity::find($serviceRequest->source_id);
@@ -1910,8 +1925,10 @@ class ServiceRequestController extends Controller
         // Get activity approval trails with staff details and workflow definition
         $activityApprovals = $activity->activityApprovalTrails()->with(['staff', 'oicStaff', 'workflowDefinition'])->get();
 
-        // Generate HTML using the same template
-        return view('activities.memo-pdf-simple', [
+        // Use different template for single memos and pass appropriate approval trails
+        $template = $activity->is_single_memo ? 'activities.single-memos.single-memo-pdf-simple' : 'activities.memo-pdf-simple';
+        
+        return view($template, [
             'activity' => $activity,
             'matrix' => $matrix,
             'locations' => $locations,

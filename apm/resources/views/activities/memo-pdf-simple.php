@@ -569,7 +569,8 @@
     </table>
 <?php
     // Get financial approvers dynamically based on workflow definition
-    $financialApprovers = PrintHelper::getFinancialApprovers($activity->activityApprovalTrails, $matrix->forward_workflow_id ?? 1);
+    // For regular activities, use matrix approval trails since they are approved as a batch
+    $financialApprovers = PrintHelper::getFinancialApprovers($matrix_approval_trails, $matrix->forward_workflow_id ?? 1);
     
     // Extract specific approvers for easier access
     $sfoApproval = $financialApprovers['Finance Officer'] ?? null;

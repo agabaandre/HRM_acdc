@@ -974,11 +974,21 @@
     $sourceApprovalTrails = collect();
     
     if ($sourceModelType === 'App\\Models\\Activity') {
-        // For matrix activities, use matrix approval trails
-        if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
-            $sourceApprovalTrails = $sourceData['matrix']->approvalTrails;
-        } elseif (isset($sourceData['approval_trails'])) {
-            $sourceApprovalTrails = $sourceData['approval_trails'];
+        // Check if it's a single memo activity
+        $isSingleMemo = isset($sourceData['is_single_memo']) ? $sourceData['is_single_memo'] : false;
+        
+        if ($isSingleMemo) {
+            // For single memo activities, use activity approval trails
+            if (isset($sourceData['approval_trails'])) {
+                $sourceApprovalTrails = $sourceData['approval_trails'];
+            }
+        } else {
+            // For matrix activities, use matrix approval trails
+            if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
+                $sourceApprovalTrails = $sourceData['matrix']->approvalTrails;
+            } elseif (isset($sourceData['approval_trails'])) {
+                $sourceApprovalTrails = $sourceData['approval_trails'];
+            }
         }
     } elseif ($sourceModelType === 'App\\Models\\SpecialMemo' || 
               $sourceModelType === 'App\\Models\\NonTravelMemo' || 
