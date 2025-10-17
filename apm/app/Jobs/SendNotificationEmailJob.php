@@ -138,7 +138,7 @@ class SendNotificationEmailJob implements ShouldQueue
                     'staffName' => $this->recipient->fname . ' ' . $this->recipient->lname,
                     'summaryStats' => $this->getReturnedMemosSummaryStats(),
                     'returnedItems' => $this->getReturnedMemosItems(),
-                    'returnedMemosUrl' => config('app.url') . '/apm/returned-memos'
+                    'returnedMemosUrl' => config('app.url') . 'returned-memos'
                 ]);
             }
 
