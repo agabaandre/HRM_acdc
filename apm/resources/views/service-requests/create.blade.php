@@ -98,7 +98,7 @@
             <input type="hidden" name="new_total_budget" id="newTotalBudget" 
                 value="{{ $totalOriginal ?? 0 }}">
             <input type="hidden" name="budget_breakdown" id="budgetBreakdown" value="">
-             <input type="hidden" name="division_id" id="divisionId" value="{{ $sourceData->division_id ?? 0 }}">
+             <input type="hidden" name="division_id" id="divisionId" value="{{ $sourceData->division_id ?? ($sourceData->matrix->division_id ?? 0) }}">
             <input type="hidden" name="internal_participants_cost" id="internalParticipantsCost" value="">
             <input type="hidden" name="external_participants_cost" id="externalParticipantsCost" value="">
             <input type="hidden" name="other_costs" id="otherCosts" value="">

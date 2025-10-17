@@ -281,7 +281,8 @@ class ServiceRequestController extends Controller
             'external_participants' => 'nullable|array',
         ]);
         $validated['staff_id'] = user_session('staff_id');
-        $validated['division_id'] = user_session('division_id');
+        // Use division_id from request (source memo's division) instead of user's division
+        $validated['division_id'] = $request->input('division_id', user_session('division_id'));
         $validated['request_number'] = ServiceRequest::generateRequestNumber();
         
         // Process budget data

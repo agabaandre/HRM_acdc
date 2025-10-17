@@ -125,7 +125,7 @@ class PrintHelper
         
         if (isset($staff['signature']) && !empty($staff['signature'])) {
             echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
+            echo '<img class="signature-image" src="' . htmlspecialchars(config('app.url') . '/uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
         } else {
             echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
         }
@@ -444,6 +444,13 @@ class PrintHelper
                 } elseif ($definition->approval_order == 1 && isset($approvers['division_head'])) {
                     $approversForOrder = $approvers['division_head'];
                 }
+                
+                // If this is a HOD role and we have a division head, include them
+                if ((strtolower($definition->role) === 'head of division' || 
+                     strtolower($definition->role) === 'head of division (hod)') && 
+                    isset($approvers['division_head'])) {
+                    $approversForOrder = $approvers['division_head'];
+                }
 
                 if (!empty($approversForOrder)) {
                     if (!isset($sectionApprovers[$section])) {
@@ -522,6 +529,10 @@ class PrintHelper
         
         return $ARFApprovers;
     }
+
+    /**
+     * Get approvers for Service Request based on workflow definition
+     */
     public static function getServiceRequestApprovers($workflowId, $divisionId = null)
     {
         $organizedApprovers = [
@@ -587,5 +598,4 @@ class PrintHelper
 
         return $organizedApprovers;
     }
-    
 }
