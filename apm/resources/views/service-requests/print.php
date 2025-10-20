@@ -363,9 +363,9 @@
                     if ($order === 'division_head') {
                         $order = 1; // Use level 1 for division head
                     }
-                    // For TO approvers, use combined trails (SR + source)
+                    // For TO approvers, use only Service Request approval trails to avoid cross-model mixups
                     if ($section === 'to') {
-                        $approvalTrails = $combinedApprovalTrails ?? collect();
+                        $approvalTrails = $srApprovalTrails ?? collect();
                     } else {
                         $approvalTrails = $sourceData->approval_trails ?? $serviceRequest->serviceRequestApprovalTrails;
                     }

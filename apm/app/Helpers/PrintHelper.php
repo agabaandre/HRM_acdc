@@ -162,14 +162,22 @@ class PrintHelper
         // Derive signing date strictly from approval trails
         $approvalDate = self::getApprovalDate($staffId, $approvalTrails, $order);
 
-        // Additional dynamic fallback: if not found, search any 'to' orders in this workflow
-        if ($approvalDate === 'Not Signed' && $item && isset($item->forward_workflow_id) && $approvalTrails) {
-            $toOrders = \App\Models\WorkflowDefinition::where('workflow_id', $item->forward_workflow_id)
-                ->where('is_enabled', 1)
-                ->where('memo_print_section', 'to')
-                ->pluck('approval_order')
-                ->map(fn($v) => (int)$v)
-                ->toArray();
+        // Additional dynamic fallback: if not found, search any 'to' orders
+        if ($approvalDate === 'Not Signed' && $item && $approvalTrails) {
+            // Default SR 'to' orders are 31 and 32
+            $toOrders = [31, 32];
+            if (isset($item->forward_workflow_id)) {
+                // Try to read from workflow definitions; if none are flagged, keep defaults
+                $defined = \App\Models\WorkflowDefinition::where('workflow_id', $item->forward_workflow_id)
+                    ->where('is_enabled', 1)
+                    ->pluck('approval_order')
+                    ->map(fn($v) => (int)$v)
+                    ->toArray();
+                if (!empty($defined)) {
+                    // Prefer definitions but ensure SR 'to' orders are included
+                    $toOrders = array_values(array_unique(array_merge($toOrders, $defined)));
+                }
+            }
 
             if (!empty($toOrders)) {
                 if (is_array($approvalTrails)) { $approvalTrails = collect($approvalTrails); }
@@ -209,6 +217,23 @@ class PrintHelper
             echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
         } else {
             echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+        }
+
+        // For Service Requests, always use direct DB lookup with staff_id to ensure correct dates
+        if ($item && isset($item->id) && $order && $staffId) {
+            $dbFallback = \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\ServiceRequest')
+                ->where('model_id', $item->id)
+                ->where('approval_order', (int)$order)
+                ->where('action', 'approved')
+                ->where(function($query) use ($staffId) {
+                    $query->where('staff_id', $staffId)
+                          ->orWhere('oic_staff_id', $staffId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+            if ($dbFallback && isset($dbFallback->created_at)) {
+                $approvalDate = is_object($dbFallback->created_at) ? $dbFallback->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($dbFallback->created_at));
+            }
         }
 
         if ($approvalDate === 'Not Signed') {
