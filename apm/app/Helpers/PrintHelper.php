@@ -22,10 +22,20 @@ class PrintHelper
      */
     public static function getStaffId($approver)
     {
-        if (isset($approver['staff']) && isset($approver['staff']['id'])) {
-            return $approver['staff']['id'];
-        } elseif (isset($approver['oic_staff']) && isset($approver['oic_staff']['id'])) {
-            return $approver['oic_staff']['id'];
+        if (isset($approver['staff'])) {
+            if (isset($approver['staff']['staff_id'])) {
+                return $approver['staff']['staff_id'];
+            }
+            if (isset($approver['staff']['id'])) {
+                return $approver['staff']['id'];
+            }
+        } elseif (isset($approver['oic_staff'])) {
+            if (isset($approver['oic_staff']['staff_id'])) {
+                return $approver['oic_staff']['staff_id'];
+            }
+            if (isset($approver['oic_staff']['id'])) {
+                return $approver['oic_staff']['id'];
+            }
         }
         return null;
     }
@@ -45,46 +55,59 @@ class PrintHelper
      */
     public static function getApprovalDate($staffId, $approvalTrails, $order)
     {
-        if (!$staffId || !$approvalTrails || $approvalTrails->isEmpty()) {
+        if (!$approvalTrails || (method_exists($approvalTrails, 'isEmpty') && $approvalTrails->isEmpty())) {
             return 'Not Signed';
         }
 
-        // Try to find approval by staff_id and approval_order first
-        $approval = $approvalTrails
-            ->where('approval_order', $order)
-            ->where('staff_id', $staffId)
-            ->sortByDesc('created_at')
-            ->first();
+        // Normalize to collection and ignore non-signing actions
+        if (is_array($approvalTrails)) {
+            $approvalTrails = collect($approvalTrails);
+        }
+        $approvalTrails = $approvalTrails->filter(function ($trail) {
+            $action = strtolower((string)($trail->action ?? ''));
+            return !in_array($action, ['submitted', 'resubmitted', 'cancelled', 'rejected']);
+        });
+
+        $approval = null;
+
+        // If we have a staff ID, try to find approval by staff_id and approval_order first
+        if ($staffId) {
+            $approval = $approvalTrails
+                ->where('approval_order', (int)$order)
+                ->where('staff_id', (int)$staffId)
+                ->sortByDesc('created_at')
+                ->first();
+        }
 
         // If not found, try to find by oic_staff_id and approval_order
-        if (!$approval) {
+        if (!$approval && $staffId) {
             $approval = $approvalTrails
-                ->where('approval_order', $order)
-                ->where('oic_staff_id', $staffId)
+                ->where('approval_order', (int)$order)
+                ->where('oic_staff_id', (int)$staffId)
                 ->sortByDesc('created_at')
                 ->first();
         }
 
         // If still not found, try to find by staff_id only (any order)
-        if (!$approval) {
+        if (!$approval && $staffId) {
             $approval = $approvalTrails
-                ->where('staff_id', $staffId)
+                ->where('staff_id', (int)$staffId)
                 ->sortByDesc('created_at')
                 ->first();
         }
 
         // If still not found, try to find by oic_staff_id only (any order)
-        if (!$approval) {
+        if (!$approval && $staffId) {
             $approval = $approvalTrails
-                ->where('oic_staff_id', $staffId)
+                ->where('oic_staff_id', (int)$staffId)
                 ->sortByDesc('created_at')
                 ->first();
         }
 
-        // If still not found, try to find by order only (any staff)
+        // If still not found, try to find by order only (any staff) — but prefer the most recent for that order
         if (!$approval) {
             $approval = $approvalTrails
-                ->where('approval_order', $order)
+                ->where('approval_order', (int)$order)
                 ->sortByDesc('created_at')
                 ->first();
         }
@@ -106,6 +129,7 @@ class PrintHelper
         $isOic = isset($approver['is_oic']) ? $approver['is_oic'] : isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
         $name = $isOic ? $staff['name'] . ' (OIC)' : trim(($staff['title'] ?? '') . ' ' . ($staff['name'] ?? ''));
+        // Ensure name appears above role
         echo '<div class="approver-name">' . htmlspecialchars($name) . '</div>';
         echo '<div class="approver-title">' . htmlspecialchars($role) . '</div>';
 
@@ -132,22 +156,52 @@ class PrintHelper
     {
         $isOic = isset($approver['is_oic']) ? $approver['is_oic'] : isset($approver['oic_staff']);
         $staff = $isOic ? $approver['oic_staff'] : $approver['staff'];
-        $staffId = $staff['id'] ?? null;
+        // Ensure we use canonical staff_id regardless of payload shape
+        $staffId = self::getStaffId($approver);
 
+        // Derive signing date strictly from approval trails
         $approvalDate = self::getApprovalDate($staffId, $approvalTrails, $order);
+
+        // Additional dynamic fallback: if not found, search any 'to' orders in this workflow
+        if ($approvalDate === 'Not Signed' && $item && isset($item->forward_workflow_id) && $approvalTrails) {
+            $toOrders = \App\Models\WorkflowDefinition::where('workflow_id', $item->forward_workflow_id)
+                ->where('is_enabled', 1)
+                ->where('memo_print_section', 'to')
+                ->pluck('approval_order')
+                ->map(fn($v) => (int)$v)
+                ->toArray();
+
+            if (!empty($toOrders)) {
+                if (is_array($approvalTrails)) { $approvalTrails = collect($approvalTrails); }
+                $subset = $approvalTrails->whereIn('approval_order', $toOrders)->sortByDesc('created_at');
+                if ($staffId) {
+                    $match = $subset->first(function ($t) use ($staffId) {
+                        return ((int)($t->staff_id ?? 0) === (int)$staffId) || ((int)($t->oic_staff_id ?? 0) === (int)$staffId);
+                    });
+                    if ($match) {
+                        $approvalDate = is_object($match->created_at) ? $match->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($match->created_at));
+                    }
+                }
+                if ($approvalDate === 'Not Signed' && $subset->first()) {
+                    $latest = $subset->first();
+                    $approvalDate = is_object($latest->created_at) ? $latest->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($latest->created_at));
+                }
+            }
+        }
 
         echo '<div style="line-height: 1.2;">';
         
-        if ($approvalDate === 'Not Signed') {
-            echo '<small style="color: #999; font-style: italic;">Not Signed</small>';
+        // Always show signature image if available (even if not yet signed)
+        if (isset($staff['signature']) && !empty($staff['signature'])) {
+            echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
+            echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
         } else {
-            if (isset($staff['signature']) && !empty($staff['signature'])) {
-                echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-                echo '<img class="signature-image" src="' . htmlspecialchars(user_session('base_url') . 'uploads/staff/signature/' . $staff['signature']) . '" alt="Signature">';
-            } else {
-                echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
-            }
-            
+            echo '<small style="color: #666; font-style:normal;">Signed By: ' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
+        }
+
+        if ($approvalDate === 'Not Signed') {
+            echo '<div class="signature-date" style="color:#999;"><em>Not Signed</em></div>';
+        } else {
             echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
             echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars(self::generateVerificationHash($item->id, $staffId, $approvalDate)) . '</div>';
         }
@@ -542,67 +596,143 @@ class PrintHelper
         
         return $ARFApprovers;
     }
-    public static function getServiceRequestApprovers($workflowId, $divisionId = null)
+    public static function getServiceRequestApprovers($workflowId, $divisionId = null, $approvalTrails = null)
     {
         $organizedApprovers = [
             'to' => [],
             'from' => []
         ];
 
+        // Default SR workflow to 3 if not provided
+        if (!$workflowId) {
+            $workflowId = 3;
+        }
+
         if (!$workflowId) {
             return $organizedApprovers;
         }
 
-        // Get workflow definitions for the workflow
+        // Get workflow definitions for the workflow, sorted by print_order then approval_order
         $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->orderBy('print_order')
             ->orderBy('approval_order')
             ->get();
 
         foreach ($workflowDefinitions as $definition) {
-            // Map workflow roles to job title patterns
-            $roleJobPatterns = [
-                'Director Finance' => ['Director Finance', 'Senior Finance Officer', 'Finance Officer'],
-                'Director Administration' => ['Director Administration', 'Director Management', 'Administration'],
-                'Head of Division' => ['Head of Division', 'Division Head', 'HOD'],
-                'Finance Officer' => ['Finance Officer', 'Senior Finance Officer'],
-                'Deputy Director General' => ['Deputy Director General', 'DDG'],
-                'Director General' => ['Director General', 'DG']
-            ];
-            
-            $patterns = $roleJobPatterns[$definition->role] ?? [$definition->role];
-            
-            // Find staff matching any of the patterns
-            $staff = null;
-            foreach ($patterns as $pattern) {
-                $staffQuery = \App\Models\Staff::where('job_name', 'like', '%' . $pattern . '%')
-                    ->orWhere('title', 'like', '%' . $pattern . '%');
-                
-                // If it's division specific, filter by division
-                if ($definition->is_division_specific && $divisionId) {
-                    $staffQuery->where('division_id', $divisionId);
+            // Only include steps explicitly marked for the 'to' section
+            if (($definition->memo_print_section ?? 'through') !== 'to') {
+                continue;
+            }
+
+            $approverPayload = null;
+
+            // Prefer using approval trails to resolve the actual approver (including OIC)
+            if ($approvalTrails && method_exists($approvalTrails, 'where')) {
+                $latestForOrder = self::getLatestApprovalForOrder($approvalTrails, (int)$definition->approval_order);
+                if ($latestForOrder) {
+                    $isOic = !empty($latestForOrder->oic_staff_id);
+                    $staffModel = $isOic ? $latestForOrder->oicStaff : $latestForOrder->staff;
+                    if ($staffModel) {
+                        $approverPayload = [
+                            'staff' => [
+                                'id' => $staffModel->id ?? null,
+                                'staff_id' => $staffModel->staff_id ?? ($staffModel->id ?? null),
+                                'name' => trim(($staffModel->fname ?? '') . ' ' . ($staffModel->lname ?? '')),
+                                'title' => $staffModel->title ?? '',
+                                'signature' => $staffModel->signature ?? null,
+                                'work_email' => $staffModel->work_email ?? null
+                            ],
+                            'oic_staff' => $isOic && $latestForOrder->oicStaff ? [
+                                'id' => $latestForOrder->oicStaff->id ?? null,
+                                'staff_id' => $latestForOrder->oicStaff->staff_id ?? ($latestForOrder->oicStaff->id ?? null),
+                                'name' => trim(($latestForOrder->oicStaff->fname ?? '') . ' ' . ($latestForOrder->oicStaff->lname ?? '')),
+                                'title' => $latestForOrder->oicStaff->title ?? '',
+                                'signature' => $latestForOrder->oicStaff->signature ?? null,
+                                'work_email' => $latestForOrder->oicStaff->work_email ?? null
+                            ] : null,
+                            'role' => $definition->role,
+                            'order' => (int)$definition->approval_order,
+                            'is_oic' => $isOic
+                        ];
+                    }
                 }
-                
-                $staff = $staffQuery->first();
-                if ($staff) break;
             }
-            
-            if ($staff) {
-                $approver = [
+
+            // Fallback: no trail yet; attempt to resolve by division-specific role-owner (e.g., division head)
+            if (!$approverPayload) {
+                // Division-specific roles can attempt a division head match if role indicates HOD
+                if ($definition->is_division_specific && $divisionId && stripos($definition->role, 'Head of Division') !== false) {
+                    $division = \App\Models\Division::find($divisionId);
+                    if ($division && $division->division_head) {
+                        $staff = \App\Models\Staff::find($division->division_head);
+                        if ($staff) {
+                            $approverPayload = [
+                                'staff' => [
+                                    'id' => $staff->id,
+                                    'name' => trim(($staff->fname ?? '') . ' ' . ($staff->lname ?? '')),
+                                    'title' => $staff->title ?? '',
+                                    'signature' => $staff->signature ?? null,
+                                    'work_email' => $staff->work_email ?? null
+                                ],
+                                'oic_staff' => null,
+                                'role' => $definition->role,
+                                'order' => (int)$definition->approval_order,
+                                'is_oic' => false
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // Fallback 2: use Approver assignment table for this workflow definition
+            if (!$approverPayload) {
+                $assignment = \App\Models\Approver::where('workflow_dfn_id', $definition->id)
+                    ->with(['staff', 'oicStaff'])
+                    ->first();
+                if ($assignment && $assignment->staff) {
+                    $approverPayload = [
+                        'staff' => [
+                            'id' => $assignment->staff->id ?? null,
+                            'staff_id' => $assignment->staff->staff_id ?? ($assignment->staff->id ?? null),
+                            'name' => trim(($assignment->staff->fname ?? '') . ' ' . ($assignment->staff->lname ?? '')),
+                            'title' => $assignment->staff->title ?? '',
+                            'signature' => $assignment->staff->signature ?? null,
+                            'work_email' => $assignment->staff->work_email ?? null
+                        ],
+                        'oic_staff' => $assignment->oicStaff ? [
+                            'id' => $assignment->oicStaff->id ?? null,
+                            'staff_id' => $assignment->oicStaff->staff_id ?? ($assignment->oicStaff->id ?? null),
+                            'name' => trim(($assignment->oicStaff->fname ?? '') . ' ' . ($assignment->oicStaff->lname ?? '')),
+                            'title' => $assignment->oicStaff->title ?? '',
+                            'signature' => $assignment->oicStaff->signature ?? null,
+                            'work_email' => $assignment->oicStaff->work_email ?? null
+                        ] : null,
+                        'role' => $definition->role,
+                        'order' => (int)$definition->approval_order,
+                        'is_oic' => false
+                    ];
+                }
+            }
+
+            // If still no payload, render role placeholder without staff
+            if (!$approverPayload) {
+                $approverPayload = [
                     'staff' => [
-                        'id' => $staff->id,
-                        'name' => trim($staff->fname . ' ' . $staff->lname),
-                        'title' => $staff->title ?? '',
-                        'signature' => $staff->signature ?? null
+                        'id' => null,
+                        'name' => '',
+                        'title' => '',
+                        'signature' => null,
+                        'work_email' => null
                     ],
+                    'oic_staff' => null,
                     'role' => $definition->role,
-                    'order' => $definition->approval_order,
-                    'is_oic' => false,
-                    'oic_staff' => null
+                    'order' => (int)$definition->approval_order,
+                    'is_oic' => false
                 ];
-                
-                // Add to 'to' section (approvers)
-                $organizedApprovers['to'][] = $approver;
             }
+
+            $organizedApprovers['to'][] = $approverPayload;
         }
 
         return $organizedApprovers;

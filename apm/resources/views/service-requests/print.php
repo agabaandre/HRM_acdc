@@ -289,11 +289,38 @@
           $divisionCategory = $serviceRequest->division->category;
       }
 
+      // Ensure Service Request approval trails are available as a collection
+      $srApprovalTrails = collect();
+      if (isset($serviceRequest)) {
+          if (isset($serviceRequest->serviceRequestApprovalTrails) && method_exists($serviceRequest->serviceRequestApprovalTrails, 'isEmpty')) {
+              $srApprovalTrails = $serviceRequest->serviceRequestApprovalTrails;
+          } else {
+              // Fallback: fetch directly to avoid null/empty relation issues
+              $srApprovalTrails = \App\Models\ApprovalTrail::where('model_id', $serviceRequest->id ?? 0)
+                  ->where('model_type', 'App\\Models\\ServiceRequest')
+                  ->when(($serviceRequest->forward_workflow_id ?? null), function($q) use ($serviceRequest) {
+                      $q->where('forward_workflow_id', $serviceRequest->forward_workflow_id);
+                  })
+                  ->orderBy('created_at', 'desc')
+                  ->get();
+          }
+      }
+
+      // Build combined approval trails for signature resolution (SR + Source)
+      $combinedApprovalTrails = $srApprovalTrails instanceof \Illuminate\Support\Collection ? $srApprovalTrails : collect($srApprovalTrails);
+      if (isset($sourceData) && isset($sourceData->approval_trails)) {
+          $sourceTrails = $sourceData->approval_trails instanceof \Illuminate\Support\Collection ? $sourceData->approval_trails : collect($sourceData->approval_trails);
+          $combinedApprovalTrails = $combinedApprovalTrails->concat($sourceTrails);
+      }
+
       // Organize approvers by section using helper
       // Service Requests always use their own workflow (ID 3) regardless of source data
+      // Use workflow 3 by default for Service Requests and pass SR approval trails
+      $srWorkflowId = $serviceRequest->forward_workflow_id ?? 3;
       $organizedApprovers = PrintHelper::getServiceRequestApprovers(
-          $serviceRequest->forward_workflow_id ?? null,
-          $serviceRequest->division_id ?? null
+          $srWorkflowId,
+          $serviceRequest->division_id ?? null,
+          $srApprovalTrails
       );
 
       // Define the order of sections: TO, THROUGH, FROM
@@ -325,8 +352,10 @@
                     <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
             </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
-                    <div style="font-size: 14px; font-weight: bold; line-height: 1.2; margin-bottom: 2px; color: #000;"><?php echo htmlspecialchars(trim(($approver['staff']['title'] ?? '') . ' ' . ($approver['staff']['name'] ?? ''))); ?></div>
-                    <div style="color: #666; font-size: 12px; line-height: 1.1; margin-top: 1px;"><?php echo htmlspecialchars($approver['role']); ?></div>
+                    <?php 
+                    // Centralized rendering handles OIC/name/role formatting consistently
+                    renderApproverInfo($approver, $approver['role'] ?? 'Approver', $section, $serviceRequest);
+                    ?>
       </td>
                 <td style="width: 30%; vertical-align: top; text-align: left;">
                     <?php 
@@ -334,8 +363,12 @@
                     if ($order === 'division_head') {
                         $order = 1; // Use level 1 for division head
                     }
-                    // Use source data approval trails for signatures since division head comes from source
-                    $approvalTrails = $sourceData->approval_trails ?? $serviceRequest->serviceRequestApprovalTrails;
+                    // For TO approvers, use combined trails (SR + source)
+                    if ($section === 'to') {
+                        $approvalTrails = $combinedApprovalTrails ?? collect();
+                    } else {
+                        $approvalTrails = $sourceData->approval_trails ?? $serviceRequest->serviceRequestApprovalTrails;
+                    }
                     renderSignature($approver, $order, $approvalTrails, $serviceRequest); 
                     ?>
       </td>
