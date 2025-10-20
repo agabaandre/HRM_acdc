@@ -630,7 +630,7 @@
       <tr>
         <td class="head">Strategic Axis Budget Balance (Certified by SFO)</td>
         <td>USD</td>
-        <td>$ <?=number_format($activity->available_budget ?? 0, 2);?></td>
+        <td><?php if(!empty($activity->available_budget)) echo number_format($activity->available_budget ?? 0, 2); else echo ''; ?></td>
         <td>Date: <?=$sfoApproval ? (is_object($sfoApproval->created_at) ? $sfoApproval->created_at->format('j F Y') : date('j F Y', strtotime($sfoApproval->created_at))) : 'N/A';?></td>
       </tr>
       <tr>
