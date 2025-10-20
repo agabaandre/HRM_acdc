@@ -189,6 +189,18 @@ class PrintHelper
             }
         }
 
+        // Final fallback: use the latest trail for this staff (any order in this SR)
+        if ($approvalDate === 'Not Signed' && $approvalTrails && $staffId) {
+            if (is_array($approvalTrails)) { $approvalTrails = collect($approvalTrails); }
+            $byStaff = $approvalTrails->filter(function ($t) use ($staffId) {
+                return ((int)($t->staff_id ?? 0) === (int)$staffId) || ((int)($t->oic_staff_id ?? 0) === (int)$staffId);
+            })->sortByDesc('created_at');
+            if ($byStaff->first()) {
+                $latest = $byStaff->first();
+                $approvalDate = is_object($latest->created_at) ? $latest->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($latest->created_at));
+            }
+        }
+
         echo '<div style="line-height: 1.2;">';
         
         // Always show signature image if available (even if not yet signed)
