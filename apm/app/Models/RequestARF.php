@@ -332,7 +332,12 @@ class RequestARF extends Model
         $ignore = ['of', 'and', 'for', 'the', 'in'];
         $words = preg_split('/\s+/', strtolower($name));
         $initials = array_map(function ($word) use ($ignore) {
-            return in_array($word, $ignore) ? '' : strtoupper($word[0]);
+            // Check if word is empty or in ignore list
+            if (empty($word) || in_array($word, $ignore)) {
+                return '';
+            }
+            // Check if word has at least one character before accessing index 0
+            return strlen($word) > 0 ? strtoupper($word[0]) : '';
         }, $words);
         
         return implode('', array_filter($initials));

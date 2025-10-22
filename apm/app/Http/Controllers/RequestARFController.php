@@ -466,23 +466,47 @@ class RequestARFController extends Controller
      */
     private function getDivisionId($sourceData, $modelType = null)
     {
+        if (!$sourceData) {
+            Log::warning('Source data is null, using default division');
+            return 1; // Default division
+        }
+
         // For activities, get division through matrix
-        if ($modelType === 'App\\Models\\Activity' && $sourceData) {
-            if (method_exists($sourceData, 'matrix') && $sourceData->matrix && $sourceData->matrix->division) {
-                return $sourceData->matrix->division->id;
+        if ($modelType === 'App\\Models\\Activity') {
+            try {
+                if (method_exists($sourceData, 'matrix') && $sourceData->matrix && $sourceData->matrix->division) {
+                    Log::info('Using division from activity matrix', ['division_id' => $sourceData->matrix->division->id]);
+                    return $sourceData->matrix->division->id;
+                }
+            } catch (\Exception $e) {
+                Log::warning('Error accessing matrix division', ['error' => $e->getMessage()]);
             }
         }
         
         // For non-travel and special memos, get division directly
-        if (method_exists($sourceData, 'division') && $sourceData->division) {
-            return $sourceData->division->id;
+        try {
+            if (method_exists($sourceData, 'division') && $sourceData->division) {
+                Log::info('Using division from source document', ['division_id' => $sourceData->division->id]);
+                return $sourceData->division->id;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Error accessing source division', ['error' => $e->getMessage()]);
         }
         
         // Fallback to staff division
-        if (method_exists($sourceData, 'staff') && $sourceData->staff && $sourceData->staff->division) {
-            return $sourceData->staff->division->id;
+        try {
+            if (method_exists($sourceData, 'staff') && $sourceData->staff && $sourceData->staff->division) {
+                Log::info('Using division from staff', ['division_id' => $sourceData->staff->division->id]);
+                return $sourceData->staff->division->id;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Error accessing staff division', ['error' => $e->getMessage()]);
         }
         
+        Log::warning('No division found in source data, using default division', [
+            'model_type' => $modelType,
+            'source_data_keys' => is_object($sourceData) ? array_keys($sourceData->toArray()) : 'not_object'
+        ]);
         return 1; // Default division
     }
     
@@ -496,38 +520,45 @@ class RequestARFController extends Controller
         $year = date('Y');
         $activityId = $sourceData->id ?? 1;
         
-        // For activities, get division code and quarter from matrix
-        if ($modelType === 'App\\Models\\Activity' && $sourceData) {
-            if (method_exists($sourceData, 'matrix') && $sourceData->matrix) {
-                $matrix = $sourceData->matrix;
-                
-                // Get division code
-                if ($matrix->division) {
-                    $divisionCode = RequestARF::generateShortCodeFromDivision($matrix->division->division_name);
+        try {
+            // For activities, get division code and quarter from matrix
+            if ($modelType === 'App\\Models\\Activity' && $sourceData) {
+                if (method_exists($sourceData, 'matrix') && $sourceData->matrix) {
+                    $matrix = $sourceData->matrix;
+                    
+                    // Get division code
+                    if ($matrix->division && !empty($matrix->division->division_name)) {
+                        $divisionCode = RequestARF::generateShortCodeFromDivision($matrix->division->division_name);
+                    }
+                    
+                    // Get quarter
+                    $quarter = $matrix->quarter ?? 'Q1';
+                    
+                    // Get year from activity start date or matrix year
+                    if ($sourceData->date_from) {
+                        $year = $sourceData->date_from->format('Y');
+                    } elseif ($matrix->year) {
+                        $year = $matrix->year;
+                    }
                 }
-                
-                // Get quarter
-                $quarter = $matrix->quarter ?? 'Q1';
-                
-                // Get year from activity start date or matrix year
-                if ($sourceData->date_from) {
-                    $year = $sourceData->date_from->format('Y');
-                } elseif ($matrix->year) {
-                    $year = $matrix->year;
-                }
-            }
-        }
-        
-        // For memos, get division code
-        if (in_array($modelType, ['App\\Models\\NonTravelMemo', 'App\\Models\\SpecialMemo']) && $sourceData) {
-            if (method_exists($sourceData, 'division') && $sourceData->division) {
-                $divisionCode = RequestARF::generateShortCodeFromDivision($sourceData->division->division_name);
             }
             
-            // Get year from start date if available
-            if (method_exists($sourceData, 'date_from') && $sourceData->date_from) {
-                $year = $sourceData->date_from->format('Y');
+            // For memos, get division code
+            if (in_array($modelType, ['App\\Models\\NonTravelMemo', 'App\\Models\\SpecialMemo']) && $sourceData) {
+                if (method_exists($sourceData, 'division') && $sourceData->division && !empty($sourceData->division->division_name)) {
+                    $divisionCode = RequestARF::generateShortCodeFromDivision($sourceData->division->division_name);
+                }
+                
+                // Get year from start date if available
+                if (method_exists($sourceData, 'date_from') && $sourceData->date_from) {
+                    $year = $sourceData->date_from->format('Y');
+                }
             }
+        } catch (\Exception $e) {
+            Log::warning('Error generating ARF number details, using defaults', [
+                'error' => $e->getMessage(),
+                'model_type' => $modelType
+            ]);
         }
         
         return RequestARF::generateARFNumber($divisionCode, $quarter, $year, $activityId);

@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('service_requests', function (Blueprint $table) {
-            $table->unsignedBigInteger('forward_workflow_id')->nullable()->change();
+        Schema::create('registration_participants', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
         });
     }
 
@@ -21,8 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('service_requests', function (Blueprint $table) {
-            $table->unsignedBigInteger('forward_workflow_id')->nullable(false)->change();
-        });
+        Schema::dropIfExists('registration_participants');
     }
 };
