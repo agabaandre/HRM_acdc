@@ -79,11 +79,11 @@
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <span class="text-muted">Created At</span>
-                        <span>{{ $fundCode->created_at->format('Y-m-d H:i') }}</span>
+                        <span>{{ $fundCode->created_at ? $fundCode->created_at->format('Y-m-d H:i') : 'N/A' }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <span class="text-muted">Last Updated</span>
-                        <span>{{ $fundCode->updated_at->format('Y-m-d H:i') }}</span>
+                        <span>{{ $fundCode->updated_at ? $fundCode->updated_at->format('Y-m-d H:i') : 'N/A' }}</span>
                     </li>
                 </ul>
             </div>

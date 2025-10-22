@@ -396,6 +396,8 @@ class ChangeRequestController extends Controller
                 // Determine which fields have changed
                 $changes = $this->detectChanges($parentMemo, $request);
 
+               // dd($changes);
+
                 // Create the change request record
                 $changeRequest = ChangeRequest::create([
                     'parent_memo_id' => (int) $request->parent_memo_id,
@@ -530,11 +532,15 @@ class ChangeRequestController extends Controller
      */
     private function getParentMemo(string $model, int $id)
     {
-        $modelClass = "App\\Models\\{$model}";
+        $modelClass = "{$model}";
+
+        //dd($modelClass);
         
         if (!class_exists($modelClass)) {
             return null;
         }
+
+       // dd($modelClass::find($id));
 
         return $modelClass::find($id);
     }
@@ -575,7 +581,9 @@ class ChangeRequestController extends Controller
         if ($parentMemo->fund_type_id != $request->input('fund_type')) {
             $changes['fund_type_id'] = true;
         }
-
+       // if($parentMemo->internal_participants !== json_encode($request->input('internal_participants')) )
+          // dd($parentMemo->internal_participants);
+           //dd($parentMemo->internal_participants);
         // Add more change detection logic as needed
 
         return $changes;

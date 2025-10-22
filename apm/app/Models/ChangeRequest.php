@@ -241,19 +241,15 @@ class ChangeRequest extends Model
     /**
      * Get the forward workflow for this change request
      */
-    public function forwardWorkflow(): BelongsTo
-    {
-        return $this->belongsTo(Workflow::class, 'forward_workflow_id');
-    }
 
     /**
      * Get the approval trails for this change request
      */
-    public function approvalTrails(): HasMany
-    {
-        return $this->hasMany(ApprovalTrail::class, 'model_id')
-            ->where('model_type', 'change_request');
-    }
+    // public function approvalTrails(): HasMany
+    // {
+    //     return $this->hasMany(ApprovalTrail::class, 'model_id')
+    //         ->where('model_type', 'change_request');
+    // }
 
     /**
      * Get the budget items for this change request
@@ -355,4 +351,368 @@ class ChangeRequest extends Model
         
         return $changes;
     }
+
+    public function forwardWorkflow(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Workflow::class, 'forward_workflow_id');
+    }
+
+    /**
+     * Reverse workflow relationship.
+     */
+    public function reverseWorkflow(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Workflow::class, 'reverse_workflow_id');
+    }
+
+    // --- Accessors & Utility ---
+
+    public function getFormattedDatesAttribute(): string
+    {
+        if ($this->date_from && $this->date_to) {
+            return \Carbon\Carbon::parse($this->date_from)->format('M j, Y') . ' - ' . \Carbon\Carbon::parse($this->date_to)->format('M j, Y');
+        }
+        return '';
+    }
+
+    /**
+     * Get the workflow definition for the current approval level.
+     *
+     * @return \App\Models\WorkflowDefinition|null
+     */
+    public function getWorkflowDefinitionAttribute()
+    {
+        $definitions = WorkflowDefinition::where('approval_order', $this->approval_level)
+            ->where('workflow_id', $this->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->get();
+
+        if ($definitions->count() > 1 && $definitions[0]->category) {
+            $category = null;
+            if ($this->division) {
+                $category = $this->division->category;
+            }
+            return $definitions->where('category', $category)->first();
+        }
+
+        return ($definitions->count() > 0) ? $definitions[0] : WorkflowDefinition::where('workflow_id', $this->forward_workflow_id)->where('approval_order', 1)->first();
+    }
+
+    /**
+     * Get the current actor (approver) for the current approval level.
+     *
+     * @return \App\Models\Staff|null
+     */
+    public function getCurrentActorAttribute()
+    {
+        if ($this->overall_status == 'approved') {
+            return null;
+        }
+
+        $role = $this->workflow_definition;
+        $staff_id = $this->staff_id;
+
+        if ($role) {
+            if ($role->is_division_specific) {
+                if ($this->division && isset($this->division->{$role->division_reference_column})) {
+                    $staff_id = $this->division->{$role->division_reference_column};
+                }
+            } else {
+                $approver = Approver::select('staff_id')
+                    ->where('workflow_dfn_id', $role->id)
+                    ->first();
+                if ($approver) {
+                    $staff_id = $approver->staff_id;
+                }
+            }
+        }
+
+        return Staff::select('lname', 'fname', 'staff_id')
+            ->where('staff_id', $staff_id)
+            ->first();
+    }
+
+    public function getRecipientsAttribute($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
+    }
+
+    public function getAttachmentAttribute($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
+    }
+
+    public function getInternalParticipantsAttribute($value)
+    {
+       $data = $this->cleanJson($value);
+        
+        $result = [];
+        foreach ($data as $staffId => $participantDetails) {
+            $staff = \App\Models\Staff::find($staffId) ?: \App\Models\Staff::find((int)$staffId);
+            if ($staff) {
+                $result[] = [
+                    'staff' => $staff,
+                    'participant_start' => $participantDetails['participant_start'],
+                    'participant_end' => $participantDetails['participant_end'],
+                    'participant_days' => $participantDetails['participant_days']
+                ];
+            } else {
+                $result[] = [
+                    'staff' => null,
+                    'participant_start' => $participantDetails['participant_start'],
+                    'participant_end' => $participantDetails['participant_end'],
+                    'participant_days' => $participantDetails['participant_days']
+                ];
+            }
+        }
+        return $result;
+    }
+
+    private function cleanJson($value)
+    {
+         // Remove extra quotes if present
+         if (is_string($value) && strlen($value) > 2 && $value[0] === '"' && $value[strlen($value)-1] === '"') {
+            $value = substr($value, 1, -1);
+        }
+        // Unescape slashes
+        $value = stripslashes($value);
+        // First decode
+        $data = json_decode($value, true);
+        // If still a string, decode again (double-encoded)
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+        }
+        return $data;
+    }
+
+    public function getLocationsAttribute()
+    {
+        $data = $this->cleanJson($this->location_id);
+        return Location::whereIn('id', $data)->pluck('name')->implode(', ');
+    }
+
+    /**
+     * Get the approval trails for this special memo.
+     */
+    public function approvalTrails()
+    {
+        return $this->morphMany(ApprovalTrail::class, 'model', 'model_type', 'model_id');
+    }
+    public function getStatusAttribute(){
+        $user = session('user', []);
+      
+
+        if(isset($user['staff_id']) && $this->staff_id == $user['staff_id'] ){
+         return ($this->forward_workflow_id==null)?'Draft':(($this->overall_status =='approved')?'Approved':'Pending');
+        }
+
+        $last_log = ActivityApprovalTrail::where('model_id',$this->id)
+        ->where('mode_type','App\\Models\\ChangeRequest')->orderBy('id','asc')
+        ->first();
+
+        if($last_log)
+         return strtoupper($last_log->action);
+
+         if(can_take_action($this))
+         return ' Pending';
+    }
+
+    /**
+     * Get the budget breakdown as an array.
+     */
+    public function getBudgetBreakdownAttribute($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
+    // JSON-BASED: internal_participants[] mapped to Staff
+    public function getInternalParticipantsDetailsAttribute()
+    {
+        $participantIds = $this->internal_participants ?? [];
+        
+        // Handle both array and JSON string formats
+        if (is_string($participantIds)) {
+            $participantIds = json_decode($participantIds, true) ?? [];
+        }
+        
+        // Ensure it's an array and not empty
+        if (!is_array($participantIds) || empty($participantIds)) {
+            return collect();
+        }
+        
+        // Recursively flatten and extract IDs
+        $flatIds = $this->flattenParticipantIds($participantIds);
+        
+        if (empty($flatIds)) {
+            return collect();
+        }
+        
+        return Staff::whereIn('staff_id', $flatIds)->get();
+    }
+    
+    /**
+     * Recursively flatten participant IDs from nested arrays
+     */
+    private function flattenParticipantIds($data)
+    {
+        $ids = [];
+        
+        if (is_array($data)) {
+            foreach ($data as $key => $item) {
+                if (is_array($item)) {
+                    // Look for staff_id or id keys within the item
+                    if (isset($item['staff_id'])) {
+                        $ids[] = $item['staff_id'];
+                    } elseif (isset($item['id'])) {
+                        $ids[] = $item['id'];
+                    } else {
+                        // If no staff_id or id found, check if the key itself is a participant ID
+                        if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                            $ids[] = $key;
+                        } else {
+                            // Recursively process nested arrays
+                            $ids = array_merge($ids, $this->flattenParticipantIds($item));
+                        }
+                    }
+                } else {
+                    // Direct value - could be the key or the value
+                    if (is_numeric($key) || (is_string($key) && is_numeric($key))) {
+                        $ids[] = $key;
+                    } else {
+                        $ids[] = $item;
+                    }
+                }
+            }
+        } else {
+            // Single value
+            $ids[] = $data;
+        }
+        
+        // Clean and validate IDs
+        $ids = array_filter($ids, function($id) {
+            return !empty($id) && $id !== null && (is_numeric($id) || is_string($id));
+        });
+        
+        return array_values(array_unique($ids));
+    }
+
+    public function getResourceUrlAttribute()
+    {
+        return route('change-request.show', $this->id);
+    }
+     public function getMyLastActionAttribute(){
+        $userStaffId = user_session('staff_id');
+        if (!$userStaffId) {
+            return null;
+        }
+        
+        // Get the current approval level
+        $currentApprovalLevel = $this->matrix ? $this->matrix->approval_level : null;
+        if (!$currentApprovalLevel) {
+            return null;
+        }
+        
+        // First, check if user has any action at the current approval level
+        $currentLevelAction = ActivityApprovalTrail::where('activity_id',$this->id)
+        ->where('staff_id',$userStaffId)
+        ->where('approval_order', $currentApprovalLevel)
+        ->where('is_archived', 0)
+        ->orderByDesc('id')->first();
+        
+        if ($currentLevelAction) {
+            return $currentLevelAction;
+        }
+        
+        // If no action at current level, check if user has already passed at any previous level
+        // This allows previous approvers to see their actions
+        $previousPassedAction = ActivityApprovalTrail::where('activity_id',$this->id)
+        ->where('staff_id',$userStaffId)
+        ->where('action', 'passed')
+        ->where('approval_order', '<', $currentApprovalLevel)
+        ->where('is_archived', 0)
+        ->orderByDesc('id')->first();
+        
+        return $previousPassedAction;
+    }
+    public function getHasPassedAtCurrentLevelAttribute(){
+        $userStaffId = user_session('staff_id');
+        if (!$userStaffId || !$this->matrix) {
+            return false;
+        }
+        
+        $currentApprovalLevel = $this->matrix->approval_level;
+        
+        // Check if user has passed at the current approval level
+        return ActivityApprovalTrail::where('activity_id', $this->id)
+            ->where('staff_id', $userStaffId)
+            ->where('approval_order', $currentApprovalLevel)
+            ->where('action', 'passed')
+            ->where('is_archived', 0)
+            ->exists();
+    }
+    public function getMyCurrentLevelActionAttribute(){
+        $userStaffId = user_session('staff_id');
+        if (!$userStaffId || !$this->matrix) {
+            return null;
+        }
+        
+        $currentApprovalLevel = $this->matrix->approval_level;
+        
+        // Only return actions at the current approval level
+        return ActivityApprovalTrail::where('activity_id', $this->id)
+            ->where('staff_id', $userStaffId)
+            ->where('approval_order', $currentApprovalLevel)
+            ->where('is_archived', 0)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    public function getFinalApprovalStatusAttribute(){
+        // Get the latest approval trail entry for this activity
+        $latestTrail = ActivityApprovalTrail::where('activity_id', $this->id)
+            ->where('is_archived', 0) // Only consider non-archived trails
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        if (!$latestTrail) {
+            return 'pending'; // No approval trail yet
+        }
+        
+        // Check if the latest action was 'passed' or 'failed'
+        if (strtolower($latestTrail->action) === 'passed') {
+            return 'passed';
+        } elseif (strtolower($latestTrail->action) === 'failed') {
+            return 'failed';
+        } else {
+            return 'pending'; // Other actions like 'returned', 'rejected', etc.
+        }
+    }
+   
 }

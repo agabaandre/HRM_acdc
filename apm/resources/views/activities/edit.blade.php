@@ -286,124 +286,131 @@ $(document).ready(function () {
     }
 
     // AJAX Form Submission
-    $('#activityForm').on('submit', function(e) {
-        e.preventDefault();
+    // $('#activityForm').on('submit', function(e) {
+    //     e.preventDefault();
         
-        const form = $(this);
-        const submitBtn = $('#submitBtn');
-        const originalBtnText = submitBtn.html();
+    //     const form = $(this);
+    //     const submitBtn = $('#submitBtn');
+    //     const originalBtnText = submitBtn.html();
         
-        // Disable submit button and show loading state
-        submitBtn.prop('disabled', true)
-            .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Updating...');
+    //     // Disable submit button and show loading state
+    //     submitBtn.prop('disabled', true)
+    //         .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Updating...');
         
-        // Create FormData object to handle file uploads
-        const formData = new FormData(this);
+    //     // Create FormData object to handle file uploads
+    //     const formData = new FormData(this);
         
-        $.ajax({
-            url: form.attr('action'),
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                if (response.success) {
-                    const successMessage = response.msg || 
-                        @if($activity->is_single_memo)
-                            'Single memo updated successfully!'
-                        @else
-                            'Activity updated successfully!'
-                        @endif;
-                    show_notification(successMessage, 'success');
+    //     $.ajax({
+    //         url: form.attr('action'),
+    //         type: 'POST',
+    //         data: formData,
+    //         processData: false,
+    //         contentType: false,
+    //         success: function(response) {
+    //             if (response.success) {
+    //                 const successMessage = response.msg || 
+    //                     @if($activity->is_single_memo)
+    //                         'Single memo updated successfully!'
+    //                     @else
+    //                         'Activity updated successfully!'
+    //                     @endif;
+    //                 show_notification(successMessage, 'success');
                     
-                    // Redirect to the appropriate show page after a short delay
-                    setTimeout(function() {
-                        const redirectUrl = response.redirect_url || 
-                            @if($activity->is_single_memo)
-                                '{{ route("activities.single-memos.show", $activity) }}'
-                            @else
-                                '{{ route("matrices.activities.show", [$matrix, $activity]) }}'
-                            @endif;
-                        window.location.href = redirectUrl;
-                    }, 1500);
-                } else {
-                    const errorMessage = response.msg || 
-                        @if($activity->is_single_memo)
-                            'An error occurred while updating the single memo.'
-                        @else
-                            'An error occurred while updating the activity.'
-                        @endif;
-                    show_notification(errorMessage, 'error');
-                    submitBtn.prop('disabled', false).html(originalBtnText);
-                }
-            },
-            error: function(xhr) {
-                let errorMessage = @if($activity->is_single_memo)
-                    'An error occurred while updating the single memo.'
-                @else
-                    'An error occurred while updating the activity.'
-                @endif;
-                
-                if (xhr.status === 422) {
-                    // Validation errors
-                    const errors = xhr.responseJSON.errors;
-                    if (errors) {
-                        // Clear previous error states
-                        $('.is-invalid').removeClass('is-invalid');
-                        $('.invalid-feedback').remove();
+    //                 // Redirect to the appropriate show page after a short delay
+    //                 setTimeout(function() {
+    //                     const redirectUrl = response.redirect_url || 
+    //                         @if($activity->is_single_memo)
+    //                             '{{ route("activities.single-memos.show", $activity) }}'
+    //                         @else
+    //                             '{{ route("matrices.activities.show", [$matrix, $activity]) }}'
+    //                         @endif;
+    //                     window.location.href = redirectUrl;
+    //                 }, 1500);
+    //             } else {
+    //                 const errorMessage = response.msg || 
+    //                     @if($activity->is_single_memo)
+    //                    // console.console.log('here');
                         
-                        // Display validation errors
-                        Object.keys(errors).forEach(function(field) {
-                            let fieldElement = $(`[name="${field}"]`);
-                            
-                            // Handle array fields like location_id[]
-                            if (!fieldElement.length && field.includes('[')) {
-                                const baseField = field.split('[')[0];
-                                fieldElement = $(`[name^="${baseField}["]`);
-                            }
-                            
-                            // Handle nested fields like budget[code][index][field]
-                            if (!fieldElement.length && field.includes('[')) {
-                                const parts = field.split('[');
-                                const baseField = parts[0];
-                                fieldElement = $(`[name*="${baseField}["]`);
-                            }
-                            
-                            if (fieldElement.length) {
-                                fieldElement.addClass('is-invalid');
-                                
-                                // Add error message below the field
-                                const errorDiv = $('<div class="invalid-feedback"></div>').text(errors[field][0]);
-                                fieldElement.after(errorDiv);
-                                
-                                // Scroll to first error field
-                                if (Object.keys(errors).indexOf(field) === 0) {
-                                    $('html, body').animate({
-                                        scrollTop: fieldElement.offset().top - 100
-                                    }, 500);
-                                }
-                            }
-                        });
-                        
-                        // Show first error message as notification
-                        const firstError = Object.values(errors)[0][0];
-                        show_notification(firstError, 'error');
-                    }
-                } else if (xhr.responseJSON && xhr.responseJSON.msg) {
-                    errorMessage = xhr.responseJSON.msg;
-                } else if (xhr.status === 500) {
-                    errorMessage = 'Server error occurred. Please try again.';
-                } else if (xhr.status === 403) {
-                    errorMessage = 'You do not have permission to perform this action.';
-                } else if (xhr.status === 404) {
-                    errorMessage = 'The requested resource was not found.';
-                }
+    //                         'An error occurred while updating the single memo.'
+    //                     @else
+    //                    // console.log('here2');
+    //                         'An error occurred while updating the activity here1.'
+    //                     @endif;
+    //                 show_notification(errorMessage, 'error');
+    //                 submitBtn.prop('disabled', false).html(originalBtnText);
+    //             }
+    //         },
+    //         error: function(xhr) {
+    //             let errorMessage = @if($activity->is_single_memo)
+    //                 'An error occurred while updating the single memo.'
+    //             @else
+    //                 'An error occurred while updating the activity here2.'
+    //             @endif;
                 
-                show_notification(errorMessage, 'error');
-                submitBtn.prop('disabled', false).html(originalBtnText);
-            }
-        });
-    });
+    //             if (xhr.status === 422) {
+    //                 // Validation errors
+    //                 const errors = xhr.responseJSON.errors;
+    //                 if (errors) {
+    //                     // @php
+    //                     // Log::info('Change request created',errors)
+    //                     // @endphp
+    //                     // Clear previous error states
+    //                     $('.is-invalid').removeClass('is-invalid');
+    //                     $('.invalid-feedback').remove();
+                        
+    //                     // Display validation errors
+    //                     Object.keys(errors).forEach(function(field) {
+    //                         let fieldElement = $(`[name="${field}"]`);
+                            
+    //                         // Handle array fields like location_id[]
+    //                         if (!fieldElement.length && field.includes('[')) {
+    //                             const baseField = field.split('[')[0];
+    //                             fieldElement = $(`[name^="${baseField}["]`);
+    //                         }
+                            
+    //                         // Handle nested fields like budget[code][index][field]
+    //                         if (!fieldElement.length && field.includes('[')) {
+    //                             const parts = field.split('[');
+    //                             const baseField = parts[0];
+    //                             fieldElement = $(`[name*="${baseField}["]`);
+    //                         }
+                            
+    //                         if (fieldElement.length) {
+    //                             fieldElement.addClass('is-invalid');
+                                
+    //                             // Add error message below the field
+    //                             const errorDiv = $('<div class="invalid-feedback"></div>').text(errors[field][0]);
+    //                             fieldElement.after(errorDiv);
+                                
+    //                             // Scroll to first error field
+    //                             if (Object.keys(errors).indexOf(field) === 0) {
+    //                                 $('html, body').animate({
+    //                                     scrollTop: fieldElement.offset().top - 100
+    //                                 }, 500);
+    //                             }
+    //                         }
+    //                     });
+                        
+    //                     // Show first error message as notification
+    //                     const firstError = Object.values(errors)[0][0];
+
+    //                     show_notification(firstError, 'error');
+    //                 }
+    //             } else if (xhr.responseJSON && xhr.responseJSON.msg) {
+    //                 errorMessage = xhr.responseJSON.msg;
+    //             } else if (xhr.status === 500) {
+    //                 errorMessage = 'Server error occurred. Please try again.';
+    //             } else if (xhr.status === 403) {
+    //                 errorMessage = 'You do not have permission to perform this action.';
+    //             } else if (xhr.status === 404) {
+    //                 errorMessage = 'The requested resource was not found.';
+    //             }
+                
+    //             show_notification(errorMessage, 'error');
+    //             submitBtn.prop('disabled', false).html(originalBtnText);
+    //         }
+    //     });
+    // });
 
     // Restore existing participants and their international travel state
     if (existingParticipants && existingParticipants.length > 0) {
