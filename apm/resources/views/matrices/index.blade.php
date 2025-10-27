@@ -87,7 +87,14 @@
 .table-responsive {
     overflow-x: auto;
     max-width: 100%;
-    margin: 0 4px; /* Add 4px margin on left and right */
+    margin: 0 8px 0 8px; /* Add 8px margin on left and right (compensating for p-3) */
+    border: 0;
+}
+
+/* Adjust tab pane padding */
+.tab-pane > div > div.d-flex {
+    padding-left: 1rem;
+    padding-right: 1rem;
 }
 
 /* Better spacing for table cells */
