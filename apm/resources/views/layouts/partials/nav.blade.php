@@ -108,7 +108,7 @@ $settingsMenuItems = [
                 <a href="{{ route('approver-dashboard.index') }}"
                     class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-tachometer-alt"></i></div>
-                    <div class="menu-title">Approver Dashboard</div>
+                    <div class="menu-title">Dashboard</div>
                 </a>
             </li>
 
@@ -121,14 +121,6 @@ $settingsMenuItems = [
                 </a>
             </li>
 
-            <!-- Quarterly Matrix -->
-            <li class="nav-item">
-                <a href="{{ route('matrices.index') }}" class="nav-link {{ Request::is('matrices*') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="fas fa-calendar-alt"></i></div>
-                    <div class="menu-title">Quarterly Matrix</div>
-                </a>
-            </li>
-           
               <!-- Pending Approvals -->
             <li class="nav-item">
                 <a href="{{ route('returned-memos.index') }}"
@@ -158,7 +150,7 @@ $settingsMenuItems = [
                 <a href="{{ route('pending-approvals.index') }}"
                     class="nav-link {{ Request::is('pending-approvals*') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-clock"></i></div>
-                    <div class="menu-title">Pending Approvals</div>
+                    <div class="menu-title">Approvals</div>
                     @php
                         $pendingCount = 0;
                         if (user_session('staff_id')) {
@@ -190,6 +182,11 @@ $settingsMenuItems = [
                     <div class="menu-title">Memos</div>
                 </a>
                 <ul class="dropdown-menu">
+                   <li>
+                        <a class="dropdown-item {{ Request::is('matrices*') ? 'active' : '' }}" href="{{ route('matrices.index') }}">
+                           Quarterly Matrix
+                        </a>
+                    </li>
                     <li>
                         <a class="dropdown-item {{ Request::is('activities*') ? 'active' : '' }}" href="{{ route('activities.index') }}">
                             Matrix Memos
