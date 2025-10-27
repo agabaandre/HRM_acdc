@@ -11,6 +11,7 @@ use App\Models\WorkflowModel;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
@@ -987,20 +988,38 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
      */
     public function destroy(RequestARF $requestARF): RedirectResponse
     {
-        // Delete related attachments from storage
-        if (!empty($requestARF->attachment)) {
-            foreach ($requestARF->attachment as $attachment) {
-                if (isset($attachment['path'])) {
-                    Storage::disk('public')->delete($attachment['path']);
+        try {
+            DB::beginTransaction();
+            
+            // Delete related attachments from storage
+            if (!empty($requestARF->attachment)) {
+                foreach ($requestARF->attachment as $attachment) {
+                    if (isset($attachment['path'])) {
+                        Storage::disk('public')->delete($attachment['path']);
+                    }
                 }
             }
+            
+            // Delete approval trails
+            \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\RequestARF')
+                ->where('model_id', $requestARF->id)
+                ->delete();
+            
+            $requestARF->delete();
+            
+            DB::commit();
+            
+            return redirect()
+                ->route('request-arf.index')
+                ->with('success', 'ARF request deleted successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting ARF request', ['exception' => $e]);
+            
+            return redirect()
+                ->route('request-arf.index')
+                ->with('error', 'An error occurred while deleting the ARF request.');
         }
-        
-        $requestARF->delete();
-        
-        return redirect()
-            ->route('request-arf.index')
-            ->with('success', 'ARF request deleted successfully.');
     }
     
     /**

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\ActivityApprovalTrail;
+use App\Models\ApprovalTrail;
 use App\Models\ActivityBudget;
 use App\Models\Matrix;
 use App\Models\RequestType;
@@ -3090,6 +3091,11 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
 
             // 2. Delete activity approval trails
             ActivityApprovalTrail::where('activity_id', $activity->id)->delete();
+
+            // 2a. Delete approval trails (for single memos, both types exist)
+            ApprovalTrail::where('model_type', 'App\\Models\\Activity')
+                ->where('model_id', $activity->id)
+                ->delete();
 
             // 3. Get activity budgets before deletion to restore fund code balances
             $activityBudgets = ActivityBudget::where('activity_id', $activity->id)->get();

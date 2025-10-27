@@ -17,6 +17,8 @@ use App\Models\Approver;
 use App\Services\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -775,20 +777,38 @@ class ServiceRequestController extends Controller
      */
     public function destroy(ServiceRequest $serviceRequest): RedirectResponse
     {
-        // Delete related attachments from storage
-        if (!empty($serviceRequest->attachments)) {
-            foreach ($serviceRequest->attachments as $attachment) {
-                if (isset($attachment['path'])) {
-                    Storage::disk('public')->delete($attachment['path']);
+        try {
+            DB::beginTransaction();
+            
+            // Delete related attachments from storage
+            if (!empty($serviceRequest->attachments)) {
+                foreach ($serviceRequest->attachments as $attachment) {
+                    if (isset($attachment['path'])) {
+                        Storage::disk('public')->delete($attachment['path']);
+                    }
                 }
             }
+            
+            // Delete approval trails
+            \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\ServiceRequest')
+                ->where('model_id', $serviceRequest->id)
+                ->delete();
+            
+            $serviceRequest->delete();
+            
+            DB::commit();
+            
+            return redirect()
+                ->route('service-requests.index')
+                ->with('success', 'Service request deleted successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting service request', ['exception' => $e]);
+            
+            return redirect()
+                ->route('service-requests.index')
+                ->with('error', 'An error occurred while deleting the service request.');
         }
-        
-        $serviceRequest->delete();
-        
-        return redirect()
-            ->route('service-requests.index')
-            ->with('success', 'Service request deleted successfully.');
     }
     
     /**
