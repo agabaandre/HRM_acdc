@@ -16,8 +16,7 @@
                     <th>#</th>
                     <th>Year</th>
                     <th>Quarter</th>
-                    <th>Division</th>
-                    <th>Focal Person</th>
+                    <th>Division / Focal Person</th>
                     <th>Key Result Areas</th>
                     <th>Activities</th>
                     <th>Level</th>
@@ -31,8 +30,12 @@
                         <td>{{ $allMatrices->firstItem() + $index }}</td>
                         <td>{{ $matrix->year }}</td>
                         <td>{{ $matrix->quarter }}</td>
-                        <td>{{ $matrix->division->division_name ?? 'N/A' }}</td>
-                        <td>{{ $matrix->focalPerson->name ?? 'N/A' }}</td>
+                        <td>
+                            <div class="fw-bold">{{ $matrix->division->division_name ?? 'N/A' }}</div>
+                            <small class="text-muted">
+                                <i class="bx bx-user me-1"></i>{{ $matrix->focalPerson->name ?? 'N/A' }}
+                            </small>
+                        </td>
                         <td>    
                             @php
                                 $kras = is_string($matrix->key_result_area)
@@ -203,11 +206,11 @@
                         <td class="text-center">
                             <div class="btn-group">
                                 <a href="{{ route('matrices.show', $matrix) }}" class="btn btn-sm btn-outline-info" title="View">
-                                    <i class="bx bx-show"></i>
+                                    <i class="bx bx-show me-1"></i>View
                                 </a>
                                 @if(in_array($matrix->overall_status, ['draft', 'returned']))
                                     <a href="{{ route('matrices.edit', $matrix) }}" class="btn btn-sm btn-outline-warning" title="Edit">
-                                        <i class="bx bx-edit"></i>
+                                        <i class="bx bx-edit me-1"></i>Edit
                                     </a>
                                 @endif
                             </div>
