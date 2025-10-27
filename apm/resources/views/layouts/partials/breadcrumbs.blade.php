@@ -1,6 +1,56 @@
 <!--start page wrapper -->
 <div class="page-wrapper">
     <div class="page-content">
+        <!-- User Division, Division Head and Focal Person Info -->
+        <div class="mb-2 d-flex align-items-center" style="font-size: 0.75rem; color: #999;">
+            @php
+                $divisionName = user_session('division_name');
+                $divisionId = user_session('division_id');
+                $divisionHeadName = null;
+                $focalPersonName = null;
+                
+                // Get division head and focal person name from division if available
+                if ($divisionId) {
+                    $division = \App\Models\Division::find($divisionId);
+                    if ($division) {
+                        // Get division head
+                        if ($division->division_head) {
+                            $divisionHead = \App\Models\Staff::where('staff_id', $division->division_head)->first();
+                            if ($divisionHead) {
+                                $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
+                            }
+                        }
+                        
+                        // Get focal person
+                        if ($division->focal_person) {
+                            $focalPerson = \App\Models\Staff::where('staff_id', $division->focal_person)->first();
+                            if ($focalPerson) {
+                                $focalPersonName = $focalPerson->fname . ' ' . $focalPerson->lname;
+                            }
+                        }
+                    }
+                }
+            @endphp
+            
+            @if($divisionName)
+                <span class="me-2">
+                    <i class="bx bx-building me-1"></i>{{ $divisionName }}
+                </span>
+                @if($divisionHeadName)
+                    <span class="text-muted">•</span>
+                    <span class="ms-2">
+                        <i class="bx bx-user me-1"></i>Head: {{ $divisionHeadName }}
+                    </span>
+                @endif
+                @if($focalPersonName)
+                    <span class="text-muted">•</span>
+                    <span class="ms-2">
+                        <i class="bx bx-user-check me-1"></i>FP: {{ $focalPersonName }}
+                    </span>
+                @endif
+            @endif
+        </div>
+        
         <!--breadcrumb-->
         <div class="page-breadcrumb d-none d-sm-flex align-items-center mb-3">
             <div class="ps-3">
