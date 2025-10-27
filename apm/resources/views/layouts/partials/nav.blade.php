@@ -176,8 +176,19 @@
 
 
             <!-- Memos Menu -->
+            @php
+                // group all relevant sections for "active" state detection
+                $isMemosActive =
+                    Request::is('matrices*') ||
+                    Request::is('activities*') ||
+                    Request::is('single-memos*') ||
+                    Request::is('non-travel*') ||
+                    Request::is('special-memo*') ||
+                    Request::is('service-requests*') ||
+                    Request::is('request-arf*');
+            @endphp
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('activities*') || Request::is('non-travel*') || Request::is('special-memo*') || Request::is('single-memos*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ $isMemosActive ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown">
                     <div class="parent-icon"><i class="fas fa-envelope-open-text"></i></div>
                     <div class="menu-title">Memos</div>
@@ -213,7 +224,7 @@
                             Special Travel Memos
                         </a>
                     </li>
-                    <li>
+                    <li>        
                         <a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}"
                             href="{{ url('service-requests') }}">Request DSA, Imprest and Ticket</a>
                     </li>
@@ -221,7 +232,6 @@
                         <a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}"
                             href="{{ url('request-arf') }}">Request for ARF</a>
                     </li>
-
                 </ul>
             </li>
 
