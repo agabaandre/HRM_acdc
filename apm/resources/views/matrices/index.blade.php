@@ -87,6 +87,7 @@
 .table-responsive {
     overflow-x: auto;
     max-width: 100%;
+    margin: 0 4px; /* Add 4px margin on left and right */
 }
 
 /* Better spacing for table cells */
