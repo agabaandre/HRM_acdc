@@ -1,79 +1,79 @@
 @php
-$workflowMenuItems = [
-[
-'route' => 'workflows.index',
-'icon' => 'fas fa-project-diagram',
-'title' => 'Workflows'
-],
-[
-'route' => 'workflows.assign-models',
-'icon' => 'fas fa-link',
-'title' => 'Assign Models to Workflows'
-]
-];
+    $workflowMenuItems = [
+        [
+            'route' => 'workflows.index',
+            'icon' => 'fas fa-project-diagram',
+            'title' => 'Workflows',
+        ],
+        [
+            'route' => 'workflows.assign-models',
+            'icon' => 'fas fa-link',
+            'title' => 'Assign Models to Workflows',
+        ],
+    ];
 
-$settingsMenuItems = [
-[
-'route' => 'fund-types.index',
-'icon' => 'fas fa-hand-holding-usd',
-'title' => 'Fund Types'
-],
-[
-'route' => 'fund-codes.index',
-'icon' => 'fas fa-barcode',
-'title' => 'Fund Codes'
-],
-[
-'route' => 'funders.index',
-'icon' => 'fas fa-handshake',
-'title' => 'Funders'
-],
-[
-'route' => 'divisions.index',
-'icon' => 'fas fa-building',
-'title' => 'Divisions'
-],
-[
-'route' => 'directorates.index',
-'icon' => 'fas fa-network-wired',
-'title' => 'Directorates'
-],
-[
-'route' => 'request-types.index',
-'icon' => 'fas fa-file-alt',
-'title' => 'Request Types'
-],
-[
-'route' => 'non-travel-categories.index',
-'icon' => 'fas fa-list',
-'title' => 'Non Travel Categories'
-],
-[
-'route' => 'locations.index',
-'icon' => 'fas fa-map-marker-alt',
-'title' => 'Locations'
-],
-[
-'route' => 'cost-items.index',
-'icon' => 'fas fa-coins',
-'title' => 'Cost Items'
-],
-[
-'route' => 'jobs.index',
-'icon' => 'fas fa-tasks',
-'title' => 'Jobs'
-],
-[
-'url' => url('systemd-monitor'),
-'icon' => 'fas fa-server',
-'title' => 'Systemd Monitor'
-],
-[
-'route' => 'audit-logs.index',
-'icon' => 'fas fa-clipboard-list',
-'title' => 'Audit Logs'
-],
-];
+    $settingsMenuItems = [
+        [
+            'route' => 'fund-types.index',
+            'icon' => 'fas fa-hand-holding-usd',
+            'title' => 'Fund Types',
+        ],
+        [
+            'route' => 'fund-codes.index',
+            'icon' => 'fas fa-barcode',
+            'title' => 'Fund Codes',
+        ],
+        [
+            'route' => 'funders.index',
+            'icon' => 'fas fa-handshake',
+            'title' => 'Funders',
+        ],
+        [
+            'route' => 'divisions.index',
+            'icon' => 'fas fa-building',
+            'title' => 'Divisions',
+        ],
+        [
+            'route' => 'directorates.index',
+            'icon' => 'fas fa-network-wired',
+            'title' => 'Directorates',
+        ],
+        [
+            'route' => 'request-types.index',
+            'icon' => 'fas fa-file-alt',
+            'title' => 'Request Types',
+        ],
+        [
+            'route' => 'non-travel-categories.index',
+            'icon' => 'fas fa-list',
+            'title' => 'Non Travel Categories',
+        ],
+        [
+            'route' => 'locations.index',
+            'icon' => 'fas fa-map-marker-alt',
+            'title' => 'Locations',
+        ],
+        [
+            'route' => 'cost-items.index',
+            'icon' => 'fas fa-coins',
+            'title' => 'Cost Items',
+        ],
+        [
+            'route' => 'jobs.index',
+            'icon' => 'fas fa-tasks',
+            'title' => 'Jobs',
+        ],
+        [
+            'url' => url('systemd-monitor'),
+            'icon' => 'fas fa-server',
+            'title' => 'Systemd Monitor',
+        ],
+        [
+            'route' => 'audit-logs.index',
+            'icon' => 'fas fa-clipboard-list',
+            'title' => 'Audit Logs',
+        ],
+    ];
 @endphp
 
 <div class="nav-container primary-menu">
@@ -89,21 +89,21 @@ $settingsMenuItems = [
                 </a>
                 <ul class="dropdown-menu">
                     <li>
-                        <a class="dropdown-item {{ Request::is('home/index') ? 'active' : '' }}" 
-                           href="{{ str_replace('apm/', '', url('dashboard')) }}" target="_blank">
-                            <i class="fas fa-external-link-alt me-2"></i>Staff Portal 
+                        <a class="dropdown-item {{ Request::is('home/index') ? 'active' : '' }}"
+                            href="{{ str_replace('apm/', '', url('dashboard')) }}" target="_blank">
+                            <i class="fas fa-external-link-alt me-2"></i>Staff Portal
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item {{ Request::is('staff*') ? 'active' : '' }}" 
-                           href="{{ route('staff.index') }}">
+                        <a class="dropdown-item {{ Request::is('staff*') ? 'active' : '' }}"
+                            href="{{ route('staff.index') }}">
                             <i class="fas fa-user-cog me-2"></i>Staff List / Directory
                         </a>
                     </li>
                 </ul>
             </li>
 
-             <!-- Approver Dashboard -->
+            <!-- Approver Dashboard -->
             <li class="nav-item">
                 <a href="{{ route('approver-dashboard.index') }}"
                     class="nav-link {{ Request::is('approver-dashboard*') ? 'active' : '' }}">
@@ -114,14 +114,13 @@ $settingsMenuItems = [
 
             <!-- APMS Home -->
             <li class="nav-item">
-                <a href="{{ url('home') }}"
-                    class="nav-link {{ Request::is('home') ? 'active' : '' }}">
+                <a href="{{ url('home') }}" class="nav-link {{ Request::is('home') ? 'active' : '' }}">
                     <div class="parent-icon"><i class="fas fa-sitemap"></i></div>
                     <div class="menu-title">APM Home</div>
                 </a>
             </li>
 
-              <!-- Pending Approvals -->
+            <!-- Pending Approvals -->
             <li class="nav-item">
                 <a href="{{ route('returned-memos.index') }}"
                     class="nav-link {{ Request::is('returned-memos*') ? 'active' : '' }}">
@@ -130,16 +129,17 @@ $settingsMenuItems = [
                     @php
                         $pendingCount = 0;
                         if (user_session('staff_id')) {
-                            $pendingCount =get_my_returned_matrices_count(user_session('staff_id')) + 
-                                           get_my_returned_special_memo_count(user_session('staff_id')) + 
-                                           get_my_returned_non_travel_memo_count(user_session('staff_id')) + 
-                                           get_my_returned_single_memo_count(user_session('staff_id')) + 
-                                           get_my_returned_service_requests_count(user_session('staff_id')) + 
-                                           get_my_returned_request_arf_count(user_session('staff_id')) +
-                                           get_my_returned_change_request_count(user_session('staff_id'));
+                            $pendingCount =
+                                get_my_returned_matrices_count(user_session('staff_id')) +
+                                get_my_returned_special_memo_count(user_session('staff_id')) +
+                                get_my_returned_non_travel_memo_count(user_session('staff_id')) +
+                                get_my_returned_single_memo_count(user_session('staff_id')) +
+                                get_my_returned_service_requests_count(user_session('staff_id')) +
+                                get_my_returned_request_arf_count(user_session('staff_id')) +
+                                get_my_returned_change_request_count(user_session('staff_id'));
                         }
                     @endphp
-                    @if($pendingCount > 0)
+                    @if ($pendingCount > 0)
                         <span class="badge bg-danger ms-2">{{ $pendingCount }}</span>
                     @endif
                 </a>
@@ -154,25 +154,26 @@ $settingsMenuItems = [
                     @php
                         $pendingCount = 0;
                         if (user_session('staff_id')) {
-                            $pendingCount = get_pending_matrices_count(user_session('staff_id')) + 
-                                          get_pending_special_memo_count(user_session('staff_id')) + 
-                                          get_pending_non_travel_memo_count(user_session('staff_id')) + 
-                                          get_pending_single_memo_count(user_session('staff_id')) + 
-                                          get_pending_service_requests_count(user_session('staff_id')) + 
-                                          get_pending_request_arf_count(user_session('staff_id')) +
-                                          get_pending_change_request_count(user_session('staff_id'));
+                            $pendingCount =
+                                get_pending_matrices_count(user_session('staff_id')) +
+                                get_pending_special_memo_count(user_session('staff_id')) +
+                                get_pending_non_travel_memo_count(user_session('staff_id')) +
+                                get_pending_single_memo_count(user_session('staff_id')) +
+                                get_pending_service_requests_count(user_session('staff_id')) +
+                                get_pending_request_arf_count(user_session('staff_id')) +
+                                get_pending_change_request_count(user_session('staff_id'));
                         }
                     @endphp
-                    @if($pendingCount > 0)
+                    @if ($pendingCount > 0)
                         <span class="badge bg-danger ms-2">{{ $pendingCount }}</span>
                     @endif
                 </a>
             </li>
 
 
-         
 
-         
+
+
 
             <!-- Memos Menu -->
             <li class="nav-item dropdown">
@@ -182,87 +183,88 @@ $settingsMenuItems = [
                     <div class="menu-title">Memos</div>
                 </a>
                 <ul class="dropdown-menu">
-                   <li>
-                        <a class="dropdown-item {{ Request::is('matrices*') ? 'active' : '' }}" href="{{ route('matrices.index') }}">
-                           Quarterly Matrix
+                    <li>
+                        <a class="dropdown-item {{ Request::is('matrices*') ? 'active' : '' }}"
+                            href="{{ route('matrices.index') }}">
+                            Quarterly Matrix
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item {{ Request::is('activities*') ? 'active' : '' }}" href="{{ route('activities.index') }}">
+                        <a class="dropdown-item {{ Request::is('activities*') ? 'active' : '' }}"
+                            href="{{ route('activities.index') }}">
                             Matrix Memos
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item {{ Request::is('single-memos*') ? 'active' : '' }}" href="{{ route('activities.single-memos.index') }}">
+                        <a class="dropdown-item {{ Request::is('single-memos*') ? 'active' : '' }}"
+                            href="{{ route('activities.single-memos.index') }}">
                             Matrix Single Memos
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}" href="{{ url('non-travel') }}">
+                        <a class="dropdown-item {{ Request::is('non-travel*') ? 'active' : '' }}"
+                            href="{{ url('non-travel') }}">
                             Non-Travel Memos
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}" href="{{ url('special-memo') }}">
+                        <a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}"
+                            href="{{ url('special-memo') }}">
                             Special Travel Memos
                         </a>
                     </li>
-                </ul>
-            </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}"
+                            href="{{ url('service-requests') }}">Request DSA, Imprest and Ticket</a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}"
+                            href="{{ url('request-arf') }}">Request for ARF</a>
+                    </li>
 
-               <!-- Requests Menu -->
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('service-requests*') || Request::is('request-arf*') ? 'active' : '' }}"
-                    href="#" data-bs-toggle="dropdown">
-                    <div class="parent-icon"><i class="fas fa-boxes"></i></div>
-                    <div class="menu-title">Requests</div>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item {{ Request::is('service-requests*') ? 'active' : '' }}" href="{{ url('service-requests') }}">Request DSA,  Imprest and Ticket</a></li>
-                    <li><a class="dropdown-item {{ Request::is('request-arf*') ? 'active' : '' }}" href="{{ url('request-arf') }}">Request for ARF</a></li>
-                   
                 </ul>
             </li>
 
             <!-- Workflow Management -->
-            @if(in_array(89, user_session('permissions', [])))
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('workflows*') || Request::is('approvals*') ? 'active' : '' }}"
-                    href="#" data-bs-toggle="dropdown">
-                    <div class="parent-icon"><i class="fas fa-tasks"></i></div>
-                    <div class="menu-title">Workflows</div>
-                </a>
-                <ul class="dropdown-menu">
-                    @foreach($workflowMenuItems as $item)
-                    <li>
-                        <a class="dropdown-item" href="{{ route($item['route']) }}">
-                            <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
-                        </a>
-                    </li>
-                    @endforeach
-                </ul>
-            </li>
+            @if (in_array(89, user_session('permissions', [])))
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ Request::is('workflows*') || Request::is('approvals*') ? 'active' : '' }}"
+                        href="#" data-bs-toggle="dropdown">
+                        <div class="parent-icon"><i class="fas fa-tasks"></i></div>
+                        <div class="menu-title">Workflows</div>
+                    </a>
+                    <ul class="dropdown-menu">
+                        @foreach ($workflowMenuItems as $item)
+                            <li>
+                                <a class="dropdown-item" href="{{ route($item['route']) }}">
+                                    <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </li>
             @endif
 
 
             <!-- Settings -->
-            @if(in_array(89, user_session('permissions', [])))
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') ? 'active' : '' }}"
-                    href="#" data-bs-toggle="dropdown">
-                    <div class="parent-icon"><i class="fas fa-cogs"></i></div>
-                    <div class="menu-title">Settings</div>
-                </a>
-                <ul class="dropdown-menu">
-                    @foreach($settingsMenuItems as $item)
-                    <li>
-                        <a class="dropdown-item" href="{{ isset($item['url']) ? $item['url'] : route($item['route']) }}">
-                            <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
-                        </a>
-                    </li>
-                    @endforeach
-                </ul>
-            </li>
+            @if (in_array(89, user_session('permissions', [])))
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ Request::is('fund-types*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('jobs*') ? 'active' : '' }}"
+                        href="#" data-bs-toggle="dropdown">
+                        <div class="parent-icon"><i class="fas fa-cogs"></i></div>
+                        <div class="menu-title">Settings</div>
+                    </a>
+                    <ul class="dropdown-menu">
+                        @foreach ($settingsMenuItems as $item)
+                            <li>
+                                <a class="dropdown-item"
+                                    href="{{ isset($item['url']) ? $item['url'] : route($item['route']) }}">
+                                    <i class="{{ $item['icon'] }}"></i> {{ $item['title'] }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </li>
             @endif
         </ul>
     </nav>
