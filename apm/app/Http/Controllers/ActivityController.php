@@ -3069,8 +3069,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         // Get the matrix for this single memo
         $matrix = $activity->matrix;
         
-        // Check if matrix is approved
-        if ($matrix->overall_status === 'approved') {
+        // Check if matrix is approved - but allow deletion if the single memo itself is returned
+        $isActivityReturned = in_array($activity->overall_status, ['returned', 'draft']);
+        
+        if ($matrix->overall_status === 'approved' && !$isActivityReturned) {
             return redirect()
                 ->route('matrices.show', $matrix)
                 ->with('error', 'Cannot delete single memo. The parent matrix has been approved.');
