@@ -13,6 +13,7 @@ use App\Models\WorkflowModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
@@ -858,12 +859,29 @@ class NonTravelMemoController extends Controller
     /** Delete memo and its files */
     public function destroy(NonTravelMemo $nonTravel): RedirectResponse
     {
-        foreach ($nonTravel->attachments ?? [] as $att) {
-            Storage::disk('public')->delete($att['path']);
-        }
-        $nonTravel->delete();
+        try {
+            DB::beginTransaction();
+            
+            foreach ($nonTravel->attachments ?? [] as $att) {
+                Storage::disk('public')->delete($att['path']);
+            }
+            
+            // Delete approval trails
+            \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\NonTravelMemo')
+                ->where('model_id', $nonTravel->id)
+                ->delete();
+            
+            $nonTravel->delete();
+            
+            DB::commit();
 
-        return back()->with('success', 'Request deleted.');
+            return back()->with('success', 'Request deleted.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Error deleting non-travel memo', ['exception' => $e]);
+
+            return back()->with('error', 'An error occurred while deleting the request.');
+        }
     }
 
     /**

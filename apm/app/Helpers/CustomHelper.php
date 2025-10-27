@@ -240,17 +240,25 @@ if (!function_exists('user_session')) {
                 $user = (object) session('user', []);
             }
             
-            // Check if user is the owner (staff_id for Matrix/Non-Travel, responsible_person_id for others)
+            // Check if user is the owner (staff_id) or responsible person
             $isOwner = isset($memo->staff_id, $user->staff_id) && $memo->staff_id == $user->staff_id;
             $isResponsible = isset($memo->responsible_person_id, $user->staff_id) && $memo->responsible_person_id == $user->staff_id;
             
+            // Get memo status
+            $memoStatus = $memo->overall_status ?? null;
+            
             // For Matrix and Non-Travel Memo: only staff_id (owner)
-            if   (isset($memo) &&  (get_class($memo) === 'App\Models\NonTravelMemo' || get_class($memo) === 'App\Models\Matrix')) {
-                // Single memo - use staff_id
+            if (isset($memo) && (get_class($memo) === 'App\Models\NonTravelMemo' || get_class($memo) === 'App\Models\Matrix')) {
+                // Always allow if user is owner
                 return $isOwner;
             }
             
-            // For other memos: use responsible_person_id
+            // For other memos: allow if user is responsible person OR creator (if status is 'returned')
+            if ($memoStatus === 'returned') {
+                return $isOwner || $isResponsible;
+            }
+            
+            // For normal cases: use responsible_person_id
             return $isResponsible;
         }
     }

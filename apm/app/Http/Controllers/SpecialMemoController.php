@@ -997,20 +997,38 @@ class SpecialMemoController extends Controller
      */
     public function destroy(SpecialMemo $specialMemo): RedirectResponse
     {
-        // Delete related attachments from storage
-        if (!empty($specialMemo->attachment)) {
-            foreach ($specialMemo->attachment as $attachment) {
-                if (isset($attachment['path'])) {
-                    Storage::disk('public')->delete($attachment['path']);
+        try {
+            DB::beginTransaction();
+            
+            // Delete related attachments from storage
+            if (!empty($specialMemo->attachment)) {
+                foreach ($specialMemo->attachment as $attachment) {
+                    if (isset($attachment['path'])) {
+                        Storage::disk('public')->delete($attachment['path']);
+                    }
                 }
             }
+            
+            // Delete approval trails
+            \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\SpecialMemo')
+                ->where('model_id', $specialMemo->id)
+                ->delete();
+            
+            $specialMemo->delete();
+            
+            DB::commit();
+            
+            return redirect()
+                ->route('special-memo.index')
+                ->with('success', 'Special memo deleted successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Error deleting special memo', ['exception' => $e]);
+            
+            return redirect()
+                ->route('special-memo.index')
+                ->with('error', 'An error occurred while deleting the special memo.');
         }
-        
-        $specialMemo->delete();
-        
-        return redirect()
-            ->route('special-memo.index')
-            ->with('success', 'Special memo deleted successfully.');
     }
     
     /**
