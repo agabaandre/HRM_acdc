@@ -411,10 +411,13 @@ class ChangeRequestController extends Controller
                     // Change tracking flags
                     'has_budget_id_changed' => $changes['budget_id'],
                     'has_internal_participants_changed' => $changes['internal_participants'],
+                    'has_number_of_participants_changed' => $changes['number_of_participants'],
+                    'has_participant_days_changed' => $changes['participant_days'],
                     'has_request_type_id_changed' => $changes['request_type_id'],
                     'has_total_external_participants_changed' => $changes['total_external_participants'],
                     'has_location_changed' => $changes['location'],
                     'has_memo_date_changed' => $changes['memo_date'],
+                    'has_date_stayed_quarter' => $changes['date_stayed_quarter'],
                     'has_activity_title_changed' => $changes['activity_title'],
                     'has_activity_request_remarks_changed' => $changes['activity_request_remarks'],
                     'has_is_single_memo_changed' => $changes['is_single_memo'],
@@ -522,8 +525,20 @@ class ChangeRequestController extends Controller
             'approvalTrails.staff'
         ]);
 
+        // Get the parent memo explicitly if not loaded
+        $parentMemo = $changeRequest->parentMemo ?? $this->getParentMemo(
+            $changeRequest->parent_memo_model,
+            $changeRequest->parent_memo_id
+        );
+
+        // Load relationships for parent memo if it exists
+        if ($parentMemo) {
+            $parentMemo->load(['requestType', 'fundType']);
+        }
+
         return view('change-requests.show', [
-            'changeRequest' => $changeRequest
+            'changeRequest' => $changeRequest,
+            'parentMemo' => $parentMemo
         ]);
     }
 
@@ -557,15 +572,51 @@ class ChangeRequestController extends Controller
             'total_external_participants' => false,
             'location' => false,
             'memo_date' => false,
+            'date_stayed_quarter' => false,
             'activity_title' => false,
             'activity_request_remarks' => false,
             'is_single_memo' => false,
             'budget_breakdown' => false,
             'status' => false,
             'fund_type_id' => false,
+            'number_of_participants' => false,
+            'participant_days' => false,
         ];
 
-        // Check each field for changes
+        // 1. Check if new internal participant has been added but total participants unchanged
+        $changes['internal_participants'] = $this->detectInternalParticipantsChange($parentMemo, $request);
+
+        // 2. Check if total external participants changed (compare parent memo total vs incoming external participants)
+        $changes['total_external_participants'] = $this->detectExternalParticipantsChange($parentMemo, $request);
+
+        // 3. Check if memo dates changed and lie within the same quarter (calendar year)
+        $dateChangeResult = $this->detectMemoDateChange($parentMemo, $request);
+        $changes['memo_date'] = $dateChangeResult['date_changed'];
+        $changes['date_stayed_quarter'] = $dateChangeResult['stayed_same_quarter'];
+        
+        // Debug: Log date comparison details
+        Log::info('Date change detection debug', [
+            'parent_date_from' => $parentMemo->date_from,
+            'parent_date_to' => $parentMemo->date_to,
+            'parent_memo_date' => $parentMemo->memo_date,
+            'request_date_from' => $request->input('date_from'),
+            'request_date_to' => $request->input('date_to'),
+            'request_memo_date' => $request->input('memo_date'),
+            'is_non_travel' => $parentMemo instanceof NonTravelMemo,
+            'date_changed' => $dateChangeResult['date_changed'],
+            'stayed_same_quarter' => $dateChangeResult['stayed_same_quarter']
+        ]);
+
+        // 4. Check if budget has changed (compare budget breakdown JSON fields)
+        $changes['budget_breakdown'] = $this->detectBudgetChange($parentMemo, $request);
+
+        // 5. Check if number of participants changed
+        $changes['number_of_participants'] = $this->detectNumberOfParticipantsChange($parentMemo, $request);
+
+        // 6. Check if participant days changed
+        $changes['participant_days'] = $this->detectParticipantDaysChange($parentMemo, $request);
+
+        // Other existing checks
         if ($parentMemo->budget_id !== json_encode($request->input('budget_codes', []))) {
             $changes['budget_id'] = true;
         }
@@ -581,11 +632,450 @@ class ChangeRequestController extends Controller
         if ($parentMemo->fund_type_id != $request->input('fund_type')) {
             $changes['fund_type_id'] = true;
         }
-       // if($parentMemo->internal_participants !== json_encode($request->input('internal_participants')) )
-          // dd($parentMemo->internal_participants);
-           //dd($parentMemo->internal_participants);
-        // Add more change detection logic as needed
+
+        // Location change detection - compare unique location IDs only
+        $parentLocations = is_array($parentMemo->location_id) ? $parentMemo->location_id : json_decode($parentMemo->location_id ?? '[]', true);
+        $requestLocations = $request->input('location_id', []);
+        
+        // Convert to unique arrays and sort for comparison
+        $parentUniqueLocations = array_unique(array_map('intval', $parentLocations));
+        $requestUniqueLocations = array_unique(array_map('intval', $requestLocations));
+        
+        sort($parentUniqueLocations);
+        sort($requestUniqueLocations);
+        
+        if ($parentUniqueLocations !== $requestUniqueLocations) {
+            $changes['location'] = true;
+        }
+
+        // Activity request remarks change
+        if ($parentMemo->activity_request_remarks !== $request->input('activity_request_remarks')) {
+            $changes['activity_request_remarks'] = true;
+        }
+
+        // Single memo change
+        if ($parentMemo->is_single_memo != $request->input('is_single_memo')) {
+            $changes['is_single_memo'] = true;
+        }
+
+       // dd($changes);
 
         return $changes;
+    }
+
+    /**
+     * Detect if internal participants have changed
+     * Returns true if new internal participant added but total participants unchanged
+     */
+    private function detectInternalParticipantsChange($parentMemo, Request $request): bool
+    {
+        // Get parent memo internal participants
+        $parentParticipants = $parentMemo->internal_participants ?? [];
+        if (is_string($parentParticipants)) {
+            $parentParticipants = json_decode($parentParticipants, true) ?? [];
+        }
+
+        // Get request internal participants
+        $participantStarts = $request->input('participant_start', []);
+        $participantEnds = $request->input('participant_end', []);
+        $participantDays = $request->input('participant_days', []);
+        $internationalTravel = $request->input('international_travel', []);
+
+        $requestParticipants = [];
+        foreach ($participantStarts as $staffId => $startDate) {
+            $requestParticipants[$staffId] = [
+                'participant_start' => $startDate,
+                'participant_end' => $participantEnds[$staffId] ?? null,
+                'participant_days' => $participantDays[$staffId] ?? null,
+                'international_travel' => isset($internationalTravel[$staffId]) ? 1 : 0,
+            ];
+        }
+
+        // Check if participants have changed
+        $parentKeys = array_keys($parentParticipants);
+        $requestKeys = array_keys($requestParticipants);
+        
+        // If participant lists are different, there's a change
+        if (json_encode($parentKeys) !== json_encode($requestKeys)) {
+            return true;
+        }
+
+        // Check if participant details have changed
+        foreach ($parentKeys as $staffId) {
+            if (!isset($requestParticipants[$staffId])) {
+                return true; // Participant removed
+            }
+            
+            $parentDetails = $parentParticipants[$staffId];
+            $requestDetails = $requestParticipants[$staffId];
+            
+            // Normalize data types for comparison
+            $parentNormalized = $this->normalizeParticipantDetails($parentDetails);
+            $requestNormalized = $this->normalizeParticipantDetails($requestDetails);
+            
+            if ($parentNormalized !== $requestNormalized) {
+                return true; // Participant details changed
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Normalize participant details for consistent comparison
+     * Handles data type differences between database and form data
+     */
+    private function normalizeParticipantDetails($details): array
+    {
+        if (!is_array($details)) {
+            return [];
+        }
+
+        return [
+            'participant_start' => (string) ($details['participant_start'] ?? ''),
+            'participant_end' => (string) ($details['participant_end'] ?? ''),
+            'participant_days' => (string) ($details['participant_days'] ?? ''),
+            'international_travel' => (int) ($details['international_travel'] ?? 0)
+        ];
+    }
+
+    /**
+     * Detect if total external participants have changed
+     * Compares total participants from parent memo against incoming external participants
+     */
+    private function detectExternalParticipantsChange($parentMemo, Request $request): bool
+    {
+        $parentTotalParticipants = (int) ($parentMemo->total_participants ?? 0);
+        $requestTotalParticipants = (int) $request->input('total_participants', 0);
+        $requestExternalParticipants = (int) $request->input('total_external_participants', 0);
+
+        // Calculate internal participants from request
+        $participantStarts = $request->input('participant_start', []);
+        $requestInternalCount = count($participantStarts);
+
+        // Check if external participants changed
+        $parentInternalParticipants = $parentMemo->internal_participants ?? [];
+        if (is_string($parentInternalParticipants)) {
+            $parentInternalParticipants = json_decode($parentInternalParticipants, true) ?? [];
+        }
+        $parentInternalCount = count($parentInternalParticipants);
+        $parentExternalParticipants = $parentTotalParticipants - $parentInternalCount;
+        
+        return $parentExternalParticipants !== $requestExternalParticipants;
+    }
+
+    /**
+     * Detect if memo dates have changed and lie within the same quarter
+     * Uses calendar year quarters - focuses on date_to for travel memos, memo_date for non-travel
+     * Returns array with both 'date_changed' and 'stayed_same_quarter' flags
+     */
+    private function detectMemoDateChange($parentMemo, Request $request): array
+    {
+        // Normalize dates to Y-m-d format for consistent comparison
+        $parentDateFrom = $this->normalizeDate($parentMemo->date_from);
+        $parentDateTo = $this->normalizeDate($parentMemo->date_to);
+        $parentMemoDate = $this->normalizeDate($parentMemo->memo_date);
+        $requestDateFrom = $this->normalizeDate($request->input('date_from'));
+        $requestDateTo = $this->normalizeDate($request->input('date_to'));
+        $requestMemoDate = $this->normalizeDate($request->input('memo_date'));
+
+        // Check if this is a non-travel memo
+        $isNonTravel = $parentMemo instanceof NonTravelMemo;
+
+        if ($isNonTravel) {
+            // For non-travel memos, use memo_date
+            if ($parentMemoDate === $requestMemoDate) {
+                return [
+                    'date_changed' => false,
+                    'stayed_same_quarter' => false
+                ]; // No change
+            }
+
+            // If memo_date changed, check if they lie within the same quarter
+            if ($requestMemoDate) {
+                $parentQuarter = $this->getQuarterFromDate($parentMemoDate);
+                $requestQuarter = $this->getQuarterFromDate($requestMemoDate);
+                
+                // If quarters are the same, date stayed in the same quarter
+                $stayedSameQuarter = $parentQuarter === $requestQuarter;
+                
+                return [
+                    'date_changed' => true,
+                    'stayed_same_quarter' => $stayedSameQuarter
+                ];
+            }
+        } else {
+            // For travel memos, use date_to
+            if ($parentDateFrom === $requestDateFrom && $parentDateTo === $requestDateTo) {
+                return [
+                    'date_changed' => false,
+                    'stayed_same_quarter' => false
+                ]; // No change
+            }
+
+            // If dates have changed, check if they lie within the same quarter using date_to
+            if ($requestDateTo) {
+                $parentQuarter = $this->getQuarterFromDate($parentDateTo);
+                $requestQuarter = $this->getQuarterFromDate($requestDateTo);
+                
+                // If quarters are the same, date stayed in the same quarter
+                $stayedSameQuarter = $parentQuarter === $requestQuarter;
+                
+                return [
+                    'date_changed' => true,
+                    'stayed_same_quarter' => $stayedSameQuarter
+                ];
+            }
+        }
+
+        return [
+            'date_changed' => true,
+            'stayed_same_quarter' => false
+        ]; // Dates changed but couldn't determine quarter
+    }
+
+    /**
+     * Normalize date to timestamp (int) for easier comparison
+     */
+    private function normalizeDate($date): ?int
+    {
+        if (!$date) {
+            return null;
+        }
+
+        try {
+            // Handle Carbon objects
+            if ($date instanceof \Carbon\Carbon) {
+                return $date->timestamp;
+            }
+
+            // Handle string dates
+            if (is_string($date)) {
+                return \Carbon\Carbon::parse($date)->timestamp;
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Detect if budget has changed by comparing budget breakdown JSON fields
+     * Handles NonTravelMemo, SpecialMemo, and Matrix memo JSON storage properly
+     */
+    private function detectBudgetChange($parentMemo, Request $request): bool
+    {
+        // Get parent memo budget breakdown
+        $parentBudget = $parentMemo->budget_breakdown ?? [];
+        
+        // Handle different JSON storage formats
+        if (is_string($parentBudget)) {
+            // Try to decode JSON string
+            $decoded = json_decode($parentBudget, true);
+            if (is_string($decoded)) {
+                // Handle double-encoded JSON (sometimes happens)
+                $decoded = json_decode($decoded, true);
+            }
+            $parentBudget = is_array($decoded) ? $decoded : [];
+        }
+
+        // Get request budget breakdown
+        $requestBudget = $request->input('budget', []);
+
+        // Check if this is a Special Memo or Matrix memo (different structure)
+        $isSpecialOrMatrixMemo = $parentMemo instanceof SpecialMemo || 
+                                ($parentMemo instanceof Activity && $parentMemo->matrix_id);
+
+        if ($isSpecialOrMatrixMemo) {
+            return $this->detectSpecialMemoBudgetChange($parentBudget, $requestBudget, $parentMemo, $request);
+        } else {
+            // Handle NonTravelMemo format
+            return $this->detectNonTravelMemoBudgetChange($parentBudget, $requestBudget);
+        }
+    }
+
+    /**
+     * Detect budget changes for Special Memo and Matrix memo format
+     * Structure: {"75": [{"cost": "Tickets", "unit_cost": "1000", "units": "26", "days": "1", "description": "..."}], "grand_total": "83729.00"}
+     */
+    private function detectSpecialMemoBudgetChange($parentBudget, $requestBudget, $parentMemo, $request): bool
+    {
+        // Check budget_id changes (fund codes)
+        $parentBudgetIds = $parentMemo->budget_id ?? [];
+        if (is_string($parentBudgetIds)) {
+            $parentBudgetIds = json_decode($parentBudgetIds, true) ?? [];
+        }
+        $requestBudgetIds = $request->input('budget_codes', []);
+        
+        if (json_encode($parentBudgetIds) !== json_encode($requestBudgetIds)) {
+            return true; // Budget codes changed
+        }
+
+        // Check budget breakdown structure
+        $parentNormalized = $this->normalizeSpecialMemoBudget($parentBudget);
+        $requestNormalized = $this->normalizeSpecialMemoBudget($requestBudget);
+
+        // Compare normalized structures
+        return json_encode($parentNormalized) !== json_encode($requestNormalized);
+    }
+
+    /**
+     * Detect budget changes for NonTravelMemo format
+     */
+    private function detectNonTravelMemoBudgetChange($parentBudget, $requestBudget): bool
+    {
+        $parentNormalized = $this->normalizeNonTravelMemoBudget($parentBudget);
+        $requestNormalized = $this->normalizeNonTravelMemoBudget($requestBudget);
+
+        return json_encode($parentNormalized) !== json_encode($requestNormalized);
+    }
+
+    /**
+     * Normalize Special Memo budget array for consistent comparison
+     * Handles structure: {"75": [{"cost": "Tickets", "unit_cost": "1000", "units": "26", "days": "1", "description": "..."}], "grand_total": "83729.00"}
+     */
+    private function normalizeSpecialMemoBudget($budget): array
+    {
+        if (!is_array($budget)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($budget as $codeId => $items) {
+            if ($codeId === 'grand_total') {
+                $normalized['grand_total'] = floatval($items);
+                continue;
+            }
+
+            if (is_array($items)) {
+                $normalized[$codeId] = [];
+                foreach ($items as $item) {
+                    if (is_array($item)) {
+                        // Normalize Special Memo budget item structure
+                        $normalizedItem = [
+                            'cost' => $item['cost'] ?? '',
+                            'unit_cost' => floatval($item['unit_cost'] ?? 0),
+                            'units' => floatval($item['units'] ?? 1),
+                            'days' => floatval($item['days'] ?? 1),
+                            'description' => $item['description'] ?? ''
+                        ];
+                        $normalized[$codeId][] = $normalizedItem;
+                    }
+                }
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Normalize NonTravelMemo budget array for consistent comparison
+     */
+    private function normalizeNonTravelMemoBudget($budget): array
+    {
+        if (!is_array($budget)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($budget as $codeId => $items) {
+            if (is_array($items)) {
+                $normalized[$codeId] = [];
+                foreach ($items as $item) {
+                    if (is_array($item)) {
+                        // Normalize NonTravelMemo budget item structure
+                        $normalizedItem = [
+                            'description' => $item['description'] ?? '',
+                            'units' => floatval($item['units'] ?? 1),
+                            'unit_cost' => floatval($item['unit_cost'] ?? 0),
+                            'total' => floatval($item['total'] ?? 0)
+                        ];
+                        $normalized[$codeId][] = $normalizedItem;
+                    }
+                }
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Detect if number of participants changed
+     */
+    private function detectNumberOfParticipantsChange($parentMemo, Request $request): bool
+    {
+        // Get parent memo participants
+        $parentParticipants = $parentMemo->internal_participants ?? [];
+        if (is_string($parentParticipants)) {
+            $parentParticipants = json_decode($parentParticipants, true) ?? [];
+        }
+
+        // Get request participants
+        $participantStarts = $request->input('participant_start', []);
+        $requestParticipants = is_array($participantStarts) ? array_keys($participantStarts) : [];
+        
+        $parentCount = count($parentParticipants);
+        $requestCount = count($requestParticipants);
+
+        return $parentCount !== $requestCount;
+    }
+
+    /**
+     * Detect if participant days changed
+     */
+    private function detectParticipantDaysChange($parentMemo, Request $request): bool
+    {
+        // Get parent memo participants
+        $parentParticipants = $parentMemo->internal_participants ?? [];
+        if (is_string($parentParticipants)) {
+            $parentParticipants = json_decode($parentParticipants, true) ?? [];
+        }
+
+        // Get request participants
+        $participantDays = $request->input('participant_days', []);
+
+        // Compare total days for each participant
+        $parentTotalDays = 0;
+        $requestTotalDays = 0;
+
+        foreach ($parentParticipants as $staffId => $details) {
+            $parentTotalDays += (int) ($details['participant_days'] ?? 0);
+        }
+
+        foreach ($participantDays as $staffId => $days) {
+            $requestTotalDays += (int) $days;
+        }
+
+        return $parentTotalDays !== $requestTotalDays;
+    }
+
+    /**
+     * Get quarter from date (calendar year)
+     * Accepts both timestamps (int) and date strings
+     */
+    private function getQuarterFromDate($date): string
+    {
+        if (!$date) {
+            return 'Q1';
+        }
+
+        // If it's already a timestamp (int), use it directly
+        if (is_int($date)) {
+            $month = (int) date('n', $date);
+        } else {
+            // Otherwise parse as string
+            $month = (int) date('n', strtotime($date));
+        }
+        
+        if ($month >= 1 && $month <= 3) {
+            return 'Q1';
+        } elseif ($month >= 4 && $month <= 6) {
+            return 'Q2';
+        } elseif ($month >= 7 && $month <= 9) {
+            return 'Q3';
+        } else {
+            return 'Q4';
+        }
     }
 }

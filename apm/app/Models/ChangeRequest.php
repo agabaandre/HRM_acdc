@@ -32,11 +32,14 @@ class ChangeRequest extends Model
         'service_request_id',
         'has_budget_id_changed',
         'has_internal_participants_changed',
+        'has_number_of_participants_changed',
+        'has_participant_days_changed',
         'has_request_type_id_changed',
         'request_type_id',
         'has_total_external_participants_changed',
         'has_location_changed',
         'has_memo_date_changed',
+        'has_date_stayed_quarter',
         'has_activity_title_changed',
         'has_activity_request_remarks_changed',
         'has_is_single_memo_changed',
@@ -121,10 +124,13 @@ class ChangeRequest extends Model
         // Boolean fields
         'has_budget_id_changed' => 'boolean',
         'has_internal_participants_changed' => 'boolean',
+        'has_number_of_participants_changed' => 'boolean',
+        'has_participant_days_changed' => 'boolean',
         'has_request_type_id_changed' => 'boolean',
         'has_total_external_participants_changed' => 'boolean',
         'has_location_changed' => 'boolean',
         'has_memo_date_changed' => 'boolean',
+        'has_date_stayed_quarter' => 'boolean',
         'has_activity_title_changed' => 'boolean',
         'has_activity_request_remarks_changed' => 'boolean',
         'has_is_single_memo_changed' => 'boolean',
@@ -203,7 +209,7 @@ class ChangeRequest extends Model
      */
     public function staff(): BelongsTo
     {
-        return $this->belongsTo(Staff::class);
+        return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
     }
 
     /**
@@ -211,7 +217,7 @@ class ChangeRequest extends Model
      */
     public function responsiblePerson(): BelongsTo
     {
-        return $this->belongsTo(Staff::class, 'responsible_person_id');
+        return $this->belongsTo(Staff::class, 'responsible_person_id', 'staff_id');
     }
 
     /**
