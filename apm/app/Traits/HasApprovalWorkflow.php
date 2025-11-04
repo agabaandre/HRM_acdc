@@ -522,7 +522,7 @@ trait HasApprovalWorkflow
             // Exclude single memos from the calculation
             return $this->activities()
                 ->where('fund_type_id', 3)
-                ->where('is_single_memo', '!=', 1) // Use 1 instead of true for database comparison
+                // ->where('is_single_memo', '!=', 1) // Use 1 instead of true for database comparison
                 ->exists();
             
         } elseif ($this->budget_breakdown && !empty($this->budget_breakdown)) {
