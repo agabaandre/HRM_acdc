@@ -30,16 +30,19 @@ class ChangeRequestController extends Controller
     /**
      * Display a listing of change requests.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
+        
+        // If no session data, show all change requests
+        $showAllDueToNoSession = empty($userStaffId);
 
         // Get filter parameters
         $selectedYear = $request->get('year', now()->year);
         $selectedQuarter = $request->get('quarter', 'Q4');
         $selectedDivisionId = $request->get('division_id', $userDivisionId);
-        $status = $request->get('status', 'all');
+        $status = $request->get('status', 'all') ?: 'all';
         $documentNumber = $request->get('document_number');
         $staffId = (int) $request->get('staff_id');
         $memoType = $request->get('memo_type');
@@ -70,7 +73,7 @@ class ChangeRequestController extends Controller
             $baseQuery->whereYear('created_at', $selectedYear);
         }
 
-        if ($status !== 'all') {
+        if ($status && $status !== 'all') {
             $baseQuery->where('overall_status', $status);
         }
 
@@ -79,8 +82,8 @@ class ChangeRequestController extends Controller
             $baseQuery->where('parent_memo_model', $memoType);
         }
 
-        // Filter by division
-        if ($selectedDivisionId) {
+        // Filter by division (only if explicitly set in URL)
+        if ($request->filled('division_id') && !$showAllDueToNoSession) {
             $baseQuery->where('division_id', (int) $selectedDivisionId);
         }
 
@@ -94,15 +97,27 @@ class ChangeRequestController extends Controller
 
         // My Change Requests (created by current user)
         $myChangeRequestsQuery = clone $baseQuery;
+        if ($showAllDueToNoSession) {
+            $myChangeRequests = $myChangeRequestsQuery->paginate(20)->withQueryString();
+        } else {
         $myChangeRequests = $myChangeRequestsQuery->where('staff_id', $userStaffId)->paginate(20)->withQueryString();
+        }
 
         // My Division Change Requests (change requests in user's division)
         $myDivisionChangeRequestsQuery = clone $baseQuery;
+        if ($showAllDueToNoSession) {
+            $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->paginate(20)->withQueryString();
+        } else {
         $myDivisionChangeRequests = $myDivisionChangeRequestsQuery->where('division_id', $userDivisionId)->paginate(20)->withQueryString();
+        }
 
         // Shared Change Requests (where user is responsible person)
         $sharedChangeRequestsQuery = clone $baseQuery;
+        if ($showAllDueToNoSession) {
+            $sharedChangeRequests = $sharedChangeRequestsQuery->paginate(20)->withQueryString();
+        } else {
         $sharedChangeRequests = $sharedChangeRequestsQuery->where('responsible_person_id', $userStaffId)->paginate(20)->withQueryString();
+        }
 
         // All Change Requests (for users with permission)
         $allChangeRequests = null;
@@ -168,7 +183,7 @@ class ChangeRequestController extends Controller
     /**
      * Show pending approvals for change requests
      */
-    public function pendingApprovals(Request $request): View
+    public function pendingApprovals(Request $request): View|JsonResponse
     {
         $userStaffId = user_session('staff_id');
 

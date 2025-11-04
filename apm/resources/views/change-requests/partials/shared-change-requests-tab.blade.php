@@ -31,10 +31,28 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        @if($changeRequest->parentMemo)
-                            <span class="badge bg-info">{{ class_basename($changeRequest->parent_memo_model) }}</span>
-                            <br>
-                            <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
+                        @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
+                            @php
+                                $parentMemoDocNumber = $changeRequest->parent_memo_document_number;
+                                $parentMemoUrl = $changeRequest->parent_memo_url;
+                            @endphp
+                            @if($parentMemoUrl && $parentMemoDocNumber)
+                                <a href="{{ $parentMemoUrl }}" class="text-decoration-none d-inline-block" title="View Parent Memo: {{ $parentMemoDocNumber }}">
+                                    <span class="badge bg-info">View {{ class_basename($changeRequest->parent_memo_model) }}</span>
+                                    <br>
+                                    <small class="text-primary fw-semibold">{{ $parentMemoDocNumber }}</small>
+                                </a>
+                            @elseif($parentMemoUrl)
+                                <a href="{{ $parentMemoUrl }}" class="text-decoration-none d-inline-block" title="View Parent Memo">
+                                    <span class="badge bg-info">View {{ class_basename($changeRequest->parent_memo_model) }}</span>
+                                    <br>
+                                    <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
+                                </a>
+                            @else
+                                <span class="badge bg-info">View {{ class_basename($changeRequest->parent_memo_model) }}</span>
+                                <br>
+                                <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
+                            @endif
                         @else
                             <span class="text-muted">N/A</span>
                         @endif
@@ -53,22 +71,46 @@
                         @if($changeRequest->hasAnyChanges())
                             <div class="d-flex flex-wrap gap-1 justify-content-center">
                                 @if($changeRequest->has_budget_id_changed)
-                                    <span class="badge bg-warning text-dark">Budget</span>
+                                    <span class="badge bg-warning text-dark" title="Budget Code Changed">Budget Code</span>
+                                @endif
+                                @if($changeRequest->has_budget_breakdown_changed)
+                                    <span class="badge bg-warning text-dark" title="Budget Breakdown Changed">Budget Breakdown</span>
                                 @endif
                                 @if($changeRequest->has_activity_title_changed)
-                                    <span class="badge bg-warning text-dark">Title</span>
+                                    <span class="badge bg-warning text-dark" title="Activity Title Changed">Activity Title</span>
                                 @endif
                                 @if($changeRequest->has_location_changed)
-                                    <span class="badge bg-warning text-dark">Location</span>
+                                    <span class="badge bg-warning text-dark" title="Locations Changed">Locations</span>
                                 @endif
                                 @if($changeRequest->has_internal_participants_changed)
-                                    <span class="badge bg-warning text-dark">Participants</span>
+                                    <span class="badge bg-warning text-dark" title="Internal Participants Changed">Internal Participants</span>
+                                @endif
+                                @if($changeRequest->has_number_of_participants_changed)
+                                    <span class="badge bg-warning text-dark" title="Number of Participants Changed"># Participants</span>
+                                @endif
+                                @if($changeRequest->has_participant_days_changed)
+                                    <span class="badge bg-warning text-dark" title="Participant Days Changed">Participant Days</span>
+                                @endif
+                                @if($changeRequest->has_total_external_participants_changed)
+                                    <span class="badge bg-warning text-dark" title="External Participants Changed">External Participants</span>
+                                @endif
+                                @if($changeRequest->has_memo_date_changed)
+                                    <span class="badge bg-warning text-dark" title="Memo Date Changed">Memo Date</span>
+                                @endif
+                                @if($changeRequest->has_date_stayed_quarter)
+                                    <span class="badge bg-warning text-dark" title="Date Stayed in Same Quarter">Date Quarter</span>
                                 @endif
                                 @if($changeRequest->has_request_type_id_changed)
-                                    <span class="badge bg-warning text-dark">Type</span>
+                                    <span class="badge bg-warning text-dark" title="Request Type Changed">Request Type</span>
                                 @endif
                                 @if($changeRequest->has_fund_type_id_changed)
-                                    <span class="badge bg-warning text-dark">Fund</span>
+                                    <span class="badge bg-warning text-dark" title="Fund Type Changed">Fund Type</span>
+                                @endif
+                                @if($changeRequest->has_activity_request_remarks_changed)
+                                    <span class="badge bg-warning text-dark" title="Activity Remarks Changed">Activity Remarks</span>
+                                @endif
+                                @if($changeRequest->has_status_changed)
+                                    <span class="badge bg-warning text-dark" title="Status Changed">Status</span>
                                 @endif
                             </div>
                         @else

@@ -323,10 +323,13 @@ class ChangeRequest extends Model
     {
         return $this->has_budget_id_changed ||
                $this->has_internal_participants_changed ||
+               $this->has_number_of_participants_changed ||
+               $this->has_participant_days_changed ||
                $this->has_request_type_id_changed ||
                $this->has_total_external_participants_changed ||
                $this->has_location_changed ||
                $this->has_memo_date_changed ||
+               $this->has_date_stayed_quarter ||
                $this->has_activity_title_changed ||
                $this->has_activity_request_remarks_changed ||
                $this->has_is_single_memo_changed ||
@@ -344,10 +347,13 @@ class ChangeRequest extends Model
         
         if ($this->has_budget_id_changed) $changes[] = 'Budget Code';
         if ($this->has_internal_participants_changed) $changes[] = 'Internal Participants';
+        if ($this->has_number_of_participants_changed) $changes[] = 'Number of Participants';
+        if ($this->has_participant_days_changed) $changes[] = 'Participant Days';
         if ($this->has_request_type_id_changed) $changes[] = 'Request Type';
         if ($this->has_total_external_participants_changed) $changes[] = 'External Participants';
         if ($this->has_location_changed) $changes[] = 'Location';
         if ($this->has_memo_date_changed) $changes[] = 'Memo Date';
+        if ($this->has_date_stayed_quarter) $changes[] = 'Date Stayed Quarter';
         if ($this->has_activity_title_changed) $changes[] = 'Activity Title';
         if ($this->has_activity_request_remarks_changed) $changes[] = 'Activity Remarks';
         if ($this->has_is_single_memo_changed) $changes[] = 'Single Memo Status';
@@ -379,6 +385,46 @@ class ChangeRequest extends Model
             return \Carbon\Carbon::parse($this->date_from)->format('M j, Y') . ' - ' . \Carbon\Carbon::parse($this->date_to)->format('M j, Y');
         }
         return '';
+    }
+
+    /**
+     * Get the parent memo show URL
+     */
+    public function getParentMemoUrlAttribute(): ?string
+    {
+        if (!$this->parent_memo_model || !$this->parent_memo_id) {
+            return null;
+        }
+
+        $modelName = class_basename($this->parent_memo_model);
+        
+        return match($modelName) {
+            'Activity' => route('activities.single-memos.show', $this->parent_memo_id),
+            'SpecialMemo' => route('special-memo.show', $this->parent_memo_id),
+            'NonTravelMemo' => route('non-travel.show', $this->parent_memo_id),
+            'RequestArf' => route('request-arf.show', $this->parent_memo_id),
+            'ServiceRequest' => route('service-requests.show', $this->parent_memo_id),
+            default => null,
+        };
+    }
+
+    /**
+     * Get the parent memo document number
+     */
+    public function getParentMemoDocumentNumberAttribute(): ?string
+    {
+        if (!$this->parent_memo_model || !$this->parent_memo_id) {
+            return null;
+        }
+
+        $parentMemo = $this->parentMemo;
+        if (!$parentMemo) {
+            // Try to load it manually
+            $modelClass = $this->parent_memo_model;
+            $parentMemo = $modelClass::find($this->parent_memo_id);
+        }
+
+        return $parentMemo?->document_number ?? null;
     }
 
     /**

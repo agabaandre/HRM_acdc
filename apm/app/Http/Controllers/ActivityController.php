@@ -688,9 +688,31 @@ class ActivityController extends Controller
             ? json_decode($activity->budget_id, true)
             : ($activity->budget_id ?? []);
 
-        $budgetItems = is_string($activity->budget_breakdown)
-            ? json_decode($activity->budget_breakdown, true)
-            : ($activity->budget_breakdown ?? []);
+        // Fix for potentially double-encoded or malformed JSON in budget_breakdown
+        // Following the same pattern as SpecialMemoController
+        $budget = $activity->budget_breakdown ?? null;
+
+        if ($budget && !is_array($budget)) {
+            $decoded = json_decode($budget, true);
+            if (is_string($decoded)) {
+                // Double-encoded JSON case
+                $decoded = json_decode($decoded, true);
+            }
+            $budget = is_array($decoded) ? $decoded : [];
+        } elseif (!$budget) {
+            $budget = [];
+        }
+
+        // Replace original budget on the model (optional, for view consistency)
+        $activity->budget_breakdown = $budget;
+        
+        // Remove grand_total from budget if it exists (it's not part of the fund code structure)
+        if (isset($budget['grand_total'])) {
+            unset($budget['grand_total']);
+        }
+        
+        // Ensure budgetItems is always an array (even if empty)
+        $budgetItems = is_array($budget) ? $budget : [];
 
         $attachments = is_string($activity->attachment)
             ? json_decode($activity->attachment, true)
