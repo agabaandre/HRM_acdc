@@ -22,10 +22,16 @@
                             <div class="fw-bold text-primary">{{ $changeRequest->activity_title }}</div>
                         </td>
                         <td>
-                            @if($changeRequest->parentMemo)
+                            @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
                                 <span class="badge bg-info">{{ class_basename($changeRequest->parent_memo_model) }}</span>
                                 <br>
-                                <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
+                                @if($changeRequest->parent_memo_url && $changeRequest->parent_memo_document_number)
+                                    <a href="{{ $changeRequest->parent_memo_url }}" class="text-decoration-none" title="View Parent Memo">
+                                        <small class="text-primary fw-semibold">{{ $changeRequest->parent_memo_document_number }}</small>
+                                    </a>
+                                @else
+                                    <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
+                                @endif
                             @else
                                 <span class="text-muted">N/A</span>
                             @endif

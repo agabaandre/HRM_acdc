@@ -259,10 +259,6 @@ const oldTravel = @json(old('international_travel', []));
 const existingParticipants = @json($internalParticipants);
 const existingExternalParticipants = @json($externalParticipants ?? []);
 const existingBudgetItems = @json($budgetItems);
-console.log('Budget items passed from controller:', existingBudgetItems);
-console.log('Staff data for external participants:', staffData);
-console.log('Available divisions:', Object.keys(staffData));
-console.log('Existing external participants:', existingExternalParticipants);
 
 $(document).ready(function () {
     // Initialize Summernote only for fields with summernote class
@@ -753,7 +749,6 @@ $(document).ready(function () {
             fund_type_id: fundTypeId,
             division_id: divisionId
         }, function (data) {
-            console.log('Budget codes loaded:', data);
             budgetCodesSelect.empty();
             if (data.length) {
                 data.forEach(code => {
@@ -765,10 +760,8 @@ $(document).ready(function () {
                     );
                 });
                 budgetCodesSelect.prop('disabled', false);
-                console.log('Budget codes loaded successfully');
             } else {
                 budgetCodesSelect.append('<option disabled selected>No budget codes found</option>');
-                console.warn('No budget codes found for fund type:', fundTypeId);
             }
         });
     });
@@ -780,11 +773,8 @@ $(document).ready(function () {
         // Check if card already exists
         const existingCard = container.find(`.budget-body[data-code="${codeId}"]`).closest('.card');
         if (existingCard.length > 0) {
-            console.log('Card already exists for code:', codeId, '- preserving existing data');
             return; // Skip creating duplicate card
         }
-        
-        console.log('Creating budget card for code:', codeId, 'with balance:', balance);
         
         // Extract the budget code from the label
         const codeMatch = label.match(/^([^|]+)/);
@@ -838,11 +828,9 @@ $(document).ready(function () {
 
         // Restore existing data if available
         if (existingData && existingData.length > 0) {
-            console.log(`Restoring ${existingData.length} budget items for code ${codeId}`);
             const tbody = $(`.budget-body[data-code="${codeId}"]`);
             
             existingData.forEach((item, index) => {
-                console.log(`Creating budget row for existing item:`, item);
                 const row = createBudgetRow(codeId, index);
                 tbody.append(row);
                 
@@ -871,15 +859,12 @@ $(document).ready(function () {
             });
             
             updateAllTotals();
-            console.log(`Budget items restored for code ${codeId}`);
         }
     }
 
     $('#budget_codes').on('change', function () {
         const selected = $(this).find('option:selected');
         const container = $('#budgetGroupContainer');
-        console.log('Budget codes changed. Selected:', selected.map(function() { return $(this).val(); }).get());
-        
         // Check if any selected budget code is World Bank (funder_id = 1) AND Intramural (fund_type_id = 1)
         let hasWorldBankIntramuralCode = false;
         selected.each(function () {
@@ -906,7 +891,6 @@ $(document).ready(function () {
         container.find('.card').each(function() {
             const cardCodeId = $(this).find('.budget-body').data('code');
             if (!selectedCodeIds.includes(cardCodeId)) {
-                console.log('Removing card for unselected code:', cardCodeId);
                 $(this).remove();
             }
         });
@@ -1178,27 +1162,37 @@ $(document).ready(function () {
             
             // If there are existing budget items, ensure they're properly loaded
             if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0 && !budgetDataRestored) {
-                console.log('Existing budget items found:', existingBudgetItems);
                 budgetDataRestored = true; // Set flag to prevent multiple restorations
                 
                 // Wait for budget codes to load, then restore existing selections
                 setTimeout(() => {
-                    console.log('Restoring budget code selections...');
                     Object.entries(existingBudgetItems).forEach(([codeId, items]) => {
+                        // Skip grand_total as it's not a budget code
+                        if (codeId === 'grand_total') {
+                            return;
+                        }
+                        
                         // Select the budget code
                         const option = $(`#budget_codes option[value="${codeId}"]`);
                         if (option.length) {
                             option.prop('selected', true);
-                            console.log(`Selected budget code: ${codeId}`);
                             
                             // Get the option details
                             const label = option.text();
                             const balance = option.data('balance');
                             
+                            // Convert items object to array if needed
+                            // Budget items come as object with numeric keys: {"0": {...}, "1": {...}}
+                            let itemsArray = [];
+                            if (Array.isArray(items)) {
+                                itemsArray = items;
+                            } else if (items && typeof items === 'object') {
+                                // Convert object with numeric keys to array
+                                itemsArray = Object.values(items).filter(item => item && typeof item === 'object');
+                            }
+                            
                             // Create the card with data directly
-                            createBudgetCardWithData(codeId, label, balance, items);
-                        } else {
-                            console.warn(`Budget code option not found: ${codeId}`);
+                            createBudgetCardWithData(codeId, label, balance, itemsArray);
                         }
                     });
                     
@@ -1214,19 +1208,12 @@ $(document).ready(function () {
                             allowClear: true
                         });
                     }
-                    
-                    console.log('Budget codes dropdown updated');
                 }, 1000);
-            } else {
-                console.log('No existing budget items found');
             }
-        } else {
-            console.log('No fund type selected');
         }
 
         // Restore external participants division blocks
         if (existingExternalParticipants && existingExternalParticipants.length > 0) {
-            console.log('Restoring external participants...');
             restoreExternalParticipants(existingExternalParticipants);
         }
 
@@ -1255,28 +1242,25 @@ $(document).ready(function () {
         });
     }, 200);
     
-    // Fallback: Retry budget initialization if it fails
-    setTimeout(() => {
-        if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0) {
-            const budgetCards = $('.budget-body');
-            if (budgetCards.length === 0) {
-                console.log('Budget cards not found, retrying initialization...');
-                initializeExistingData();
-                
-                // Show debug button if still no budget cards after retry
-                setTimeout(() => {
-                    if ($('.budget-body').length === 0) {
-                        $('#retryBudgetInit').show();
-                        console.warn('Budget initialization failed, debug button shown');
-                    }
-                }, 2000);
+        // Fallback: Retry budget initialization if it fails
+        setTimeout(() => {
+            if (existingBudgetItems && Object.keys(existingBudgetItems).length > 0) {
+                const budgetCards = $('.budget-body');
+                if (budgetCards.length === 0) {
+                    initializeExistingData();
+                    
+                    // Show debug button if still no budget cards after retry
+                    setTimeout(() => {
+                        if ($('.budget-body').length === 0) {
+                            $('#retryBudgetInit').show();
+                        }
+                    }, 2000);
+                }
             }
-        }
-    }, 3000);
+        }, 3000);
     
     // Manual trigger for budget initialization (for debugging)
     $(document).on('click', '#retryBudgetInit', function() {
-        console.log('Manual budget initialization triggered');
         initializeExistingData();
     });
     

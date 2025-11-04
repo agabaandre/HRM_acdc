@@ -7,8 +7,8 @@
 @section('content')
 <div class="card shadow-sm border-0">
     <div class="card-header bg-success text-white">
-        <h5 class="mb-0">
-            <i class="fas fa-edit me-2"></i>
+        <h5 class="mb-0 text-white">
+            <i class="fas fa-edit me-2 text-white"></i>
             Change Request: {{ $changeRequest->activity_title }}
         </h5>
     </div>
@@ -51,9 +51,33 @@
                     <tr>
                         <td><strong>Parent Memo:</strong></td>
                         <td>
-                            @if($parentMemo)
-                                <span class="badge bg-success">{{ class_basename($changeRequest->parent_memo_model) }}</span>
-                                <small class="text-muted">#{{ $changeRequest->parent_memo_id }}</small>
+                            @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
+                                @php
+                                    $parentMemoDocNumber = $changeRequest->parent_memo_document_number;
+                                    $parentMemoUrl = $changeRequest->parent_memo_url;
+                                @endphp
+                                @if($parentMemoUrl && $parentMemoDocNumber)
+                                    <a href="{{ $parentMemoUrl }}" class="btn btn-secondary text-white" title="View Parent Memo: {{ $parentMemoDocNumber }}">
+                                        <i class="fas fa-eye me-2 text-white"></i>
+                                        View {{ class_basename($changeRequest->parent_memo_model) }}
+                                        <br>
+                                        <small class="d-block mt-1 text-white">{{ $parentMemoDocNumber }}</small>
+                                    </a>
+                                @elseif($parentMemoUrl)
+                                    <a href="{{ $parentMemoUrl }}" class="btn btn-secondary text-white" title="View Parent Memo">
+                                        <i class="fas fa-eye me-2 text-white"></i>
+                                        View {{ class_basename($changeRequest->parent_memo_model) }}
+                                        <br>
+                                        <small class="d-block mt-1 text-white">#{{ $changeRequest->parent_memo_id }}</small>
+                                    </a>
+                                @else
+                                    <span class="btn btn-secondary text-white" disabled>
+                                        <i class="fas fa-eye me-2 text-white"></i>
+                                        View {{ class_basename($changeRequest->parent_memo_model) }}
+                                        <br>
+                                        <small class="d-block mt-1 text-white">#{{ $changeRequest->parent_memo_id }}</small>
+                                    </span>
+                                @endif
                             @else
                                 <span class="text-muted">N/A</span>
                             @endif
@@ -272,13 +296,59 @@
                                             <div class="col-md-6">
                                                 <h6 class="text-muted mb-2"><strong>Original Participants</strong></h6>
                                                 @php
-                                                    $parentParticipants = $parentMemo->internal_participants ?? [];
-                                                    if (is_string($parentParticipants)) {
-                                                        $parentParticipants = json_decode($parentParticipants, true) ?? [];
+                                                    // Get raw JSON from parent memo database to preserve the structure with international_travel
+                                                    $parentModelTable = \DB::table('information_schema.tables')
+                                                        ->where('table_schema', \DB::getDatabaseName())
+                                                        ->whereIn('table_name', ['activities', 'special_memo', 'non_travel_memo', 'request_arf', 'service_request'])
+                                                        ->where('table_name', 'like', '%' . strtolower(class_basename($changeRequest->parent_memo_model)) . '%')
+                                                        ->value('table_name');
+                                                    
+                                                    // Try to get raw JSON from the appropriate table
+                                                    $rawParentParticipants = null;
+                                                    if ($parentMemo) {
+                                                        // Get the table name based on model
+                                                        $modelClass = $changeRequest->parent_memo_model;
+                                                        $tableName = (new $modelClass)->getTable();
+                                                        $rawParentParticipants = \DB::table($tableName)->where('id', $changeRequest->parent_memo_id)->value('internal_participants');
+                                                    }
+                                                    
+                                                    $parentParticipants = [];
+                                                    
+                                                    if ($rawParentParticipants) {
+                                                        if (is_string($rawParentParticipants)) {
+                                                            // First decode
+                                                            $firstDecode = json_decode($rawParentParticipants, true);
+                                                            // If result is still a string, decode again (double-encoded JSON)
+                                                            if (is_string($firstDecode)) {
+                                                                $parentParticipants = json_decode($firstDecode, true) ?? [];
+                                                            } elseif (is_array($firstDecode)) {
+                                                                $parentParticipants = $firstDecode;
+                                                            }
+                                                        } elseif (is_array($rawParentParticipants)) {
+                                                            $parentParticipants = $rawParentParticipants;
+                                                        }
+                                                    } elseif ($parentMemo) {
+                                                        // Fallback to model accessor
+                                                        $fallbackParticipants = $parentMemo->internal_participants ?? [];
+                                                        if (is_string($fallbackParticipants)) {
+                                                            $firstDecode = json_decode($fallbackParticipants, true);
+                                                            if (is_string($firstDecode)) {
+                                                                $parentParticipants = json_decode($firstDecode, true) ?? [];
+                                                            } elseif (is_array($firstDecode)) {
+                                                                $parentParticipants = $firstDecode;
+                                                            }
+                                                        } elseif (is_array($fallbackParticipants)) {
+                                                            $parentParticipants = $fallbackParticipants;
+                                                        }
+                                                    }
+                                                    
+                                                    // Ensure it's always an array
+                                                    if (!is_array($parentParticipants)) {
+                                                        $parentParticipants = [];
                                                     }
                                                 @endphp
                                                 
-                                                @if(count($parentParticipants) > 0)
+                                                @if(is_array($parentParticipants) && count($parentParticipants) > 0)
                                                     <div class="table-responsive">
                                                         <table class="table table-sm table-bordered">
                                                             <thead class="table-light">
@@ -303,12 +373,17 @@
                                                                                 $staffName = $staff->fname . ' ' . $staff->lname;
                                                                             }
                                                                         }
+                                                                        
+                                                                        // Handle international_travel: can be 1, "1", true, or "true"
+                                                                        $internationalTravel = $details['international_travel'] ?? 0;
+                                                                        // Convert to integer and check if it equals 1
+                                                                        $hasInternationalTravel = (intval($internationalTravel) === 1);
                                                                     @endphp
                                                                     <tr>
                                                                         <td>{{ $staffName }}</td>
                                                                         <td class="text-end">{{ $details['participant_days'] ?? 'N/A' }}</td>
                                                                         <td class="text-center">
-                                                                            @if($details['international_travel'] ?? 0)
+                                                                            @if($hasInternationalTravel)
                                                                                 <span class="badge bg-danger">Yes</span>
                                                                             @else
                                                                                 <span class="badge bg-secondary">No</span>
@@ -328,13 +403,34 @@
                                             <div class="col-md-6">
                                                 <h6 class="text-muted mb-2"><strong>Changed Participants</strong></h6>
                                                 @php
-                                                    $currentParticipants = $changeRequest->internal_participants ?? [];
-                                                    if (is_string($currentParticipants)) {
-                                                        $currentParticipants = json_decode($currentParticipants, true) ?? [];
+                                                    // IMPORTANT: Get participants from CHANGE REQUEST, not parent memo
+                                                    // Get raw JSON from change_request table to preserve the structure with international_travel
+                                                    // Note: JSON may be double-encoded, so we decode twice if needed
+                                                    $rawParticipants = \DB::table('change_request')->where('id', $changeRequest->id)->value('internal_participants');
+                                                    $currentParticipants = [];
+                                                    
+                                                    if ($rawParticipants) {
+                                                        if (is_string($rawParticipants)) {
+                                                            // First decode
+                                                            $firstDecode = json_decode($rawParticipants, true);
+                                                            // If result is still a string, decode again (double-encoded JSON)
+                                                            if (is_string($firstDecode)) {
+                                                                $currentParticipants = json_decode($firstDecode, true) ?? [];
+                                                            } elseif (is_array($firstDecode)) {
+                                                                $currentParticipants = $firstDecode;
+                                                            }
+                                                        } elseif (is_array($rawParticipants)) {
+                                                            $currentParticipants = $rawParticipants;
+                                                        }
+                                                    }
+                                                    
+                                                    // Ensure it's always an array
+                                                    if (!is_array($currentParticipants)) {
+                                                        $currentParticipants = [];
                                                     }
                                                 @endphp
                                                 
-                                                @if(count($currentParticipants) > 0)
+                                                @if(is_array($currentParticipants) && count($currentParticipants) > 0)
                                                     <div class="table-responsive">
                                                         <table class="table table-sm table-bordered">
                                                             <thead class="table-light">
@@ -359,12 +455,17 @@
                                                                                 $staffName = $staff->fname . ' ' . $staff->lname;
                                                                             }
                                                                         }
+                                                                        
+                                                                        // Handle international_travel: can be 1, "1", true, or "true"
+                                                                        $internationalTravel = $details['international_travel'] ?? 0;
+                                                                        // Convert to integer and check if it equals 1
+                                                                        $hasInternationalTravel = (intval($internationalTravel) === 1);
                                                                     @endphp
                                                                     <tr>
                                                                         <td>{{ $staffName }}</td>
                                                                         <td class="text-end">{{ $details['participant_days'] ?? 'N/A' }}</td>
                                                                         <td class="text-center">
-                                                                            @if($details['international_travel'] ?? 0)
+                                                                            @if($hasInternationalTravel)
                                                                                 <span class="badge bg-danger">Yes</span>
                                                                             @else
                                                                                 <span class="badge bg-secondary">No</span>

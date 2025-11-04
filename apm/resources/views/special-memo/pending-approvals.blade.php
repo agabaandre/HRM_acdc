@@ -148,8 +148,8 @@
                                         @foreach($pendingMemos as $memo)
                                             <tr>
                                                 <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                                                <td style="max-width: 300px;">
+                                                    <div class="fw-bold text-primary text-wrap" style="word-wrap: break-word; word-break: break-word;">{{ $memo->activity_title }}</div>
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-info text-dark">
@@ -278,8 +278,8 @@
                                         @foreach($approvedByMe as $memo)
                                             <tr>
                                                 <td>{{ $count++ }}</td>
-                                                <td>
-                                                    <div class="fw-bold text-primary">{{ $memo->activity_title }}</div>
+                                                <td style="max-width: 300px;">
+                                                    <div class="fw-bold text-primary text-wrap" style="word-wrap: break-word; word-break: break-word;">{{ $memo->activity_title }}</div>
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-info text-dark">
