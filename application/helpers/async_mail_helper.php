@@ -195,47 +195,73 @@ function delete_email_notification($id)
 // Uses CodeIgniter config system to access values defined in config.php
 if (!function_exists('get_exchange_config')) {
     function get_exchange_config($key, $default = null) {
-        // Try to get from CodeIgniter config first
-        if (function_exists('get_instance')) {
-            $ci = &get_instance();
-            if ($ci && isset($ci->config)) {
-                $value = $ci->config->item($key);
-                if ($value !== false) {
-                    return $value;
-                }
-            }
-        }
-        // Fallback to $_ENV if config not available (like database.php pattern)
         // Map config keys to ENV keys (e.g., 'exchange_tenant_id' -> 'EXCHANGE_TENANT_ID')
         $env_key = strtoupper($key);
-        return $_ENV[$env_key] ?? $default;
+        $config_value = null;
+        
+        // Try to get from CodeIgniter config first
+        if (function_exists('get_instance')) {
+            try {
+                $ci = &get_instance();
+                if ($ci && isset($ci->config)) {
+                    $config_value = $ci->config->item($key);
+                    // CodeIgniter returns FALSE if config item doesn't exist
+                    // If we got a valid value (not false), use it
+                    if ($config_value !== false) {
+                        // If config value is not empty, return it
+                        if (!empty($config_value)) {
+                            return $config_value;
+                        }
+                        // If config value is empty string, fall through to check $_ENV directly
+                    }
+                }
+            } catch (Exception $e) {
+                // If CodeIgniter not initialized, fall through to $_ENV
+            }
+        }
+        
+        // Fallback to $_ENV directly (like database.php pattern)
+        // This ensures we get the value even if config.php hasn't loaded it yet
+        if (isset($_ENV[$env_key]) && $_ENV[$env_key] !== '') {
+            return $_ENV[$env_key];
+        }
+        
+        // If config had an empty string, return that (it's a valid value)
+        if ($config_value === '') {
+            return '';
+        }
+        
+        // Otherwise return default
+        return $default;
     }
 }
 
-// Exchange OAuth Configuration from config.php (accessed like database.php uses $_ENV)
-// These are loaded from config.php which gets values from $_ENV
-$exchange_tenant_id = get_exchange_config('exchange_tenant_id', '');
-$exchange_client_id = get_exchange_config('exchange_client_id', '');
-$exchange_client_secret = get_exchange_config('exchange_client_secret', '');
-$exchange_redirect_uri = get_exchange_config('exchange_redirect_uri', '');
-$exchange_scope = get_exchange_config('exchange_scope', 'https://graph.microsoft.com/.default');
-$exchange_auth_method = get_exchange_config('exchange_auth_method', 'client_credentials');
-
-// Email Configuration from config.php
-$mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
-$mail_from_name = get_exchange_config('mail_from_name', 'Africa CDC Staff Portal');
-$mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
-$exchange_debug = get_exchange_config('exchange_debug', 'false');
-
 /**
  * Check if Exchange OAuth is properly configured
+ * Accesses config values dynamically (like database.php pattern)
  */
 function exchange_is_configured()
 {
-  
+    $tenant_id = get_exchange_config('exchange_tenant_id', '');
+    $client_id = get_exchange_config('exchange_client_id', '');
+    $client_secret = get_exchange_config('exchange_client_secret', '');
     
-    global $exchange_tenant_id, $exchange_client_id, $exchange_client_secret;
-    return !empty($exchange_tenant_id) && !empty($exchange_client_id) && !empty($exchange_client_secret);
+    $is_configured = !empty($tenant_id) && !empty($client_id) && !empty($client_secret);
+    
+    // Log configuration status for debugging (only if not configured)
+    if (!$is_configured) {
+        $debug_info = [
+            'tenant_id_set' => !empty($tenant_id),
+            'client_id_set' => !empty($client_id),
+            'client_secret_set' => !empty($client_secret),
+            'tenant_id_length' => strlen($tenant_id),
+            'client_id_length' => strlen($client_id),
+            'client_secret_length' => strlen($client_secret)
+        ];
+        error_log('Exchange Email Configuration Check Failed: ' . json_encode($debug_info));
+    }
+    
+    return $is_configured;
 }
 
 /**
@@ -243,7 +269,11 @@ function exchange_is_configured()
  */
 function exchange_get_client_credentials_token()
 {
-    global $exchange_tenant_id, $exchange_client_id, $exchange_client_secret, $exchange_scope;
+    // Get config values dynamically (like database.php pattern)
+    $exchange_tenant_id = get_exchange_config('exchange_tenant_id', '');
+    $exchange_client_id = get_exchange_config('exchange_client_id', '');
+    $exchange_client_secret = get_exchange_config('exchange_client_secret', '');
+    $exchange_scope = get_exchange_config('exchange_scope', 'https://graph.microsoft.com/.default');
     
     if (!exchange_is_configured()) {
         throw new Exception('OAuth not configured. Please check environment variables.');
@@ -299,7 +329,9 @@ function exchange_get_access_token()
  */
 function exchange_send_email($to, $subject, $body, $isHtml = true, $fromEmail = null, $fromName = null, $cc = [], $bcc = [], $attachments = [])
 {
-    global $mail_from_address, $mail_from_name;
+    // Get config values dynamically (like database.php pattern)
+    $mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
+    $mail_from_name = get_exchange_config('mail_from_name', 'Africa CDC Staff Portal');
     
     if (!exchange_has_valid_token()) {
         exchange_get_client_credentials_token();
@@ -439,7 +471,10 @@ if (!function_exists('send_email_async')) {
     {
         return new Promise(function ($resolve, $reject) use ($to, $subject, $message, $id, $next_run) {
             try {
-                global $mail_cc_address, $mail_from_address, $mail_from_name;
+                // Get config values dynamically (like database.php pattern)
+                $mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
+                $mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
+                $mail_from_name = get_exchange_config('mail_from_name', 'Africa CDC Staff Portal');
                 
                 // Check if service is configured
                 if (!exchange_is_configured()) {
@@ -494,7 +529,10 @@ if (!function_exists('push_email')) {
     function push_email($to, $subject, $message, $id, $next_run)
     {
         try {
-            global $mail_cc_address, $mail_from_address, $mail_from_name;
+            // Get config values dynamically (like database.php pattern)
+            $mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
+            $mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
+            $mail_from_name = get_exchange_config('mail_from_name', 'Africa CDC Staff Portal');
             
             // Check if service is configured
             if (!exchange_is_configured()) {
@@ -560,7 +598,8 @@ if (!function_exists('push_email')) {
 function exchange_email($to, $from, $subject, $message, $cc = '', $bcc = '', $attachments = [])
 {
     try {
-        global $mail_cc_address;
+        // Get config values dynamically (like database.php pattern)
+        $mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
         
         // Check if service is configured
         if (!exchange_is_configured()) {
@@ -622,7 +661,9 @@ function exchange_email($to, $from, $subject, $message, $cc = '', $bcc = '', $at
  */
 function exchange_test_email($testEmail = null)
 {
-    global $mail_from_address, $mail_cc_address;
+    // Get config values dynamically (like database.php pattern)
+    $mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
+    $mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
     
     $testEmail = $testEmail ?: $mail_from_address;
     
@@ -710,11 +751,11 @@ function exchange_status()
             'email_service_ready' => exchange_is_configured(),
             'token_expires_at' => $_SESSION['exchange_token_expires'] ?? null,
             'debug_info' => [
-                'tenant_id_set' => !empty($GLOBALS['exchange_tenant_id']),
-                'client_id_set' => !empty($GLOBALS['exchange_client_id']),
-                'client_secret_set' => !empty($GLOBALS['exchange_client_secret']),
-                'from_email_set' => !empty($GLOBALS['mail_from_address']),
-                'from_name_set' => !empty($GLOBALS['mail_from_name'])
+                'tenant_id_set' => !empty(get_exchange_config('exchange_tenant_id', '')),
+                'client_id_set' => !empty(get_exchange_config('exchange_client_id', '')),
+                'client_secret_set' => !empty(get_exchange_config('exchange_client_secret', '')),
+                'from_email_set' => !empty(get_exchange_config('mail_from_address', '')),
+                'from_name_set' => !empty(get_exchange_config('mail_from_name', ''))
             ]
         ];
     } catch (Exception $e) {
