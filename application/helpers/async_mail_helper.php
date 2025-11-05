@@ -340,29 +340,46 @@ function exchange_send_email($to, $subject, $body, $isHtml = true, $fromEmail = 
     $fromEmail = $fromEmail ?: $mail_from_address;
     $fromName = $fromName ?: $mail_from_name;
 
-    // Prepare recipients
-    $recipients = [];
-    foreach (explode(',', $to) as $email) {
+    // Prepare TO recipients - handle both semicolon and comma separated
+    $toRecipients = [];
+    // First try semicolon (like SMTP functions), then comma as fallback
+    $toEmails = strpos($to, ';') !== false ? explode(';', $to) : explode(',', $to);
+    foreach ($toEmails as $email) {
         $email = trim($email);
-        if ($email) {
-            $recipients[] = ['emailAddress' => ['address' => $email]];
+        if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $toRecipients[] = ['emailAddress' => ['address' => $email]];
         }
     }
 
-    // Add CC recipients
-    foreach ($cc as $email) {
-        $email = trim($email);
-        if ($email) {
-            $recipients[] = ['emailAddress' => ['address' => $email]];
+    // Prepare CC recipients
+    $ccRecipients = [];
+    if (!empty($cc)) {
+        // Handle both array and string (comma/semicolon separated)
+        $ccEmails = is_array($cc) ? $cc : (strpos($cc, ';') !== false ? explode(';', $cc) : explode(',', $cc));
+        foreach ($ccEmails as $email) {
+            $email = trim($email);
+            if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $ccRecipients[] = ['emailAddress' => ['address' => $email]];
+            }
         }
     }
 
-    // Add BCC recipients
-    foreach ($bcc as $email) {
-        $email = trim($email);
-        if ($email) {
-            $recipients[] = ['emailAddress' => ['address' => $email]];
+    // Prepare BCC recipients
+    $bccRecipients = [];
+    if (!empty($bcc)) {
+        // Handle both array and string (comma/semicolon separated)
+        $bccEmails = is_array($bcc) ? $bcc : (strpos($bcc, ';') !== false ? explode(';', $bcc) : explode(',', $bcc));
+        foreach ($bccEmails as $email) {
+            $email = trim($email);
+            if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $bccRecipients[] = ['emailAddress' => ['address' => $email]];
+            }
         }
+    }
+
+    // Validate that we have at least one recipient
+    if (empty($toRecipients) && empty($ccRecipients) && empty($bccRecipients)) {
+        throw new Exception('No valid recipients found. Please provide at least one valid email address.');
     }
 
     // Prepare email message
@@ -373,7 +390,7 @@ function exchange_send_email($to, $subject, $body, $isHtml = true, $fromEmail = 
                 'contentType' => $isHtml ? 'HTML' : 'Text',
                 'content' => $body
             ],
-            'toRecipients' => $recipients,
+            'toRecipients' => $toRecipients,
             'from' => [
                 'emailAddress' => [
                     'address' => $fromEmail,
@@ -382,6 +399,16 @@ function exchange_send_email($to, $subject, $body, $isHtml = true, $fromEmail = 
             ]
         ]
     ];
+
+    // Add CC recipients if any (Microsoft Graph requires separate arrays)
+    if (!empty($ccRecipients)) {
+        $message['message']['ccRecipients'] = $ccRecipients;
+    }
+
+    // Add BCC recipients if any (Microsoft Graph requires separate arrays)
+    if (!empty($bccRecipients)) {
+        $message['message']['bccRecipients'] = $bccRecipients;
+    }
 
     // Add attachments if provided
     if (!empty($attachments)) {
@@ -482,23 +509,35 @@ if (!function_exists('send_email_async')) {
                     return;
                 }
 
-                // Convert comma-separated strings to arrays
+                // Handle semicolon-separated emails in $to (like SMTP functions)
+                // First email is primary recipient, rest should be separate
+                $toEmails = strpos($to, ';') !== false ? explode(';', $to) : explode(',', $to);
+                $primaryTo = trim($toEmails[0]);
+                
+                // Build CC array - include system@africacdc.org and any additional emails from $to
                 $ccArray = [$mail_cc_address]; // Always CC system@africacdc.org
-                $bccArray = [];
+                
+                // Add any additional emails from $to to CC (if there are multiple)
+                if (count($toEmails) > 1) {
+                    for ($i = 1; $i < count($toEmails); $i++) {
+                        $email = trim($toEmails[$i]);
+                        if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                            $ccArray[] = $email;
+                        }
+                    }
+                }
                 
                 // Clean up arrays
                 $ccArray = array_filter(array_map('trim', $ccArray));
-                $bccArray = array_filter(array_map('trim', $bccArray));
-                
-                // Remove duplicates from CC array
                 $ccArray = array_unique($ccArray);
+                $bccArray = [];
 
                 // Determine if message is HTML
                 $isHtml = (strpos($message, '<html') !== false || strpos($message, '<body') !== false || strpos($message, '<p') !== false);
 
-                // Send email
+                // Send email with primary recipient in $to and additional recipients in CC
                 $result = exchange_send_email(
-                    $to,
+                    $primaryTo,
                     $subject,
                     $message,
                     $isHtml,
@@ -540,23 +579,35 @@ if (!function_exists('push_email')) {
                 return false;
             }
 
-            // Convert comma-separated strings to arrays
+            // Handle semicolon-separated emails in $to (like SMTP functions)
+            // First email is primary recipient, rest should be separate
+            $toEmails = strpos($to, ';') !== false ? explode(';', $to) : explode(',', $to);
+            $primaryTo = trim($toEmails[0]);
+            
+            // Build CC array - include system@africacdc.org and any additional emails from $to
             $ccArray = [$mail_cc_address]; // Always CC system@africacdc.org
-            $bccArray = [];
+            
+            // Add any additional emails from $to to CC (if there are multiple)
+            if (count($toEmails) > 1) {
+                for ($i = 1; $i < count($toEmails); $i++) {
+                    $email = trim($toEmails[$i]);
+                    if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $ccArray[] = $email;
+                    }
+                }
+            }
             
             // Clean up arrays
             $ccArray = array_filter(array_map('trim', $ccArray));
-            $bccArray = array_filter(array_map('trim', $bccArray));
-            
-            // Remove duplicates from CC array
             $ccArray = array_unique($ccArray);
+            $bccArray = [];
 
             // Determine if message is HTML
             $isHtml = (strpos($message, '<html') !== false || strpos($message, '<body') !== false || strpos($message, '<p') !== false);
 
-            // Send email
+            // Send email with primary recipient in $to and additional recipients in CC
             $result = exchange_send_email(
-                $to,
+                $primaryTo,
                 $subject,
                 $message,
                 $isHtml,
@@ -607,12 +658,27 @@ function exchange_email($to, $from, $subject, $message, $cc = '', $bcc = '', $at
             return false;
         }
 
-        // Convert comma-separated strings to arrays
-        $ccArray = !empty($cc) ? explode(',', $cc) : [];
-        $bccArray = !empty($bcc) ? explode(',', $bcc) : [];
+        // Handle semicolon-separated emails in $to (like SMTP functions)
+        // First email is primary recipient, rest should be separate
+        $toEmails = strpos($to, ';') !== false ? explode(';', $to) : explode(',', $to);
+        $primaryTo = trim($toEmails[0]);
+        
+        // Convert comma/semicolon-separated strings to arrays for CC and BCC
+        $ccArray = !empty($cc) ? (strpos($cc, ';') !== false ? explode(';', $cc) : explode(',', $cc)) : [];
+        $bccArray = !empty($bcc) ? (strpos($bcc, ';') !== false ? explode(';', $bcc) : explode(',', $bcc)) : [];
         
         // Always CC system@africacdc.org on all emails
         $ccArray[] = $mail_cc_address;
+        
+        // Add any additional emails from $to to CC (if there are multiple)
+        if (count($toEmails) > 1) {
+            for ($i = 1; $i < count($toEmails); $i++) {
+                $email = trim($toEmails[$i]);
+                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $ccArray[] = $email;
+                }
+            }
+        }
         
         // Clean up arrays
         $ccArray = array_filter(array_map('trim', $ccArray));
@@ -624,9 +690,9 @@ function exchange_email($to, $from, $subject, $message, $cc = '', $bcc = '', $at
         // Determine if message is HTML
         $isHtml = (strpos($message, '<html') !== false || strpos($message, '<body') !== false || strpos($message, '<p') !== false);
 
-        // Send email
+        // Send email with primary recipient in $to and additional recipients in CC
         $result = exchange_send_email(
-            $to,
+            $primaryTo,
             $subject,
             $message,
             $isHtml,
