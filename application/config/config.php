@@ -553,3 +553,38 @@ $config['rewrite_short_tags'] = FALSE;
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
 $config['proxy_ips'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| Exchange Email Configuration
+|--------------------------------------------------------------------------
+|
+| Microsoft Graph API / Exchange OAuth configuration for email sending
+| These values are loaded from environment variables (like database.php)
+|
+*/
+$config['exchange_tenant_id'] = $_ENV['EXCHANGE_TENANT_ID'] ?? '';
+$config['exchange_client_id'] = $_ENV['EXCHANGE_CLIENT_ID'] ?? '';
+$config['exchange_client_secret'] = $_ENV['EXCHANGE_CLIENT_SECRET'] ?? '';
+$config['exchange_redirect_uri'] = $_ENV['EXCHANGE_REDIRECT_URI'] ?? '';
+$config['exchange_scope'] = $_ENV['EXCHANGE_SCOPE'] ?? 'https://graph.microsoft.com/.default';
+$config['exchange_auth_method'] = $_ENV['EXCHANGE_AUTH_METHOD'] ?? 'client_credentials';
+
+// Email Configuration from .env
+$config['mail_from_address'] = $_ENV['MAIL_FROM_ADDRESS'];
+$config['mail_from_name'] = $_ENV['MAIL_FROM_NAME'];
+$config['mail_cc_address'] = $_ENV['MAIL_CC_ADDRESS'];
+$config['exchange_debug'] = $_ENV['EXCHANGE_DEBUG'] ?? 'false';
+
+// Dynamically determine callback URL if not set in environment
+if (empty($config['exchange_redirect_uri'])) {
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
+        $config['exchange_redirect_uri'] = 'http://localhost/staff/auth/message_callback';
+    } else {
+        // Production - construct from current request
+        $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https://' : 'http://';
+        $dirname = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/';
+        $config['exchange_redirect_uri'] = $protocol . $host . $dirname . 'auth/message_callback';
+    }
+}
