@@ -776,4 +776,252 @@ public function revert()
   }
   //permissions management
 
+  /**
+   * Callback handler for Microsoft OAuth and message/webhook notifications
+   * Handles both authentication callbacks and message notifications
+   * Works with both localhost and production URLs
+   */
+  public function message_callback()
+  {
+      // Set response headers for JSON
+      header('Content-Type: application/json');
+      
+      // Get the request method
+      $method = $this->input->server('REQUEST_METHOD');
+      
+      // Handle GET requests (OAuth authorization callback)
+      if ($method === 'GET') {
+          return $this->handle_oauth_callback();
+      }
+      
+      // Handle POST requests (Webhook notifications from Microsoft Graph)
+      if ($method === 'POST') {
+          return $this->handle_webhook_notification();
+      }
+      
+      // Handle validation requests (for webhook subscription)
+      if ($method === 'OPTIONS') {
+          // CORS preflight or webhook validation
+          header('Access-Control-Allow-Origin: *');
+          header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+          header('Access-Control-Allow-Headers: Content-Type, Authorization');
+          http_response_code(200);
+          exit;
+      }
+      
+      // Unsupported method
+      http_response_code(405);
+      echo json_encode(['error' => 'Method not allowed']);
+      exit;
+  }
+
+  /**
+   * Handle OAuth authorization callback
+   */
+  private function handle_oauth_callback()
+  {
+      // Check for authorization code
+      $code = $this->input->get('code');
+      $error = $this->input->get('error');
+      $state = $this->input->get('state');
+      
+      // Handle OAuth errors
+      if ($error) {
+          $error_description = $this->input->get('error_description');
+          log_message('error', 'OAuth callback error: ' . $error . ' - ' . $error_description);
+          
+          http_response_code(400);
+          echo json_encode([
+              'error' => $error,
+              'error_description' => $error_description
+          ]);
+          exit;
+      }
+      
+      // Validate authorization code
+      if (!$code) {
+          http_response_code(400);
+          echo json_encode(['error' => 'Missing authorization code']);
+          exit;
+      }
+      
+      // Exchange authorization code for access token
+      $token_url = "https://login.microsoftonline.com/{$this->tenant_id}/oauth2/v2.0/token";
+      
+      // Determine redirect URI based on environment
+      $redirect_uri = $this->get_callback_url();
+      
+      $post_data = [
+          'client_id'     => $this->client_id,
+          'client_secret' => $this->client_secret,
+          'code'          => $code,
+          'redirect_uri'  => $redirect_uri,
+          'grant_type'    => 'authorization_code',
+          'scope'         => 'https://outlook.office365.com/.default offline_access'
+      ];
+      
+      $headers = ['Content-Type: application/x-www-form-urlencoded'];
+      
+      $response = curl_send_post($token_url, $post_data, $headers);
+      
+      if (isset($response->access_token)) {
+          // Store token securely (you may want to store this in database or cache)
+          log_message('info', 'OAuth token obtained successfully via message_callback');
+          
+          // Return success response
+          http_response_code(200);
+          echo json_encode([
+              'success' => true,
+              'message' => 'Authorization successful',
+              'token_received' => true
+          ]);
+          exit;
+      } else {
+          log_message('error', 'Failed to obtain OAuth token: ' . json_encode($response));
+          
+          http_response_code(500);
+          echo json_encode([
+              'error' => 'Failed to obtain access token',
+              'details' => $response
+          ]);
+          exit;
+      }
+  }
+
+  /**
+   * Handle webhook notifications from Microsoft Graph
+   */
+  private function handle_webhook_notification()
+  {
+      // Get the raw input for signature validation
+      $payload = file_get_contents('php://input');
+      $headers = getallheaders();
+      
+      // Log the incoming webhook for debugging
+      log_message('info', 'Webhook notification received: ' . $payload);
+      
+      // Check for validation token (Microsoft Graph sends this during subscription)
+      // Can come as GET parameter or in POST body
+      $validation_token = $this->input->get('validationToken');
+      if (!$validation_token && !empty($payload)) {
+          $data = json_decode($payload, true);
+          $validation_token = $data['validationToken'] ?? null;
+      }
+      
+      if ($validation_token) {
+          // Return validation token immediately (required by Microsoft)
+          // Must return within 10 seconds and be plain text
+          header('Content-Type: text/plain');
+          echo $validation_token;
+          exit;
+      }
+      
+      // Parse notification data
+      $data = json_decode($payload, true);
+      
+      if (!$data) {
+          http_response_code(400);
+          echo json_encode(['error' => 'Invalid JSON payload']);
+          exit;
+      }
+      
+      // Handle different notification types
+      if (isset($data['value'])) {
+          // This is a notification from Microsoft Graph
+          foreach ($data['value'] as $notification) {
+              $this->process_notification($notification);
+          }
+          
+          // Return 202 Accepted (required by Microsoft)
+          http_response_code(202);
+          echo json_encode(['success' => true, 'message' => 'Notification processed']);
+          exit;
+      }
+      
+      // Handle other notification formats
+      $this->process_notification($data);
+      
+      http_response_code(200);
+      echo json_encode(['success' => true, 'message' => 'Notification received']);
+      exit;
+  }
+
+  /**
+   * Process individual notification
+   */
+  private function process_notification($notification)
+  {
+      // Log the notification
+      log_message('info', 'Processing notification: ' . json_encode($notification));
+      
+      // Handle different notification types
+      if (isset($notification['resource'])) {
+          $resource = $notification['resource'];
+          $change_type = $notification['changeType'] ?? 'unknown';
+          
+          // Handle email/message notifications
+          if (strpos($resource, '/messages') !== false || strpos($resource, '/Mail') !== false) {
+              $this->handle_email_notification($resource, $change_type);
+          }
+          
+          // Handle subscription notifications
+          if (isset($notification['subscriptionId'])) {
+              $this->handle_subscription_notification($notification);
+          }
+      }
+      
+      // You can add more notification processing logic here
+  }
+
+  /**
+   * Handle email-related notifications
+   */
+  private function handle_email_notification($resource, $changeType)
+  {
+      log_message('info', "Email notification: {$changeType} - {$resource}");
+      
+      // Process the email notification
+      // You can fetch the email details using Microsoft Graph API if needed
+      // Example: GET https://graph.microsoft.com/v1.0/{resource}
+      
+      // Add your email processing logic here
+      // For example, update email_notifications table, trigger email processing, etc.
+  }
+
+  /**
+   * Handle subscription-related notifications
+   */
+  private function handle_subscription_notification($notification)
+  {
+      $subscription_id = $notification['subscriptionId'] ?? null;
+      $lifecycle_event = $notification['lifecycleEvent'] ?? null;
+      
+      log_message('info', "Subscription notification: {$subscription_id} - {$lifecycle_event}");
+      
+      // Handle subscription lifecycle events
+      // Example: reauthorize, revalidate, or delete subscription
+  }
+
+  /**
+   * Get the callback URL based on environment
+   * Works for both localhost and production
+   */
+  private function get_callback_url()
+  {
+      // Check if we're in production or localhost
+      $base_url = base_url();
+      $host = $_SERVER['HTTP_HOST'] ?? '';
+      
+      // Check for localhost or local development
+      if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
+          // Use localhost callback URL
+          return $base_url . 'auth/message_callback';
+      }
+      
+      // Production URL - use the production callback URL
+      // You can also use environment variable for production URL
+      $production_url = $_ENV['PRODUCTION_CALLBACK_URL'] ?? $base_url;
+      return rtrim($production_url, '/') . '/auth/message_callback';
+  }
+
 }
