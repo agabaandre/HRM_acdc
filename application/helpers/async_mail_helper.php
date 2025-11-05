@@ -191,36 +191,48 @@ function delete_email_notification($id)
  * @version 1.0.0
  */
 
-// Exchange OAuth Configuration from global $_ENV (already loaded globally like in database.php)
-$exchange_tenant_id = $_ENV['EXCHANGE_TENANT_ID'] ?? '';
-$exchange_client_id = $_ENV['EXCHANGE_CLIENT_ID'] ?? '';
-$exchange_client_secret = $_ENV['EXCHANGE_CLIENT_SECRET'] ?? '';
-// Use message_callback URL for OAuth redirect (works for both localhost and production)
-$exchange_redirect_uri = $_ENV['EXCHANGE_REDIRECT_URI'] ?? '';
-if (empty($exchange_redirect_uri)) {
-    // Dynamically determine callback URL based on environment
-    $host = $_SERVER['HTTP_HOST'] ?? '';
-    if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
-        $exchange_redirect_uri = 'http://localhost/staff/auth/message_callback';
-    } else {
-        // Production - use base_url helper if available, otherwise construct from host
-        $exchange_redirect_uri = (function_exists('base_url') ? base_url('auth/message_callback') : 'https://' . $host . '/auth/message_callback');
+// Helper function to get config values (works like database.php pattern)
+// Uses CodeIgniter config system to access values defined in config.php
+if (!function_exists('get_exchange_config')) {
+    function get_exchange_config($key, $default = null) {
+        // Try to get from CodeIgniter config first
+        if (function_exists('get_instance')) {
+            $ci = &get_instance();
+            if ($ci && isset($ci->config)) {
+                $value = $ci->config->item($key);
+                if ($value !== false) {
+                    return $value;
+                }
+            }
+        }
+        // Fallback to $_ENV if config not available (like database.php pattern)
+        // Map config keys to ENV keys (e.g., 'exchange_tenant_id' -> 'EXCHANGE_TENANT_ID')
+        $env_key = strtoupper($key);
+        return $_ENV[$env_key] ?? $default;
     }
 }
-$exchange_scope = $_ENV['EXCHANGE_SCOPE'] ?? 'https://graph.microsoft.com/.default';
-$exchange_auth_method = $_ENV['EXCHANGE_AUTH_METHOD'] ?? 'client_credentials';
 
-// Email Configuration from .env
-$mail_from_address = $_ENV['MAIL_FROM_ADDRESS'] ?? 'notifications@africacdc.org';
-$mail_from_name = $_ENV['MAIL_FROM_NAME'] ?? 'CPHIA 2025';
-$mail_cc_address = $_ENV['MAIL_CC_ADDRESS'] ?? 'system@africacdc.org';
-$exchange_debug = $_ENV['EXCHANGE_DEBUG'] ?? 'false';
+// Exchange OAuth Configuration from config.php (accessed like database.php uses $_ENV)
+// These are loaded from config.php which gets values from $_ENV
+$exchange_tenant_id = get_exchange_config('exchange_tenant_id', '');
+$exchange_client_id = get_exchange_config('exchange_client_id', '');
+$exchange_client_secret = get_exchange_config('exchange_client_secret', '');
+$exchange_redirect_uri = get_exchange_config('exchange_redirect_uri', '');
+$exchange_scope = get_exchange_config('exchange_scope', 'https://graph.microsoft.com/.default');
+$exchange_auth_method = get_exchange_config('exchange_auth_method', 'client_credentials');
+
+// Email Configuration from config.php
+$mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
+$mail_from_name = get_exchange_config('mail_from_name', 'Africa CDC Staff Portal');
+$mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
+$exchange_debug = get_exchange_config('exchange_debug', 'false');
 
 /**
  * Check if Exchange OAuth is properly configured
  */
 function exchange_is_configured()
 {
+  
     
     global $exchange_tenant_id, $exchange_client_id, $exchange_client_secret;
     return !empty($exchange_tenant_id) && !empty($exchange_client_id) && !empty($exchange_client_secret);
