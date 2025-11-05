@@ -12,20 +12,19 @@ return [
     */
 
     // Microsoft Graph OAuth Configuration
-    // Use env() helper for Laravel .env support, fallback to getenv() and $_ENV
-    'tenant_id' => env('EXCHANGE_TENANT_ID') ?: ($_ENV['EXCHANGE_TENANT_ID'] ?? getenv('EXCHANGE_TENANT_ID') ?: ''),
-    'client_id' => env('EXCHANGE_CLIENT_ID') ?: ($_ENV['EXCHANGE_CLIENT_ID'] ?? getenv('EXCHANGE_CLIENT_ID') ?: ''),
-    'client_secret' => env('EXCHANGE_CLIENT_SECRET') ?: ($_ENV['EXCHANGE_CLIENT_SECRET'] ?? getenv('EXCHANGE_CLIENT_SECRET') ?: ''),
-    'redirect_uri' => env('EXCHANGE_REDIRECT_URI') ?: ($_ENV['EXCHANGE_REDIRECT_URI'] ?? getenv('EXCHANGE_REDIRECT_URI') ?: 'http://localhost/staff/auth/message_callback'),
-    'scope' => env('EXCHANGE_SCOPE') ?: ($_ENV['EXCHANGE_SCOPE'] ?? getenv('EXCHANGE_SCOPE') ?: 'https://graph.microsoft.com/.default'),
+    'tenant_id' => getenv('EXCHANGE_TENANT_ID') ?: '',
+    'client_id' => getenv('EXCHANGE_CLIENT_ID') ?: '',
+    'client_secret' => getenv('EXCHANGE_CLIENT_SECRET') ?: '',
+    'redirect_uri' => getenv('EXCHANGE_REDIRECT_URI') ?: 'http://localhost:8000/oauth/callback',
+    'scope' => getenv('EXCHANGE_SCOPE') ?: 'https://graph.microsoft.com/.default',
 
     // Authentication Method
     // Options: 'authorization_code', 'client_credentials'
-    'auth_method' => env('EXCHANGE_AUTH_METHOD') ?: ($_ENV['EXCHANGE_AUTH_METHOD'] ?? getenv('EXCHANGE_AUTH_METHOD') ?: 'client_credentials'),
+    'auth_method' => getenv('EXCHANGE_AUTH_METHOD') ?: 'client_credentials',
 
     // Email Configuration
-    'from_email' => env('MAIL_FROM_ADDRESS') ?: ($_ENV['MAIL_FROM_ADDRESS'] ?? getenv('MAIL_FROM_ADDRESS') ?: 'noreply@example.com'),
-    'from_name' => env('MAIL_FROM_NAME') ?: ($_ENV['MAIL_FROM_NAME'] ?? getenv('MAIL_FROM_NAME') ?: 'Exchange Email Service'),
+    'from_email' => getenv('MAIL_FROM_ADDRESS') ?: 'noreply@example.com',
+    'from_name' => getenv('MAIL_FROM_NAME') ?: 'Exchange Email Service',
 
     // Token Storage Configuration (file-based)
     'token_storage' => [

@@ -36,16 +36,14 @@ class ExchangeOAuth
 
     public function __construct($tenantId = null, $clientId = null, $clientSecret = null, $redirectUri = null, $scope = null, $authMethod = null)
     {
-        // Try to get values from constructor parameters first, then from environment
-        // Support multiple ways to read env vars: $_ENV, getenv(), and Laravel's env() helper
-        $this->tenantId = $tenantId ?: ($_ENV['EXCHANGE_TENANT_ID'] ?? getenv('EXCHANGE_TENANT_ID') ?: (function_exists('env') ? env('EXCHANGE_TENANT_ID') : null));
-        $this->clientId = $clientId ?: ($_ENV['EXCHANGE_CLIENT_ID'] ?? getenv('EXCHANGE_CLIENT_ID') ?: (function_exists('env') ? env('EXCHANGE_CLIENT_ID') : null));
-        $this->clientSecret = $clientSecret ?: ($_ENV['EXCHANGE_CLIENT_SECRET'] ?? getenv('EXCHANGE_CLIENT_SECRET') ?: (function_exists('env') ? env('EXCHANGE_CLIENT_SECRET') : null));
-        $this->redirectUri = $redirectUri ?: ($_ENV['EXCHANGE_REDIRECT_URI'] ?? getenv('EXCHANGE_REDIRECT_URI') ?: (function_exists('env') ? env('EXCHANGE_REDIRECT_URI') : 'http://localhost/staff/auth/message_callback'));
-        $this->scope = $scope ?: ($_ENV['EXCHANGE_SCOPE'] ?? getenv('EXCHANGE_SCOPE') ?: (function_exists('env') ? env('EXCHANGE_SCOPE') : 'https://graph.microsoft.com/.default'));
-        $this->authMethod = $authMethod ?: ($_ENV['EXCHANGE_AUTH_METHOD'] ?? getenv('EXCHANGE_AUTH_METHOD') ?: (function_exists('env') ? env('EXCHANGE_AUTH_METHOD') : self::AUTH_CLIENT_CREDENTIALS));
-        $this->fromEmail = $_ENV['MAIL_FROM_ADDRESS'] ?? getenv('MAIL_FROM_ADDRESS') ?: (function_exists('env') ? env('MAIL_FROM_ADDRESS') : null);
-        $this->fromName = $_ENV['MAIL_FROM_NAME'] ?? getenv('MAIL_FROM_NAME') ?: (function_exists('env') ? env('MAIL_FROM_NAME') : null);
+        $this->tenantId = $tenantId ?: getenv('EXCHANGE_TENANT_ID');
+        $this->clientId = $clientId ?: getenv('EXCHANGE_CLIENT_ID');
+        $this->clientSecret = $clientSecret ?: getenv('EXCHANGE_CLIENT_SECRET');
+        $this->redirectUri = $redirectUri ?: getenv('EXCHANGE_REDIRECT_URI');
+        $this->scope = $scope ?: getenv('EXCHANGE_SCOPE') ?: 'https://graph.microsoft.com/Mail.Send';
+        $this->authMethod = $authMethod ?: getenv('EXCHANGE_AUTH_METHOD') ?: self::AUTH_AUTHORIZATION_CODE;
+        $this->fromEmail = getenv('MAIL_FROM_ADDRESS');
+        $this->fromName = getenv('MAIL_FROM_NAME');
         
         // Set token file path
         $this->tokenFile = __DIR__ . '/../tokens/oauth_tokens.json';
@@ -58,19 +56,9 @@ class ExchangeOAuth
      */
     public function isConfigured()
     {
-        $isConfigured = !empty($this->tenantId) && 
-                       !empty($this->clientId) && 
-                       !empty($this->clientSecret);
-        
-        // Log configuration status for debugging
-        if (!$isConfigured) {
-            error_log('ExchangeOAuth Configuration Check Failed:');
-            error_log('  Tenant ID: ' . ($this->tenantId ? 'SET' : 'EMPTY'));
-            error_log('  Client ID: ' . ($this->clientId ? 'SET' : 'EMPTY'));
-            error_log('  Client Secret: ' . ($this->clientSecret ? 'SET' : 'EMPTY'));
-        }
-        
-        return $isConfigured;
+        return !empty($this->tenantId) && 
+               !empty($this->clientId) && 
+               !empty($this->clientSecret);
     }
 
     /**
