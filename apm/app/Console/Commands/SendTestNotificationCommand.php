@@ -99,17 +99,26 @@ class SendTestNotificationCommand extends Command
             // Use the working implementation from local ExchangeEmailService
             require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
             
+            // Debug: Log config values (without sensitive data)
+            $this->info('Exchange Email Config Check:');
+            $this->info('  Tenant ID: ' . (!empty($config['tenant_id']) ? 'SET' : 'EMPTY'));
+            $this->info('  Client ID: ' . (!empty($config['client_id']) ? 'SET' : 'EMPTY'));
+            $this->info('  Client Secret: ' . (!empty($config['client_secret']) ? 'SET' : 'EMPTY'));
+            $this->info('  Redirect URI: ' . ($config['redirect_uri'] ?? 'not set'));
+            
+            // Only pass non-empty config values, let constructor fallback to env vars
             $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
-                $config['tenant_id'],
-                $config['client_id'],
-                $config['client_secret'],
-                $config['redirect_uri'] ?? 'http://localhost:8000/oauth/callback',
+                !empty($config['tenant_id']) ? $config['tenant_id'] : null,
+                !empty($config['client_id']) ? $config['client_id'] : null,
+                !empty($config['client_secret']) ? $config['client_secret'] : null,
+                !empty($config['redirect_uri']) ? $config['redirect_uri'] : null,
                 'https://graph.microsoft.com/.default', // Correct scope for client credentials
                 'client_credentials' // Force client credentials
             );
             
             if (!$oauth->isConfigured()) {
                 $this->error('Exchange service not configured - Exchange is required for all emails');
+                $this->error('Please ensure EXCHANGE_TENANT_ID, EXCHANGE_CLIENT_ID, and EXCHANGE_CLIENT_SECRET are set in .env file');
                 return false;
             }
 

@@ -61,21 +61,31 @@ function sendEmailWithExchange($to, $subject, $body, $fromEmail = null, $fromNam
     try {
         $config = config('exchange-email');
         
+        // Debug: Log config values (without sensitive data)
+        \Log::info('Exchange Email Config Check', [
+            'tenant_id_set' => !empty($config['tenant_id']),
+            'client_id_set' => !empty($config['client_id']),
+            'client_secret_set' => !empty($config['client_secret']),
+            'redirect_uri' => $config['redirect_uri'] ?? 'not set',
+        ]);
+        
         // Use the working implementation from local ExchangeEmailService
         require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
         
+        // Only pass non-empty config values, let constructor fallback to env vars
         $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
-            $config['tenant_id'],
-            $config['client_id'],
-            $config['client_secret'],
-            $config['redirect_uri'] ?? 'http://localhost:8000/oauth/callback',
+            !empty($config['tenant_id']) ? $config['tenant_id'] : null,
+            !empty($config['client_id']) ? $config['client_id'] : null,
+            !empty($config['client_secret']) ? $config['client_secret'] : null,
+            !empty($config['redirect_uri']) ? $config['redirect_uri'] : null,
             'https://graph.microsoft.com/.default', // Correct scope for client credentials
             'client_credentials' // Force client credentials
         );
         
         if (!$oauth->isConfigured()) {
-            \Log::error('Exchange service not configured, falling back to PHPMailer');
-            return sendEmailWithPHPMailer($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments);
+            \Log::error('Exchange service not configured - Exchange is required for all emails');
+            \Log::error('Please ensure EXCHANGE_TENANT_ID, EXCHANGE_CLIENT_ID, and EXCHANGE_CLIENT_SECRET are set in .env file');
+            throw new \Exception('Exchange service not configured. Please check your Exchange credentials in .env file.');
         }
         
         // Get client credentials token
@@ -400,21 +410,31 @@ function sendMatrixNotificationWithExchange($matrix, Staff $recipient, string $t
     try {
         $config = config('exchange-email');
         
+        // Debug: Log config values (without sensitive data)
+        \Log::info('Exchange Email Config Check (Matrix)', [
+            'tenant_id_set' => !empty($config['tenant_id']),
+            'client_id_set' => !empty($config['client_id']),
+            'client_secret_set' => !empty($config['client_secret']),
+            'redirect_uri' => $config['redirect_uri'] ?? 'not set',
+        ]);
+        
         // Use the working implementation from local ExchangeEmailService
         require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
         
+        // Only pass non-empty config values, let constructor fallback to env vars
         $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
-            $config['tenant_id'],
-            $config['client_id'],
-            $config['client_secret'],
-            $config['redirect_uri'] ?? 'http://localhost:8000/oauth/callback',
+            !empty($config['tenant_id']) ? $config['tenant_id'] : null,
+            !empty($config['client_id']) ? $config['client_id'] : null,
+            !empty($config['client_secret']) ? $config['client_secret'] : null,
+            !empty($config['redirect_uri']) ? $config['redirect_uri'] : null,
             'https://graph.microsoft.com/.default', // Correct scope for client credentials
             'client_credentials' // Force client credentials
         );
         
         if (!$oauth->isConfigured()) {
             \Log::error('Exchange service not configured - Exchange is required for all emails');
-            throw new \Exception('Exchange service not configured. Please check your Exchange credentials.');
+            \Log::error('Please ensure EXCHANGE_TENANT_ID, EXCHANGE_CLIENT_ID, and EXCHANGE_CLIENT_SECRET are set in .env file');
+            throw new \Exception('Exchange service not configured. Please check your Exchange credentials in .env file.');
         }
         
         // Get client credentials token

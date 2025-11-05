@@ -192,15 +192,44 @@ function delete_email_notification($id)
  */
 
 // Load environment variables from .env file
-$envPath = defined('FCPATH') ? FCPATH . '../.env' : __DIR__ . '/../../.env';
-if (file_exists($envPath)) {
+// Try multiple possible .env locations
+$envPaths = [
+    defined('FCPATH') ? FCPATH . '../.env' : null,
+    __DIR__ . '/../../.env',
+    __DIR__ . '/../../../.env',
+    base_path('.env'), // Laravel base path if available
+    realpath(__DIR__ . '/../../.env'),
+    realpath(__DIR__ . '/../../../.env'),
+];
+
+$envPath = null;
+foreach ($envPaths as $path) {
+    if ($path && file_exists($path)) {
+        $envPath = $path;
+        break;
+    }
+}
+
+if ($envPath && file_exists($envPath)) {
     $envFile = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($envFile as $line) {
-        if (strpos(trim($line), '#') === 0) {
+        $line = trim($line);
+        // Skip comments and empty lines
+        if (empty($line) || strpos($line, '#') === 0) {
+            continue;
+        }
+        // Handle lines with = sign
+        if (strpos($line, '=') === false) {
             continue;
         }
         list($name, $value) = explode('=', $line, 2);
-        $_ENV[trim($name)] = trim($value);
+        $name = trim($name);
+        $value = trim($value);
+        // Remove quotes if present
+        $value = trim($value, '"\'');
+        // Set in both $_ENV and putenv() for compatibility
+        $_ENV[$name] = $value;
+        putenv("$name=$value");
     }
 }
 
