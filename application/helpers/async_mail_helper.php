@@ -191,24 +191,22 @@ function delete_email_notification($id)
  * @version 1.0.0
  */
 
-// Load environment variables from .env file
-$envPath = defined('FCPATH') ? FCPATH . '../.env' : __DIR__ . '/../../.env';
-if (file_exists($envPath)) {
-    $envFile = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($envFile as $line) {
-        if (strpos(trim($line), '#') === 0) {
-            continue;
-        }
-        list($name, $value) = explode('=', $line, 2);
-        $_ENV[trim($name)] = trim($value);
-    }
-}
-
-// Exchange OAuth Configuration from .env
+// Exchange OAuth Configuration from global $_ENV (already loaded globally like in database.php)
 $exchange_tenant_id = $_ENV['EXCHANGE_TENANT_ID'] ?? '';
 $exchange_client_id = $_ENV['EXCHANGE_CLIENT_ID'] ?? '';
 $exchange_client_secret = $_ENV['EXCHANGE_CLIENT_SECRET'] ?? '';
-$exchange_redirect_uri = $EXCHANGE_CLIENT_SECRET_ENV['EXCHANGE_REDIRECT_URI'] ?? 'http://localhost/oauth/callback';
+// Use message_callback URL for OAuth redirect (works for both localhost and production)
+$exchange_redirect_uri = $_ENV['EXCHANGE_REDIRECT_URI'] ?? '';
+if (empty($exchange_redirect_uri)) {
+    // Dynamically determine callback URL based on environment
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
+        $exchange_redirect_uri = 'http://localhost/staff/auth/message_callback';
+    } else {
+        // Production - use base_url helper if available, otherwise construct from host
+        $exchange_redirect_uri = (function_exists('base_url') ? base_url('auth/message_callback') : 'https://' . $host . '/auth/message_callback');
+    }
+}
 $exchange_scope = $_ENV['EXCHANGE_SCOPE'] ?? 'https://graph.microsoft.com/.default';
 $exchange_auth_method = $_ENV['EXCHANGE_AUTH_METHOD'] ?? 'client_credentials';
 
@@ -223,6 +221,7 @@ $exchange_debug = $_ENV['EXCHANGE_DEBUG'] ?? 'false';
  */
 function exchange_is_configured()
 {
+    
     global $exchange_tenant_id, $exchange_client_id, $exchange_client_secret;
     return !empty($exchange_tenant_id) && !empty($exchange_client_id) && !empty($exchange_client_secret);
 }
