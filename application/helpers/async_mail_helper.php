@@ -208,7 +208,7 @@ if (file_exists($envPath)) {
 $exchange_tenant_id = $_ENV['EXCHANGE_TENANT_ID'] ?? '';
 $exchange_client_id = $_ENV['EXCHANGE_CLIENT_ID'] ?? '';
 $exchange_client_secret = $_ENV['EXCHANGE_CLIENT_SECRET'] ?? '';
-$exchange_redirect_uri = $_ENV['EXCHANGE_REDIRECT_URI'] ?? 'http://localhost/oauth/callback';
+$exchange_redirect_uri = $EXCHANGE_CLIENT_SECRET_ENV['EXCHANGE_REDIRECT_URI'] ?? 'http://localhost/oauth/callback';
 $exchange_scope = $_ENV['EXCHANGE_SCOPE'] ?? 'https://graph.microsoft.com/.default';
 $exchange_auth_method = $_ENV['EXCHANGE_AUTH_METHOD'] ?? 'client_credentials';
 
