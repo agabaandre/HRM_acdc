@@ -369,12 +369,18 @@ public function get_current_staff(){
 			$filters = $this->input->get();
 			$limit = isset($filters['limit']) ? $filters['limit'] : FALSE;
 			$start = isset($filters['start']) ? $filters['start'] : FALSE;
+			// Optional: include base64 encoded files (default: true, but can be disabled to save memory)
+			$includeFiles = !isset($filters['include_files']) || $filters['include_files'] !== 'false';
 
 			// Get staff data first
 			$data = $this->staff_mdl->get_all_staff_data($filters, $limit, $start);
 			
 			// Process signature and photo data for each staff record
-			if (is_array($data) && !empty($data)) {
+			if (is_array($data) && !empty($data) && $includeFiles) {
+				// Set memory limit for processing large files
+				$originalMemoryLimit = ini_get('memory_limit');
+				ini_set('memory_limit', '1024M'); // Increase to 1GB for processing
+				
 				foreach ($data as &$staff) {
 					// Handle both object and array formats
 					$signature = is_object($staff) ? ($staff->signature ?? null) : ($staff['signature'] ?? null);
@@ -383,19 +389,45 @@ public function get_current_staff(){
 					$signatureData = null; // Default to null
 					$photoData = null; // Default to null
 					
-					// Process signature
+					// Process signature with error handling
 					if (!empty($signature)) {
 						$signaturePath = "uploads/staff/signature/" . $signature;
 						if (file_exists($signaturePath)) {
-							$signatureData = base64_encode(file_get_contents($signaturePath));
+							// Check file size (limit to 2MB to prevent memory issues)
+							$fileSize = @filesize($signaturePath);
+							if ($fileSize !== false && $fileSize > 0 && $fileSize <= 2097152) { // 2MB limit
+								try {
+									$fileContent = @file_get_contents($signaturePath);
+									if ($fileContent !== false) {
+										$signatureData = base64_encode($fileContent);
+										unset($fileContent); // Free memory immediately
+									}
+								} catch (Exception $e) {
+									// If encoding fails, leave as null
+									$signatureData = null;
+								}
+							}
 						}
 					}
 					
-					// Process photo
+					// Process photo with error handling
 					if (!empty($photo)) {
 						$photoPath = "uploads/staff/" . $photo;
 						if (file_exists($photoPath)) {
-							$photoData = base64_encode(file_get_contents($photoPath));
+							// Check file size (limit to 2MB to prevent memory issues)
+							$fileSize = @filesize($photoPath);
+							if ($fileSize !== false && $fileSize > 0 && $fileSize <= 2097152) { // 2MB limit
+								try {
+									$fileContent = @file_get_contents($photoPath);
+									if ($fileContent !== false) {
+										$photoData = base64_encode($fileContent);
+										unset($fileContent); // Free memory immediately
+									}
+								} catch (Exception $e) {
+									// If encoding fails, leave as null
+									$photoData = null;
+								}
+							}
 						}
 					}
 					
@@ -407,16 +439,53 @@ public function get_current_staff(){
 						$staff['signature_data'] = $signatureData;
 						$staff['photo_data'] = $photoData;
 					}
+					
+					// Free memory after processing each record
+					unset($signatureData, $photoData);
 				}
 				unset($staff); // Unset reference variable
+				
+				// Restore original memory limit
+				ini_set('memory_limit', $originalMemoryLimit);
+			} elseif (is_array($data) && !empty($data)) {
+				// If include_files is false, still add the fields but set them to null
+				foreach ($data as &$staff) {
+					if (is_object($staff)) {
+						$staff->signature_data = null;
+						$staff->photo_data = null;
+					} else {
+						$staff['signature_data'] = null;
+						$staff['photo_data'] = null;
+					}
+				}
+				unset($staff);
 			}
 
-			header('Content-Type: application/json');
-			http_response_code(200);
-			echo json_encode($data);
+			// Set headers before any output
+			if (!headers_sent()) {
+				header('Content-Type: application/json');
+				http_response_code(200);
+			}
+			
+			// Use JSON encoding with options to handle large data
+			$json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			
+			if ($json === false) {
+				// If JSON encoding fails, return error
+				if (!headers_sent()) {
+					header('Content-Type: application/json');
+					http_response_code(500);
+				}
+				echo json_encode(array('success' => false, 'error' => 'Failed to encode response data. Data may be too large.'));
+			} else {
+				echo $json;
+			}
 		} catch (Exception $e) {
-			header('Content-Type: application/json');
-			http_response_code(500);
+			// Set headers before any output
+			if (!headers_sent()) {
+				header('Content-Type: application/json');
+				http_response_code(500);
+			}
 			echo json_encode(array('success' => false, 'error' => 'Database error: ' . $e->getMessage()));
 		}
 	}
