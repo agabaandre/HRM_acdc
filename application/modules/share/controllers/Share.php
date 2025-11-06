@@ -369,8 +369,47 @@ public function get_current_staff(){
 			$filters = $this->input->get();
 			$limit = isset($filters['limit']) ? $filters['limit'] : FALSE;
 			$start = isset($filters['start']) ? $filters['start'] : FALSE;
+
+			// Get staff data first
+			$data = $this->staff_mdl->get_all_staff_data($filters, $limit, $start);
 			
-			$data = $this->staff_mdl->get_all_staff_data($filters, $limit, $start);   
+			// Process signature and photo data for each staff record
+			if (is_array($data) && !empty($data)) {
+				foreach ($data as &$staff) {
+					// Handle both object and array formats
+					$signature = is_object($staff) ? ($staff->signature ?? null) : ($staff['signature'] ?? null);
+					$photo = is_object($staff) ? ($staff->photo ?? null) : ($staff['photo'] ?? null);
+					
+					$signatureData = null; // Default to null
+					$photoData = null; // Default to null
+					
+					// Process signature
+					if (!empty($signature)) {
+						$signaturePath = "uploads/staff/signature/" . $signature;
+						if (file_exists($signaturePath)) {
+							$signatureData = base64_encode(file_get_contents($signaturePath));
+						}
+					}
+					
+					// Process photo
+					if (!empty($photo)) {
+						$photoPath = "uploads/staff/" . $photo;
+						if (file_exists($photoPath)) {
+							$photoData = base64_encode(file_get_contents($photoPath));
+						}
+					}
+					
+					// Always add signature_data and photo_data to the record (even if null/empty)
+					if (is_object($staff)) {
+						$staff->signature_data = $signatureData;
+						$staff->photo_data = $photoData;
+					} else {
+						$staff['signature_data'] = $signatureData;
+						$staff['photo_data'] = $photoData;
+					}
+				}
+				unset($staff); // Unset reference variable
+			}
 
 			header('Content-Type: application/json');
 			http_response_code(200);
