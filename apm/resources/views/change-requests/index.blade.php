@@ -436,5 +436,50 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTabData(activeTabButton.getAttribute('aria-controls'));
     }
 });
+
+// Delete change request function
+function deleteChangeRequest(changeRequestId) {
+    if (!confirm('Are you sure you want to delete this change request? This action cannot be undone.')) {
+        return;
+    }
+
+    // Get CSRF token
+    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('_method', 'DELETE');
+    formData.append('_token', token);
+
+    // Send delete request
+    fetch(`/apm/change-requests/${changeRequestId}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            if (data.msg) {
+                alert(data.msg);
+            }
+            // Reload the current tab
+            const activeTab = document.querySelector('#changeRequestTabs .nav-link.active');
+            if (activeTab) {
+                loadTabData(activeTab.getAttribute('aria-controls'));
+            }
+        } else {
+            alert(data.msg || 'Failed to delete change request');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while deleting the change request');
+    });
+}
 </script>
 @endpush

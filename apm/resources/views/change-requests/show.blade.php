@@ -30,6 +30,7 @@
                     <tr>
                         <td><strong>Status:</strong></td>
                         <td>
+                        {{-- {{ dd($parentMemo) }} --}}
                             @switch($changeRequest->overall_status)
                                 @case('draft')
                                     <span class="badge bg-secondary">Draft</span>
@@ -94,11 +95,24 @@
                     <tr>
                         <td><strong>Date Range:</strong></td>
                         <td>
-                            @if($changeRequest->date_from && $changeRequest->date_to)
+                            @php
+                                $isNonTravel = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo';
+                            @endphp
+                            @if($isNonTravel)
+                                {{-- Non-Travel Memo: Use memo_date --}}
+                                @if($changeRequest->memo_date)
+                                    {{ \Carbon\Carbon::parse($changeRequest->memo_date)->format('M d, Y') }}
+                                @else
+                                    <span class="text-muted">N/A</span>
+                                @endif
+                            @else
+                                {{-- Other Memos: Use date_from and date_to --}}
+                                @if($changeRequest->date_from && $changeRequest->date_to)
                             {{ \Carbon\Carbon::parse($changeRequest->date_from)->format('M d, Y') }} - 
                             {{ \Carbon\Carbon::parse($changeRequest->date_to)->format('M d, Y') }}
-                            @else
-                                <span class="text-muted">N/A</span>
+                                @else
+                                    <span class="text-muted">N/A</span>
+                                @endif
                             @endif
                         </td>
                     </tr>
@@ -189,6 +203,64 @@
             </div>
         @endif
 
+        @if($changeRequest->overall_status === 'draft')
+            <div class="mt-4">
+                <div class="alert alert-info border-info">
+                    <h6 class="alert-heading mb-3">
+                        <i class="fas fa-info-circle me-2"></i>Approval Workflow Information
+                    </h6>
+                    @php
+                        $hasBudgetChanges = $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
+                        $hasParticipantChanges = $changeRequest->has_internal_participants_changed || 
+                                                $changeRequest->has_number_of_participants_changed || 
+                                                $changeRequest->has_participant_days_changed || 
+                                                $changeRequest->has_total_external_participants_changed;
+                        $hasDateChanges = $changeRequest->has_memo_date_changed;
+                        $dateStayedInQuarter = $changeRequest->has_date_stayed_quarter;
+                    @endphp
+                    
+                    @if($hasBudgetChanges)
+                        <div class="mb-2">
+                            <strong class="text-primary"><i class="fas fa-exclamation-triangle me-1"></i>Budget Changes Detected - Addendum Required:</strong>
+                            <p class="mb-0 mt-2">
+                                This change request includes budget modifications and will be processed as an <strong>Addendum</strong>. 
+                                It will go through <strong>all approval levels</strong> in the general workflow, following the same approval steps as the original memo with all original approval levels.
+                            </p>
+                        </div>
+                    @elseif($hasParticipantChanges)
+                        <div class="mb-2">
+                            <strong class="text-primary"><i class="fas fa-users me-1"></i>Participant Changes Detected:</strong>
+                            <p class="mb-0 mt-2">
+                                @if($hasDateChanges && $dateStayedInQuarter)
+                                    This change request includes participant modifications and date changes within the same calendar quarter.
+                                @else
+                                    This change request includes participant modifications.
+                                @endif
+                                <br>
+                                <strong>Approval Workflow:</strong> <strong>Head of Division (HOD) → Executive Office</strong>
+                            </p>
+                        </div>
+                    @elseif($hasDateChanges && $dateStayedInQuarter)
+                        <div class="mb-2">
+                            <strong class="text-primary"><i class="fas fa-calendar me-1"></i>Date Changes Only (Same Quarter):</strong>
+                            <p class="mb-0 mt-2">
+                                This change request only includes date modifications within the same calendar quarter.
+                                <br>
+                                <strong>Approval Workflow:</strong> <strong>Head of Division (HOD) → Director of Administration</strong>
+                            </p>
+                        </div>
+                    @else
+                        <div class="mb-2">
+                            <strong class="text-primary"><i class="fas fa-info-circle me-1"></i>Other Changes:</strong>
+                            <p class="mb-0 mt-2">
+                                This change request will follow the standard approval workflow based on the type of changes made.
+                            </p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <!-- Detailed Changes List -->
         @if($changeRequest->hasAnyChanges())
             <div class="mt-4">
@@ -203,7 +275,13 @@
                                         <div class="row">
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
-                                                <div class="text-danger">{{ $parentMemo->activity_title ?? $parentMemo->title ?? 'N/A' }}</div>
+                                                <div class="text-danger">
+                                                    @if($parentMemo)
+                                                        {{ $parentMemo->activity_title ?? $parentMemo->title ?? 'N/A' }}
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="col-6">
                                                 <small class="text-muted">Changed to:</small>
@@ -217,15 +295,51 @@
                             @if($changeRequest->has_memo_date_changed)
                                 <div class="col-md-6 mb-3">
                                     <div class="border rounded p-3">
-                                        <h6 class="text-muted mb-2 bg-light p-2 rounded"><i class="bx bx-calendar me-1"></i>Memo Date</h6>
+                                        @php
+                                            $isNonTravel = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo';
+                                        @endphp
+                                        <h6 class="text-muted mb-2 bg-light p-2 rounded">
+                                            <i class="bx bx-calendar me-1"></i>
+                                            @if($isNonTravel)
+                                                Memo Date
+                                            @else
+                                                Date Range
+                                            @endif
+                                        </h6>
                                         <div class="row">
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
-                                                <div class="text-danger">{{ $parentMemo->memo_date ?? 'N/A' }}</div>
+                                                <div class="text-danger">
+                                                    @if($parentMemo)
+                                                        @if($isNonTravel)
+                                                            {{ $parentMemo->memo_date ? \Carbon\Carbon::parse($parentMemo->memo_date)->format('M d, Y') : 'N/A' }}
+                                                        @else
+                                                            @if($parentMemo->date_from && $parentMemo->date_to)
+                                                                {{ \Carbon\Carbon::parse($parentMemo->date_from)->format('M d, Y') }} - 
+                                                                {{ \Carbon\Carbon::parse($parentMemo->date_to)->format('M d, Y') }}
+                                                            @else
+                                                                N/A
+                                                            @endif
+                                                        @endif
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="col-6">
                                                 <small class="text-muted">Changed to:</small>
-                                                <div class="text-success">{{ $changeRequest->memo_date ?? 'N/A' }}</div>
+                                                <div class="text-success">
+                                                    @if($isNonTravel)
+                                                        {{ $changeRequest->memo_date ? \Carbon\Carbon::parse($changeRequest->memo_date)->format('M d, Y') : 'N/A' }}
+                                                    @else
+                                                        @if($changeRequest->date_from && $changeRequest->date_to)
+                                                            {{ \Carbon\Carbon::parse($changeRequest->date_from)->format('M d, Y') }} - 
+                                                            {{ \Carbon\Carbon::parse($changeRequest->date_to)->format('M d, Y') }}
+                                                        @else
+                                                            N/A
+                                                        @endif
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -240,14 +354,18 @@
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
                                                 <div class="text-danger">
-                                                    @php
-                                                        $parentLocations = $parentMemo->location_id ?? [];
-                                                        if (is_string($parentLocations)) {
-                                                            $parentLocations = json_decode($parentLocations, true) ?? [];
-                                                        }
-                                                        $parentLocationNames = \App\Models\Location::whereIn('id', $parentLocations)->pluck('name')->join(', ');
-                                                    @endphp
-                                                    {{ $parentLocationNames ?: 'None' }}
+                                                    @if($parentMemo)
+                                                        @php
+                                                            $parentLocations = $parentMemo->location_id ?? [];
+                                                            if (is_string($parentLocations)) {
+                                                                $parentLocations = json_decode($parentLocations, true) ?? [];
+                                                            }
+                                                            $parentLocationNames = \App\Models\Location::whereIn('id', $parentLocations)->pluck('name')->join(', ');
+                                                        @endphp
+                                                        {{ $parentLocationNames ?: 'None' }}
+                                                    @else
+                                                        N/A
+                                                    @endif
                                                 </div>
                                             </div>
                                             <div class="col-6">
@@ -275,7 +393,13 @@
                                         <div class="row">
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
-                                                <div class="text-danger">{{ $parentMemo->total_external_participants ?? 0 }}</div>
+                                                <div class="text-danger">
+                                                    @if($parentMemo)
+                                                        {{ $parentMemo->total_external_participants ?? 0 }}
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="col-6">
                                                 <small class="text-muted">Changed to:</small>
@@ -493,13 +617,17 @@
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
                                                 <div class="text-danger">
-                                                    @php
-                                                        $parentParticipants = $parentMemo->internal_participants ?? [];
-                                                        if (is_string($parentParticipants)) {
-                                                            $parentParticipants = json_decode($parentParticipants, true) ?? [];
-                                                        }
-                                                        echo count($parentParticipants);
-                                                    @endphp
+                                                    @if($parentMemo)
+                                                        @php
+                                                            $parentParticipants = $parentMemo->internal_participants ?? [];
+                                                            if (is_string($parentParticipants)) {
+                                                                $parentParticipants = json_decode($parentParticipants, true) ?? [];
+                                                            }
+                                                            echo is_array($parentParticipants) ? count($parentParticipants) : 0;
+                                                        @endphp
+                                                    @else
+                                                        N/A
+                                                    @endif
                                                 </div>
                                             </div>
                                             <div class="col-6">
@@ -527,14 +655,18 @@
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
                                                 <div class="text-danger">
-                                                    @php
-                                                        $parentParticipants = $parentMemo->internal_participants ?? [];
-                                                        if (is_string($parentParticipants)) {
-                                                            $parentParticipants = json_decode($parentParticipants, true) ?? [];
-                                                        }
-                                                        $parentTotalDays = array_sum(array_column($parentParticipants, 'participant_days'));
-                                                    @endphp
-                                                    {{ $parentTotalDays }}
+                                                    @if($parentMemo)
+                                                        @php
+                                                            $parentParticipants = $parentMemo->internal_participants ?? [];
+                                                            if (is_string($parentParticipants)) {
+                                                                $parentParticipants = json_decode($parentParticipants, true) ?? [];
+                                                            }
+                                                            $parentTotalDays = is_array($parentParticipants) ? array_sum(array_column($parentParticipants, 'participant_days')) : 0;
+                                                        @endphp
+                                                        {{ $parentTotalDays }}
+                                                    @else
+                                                        N/A
+                                                    @endif
                                                 </div>
                                             </div>
                                             <div class="col-6">
@@ -574,14 +706,18 @@
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
                                                 <div class="text-danger">
-                                                    @php
-                                                        $parentBudgetIds = $parentMemo->budget_id ?? [];
-                                                        if (is_string($parentBudgetIds)) {
-                                                            $parentBudgetIds = json_decode($parentBudgetIds, true) ?? [];
-                                                        }
-                                                        $parentBudgetNames = \App\Models\FundCode::whereIn('id', $parentBudgetIds)->pluck('code')->join(', ');
-                                                    @endphp
-                                                    {{ $parentBudgetNames ?: 'None' }}
+                                                    @if($parentMemo)
+                                                        @php
+                                                            $parentBudgetIds = $parentMemo->budget_id ?? [];
+                                                            if (is_string($parentBudgetIds)) {
+                                                                $parentBudgetIds = json_decode($parentBudgetIds, true) ?? [];
+                                                            }
+                                                            $parentBudgetNames = \App\Models\FundCode::whereIn('id', $parentBudgetIds)->pluck('code')->join(', ');
+                                                        @endphp
+                                                        {{ $parentBudgetNames ?: 'None' }}
+                                                    @else
+                                                        N/A
+                                                    @endif
                                                 </div>
                                             </div>
                                             <div class="col-6">
@@ -609,7 +745,13 @@
                                         <div class="row">
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
-                                                <div class="text-danger">{{ $parentMemo->requestType->name ?? 'N/A' }}</div>
+                                                <div class="text-danger">
+                                                    @if($parentMemo)
+                                                        {{ $parentMemo->requestType->name ?? 'N/A' }}
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="col-6">
                                                 <small class="text-muted">Changed to:</small>
@@ -627,7 +769,13 @@
                                         <div class="row">
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
-                                                <div class="text-danger">{{ $parentMemo->fundType->name ?? 'N/A' }}</div>
+                                                <div class="text-danger">
+                                                    @if($parentMemo)
+                                                        {{ $parentMemo->fundType->name ?? 'N/A' }}
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="col-6">
                                                 <small class="text-muted">Changed to:</small>
@@ -800,8 +948,66 @@
                 <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Back to List
                 </a>
+                @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
+                    <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning">
+                        <i class="fas fa-edit me-1"></i> Edit
+                    </a>
+                    @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
+                        <button type="button" 
+                                class="btn btn-outline-danger" 
+                                onclick="deleteChangeRequest({{ $changeRequest->id }})">
+                            <i class="fas fa-trash me-1"></i> Delete
+                        </button>
+                    @endif
+                @endif
             </div>
         </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+// Delete change request function
+function deleteChangeRequest(changeRequestId) {
+    if (!confirm('Are you sure you want to delete this change request? This action cannot be undone.')) {
+        return;
+    }
+
+    // Get CSRF token
+    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('_method', 'DELETE');
+    formData.append('_token', token);
+
+    // Send delete request
+    fetch(`/apm/change-requests/${changeRequestId}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            if (data.msg) {
+                alert(data.msg);
+            }
+            // Redirect to index page
+            window.location.href = '{{ route("change-requests.index") }}';
+        } else {
+            alert(data.msg || 'Failed to delete change request');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while deleting the change request');
+    });
+}
+</script>
+@endpush
