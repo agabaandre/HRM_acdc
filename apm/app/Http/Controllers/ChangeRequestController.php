@@ -1093,4 +1093,89 @@ class ChangeRequestController extends Controller
             return 'Q4';
         }
     }
+
+    /**
+     * Remove the specified change request from storage.
+     */
+    public function destroy(ChangeRequest $changeRequest): RedirectResponse|JsonResponse
+    {
+        try {
+            $userStaffId = user_session('staff_id');
+
+            // Check if change request is in draft or returned status
+            $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
+            if (!in_array($changeRequest->overall_status, $allowedStatuses)) {
+                $message = 'Only draft or returned change requests can be deleted.';
+                
+                if (request()->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'msg' => $message
+                    ], 422);
+                }
+
+                return redirect()->back()->with([
+                    'msg' => $message,
+                    'type' => 'error'
+                ]);
+            }
+
+            // Check if current user is the owner (staff_id) or the responsible person
+            $isOwner = $changeRequest->staff_id == $userStaffId;
+            $isResponsiblePerson = $changeRequest->responsible_person_id == $userStaffId;
+            
+            if (!$isOwner && !$isResponsiblePerson) {
+                $message = 'You are not authorized to delete this change request. Only the owner or responsible person can delete it.';
+                
+                if (request()->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'msg' => $message
+                    ], 403);
+                }
+
+                return redirect()->back()->with([
+                    'msg' => $message,
+                    'type' => 'error'
+                ]);
+            }
+
+            // Delete the change request
+            $changeRequest->delete();
+
+            $message = 'Change request deleted successfully.';
+            
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'msg' => $message
+                ]);
+            }
+
+            return redirect()->route('change-requests.index')->with([
+                'msg' => $message,
+                'type' => 'success'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting change request', [
+                'change_request_id' => $changeRequest->id,
+                'exception' => $e
+            ]);
+
+            $message = 'Failed to delete change request: ' . $e->getMessage();
+            
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'msg' => $message
+                ], 500);
+            }
+
+            return redirect()->back()->with([
+                'msg' => $message,
+                'type' => 'error'
+            ]);
+        }
+    }
 }

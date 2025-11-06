@@ -61,11 +61,30 @@
                         <span class="fw-semibold">{{ $changeRequest->division->division_name ?? 'N/A' }}</span>
                     </td>
                     <td class="text-center">
-                        <div class="small">
-                            <div class="fw-semibold">{{ \Carbon\Carbon::parse($changeRequest->date_from)->format('M d') }}</div>
-                            <div class="text-muted">to</div>
-                            <div class="fw-semibold">{{ \Carbon\Carbon::parse($changeRequest->date_to)->format('M d, Y') }}</div>
-                        </div>
+                        @php
+                            $isNonTravel = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo';
+                        @endphp
+                        @if($isNonTravel)
+                            {{-- Non-Travel Memo: Use memo_date --}}
+                            @if($changeRequest->memo_date)
+                                <div class="small">
+                                    <div class="fw-semibold">{{ \Carbon\Carbon::parse($changeRequest->memo_date)->format('M d, Y') }}</div>
+                                </div>
+                            @else
+                                <span class="text-muted">N/A</span>
+                            @endif
+                        @else
+                            {{-- Other Memos: Use date_from and date_to --}}
+                            @if($changeRequest->date_from && $changeRequest->date_to)
+                                <div class="small">
+                                    <div class="fw-semibold">{{ \Carbon\Carbon::parse($changeRequest->date_from)->format('M d') }}</div>
+                                    <div class="text-muted">to</div>
+                                    <div class="fw-semibold">{{ \Carbon\Carbon::parse($changeRequest->date_to)->format('M d, Y') }}</div>
+                                </div>
+                            @else
+                                <span class="text-muted">N/A</span>
+                            @endif
+                        @endif
                     </td>
                     <td class="text-center">
                         @if($changeRequest->hasAnyChanges())
@@ -142,12 +161,20 @@
                                title="View Details">
                                 <i class="bx bx-show"></i>
                             </a>
-                            @if($changeRequest->overall_status === 'draft')
+                            @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
                                 <a href="{{ route('change-requests.edit', $changeRequest) }}" 
                                    class="btn btn-sm btn-outline-warning" 
                                    title="Edit">
                                     <i class="bx bx-edit"></i>
                                 </a>
+                                @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger" 
+                                            title="Delete"
+                                            onclick="deleteChangeRequest({{ $changeRequest->id }})">
+                                        <i class="bx bx-trash"></i>
+                                    </button>
+                                @endif
                             @endif
                         </div>
                     </td>
