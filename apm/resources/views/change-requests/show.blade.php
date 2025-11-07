@@ -5,11 +5,16 @@
 @section('header', 'Change Request Details')
 
 @section('content')
+@php
+    // Determine if this is an Addendum based on budget changes
+    $hasBudgetChanges = $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
+    $titlePrefix = $hasBudgetChanges ? 'Addendum' : 'Change Request';
+@endphp
 <div class="card shadow-sm border-0">
-    <div class="card-header bg-success text-white">
-        <h5 class="mb-0 text-white">
-            <i class="fas fa-edit me-2 text-white"></i>
-            Change Request: {{ $changeRequest->activity_title }}
+    <div class="card-header  text-dark">
+        <h5 class="mb-0 text-dark">
+            <i class="fas fa-edit me-2 text-dark"></i>
+            {{ $titlePrefix }}: {{ $changeRequest->activity_title }}
         </h5>
     </div>
     <div class="card-body">
