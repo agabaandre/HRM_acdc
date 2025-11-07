@@ -38,6 +38,19 @@
             </div>
 
             @if(request('change_request'))
+                @if(request('change_request_id'))
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-warning d-flex align-items-start" role="alert">
+                                <i class="fas fa-info-circle me-2 mt-1"></i>
+                                <div>
+                                    <strong>Note:</strong> This form is loading the <strong>original memo data</strong>. 
+                                    Make your changes below and submit to update the change request.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
                 <div class="row g-4 mb-4">
                     <div class="col-md-12">
                         <div class="card border-warning">

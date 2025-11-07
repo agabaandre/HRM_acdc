@@ -35,6 +35,16 @@
                     @method('PUT')
                 @endif
 
+                @if(request('change_request') && request('change_request_id'))
+                    <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
+                        <i class="fas fa-info-circle me-2 mt-1"></i>
+                        <div>
+                            <strong>Note:</strong> This form is loading the <strong>original memo data</strong>. 
+                            Make your changes below and submit to update the change request.
+                        </div>
+                    </div>
+                @endif
+
                 @includeIf('activities.form')
 
                 @if(request('change_request'))

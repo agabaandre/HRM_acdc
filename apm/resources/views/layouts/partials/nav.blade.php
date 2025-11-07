@@ -185,7 +185,8 @@
                     Request::is('non-travel*') ||
                     Request::is('special-memo*') ||
                     Request::is('service-requests*') ||
-                    Request::is('request-arf*');
+                    Request::is('request-arf*') ||
+                    Request::is('change-requests*');
             @endphp
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle {{ $isMemosActive ? 'active' : '' }}"
@@ -222,6 +223,12 @@
                         <a class="dropdown-item {{ Request::is('special-memo*') ? 'active' : '' }}"
                             href="{{ url('special-memo') }}">
                             Special Travel Memos
+                        </a>
+                    </li>
+                     <li>
+                        <a class="dropdown-item {{ Request::is('change-requests*') ? 'active' : '' }}"
+                            href="{{ url('change-requests') }}">
+                            Change Requests / Addendums
                         </a>
                     </li>
                     <li>        

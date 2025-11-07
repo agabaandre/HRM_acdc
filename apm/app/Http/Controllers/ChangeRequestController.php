@@ -286,6 +286,77 @@ class ChangeRequestController extends Controller
     }
 
     /**
+     * Show the form for editing a change request.
+     * Redirects to the parent memo edit form with change_request parameters.
+     */
+    public function edit(ChangeRequest $changeRequest): RedirectResponse
+    {
+        // Check if change request is in draft or rejected status
+        $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
+        if (!in_array($changeRequest->overall_status, $allowedStatuses)) {
+            return redirect()
+                ->route('change-requests.show', $changeRequest)
+                ->with('error', 'Only draft or rejected change requests can be edited.');
+        }
+
+        // Check if current user is the owner or responsible person
+        $userStaffId = user_session('staff_id');
+        $isOwner = $changeRequest->staff_id == $userStaffId;
+        $isResponsiblePerson = $changeRequest->responsible_person_id == $userStaffId;
+        
+        if (!$isOwner && !$isResponsiblePerson) {
+            return redirect()
+                ->route('change-requests.show', $changeRequest)
+                ->with('error', 'You are not authorized to edit this change request.');
+        }
+
+        // Get the parent memo
+        $parentMemo = $this->getParentMemo($changeRequest->parent_memo_model, $changeRequest->parent_memo_id);
+        
+        if (!$parentMemo) {
+            return redirect()
+                ->route('change-requests.show', $changeRequest)
+                ->with('error', 'Parent memo not found.');
+        }
+
+        // Determine the edit route based on parent memo type
+        $editUrl = null;
+        
+        if ($parentMemo instanceof Activity) {
+            // For activities, check if it's a single memo
+            if ($parentMemo->is_single_memo) {
+                $editUrl = route('activities.single-memos.edit', [
+                    'matrix' => $parentMemo->matrix_id ?? 1,
+                    'activity' => $parentMemo->id
+                ]);
+            } else {
+                $editUrl = route('matrices.activities.edit', [
+                    'matrix' => $parentMemo->matrix_id ?? 1,
+                    'activity' => $parentMemo->id
+                ]);
+            }
+        } elseif ($parentMemo instanceof NonTravelMemo) {
+            $editUrl = route('non-travel.edit', $parentMemo->id);
+        } elseif ($parentMemo instanceof SpecialMemo) {
+            $editUrl = route('special-memo.edit', $parentMemo->id);
+        } elseif ($parentMemo instanceof RequestArf) {
+            $editUrl = route('request-arf.edit', $parentMemo->id);
+        } elseif ($parentMemo instanceof ServiceRequest) {
+            $editUrl = route('service-request.edit', $parentMemo->id);
+        }
+
+        if (!$editUrl) {
+            return redirect()
+                ->route('change-requests.show', $changeRequest)
+                ->with('error', 'Unable to determine edit route for parent memo type.');
+        }
+
+        // Redirect to parent memo edit form with change request parameters
+        $redirectUrl = $editUrl . '?change_request=1&change_request_id=' . $changeRequest->id;
+        return redirect($redirectUrl);
+    }
+
+    /**
      * Show the form for creating a new change request.
      */
     public function create(Request $request): View
@@ -328,7 +399,32 @@ class ChangeRequestController extends Controller
 
         return DB::transaction(function () use ($request, $userStaffId, $userDivisionId) {
             try {
-                // Validate required fields
+                // Check if this is an update (editing existing change request)
+                $changeRequestId = $request->input('change_request_id');
+                $isUpdate = !empty($changeRequestId);
+                $changeRequest = null;
+                
+                if ($isUpdate) {
+                    $changeRequest = ChangeRequest::findOrFail($changeRequestId);
+                    
+                    // Check if change request is in draft or rejected status
+                    $allowedStatuses = [ChangeRequest::STATUS_DRAFT, ChangeRequest::STATUS_REJECTED];
+                    if (!in_array($changeRequest->overall_status, $allowedStatuses)) {
+                        throw new \Exception('Only draft or rejected change requests can be updated.');
+                    }
+                    
+                    // Check if current user is the owner or responsible person
+                    $isOwner = $changeRequest->staff_id == $userStaffId;
+                    $isResponsiblePerson = $changeRequest->responsible_person_id == $userStaffId;
+                    
+                    if (!$isOwner && !$isResponsiblePerson) {
+                        throw new \Exception('You are not authorized to update this change request.');
+                    }
+                    
+                    // Use the change request's parent memo info
+                    $parentMemo = $this->getParentMemo($changeRequest->parent_memo_model, $changeRequest->parent_memo_id);
+                } else {
+                    // Validate required fields for new change request
                 $validated = $request->validate([
                     'parent_memo_id' => 'required|integer',
                     'parent_memo_model' => 'required|string',
@@ -340,6 +436,8 @@ class ChangeRequestController extends Controller
 
         // Get the parent memo to copy data from
         $parentMemo = $this->getParentMemo($request->parent_memo_model, (int) $request->parent_memo_id);
+                }
+                
         if (!$parentMemo) {
             throw new \Exception('Parent memo not found');
         }
@@ -413,10 +511,10 @@ class ChangeRequestController extends Controller
 
                // dd($changes);
 
-                // Create the change request record
-                $changeRequest = ChangeRequest::create([
-                    'parent_memo_id' => (int) $request->parent_memo_id,
-                    'parent_memo_model' => $request->parent_memo_model,
+                // Prepare change request data
+                $changeRequestData = [
+                    'parent_memo_id' => $isUpdate ? $changeRequest->parent_memo_id : (int) $request->parent_memo_id,
+                    'parent_memo_model' => $isUpdate ? $changeRequest->parent_memo_model : $request->parent_memo_model,
                     'activity_id' => $parentMemo instanceof Activity ? (int) $parentMemo->id : null,
                     'special_memo_id' => $parentMemo instanceof SpecialMemo ? (int) $parentMemo->id : null,
                     'non_travel_memo_id' => $parentMemo instanceof NonTravelMemo ? (int) $parentMemo->id : null,
@@ -469,18 +567,26 @@ class ChangeRequestController extends Controller
                     'available_budget' => $totalBudget,
                     'attachment' => json_encode($attachments),
                     
-                    // Status fields
-                    'status' => ChangeRequest::STATUS_DRAFT,
+                    // Status fields - preserve status if updating
+                    'status' => $isUpdate ? $changeRequest->status : ChangeRequest::STATUS_DRAFT,
                     'fund_type_id' => $request->input('fund_type', $parentMemo->fund_type_id ?? 1),
                     'activity_ref' => $parentMemo->activity_ref ?? null,
-                    'approval_level' => 0,
-                    'next_approval_level' => null,
-                    'overall_status' => ChangeRequest::STATUS_DRAFT,
-                ]);
+                    'approval_level' => $isUpdate ? $changeRequest->approval_level : 0,
+                    'next_approval_level' => $isUpdate ? $changeRequest->next_approval_level : null,
+                    'overall_status' => $isUpdate ? $changeRequest->overall_status : ChangeRequest::STATUS_DRAFT,
+                ];
 
+                // Create or update the change request
+                if ($isUpdate) {
+                    $changeRequest->update($changeRequestData);
+                    Log::info('Change request updated', ['change_request' => $changeRequest]);
+                    $successMessage = 'Change request updated successfully.';
+                } else {
+                    $changeRequest = ChangeRequest::create($changeRequestData);
                 Log::info('Change request created', ['change_request' => $changeRequest]);
-
                 $successMessage = 'Change request created successfully.';
+                }
+
                 $redirectUrl = route('change-requests.show', $changeRequest);
                 
                 if ($request->ajax()) {

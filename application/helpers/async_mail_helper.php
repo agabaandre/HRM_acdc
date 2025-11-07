@@ -45,7 +45,7 @@ if (count($emails) > 0) {
 }
 
 
-$mailer->Subject = $subject;
+$mailer->Subject = 'Staff Portal - ' . $subject;
 $mailer->Body = $message;
 $mailer->isHTML(true); // Ensure the email is sent as HTML
 
@@ -105,7 +105,7 @@ if (!function_exists('push_email_smtp')) {
                 }
             }
 
-            $mailer->Subject = $subject;
+            $mailer->Subject = 'Staff Portal - ' . $subject;
             $mailer->Body    = $message;
             $mailer->isHTML(true);
 
@@ -385,7 +385,7 @@ function exchange_send_email($to, $subject, $body, $isHtml = true, $fromEmail = 
     // Prepare email message
     $message = [
         'message' => [
-            'subject' => $subject,
+            'subject' => 'Staff Portal - ' . $subject,
             'body' => [
                 'contentType' => $isHtml ? 'HTML' : 'Text',
                 'content' => $body
@@ -747,7 +747,7 @@ function exchange_test_email($testEmail = null)
         }
 
         // Send test email
-        $subject = 'Exchange Email Test - ' . date('Y-m-d H:i:s');
+        $subject = 'Staff Portal - Exchange Email Test - ' . date('Y-m-d H:i:s');
         $body = '
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
