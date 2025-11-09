@@ -15,6 +15,12 @@ class SessionMonitor {
             this.useFallbackMode = false; // Will be set to true if session API fails
             this.apiTimeout = 5000; // 5 second timeout for API calls
             
+            // Get base URL for logout redirect (from meta tag or session data)
+            // Using logout endpoint to destroy both Laravel and CodeIgniter sessions
+            const baseUrlMeta = document.querySelector('meta[name="base-url"]')?.getAttribute('content');
+            const baseUrlFromSession = window.baseUrl || baseUrlMeta || '';
+            this.logoutUrl = baseUrlFromSession ? (baseUrlFromSession + '/auth/logout') : '/staff/auth/logout';
+            
             this.init();
         } catch (error) {
             console.error('SessionMonitor: Error in constructor:', error);
@@ -136,25 +142,46 @@ class SessionMonitor {
         }, 1000);
     }
 
-    showExpired() {
+    async showExpired() {
         try {
             this.hideWarning();
+            
+            // First, destroy Laravel session via API
+            try {
+                console.log('SessionMonitor: Destroying Laravel session via API...');
+                await fetch(this.apiBaseUrl + '/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    credentials: 'include' // Include cookies
+                }).catch(err => {
+                    console.warn('SessionMonitor: Failed to destroy Laravel session via API:', err);
+                });
+            } catch (error) {
+                console.warn('SessionMonitor: Error destroying Laravel session:', error);
+            }
+            
             const modalElement = document.getElementById('sessionExpiredModal');
             if (!modalElement) {
                 console.error('SessionMonitor: sessionExpiredModal element not found');
-                // Redirect to login immediately if modal not found
-                window.location.href = '/login';
+                // Redirect to logout immediately if modal not found (to destroy both sessions)
+                window.location.href = this.logoutUrl;
                 return;
             }
             const modal = new bootstrap.Modal(modalElement);
             modal.show();
             
-            // Redirect to login after 3 seconds
+            // Redirect to logout after 3 seconds (to destroy both Laravel and CodeIgniter sessions)
             setTimeout(() => {
-                window.location.href = '/login';
+                window.location.href = this.logoutUrl;
             }, 3000);
         } catch (error) {
             console.error('SessionMonitor: Error showing expired modal:', error);
+            // Even on error, redirect to logout
+            window.location.href = this.logoutUrl;
         }
     }
 
@@ -237,12 +264,50 @@ class SessionMonitor {
         }
     }
 
-    logoutNow() {
-        window.location.href = '/logout';
+    async logoutNow() {
+        // First, destroy Laravel session via API
+        try {
+            console.log('SessionMonitor: Destroying Laravel session before logout...');
+            await fetch(this.apiBaseUrl + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                credentials: 'include' // Include cookies
+            }).catch(err => {
+                console.warn('SessionMonitor: Failed to destroy Laravel session:', err);
+            });
+        } catch (error) {
+            console.warn('SessionMonitor: Error destroying Laravel session:', error);
+        }
+        
+        // Redirect to logout to destroy both Laravel and CodeIgniter sessions
+        window.location.href = this.logoutUrl;
     }
 
-    redirectToLogin() {
-        window.location.href = '/login';
+    async redirectToLogin() {
+        // First, destroy Laravel session via API
+        try {
+            console.log('SessionMonitor: Destroying Laravel session before redirect...');
+            await fetch(this.apiBaseUrl + '/logout', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                credentials: 'include' // Include cookies
+            }).catch(err => {
+                console.warn('SessionMonitor: Failed to destroy Laravel session:', err);
+            });
+        } catch (error) {
+            console.warn('SessionMonitor: Error destroying Laravel session:', error);
+        }
+        
+        // Redirect to logout to destroy both Laravel and CodeIgniter sessions
+        window.location.href = this.logoutUrl;
     }
 
     showSuccessMessage(message) {

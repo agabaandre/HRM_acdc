@@ -124,19 +124,39 @@ class AuthController extends Controller
             $sessionSameSite = config('session.same_site', null);
             
             // Log for debugging
+            $hasSession = Session::has('user');
+            $sessionId = Session::getId();
+            
             Log::info('API logout called', [
-                'has_session' => Session::has('user'),
-                'session_id' => Session::getId(),
+                'has_session' => $hasSession,
+                'session_id' => $sessionId,
                 'cookie_name' => $sessionCookieName,
-                'cookies_received' => $request->cookies->all()
+                'cookies_received' => array_keys($request->cookies->all())
             ]);
             
-            // Invalidate the session (this flushes data, regenerates ID, and destroys old session)
-            Session::invalidate();
+            // Try to invalidate the session if it exists
+            try {
+                if ($sessionId) {
+                    // Invalidate the session (this flushes data, regenerates ID, and destroys old session)
+                    Session::invalidate();
+                } else {
+                    // If no session ID, just flush any existing data
+                    Session::flush();
+                }
+            } catch (\Exception $e) {
+                // If session invalidation fails, try to flush
+                Log::warning('Session invalidation failed, attempting flush', ['error' => $e->getMessage()]);
+                try {
+                    Session::flush();
+                } catch (\Exception $e2) {
+                    Log::warning('Session flush also failed', ['error' => $e2->getMessage()]);
+                }
+            }
             
             // Create response
             $response = response()->json(['success' => true, 'message' => 'Session destroyed']);
             
+            // Always clear the session cookie, even if session didn't exist
             // Clear the session cookie with proper settings for root path
             $response->headers->clearCookie(
                 $sessionCookieName,
@@ -170,12 +190,36 @@ class AuthController extends Controller
                 $sessionSameSite
             );
             
+            // Also clear with /apm path and null domain
+            $response->headers->clearCookie(
+                $sessionCookieName,
+                '/apm',
+                null,
+                $sessionSecure,
+                true,
+                false,
+                $sessionSameSite
+            );
+            
             return $response;
         } catch (\Exception $e) {
             Log::error('API logout error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['success' => false, 'message' => 'Failed to destroy session: ' . $e->getMessage()], 500);
+            
+            // Even on error, try to clear cookies
+            try {
+                $sessionCookieName = config('session.cookie', 'laravel_session');
+                $response = response()->json(['success' => false, 'message' => 'Failed to destroy session: ' . $e->getMessage()], 500);
+                
+                // Clear cookies anyway
+                $response->headers->clearCookie($sessionCookieName, '/', null, false, true);
+                $response->headers->clearCookie($sessionCookieName, '/apm', null, false, true);
+                
+                return $response;
+            } catch (\Exception $e2) {
+                return response()->json(['success' => false, 'message' => 'Failed to destroy session'], 500);
+            }
         }
     }
 }
