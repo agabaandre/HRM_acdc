@@ -133,7 +133,7 @@
                                 @endif
                              
 
-                                <li><a class="dropdown-item" href="{{ route('logout') }}"><i
+                                <li><a class="dropdown-item" href="{{ session('user.base_url', env('BASE_URL', 'http://localhost/staff')) }}/auth/logout"><i
                                             class="bx bx-log-out-circle"></i><span>Logout</span></a>
                                 </li>
                             </ul>

@@ -352,6 +352,36 @@ public function revert()
        );
    }
    
+   // Also destroy Laravel APM session if it exists
+   // Check if Laravel session cookie exists and clear it
+   $laravelSessionCookie = $this->input->cookie('laravel_session');
+   if ($laravelSessionCookie) {
+       // Clear Laravel session cookie
+       setcookie('laravel_session', '', time() - 3600, '/apm', '', isset($_SERVER['HTTPS']), true);
+   }
+   
+   // Try to invalidate Laravel session via API call if APM is accessible
+   try {
+       $apmBaseUrl = base_url('apm');
+       $ch = curl_init($apmBaseUrl . '/api/logout');
+       curl_setopt_array($ch, [
+           CURLOPT_RETURNTRANSFER => true,
+           CURLOPT_FOLLOWLOCATION => true,
+           CURLOPT_TIMEOUT => 2,
+           CURLOPT_POST => true,
+           CURLOPT_POSTFIELDS => json_encode(['destroy_session' => true]),
+           CURLOPT_HTTPHEADER => [
+               'Content-Type: application/json',
+               'X-Requested-With: XMLHttpRequest'
+           ],
+           CURLOPT_COOKIE => $this->input->server('HTTP_COOKIE'),
+       ]);
+       curl_exec($ch);
+       curl_close($ch);
+   } catch (Exception $e) {
+       // Silently fail if Laravel session cleanup fails
+   }
+   
    // Prevent browser caching (important!)
    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
    header("Pragma: no-cache");
