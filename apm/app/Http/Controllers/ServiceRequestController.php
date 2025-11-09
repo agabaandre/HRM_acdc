@@ -46,7 +46,7 @@ class ServiceRequestController extends Controller
             
         // Apply filters
         if ($request->has('staff_id') && $request->staff_id) {
-            $baseQuery->where('staff_id', $request->staff_id);
+            $baseQuery->where('responsible_person_id', $request->staff_id);
         }
         
         if ($request->has('division_id') && $request->division_id) {
