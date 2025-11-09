@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckSessionMiddleware
@@ -18,12 +19,20 @@ class CheckSessionMiddleware
     {
         // Check if user session exists
         if (!session()->has('user')) {
-            // Get the parent URL from config or environment, fallback to a default if not set
-            $parentUrl = env('BASE_URL', 'http://localhost/staff');
-        
-            
-            // If no session, redirect to parent application's staff route
-            return redirect($parentUrl);
+            try {
+                // Get the parent URL from config or environment, fallback to a default if not set
+                $parentUrl = env('BASE_URL', 'http://localhost/staff');
+                
+                // Ensure the URL ends with /auth for login page
+                $loginUrl = rtrim($parentUrl, '/') . '/auth';
+                
+                // If no session, redirect to parent application's login page
+                return redirect($loginUrl);
+            } catch (\Exception $e) {
+                // If redirect fails, try a simple redirect to /auth
+                Log::error('CheckSessionMiddleware redirect error: ' . $e->getMessage());
+                return redirect('/auth');
+            }
         }
         
         return $next($request);

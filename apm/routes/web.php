@@ -12,6 +12,7 @@ use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\GenericApprovalController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\Api\SessionController;
+use App\Http\Controllers\AuthController;
 
 // The root route that handles token decoding and user session management
 Route::get('/', function (Request $request) {
@@ -44,6 +45,9 @@ Route::get('/', function (Request $request) {
     // Redirect to home page with or without session data
     return redirect('/home');
 });
+
+// Logout route (should be accessible without middleware)
+Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Home route
 Route::get('/home', function () {
