@@ -109,5 +109,21 @@ class AuthController extends Controller
             return $response;
         }
     }
+    
+    /**
+     * API endpoint to destroy Laravel session (called from CodeIgniter logout)
+     */
+    public function apiLogout(Request $request)
+    {
+        try {
+            // Fully destroy Laravel session
+            Session::invalidate();
+            
+            return response()->json(['success' => true, 'message' => 'Session destroyed']);
+        } catch (\Exception $e) {
+            Log::error('API logout error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to destroy session'], 500);
+        }
+    }
 }
 
