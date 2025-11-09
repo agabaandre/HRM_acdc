@@ -116,13 +116,66 @@ class AuthController extends Controller
     public function apiLogout(Request $request)
     {
         try {
-            // Fully destroy Laravel session
+            // Get session cookie name from config
+            $sessionCookieName = config('session.cookie', 'laravel_session');
+            $sessionPath = config('session.path', '/');
+            $sessionDomain = config('session.domain');
+            $sessionSecure = config('session.secure', false);
+            $sessionSameSite = config('session.same_site', null);
+            
+            // Log for debugging
+            Log::info('API logout called', [
+                'has_session' => Session::has('user'),
+                'session_id' => Session::getId(),
+                'cookie_name' => $sessionCookieName,
+                'cookies_received' => $request->cookies->all()
+            ]);
+            
+            // Invalidate the session (this flushes data, regenerates ID, and destroys old session)
             Session::invalidate();
             
-            return response()->json(['success' => true, 'message' => 'Session destroyed']);
+            // Create response
+            $response = response()->json(['success' => true, 'message' => 'Session destroyed']);
+            
+            // Clear the session cookie with proper settings for root path
+            $response->headers->clearCookie(
+                $sessionCookieName,
+                $sessionPath,
+                $sessionDomain,
+                $sessionSecure,
+                true, // httpOnly
+                false, // raw
+                $sessionSameSite
+            );
+            
+            // Also clear cookie for /apm path specifically (in case it was set there)
+            $response->headers->clearCookie(
+                $sessionCookieName,
+                '/apm',
+                $sessionDomain,
+                $sessionSecure,
+                true, // httpOnly
+                false, // raw
+                $sessionSameSite
+            );
+            
+            // Also try to clear with empty domain (for current domain)
+            $response->headers->clearCookie(
+                $sessionCookieName,
+                $sessionPath,
+                null,
+                $sessionSecure,
+                true,
+                false,
+                $sessionSameSite
+            );
+            
+            return $response;
         } catch (\Exception $e) {
-            Log::error('API logout error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to destroy session'], 500);
+            Log::error('API logout error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['success' => false, 'message' => 'Failed to destroy session: ' . $e->getMessage()], 500);
         }
     }
 }

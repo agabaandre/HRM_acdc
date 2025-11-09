@@ -353,33 +353,57 @@ public function revert()
    }
    
    // Also destroy Laravel APM session if it exists
-   // Check if Laravel session cookie exists and clear it
-   $laravelSessionCookie = $this->input->cookie('laravel_session');
-   if ($laravelSessionCookie) {
-       // Clear Laravel session cookie
-       setcookie('laravel_session', '', time() - 3600, '/apm', '', isset($_SERVER['HTTPS']), true);
-   }
+   // Get all cookies from the request
+   $allCookies = $this->input->server('HTTP_COOKIE');
    
    // Try to invalidate Laravel session via API call if APM is accessible
+   // This must be done BEFORE clearing CI session to pass the Laravel session cookie
    try {
        $apmBaseUrl = base_url('apm');
        $ch = curl_init($apmBaseUrl . '/api/logout');
        curl_setopt_array($ch, [
            CURLOPT_RETURNTRANSFER => true,
            CURLOPT_FOLLOWLOCATION => true,
-           CURLOPT_TIMEOUT => 2,
+           CURLOPT_TIMEOUT => 5,
            CURLOPT_POST => true,
            CURLOPT_POSTFIELDS => json_encode(['destroy_session' => true]),
            CURLOPT_HTTPHEADER => [
                'Content-Type: application/json',
-               'X-Requested-With: XMLHttpRequest'
+               'X-Requested-With: XMLHttpRequest',
+               'Accept: application/json'
            ],
-           CURLOPT_COOKIE => $this->input->server('HTTP_COOKIE'),
+           CURLOPT_COOKIE => $allCookies, // Pass all cookies including Laravel session
+           CURLOPT_SSL_VERIFYPEER => false,
+           CURLOPT_SSL_VERIFYHOST => false,
        ]);
-       curl_exec($ch);
+       
+       $response = curl_exec($ch);
+       $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
        curl_close($ch);
+       
+       // Log if there was an issue
+       if ($httpCode >= 400) {
+           log_message('error', 'Laravel session logout API returned error: ' . $httpCode);
+       }
    } catch (Exception $e) {
-       // Silently fail if Laravel session cleanup fails
+       // Log error but don't fail logout
+       log_message('error', 'Failed to call Laravel logout API: ' . $e->getMessage());
+   }
+   
+   // Also clear Laravel session cookie manually as backup
+   // Try different cookie names and paths
+   $cookieNames = ['laravel_session', 'laravel_session_' . md5(base_url())];
+   $cookiePaths = ['/apm', '/'];
+   
+   foreach ($cookieNames as $cookieName) {
+       foreach ($cookiePaths as $cookiePath) {
+           // Clear cookie for current domain
+           setcookie($cookieName, '', time() - 3600, $cookiePath, '', isset($_SERVER['HTTPS']), true);
+           // Also try with domain
+           if (!empty($_SERVER['HTTP_HOST'])) {
+               setcookie($cookieName, '', time() - 3600, $cookiePath, $_SERVER['HTTP_HOST'], isset($_SERVER['HTTPS']), true);
+           }
+       }
    }
    
    // Prevent browser caching (important!)
