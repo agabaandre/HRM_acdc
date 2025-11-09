@@ -58,7 +58,7 @@
                 <select name="staff_id" id="staff_id" class="form-select select2">
                     <option value="">All Staff</option>
                     @foreach($staff as $member)
-                        <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
+                        <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
                             {{ $member->name }}
                         </option>
                     @endforeach
