@@ -384,8 +384,12 @@ public function get_current_staff(){
 				foreach ($data as &$staff) {
 					// Handle both object and array formats
 					$signature = is_object($staff) ? ($staff->signature ?? null) : ($staff['signature'] ?? null);
+
+
+					$photo = is_object($staff) ? ($staff->photo ?? null) : ($staff['photo'] ?? null);
 					
 					$signatureData = null; // Default to null
+					$photoData = null; // Default to null
 					
 					// Process signature with error handling
 					if (!empty($signature)) {
@@ -408,15 +412,38 @@ public function get_current_staff(){
 						}
 					}
 					
-					// Always add signature_data to the record (even if null/empty)
+					// Process photo with error handling
+					if (!empty($photo)) {
+						$photoPath = "uploads/staff/" . $photo;
+						if (file_exists($photoPath)) {
+							// Check file size (limit to 2MB to prevent memory issues)
+							$fileSize = @filesize($photoPath);
+							if ($fileSize !== false && $fileSize > 0 && $fileSize <= 2097152) { // 2MB limit
+								try {
+									$fileContent = @file_get_contents($photoPath);
+									if ($fileContent !== false) {
+										$photoData = base64_encode($fileContent);
+										unset($fileContent); // Free memory immediately
+									}
+								} catch (Exception $e) {
+									// If encoding fails, leave as null
+									$photoData = null;
+								}
+							}
+						}
+					}
+					
+					// Always add signature_data and photo_data to the record (even if null/empty)
 					if (is_object($staff)) {
 						$staff->signature_data = $signatureData;
+						$staff->photo_data = $photoData;
 					} else {
 						$staff['signature_data'] = $signatureData;
+						$staff['photo_data'] = $photoData;
 					}
 					
 					// Free memory after processing each record
-					unset($signatureData);
+					unset($signatureData, $photoData);
 				}
 				unset($staff); // Unset reference variable
 				
@@ -427,8 +454,10 @@ public function get_current_staff(){
 				foreach ($data as &$staff) {
 					if (is_object($staff)) {
 						$staff->signature_data = null;
+						$staff->photo_data = null;
 					} else {
 						$staff['signature_data'] = null;
+						$staff['photo_data'] = null;
 					}
 				}
 				unset($staff);

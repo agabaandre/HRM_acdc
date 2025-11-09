@@ -42,18 +42,47 @@ if (!function_exists('user_info')) {
         $avatarColor = $avatarColors[$colorIndex];
 
         $photo = $user->photo ?? '';
+        $photoData = $user->photo_data ?? null; // Base64 encoded photo from API
         $baseUrl = $user->base_url ?? '';
         $photoPath = function_exists('public_path') ? public_path('uploads/staff/' . $photo) : __DIR__ . '/../../../public/uploads/staff/' . $photo;
 
         $showImage = false;
-        if ($photo && file_exists($photoPath) && filesize($photoPath) > 100) { // 0.1kb = 100 bytes
+        $imageSrc = '';
+        
+        // First, try to use photo_data (base64) from session if available
+        if (!empty($photoData)) {
             $showImage = true;
+            // Determine image type from base64 data or default to jpeg
+            $imageType = 'jpeg';
+            if (strpos($photoData, 'data:image/') === 0) {
+                // If it already has data URI prefix, use it directly
+                $imageSrc = $photoData;
+            } else {
+                // Otherwise, add data URI prefix
+                // Try to detect image type from base64 data
+                $decoded = @base64_decode($photoData, true);
+                if ($decoded !== false) {
+                    $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+                    if ($finfo) {
+                        $mimeType = @finfo_buffer($finfo, $decoded);
+                        if ($mimeType && strpos($mimeType, 'image/') === 0) {
+                            $imageType = str_replace('image/', '', $mimeType);
+                        }
+                        @finfo_close($finfo);
+                    }
+                }
+                $imageSrc = 'data:image/' . $imageType . ';base64,' . $photoData;
+            }
+        } elseif ($photo && file_exists($photoPath) && filesize($photoPath) > 100) {
+            // Fallback to file system if photo_data is not available
+            $showImage = true;
+            $imageSrc = htmlspecialchars($baseUrl . 'uploads/staff/' . $photo);
         }
 
         ob_start();
         if ($showImage) {
             ?>
-            <img src="<?php echo htmlspecialchars($baseUrl . 'uploads/staff/' . $photo); ?>"
+            <img src="<?php echo $imageSrc; ?>"
                 class="user-img" alt="user avatar">
             <?php
         } else {
