@@ -42,7 +42,7 @@
                 <label for="division_id" class="form-label fw-semibold mb-1">
                     <i class="bx bx-building me-1 text-success"></i> Division
                 </label>
-                <select name="division_id" id="division_id" class="form-select">
+                <select name="division_id" id="division_id" class="form-select select2">
                     <option value="">All Divisions</option>
                     @foreach($divisions as $division)
                         <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
@@ -55,7 +55,7 @@
                 <label for="staff_id" class="form-label fw-semibold mb-1">
                     <i class="bx bx-user me-1 text-success"></i> Staff
                 </label>
-                <select name="staff_id" id="staff_id" class="form-select">
+                <select name="staff_id" id="staff_id" class="form-select select2">
                     <option value="">All Staff</option>
                     @foreach($staff as $member)
                         <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
@@ -68,7 +68,7 @@
                 <label for="service_type" class="form-label fw-semibold mb-1">
                     <i class="bx bx-cog me-1 text-success"></i> Service Type
                 </label>
-                <select name="service_type" id="service_type" class="form-select">
+                <select name="service_type" id="service_type" class="form-select select2">
                     <option value="">All Types</option>
                     <option value="IT Support" {{ request('service_type') == 'IT Support' ? 'selected' : '' }}>IT Support</option>
                     <option value="Maintenance" {{ request('service_type') == 'Maintenance' ? 'selected' : '' }}>Maintenance</option>
@@ -86,7 +86,7 @@
                 <label for="request_status" class="form-label fw-semibold mb-1">
                     <i class="bx bx-info-circle me-1 text-success"></i> Status
                 </label>
-                <select name="status" id="request_status" class="form-select">
+                <select name="status" id="request_status" class="form-select select2">
                     <option value="">All Statuses</option>
                     <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
@@ -179,6 +179,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for all select fields
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#division_id, #staff_id, #service_type, #request_status').select2({
+            placeholder: 'Select an option',
+            allowClear: true,
+            width: '100%'
+        });
+    }
+    
     // AJAX filtering - auto-update when filters change
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');

@@ -4,8 +4,9 @@
             <thead class="table-success">
                 <tr>
                     <th>#</th>
-                    <th>Service Type</th>
+                    <th>Document Number</th>
                     <th>Description</th>
+                    <th>Responsible Person</th>
                     <th>Division</th>
                     <th>Status</th>
                     <th>Created</th>
@@ -18,13 +19,14 @@
                     <tr>
                         <td>{{ $count++ }}</td>
                         <td>
-                            <span class="badge bg-info">{{ $request->service_type ?? 'N/A' }}</span>
+                            <span class="badge bg-info">{{ $request->document_number ?? 'N/A' }}</span>
                         </td>
                         <td style="width: 25%;">
                             <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal;" title="{{ $request->service_title ?? 'No title' }}">
                                 {{ $request->service_title ?? 'No title' }}
                             </div>
                         </td>
+                        <td>{{ $request->responsiblePerson ? ($request->responsiblePerson->fname . ' ' . $request->responsiblePerson->lname) : 'N/A' }}</td>
                         <td>{{ $request->division->division_name ?? 'N/A' }}</td>
                         <td>
                             @php

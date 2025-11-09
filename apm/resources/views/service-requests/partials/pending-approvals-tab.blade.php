@@ -6,7 +6,7 @@
                     <th style="width: 40px;">#</th>
                     <th style="width: 120px;">Document Number</th>
                     <th style="width: 280px;">Title</th>
-                    <th style="width: 120px;">Staff</th>
+                    <th style="width: 120px;">Responsible Person</th>
                     <th style="width: 120px;">Division</th>
                     <th style="width: 100px;">Request Date</th>
                     <th style="width: 100px;">Total Budget</th>
