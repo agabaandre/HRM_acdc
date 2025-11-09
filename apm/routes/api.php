@@ -12,4 +12,7 @@ Route::get('/session-status', [SessionController::class, 'getSessionStatus'])->n
 Route::get('/session-debug', [SessionController::class, 'getSessionDebug'])->name('api.session-debug');
 
 // Logout API route (called from CodeIgniter logout)
-Route::post('/logout', [AuthController::class, 'apiLogout'])->name('api.logout');
+// This route needs session access, so we use web middleware
+Route::post('/logout', [AuthController::class, 'apiLogout'])
+    ->middleware('web')
+    ->name('api.logout');
