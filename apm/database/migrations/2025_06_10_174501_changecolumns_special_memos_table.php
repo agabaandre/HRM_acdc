@@ -31,9 +31,9 @@ return new class extends Migration
             $table->text('key_result_area');
             $table->unsignedBigInteger('request_type_id');
             $table->string('activity_title');
-            $table->text('background');
-            $table->text('activity_request_remarks')->nullable();
-            $table->text('justification')->nullable();
+            $table->longText('background');
+            $table->longText('activity_request_remarks')->nullable();
+            $table->longText('justification')->nullable();
 
             $table->boolean('is_special_memo')->default(0);
 
