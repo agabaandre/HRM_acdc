@@ -44,6 +44,7 @@ class SpecialMemo extends Model
         'background',
         'activity_request_remarks',
         'justification',
+        'supporting_reasons',
         'is_special_memo',
         'is_draft',
         'budget_breakdown',
