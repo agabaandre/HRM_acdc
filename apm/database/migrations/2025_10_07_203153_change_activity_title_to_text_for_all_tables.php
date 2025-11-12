@@ -25,7 +25,7 @@ return new class extends Migration
             }
             
             Schema::table('request_arfs', function (Blueprint $table) {
-                $table->text('activity_title')->change();
+                $table->longText('activity_title')->change();
             });
         }
         
@@ -38,7 +38,7 @@ return new class extends Migration
             }
             
             Schema::table('non_travel_memos', function (Blueprint $table) {
-                $table->text('activity_title')->change();
+                $table->longText('activity_title')->change();
             });
         }
         
@@ -51,7 +51,7 @@ return new class extends Migration
             }
             
             Schema::table('special_memos', function (Blueprint $table) {
-                $table->text('activity_title')->change();
+                $table->longText('activity_title')->change();
             });
         }
         
@@ -64,7 +64,7 @@ return new class extends Migration
             }
             
             Schema::table('change_request', function (Blueprint $table) {
-                $table->text('activity_title')->change();
+                $table->longText('activity_title')->change();
             });
         }
         
@@ -90,7 +90,7 @@ return new class extends Migration
             }
             
             Schema::table('activities', function (Blueprint $table) {
-                $table->text('activity_title')->change();
+                $table->longText('activity_title')->change();
             });
         }
     }

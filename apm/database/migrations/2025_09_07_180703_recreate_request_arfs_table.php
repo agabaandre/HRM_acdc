@@ -26,7 +26,7 @@ return new class extends Migration
             $table->unsignedBigInteger('division_id');
             $table->json('location_id')->nullable();
             $table->string('activity_title');
-            $table->text('purpose');
+            $table->longText('purpose');
             $table->date('start_date');
             $table->date('end_date');
             $table->decimal('requested_amount', 15, 2);

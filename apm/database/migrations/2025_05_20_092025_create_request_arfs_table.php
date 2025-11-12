@@ -23,7 +23,7 @@ return new class extends Migration
             $table->foreignId('division_id')->constrained();
             $table->json('location_id');
             $table->string('activity_title');
-            $table->text('purpose');
+            $table->longText('purpose');
             $table->date('start_date');
             $table->date('end_date');
             $table->decimal('requested_amount', 15, 2);

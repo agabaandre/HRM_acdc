@@ -38,7 +38,7 @@ return new class extends Migration
             // Re-add the removed columns
             $table->json('location_id')->nullable();
             $table->string('activity_title')->nullable();
-            $table->text('purpose')->nullable();
+            $table->longText('purpose')->nullable();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->decimal('requested_amount', 15, 2)->nullable();

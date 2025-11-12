@@ -45,7 +45,7 @@ return new class extends Migration
             $table->unsignedInteger('responsible_person_id')->nullable();
             
             // Content fields
-            $table->text('supporting_reasons')->nullable(); // for special memo
+            $table->longText('supporting_reasons')->nullable(); // for special memo
             $table->date('date_from')->nullable();
             $table->date('date_to')->nullable();
             $table->date('memo_date')->nullable(); // for non travel memo
@@ -55,12 +55,12 @@ return new class extends Migration
             $table->unsignedInteger('total_external_participants')->nullable();
             $table->json('division_staff_request')->nullable();
             $table->json('budget_id')->nullable();
-            $table->text('key_result_area')->nullable();
-            $table->text('justification')->nullable(); // additional justification field
+            $table->longText('key_result_area')->nullable();
+            $table->longText('justification')->nullable(); // additional justification field
             $table->unsignedBigInteger('non_travel_memo_category_id')->nullable();
             $table->unsignedBigInteger('request_type_id')->nullable();
-            $table->text('activity_title');
-            $table->text('background')->nullable();
+            $table->longText('activity_title');
+            $table->longText('background')->nullable();
             $table->longText('activity_request_remarks')->nullable();
             $table->boolean('is_single_memo')->default(false);
             $table->json('budget_breakdown')->nullable();

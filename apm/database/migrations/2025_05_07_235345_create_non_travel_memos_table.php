@@ -24,9 +24,9 @@ return new class extends Migration
             $table->foreignId('non_travel_memo_category_id')->constrained();
             $table->json('budget_id');
             $table->string('activity_title');
-            $table->text('background');
-            $table->text('activity_request_remarks');
-            $table->text('justification');
+            $table->longText('background');
+            $table->longText('activity_request_remarks');
+            $table->longText('justification');
             $table->json('budget_breakdown');
             $table->json('attachment');
             $table->timestamps();
