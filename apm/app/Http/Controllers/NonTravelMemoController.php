@@ -348,10 +348,10 @@ class NonTravelMemoController extends Controller
             'location_id' => $locationJson,
             'non_travel_memo_category_id' => (int)$data['non_travel_memo_category_id'],
             'budget_id' => $budgetIdJson,
-            'activity_title' => $data['title'],
-            'background' => $data['background'],
-            'activity_request_remarks' => $data['activity_request_remarks'] ?? '',
-            'justification' => $data['justification'],
+            'activity_title' => clean_unicode($data['title']),
+            'background' => clean_unicode($data['background']),
+            'activity_request_remarks' => clean_unicode($data['activity_request_remarks'] ?? ''),
+            'justification' => clean_unicode($data['justification']),
             'budget_breakdown' => $budgetBreakdownJson,
             'attachment' => $attachmentsJson,
             'forward_workflow_id' => $assignedWorkflowId,
@@ -411,7 +411,7 @@ class NonTravelMemoController extends Controller
                             'balance_before' => $balanceBefore,
                             'balance_after' => $balanceAfter,
                             'staff_id' => user_session('staff_id'),
-                            'activity_title' => $data['title']
+                            'activity_title' => clean_unicode($data['title'])
                         ]);
                     }
                 }
@@ -701,10 +701,10 @@ class NonTravelMemoController extends Controller
             'location_id' => $locationJson,
             'non_travel_memo_category_id' => $data['non_travel_memo_category_id'],
             'fund_type_id' => (int)($data['fund_type_id'] ?? $nonTravel->fund_type_id ?? 1),
-            'activity_title' => $data['activity_title'],
-            'activity_request_remarks' => $data['activity_request_remarks'],
-            'background' => $data['background'],
-            'justification' => $data['justification'],
+            'activity_title' => clean_unicode($data['activity_title']),
+            'activity_request_remarks' => clean_unicode($data['activity_request_remarks']),
+            'background' => clean_unicode($data['background']),
+            'justification' => clean_unicode($data['justification']),
             'budget_breakdown' => $budgetBreakdownJson,
             'attachment' => $attachmentsJson,
         ]);

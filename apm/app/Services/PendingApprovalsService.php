@@ -927,13 +927,23 @@ class PendingApprovalsService
      */
     protected function getPendingChangeRequests(): Collection
     {
-        $query = ChangeRequest::with(['staff', 'division', 'approvalTrails.staff'])
+        $query = ChangeRequest::with(['staff', 'division', 'approvalTrails.staff', 'forwardWorkflow.workflowDefinitions.approvers.staff'])
             ->where('overall_status', 'pending')
             ->where('forward_workflow_id', '!=', null)
             ->where('approval_level', '>', 0);
 
-        // Get all approval levels for this user (both division-specific and non-division-specific)
-        $approvalLevels = $this->getUserApprovalLevels('ChangeRequest');
+        // Change requests use dynamic workflows (1, 6, 7) based on change type
+        // Check all possible workflows that change requests might use
+        $possibleWorkflowIds = [1, 6, 7];
+        $approvalLevels = [];
+        
+        foreach ($possibleWorkflowIds as $workflowId) {
+            // Get approval levels for this workflow
+            $workflowLevels = $this->getUserApprovalLevelsForWorkflow($workflowId);
+            $approvalLevels = array_merge($approvalLevels, $workflowLevels);
+        }
+        
+        $approvalLevels = array_unique($approvalLevels);
         
         if (!empty($approvalLevels)) {
             $query->whereIn('approval_level', $approvalLevels);
@@ -946,8 +956,14 @@ class PendingApprovalsService
         // For users who are ONLY division-specific approvers, show items from their assigned divisions
         // For users who are ONLY regular approvers, show items from ALL divisions
         
-        // Check if user has regular approver assignments (non-division-specific)
-        $hasRegularApproverAssignments = $this->hasRegularApproverAssignments('ChangeRequest');
+        // Check if user has regular approver assignments for any of the change request workflows
+        $hasRegularApproverAssignments = false;
+        foreach ($possibleWorkflowIds as $workflowId) {
+            if ($this->hasRegularApproverAssignmentsForWorkflow($workflowId)) {
+                $hasRegularApproverAssignments = true;
+                break;
+            }
+        }
         
         if ($hasRegularApproverAssignments) {
             // User is a regular approver - show items from ALL divisions at their approval levels
@@ -966,6 +982,7 @@ class PendingApprovalsService
         })->map(function ($changeRequest) {
             return $this->formatPendingItem($changeRequest, 'Change Request', [
                 'title' => $changeRequest->activity_title ?? 'Change Request',
+                'document_number' => $changeRequest->document_number ?? 'N/A',
                 'division' => $changeRequest->division->division_name ?? 'N/A',
                 'submitted_by' => $changeRequest->staff->fname . ' ' . $changeRequest->staff->lname ?? 'N/A',
                 'date_received' => $this->getDateReceivedToCurrentLevel($changeRequest),
@@ -976,6 +993,71 @@ class PendingApprovalsService
                 'item_type' => 'ChangeRequest'
             ]);
         });
+    }
+
+    /**
+     * Get approval levels for a specific workflow
+     */
+    protected function getUserApprovalLevelsForWorkflow(int $workflowId): array
+    {
+        $approvalLevels = [];
+
+        // 1. Get approval levels from approvers table (non-division-specific)
+        $approvers = Approver::where('staff_id', $this->currentStaffId)->get();
+        $workflowDfnIds = $approvers->pluck('workflow_dfn_id')->toArray();
+        
+        if (!empty($workflowDfnIds)) {
+            $workflowDefinitions = WorkflowDefinition::whereIn('id', $workflowDfnIds)
+                ->where('workflow_id', $workflowId)
+                ->where('is_division_specific', 0) // Only non-division-specific
+                ->get();
+            
+            $approvalLevels = array_merge($approvalLevels, $workflowDefinitions->pluck('approval_order')->toArray());
+        }
+
+        // 2. If user is division-specific approver, also get division-specific levels
+        if ($this->isDivisionSpecificApprover()) {
+            $divisionLevels = $this->getDivisionSpecificApprovalLevelsForWorkflow($workflowId);
+            $approvalLevels = array_merge($approvalLevels, $divisionLevels);
+        }
+
+        return array_unique($approvalLevels);
+    }
+
+    /**
+     * Get division-specific approval levels for a specific workflow
+     */
+    protected function getDivisionSpecificApprovalLevelsForWorkflow(int $workflowId): array
+    {
+        if (!$this->isDivisionSpecificApprover()) {
+            return [];
+        }
+
+        // Get division-specific workflow definitions
+        $divisionDefinitions = WorkflowDefinition::where('workflow_id', $workflowId)
+            ->where('is_division_specific', 1)
+            ->get();
+
+        return $divisionDefinitions->pluck('approval_order')->toArray();
+    }
+
+    /**
+     * Check if user has regular approver assignments for a specific workflow
+     */
+    protected function hasRegularApproverAssignmentsForWorkflow(int $workflowId): bool
+    {
+        // Check if user has any non-division-specific approver assignments for this workflow
+        $approvers = Approver::where('staff_id', $this->currentStaffId)->get();
+        $workflowDfnIds = $approvers->pluck('workflow_dfn_id')->toArray();
+        
+        if (!empty($workflowDfnIds)) {
+            return WorkflowDefinition::whereIn('id', $workflowDfnIds)
+                ->where('workflow_id', $workflowId)
+                ->where('is_division_specific', 0) // Only non-division-specific
+                ->exists();
+        }
+
+        return false;
     }
 
     /**

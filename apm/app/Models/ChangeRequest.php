@@ -372,10 +372,6 @@ class ChangeRequest extends Model
     /**
      * Reverse workflow relationship.
      */
-    public function reverseWorkflow(): BelongsTo
-    {
-        return $this->belongsTo(\App\Models\Workflow::class, 'reverse_workflow_id');
-    }
 
     // --- Accessors & Utility ---
 

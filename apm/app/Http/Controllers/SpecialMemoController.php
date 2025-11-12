@@ -416,11 +416,11 @@ class SpecialMemoController extends Controller
                 'responsible_person_id' => $request->input('responsible_person_id', 1),
                 'date_from' => $request->input('date_from'),
                 'date_to' => $request->input('date_to'),
-                'activity_title' => $request->input('activity_title'),
-                'background' => $request->input('background', ''),
-                'justification' => $request->input('justification', ''),
-                'activity_request_remarks' => $request->input('activity_request_remarks', ''),
-                'key_result_area' => $request->input('key_result_link', '-'),
+                'activity_title' => clean_unicode($request->input('activity_title')),
+                'background' => clean_unicode($request->input('background', '')),
+                'justification' => clean_unicode($request->input('justification', '')),
+                'activity_request_remarks' => clean_unicode($request->input('activity_request_remarks', '')),
+                'key_result_area' => clean_unicode($request->input('key_result_link', '-')),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type_id', 1),
                 'workplan_activity_code' => $request->input('activity_code', ''),
@@ -439,7 +439,7 @@ class SpecialMemoController extends Controller
                 'budget_breakdown' => json_encode($request->input('budget', [])),
                 'attachment' => json_encode($attachments),
     
-                'supporting_reasons' => $request->input('supporting_reasons', null),
+                'supporting_reasons' => clean_unicode($request->input('supporting_reasons', null)),
             ]);
 
             // Process fund code balance reductions and create transaction records
@@ -480,7 +480,7 @@ class SpecialMemoController extends Controller
                                     'balance_before' => $balanceBefore,
                                     'balance_after' => $balanceAfter,
                                     'staff_id' => $userStaffId,
-                                    'activity_title' => $request->input('activity_title')
+                                    'activity_title' => clean_unicode($request->input('activity_title'))
                                 ]);
                             }
                         }
@@ -908,11 +908,11 @@ class SpecialMemoController extends Controller
                 'responsible_person_id' => $request->input('responsible_person_id', 1),
                 'date_from' => $request->input('date_from'),
                 'date_to' => $request->input('date_to'),
-                'activity_title' => $request->input('activity_title'),
-                'background' => $request->input('background', ''),
-                'justification' => $request->input('justification', ''),
-                'activity_request_remarks' => $request->input('activity_request_remarks', ''),
-                'key_result_area' => $request->input('key_result_link', '-'),
+                'activity_title' => clean_unicode($request->input('activity_title')),
+                'background' => clean_unicode($request->input('background', '')),
+                'justification' => clean_unicode($request->input('justification', '')),
+                'activity_request_remarks' => clean_unicode($request->input('activity_request_remarks', '')),
+                'key_result_area' => clean_unicode($request->input('key_result_link', '-')),
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type_id', 1),
                 'workplan_activity_code' => $request->input('activity_code', ''),
@@ -928,7 +928,7 @@ class SpecialMemoController extends Controller
                 'budget_breakdown' => json_encode($request->input('budget', [])),
                 'attachment' => json_encode($attachments),
     
-                'supporting_reasons' => $request->input('supporting_reasons', null),
+                'supporting_reasons' => clean_unicode($request->input('supporting_reasons', null)),
             ];
 
            // dd($updateData);

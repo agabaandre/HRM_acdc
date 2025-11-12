@@ -133,6 +133,7 @@
                                 <th>Role</th>
                                 <th>Approval Order</th>
                                 <th>Fund Type</th>
+                                <th>Divisions</th>
                                 <th>Division Specific</th>
                                 <th>Print Order</th>
                                 <th>Status</th>
@@ -147,9 +148,27 @@
                                     <td>{{ $definition->approval_order }}</td>
                                     <td>
                                         @if($definition->fund_type)
-                                            <span class="badge bg-info">{{ ucfirst($definition->fund_type) }}</span>
+                                            @php
+                                                $fundType = \App\Models\FundType::find($definition->fund_type);
+                                            @endphp
+                                            <span class="badge bg-info">{{ $fundType ? $fundType->name : 'N/A' }}</span>
                                         @else
                                             <span class="badge bg-secondary">Not Set</span>
+                                        @endif
+                                    </td>
+                                    <td style="max-width: 200px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
+                                        @php
+                                            $definitionDivisions = is_array($definition->divisions) ? $definition->divisions : (is_string($definition->divisions) ? json_decode($definition->divisions, true) : []);
+                                            $definitionDivisions = $definitionDivisions ?: [];
+                                        @endphp
+                                        @if(!empty($definitionDivisions))
+                                            @foreach($definitionDivisions as $divId)
+                                                @if(isset($divisions[$divId]))
+                                                    <span class="badge bg-secondary mb-1" style="display: inline-block; word-wrap: break-word; white-space: normal;">{{ $divisions[$divId]->division_name }}</span>
+                                                @endif
+                                            @endforeach
+                                        @else
+                                            <span class="text-muted">All Divisions</span>
                                         @endif
                                     </td>
                                     <td>
@@ -184,7 +203,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-4">
+                                    <td colspan="9" class="text-center py-4">
                                         <div class="text-muted">
                                             <i class="bx bx-list-x fs-1"></i>
                                             <p class="mt-2">No workflow definitions found</p>

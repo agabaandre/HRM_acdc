@@ -72,11 +72,41 @@
                                     </label>
                                     <select class="form-select @error('fund_type') is-invalid @enderror" id="fund_type" name="fund_type">
                                         <option value="">Select Fund Type</option>
-                                        <option value="intramural" {{ old('fund_type', $definition->fund_type) == 'intramural' ? 'selected' : '' }}>Intramural</option>
-                                        <option value="extramural" {{ old('fund_type', $definition->fund_type) == 'extramural' ? 'selected' : '' }}>Extramural</option>
-                                        <option value="both" {{ old('fund_type', $definition->fund_type) == 'both' ? 'selected' : '' }}>Both</option>
+                                        @foreach($fundTypes as $fundType)
+                                            <option value="{{ $fundType->id }}" {{ old('fund_type', $definition->fund_type) == $fundType->id ? 'selected' : '' }}>{{ $fundType->name }}</option>
+                                        @endforeach
                                     </select>
                                     @error('fund_type')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="category" class="form-label">
+                                        <i class="bx bx-category me-1"></i>Category
+                                    </label>
+                                    <input type="text" class="form-control @error('category') is-invalid @enderror" 
+                                        id="category" name="category"
+                                        value="{{ old('category', $definition->category) }}"
+                                        placeholder="Enter category" maxlength="20">
+                                    @error('category')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">Category for routing (e.g., program, support)</small>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="memo_print_section" class="form-label">
+                                        <i class="bx bx-file me-1"></i>Memo Print Section
+                                    </label>
+                                    <select class="form-select @error('memo_print_section') is-invalid @enderror" id="memo_print_section" name="memo_print_section">
+                                        <option value="through" {{ old('memo_print_section', $definition->memo_print_section ?? 'through') == 'through' ? 'selected' : '' }}>Through</option>
+                                        <option value="to" {{ old('memo_print_section', $definition->memo_print_section) == 'to' ? 'selected' : '' }}>To</option>
+                                        <option value="from" {{ old('memo_print_section', $definition->memo_print_section) == 'from' ? 'selected' : '' }}>From</option>
+                                        <option value="others" {{ old('memo_print_section', $definition->memo_print_section) == 'others' ? 'selected' : '' }}>Others</option>
+                                    </select>
+                                    @error('memo_print_section')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -91,22 +121,66 @@
                                     @error('print_order')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
+                                    <small class="text-muted">Order in which this step appears in memo printing</small>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label for="memo_print_section" class="form-label">
-                                        <i class="bx bx-file me-1"></i>Memo Print Section
+                                    <label for="divisions" class="form-label">
+                                        <i class="bx bx-buildings me-1"></i>Divisions
                                     </label>
-                                    <select class="form-select @error('memo_print_section') is-invalid @enderror" id="memo_print_section" name="memo_print_section">
-                                        <option value="through" {{ old('memo_print_section', $definition->memo_print_section) == 'through' ? 'selected' : '' }}>Through</option>
-                                        <option value="to" {{ old('memo_print_section', $definition->memo_print_section) == 'to' ? 'selected' : '' }}>To</option>
-                                        <option value="from" {{ old('memo_print_section', $definition->memo_print_section) == 'from' ? 'selected' : '' }}>From</option>
+                                    @php
+                                        $selectedDivisions = is_array($definition->divisions) ? $definition->divisions : (is_string($definition->divisions) ? json_decode($definition->divisions, true) : []);
+                                        $selectedDivisions = $selectedDivisions ?: [];
+                                    @endphp
+                                    <select class="form-select select2 @error('divisions') is-invalid @enderror" id="divisions" name="divisions[]" multiple>
+                                        @foreach($divisions as $division)
+                                            <option value="{{ $division->id }}" {{ in_array($division->id, old('divisions', $selectedDivisions)) ? 'selected' : '' }}>{{ $division->division_name }}</option>
+                                        @endforeach
                                     </select>
-                                    @error('memo_print_section')
+                                    @error('divisions')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
+                                    <small class="text-muted">Select one or more divisions for this workflow definition</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="allowed_funders" class="form-label">
+                                        <i class="bx bx-money me-1"></i>Allowed Funders
+                                    </label>
+                                    @php
+                                        $selectedFunders = is_array($definition->allowed_funders) ? $definition->allowed_funders : (is_string($definition->allowed_funders) ? json_decode($definition->allowed_funders, true) : []);
+                                        $selectedFunders = $selectedFunders ?: [];
+                                    @endphp
+                                    <select class="form-select select2 @error('allowed_funders') is-invalid @enderror" id="allowed_funders" name="allowed_funders[]" multiple>
+                                        @foreach($funders as $funder)
+                                            <option value="{{ $funder->id }}" {{ in_array($funder->id, old('allowed_funders', $selectedFunders)) ? 'selected' : '' }}>{{ $funder->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('allowed_funders')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">Select funders allowed for this workflow definition</small>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="division_reference_column" class="form-label">
+                                        <i class="bx bx-link me-1"></i>Division Reference Column
+                                    </label>
+                                    <select class="form-select @error('division_reference_column') is-invalid @enderror" id="division_reference_column" name="division_reference_column">
+                                        <option value="">Select Reference Column</option>
+                                        <option value="division_head" {{ old('division_reference_column', $definition->division_reference_column) == 'division_head' ? 'selected' : '' }}>Division Head</option>
+                                        <option value="finance_officer" {{ old('division_reference_column', $definition->division_reference_column) == 'finance_officer' ? 'selected' : '' }}>Finance Officer</option>
+                                        <option value="director_id" {{ old('division_reference_column', $definition->division_reference_column) == 'director_id' ? 'selected' : '' }}>Director</option>
+                                        <option value="focal_person" {{ old('division_reference_column', $definition->division_reference_column) == 'focal_person' ? 'selected' : '' }}>Focal Person</option>
+                                        <option value="admin_assistant" {{ old('division_reference_column', $definition->division_reference_column) == 'admin_assistant' ? 'selected' : '' }}>Admin Assistant</option>
+                                    </select>
+                                    @error('division_reference_column')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="text-muted">Column in divisions table to reference for division-specific approvers</small>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check form-switch mt-4">
@@ -121,7 +195,7 @@
                             </div>
 
                             <div class="row mb-3">
-                                <div class="col-md-12">
+                                <div class="col-md-6">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="is_division_specific" name="is_division_specific" 
                                             value="1" {{ old('is_division_specific', $definition->is_division_specific) ? 'checked' : '' }}>
@@ -130,6 +204,16 @@
                                         </label>
                                     </div>
                                     <small class="text-muted">Check if this definition is specific to a division</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="triggers_category_check" name="triggers_category_check" 
+                                            value="1" {{ old('triggers_category_check', $definition->triggers_category_check) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="triggers_category_check">
+                                            <i class="bx bx-check-circle me-1"></i>Triggers Category Check
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">Check if this definition triggers category-based routing</small>
                                 </div>
                             </div>
                         </div>
@@ -197,3 +281,25 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container {
+        width: 100% !important;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#divisions, #allowed_funders').select2({
+            placeholder: 'Select options',
+            allowClear: true,
+            width: '100%'
+        });
+    });
+</script>
+@endpush
