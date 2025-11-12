@@ -26,11 +26,11 @@ return new class extends Migration
             $table->integer('total_participants');
             $table->json('internal_participants');
             $table->json('budget_id');
-            $table->text('key_result_area');
+            $table->longText('key_result_area');
             $table->foreignId('request_type_id')->constrained();
             $table->string('activity_title');
-            $table->text('background');
-            $table->text('activity_request_remarks');
+            $table->longText('background');
+            $table->longText('activity_request_remarks');
             $table->boolean('is_sepecial_memo')->default();
             $table->json('budget');
             $table->json('attachment');
