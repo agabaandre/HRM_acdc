@@ -1663,7 +1663,7 @@ if (!function_exists('to_sentence_case')) {
         
         // Words to keep lowercase (conjunctions, prepositions, articles)
         $lowercase_words = [
-            'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'with', 'yet', 'nor', 'yet', 'for', 'and', 'or', 'but', 'so', 'yet'
+            'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'with', 'yet', 'nor'
         ];
         
         // Split into words
@@ -1685,5 +1685,141 @@ if (!function_exists('to_sentence_case')) {
         }
         
         return implode(' ', $result);
+    }
+}
+
+if (!function_exists('to_title_case')) {
+    /**
+     * Convert text to proper title case
+     * Capitalizes first letter of each word except for conjunctions, prepositions, and articles
+     * Always capitalizes the first and last word
+     */
+    function to_title_case($text) {
+        if (empty($text)) {
+            return $text;
+        }
+        
+        // Words to keep lowercase (conjunctions, prepositions, articles)
+        $lowercase_words = [
+            'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'with', 'yet', 'nor'
+        ];
+        
+        // Split into words
+        $words = explode(' ', trim($text));
+        $result = [];
+        $wordCount = count($words);
+        
+        foreach ($words as $index => $word) {
+            // Clean the word (remove punctuation for comparison)
+            $clean_word = preg_replace('/[^a-zA-Z]/', '', strtolower($word));
+            
+            // Always capitalize first and last word
+            $isFirst = ($index === 0);
+            $isLast = ($index === $wordCount - 1);
+            
+            // Keep lowercase for conjunctions/prepositions/articles (except first and last)
+            if (!$isFirst && !$isLast && in_array($clean_word, $lowercase_words)) {
+                $result[] = strtolower($word);
+            } 
+            // Capitalize all other words
+            else {
+                $result[] = ucfirst($word);
+            }
+        }
+        
+        return implode(' ', $result);
+    }
+}
+
+if (!function_exists('clean_unicode')) {
+    /**
+     * Remove hidden Unicode characters and control characters from text
+     * This includes zero-width spaces, directional marks, and other invisible characters
+     * 
+     * @param string $text The text to clean
+     * @return string The cleaned text
+     */
+    function clean_unicode($text) {
+        if (empty($text)) {
+            return $text;
+        }
+        
+        // Remove zero-width characters
+        $text = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}]/u', '', $text);
+        
+        // Remove left-to-right and right-to-left marks
+        $text = preg_replace('/[\x{200E}\x{200F}]/u', '', $text);
+        
+        // Remove zero-width joiner and non-joiner
+        $text = preg_replace('/[\x{200C}\x{200D}]/u', '', $text);
+        
+        // Remove other invisible Unicode characters (control characters)
+        $text = preg_replace('/[\x{0000}-\x{001F}\x{007F}-\x{009F}]/u', '', $text);
+        
+        // Remove other problematic Unicode ranges
+        $text = preg_replace('/[\x{2060}-\x{206F}]/u', '', $text); // Word joiner, invisible plus, etc.
+        $text = preg_replace('/[\x{202A}-\x{202E}]/u', '', $text); // Directional formatting
+        $text = preg_replace('/[\x{2066}-\x{2069}]/u', '', $text); // Directional isolates
+        
+        // Remove soft hyphen (optional, but often unwanted)
+        $text = preg_replace('/[\x{00AD}]/u', '', $text);
+        
+        return trim($text);
+    }
+}
+
+if (!function_exists('time_ago')) {
+    /**
+     * Get human-readable time difference from a timestamp
+     * 
+     * @param string|Carbon $timestamp The timestamp to compare
+     * @return string Human-readable time difference
+     */
+    function time_ago($timestamp) {
+        $time_ago = strtotime($timestamp);
+        $current_time = time();
+        $time_difference = $current_time - $time_ago;
+        $seconds = $time_difference;
+
+        $minutes = round($seconds / 60);           // value 60 is seconds
+        $hours = round($seconds / 3600);           //value 3600 is 60 minutes * 60 sec
+        $days = round($seconds / 86400);          //86400 = 24 * 60 * 60;
+        $weeks = round($seconds / 604800);          // 7*24*60*60;
+        $months = round($seconds / 2629440);     //((365+365+365+365+366)/5/12)*24*60*60
+        $years = round($seconds / 31553280);     //(365+365+365+365+366)/5 * 24 * 60 * 60
+
+        if ($seconds <= 60) {
+            return "Just now";
+        } else if ($minutes <= 60) {
+            if ($minutes == 1) {
+                return "1 " . "Minute" . " " . "ago";
+            } else {
+                return $minutes . " " . "Minutes" . " ago";
+            }
+        } else if ($hours <= 24) {
+            if ($hours == 1) {
+                return "1 " . "hour" . " " . "ago";
+            } else {
+                return $hours . " " . "hours" . " " . "ago";
+            }
+        } else if ($days <= 30) {
+            if ($days == 1) {
+                return "1 " . "day" . " " . "ago";
+            } else {
+                return $days . " " . "days" . " " . "ago";
+            }
+        } else if ($months <= 12) {
+            if ($months == 1) {
+                return "1 " . "month" . " " . "ago";
+            } else {
+                return $months . " " . "months" . " " . "ago";
+            }
+        } else {
+            if ($years == 1) {
+                return "1 " . "year" . " " . "ago";
+            } else {
+                return $years . " " . "years" . " " . "ago";
+            }
+        }
     }
 }

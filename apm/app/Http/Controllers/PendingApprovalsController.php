@@ -97,14 +97,25 @@ class PendingApprovalsController extends Controller
             ];
         }
         
-        // Requests (Service Request + ARF)
+        // Requests (Service Request + ARF + Change Request)
         $requestCount = (count($pendingApprovals['Service Request'] ?? []) + 
-                       count($pendingApprovals['ARF'] ?? []));
+                       count($pendingApprovals['ARF'] ?? []) +
+                       count($pendingApprovals['Change Request'] ?? []));
         if ($requestCount > 0) {
             $categories[] = [
                 'value' => 'requests',
                 'label' => 'Requests',
                 'count' => $requestCount
+            ];
+        }
+        
+        // Change Requests (standalone category)
+        $changeRequestCount = count($pendingApprovals['Change Request'] ?? []);
+        if ($changeRequestCount > 0) {
+            $categories[] = [
+                'value' => 'Change Request',
+                'label' => 'Change Requests',
+                'count' => $changeRequestCount
             ];
         }
         
@@ -130,7 +141,8 @@ class PendingApprovalsController extends Controller
             case 'requests':
                 return [
                     'Service Request' => $pendingApprovals['Service Request'] ?? [],
-                    'ARF' => $pendingApprovals['ARF'] ?? []
+                    'ARF' => $pendingApprovals['ARF'] ?? [],
+                    'Change Request' => $pendingApprovals['Change Request'] ?? []
                 ];
                 
             default:

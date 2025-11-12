@@ -173,6 +173,14 @@ class RequestARFController extends Controller
         
         $validated['attachment'] = $attachments;
         
+        // Clean Unicode characters from text fields
+        if (isset($validated['activity_title'])) {
+            $validated['activity_title'] = clean_unicode($validated['activity_title']);
+        }
+        if (isset($validated['purpose'])) {
+            $validated['purpose'] = clean_unicode($validated['purpose']);
+        }
+        
         // Set default status if not provided
         if (!isset($validated['status'])) {
             $validated['status'] = 'draft';
@@ -374,8 +382,8 @@ class RequestARFController extends Controller
                 'arf_number' => $arfNumber,
                 'request_date' => now()->toDateString(),
                 'division_id' => $this->getDivisionId($sourceData, $request->model_type),
-                'activity_title' => $request->title,
-                'purpose' => 'ARF Request for ' . ucfirst(str_replace('_', ' ', $request->source_type)) . ' #' . $request->source_id,
+                'activity_title' => clean_unicode($request->title),
+                'purpose' => clean_unicode('ARF Request for ' . ucfirst(str_replace('_', ' ', $request->source_type)) . ' #' . $request->source_id),
                 'start_date' => now()->toDateString(), // Not important for approval
                 'end_date' => now()->toDateString(), // Not important for approval
                 'requested_amount' => $request->total_budget, // Total amount from source
@@ -962,6 +970,14 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
         }
         
         $validated['attachment'] = $attachments;
+        
+        // Clean Unicode characters from text fields
+        if (isset($validated['activity_title'])) {
+            $validated['activity_title'] = clean_unicode($validated['activity_title']);
+        }
+        if (isset($validated['purpose'])) {
+            $validated['purpose'] = clean_unicode($validated['purpose']);
+        }
         
         // Set approval levels and overall status based on status
         if (isset($validated['status'])) {

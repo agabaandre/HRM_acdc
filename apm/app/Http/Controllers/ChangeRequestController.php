@@ -546,7 +546,7 @@ class ChangeRequestController extends Controller
                     'responsible_person_id' => $request->input('responsible_person_id'),
                     
                     // Content fields
-                    'supporting_reasons' => $request->input('supporting_reasons'),
+                    'supporting_reasons' => clean_unicode($request->input('supporting_reasons')),
                     'date_from' => $request->input('date_from', $parentMemo->date_from ?? now()->toDateString()),
                     'date_to' => $request->input('date_to', $parentMemo->date_to ?? now()->toDateString()),
                     'memo_date' => $request->input('memo_date', $parentMemo->memo_date ?? now()->toDateString()),
@@ -556,12 +556,12 @@ class ChangeRequestController extends Controller
                     'total_external_participants' => (int) $request->input('total_external_participants', 0),
                     'division_staff_request' => $parentMemo->division_staff_request ?? null,
                     'budget_id' => json_encode($budgetCodes),
-                    'key_result_area' => $request->input('key_result_area', $parentMemo->key_result_area ?? ''),
+                    'key_result_area' => clean_unicode($request->input('key_result_area', $parentMemo->key_result_area ?? '')),
                     'non_travel_memo_category_id' => $parentMemo->non_travel_memo_category_id ?? null,
                     'request_type_id' => (int) $request->input('request_type_id', $parentMemo->request_type_id ?? 1),
-                    'activity_title' => $request->input('activity_title'),
-                    'background' => $request->input('background', $parentMemo->background ?? ''),
-                    'activity_request_remarks' => $request->input('activity_request_remarks', $parentMemo->activity_request_remarks ?? ''),
+                    'activity_title' => clean_unicode($request->input('activity_title')),
+                    'background' => clean_unicode($request->input('background', $parentMemo->background ?? '')),
+                    'activity_request_remarks' => clean_unicode($request->input('activity_request_remarks', $parentMemo->activity_request_remarks ?? '')),
                     'is_single_memo' => $request->input('is_single_memo', $parentMemo->is_single_memo ?? false),
                     'budget_breakdown' => json_encode($budgetItems),
                     'available_budget' => $totalBudget,
@@ -1280,6 +1280,232 @@ class ChangeRequestController extends Controller
 
             return redirect()->back()->with([
                 'msg' => $message,
+                'type' => 'error'
+            ]);
+        }
+    }
+
+    /**
+     * Update change request approval status.
+     */
+    public function updateStatus(Request $request, ChangeRequest $changeRequest): RedirectResponse
+    {
+        $request->validate([
+            'action' => 'required|in:approved,rejected,returned,cancelled',
+            'comment' => 'nullable|string|max:1000',
+            'available_budget' => 'nullable|numeric|min:0'
+        ]);
+
+        // Use the generic approval system
+        $genericController = app(\App\Http\Controllers\GenericApprovalController::class);
+        return $genericController->updateStatus($request, 'ChangeRequest', $changeRequest->id);
+    }
+
+    /**
+     * Submit change request for approval with workflow assignment based on change type.
+     */
+    public function submitForApproval(ChangeRequest $changeRequest): RedirectResponse
+    {
+        // Check if change request is in draft or returned status
+        if (!in_array($changeRequest->overall_status, ['draft', 'returned'])) {
+            return redirect()->back()->with([
+                'msg' => 'Only draft or returned change requests can be submitted for approval.',
+                'type' => 'error'
+            ]);
+        }
+
+        // Check if user is authorized to submit
+        $userStaffId = user_session('staff_id');
+        $isOwner = $changeRequest->staff_id == $userStaffId;
+        $isDivisionHead = $changeRequest->division && $changeRequest->division->division_head == $userStaffId;
+        
+        if (!$isOwner && !$isDivisionHead) {
+            return redirect()->back()->with([
+                'msg' => 'You are not authorized to submit this change request.',
+                'type' => 'error'
+            ]);
+        }
+
+        try {
+            // Determine workflow ID based on change type
+            $workflowId = $this->determineWorkflowId($changeRequest);
+            
+            // Update change request status and workflow
+            $changeRequest->update([
+                'overall_status' => 'pending',
+                'approval_level' => 1,
+                'next_approval_level' => 2,
+                'forward_workflow_id' => $workflowId,
+            ]);
+
+            // Save approval trail
+            if (method_exists($changeRequest, 'saveApprovalTrail')) {
+                $changeRequest->saveApprovalTrail('Submitted for approval', 'submitted');
+            }
+
+            // Send notification
+            if (function_exists('send_generic_email_notification')) {
+                send_generic_email_notification($changeRequest, 'approval');
+            }
+
+            return redirect()->back()->with([
+                'msg' => 'Change request submitted for approval successfully.',
+                'type' => 'success'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error submitting change request for approval', [
+                'change_request_id' => $changeRequest->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with([
+                'msg' => 'Failed to submit change request: ' . $e->getMessage(),
+                'type' => 'error'
+            ]);
+        }
+    }
+
+    /**
+     * Determine workflow ID based on change type.
+     * 
+     * Rules:
+     * - Budget changes → workflow_id = 1
+     * - Date change only (same quarter) → workflow_id = 6
+     * - Date change (different quarter) OR/AND participant replacement → workflow_id = 7
+     */
+    private function determineWorkflowId(ChangeRequest $changeRequest): int
+    {
+        // Check for budget changes
+        $hasBudgetChanges = $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
+        if ($hasBudgetChanges) {
+            return 1;
+        }
+
+        // Check for participant changes
+        $hasParticipantChanges = $changeRequest->has_internal_participants_changed || 
+                                $changeRequest->has_number_of_participants_changed || 
+                                $changeRequest->has_participant_days_changed || 
+                                $changeRequest->has_total_external_participants_changed;
+
+        // Check for date changes
+        $hasDateChanges = $changeRequest->has_memo_date_changed;
+        $dateStayedInQuarter = $changeRequest->has_date_stayed_quarter;
+
+        // Date change only (same quarter) → workflow_id = 6
+        if ($hasDateChanges && $dateStayedInQuarter && !$hasParticipantChanges) {
+            return 6;
+        }
+
+        // Date change (different quarter) OR/AND participant replacement → workflow_id = 7
+        if (($hasDateChanges && !$dateStayedInQuarter) || $hasParticipantChanges) {
+            return 7;
+        }
+
+        // Default workflow (for other changes)
+        return 1;
+    }
+
+    /**
+     * Resubmit a returned change request for approval.
+     */
+    public function resubmit(Request $request, ChangeRequest $changeRequest): RedirectResponse
+    {
+        $request->validate([
+            'comment' => 'nullable|string|max:1000'
+        ]);
+
+        // Check if the change request is in the correct status for resubmission
+        if (!in_array($changeRequest->overall_status, ['returned', 'pending'])) {
+            return redirect()->back()->with([
+                'msg' => 'Only returned or pending change requests can be resubmitted.',
+                'type' => 'error'
+            ]);
+        }
+
+        // Check authorization - division head or owner
+        $userStaffId = user_session('staff_id');
+        $isDivisionHead = $changeRequest->division && $changeRequest->division->division_head == $userStaffId;
+        $isOwner = $changeRequest->staff_id == $userStaffId;
+        
+        if (!$isDivisionHead && !$isOwner) {
+            return redirect()->back()->with([
+                'msg' => 'You are not authorized to resubmit this change request.',
+                'type' => 'error'
+            ]);
+        }
+
+        // Check if change request is at the correct level for resubmission (0 or 1)
+        if ($changeRequest->approval_level > 1) {
+            return redirect()->back()->with([
+                'msg' => 'Change request must be at the correct level to be resubmitted.',
+                'type' => 'error'
+            ]);
+        }
+
+        try {
+            // Handle resubmission based on current level
+            if ($changeRequest->approval_level == 0) {
+                // Change request was returned to creator - resubmit to first approver (level 1)
+                $changeRequest->approval_level = 1;
+                $changeRequest->next_approval_level = 2;
+                // Keep the existing workflow ID
+                if (!$changeRequest->forward_workflow_id) {
+                    $changeRequest->forward_workflow_id = $this->determineWorkflowId($changeRequest);
+                }
+                $changeRequest->overall_status = 'pending';
+                $changeRequest->save();
+            } else {
+                // Change request was returned by an approver - resubmit to that approver
+                $lastApprovalTrail = \App\Models\ApprovalTrail::where('model_id', $changeRequest->id)
+                    ->where('model_type', 'App\\Models\\ChangeRequest')
+                    ->where('action', 'returned')
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+
+                if (!$lastApprovalTrail) {
+                    return redirect()->back()->with([
+                        'msg' => 'Could not find the approver who returned this change request.',
+                        'type' => 'error'
+                    ]);
+                }
+
+                // Set the change request back to the approver who returned it
+                $changeRequest->approval_level = $lastApprovalTrail->approval_order;
+                $changeRequest->next_approval_level = $lastApprovalTrail->approval_order + 1;
+                if ($lastApprovalTrail->forward_workflow_id) {
+                    $changeRequest->forward_workflow_id = $lastApprovalTrail->forward_workflow_id;
+                }
+                $changeRequest->overall_status = 'pending';
+                $changeRequest->save();
+            }
+
+            // Create a new approval trail for the resubmission
+            $comment = $request->input('comment', 'Resubmitted for approval');
+            if (method_exists($changeRequest, 'saveApprovalTrail')) {
+                $changeRequest->saveApprovalTrail($comment, 'submitted');
+            }
+
+            // Send notification
+            if (function_exists('send_generic_email_notification')) {
+                send_generic_email_notification($changeRequest, 'approval');
+            }
+
+            return redirect()->back()->with([
+                'msg' => 'Change request resubmitted for approval successfully.',
+                'type' => 'success'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error resubmitting change request', [
+                'change_request_id' => $changeRequest->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with([
+                'msg' => 'Failed to resubmit change request: ' . $e->getMessage(),
                 'type' => 'error'
             ]);
         }

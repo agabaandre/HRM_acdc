@@ -68,8 +68,11 @@ class WorkflowController extends Controller
         $workflowDefinitions = $workflow->workflowDefinitions()
             ->orderBy('approval_order')
             ->get();
+        
+        // Load divisions for display
+        $divisions = \App\Models\Division::orderBy('division_name')->get()->keyBy('id');
 
-        return view('workflows.show', compact('workflow', 'workflowDefinitions'));
+        return view('workflows.show', compact('workflow', 'workflowDefinitions', 'divisions'));
     }
 
     /**
@@ -155,7 +158,11 @@ class WorkflowController extends Controller
      */
     public function addDefinition(Workflow $workflow)
     {
-        return view('workflows.add_definition', compact('workflow'));
+        $divisions = \App\Models\Division::orderBy('division_name')->get();
+        $fundTypes = \App\Models\FundType::orderBy('name')->get();
+        $funders = \App\Models\Funder::where('is_active', true)->orderBy('name')->get();
+        
+        return view('workflows.add_definition', compact('workflow', 'divisions', 'fundTypes', 'funders'));
     }
 
     /**
@@ -237,11 +244,37 @@ class WorkflowController extends Controller
             'role' => 'required|string|max:100',
             'approval_order' => 'required|integer|min:1',
             'is_enabled' => 'boolean',
+            'is_division_specific' => 'boolean',
+            'fund_type' => 'nullable|integer|exists:fund_types,id',
+            'memo_print_section' => 'nullable|string|in:from,to,through,others',
+            'print_order' => 'nullable|integer|min:1',
+            'category' => 'nullable|string|max:20',
+            'division_reference_column' => 'nullable|string|max:20',
+            'triggers_category_check' => 'boolean',
+            'divisions' => 'nullable|array',
+            'divisions.*' => 'integer|exists:divisions,id',
+            'allowed_funders' => 'nullable|array',
+            'allowed_funders.*' => 'integer|exists:funders,id',
         ]);
 
-        // Set default value for is_enabled if not provided
+        // Set default values for checkboxes if not provided
         $validated['is_enabled'] = $request->has('is_enabled') ? 1 : 0;
+        $validated['is_division_specific'] = $request->has('is_division_specific') ? 1 : 0;
+        $validated['triggers_category_check'] = $request->has('triggers_category_check') ? 1 : 0;
         $validated['workflow_id'] = $workflow->id;
+        
+        // Set default memo_print_section if not provided
+        if (!isset($validated['memo_print_section'])) {
+            $validated['memo_print_section'] = 'through';
+        }
+        
+        // Convert arrays to JSON for storage
+        if (isset($validated['divisions'])) {
+            $validated['divisions'] = json_encode($validated['divisions']);
+        }
+        if (isset($validated['allowed_funders'])) {
+            $validated['allowed_funders'] = json_encode($validated['allowed_funders']);
+        }
 
         WorkflowDefinition::create($validated);
 
@@ -258,7 +291,11 @@ class WorkflowController extends Controller
      */
     public function editDefinition(Workflow $workflow, WorkflowDefinition $definition)
     {
-        return view('workflows.edit_definition', compact('workflow', 'definition'));
+        $divisions = \App\Models\Division::orderBy('division_name')->get();
+        $fundTypes = \App\Models\FundType::orderBy('name')->get();
+        $funders = \App\Models\Funder::where('is_active', true)->orderBy('name')->get();
+        
+        return view('workflows.edit_definition', compact('workflow', 'definition', 'divisions', 'fundTypes', 'funders'));
     }
 
     /**
@@ -276,14 +313,39 @@ class WorkflowController extends Controller
             'approval_order' => 'required|integer|min:1',
             'is_enabled' => 'boolean',
             'is_division_specific' => 'boolean',
-            'fund_type' => 'nullable|string|in:intramural,extramural,both',
-            'memo_print_section' => 'nullable|string|in:through,to,from',
+            'fund_type' => 'nullable|integer|exists:fund_types,id',
+            'memo_print_section' => 'nullable|string|in:from,to,through,others',
             'print_order' => 'nullable|integer|min:1',
+            'category' => 'nullable|string|max:20',
+            'division_reference_column' => 'nullable|string|max:20',
+            'triggers_category_check' => 'boolean',
+            'divisions' => 'nullable|array',
+            'divisions.*' => 'integer|exists:divisions,id',
+            'allowed_funders' => 'nullable|array',
+            'allowed_funders.*' => 'integer|exists:funders,id',
         ]);
 
         // Set default values for checkboxes if not provided
         $validated['is_enabled'] = $request->has('is_enabled') ? 1 : 0;
         $validated['is_division_specific'] = $request->has('is_division_specific') ? 1 : 0;
+        $validated['triggers_category_check'] = $request->has('triggers_category_check') ? 1 : 0;
+        
+        // Set default memo_print_section if not provided
+        if (!isset($validated['memo_print_section'])) {
+            $validated['memo_print_section'] = 'through';
+        }
+        
+        // Convert arrays to JSON for storage
+        if (isset($validated['divisions'])) {
+            $validated['divisions'] = json_encode($validated['divisions']);
+        } else {
+            $validated['divisions'] = null;
+        }
+        if (isset($validated['allowed_funders'])) {
+            $validated['allowed_funders'] = json_encode($validated['allowed_funders']);
+        } else {
+            $validated['allowed_funders'] = null;
+        }
 
         $definition->update($validated);
 

@@ -205,10 +205,10 @@
     <div class="col-lg-3 col-md-6 col-sm-6">
         <div class="stat-item requests">
             <i class="fas fa-cogs stat-icon"></i>
-            <span class="stat-number-circle">{{ ($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0) }}</span>
+            <span class="stat-number-circle">{{ ($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0) + ($summaryStats['by_category']['Change Request'] ?? 0) }}</span>
             <span class="stat-label">Requests</span>
             <div class="stat-progress">
-                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? ((($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0)) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
+                <div class="stat-progress-bar" style="width: {{ $summaryStats['total_pending'] > 0 ? ((($summaryStats['by_category']['Service Request'] ?? 0) + ($summaryStats['by_category']['ARF'] ?? 0) + ($summaryStats['by_category']['Change Request'] ?? 0)) / $summaryStats['total_pending']) * 100 : 0 }}%"></div>
             </div>
         </div>
     </div>
@@ -261,24 +261,28 @@
                     <table class="table table-hover mb-0" style="table-layout: fixed; width: 100%;">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 269px; max-width: 269px;">Title</th>
-                                <th style="width: 171px;">Division</th>
+                                <th style="width: 50px;">#</th>
+                                <th style="width: 250px; max-width: 250px;">Title</th>
+                                <th style="width: 171px; max-width: 171px;">Division</th>
                                 <th style="width: 144px;">Submitted By</th>
                                 <th style="width: 120px;">Date Received</th>
                                 <th style="width: 100px;">Current Level</th>
-                                <th style="width: 120px;">Workflow Role</th>
+                                <th style="width: 120px; max-width: 120px;">Workflow Role</th>
                                 <th style="width: 100px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($items as $item)
+                            @foreach($items as $index => $item)
                                 <tr data-item-id="{{ $item['item_id'] }}" data-item-type="{{ $item['item_type'] }}">
-                                    <td style="max-width: 269px; width: 269px; word-wrap: break-word; white-space: normal;">
-                                        <div class="fw-semibold" style="word-wrap: break-word; word-break: break-word; max-width: 269px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ $item['title'] }}</div>
+                                    <td style="width: 50px; text-align: center;">
+                                        <strong>{{ $loop->iteration }}</strong>
+                                    </td>
+                                    <td style="max-width: 250px; width: 250px; word-wrap: break-word; white-space: normal;">
+                                        <div class="fw-semibold" style="word-wrap: break-word; word-break: break-word; max-width: 250px; line-height: 1.3; white-space: normal; overflow-wrap: break-word;">{{ to_title_case($item['title']) }}</div>
                                         <small class="text-muted">{{ $item['category'] }}</small>
                                     </td>
-                                    <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">
-                                        <span class="badge bg-secondary">{{ $item['division'] }}</span>
+                                    <td style="max-width: 171px; width: 171px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
+                                        <span class="badge bg-secondary" style="word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word; max-width: 100%; display: inline-block;">{{ $item['division'] }}</span>
                                     </td>
                                     <td style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;">{{ $item['submitted_by'] }}</td>
                                     <td>
@@ -288,8 +292,8 @@
                                     <td>
                                         <span class="badge bg-info">Level {{ $item['approval_level'] }}</span>
                                     </td>
-                                    <td>
-                                        <span class="badge bg-warning">{{ $item['workflow_role'] }}</span>
+                                    <td style="max-width: 120px; width: 120px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
+                                        <span class="badge bg-warning" style="word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word; max-width: 100%; display: inline-block;">{{ $item['workflow_role'] }}</span>
                                     </td>
                                     <td>
                                         <a href="{{ $item['view_url'] }}" class="btn btn-sm btn-outline-primary" target="_blank">

@@ -10,6 +10,14 @@
     $hasBudgetChanges = $changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed;
     $titlePrefix = $hasBudgetChanges ? 'Addendum' : 'Change Request';
 @endphp
+
+@if(session('msg'))
+    <div class="alert alert-{{ session('type') === 'error' ? 'danger' : (session('type') === 'success' ? 'success' : 'info') }} alert-dismissible fade show" role="alert">
+        {{ session('msg') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
 <div class="card shadow-sm border-0">
     <div class="card-header  text-dark">
         <h5 class="mb-0 text-dark">
@@ -557,6 +565,14 @@
                                                     if (!is_array($currentParticipants)) {
                                                         $currentParticipants = [];
                                                     }
+                                                    
+                                                    // Build a map of original participants for comparison
+                                                    $originalParticipantMap = [];
+                                                    foreach ($parentParticipants as $key => $details) {
+                                                        $originalParticipantMap[$key] = [
+                                                            'days' => $details['participant_days'] ?? 0,
+                                                        ];
+                                                    }
                                                 @endphp
                                                 
                                                 @if(is_array($currentParticipants) && count($currentParticipants) > 0)
@@ -589,8 +605,23 @@
                                                                         $internationalTravel = $details['international_travel'] ?? 0;
                                                                         // Convert to integer and check if it equals 1
                                                                         $hasInternationalTravel = (intval($internationalTravel) === 1);
+                                                                        
+                                                                        // Check if this participant should be highlighted
+                                                                        $shouldHighlight = false;
+                                                                        $currentDays = (int)($details['participant_days'] ?? 0);
+                                                                        
+                                                                        // Check if it's a new participant (not in original)
+                                                                        if (!isset($originalParticipantMap[$key])) {
+                                                                            $shouldHighlight = true;
+                                                                        } else {
+                                                                            // Check if days have changed
+                                                                            $originalDays = (int)($originalParticipantMap[$key]['days'] ?? 0);
+                                                                            if ($currentDays != $originalDays) {
+                                                                                $shouldHighlight = true;
+                                                                            }
+                                                                        }
                                                                     @endphp
-                                                                    <tr>
+                                                                    <tr @if($shouldHighlight) style="background-color: #ffe6e6;" @endif>
                                                                         <td>{{ $staffName }}</td>
                                                                         <td class="text-end">{{ $details['participant_days'] ?? 'N/A' }}</td>
                                                                         <td class="text-center">
@@ -798,11 +829,11 @@
                                         <div class="row">
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
-                                                <div class="text-danger">{{ $parentMemo->activity_request_remarks ?? 'N/A' }}</div>
+                                                <div class="text-danger">{!! $parentMemo->activity_request_remarks ?? 'N/A' !!}</div>
                                             </div>
                                             <div class="col-6">
                                                 <small class="text-muted">Changed to:</small>
-                                                <div class="text-success">{{ $changeRequest->activity_request_remarks ?? 'N/A' }}</div>
+                                                <div class="text-success">{!! $changeRequest->activity_request_remarks ?? 'N/A' !!}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -895,6 +926,22 @@
                                                     }
                                                     $currentTotal = $currentBudgetBreakdown['grand_total'] ?? 0;
                                                     unset($currentBudgetBreakdown['grand_total']);
+                                                    
+                                                    // Build a map of original budget items for comparison
+                                                    // Key: fundCodeId_itemName, Value: amount
+                                                    $originalBudgetMap = [];
+                                                    foreach ($parentBudgetBreakdown as $fundCodeId => $items) {
+                                                        if (is_array($items)) {
+                                                            foreach ($items as $item) {
+                                                                $itemName = $item['cost'] ?? $item['description'] ?? '';
+                                                                $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
+                                                                $units = $item['units'] ?? $item['days'] ?? 1;
+                                                                $amount = $cost * $units;
+                                                                $key = $fundCodeId . '_' . $itemName;
+                                                                $originalBudgetMap[$key] = $amount;
+                                                            }
+                                                        }
+                                                    }
                                                 @endphp
                                                 
                                                 @if(count($currentBudgetBreakdown) > 0)
@@ -913,19 +960,35 @@
                                                                         @foreach($items as $item)
                                                                             @php
                                                                                 $fundCode = \App\Models\FundCode::find($fundCodeId);
+                                                                                $itemName = $item['cost'] ?? $item['description'] ?? '';
                                                                                 $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
                                                                                 $units = $item['units'] ?? $item['days'] ?? 1;
                                                                                 $total = $cost * $units;
+                                                                                
+                                                                                // Check if this budget item should be highlighted
+                                                                                $shouldHighlight = false;
+                                                                                $key = $fundCodeId . '_' . $itemName;
+                                                                                
+                                                                                // Check if it's a new item (not in original)
+                                                                                if (!isset($originalBudgetMap[$key])) {
+                                                                                    $shouldHighlight = true;
+                                                                                } else {
+                                                                                    // Check if amount has changed (with small tolerance for floating point)
+                                                                                    $originalAmount = $originalBudgetMap[$key];
+                                                                                    if (abs($total - $originalAmount) > 0.01) {
+                                                                                        $shouldHighlight = true;
+                                                                                    }
+                                                                                }
                                                                             @endphp
-                                                                            <tr>
+                                                                            <tr @if($shouldHighlight) style="background-color: #ffe6e6;" @endif>
                                                                                 <td>{{ $fundCode->code ?? 'N/A' }}</td>
-                                                                                <td>{{ $item['cost'] ?? $item['description'] ?? 'N/A' }}</td>
+                                                                                <td>{{ $itemName ?: 'N/A' }}</td>
                                                                                 <td class="text-end">{{ number_format($total, 2) }}</td>
                                                                             </tr>
                                                                         @endforeach
                                                                     @endif
                                                                 @endforeach
-                                                                <tr class="table-success">
+                                                                <tr style="background-color: #d4edda;">
                                                                     <th colspan="2" class="text-end">Total:</th>
                                                                     <th class="text-end">{{ number_format($currentTotal, 2) }}</th>
                                                                 </tr>
@@ -945,6 +1008,293 @@
                 </div>
             </div>
         @endif
+
+
+                    <div class="col-lg-12">
+                <!-- Enhanced Memo Information Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bx bx-info-circle me-2 text-success"></i>Approval Information
+                        </h6>
+                </div>
+                    <div class="card-body">
+
+                        @if($changeRequest->overall_status !== 'approved')
+                            <div class="mt-3 p-3"
+                                style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 0.5rem; border: 1px solid #bbf7d0;">
+                                
+                                <!-- Compact Approval Info Row -->
+                                <div class="row g-3">
+                                    <!-- Status -->
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="p-2" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                                                <i class="bx bx-badge-check text-white"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold text-dark small">Status</div>
+                                                <div class="fw-bold text-purple">{{ ucfirst($changeRequest->overall_status ?? 'draft') }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Current Approver -->
+                                    @if($changeRequest->overall_status !== 'draft' && $changeRequest->current_actor)
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="p-2" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                                                <i class="bx bx-user text-white"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold text-dark small">Current Approver</div>
+                                                <div class="fw-bold text-info">{{ $changeRequest->current_actor->fname . ' ' . $changeRequest->current_actor->lname }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
+
+                                    <!-- Approval Role -->
+                                    @if($changeRequest->workflow_definition)
+                                    <div class="col-md-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="p-2" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                                                <i class="bx bx-crown text-white"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold text-dark small">Approval Role</div>
+                                                <div class="fw-bold text-orange">{{ $changeRequest->workflow_definition->role ?? 'Not specified' }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                <!-- Additional Info (if needed) -->
+                                @if($changeRequest->overall_status === 'pending')
+                                <div class="mt-3 p-2 bg-info bg-opacity-10 rounded">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bx bx-info-circle text-info"></i>
+                                        <span class="text-info fw-medium small">This change request is currently awaiting approval from the supervisor above.</span>
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Enhanced Approval Actions -->
+                @if(can_take_action_generic($changeRequest) || (is_with_creator_generic($changeRequest) && $changeRequest->overall_status != 'draft') || (isdivision_head($changeRequest) && $changeRequest->overall_status == 'returned'))
+                    <div class="card border-0 shadow-lg mt-4" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                        <div class="card-header bg-transparent border-0 py-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px 12px 0 0;">
+                            <h6 class="mb-0 fw-bold text-gray-800 d-flex align-items-center gap-2" style="color: #1f2937;">
+                                <i class="bx bx-check-circle" style="color: #059669;"></i>
+                                Approval Actions - Level {{ $changeRequest->approval_level ?? 0 }}
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info mb-3">
+                                <i class="bx bx-info-circle me-2"></i>
+                                            <strong>Current Level:</strong> {{ $changeRequest->approval_level ?? 0 }}
+                                @if ($changeRequest->workflow_definition)
+                                    - <strong>Role:</strong>
+                                    {{ $changeRequest->workflow_definition->role ?? 'Not specified' }}
+                                @endif
+                            </div>
+                            
+                            <form action="{{ route('change-requests.update-status', $changeRequest) }}" method="POST" id="approvalForm">
+                                @csrf
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="remarks" class="form-label fw-semibold">
+                                                <i class="bx bx-message-square-detail me-1"></i>Comments
+                                            </label>
+                                            <textarea class="form-control" id="remarks" name="remarks" rows="3"
+                                                placeholder="Add your comments here..."></textarea>
+                                        </div>
+                                        @if($changeRequest->approval_level=='5')
+                                        <div class="mb-3">
+                                            <label for="available_budget" class="form-label">Available Budget <span class="text-danger">*</span></label>
+                                            <input type="number" name="available_budget" class="form-control" placeholder="Available Budget" required>
+                                        </div>
+                                        @endif
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-grid gap-2 mt-4">
+                                            @php
+                                                $isHOD = isdivision_head($changeRequest);
+                                                $isReturnedToHOD = $isHOD && $changeRequest->overall_status == 'returned' && $changeRequest->approval_level == 1;
+                                                $isPendingAtHOD = $isHOD && $changeRequest->overall_status == 'pending' && $changeRequest->approval_level == 1;
+                                            @endphp
+                                            
+                                            {{-- Show Approve button only if not returned to HOD --}}
+                                            @if(!$isReturnedToHOD)
+                                                <button type="submit" name="action" value="approved" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-1">
+                                                    <i class="bx bx-check"></i>
+                                                    Approve
+                                                </button>
+                                            @endif
+                                            
+                                            {{-- Always show Return button --}}
+                                            <button type="submit" name="action" value="returned" class="btn btn-warning w-100 d-flex align-items-center justify-content-center gap-1">
+                                                <i class="bx bx-undo"></i>
+                                                Return
+                                            </button>
+                                            
+                                            {{-- Show Cancel button only for HOD at level 1 --}}
+                                            @if($isHOD && $changeRequest->approval_level == 1)
+                                                <button type="submit" name="action" value="cancelled" class="btn btn-danger w-100 d-flex align-items-center justify-content-center gap-2">
+                                                    <i class="bx bx-x"></i>
+                                                    Cancel
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Submit for Approval Section -->
+                @if($changeRequest->overall_status === 'draft' && ($changeRequest->staff_id == user_session('staff_id') || ($changeRequest->division && $changeRequest->division->division_head == user_session('staff_id'))))
+                    <div class="card sidebar-card border-0 mt-4"
+                        style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-send"></i>
+                                Submit for Approval
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">Ready to submit this change request for approval?</p>
+                            <form action="{{ route('change-requests.submit-for-approval', $changeRequest) }}" method="POST">
+                                @csrf
+                                <button type="submit"
+                                    class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;">
+                                    <i class="bx bx-send"></i>
+                                    <span>Submit for Approval</span>
+                                </button>
+                            </form>
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <small class="text-muted">
+                                    <i class="bx bx-info-circle me-1"></i>
+                                    <strong>Note:</strong> Once submitted, you won't be able to edit this change request until
+                                    it's returned for revision.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+            </div> 
+            <!-- End container-fluid -->
+
+            <div class="col-lg-12">
+                <!-- Resubmission Section for HODs when returned -->
+                @if(($changeRequest->overall_status === 'returned' || $changeRequest->overall_status === 'pending') && isdivision_head($changeRequest) && $changeRequest->approval_level <= 1)
+                    <div class="card sidebar-card border-0 mb-4"
+                        style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                                <i class="bx bx-undo"></i>
+                                Resubmit for Approval
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                                            <p class="text-muted mb-3">This change request was returned for revision. Ready to resubmit?</p>
+                            <button type="button" class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2" 
+                                    data-bs-toggle="modal" data-bs-target="#resubmitModal" style="white-space: nowrap;">
+                                <i class="bx bx-undo"></i>
+                                <span>Resubmit for Approval</span>
+                            </button>
+                            <div class="mt-3 p-3 bg-light rounded">
+                                <small class="text-muted">
+                                    <i class="bx bx-info-circle me-1"></i>
+                                    <strong>Note:</strong> This will resubmit the change request to the approver who returned it.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Approval Trail Section -->
+            
+                @if(isset($changeRequest->approvalTrails) && $changeRequest->approvalTrails->count() > 0)
+                    @include('partials.approval-trail', ['resource' => $changeRequest])
+                @else
+                    <div class="card sidebar-card border-0 mb-4">
+                        <div class="card-header bg-transparent border-0 py-3">
+                            <h6 class="mb-0 fw-bold text-warning d-flex align-items-center gap-2">
+                                <i class="bx bx-history"></i>
+                                Approval Trail
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center text-muted py-4">
+                                <i class="bx bx-time bx-lg mb-3"></i>
+                                <p class="mb-0">No approval actions have been taken yet.</p>
+                                @if($changeRequest->overall_status === 'draft')
+                                    <small>Submit this change request for approval to start the approval trail.</small>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal for preview --}}
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="previewModalLabel">Attachment Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="previewModalBody" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+        <div class="text-center w-100">Loading preview...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- Resubmit Modal --}}
+<div class="modal fade" id="resubmitModal" tabindex="-1" aria-labelledby="resubmitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resubmitModalLabel">Resubmit for Approval</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('change-requests.resubmit', $changeRequest) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                                <strong>Note:</strong> This will resubmit the change request to the approver who returned it for revision.
+                    </div>
+                    <div class="mb-3">
+                        <label for="resubmitComment" class="form-label">Comments (Optional)</label>
+                        <textarea class="form-control" id="resubmitComment" name="comment" rows="3" 
+                                  placeholder="Add any comments about the changes made..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bx bx-undo me-1"></i>Resubmit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 
 
         <div class="mt-4">

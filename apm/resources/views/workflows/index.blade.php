@@ -46,8 +46,8 @@
                 <thead class="table-light">
                     <tr>
                         <th width="60">#</th>
-                        <th>Name</th>
-                        <th>Description</th>
+                        <th style="max-width: 200px;">Name</th>
+                        <th style="max-width: 400px;">Description</th>
                         <th width="100">Status</th>
                         <th width="150" class="text-end">Actions</th>
                     </tr>
@@ -56,13 +56,11 @@
                     @forelse($workflows as $workflow)
                         <tr>
                             <td class="fw-bold text-muted">{{ $workflow->id }}</td>
-                            <td>
-                                <div class="fw-semibold text-dark">{{ $workflow->workflow_name }}</div>
+                            <td style="max-width: 200px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
+                                <div class="fw-semibold text-dark" style="word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">{{ $workflow->workflow_name }}</div>
                             </td>
-                            <td>
-                                <div class="text-muted" style="max-width: 300px;">
-                                    {{ Str::limit($workflow->Description, 80) }}
-                                </div>
+                            <td style="max-width: 400px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
+                                <div class="text-muted" style="word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">{{ $workflow->Description }}</div>
                             </td>
                             <td>
                                 @if($workflow->is_active)

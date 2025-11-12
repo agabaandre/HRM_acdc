@@ -43,7 +43,7 @@ class SyncStaffCommand extends Command
 
             // Get dynamic API URL using BASE_URL
             $apiBaseUrl = config('services.staff_api.base_url');
-            $apiToken = config('services.staff_api.token', 'YWZyY2FjZGNzdGFmZnRyYWNrZXI');
+            $apiToken = config('services.staff_api.token');
             $apiEndpoint = config('services.staff_api.endpoints.staff', '/staff/share/get_current_staff');
             $apiUrl = rtrim($apiBaseUrl, '/') . $apiEndpoint . '/' . $apiToken;
             
@@ -234,7 +234,7 @@ class SyncStaffCommand extends Command
             $this->line("Skipped: $skipped");
             
             if ($skipped > 0) {
-                $this->warn("\n⚠️  SKIPPED RECORDS:");
+                $this->warn("\n WARNING: SKIPPED RECORDS:");
                 foreach (array_slice($skippedReasons, 0, 10) as $reason) {
                     $this->warn("  • {$reason}");
                 }
@@ -244,10 +244,10 @@ class SyncStaffCommand extends Command
             }
             
             if ($sourceCount !== $finalDbCount) {
-                $this->warn("\n⚠️  WARNING: Source count ({$sourceCount}) does not match database count ({$finalDbCount})");
+                $this->warn("\n WARNING: Source count ({$sourceCount}) does not match database count ({$finalDbCount})");
                 $this->warn("  This is likely due to skipped records. Check the reasons above.");
             } else {
-                $this->info("\n✅ SUCCESS: Source count matches database count");
+                $this->info("\n SUCCESS: Source count matches database count");
             }
             
             $this->info(str_repeat('=', 50));

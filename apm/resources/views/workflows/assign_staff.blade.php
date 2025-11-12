@@ -44,7 +44,10 @@
             </div>
 
             @php
-                $divisionManagedDefinitions = $workflowDefinitions->where('is_division_specific', 1);
+                // Auto-managed levels are identified by having division_reference_column set
+                $divisionManagedDefinitions = $workflowDefinitions->filter(function($def) {
+                    return !empty($def->division_reference_column);
+                });
             @endphp
             
             @if($divisionManagedDefinitions->count() > 0)
@@ -65,12 +68,15 @@
                                 <div class="d-flex align-items-center">
                                     <span class="badge bg-secondary me-2">Level {{ $def->approval_order }}</span>
                                     <span class="small fw-semibold">{{ $def->role }}</span>
+                                    @if($def->division_reference_column)
+                                        <span class="badge bg-info ms-2">{{ $def->division_reference_column }}</span>
+                                    @endif
                                 </div>
                             </div>
                             @endforeach
                         </div>
                         <p class="mb-0 small text-muted mt-2">
-                            <i class="bx bx-info-circle me-1"></i>These roles are managed at the division level and automatically assigned based on division structure.
+                            <i class="bx bx-info-circle me-1"></i>These roles are managed at the division level and automatically assigned based on division structure using the division reference column.
                         </p>
                     </div>
                 </div>
@@ -79,8 +85,9 @@
 
             @foreach($workflowDefinitions as $definition)
                 @php
-                    // Check if this is a division-managed level using database column
-                    $isDivisionManaged = $definition->is_division_specific == 1;
+                    // Auto-managed levels are identified by having division_reference_column set (not null/empty)
+                    // This ensures uniformity across all workflows based on approval_order with division_reference_column
+                    $isDivisionManaged = !empty($definition->division_reference_column);
                 @endphp
                 <div class="card border-0 shadow-sm mb-4 workflow-level-card {{ $isDivisionManaged ? 'border-warning division-managed-card' : '' }}">
                     <div class="card-header {{ $isDivisionManaged ? 'bg-warning bg-opacity-10 border-warning' : 'bg-white border-bottom' }}">
