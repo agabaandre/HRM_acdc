@@ -179,7 +179,7 @@ class Staff_mdl extends CI_Model
 			s.initiation_date, sc.status_id, sc.start_date,sc.end_date, st.status, sc.duty_station_id, sc.contract_type_id,
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
 			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.photo,s.signature,
-			s.private_email, s.physical_location
+			s.private_email, s.physical_location,s.created_at staff_created_at,updated_at staff_updated_at, sc.created_at contract_created_at
 		');
 		
 		$this->db->from('staff s');
