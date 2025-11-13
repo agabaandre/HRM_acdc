@@ -200,6 +200,7 @@ trait ApproverDashboardHelper
             'memos' => 0,
             'arf' => 0,
             'requests_for_service' => 0,
+            'change_requests' => 0,
         ];
 
         // Build division filter for documents
@@ -377,9 +378,11 @@ trait ApproverDashboardHelper
         // For now, we'll keep the old logic for these
         $arfCount = $this->getPendingCountForARF($workflowId, $levelNo, $divisionId);
         $serviceCount = $this->getPendingCountForServiceRequests($workflowId, $levelNo, $divisionId);
+        $changeRequestCount = $this->getPendingCountForChangeRequests($workflowId, $levelNo, $divisionId);
         
         $counts['arf'] = $arfCount;
         $counts['requests_for_service'] = $serviceCount;
+        $counts['change_requests'] = $changeRequestCount;
 
         $counts['total'] = array_sum($counts);
         return $counts;
@@ -440,6 +443,40 @@ trait ApproverDashboardHelper
     }
 
     /**
+     * Get pending count for Change Requests.
+     */
+    protected function getPendingCountForChangeRequests($workflowId, $levelNo, $divisionId = null)
+    {
+        try {
+            if (!DB::getSchemaBuilder()->hasTable('change_request')) {
+                return 0;
+            }
+
+            // Change requests use dynamic workflows (1, 6, 7) based on change type
+            // Check if the workflow ID matches any of the possible change request workflows
+            $possibleWorkflowIds = [1, 6, 7];
+            if (!in_array($workflowId, $possibleWorkflowIds)) {
+                return 0;
+            }
+
+            $query = DB::table('change_request')
+                ->where('forward_workflow_id', $workflowId)
+                ->where('overall_status', 'pending')
+                ->where('approval_level', $levelNo)
+                ->whereNotNull('forward_workflow_id');
+
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
+            }
+
+            return $query->count();
+        } catch (\Exception $e) {
+            Log::error('Error getting pending count for change requests: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Get document type labels.
      */
     protected function getDocumentTypeLabels()
@@ -452,6 +489,7 @@ trait ApproverDashboardHelper
             'memos' => 'Memos',
             'arf' => 'ARF Requests',
             'requests_for_service' => 'Requests for Service',
+            'change_requests' => 'Change Requests',
         ];
     }
 

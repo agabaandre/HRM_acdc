@@ -603,7 +603,7 @@ body {
               <i class="fas fa-list"></i> View All
             </a>
             @if(get_staff_pending_action_count('change-request') >= 0)
-            <a href="{{ route('change-requests.index') }}?status=submitted" class="btn btn-outline-primary btn-sm position-relative">
+            <a href="{{ route('change-requests.pending-approvals') }}" class="btn btn-outline-primary btn-sm position-relative">
               <i class="fas fa-tasks"></i> Pending Approval
               <span class="alert-count" id="change-request-pending-count">{{ get_staff_pending_action_count('change-request') }}</span>
             </a>

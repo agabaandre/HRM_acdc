@@ -38,7 +38,7 @@ class ApproverDashboardController extends Controller
                 'per_page' => 'nullable|integer|min:1|max:100',
                 'q' => 'nullable|string|max:255',
                 'division_id' => 'nullable|integer|exists:divisions,id',
-                'doc_type' => 'nullable|string|in:matrix,non_travel,single_memos,special,memos,arf,requests_for_service',
+                'doc_type' => 'nullable|string|in:matrix,non_travel,single_memos,special,memos,arf,requests_for_service,change_requests',
                 'workflow_definition_id' => 'nullable|integer|exists:workflows,id',
                 'approval_level' => 'nullable|integer|min:1',
                 'export' => 'nullable|boolean',
@@ -170,6 +170,7 @@ class ApproverDashboardController extends Controller
                 ['value' => 'memos', 'label' => 'Memos'],
                 ['value' => 'arf', 'label' => 'ARF Requests'],
                 ['value' => 'requests_for_service', 'label' => 'Requests for Service'],
+                ['value' => 'change_requests', 'label' => 'Change Requests'],
             ];
 
             return response()->json([
@@ -274,6 +275,7 @@ class ApproverDashboardController extends Controller
                 'Special Pending',
                 'ARF Pending',
                 'Requests Pending',
+                'Change Requests Pending',
                 'Total Pending',
                 'Total Handled',
                 'Avg Approval Time'
@@ -293,6 +295,7 @@ class ApproverDashboardController extends Controller
                     $approver['pending_counts']['special'],
                     $approver['pending_counts']['arf'],
                     $approver['pending_counts']['requests_for_service'],
+                    $approver['pending_counts']['change_requests'] ?? 0,
                     $approver['total_pending'],
                     $approver['total_handled'] ?? 0,
                     $approver['avg_approval_time_display']

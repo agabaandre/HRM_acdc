@@ -23,10 +23,27 @@
                     <p class="text-muted mb-0">Review and manage change request details</p>
                 </div>
                 <div class="d-flex gap-3">
-                    <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
-                        <i class="bx bx-arrow-back"></i>
-                        <span>Back to List</span>
-                    </a>
+                    @if(can_print_memo($changeRequest))
+                        <a href="{{ route('change-requests.print', $changeRequest) }}" target="_blank" class="btn btn-primary btn-sm d-flex align-items-center gap-2">
+                            <i class="bx bx-printer"></i>
+                            <span>Print PDF</span>
+                        </a>
+                    @endif
+                    
+                    @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
+                        <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2">
+                            <i class="fas fa-edit"></i>
+                            <span>Edit</span>
+                        </a>
+                        @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
+                            <button type="button" 
+                                    class="btn btn-outline-danger btn-sm d-flex align-items-center gap-2" 
+                                    onclick="deleteChangeRequest({{ $changeRequest->id }})">
+                                <i class="fas fa-trash"></i>
+                                <span>Delete</span>
+                            </button>
+                        @endif
+                    @endif
                     
                     @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
                         @php
@@ -34,19 +51,17 @@
                             $parentMemoUrl = $changeRequest->parent_memo_url;
                         @endphp
                         @if($parentMemoUrl && $parentMemoDocNumber)
-                            <a href="{{ $parentMemoUrl }}" class="btn btn-secondary d-flex align-items-center gap-2" title="View Parent Memo: {{ $parentMemoDocNumber }}">
+                            <a href="{{ $parentMemoUrl }}" class="btn btn-secondary btn-sm d-flex align-items-center gap-2" title="View Parent Memo: {{ $parentMemoDocNumber }}">
                                 <i class="fas fa-eye"></i>
-                                <span>View Parent Memo</span>
+                                <span>Parent Memo</span>
                             </a>
                         @endif
                     @endif
                     
-                    @if(can_print_memo($changeRequest))
-                        <a href="{{ route('change-requests.print', $changeRequest) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
-                            <i class="bx bx-printer"></i>
-                            <span>Print PDF</span>
-                        </a>
-                    @endif
+                    <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+                        <i class="bx bx-arrow-back"></i>
+                        <span>Back to List</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -1309,23 +1324,6 @@
 
 
 
-        @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
-            <div class="mt-4">
-                <h6 class="text-success">Actions</h6>
-                <div class="btn-group" role="group">
-                    <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning">
-                        <i class="fas fa-edit me-1"></i> Edit
-                    </a>
-                    @if($changeRequest->staff_id == user_session('staff_id') || $changeRequest->responsible_person_id == user_session('staff_id'))
-                        <button type="button" 
-                                class="btn btn-outline-danger" 
-                                onclick="deleteChangeRequest({{ $changeRequest->id }})">
-                            <i class="fas fa-trash me-1"></i> Delete
-                        </button>
-                    @endif
-                </div>
-            </div>
-        @endif
     </div>
 </div>
 </div>
