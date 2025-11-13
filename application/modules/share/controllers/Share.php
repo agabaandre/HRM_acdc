@@ -369,99 +369,9 @@ public function get_current_staff(){
 			$filters = $this->input->get();
 			$limit = isset($filters['limit']) ? $filters['limit'] : FALSE;
 			$start = isset($filters['start']) ? $filters['start'] : FALSE;
-			// Optional: include base64 encoded files (default: true, but can be disabled to save memory)
-			$includeFiles = !isset($filters['include_files']) || $filters['include_files'] !== 'false';
 
-			// Get staff data first
+			// Get staff data
 			$data = $this->staff_mdl->get_all_staff_data($filters, $limit, $start);
-			
-			// Process signature data for each staff record
-			if (is_array($data) && !empty($data) && $includeFiles) {
-				// Set memory limit for processing large files
-				$originalMemoryLimit = ini_get('memory_limit');
-				ini_set('memory_limit', '1024M'); // Increase to 1GB for processing
-				
-				foreach ($data as &$staff) {
-					// Handle both object and array formats
-					$signature = is_object($staff) ? ($staff->signature ?? null) : ($staff['signature'] ?? null);
-
-
-					$photo = is_object($staff) ? ($staff->photo ?? null) : ($staff['photo'] ?? null);
-					
-					$signatureData = null; // Default to null
-					$photoData = null; // Default to null
-					
-					// Process signature with error handling
-					if (!empty($signature)) {
-						$signaturePath = "uploads/staff/signature/" . $signature;
-						if (file_exists($signaturePath)) {
-							// Check file size (limit to 2MB to prevent memory issues)
-							$fileSize = @filesize($signaturePath);
-							if ($fileSize !== false && $fileSize > 0 && $fileSize <= 2097152) { // 2MB limit
-								try {
-									$fileContent = @file_get_contents($signaturePath);
-									if ($fileContent !== false) {
-										$signatureData = base64_encode($fileContent);
-										unset($fileContent); // Free memory immediately
-									}
-								} catch (Exception $e) {
-									// If encoding fails, leave as null
-									$signatureData = null;
-								}
-							}
-						}
-					}
-					
-					// Process photo with error handling
-					if (!empty($photo)) {
-						$photoPath = "uploads/staff/" . $photo;
-						if (file_exists($photoPath)) {
-							// Check file size (limit to 2MB to prevent memory issues)
-							$fileSize = @filesize($photoPath);
-							if ($fileSize !== false && $fileSize > 0 && $fileSize <= 2097152) { // 2MB limit
-								try {
-									$fileContent = @file_get_contents($photoPath);
-									if ($fileContent !== false) {
-										$photoData = base64_encode($fileContent);
-										unset($fileContent); // Free memory immediately
-									}
-								} catch (Exception $e) {
-									// If encoding fails, leave as null
-									$photoData = null;
-								}
-							}
-						}
-					}
-					
-					// Always add signature_data and photo_data to the record (even if null/empty)
-					if (is_object($staff)) {
-						$staff->signature_data = $signatureData;
-						$staff->photo_data = $photoData;
-					} else {
-						$staff['signature_data'] = $signatureData;
-						$staff['photo_data'] = $photoData;
-					}
-					
-					// Free memory after processing each record
-					unset($signatureData, $photoData);
-				}
-				unset($staff); // Unset reference variable
-				
-				// Restore original memory limit
-				ini_set('memory_limit', $originalMemoryLimit);
-			} elseif (is_array($data) && !empty($data)) {
-				// If include_files is false, still add the field but set it to null
-				foreach ($data as &$staff) {
-					if (is_object($staff)) {
-						$staff->signature_data = null;
-						$staff->photo_data = null;
-					} else {
-						$staff['signature_data'] = null;
-						$staff['photo_data'] = null;
-					}
-				}
-				unset($staff);
-			}
 
 			// Set headers before any output
 			if (!headers_sent()) {
@@ -488,6 +398,218 @@ public function get_current_staff(){
 				header('Content-Type: application/json');
 				http_response_code(500);
 			}
+			echo json_encode(array('success' => false, 'error' => 'Database error: ' . $e->getMessage()));
+		}
+	}
+	else{
+		header('Content-Type: application/json');
+		http_response_code(401);
+		echo json_encode(array('success'=> false,'error'=> 'Authentication Failed! Invalid Request'));
+	}
+}
+
+/**
+ * Get signature for a specific staff member
+ * Accepts staff_id as GET parameter
+ */
+public function get_signature()
+{
+	if($this->api_login()){
+		try {
+			$staffId = $this->input->get('staff_id');
+			
+			if (empty($staffId)) {
+				header('Content-Type: application/json');
+				http_response_code(400);
+				echo json_encode(array('success' => false, 'error' => 'staff_id parameter is required'));
+				return;
+			}
+			
+			// Get staff signature filename from database using filters
+			$filters = array('staff_id' => $staffId);
+			$staffData = $this->staff_mdl->get_all_staff_data($filters, 1, 0);
+			
+			if (empty($staffData) || !is_array($staffData) || count($staffData) === 0) {
+				header('Content-Type: application/json');
+				http_response_code(404);
+				echo json_encode(array('success' => false, 'error' => 'Staff member not found'));
+				return;
+			}
+			
+			$staff = $staffData[0];
+			$signature = is_object($staff) ? ($staff->signature ?? null) : ($staff['signature'] ?? null);
+			
+			if (empty($signature)) {
+				header('Content-Type: application/json');
+				http_response_code(404);
+				echo json_encode(array('success' => false, 'error' => 'Signature not found for this staff member'));
+				return;
+			}
+			
+			$signaturePath = "uploads/staff/signature/" . $signature;
+			
+			if (!file_exists($signaturePath)) {
+				header('Content-Type: application/json');
+				http_response_code(404);
+				echo json_encode(array('success' => false, 'error' => 'Signature file not found'));
+				return;
+			}
+			
+			// Check file size (limit to 2MB to prevent memory issues)
+			$fileSize = @filesize($signaturePath);
+			if ($fileSize === false || $fileSize <= 0 || $fileSize > 2097152) { // 2MB limit
+				header('Content-Type: application/json');
+				http_response_code(400);
+				echo json_encode(array('success' => false, 'error' => 'Signature file is too large or invalid'));
+				return;
+			}
+			
+			// Set memory limit for processing large files
+			$originalMemoryLimit = ini_get('memory_limit');
+			ini_set('memory_limit', '1024M');
+			
+			try {
+				$fileContent = @file_get_contents($signaturePath);
+				if ($fileContent === false) {
+					header('Content-Type: application/json');
+					http_response_code(500);
+					echo json_encode(array('success' => false, 'error' => 'Failed to read signature file'));
+					ini_set('memory_limit', $originalMemoryLimit);
+					return;
+				}
+				
+				$signatureData = base64_encode($fileContent);
+				unset($fileContent); // Free memory immediately
+				
+				// Restore original memory limit
+				ini_set('memory_limit', $originalMemoryLimit);
+				
+				// Set headers before any output
+				if (!headers_sent()) {
+					header('Content-Type: application/json');
+					http_response_code(200);
+				}
+				
+				echo json_encode(array(
+					'success' => true,
+					'staff_id' => $staffId,
+					'signature_data' => $signatureData
+				));
+			} catch (Exception $e) {
+				ini_set('memory_limit', $originalMemoryLimit);
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(array('success' => false, 'error' => 'Error processing signature: ' . $e->getMessage()));
+			}
+		} catch (Exception $e) {
+			header('Content-Type: application/json');
+			http_response_code(500);
+			echo json_encode(array('success' => false, 'error' => 'Database error: ' . $e->getMessage()));
+		}
+	}
+	else{
+		header('Content-Type: application/json');
+		http_response_code(401);
+		echo json_encode(array('success'=> false,'error'=> 'Authentication Failed! Invalid Request'));
+	}
+}
+
+/**
+ * Get photo for a specific staff member
+ * Accepts staff_id as GET parameter
+ */
+public function get_photo()
+{
+	if($this->api_login()){
+		try {
+			$staffId = $this->input->get('staff_id');
+			
+			if (empty($staffId)) {
+				header('Content-Type: application/json');
+				http_response_code(400);
+				echo json_encode(array('success' => false, 'error' => 'staff_id parameter is required'));
+				return;
+			}
+			
+			// Get staff photo filename from database using filters
+			$filters = array('staff_id' => $staffId);
+			$staffData = $this->staff_mdl->get_all_staff_data($filters, 1, 0);
+			
+			if (empty($staffData) || !is_array($staffData) || count($staffData) === 0) {
+				header('Content-Type: application/json');
+				http_response_code(404);
+				echo json_encode(array('success' => false, 'error' => 'Staff member not found'));
+				return;
+			}
+			
+			$staff = $staffData[0];
+			$photo = is_object($staff) ? ($staff->photo ?? null) : ($staff['photo'] ?? null);
+			
+			if (empty($photo)) {
+				header('Content-Type: application/json');
+				http_response_code(404);
+				echo json_encode(array('success' => false, 'error' => 'Photo not found for this staff member'));
+				return;
+			}
+			
+			$photoPath = "uploads/staff/" . $photo;
+			
+			if (!file_exists($photoPath)) {
+				header('Content-Type: application/json');
+				http_response_code(404);
+				echo json_encode(array('success' => false, 'error' => 'Photo file not found'));
+				return;
+			}
+			
+			// Check file size (limit to 2MB to prevent memory issues)
+			$fileSize = @filesize($photoPath);
+			if ($fileSize === false || $fileSize <= 0 || $fileSize > 2097152) { // 2MB limit
+				header('Content-Type: application/json');
+				http_response_code(400);
+				echo json_encode(array('success' => false, 'error' => 'Photo file is too large or invalid'));
+				return;
+			}
+			
+			// Set memory limit for processing large files
+			$originalMemoryLimit = ini_get('memory_limit');
+			ini_set('memory_limit', '1024M');
+			
+			try {
+				$fileContent = @file_get_contents($photoPath);
+				if ($fileContent === false) {
+					header('Content-Type: application/json');
+					http_response_code(500);
+					echo json_encode(array('success' => false, 'error' => 'Failed to read photo file'));
+					ini_set('memory_limit', $originalMemoryLimit);
+					return;
+				}
+				
+				$photoData = base64_encode($fileContent);
+				unset($fileContent); // Free memory immediately
+				
+				// Restore original memory limit
+				ini_set('memory_limit', $originalMemoryLimit);
+				
+				// Set headers before any output
+				if (!headers_sent()) {
+			header('Content-Type: application/json');
+			http_response_code(200);
+				}
+				
+				echo json_encode(array(
+					'success' => true,
+					'staff_id' => $staffId,
+					'photo_data' => $photoData
+				));
+			} catch (Exception $e) {
+				ini_set('memory_limit', $originalMemoryLimit);
+				header('Content-Type: application/json');
+				http_response_code(500);
+				echo json_encode(array('success' => false, 'error' => 'Error processing photo: ' . $e->getMessage()));
+			}
+		} catch (Exception $e) {
+			header('Content-Type: application/json');
+			http_response_code(500);
 			echo json_encode(array('success' => false, 'error' => 'Database error: ' . $e->getMessage()));
 		}
 	}
