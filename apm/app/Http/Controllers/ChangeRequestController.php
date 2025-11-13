@@ -46,6 +46,7 @@ class ChangeRequestController extends Controller
         $documentNumber = $request->get('document_number');
         $staffId = (int) $request->get('staff_id');
         $memoType = $request->get('memo_type');
+        $parentMemoId = $request->get('parent_memo_id');
 
         // Base query with relationships
         $baseQuery = ChangeRequest::with([
@@ -80,6 +81,11 @@ class ChangeRequestController extends Controller
         // Filter by memo type (parent_memo_model)
         if ($memoType) {
             $baseQuery->where('parent_memo_model', $memoType);
+        }
+
+        // Filter by parent memo ID (to show change requests for a specific parent memo)
+        if ($parentMemoId) {
+            $baseQuery->where('parent_memo_id', (int) $parentMemoId);
         }
 
         // Filter by division (only if explicitly set in URL)
@@ -1293,6 +1299,7 @@ class ChangeRequestController extends Controller
         $request->validate([
             'action' => 'required|in:approved,rejected,returned,cancelled',
             'comment' => 'nullable|string|max:1000',
+            'remarks' => 'nullable|string|max:1000',
             'available_budget' => 'nullable|numeric|min:0'
         ]);
 
@@ -1509,5 +1516,18 @@ class ChangeRequestController extends Controller
                 'type' => 'error'
             ]);
         }
+    }
+
+    /**
+     * Print change request as PDF
+     */
+    public function print(ChangeRequest $changeRequest)
+    {
+        // For now, redirect back with a message
+        // TODO: Implement PDF generation for change requests
+        return redirect()->back()->with([
+            'msg' => 'Print functionality for change requests is coming soon.',
+            'type' => 'info'
+        ]);
     }
 }

@@ -568,9 +568,11 @@ class ChangeRequest extends Model
          return ($this->forward_workflow_id==null)?'Draft':(($this->overall_status =='approved')?'Approved':'Pending');
         }
 
-        $last_log = ActivityApprovalTrail::where('model_id',$this->id)
-        ->where('mode_type','App\\Models\\ChangeRequest')->orderBy('id','asc')
-        ->first();
+        $last_log = ApprovalTrail::where('model_id', $this->id)
+            ->where('model_type', 'App\\Models\\ChangeRequest')
+            ->where('is_archived', 0)
+            ->orderBy('id', 'asc')
+            ->first();
 
         if($last_log)
          return strtoupper($last_log->action);
@@ -682,17 +684,19 @@ class ChangeRequest extends Model
         }
         
         // Get the current approval level
-        $currentApprovalLevel = $this->matrix ? $this->matrix->approval_level : null;
+        $currentApprovalLevel = $this->approval_level;
         if (!$currentApprovalLevel) {
             return null;
         }
         
         // First, check if user has any action at the current approval level
-        $currentLevelAction = ActivityApprovalTrail::where('activity_id',$this->id)
-        ->where('staff_id',$userStaffId)
-        ->where('approval_order', $currentApprovalLevel)
-        ->where('is_archived', 0)
-        ->orderByDesc('id')->first();
+        $currentLevelAction = ApprovalTrail::where('model_id', $this->id)
+            ->where('model_type', 'App\\Models\\ChangeRequest')
+            ->where('staff_id', $userStaffId)
+            ->where('approval_order', $currentApprovalLevel)
+            ->where('is_archived', 0)
+            ->orderByDesc('id')
+            ->first();
         
         if ($currentLevelAction) {
             return $currentLevelAction;
@@ -700,41 +704,45 @@ class ChangeRequest extends Model
         
         // If no action at current level, check if user has already passed at any previous level
         // This allows previous approvers to see their actions
-        $previousPassedAction = ActivityApprovalTrail::where('activity_id',$this->id)
-        ->where('staff_id',$userStaffId)
-        ->where('action', 'passed')
-        ->where('approval_order', '<', $currentApprovalLevel)
-        ->where('is_archived', 0)
-        ->orderByDesc('id')->first();
+        $previousPassedAction = ApprovalTrail::where('model_id', $this->id)
+            ->where('model_type', 'App\\Models\\ChangeRequest')
+            ->where('staff_id', $userStaffId)
+            ->where('action', 'approved')
+            ->where('approval_order', '<', $currentApprovalLevel)
+            ->where('is_archived', 0)
+            ->orderByDesc('id')
+            ->first();
         
         return $previousPassedAction;
     }
     public function getHasPassedAtCurrentLevelAttribute(){
         $userStaffId = user_session('staff_id');
-        if (!$userStaffId || !$this->matrix) {
+        if (!$userStaffId || !$this->approval_level) {
             return false;
         }
         
-        $currentApprovalLevel = $this->matrix->approval_level;
+        $currentApprovalLevel = $this->approval_level;
         
-        // Check if user has passed at the current approval level
-        return ActivityApprovalTrail::where('activity_id', $this->id)
+        // Check if user has approved at the current approval level
+        return ApprovalTrail::where('model_id', $this->id)
+            ->where('model_type', 'App\\Models\\ChangeRequest')
             ->where('staff_id', $userStaffId)
             ->where('approval_order', $currentApprovalLevel)
-            ->where('action', 'passed')
+            ->where('action', 'approved')
             ->where('is_archived', 0)
             ->exists();
     }
     public function getMyCurrentLevelActionAttribute(){
         $userStaffId = user_session('staff_id');
-        if (!$userStaffId || !$this->matrix) {
+        if (!$userStaffId || !$this->approval_level) {
             return null;
         }
         
-        $currentApprovalLevel = $this->matrix->approval_level;
+        $currentApprovalLevel = $this->approval_level;
         
         // Only return actions at the current approval level
-        return ActivityApprovalTrail::where('activity_id', $this->id)
+        return ApprovalTrail::where('model_id', $this->id)
+            ->where('model_type', 'App\\Models\\ChangeRequest')
             ->where('staff_id', $userStaffId)
             ->where('approval_order', $currentApprovalLevel)
             ->where('is_archived', 0)
@@ -743,8 +751,9 @@ class ChangeRequest extends Model
     }
 
     public function getFinalApprovalStatusAttribute(){
-        // Get the latest approval trail entry for this activity
-        $latestTrail = ActivityApprovalTrail::where('activity_id', $this->id)
+        // Get the latest approval trail entry for this change request
+        $latestTrail = ApprovalTrail::where('model_id', $this->id)
+            ->where('model_type', 'App\\Models\\ChangeRequest')
             ->where('is_archived', 0) // Only consider non-archived trails
             ->orderBy('id', 'desc')
             ->first();
@@ -753,13 +762,13 @@ class ChangeRequest extends Model
             return 'pending'; // No approval trail yet
         }
         
-        // Check if the latest action was 'passed' or 'failed'
-        if (strtolower($latestTrail->action) === 'passed') {
-            return 'passed';
-        } elseif (strtolower($latestTrail->action) === 'failed') {
-            return 'failed';
+        // Check if the latest action was 'approved' or 'rejected'
+        if (strtolower($latestTrail->action) === 'approved') {
+            return 'approved';
+        } elseif (strtolower($latestTrail->action) === 'rejected') {
+            return 'rejected';
         } else {
-            return 'pending'; // Other actions like 'returned', 'rejected', etc.
+            return 'pending'; // Other actions like 'returned', 'submitted', etc.
         }
     }
    
