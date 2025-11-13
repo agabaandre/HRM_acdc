@@ -1665,64 +1665,191 @@ class ChangeRequestController extends Controller
             $originalDate = 'N/A';
             $changedDate = 'N/A';
             
+            // Check if it's a non-travel memo to determine which date field to use
+            $isNonTravel = $changeRequest->parent_memo_model === 'App\Models\NonTravelMemo';
+            
             if ($parentMemo) {
-                if (isset($parentMemo->memo_date)) {
+                if ($isNonTravel && isset($parentMemo->memo_date)) {
+                    // Non-travel memo uses memo_date
                     $originalDate = \Carbon\Carbon::parse($parentMemo->memo_date)->format('M d, Y');
-                } elseif (isset($parentMemo->date_from) && isset($parentMemo->date_to)) {
+                } elseif (!$isNonTravel && isset($parentMemo->date_from) && isset($parentMemo->date_to)) {
+                    // Other memos use date_from and date_to
                     $originalDate = \Carbon\Carbon::parse($parentMemo->date_from)->format('M d, Y') . ' - ' . \Carbon\Carbon::parse($parentMemo->date_to)->format('M d, Y');
                 }
             }
             
-            if ($changeRequest->memo_date) {
+            // Get changed date from change request - check the same way
+            if ($isNonTravel && $changeRequest->memo_date) {
                 $changedDate = \Carbon\Carbon::parse($changeRequest->memo_date)->format('M d, Y');
-            } elseif ($changeRequest->date_from && $changeRequest->date_to) {
+            } elseif (!$isNonTravel && $changeRequest->date_from && $changeRequest->date_to) {
                 $changedDate = \Carbon\Carbon::parse($changeRequest->date_from)->format('M d, Y') . ' - ' . \Carbon\Carbon::parse($changeRequest->date_to)->format('M d, Y');
             }
             
             $changes[] = [
-                'type' => 'Date',
+                'type' => $isNonTravel ? 'Memo Date' : 'Date Range',
                 'original' => $originalDate,
                 'changed' => $changedDate
             ];
         }
 
         if ($changeRequest->has_location_changed) {
+            // Get location names
+            $originalLocation = 'N/A';
+            $changedLocation = 'N/A';
+            
+            if ($parentMemo) {
+                $parentLocationIds = $parentMemo->location_id ?? [];
+                if (is_string($parentLocationIds)) {
+                    $parentLocationIds = json_decode($parentLocationIds, true) ?? [];
+                }
+                if (is_array($parentLocationIds) && !empty($parentLocationIds)) {
+                    $locations = \App\Models\Location::whereIn('id', $parentLocationIds)->pluck('location_name')->toArray();
+                    $originalLocation = implode(', ', $locations);
+                }
+            }
+            
+            $changedLocationIds = $changeRequest->location_id ?? [];
+            if (is_string($changedLocationIds)) {
+                $changedLocationIds = json_decode($changedLocationIds, true) ?? [];
+            }
+            if (is_array($changedLocationIds) && !empty($changedLocationIds)) {
+                $locations = \App\Models\Location::whereIn('id', $changedLocationIds)->pluck('location_name')->toArray();
+                $changedLocation = implode(', ', $locations);
+            }
+            
             $changes[] = [
                 'type' => 'Location',
-                'original' => 'See parent memo',
-                'changed' => 'See change request'
+                'original' => $originalLocation,
+                'changed' => $changedLocation
             ];
         }
 
         if ($changeRequest->has_internal_participants_changed || $changeRequest->has_participant_days_changed) {
+            // Count participants
+            $originalCount = 0;
+            $changedCount = 0;
+            
+            if ($parentMemo) {
+                $parentParticipants = $parentMemo->internal_participants ?? [];
+                if (is_string($parentParticipants)) {
+                    $parentParticipants = json_decode($parentParticipants, true) ?? [];
+                }
+                if (is_string($parentParticipants)) {
+                    $parentParticipants = json_decode($parentParticipants, true) ?? [];
+                }
+                $originalCount = is_array($parentParticipants) ? count($parentParticipants) : 0;
+            }
+            
+            // Get participants from change request table directly
+            $rawParticipants = DB::table('change_request')->where('id', $changeRequest->id)->value('internal_participants');
+            $changedParticipants = [];
+            if ($rawParticipants) {
+                if (is_string($rawParticipants)) {
+                    $firstDecode = json_decode($rawParticipants, true);
+                    if (is_string($firstDecode)) {
+                        $changedParticipants = json_decode($firstDecode, true) ?? [];
+                    } elseif (is_array($firstDecode)) {
+                        $changedParticipants = $firstDecode;
+                    }
+                } elseif (is_array($rawParticipants)) {
+                    $changedParticipants = $rawParticipants;
+                }
+            }
+            $changedCount = is_array($changedParticipants) ? count($changedParticipants) : 0;
+            
             $changes[] = [
                 'type' => 'Internal Participants',
-                'original' => 'See parent memo',
-                'changed' => 'See change request'
+                'original' => $originalCount . ' participant(s)',
+                'changed' => $changedCount . ' participant(s)'
             ];
         }
 
         if ($changeRequest->has_total_external_participants_changed) {
             $changes[] = [
                 'type' => 'External Participants',
-                'original' => $parentMemo->total_external_participants ?? 0,
-                'changed' => $changeRequest->total_external_participants ?? 0
+                'original' => ($parentMemo->total_external_participants ?? 0) . ' participant(s)',
+                'changed' => ($changeRequest->total_external_participants ?? 0) . ' participant(s)'
+            ];
+        }
+
+        if ($changeRequest->has_number_of_participants_changed) {
+            $originalCount = 0;
+            if ($parentMemo) {
+                $parentParticipants = $parentMemo->internal_participants ?? [];
+                if (is_string($parentParticipants)) {
+                    $parentParticipants = json_decode($parentParticipants, true) ?? [];
+                }
+                if (is_string($parentParticipants)) {
+                    $parentParticipants = json_decode($parentParticipants, true) ?? [];
+                }
+                $originalCount = is_array($parentParticipants) ? count($parentParticipants) : 0;
+            }
+            
+            $rawParticipants = DB::table('change_request')->where('id', $changeRequest->id)->value('internal_participants');
+            $changedParticipants = [];
+            if ($rawParticipants) {
+                if (is_string($rawParticipants)) {
+                    $firstDecode = json_decode($rawParticipants, true);
+                    if (is_string($firstDecode)) {
+                        $changedParticipants = json_decode($firstDecode, true) ?? [];
+                    } elseif (is_array($firstDecode)) {
+                        $changedParticipants = $firstDecode;
+                    }
+                } elseif (is_array($rawParticipants)) {
+                    $changedParticipants = $rawParticipants;
+                }
+            }
+            $changedCount = is_array($changedParticipants) ? count($changedParticipants) : 0;
+            
+            $changes[] = [
+                'type' => 'Number of Participants',
+                'original' => $originalCount,
+                'changed' => $changedCount
             ];
         }
 
         if ($changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed) {
+            // Get budget totals
+            $originalTotal = 0;
+            $changedTotal = 0;
+            
+            if ($parentMemo) {
+                $parentBudget = $parentMemo->budget_breakdown ?? [];
+                if (is_string($parentBudget)) {
+                    $parentBudget = json_decode($parentBudget, true) ?? [];
+                }
+                $originalTotal = $parentBudget['grand_total'] ?? 0;
+            }
+            
+            $changedBudget = $changeRequest->budget_breakdown ?? [];
+            if (is_string($changedBudget)) {
+                $changedBudget = json_decode($changedBudget, true) ?? [];
+            }
+            $changedTotal = $changedBudget['grand_total'] ?? 0;
+            
             $changes[] = [
                 'type' => 'Budget',
-                'original' => 'See parent memo',
-                'changed' => 'See change request'
+                'original' => 'KES ' . number_format($originalTotal, 2),
+                'changed' => 'KES ' . number_format($changedTotal, 2)
             ];
         }
 
         if ($changeRequest->has_activity_request_remarks_changed) {
+            $originalRemarks = strip_tags($parentMemo->activity_request_remarks ?? 'N/A');
+            $changedRemarks = strip_tags($changeRequest->activity_request_remarks ?? 'N/A');
+            
+            // Truncate if too long
+            if (strlen($originalRemarks) > 200) {
+                $originalRemarks = substr($originalRemarks, 0, 200) . '...';
+            }
+            if (strlen($changedRemarks) > 200) {
+                $changedRemarks = substr($changedRemarks, 0, 200) . '...';
+            }
+            
             $changes[] = [
                 'type' => 'Request for Approval',
-                'original' => strip_tags($parentMemo->activity_request_remarks ?? 'N/A'),
-                'changed' => strip_tags($changeRequest->activity_request_remarks ?? 'N/A')
+                'original' => $originalRemarks,
+                'changed' => $changedRemarks
             ];
         }
 
