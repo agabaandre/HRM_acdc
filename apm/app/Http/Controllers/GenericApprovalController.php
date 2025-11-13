@@ -53,6 +53,8 @@ class GenericApprovalController extends Controller
 
         $request->validate([
             'action' => 'required',
+            'comment' => 'nullable|string|max:1000',
+            'remarks' => 'nullable|string|max:1000',
             'available_budget' => 'nullable|numeric|min:0'
         ]);
 
@@ -95,10 +97,13 @@ class GenericApprovalController extends Controller
             Log::info('Using approval service fallback');
             // Fallback to approval service
             //dd($modelInstance);
+            // Accept both 'comment' and 'remarks' for backward compatibility
+            $comment = $request->input('comment') ?? $request->input('remarks') ?? '';
+            
             $this->approvalService->processApproval(
                 $modelInstance, 
                 $request->action, 
-                $request->comment ?? '', 
+                $comment, 
                 $userId,
                 $additionalData
             );

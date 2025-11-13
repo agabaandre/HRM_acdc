@@ -11,6 +11,47 @@
     $titlePrefix = $hasBudgetChanges ? 'Addendum' : 'Change Request';
 @endphp
 
+<div class="min-h-screen bg-gray-50">
+    <!-- Enhanced Header -->
+    <div class="bg-white border-b border-gray-200 shadow-sm">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center py-4">
+                <div>
+                    <h1 class="h2 fw-bold text-dark mb-0">{{ $titlePrefix }}: {{ $changeRequest->document_number ?? 'Draft' }}</h1>
+                    <p class="text-muted mb-0">Review and manage change request details</p>
+                </div>
+                <div class="d-flex gap-3">
+                    <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary d-flex align-items-center gap-2">
+                        <i class="bx bx-arrow-back"></i>
+                        <span>Back to List</span>
+                    </a>
+                    
+                    @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
+                        @php
+                            $parentMemoDocNumber = $changeRequest->parent_memo_document_number;
+                            $parentMemoUrl = $changeRequest->parent_memo_url;
+                        @endphp
+                        @if($parentMemoUrl && $parentMemoDocNumber)
+                            <a href="{{ $parentMemoUrl }}" class="btn btn-secondary d-flex align-items-center gap-2" title="View Parent Memo: {{ $parentMemoDocNumber }}">
+                                <i class="fas fa-eye"></i>
+                                <span>View Parent Memo</span>
+                            </a>
+                        @endif
+                    @endif
+                    
+                    @if(can_print_memo($changeRequest))
+                        <a href="{{ route('change-requests.print', $changeRequest) }}" target="_blank" class="btn btn-primary d-flex align-items-center gap-2">
+                            <i class="bx bx-printer"></i>
+                            <span>Print PDF</span>
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid py-4">
+
 @if(session('msg'))
     <div class="alert alert-{{ session('type') === 'error' ? 'danger' : (session('type') === 'success' ? 'success' : 'info') }} alert-dismissible fade show" role="alert">
         {{ session('msg') }}
@@ -19,10 +60,10 @@
 @endif
 
 <div class="card shadow-sm border-0">
-    <div class="card-header  text-dark">
+    <div class="card-header text-dark">
         <h5 class="mb-0 text-dark">
             <i class="fas fa-edit me-2 text-dark"></i>
-            {{ $titlePrefix }}: {{ $changeRequest->activity_title }}
+            {{ $changeRequest->activity_title }}
         </h5>
     </div>
     <div class="card-body">
@@ -37,6 +78,10 @@
                                 <span class="badge bg-success">{{ $changeRequest->document_number }}</span>
                             @else
                                 <span class="text-muted">Pending Assignment</span>
+                            @endif
+                            @if($changeRequest->parent_memo_document_number)
+                                <br>
+                                <small class="text-muted">Parent Document: {{ $changeRequest->parent_memo_document_number }}</small>
                             @endif
                         </td>
                     </tr>
@@ -60,41 +105,6 @@
                                 @default
                                     <span class="badge bg-light text-dark">{{ ucfirst($changeRequest->overall_status) }}</span>
                             @endswitch
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Parent Memo:</strong></td>
-                        <td>
-                            @if($changeRequest->parent_memo_model && $changeRequest->parent_memo_id)
-                                @php
-                                    $parentMemoDocNumber = $changeRequest->parent_memo_document_number;
-                                    $parentMemoUrl = $changeRequest->parent_memo_url;
-                                @endphp
-                                @if($parentMemoUrl && $parentMemoDocNumber)
-                                    <a href="{{ $parentMemoUrl }}" class="btn btn-secondary text-white" title="View Parent Memo: {{ $parentMemoDocNumber }}">
-                                        <i class="fas fa-eye me-2 text-white"></i>
-                                        View {{ class_basename($changeRequest->parent_memo_model) }}
-                                        <br>
-                                        <small class="d-block mt-1 text-white">{{ $parentMemoDocNumber }}</small>
-                                    </a>
-                                @elseif($parentMemoUrl)
-                                    <a href="{{ $parentMemoUrl }}" class="btn btn-secondary text-white" title="View Parent Memo">
-                                        <i class="fas fa-eye me-2 text-white"></i>
-                                        View {{ class_basename($changeRequest->parent_memo_model) }}
-                                        <br>
-                                        <small class="d-block mt-1 text-white">#{{ $changeRequest->parent_memo_id }}</small>
-                                    </a>
-                                @else
-                                    <span class="btn btn-secondary text-white" disabled>
-                                        <i class="fas fa-eye me-2 text-white"></i>
-                                        View {{ class_basename($changeRequest->parent_memo_model) }}
-                                        <br>
-                                        <small class="d-block mt-1 text-white">#{{ $changeRequest->parent_memo_id }}</small>
-                                    </span>
-                                @endif
-                            @else
-                                <span class="text-muted">N/A</span>
-                            @endif
                         </td>
                     </tr>
                     <tr>
@@ -1297,13 +1307,10 @@
 
 
 
-        <div class="mt-4">
-            <h6 class="text-success">Actions</h6>
-            <div class="btn-group" role="group">
-                <a href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-1"></i> Back to List
-                </a>
-                @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
+        @if($changeRequest->overall_status === 'draft' || $changeRequest->overall_status === 'rejected')
+            <div class="mt-4">
+                <h6 class="text-success">Actions</h6>
+                <div class="btn-group" role="group">
                     <a href="{{ route('change-requests.edit', $changeRequest) }}" class="btn btn-outline-warning">
                         <i class="fas fa-edit me-1"></i> Edit
                     </a>
@@ -1314,10 +1321,11 @@
                             <i class="fas fa-trash me-1"></i> Delete
                         </button>
                     @endif
-                @endif
+                </div>
             </div>
-        </div>
+        @endif
     </div>
+</div>
 </div>
 @endsection
 

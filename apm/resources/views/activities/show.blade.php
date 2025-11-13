@@ -683,6 +683,25 @@
                             </td>
                         </tr>
                 @endif
+                        @php
+                            $changeRequestsCount = \App\Models\ChangeRequest::where('parent_memo_model', 'App\Models\Activity')
+                                ->where('parent_memo_id', $activity->id)
+                                ->count();
+                        @endphp
+                        <tr>
+                            <td class="field-label">
+                                <i class="bx bx-edit me-2 text-warning"></i>Change Requests
+                            </td>
+                            <td class="field-value" colspan="3">
+                                @if($changeRequestsCount > 0)
+                                    <a href="{{ route('change-requests.index', ['parent_memo_model' => 'App\Models\Activity', 'parent_memo_id' => $activity->id]) }}" class="text-primary fw-bold">
+                                        {{ $changeRequestsCount }} Change Request{{ $changeRequestsCount > 1 ? 's' : '' }}
+                                    </a>
+                                @else
+                                    <span class="text-muted">No change requests</span>
+                                @endif
+                            </td>
+                        </tr>
                         @if($activity->workplan_activity_code && $activity->fund_type_id == 1)
                         <tr>
                             <td class="field-label">
