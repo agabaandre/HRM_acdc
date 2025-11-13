@@ -398,6 +398,7 @@
                                 <th>Special</th>
                                 <th>ARF</th>
                                 <th>Requests</th>
+                                <th>Change Requests</th>
                                 <th>Total Pending</th>
                                 <th>Total Handled</th>
                                 <th>Avg. Time</th>
@@ -405,7 +406,7 @@
                         </thead>
                         <tbody id="approverTableBody">
                             <tr>
-                                <td colspan="11" class="text-center py-4">
+                                <td colspan="12" class="text-center py-4">
                                     <i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i>
                                     <p class="mt-2">Loading approver data...</p>
                                 </td>
@@ -618,6 +619,12 @@ function updateTable(data) {
                     ${approver.pending_counts.requests_for_service > 0 ? 
                         `<a href="http://localhost/staff/apm/service-requests/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.requests_for_service}</a>` : 
                         `<span class="badge bg-light text-dark">${approver.pending_counts.requests_for_service}</span>`
+                    }
+                </td>
+                <td>
+                    ${(approver.pending_counts.change_requests || 0) > 0 ? 
+                        `<a href="http://localhost/staff/apm/change-requests/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.change_requests || 0}</a>` : 
+                        `<span class="badge bg-light text-dark">${approver.pending_counts.change_requests || 0}</span>`
                     }
                 </td>
                 <td><span class="badge ${approver.total_pending > 0 ? 'bg-danger' : 'bg-success'}">${approver.total_pending}</span></td>

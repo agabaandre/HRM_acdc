@@ -3,8 +3,8 @@
         <table class="table table-hover mb-0" id="pendingTable">
             <thead class="table-warning">
                 <tr>
-                    <th>#</th>
-                    <th>Title</th>
+                    <th style="width: 3%;">#</th>
+                    <th style="width: 20%; max-width: 200px;">Title</th>
                     <th>Parent Memo</th>
                     <th>Staff Member</th>
                     <th>Division</th>
@@ -18,7 +18,7 @@
                 @foreach($pendingChangeRequests as $changeRequest)
                     <tr>
                         <td>{{ $count++ }}</td>
-                        <td>
+                        <td style="max-width: 200px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
                             <div class="fw-bold text-primary">{{ $changeRequest->activity_title }}</div>
                         </td>
                         <td>

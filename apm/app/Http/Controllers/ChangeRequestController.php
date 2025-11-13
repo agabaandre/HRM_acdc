@@ -218,7 +218,9 @@ class ChangeRequestController extends Controller
             'requestType',
             'parentMemo'
         ])
-        ->where('overall_status', 'submitted');
+        ->where('overall_status', 'pending')
+        ->where('forward_workflow_id', '!=', null)
+        ->where('approval_level', '>', 0);
 
         // Apply filters
         if ($memoType) {
