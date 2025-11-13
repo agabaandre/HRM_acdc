@@ -1867,7 +1867,7 @@ class ServiceRequestController extends Controller
     /**
      * Generate Activity Memo HTML using the same data preparation as ActivityController
      */
-    private function generateActivityMemoHtml($matrix, $activity)
+    public function generateActivityMemoHtml($matrix, $activity)
     {
         // Load comprehensive relationships for the activity
         $activity->load([
@@ -1968,7 +1968,7 @@ class ServiceRequestController extends Controller
     /**
      * Generate Special Memo HTML using the same data preparation as SpecialMemoController
      */
-    private function generateSpecialMemoHtml($specialMemo)
+    public function generateSpecialMemoHtml($specialMemo)
     {
         // Eager load relations
         $specialMemo->load([
@@ -2069,7 +2069,7 @@ class ServiceRequestController extends Controller
     /**
      * Generate Non-Travel Memo HTML using the same data preparation as NonTravelMemoController
      */
-    private function generateNonTravelMemoHtml($nonTravel)
+    public function generateNonTravelMemoHtml($nonTravel)
     {
         // Eager load needed relations
         $nonTravel->load([
