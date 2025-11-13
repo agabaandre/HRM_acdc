@@ -1523,11 +1523,209 @@ class ChangeRequestController extends Controller
      */
     public function print(ChangeRequest $changeRequest)
     {
-        // For now, redirect back with a message
-        // TODO: Implement PDF generation for change requests
-        return redirect()->back()->with([
-            'msg' => 'Print functionality for change requests is coming soon.',
-            'type' => 'info'
+        // Eager load needed relations
+        $changeRequest->load([
+            'staff',
+            'responsiblePerson',
+            'division',
+            'requestType',
+            'fundType',
+            'parentMemo',
+            'forwardWorkflow',
+            'approvalTrails.staff',
+            'approvalTrails.workflowDefinition'
         ]);
+
+        // Get the parent memo explicitly
+        $parentMemo = $changeRequest->parentMemo ?? $this->getParentMemo(
+            $changeRequest->parent_memo_model,
+            $changeRequest->parent_memo_id
+        );
+
+        // Generate parent memo HTML based on type
+        $parentPdfHtml = null;
+        if ($parentMemo) {
+            $parentPdfHtml = $this->generateParentMemoHtml($parentMemo, $changeRequest->parent_memo_model);
+        }
+
+        // Get workflow information for change request
+        $workflowInfo = $this->getComprehensiveWorkflowInfo($changeRequest);
+        $organizedWorkflowSteps = \App\Helpers\PrintHelper::organizeWorkflowStepsBySection($workflowInfo['workflow_steps'] ?? []);
+
+        // Get list of changes
+        $changes = $this->getChangesList($changeRequest, $parentMemo);
+
+        // Use mPDF helper function for change request
+        $print = false;
+        $pdf = mpdf_print('change-requests.print', [
+            'changeRequest' => $changeRequest,
+            'parentMemo' => $parentMemo,
+            'parentPdfHtml' => $parentPdfHtml,
+            'changes' => $changes,
+            'organized_workflow_steps' => $organizedWorkflowSteps,
+        ], ['preview_html' => $print]);
+
+        // Generate filename
+        $filename = ($changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed ? 'Addendum' : 'Change_Request') . '_' . ($changeRequest->document_number ?? $changeRequest->id) . '_' . now()->format('Y-m-d') . '.pdf';
+
+        // Return PDF for display in browser using mPDF Output method
+        return response($pdf->Output($filename, 'I'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
+    }
+
+    /**
+     * Generate parent memo HTML based on model type
+     */
+    private function generateParentMemoHtml($parentMemo, string $parentMemoModel)
+    {
+        // Use ServiceRequestController methods as reference
+        $serviceRequestController = app(\App\Http\Controllers\ServiceRequestController::class);
+        
+        if ($parentMemoModel === 'App\Models\Activity') {
+            if ($parentMemo->matrix) {
+                return $serviceRequestController->generateActivityMemoHtml($parentMemo->matrix, $parentMemo);
+            }
+        } elseif ($parentMemoModel === 'App\Models\SpecialMemo') {
+            return $serviceRequestController->generateSpecialMemoHtml($parentMemo);
+        } elseif ($parentMemoModel === 'App\Models\NonTravelMemo') {
+            return $serviceRequestController->generateNonTravelMemoHtml($parentMemo);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get comprehensive workflow information for change request
+     */
+    private function getComprehensiveWorkflowInfo(ChangeRequest $changeRequest)
+    {
+        $workflowInfo = [
+            'current_level' => null,
+            'workflow_steps' => []
+        ];
+
+        if (!$changeRequest->forward_workflow_id) {
+            return $workflowInfo;
+        }
+
+        // Get workflow definitions
+        $workflowDefinitions = \App\Models\WorkflowDefinition::where('workflow_id', $changeRequest->forward_workflow_id)
+            ->where('is_enabled', 1)
+            ->orderBy('approval_order', 'asc')
+            ->with(['approvers.staff'])
+            ->get();
+
+        $workflowSteps = [];
+        foreach ($workflowDefinitions as $def) {
+            $step = [
+                'level' => $def->approval_order,
+                'role' => $def->role,
+                'is_current' => $def->approval_order == $changeRequest->approval_level,
+                'is_completed' => $changeRequest->approval_level > $def->approval_order,
+                'approvers' => []
+            ];
+
+            // Get approvers for this level
+            foreach ($def->approvers as $approver) {
+                if ($approver->staff) {
+                    $step['approvers'][] = [
+                        'name' => $approver->staff->fname . ' ' . $approver->staff->lname,
+                        'title' => $approver->staff->job_name ?? '',
+                    ];
+                }
+            }
+
+            $workflowSteps[] = $step;
+        }
+
+        $workflowInfo['current_level'] = $changeRequest->approval_level;
+        $workflowInfo['workflow_steps'] = $workflowSteps;
+
+        return $workflowInfo;
+    }
+
+    /**
+     * Get list of changes made in the change request
+     */
+    private function getChangesList(ChangeRequest $changeRequest, $parentMemo): array
+    {
+        $changes = [];
+
+        if ($changeRequest->has_activity_title_changed) {
+            $changes[] = [
+                'type' => 'Activity Title',
+                'original' => $parentMemo->activity_title ?? $parentMemo->title ?? 'N/A',
+                'changed' => $changeRequest->activity_title ?? 'N/A'
+            ];
+        }
+
+        if ($changeRequest->has_memo_date_changed || $changeRequest->has_date_stayed_quarter) {
+            $originalDate = 'N/A';
+            $changedDate = 'N/A';
+            
+            if ($parentMemo) {
+                if (isset($parentMemo->memo_date)) {
+                    $originalDate = \Carbon\Carbon::parse($parentMemo->memo_date)->format('M d, Y');
+                } elseif (isset($parentMemo->date_from) && isset($parentMemo->date_to)) {
+                    $originalDate = \Carbon\Carbon::parse($parentMemo->date_from)->format('M d, Y') . ' - ' . \Carbon\Carbon::parse($parentMemo->date_to)->format('M d, Y');
+                }
+            }
+            
+            if ($changeRequest->memo_date) {
+                $changedDate = \Carbon\Carbon::parse($changeRequest->memo_date)->format('M d, Y');
+            } elseif ($changeRequest->date_from && $changeRequest->date_to) {
+                $changedDate = \Carbon\Carbon::parse($changeRequest->date_from)->format('M d, Y') . ' - ' . \Carbon\Carbon::parse($changeRequest->date_to)->format('M d, Y');
+            }
+            
+            $changes[] = [
+                'type' => 'Date',
+                'original' => $originalDate,
+                'changed' => $changedDate
+            ];
+        }
+
+        if ($changeRequest->has_location_changed) {
+            $changes[] = [
+                'type' => 'Location',
+                'original' => 'See parent memo',
+                'changed' => 'See change request'
+            ];
+        }
+
+        if ($changeRequest->has_internal_participants_changed || $changeRequest->has_participant_days_changed) {
+            $changes[] = [
+                'type' => 'Internal Participants',
+                'original' => 'See parent memo',
+                'changed' => 'See change request'
+            ];
+        }
+
+        if ($changeRequest->has_total_external_participants_changed) {
+            $changes[] = [
+                'type' => 'External Participants',
+                'original' => $parentMemo->total_external_participants ?? 0,
+                'changed' => $changeRequest->total_external_participants ?? 0
+            ];
+        }
+
+        if ($changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed) {
+            $changes[] = [
+                'type' => 'Budget',
+                'original' => 'See parent memo',
+                'changed' => 'See change request'
+            ];
+        }
+
+        if ($changeRequest->has_activity_request_remarks_changed) {
+            $changes[] = [
+                'type' => 'Request for Approval',
+                'original' => strip_tags($parentMemo->activity_request_remarks ?? 'N/A'),
+                'changed' => strip_tags($changeRequest->activity_request_remarks ?? 'N/A')
+            ];
+        }
+
+        return $changes;
     }
 }

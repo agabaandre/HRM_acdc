@@ -17,7 +17,9 @@
         <div class="container-fluid">
             <div class="d-flex justify-content-between align-items-center py-4">
                 <div>
-                    <h1 class="h2 fw-bold text-dark mb-0">{{ $titlePrefix }}: {{ $changeRequest->document_number ?? 'Draft' }}</h1>
+                    <h1 class="h2 fw-bold text-dark mb-0">
+                        {{ $titlePrefix }}@if($changeRequest->document_number): {{ $changeRequest->document_number }}@endif
+                    </h1>
                     <p class="text-muted mb-0">Review and manage change request details</p>
                 </div>
                 <div class="d-flex gap-3">
@@ -1204,7 +1206,7 @@
 
             <div class="col-lg-12">
                 <!-- Resubmission Section for HODs when returned -->
-                @if(($changeRequest->overall_status === 'returned' || $changeRequest->overall_status === 'pending') && isdivision_head($changeRequest) && $changeRequest->approval_level <= 1)
+                @if($changeRequest->overall_status === 'returned' && isdivision_head($changeRequest) && $changeRequest->approval_level <= 1)
                     <div class="card sidebar-card border-0 mb-4"
                         style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
                         <div class="card-header bg-transparent border-0 py-3">
