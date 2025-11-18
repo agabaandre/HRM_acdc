@@ -584,4 +584,35 @@ return $qry->num_rows();
 		$this->db->where('user_id', $id);
 		return $this->db->get($this->table)->row();
 	}
+
+	// Reset password
+	public function resetPass($postdata)
+	{
+		if (!isset($postdata['user_id']) || empty($postdata['user_id'])) {
+			return "User ID is required";
+		}
+
+		$uid = $postdata['user_id'];
+		
+		// Get the password - use provided password or default password
+		$password = isset($postdata['password']) ? $postdata['password'] : setting()->default_password;
+		
+		// Hash the password
+		$hashedPassword = $this->argonhash->make($password);
+		
+		// Update the password
+		$data = array(
+			"password" => $hashedPassword,
+			"isChanged" => 0 // Reset the isChanged flag since it's a reset
+		);
+		
+		$this->db->where('user_id', $uid);
+		$done = $this->db->update($this->table, $data);
+
+		if ($done) {
+			return "Password has been reset successfully";
+		} else {
+			return "Failed to reset password. Please try again";
+		}
+	}
 }

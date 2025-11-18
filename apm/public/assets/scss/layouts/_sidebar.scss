@@ -100,7 +100,51 @@
     left: 0;
     bottom: 0;
     z-index: 1000;
-    background-color: $white;
+    background-color: #2c3e50; // Dark background to match desktop and ensure nav items are visible
+  }
+  
+  // Ensure nav items are visible on dark background
+  .main-sidebar-body {
+    .nav-link {
+      color: rgba(255, 255, 255, 0.8) !important;
+      
+      &:hover,
+      &.active {
+        color: #ffffff !important;
+        background-color: rgba(17, 154, 72, 0.2);
+      }
+    }
+    
+    .nav-sub-link {
+      color: rgba(255, 255, 255, 0.7) !important;
+      
+      &:hover,
+      &.active {
+        color: #ffffff !important;
+      }
+    }
+  }
+  
+  // Ensure sidebar header is also dark
+  .main-sidebar-header {
+    background-color: #2c3e50 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  // Ensure logged in section is dark
+  .main-sidebar-loggedin {
+    background-color: #2c3e50;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .media-body {
+      h6 {
+        color: #ffffff !important;
+      }
+      
+      span {
+        color: rgba(255, 255, 255, 0.7) !important;
+      }
+    }
   }
 }
 

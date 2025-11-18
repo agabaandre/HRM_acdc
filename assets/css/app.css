@@ -2394,9 +2394,9 @@ input::placeholder {
         right: 0;
         left: -260px;
         z-index: 16;
-        border-bottom: 1px solid #e4e4e4;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         background-clip: border-box;
-        background: #ffffff;
+        background: #2c3e50; /* Dark background to match desktop and ensure nav items are visible */
         height: 100%;
         padding: 10px;
         display: flex;
@@ -2413,8 +2413,8 @@ input::placeholder {
         display: flex;
         align-items: center;
         height: 60px;
-        background: white;
-        border-bottom: 1px solid #f1f1f1;
+        background: #2c3e50; /* Dark background to match sidebar */
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         background-clip: border-box;
         position: fixed;
         width: 260px;
@@ -2424,6 +2424,42 @@ input::placeholder {
         z-index: 10;
         padding: 0 30px;
     }
+    
+    /* Ensure text is visible on dark background in mobile header */
+    .wrapper.toggled .mobile-topbar-header .logo-text {
+        color: #ffffff !important;
+    }
+    
+    .wrapper.toggled .mobile-topbar-header .toggle-icon {
+        color: #ffffff !important;
+    }
+    
+    /* Ensure nav items are visible on dark mobile sidebar */
+    .wrapper.toggled .nav-container .navbar-nav .nav-link {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+    
+    .wrapper.toggled .nav-container .navbar-nav .nav-link:hover,
+    .wrapper.toggled .nav-container .navbar-nav .nav-link.active {
+        color: #ffffff !important;
+        background-color: rgba(17, 154, 72, 0.2);
+    }
+    
+    .wrapper.toggled .nav-container .dropdown-menu {
+        background-color: rgba(44, 62, 80, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .wrapper.toggled .nav-container .dropdown-menu .dropdown-item {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+    
+    .wrapper.toggled .nav-container .dropdown-menu .dropdown-item:hover,
+    .wrapper.toggled .nav-container .dropdown-menu .dropdown-item.active {
+        color: #ffffff !important;
+        background-color: rgba(17, 154, 72, 0.3);
+    }
+    
     .wrapper.toggled .overlay {
         position: fixed;
         top: 0;
