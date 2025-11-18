@@ -1,7 +1,7 @@
 <div class="nav-container primary-menu">
     <div class="mobile-topbar-header">
         <div>
-            <img src="<?php echo base_url() ?>assets/images/au_emblem.png" class="logo-icon" alt="logo icon">
+            <img src="<?php echo base_url() ?>assets/images/AU_CDC_Logo-800.png" class="logo-icon" alt="Africa CDC Logo" style="filter: brightness(0) invert(1);">
         </div>
         <div>
             <h5 class="logo-text">Staff Portal</h5>
