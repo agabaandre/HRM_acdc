@@ -1,0 +1,45 @@
+/* Header styles - matching Laravel layout */
+.topbar {
+  background: linear-gradient(135deg, #119a48 0%, #1bb85a 100%);
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.topbar-logo-header img {
+  max-width: 200px;
+  height: auto;
+}
+
+.user-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-info .user-name {
+  font-weight: 600;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.user-info .designattion {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.8);
+}
+
+.user-box .dropdown-menu {
+  min-width: 200px;
+}
+
+.user-box .dropdown-item {
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-box .dropdown-item i {
+  width: 20px;
+}
+

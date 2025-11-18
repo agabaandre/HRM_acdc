@@ -315,6 +315,18 @@ body {
       ];
     }
 
+    // Finance Management
+    // You can add a permission check here if needed, e.g., if (in_array('86', $permissions))
+    $token = urlencode(base64_encode(json_encode($session)));
+    $financeUrl = 'http://localhost:3002?token=' . $token; // Change to your production URL
+    $settings[] = [
+      $financeUrl,
+      'Finance Management',
+      'fa-wallet',
+      true,
+      'Manage financial reports, invoices, budgets, transactions, and vendor information'
+    ];
+
     foreach ($settings as [$path, $label, $icon, $absolute, $desc]) :
     ?>
     <div class="col-12 col-md-6 setting-card-item" data-title="<?= strtolower($label) ?>">
