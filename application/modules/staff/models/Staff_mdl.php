@@ -180,7 +180,7 @@ class Staff_mdl extends CI_Model
 			s.email_status, s.email_disabled_at, s.email_disabled_by,
 			sc.division_id, s.nationality_id, s.staff_id,s.tel_1, s.tel_2, s.whatsapp, s.work_email, s.photo,s.signature,
 			s.private_email, s.physical_location,s.created_at as staff_created_at,s.updated_at as staff_updated_at, sc.created_at as contract_created_at, sc.updated_at as contract_updated_at
-		');
+		', false);
 		
 		$this->db->from('staff s');
 		
@@ -257,7 +257,7 @@ class Staff_mdl extends CI_Model
 			$this->db->or_like('s.fname', $lname, 'both');
 			$this->db->group_end();
 		}
-		$this->db->order_by('fname','ASC');
+		$this->db->order_by('s.fname','ASC');
 		// Apply pagination limit if not exporting CSV
 		if (($limit && $csv != 1 && $pdf != 1))  {
 			$this->db->limit($limit, $start);
