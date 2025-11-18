@@ -1,0 +1,40 @@
+/* Navigation styles */
+.nav-container {
+  background: #fff;
+  border-bottom: 1px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.nav-container .nav-link {
+  padding: 1rem 1.5rem;
+  color: #6c757d;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+}
+
+.nav-container .nav-link:hover {
+  color: #119a48;
+  background-color: rgba(17, 154, 72, 0.05);
+}
+
+.nav-container .nav-link.active {
+  color: #119a48;
+  border-bottom-color: #119a48;
+  background-color: rgba(17, 154, 72, 0.05);
+}
+
+.nav-container .parent-icon {
+  font-size: 1.25rem;
+  width: 24px;
+  text-align: center;
+}
+
+.nav-container .menu-title {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
