@@ -88,17 +88,25 @@ REACT_APP_CI_BASE_URL=http://localhost/staff
 
 #### Development Mode (Run both server and client)
 
-From the `finance/` directory:
+You can run from either location:
 
+**From root `finance/` directory:**
+```bash
+npm run dev:all
+```
+
+**From `finance/frontend/` directory:**
 ```bash
 npm run dev:all
 ```
 
 This will start:
-- Node.js server on `http://localhost:3003`
-- React app on `http://localhost:3002`
+- Node.js server on `http://localhost:3003` (with blue prefix)
+- React app on `http://localhost:3002` (with green prefix)
 
 #### Or run separately:
+
+**From root directory:**
 
 **Terminal 1 - Server:**
 ```bash
@@ -108,6 +116,18 @@ npm run dev
 **Terminal 2 - Frontend:**
 ```bash
 npm run client
+```
+
+**From frontend directory:**
+
+**Terminal 1 - Frontend:**
+```bash
+npm run dev
+```
+
+**Terminal 2 - Backend:**
+```bash
+npm run server
 ```
 
 ### 5. Production Build

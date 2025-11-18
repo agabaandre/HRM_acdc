@@ -1,40 +1,63 @@
-/* Navigation styles */
+/* Navigation styles - matching Laravel layout exactly */
 .nav-container {
-  background: #fff;
-  border-bottom: 1px solid #e9ecef;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.nav-container .nav-link {
-  padding: 1rem 1.5rem;
-  color: #6c757d;
-  text-decoration: none;
+  position: fixed;
+  top: 60px;
+  right: 0;
+  left: 0;
+  z-index: 9;
+  border-bottom: 1px solid rgba(17, 154, 72, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  background-clip: border-box;
+  background: #2c3e50;
+  width: 100%;
+  height: 60px;
+  padding: 0px 30px;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  transition: all 0.2s ease;
-  border-bottom: 3px solid transparent;
+  justify-content: center;
 }
 
-.nav-container .nav-link:hover {
-  color: #119a48;
-  background-color: rgba(17, 154, 72, 0.05);
-}
-
-.nav-container .nav-link.active {
-  color: #119a48;
-  border-bottom-color: #119a48;
-  background-color: rgba(17, 154, 72, 0.05);
-}
-
-.nav-container .parent-icon {
-  font-size: 1.25rem;
+.nav-container.primary-menu a .parent-icon {
+  font-size: 20px;
   width: 24px;
   text-align: center;
+}
+
+.nav-container.primary-menu ul a i {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nav-container.primary-menu .navbar-nav a.nav-link {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 12px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  padding-right: 1rem;
+  padding-left: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-container.primary-menu .navbar-nav a.nav-link:hover,
+.nav-container.primary-menu .navbar-nav a.nav-link:focus,
+.nav-container.primary-menu .nav-link.active,
+.nav-container.primary-menu .show > .nav-link {
+  color: #ffffff !important;
+  background-color: rgba(17, 154, 72, 0.2);
+  border-radius: 4px;
+}
+
+.nav-container.primary-menu .dropdown-menu .dropdown-item.active,
+.nav-container.primary-menu .dropdown-menu .dropdown-item:active {
+  color: #fff;
+  background-color: #0e9a48 !important;
 }
 
 .nav-container .menu-title {
   font-weight: 500;
   font-size: 0.9rem;
+  color: inherit;
 }
 

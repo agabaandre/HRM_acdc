@@ -9,10 +9,21 @@ router.post('/transfer', (req, res) => {
     const { sessionData } = req.body;
     
     if (!sessionData) {
+      console.error('Session transfer failed: No session data provided');
       return res.status(400).json({ 
         success: false, 
         message: 'Session data is required',
         redirectUrl: `${config.ciBaseUrl}/auth`
+      });
+    }
+
+    // Debug logging in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Session transfer - Received session data:', {
+        hasUser: !!sessionData,
+        hasBaseUrl: !!sessionData.base_url,
+        hasPermissions: !!sessionData.permissions,
+        staffId: sessionData.staff_id || sessionData.id || 'N/A'
       });
     }
 
@@ -24,13 +35,31 @@ router.post('/transfer', (req, res) => {
     req.session.authenticated = true;
     req.session.transferredAt = new Date().toISOString();
 
-    res.json({
-      success: true,
-      message: 'Session transferred successfully',
-      user: sessionData // Return full user object like Laravel
+    // Explicitly save the session before sending response
+    req.session.save((err) => {
+      if (err) {
+        console.error('Error saving session:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to save session',
+          error: err.message,
+          redirectUrl: `${config.ciBaseUrl}/auth`
+        });
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Session saved successfully - Session ID:', req.sessionID);
+      }
+
+      res.json({
+        success: true,
+        message: 'Session transferred successfully',
+        user: sessionData // Return full user object like Laravel
+      });
     });
   } catch (error) {
     console.error('Session transfer error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to transfer session',
@@ -42,6 +71,13 @@ router.post('/transfer', (req, res) => {
 
 // Get current session - matches Laravel pattern
 router.get('/', (req, res) => {
+  // Debug logging (remove in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Session check - Session ID:', req.sessionID);
+    console.log('Session check - Authenticated:', req.session?.authenticated);
+    console.log('Session check - Has user:', !!req.session?.user);
+  }
+
   if (req.session && req.session.authenticated && req.session.user) {
     res.json({
       authenticated: true,
