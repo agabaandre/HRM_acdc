@@ -2422,16 +2422,34 @@ input::placeholder {
         top: 0;
         right: 0;
         z-index: 10;
-        padding: 0 30px;
+        padding: 0 15px;
+        gap: 10px;
     }
     
     /* Ensure text is visible on dark background in mobile header */
     .wrapper.toggled .mobile-topbar-header .logo-text {
         color: #ffffff !important;
+        font-size: 16px !important;
+        margin-left: 8px !important;
+        margin-bottom: 0;
     }
     
     .wrapper.toggled .mobile-topbar-header .toggle-icon {
         color: #ffffff !important;
+    }
+    
+    /* Fix logo icon on mobile */
+    .wrapper.toggled .mobile-topbar-header .logo-icon {
+        width: 35px !important;
+        height: 35px !important;
+        object-fit: contain;
+        filter: brightness(0) invert(1); /* Make logo white for dark background */
+    }
+    
+    /* Ensure mobile header content is properly aligned */
+    .wrapper.toggled .mobile-topbar-header > div {
+        display: flex;
+        align-items: center;
     }
     
     /* Ensure nav items are visible on dark mobile sidebar */
