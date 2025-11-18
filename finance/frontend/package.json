@@ -15,11 +15,11 @@
     "react-scripts": "5.0.1"
   },
   "scripts": {
-    "start": "PORT=3002 react-scripts start",
+    "start": "PORT=3002 DANGEROUSLY_DISABLE_HOST_CHECK=true HOST=0.0.0.0 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "dev": "PORT=3002 react-scripts start",
+    "dev": "PORT=3002 DANGEROUSLY_DISABLE_HOST_CHECK=true HOST=0.0.0.0 react-scripts start",
     "dev:all": "cd .. && npm run dev:all",
     "server": "cd .. && npm run dev",
     "server:start": "cd .. && npm start"

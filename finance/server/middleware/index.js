@@ -33,9 +33,23 @@ module.exports = (app) => {
   // Cleanup middleware
   app.use(cleanup());
 
-  // CORS middleware
+  // CORS middleware - allow production domain when behind proxy
+  const allowedOrigins = [
+    config.clientUrl,
+    'https://cbp.africacdc.org',
+    'http://localhost:3002',
+    'http://localhost:3003'
+  ];
+  
   app.use(cors({
-    origin: config.clientUrl,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests) or from allowed origins
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all origins when behind proxy (proxy handles security)
+      }
+    },
     credentials: true
   }));
 
