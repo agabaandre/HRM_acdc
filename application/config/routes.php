@@ -51,6 +51,9 @@ defined('BASEPATH') or exit('No direct script access allowed');
 */
 $route['default_controller'] = 'auth/index';
 
+// Permissions module routes - map lowercase URLs to PascalCase controllers
+$route['permissions/userpermissions'] = 'permissions/UserPermissions/index';
+$route['permissions/userpermissions/(:any)'] = 'permissions/UserPermissions/$1';
 
 //set modules/config/routes.php
 $modules_path = APPPATH . 'modules/';
