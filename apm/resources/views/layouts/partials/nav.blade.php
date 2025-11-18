@@ -80,15 +80,6 @@
     <nav class="navbar navbar-expand-xl w-100">
         <ul class="navbar-nav justify-content-start">
 
-            <!-- Staff Directory -->
-            <li class="nav-item">
-                <a class="nav-link {{ Request::is('staff*') ? 'active' : '' }}"
-                    href="{{ route('staff.index') }}">
-                    <div class="parent-icon"><i class="fas fa-user-cog"></i></div>
-                    <div class="menu-title">Staff Directory</div>
-                </a>
-            </li>
-
             <!-- Approver Dashboard -->
             <li class="nav-item">
                 <a href="{{ route('approver-dashboard.index') }}"
@@ -226,6 +217,15 @@
                             href="{{ url('request-arf') }}">Request for ARF</a>
                     </li>
                 </ul>
+            </li>
+
+            <!-- Staff List -->
+            <li class="nav-item">
+                <a class="nav-link {{ Request::is('staff*') ? 'active' : '' }}"
+                    href="{{ route('staff.index') }}">
+                    <div class="parent-icon"><i class="fas fa-user-cog"></i></div>
+                    <div class="menu-title">Staff List</div>
+                </a>
             </li>
 
             <!-- Workflow Management -->
