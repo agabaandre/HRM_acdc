@@ -8,7 +8,8 @@
     "dev": "nodemon server/index.js",
     "client": "cd frontend && npm start",
     "client:build": "cd frontend && npm run build",
-    "dev:all": "concurrently \"npm run dev\" \"npm run client\""
+    "dev:all": "concurrently --names \"SERVER,CLIENT\" --prefix-colors \"blue,green\" \"npm run dev\" \"npm run client\"",
+    "install:all": "npm install --legacy-peer-deps && cd frontend && npm install --legacy-peer-deps"
   },
   "dependencies": {
     "express": "^4.18.2",

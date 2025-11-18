@@ -1,7 +1,7 @@
 const mysql = require('mysql2/promise');
 const config = require('../config');
 
-// Create connection pool
+// Create connection pool with memory-efficient settings
 const pool = mysql.createPool({
   host: config.database.host,
   port: config.database.port,
@@ -10,10 +10,16 @@ const pool = mysql.createPool({
   database: config.database.database,
   charset: config.database.charset,
   waitForConnections: config.database.waitForConnections,
-  connectionLimit: config.database.connectionLimit,
-  queueLimit: config.database.queueLimit,
+  connectionLimit: config.database.connectionLimit || 10, // Limit concurrent connections
+  queueLimit: config.database.queueLimit || 0, // Unlimited queue (adjust if needed)
   enableKeepAlive: config.database.enableKeepAlive,
-  keepAliveInitialDelay: config.database.keepAliveInitialDelay
+  keepAliveInitialDelay: config.database.keepAliveInitialDelay,
+  // Memory management settings
+  maxIdle: 10, // Maximum idle connections
+  idleTimeout: 60000, // Close idle connections after 60 seconds
+  reconnect: true, // Auto-reconnect on connection loss
+  // Query timeout to prevent hanging queries
+  timeout: 30000 // 30 seconds query timeout
 });
 
 // Test database connection

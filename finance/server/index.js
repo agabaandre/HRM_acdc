@@ -36,9 +36,32 @@ app.get('/', (req, res) => {
       req.session.permissions = json.permissions || [];
       req.session.authenticated = true;
       req.session.transferredAt = new Date().toISOString();
+
+      // Check if user has permission 92 (Finance access)
+      const permissions = json.permissions || [];
+      const hasFinanceAccess = permissions.includes('92') || permissions.includes(92);
+      
+      if (!hasFinanceAccess) {
+        // User doesn't have permission, redirect to CI with error message
+        return res.redirect(`${config.ciBaseUrl}/auth?error=no_finance_permission`);
+      }
     } catch (error) {
       console.error('Token processing error:', error);
       // On error, redirect to CI login
+      return res.redirect(`${config.ciBaseUrl}/auth`);
+    }
+  } else {
+    // No token provided, check existing session
+    if (req.session && req.session.authenticated) {
+      const permissions = req.session.permissions || [];
+      const hasFinanceAccess = permissions.includes('92') || permissions.includes(92);
+      
+      if (!hasFinanceAccess) {
+        // User doesn't have permission, redirect to CI
+        return res.redirect(`${config.ciBaseUrl}/auth?error=no_finance_permission`);
+      }
+    } else {
+      // No session, redirect to CI login
       return res.redirect(`${config.ciBaseUrl}/auth`);
     }
   }
@@ -67,6 +90,9 @@ if (config.nodeEnv === 'production') {
   });
 }
 
+// Server reference for graceful shutdown
+let server;
+
 // Initialize database connection
 async function startServer() {
   // Test database connection
@@ -75,13 +101,23 @@ async function startServer() {
     console.warn('Warning: Database connection failed. Some features may not work.');
   }
 
-  // Start server
-  app.listen(config.port, () => {
+  // Start server and store reference for graceful shutdown
+  server = app.listen(config.port, () => {
     console.log(`Finance server running on port ${config.port}`);
     console.log(`Environment: ${config.nodeEnv}`);
     console.log(`Database: ${config.database.database}@${config.database.host}:${config.database.port}`);
     console.log(`Assets base path: ${config.assetsBasePath}`);
+    
+    // Log initial memory usage
+    const { getMemoryUsage, formatBytes } = require('./middleware/memory');
+    const memUsage = getMemoryUsage();
+    console.log(`Initial memory usage: ${formatBytes(memUsage.heapUsed)} / ${formatBytes(memUsage.heapTotal)}`);
   });
+  
+  // Set server timeout to prevent hanging connections
+  server.timeout = 30000; // 30 seconds
+  server.keepAliveTimeout = 65000; // 65 seconds (slightly longer than load balancer)
+  server.headersTimeout = 66000; // 66 seconds (slightly longer than keepAliveTimeout)
 }
 
 // Start the server
@@ -90,18 +126,53 @@ startServer().catch(error => {
   process.exit(1);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM signal received: closing HTTP server and database connections');
-  await db.close();
-  process.exit(0);
+// Memory management: Set max listeners to prevent memory leaks
+process.setMaxListeners(20);
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Close database connections
+  db.close().then(() => {
+    process.exit(1);
+  }).catch(() => {
+    process.exit(1);
+  });
 });
 
-process.on('SIGINT', async () => {
-  console.log('SIGINT signal received: closing HTTP server and database connections');
-  await db.close();
-  process.exit(0);
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Close database connections
+  db.close().then(() => {
+    process.exit(1);
+  }).catch(() => {
+    process.exit(1);
+  });
 });
+
+// Graceful shutdown
+const gracefulShutdown = async (signal) => {
+  console.log(`${signal} signal received: closing HTTP server and database connections`);
+  
+  if (server) {
+    server.close(() => {
+      console.log('HTTP server closed');
+    });
+  }
+  
+  try {
+    await db.close();
+    console.log('Database connections closed');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 module.exports = app;
 

@@ -21,11 +21,22 @@
 2. **Start the application:**
 
    **Option 1: Run both server and client together (recommended for development)**
+   
+   You can run from either location:
+   
+   From root `finance/` directory:
+   ```bash
+   npm run dev:all
+   ```
+   
+   From `finance/frontend/` directory:
    ```bash
    npm run dev:all
    ```
 
    **Option 2: Run separately**
+   
+   From root directory:
    
    Terminal 1 (Server):
    ```bash
@@ -35,6 +46,18 @@
    Terminal 2 (Client):
    ```bash
    npm run client
+   ```
+   
+   From frontend directory:
+   
+   Terminal 1 (Frontend):
+   ```bash
+   npm run dev
+   ```
+   
+   Terminal 2 (Backend):
+   ```bash
+   npm run server
    ```
 
 ## Accessing the Application

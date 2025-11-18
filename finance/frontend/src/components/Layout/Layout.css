@@ -1,4 +1,4 @@
-/* Layout wrapper styles */
+/* Layout wrapper styles - matching Laravel layout exactly */
 .wrapper {
   min-height: 100vh;
   display: flex;
@@ -6,13 +6,21 @@
 }
 
 .page-wrapper {
-  flex: 1;
-  padding: 1.5rem;
+  height: 100%;
+  margin-top: 120px;
+  margin-bottom: 30px;
+  margin-left: 0px;
+}
+
+@media screen and (min-width: 1400px) {
+  .page-wrapper {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
 }
 
 .page-content {
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 1.5rem;
 }
 
 .card {
