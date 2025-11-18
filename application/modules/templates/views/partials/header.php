@@ -52,6 +52,68 @@
 			</div>
 			<div class="top-menu ms-auto">
 				<ul class="navbar-nav align-items-center">
+					<?php
+					// Prepare session data for token generation
+					$sessionobj = $this->session->userdata('user');
+					$permissions = $sessionobj->permissions;
+					$session = (array) $sessionobj;
+					$session['base_url'] = base_url();
+					
+					// APM URL
+					$apmToken = '';
+					$apmUrl = '';
+					if (in_array('85', $permissions)) {
+						$apmToken = urlencode(base64_encode(json_encode($session)));
+						$apmUrl = $session['base_url'] . 'apm?token=' . $apmToken;
+					}
+					
+					// Finance URL: Use PRODUCTION_URL/finance in production, localhost:3002 in development
+					// Only show Finance link if user has permission 92
+					$financeUrl = '';
+					if (in_array('92', $permissions)) {
+						$host = $_SERVER['HTTP_HOST'] ?? '';
+						$financeToken = urlencode(base64_encode(json_encode($session)));
+						if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
+							$financeUrl = 'http://localhost:3002?token=' . $financeToken;
+						} else {
+							$productionUrl = $_ENV['PRODUCTION_URL'] ?? base_url();
+							$financeUrl = rtrim($productionUrl, '/') . '/finance?token=' . $financeToken;
+						}
+					}
+					?>
+					
+					<!-- APM Link -->
+					<?php if (in_array('85', $permissions)) : ?>
+					<li class="nav-item">
+						<a 
+							class="nav-link" 
+							href="<?= $apmUrl ?>"
+							target="_blank"
+							rel="noopener noreferrer"
+							style="font-size: 0.875rem;"
+						>
+							<i class='fa fa-sitemap' style="color:#FFF; font-size: 1.1rem;"></i>
+							<span class="ms-2 d-none d-md-inline" style="color:#FFF; font-size: 0.875rem;">APM</span>
+						</a>
+					</li>
+					<?php endif; ?>
+					
+					<!-- Finance Management Link -->
+					<?php if (in_array('92', $permissions) && !empty($financeUrl)) : ?>
+					<li class="nav-item">
+						<a 
+							class="nav-link" 
+							href="<?= $financeUrl ?>"
+							target="_blank"
+							rel="noopener noreferrer"
+							style="font-size: 0.875rem;"
+						>
+							<i class='bx bx-wallet' style="color:#FFF; font-size: 1.1rem;"></i>
+							<span class="ms-2 d-none d-md-inline" style="color:#FFF; font-size: 0.875rem;">Finance</span>
+						</a>
+					</li>
+					<?php endif; ?>
+					
 					<li class="nav-item  dropdown-large">
 						<a class="nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"> <i class='bx bx-category' style="color:#FFF;"></i>
 						</a>

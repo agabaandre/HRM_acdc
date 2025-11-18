@@ -722,9 +722,20 @@ public function revert()
   }
   public function resetPass()
   {
-    $postdata = $this->input->post();
-    $res = $this->auth_mdl->resetPass($postdata);
-    echo json_encode(['message' => $res]);
+    try {
+      $postdata = $this->input->post();
+      
+      if (empty($postdata)) {
+        echo json_encode(['message' => 'No data received']);
+        return;
+      }
+      
+      $res = $this->auth_mdl->resetPass($postdata);
+      echo json_encode(['message' => $res]);
+    } catch (Exception $e) {
+      log_message('error', 'Reset password error: ' . $e->getMessage());
+      echo json_encode(['message' => 'Error resetting password: ' . $e->getMessage()]);
+    }
   }
   public function blockUser()
   {

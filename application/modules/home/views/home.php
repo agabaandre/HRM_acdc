@@ -315,17 +315,25 @@ body {
       ];
     }
 
-    // Finance Management
-    // You can add a permission check here if needed, e.g., if (in_array('86', $permissions))
-    $token = urlencode(base64_encode(json_encode($session)));
-    $financeUrl = 'http://localhost:3002?token=' . $token; // Change to your production URL
-    $settings[] = [
-      $financeUrl,
-      'Finance Management',
-      'fa-wallet',
-      true,
-      'Manage financial reports, invoices, budgets, transactions, and vendor information'
-    ];
+    // Finance Management - Only show if user has permission 92
+    if (in_array('92', $permissions)) {
+      $token = urlencode(base64_encode(json_encode($session)));
+      // Use PRODUCTION_URL/finance in production, localhost:3002 in development
+      $host = $_SERVER['HTTP_HOST'] ?? '';
+      if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
+        $financeUrl = 'http://localhost:3002?token=' . $token;
+      } else {
+        $productionUrl = $_ENV['PRODUCTION_URL'] ?? $session['base_url'];
+        $financeUrl = rtrim($productionUrl, '/') . '/finance?token=' . $token;
+      }
+      $settings[] = [
+        $financeUrl,
+        'Finance Management',
+        'fa-wallet',
+        true,
+        'Manage financial reports, invoices, budgets, transactions, and vendor information'
+      ];
+    }
 
     foreach ($settings as [$path, $label, $icon, $absolute, $desc]) :
     ?>

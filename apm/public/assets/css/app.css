@@ -2396,7 +2396,7 @@ input::placeholder {
         z-index: 16;
         border-bottom: 1px solid #e4e4e4;
         background-clip: border-box;
-        background: #ffffff;
+        background: #2c3e50;
         height: 100%;
         padding: 10px;
         display: flex;

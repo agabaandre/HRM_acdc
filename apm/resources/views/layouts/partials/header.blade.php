@@ -23,6 +23,60 @@
                         </div>
                         <div class="top-menu ms-auto">
                             <ul class="navbar-nav align-items-center">
+                                @php
+                                    $session = (array) session('user');
+                                    $session['base_url'] = session('user.base_url', env('BASE_URL', 'http://localhost/staff'));
+                                    // Remove trailing slash and 'apm' if present
+                                    $staffBaseUrl = rtrim($session['base_url'], '/');
+                                    $staffBaseUrl = str_replace('/apm', '', $staffBaseUrl);
+                                    $staffPortalUrl = $staffBaseUrl . '/auth/profile';
+                                    $permissions = session('permissions', []);
+                                    
+                                    // Finance URL: Use BASE_URL/finance in production, localhost:3002 in development
+                                    // Only show Finance link if user has permission 92
+                                    $financeUrl = '';
+                                    if (in_array(92, $permissions)) {
+                                        $financeToken = urlencode(base64_encode(json_encode($session)));
+                                        $host = request()->getHost();
+                                        if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
+                                            $financeUrl = 'http://localhost:3002?token=' . $financeToken;
+                                        } else {
+                                            $baseUrl = env('BASE_URL', 'http://localhost/staff');
+                                            $financeUrl = rtrim($baseUrl, '/') . '/finance?token=' . $financeToken;
+                                        }
+                                    }
+                                @endphp
+                                
+                                <!-- Staff Portal Link -->
+                                <li class="nav-item">
+                                    <a 
+                                        class="nav-link" 
+                                        href="{{ $staffPortalUrl }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style="font-size: 0.875rem;"
+                                    >
+                                        <i class='bx bx-user' style="color:#FFF; font-size: 1.1rem;"></i>
+                                        <span class="ms-2 d-none d-md-inline" style="color:#FFF; font-size: 0.875rem;">Staff Portal</span>
+                                    </a>
+                                </li>
+                                
+                                <!-- Finance Management Link -->
+                                @if(in_array(92, $permissions) && !empty($financeUrl))
+                                <li class="nav-item">
+                                    <a 
+                                        class="nav-link" 
+                                        href="{{ $financeUrl }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style="font-size: 0.875rem;"
+                                    >
+                                        <i class='bx bx-wallet' style="color:#FFF; font-size: 1.1rem;"></i>
+                                        <span class="ms-2 d-none d-md-inline" style="color:#FFF; font-size: 0.875rem;">Finance</span>
+                                    </a>
+                                </li>
+                                @endif
+
                                 <li class="nav-item  dropdown-large">
                                     <a class="nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button"
                                         data-bs-toggle="dropdown" aria-expanded="false"> <i class='bx bx-category'
