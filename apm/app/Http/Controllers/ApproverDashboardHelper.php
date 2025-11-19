@@ -375,7 +375,7 @@ trait ApproverDashboardHelper
         }
 
         // Handle ARF and Service Requests separately (they might not use approval_trails)
-        // For now, we'll keep the old logic for these
+        // These need to filter by workflow and approval level
         $arfCount = $this->getPendingCountForARF($workflowId, $levelNo, $divisionId);
         $serviceCount = $this->getPendingCountForServiceRequests($workflowId, $levelNo, $divisionId);
         $changeRequestCount = $this->getPendingCountForChangeRequests($workflowId, $levelNo, $divisionId);
@@ -389,9 +389,10 @@ trait ApproverDashboardHelper
     }
 
     /**
-     * Get pending count for ARF requests (fallback to old logic).
+     * Get pending count for ARF requests.
+     * ARF requests use forward_workflow_id and approval_level.
      */
-    protected function getPendingCountForARF($workflowId, $levelNo, $dateFrom = null, $dateTo = null)
+    protected function getPendingCountForARF($workflowId, $levelNo, $divisionId = null)
     {
         try {
             if (!DB::getSchemaBuilder()->hasTable('request_arfs')) {
@@ -400,25 +401,26 @@ trait ApproverDashboardHelper
 
             $query = DB::table('request_arfs')
                 ->where('forward_workflow_id', $workflowId)
-                ->where('overall_status', 'pending');
+                ->where('approval_level', $levelNo)
+                ->where('overall_status', 'pending')
+                ->whereNotNull('forward_workflow_id');
 
-            if ($dateFrom) {
-                $query->where('created_at', '>=', $dateFrom);
-            }
-            if ($dateTo) {
-                $query->where('created_at', '<=', $dateTo . ' 23:59:59');
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
             }
 
             return $query->count();
         } catch (\Exception $e) {
+            Log::error('Error getting pending count for ARF: ' . $e->getMessage());
             return 0;
         }
     }
 
     /**
-     * Get pending count for Service Requests (fallback to old logic).
+     * Get pending count for Service Requests.
+     * Service requests use workflow_id and approval_level.
      */
-    protected function getPendingCountForServiceRequests($workflowId, $levelNo, $dateFrom = null, $dateTo = null)
+    protected function getPendingCountForServiceRequests($workflowId, $levelNo, $divisionId = null)
     {
         try {
             if (!DB::getSchemaBuilder()->hasTable('service_requests')) {
@@ -427,17 +429,17 @@ trait ApproverDashboardHelper
 
             $query = DB::table('service_requests')
                 ->where('workflow_id', $workflowId)
-                ->where('approval_status', 'pending');
+                ->where('approval_level', $levelNo)
+                ->where('approval_status', 'pending')
+                ->whereNotNull('workflow_id');
 
-            if ($dateFrom) {
-                $query->where('created_at', '>=', $dateFrom);
-            }
-            if ($dateTo) {
-                $query->where('created_at', '<=', $dateTo . ' 23:59:59');
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
             }
 
             return $query->count();
         } catch (\Exception $e) {
+            Log::error('Error getting pending count for service requests: ' . $e->getMessage());
             return 0;
         }
     }
