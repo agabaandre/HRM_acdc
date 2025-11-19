@@ -576,7 +576,10 @@ function updateTable(data) {
                             <small class="text-muted">${approver.approver_email}</small>
                             <div class="mt-1">
                                 <div class="mb-1">
-                                    <span class="badge bg-info">${approver.role} (Level ${approver.level_no})</span>
+                                    ${approver.roles && approver.roles.length > 0 ? 
+                                        approver.roles.map(role => `<span class="badge bg-info me-1">${role}</span>`).join('') :
+                                        `<span class="badge bg-info">${approver.role || 'N/A'}</span>`
+                                    }
                                 </div>
                                 <div>
                                     <small class="text-muted">${approver.division_name || 'N/A'}</small>
@@ -646,21 +649,47 @@ function updatePagination(pagination) {
     
     // Previous button
     if (pagination.current_page > 1) {
-        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${pagination.current_page - 1})">Previous</a></li>`;
+        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(${pagination.current_page - 1}); return false;">Previous</a></li>`;
+    }
+    
+    // Show page numbers with ellipsis for large page counts
+    const maxVisiblePages = 10;
+    let startPage = Math.max(1, pagination.current_page - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(pagination.last_page, startPage + maxVisiblePages - 1);
+    
+    // Adjust start if we're near the end
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    // First page
+    if (startPage > 1) {
+        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(1); return false;">1</a></li>`;
+        if (startPage > 2) {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
     }
     
     // Page numbers
-    for (let i = 1; i <= pagination.last_page; i++) {
+    for (let i = startPage; i <= endPage; i++) {
         if (i === pagination.current_page) {
             paginationHtml += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
         } else {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${i})">${i}</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(${i}); return false;">${i}</a></li>`;
         }
+    }
+    
+    // Last page
+    if (endPage < pagination.last_page) {
+        if (endPage < pagination.last_page - 1) {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(${pagination.last_page}); return false;">${pagination.last_page}</a></li>`;
     }
     
     // Next button
     if (pagination.current_page < pagination.last_page) {
-        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${pagination.current_page + 1})">Next</a></li>`;
+        paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); changePage(${pagination.current_page + 1}); return false;">Next</a></li>`;
     }
     
     paginationHtml += '</ul></nav>';

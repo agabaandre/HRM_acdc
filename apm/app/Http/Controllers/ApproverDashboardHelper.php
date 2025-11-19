@@ -130,17 +130,55 @@ trait ApproverDashboardHelper
 
     /**
      * Get pending counts for each approver.
+     * Combines approvers by staff_id to aggregate counts across all roles/levels.
      */
     protected function getPendingCountsForApprovers($approvers, $workflowDefinitionId, $docType = null, $divisionId = null)
     {
-        $approversWithCounts = [];
+        $approversByStaffId = [];
 
         // Handle both collection and array inputs
         $approversList = is_array($approvers) ? $approvers : $approvers->toArray();
 
+        // First pass: collect all approver data grouped by staff_id
         foreach ($approversList as $approver) {
             $approverObj = is_array($approver) ? (object) $approver : $approver;
+            $staffId = $approverObj->staff_id;
             
+            if (!isset($approversByStaffId[$staffId])) {
+                $approversByStaffId[$staffId] = [
+                    'staff_id' => $staffId,
+                    'approver_id' => $approverObj->approver_id,
+                    'approver_name' => trim($approverObj->fname . ' ' . $approverObj->lname),
+                    'approver_email' => $approverObj->work_email,
+                    'division_name' => $approverObj->division_name,
+                    'roles' => [],
+                    'levels' => [],
+                    'pending_counts' => [
+                        'matrix' => 0,
+                        'non_travel' => 0,
+                        'single_memos' => 0,
+                        'special' => 0,
+                        'memos' => 0,
+                        'arf' => 0,
+                        'requests_for_service' => 0,
+                        'change_requests' => 0,
+                    ],
+                    'total_pending' => 0,
+                    'total_handled' => 0,
+                    'approval_times' => [],
+                ];
+            }
+            
+            // Add role and level if not already present
+            $roleLevel = $approverObj->role . ' (Level ' . $approverObj->level_no . ')';
+            if (!in_array($roleLevel, $approversByStaffId[$staffId]['roles'])) {
+                $approversByStaffId[$staffId]['roles'][] = $roleLevel;
+            }
+            if (!in_array($approverObj->level_no, $approversByStaffId[$staffId]['levels'])) {
+                $approversByStaffId[$staffId]['levels'][] = $approverObj->level_no;
+            }
+            
+            // Get pending counts for this specific approver/level combination
             $pendingCounts = $this->getPendingCountsForApprover(
                 $approverObj->approver_id,
                 $approverObj->level_no,
@@ -149,36 +187,63 @@ trait ApproverDashboardHelper
                 $approverObj->division_id
             );
 
-            // Calculate average approval time for this specific approver
+            // Sum up pending counts across all roles/levels
+            foreach ($approversByStaffId[$staffId]['pending_counts'] as $key => $value) {
+                if (isset($pendingCounts[$key])) {
+                    $approversByStaffId[$staffId]['pending_counts'][$key] += $pendingCounts[$key];
+                }
+            }
+
+            // Calculate average approval time for this specific approver/level
             $avgApprovalTime = $this->getAverageApprovalTime(
                 $approverObj->staff_id,
                 $approverObj->level_no,
                 $approverObj->workflow_id,
                 $docType
             );
+            if ($avgApprovalTime > 0) {
+                $approversByStaffId[$staffId]['approval_times'][] = $avgApprovalTime;
+            }
 
-            // Calculate total pending documents as sum of all document types (excluding the 'total' key)
-            $totalPending = array_sum(array_diff_key($pendingCounts, ['total' => '']));
-
-            // Calculate total handled documents for this approver
+            // Sum up total handled documents
             $totalHandled = $this->getTotalHandledForApprover(
                 $approverObj->staff_id,
                 $approverObj->level_no,
                 $approverObj->workflow_id,
                 $approverObj->division_id
             );
+            $approversByStaffId[$staffId]['total_handled'] += $totalHandled;
+        }
 
+        // Second pass: build final array with combined data
+        $approversWithCounts = [];
+        foreach ($approversByStaffId as $staffId => $data) {
+            // Calculate total pending
+            $totalPending = array_sum(array_diff_key($data['pending_counts'], ['total' => '']));
+            
+            // Calculate average approval time across all levels
+            $avgApprovalTime = 0;
+            if (!empty($data['approval_times'])) {
+                $avgApprovalTime = round(array_sum($data['approval_times']) / count($data['approval_times']), 2);
+            }
+            
+            // Sort roles and levels for display
+            sort($data['levels']);
+            sort($data['roles']);
+            
             $approversWithCounts[] = [
-                'approver_id' => $approverObj->approver_id,
-                'approver_name' => trim($approverObj->fname . ' ' . $approverObj->lname),
-                'approver_email' => $approverObj->work_email,
-                'division_name' => $approverObj->division_name,
-                'level_no' => $approverObj->level_no,
-                'role' => $approverObj->role,
-                'source' => $approverObj->source ?? 'unknown',
-                'pending_counts' => $pendingCounts,
+                'staff_id' => $data['staff_id'],
+                'approver_id' => $data['approver_id'],
+                'approver_name' => $data['approver_name'],
+                'approver_email' => $data['approver_email'],
+                'division_name' => $data['division_name'],
+                'roles' => $data['roles'],
+                'levels' => $data['levels'],
+                'role' => implode(', ', $data['roles']), // Combined roles for display
+                'level_no' => implode(', ', $data['levels']), // Combined levels for display
+                'pending_counts' => $data['pending_counts'],
                 'total_pending' => $totalPending,
-                'total_handled' => $totalHandled,
+                'total_handled' => $data['total_handled'],
                 'avg_approval_time_hours' => $avgApprovalTime,
                 'avg_approval_time_display' => $this->formatApprovalTime($avgApprovalTime),
             ];
