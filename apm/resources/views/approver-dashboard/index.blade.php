@@ -671,7 +671,7 @@ function updateSummaryStats(response) {
     // Update summary statistics
     $('#totalApprovers').text(response.pagination.total);
     $('#totalPending').text(response.data.reduce((sum, approver) => sum + approver.total_pending, 0));
-    $('#activeWorkflow').text(response.filters.workflow_definition_id || 'N/A');
+    $('#activeWorkflow').text(response.total_workflows || 0);
     $('#lastUpdated').text(new Date().toLocaleTimeString());
 }
 
