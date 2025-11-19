@@ -589,7 +589,8 @@
       unset($currentBudgetBreakdown['grand_total']);
       
       // Build a map of original budget items for comparison
-      // Key: fundCodeId_itemName, Value: amount
+      // Use a unique signature that includes all item properties to handle duplicates
+      // Key: fundCodeId_itemName_unitCost_units_days, Value: count of occurrences
       $originalBudgetMap = [];
       foreach ($parentBudgetBreakdown as $fundCodeId => $items) {
           if (is_array($items)) {
@@ -599,18 +600,18 @@
                   $units = floatval($item['units'] ?? 0);
                   $days = floatval($item['days'] ?? 1);
                   
-                  // Use days when greater than 1, otherwise just unit_cost * units
-                  if ($days > 1) {
-                      $amount = $unitCost * $units * $days;
-                  } else {
-                      $amount = $unitCost * $units;
+                  // Create unique key using all properties to handle duplicate item names
+                  $key = $fundCodeId . '_' . md5($itemName . '_' . $unitCost . '_' . $units . '_' . $days);
+                  if (!isset($originalBudgetMap[$key])) {
+                      $originalBudgetMap[$key] = 0;
                   }
-                  
-                  $key = $fundCodeId . '_' . $itemName;
-                  $originalBudgetMap[$key] = $amount;
+                  $originalBudgetMap[$key]++;
               }
           }
       }
+      
+      // Create a working copy for tracking matches
+      $matchedItems = [];
     ?>
     
     <table class="changes-table" style="margin-bottom: 20px;">
@@ -624,118 +625,135 @@
         <tr>
           <td style="vertical-align: top; padding: 10px;">
             <?php if (count($parentBudgetBreakdown) > 0): ?>
-              <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                  <tr style="background: #f9fafb;">
-                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Fund Code</th>
-                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
-                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php foreach ($parentBudgetBreakdown as $fundCodeId => $items): ?>
-                    <?php if (is_array($items) && count($items) > 0): ?>
-                      <?php
-                        $fundCode = \App\Models\FundCode::find($fundCodeId);
-                        $firstItem = true;
-                      ?>
-                      <?php foreach ($items as $item): ?>
-                        <?php
-                          $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
-                          $units = floatval($item['units'] ?? 0);
-                          $days = floatval($item['days'] ?? 1);
-                          
-                          // Use days when greater than 1, otherwise just unit_cost * units
-                          if ($days > 1) {
-                              $total = $unitCost * $units * $days;
-                          } else {
-                              $total = $unitCost * $units;
-                          }
-                        ?>
-                        <tr>
-                          <?php if ($firstItem): ?>
-                            <td rowspan="<?php echo count($items); ?>" style="padding: 6px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; font-weight: 600;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></td>
-                            <?php $firstItem = false; ?>
-                          <?php endif; ?>
-                          <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($item['cost'] ?? $item['description'] ?? 'N/A'); ?></td>
-                          <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($total, 2); ?></td>
+              <?php foreach ($parentBudgetBreakdown as $fundCodeId => $items): ?>
+                <?php if (is_array($items) && count($items) > 0): ?>
+                  <?php
+                    $fundCode = \App\Models\FundCode::find($fundCodeId);
+                  ?>
+                  <div style="margin-bottom: 15px;">
+                    <div style="background: #f9fafb; padding: 8px; border: 1px solid #e5e7eb; border-bottom: none;">
+                      <strong style="color: #911C39;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></strong>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+                      <thead>
+                        <tr style="background: #f9fafb;">
+                          <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Unit Cost</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Units</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Days</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Amount</th>
                         </tr>
-                      <?php endforeach; ?>
-                    <?php endif; ?>
-                  <?php endforeach; ?>
-                  <tr style="background: #fef3c7;">
-                    <th colspan="2" style="padding: 8px; text-align: right; border-top: 2px solid #e5e7eb;">Total:</th>
-                    <th style="padding: 8px; text-align: right; border-top: 2px solid #e5e7eb;"><?php echo number_format($parentTotal, 2); ?></th>
-                  </tr>
-                </tbody>
-              </table>
+                      </thead>
+                      <tbody>
+                        <?php foreach ($items as $item): ?>
+                          <?php
+                            $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                            $units = floatval($item['units'] ?? 0);
+                            $days = floatval($item['days'] ?? 1);
+                            
+                            // Use days when greater than 1, otherwise just unit_cost * units
+                            if ($days > 1) {
+                                $total = $unitCost * $units * $days;
+                            } else {
+                                $total = $unitCost * $units;
+                            }
+                          ?>
+                          <tr>
+                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($item['cost'] ?? $item['description'] ?? 'N/A'); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($unitCost, 2); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($units, 0); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($days, 0); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($total, 2); ?></td>
+                          </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                <?php endif; ?>
+              <?php endforeach; ?>
+              <div style="background: #fef3c7; padding: 8px; border: 1px solid #e5e7eb; border-top: 2px solid #e5e7eb; text-align: right;">
+                <strong>Total: $<?php echo number_format($parentTotal, 2); ?></strong>
+              </div>
             <?php else: ?>
               <div style="color: #64748b;">No budget breakdown available</div>
             <?php endif; ?>
           </td>
           <td style="vertical-align: top; padding: 10px;">
             <?php if (count($currentBudgetBreakdown) > 0): ?>
-              <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                  <tr style="background: #f9fafb;">
-                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Fund Code</th>
-                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
-                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php foreach ($currentBudgetBreakdown as $fundCodeId => $items): ?>
-                    <?php if (is_array($items) && count($items) > 0): ?>
-                      <?php
-                        $fundCode = \App\Models\FundCode::find($fundCodeId);
-                        $firstItem = true;
-                      ?>
-                      <?php foreach ($items as $item): ?>
-                        <?php
-                          $itemName = $item['cost'] ?? $item['description'] ?? '';
-                          $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
-                          $units = floatval($item['units'] ?? 0);
-                          $days = floatval($item['days'] ?? 1);
-                          
-                          // Use days when greater than 1, otherwise just unit_cost * units
-                          if ($days > 1) {
-                              $total = $unitCost * $units * $days;
-                          } else {
-                              $total = $unitCost * $units;
-                          }
-                          
-                          // Check if this budget item should be highlighted
-                          $shouldHighlight = false;
-                          $key = $fundCodeId . '_' . $itemName;
-                          
-                          // Check if it's a new item (not in original)
-                          if (!isset($originalBudgetMap[$key])) {
-                              $shouldHighlight = true;
-                          } else {
-                              // Check if amount has changed (with small tolerance for floating point)
-                              $originalAmount = $originalBudgetMap[$key];
-                              if (abs($total - $originalAmount) > 0.01) {
-                                  $shouldHighlight = true;
-                              }
-                          }
-                        ?>
-                        <tr <?php if ($shouldHighlight): ?>style="background-color: #ffe6e6;"<?php endif; ?>>
-                          <?php if ($firstItem): ?>
-                            <td rowspan="<?php echo count($items); ?>" style="padding: 6px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; font-weight: 600;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></td>
-                            <?php $firstItem = false; ?>
-                          <?php endif; ?>
-                          <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($itemName ?: 'N/A'); ?></td>
-                          <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($total, 2); ?></td>
+              <?php foreach ($currentBudgetBreakdown as $fundCodeId => $items): ?>
+                <?php if (is_array($items) && count($items) > 0): ?>
+                  <?php
+                    $fundCode = \App\Models\FundCode::find($fundCodeId);
+                  ?>
+                  <div style="margin-bottom: 15px;">
+                    <div style="background: #f9fafb; padding: 8px; border: 1px solid #e5e7eb; border-bottom: none;">
+                      <strong style="color: #911C39;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></strong>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+                      <thead>
+                        <tr style="background: #f9fafb;">
+                          <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Unit Cost</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Units</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Days</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Amount</th>
                         </tr>
-                      <?php endforeach; ?>
-                    <?php endif; ?>
-                  <?php endforeach; ?>
-                  <tr style="background: #d4edda;">
-                    <th colspan="2" style="padding: 8px; text-align: right; border-top: 2px solid #e5e7eb;">Total:</th>
-                    <th style="padding: 8px; text-align: right; border-top: 2px solid #e5e7eb;"><?php echo number_format($currentTotal, 2); ?></th>
-                  </tr>
-                </tbody>
-              </table>
+                      </thead>
+                      <tbody>
+                        <?php foreach ($items as $item): ?>
+                          <?php
+                            $itemName = $item['cost'] ?? $item['description'] ?? '';
+                            $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                            $units = floatval($item['units'] ?? 0);
+                            $days = floatval($item['days'] ?? 1);
+                            
+                            // Use days when greater than 1, otherwise just unit_cost * units
+                            if ($days > 1) {
+                                $total = $unitCost * $units * $days;
+                            } else {
+                                $total = $unitCost * $units;
+                            }
+                            
+                            // Check if this budget item should be highlighted
+                            $shouldHighlight = false;
+                            
+                            // Create unique key using all properties to match with original
+                            $key = $fundCodeId . '_' . md5($itemName . '_' . $unitCost . '_' . $units . '_' . $days);
+                            
+                            // Initialize matched items counter for this fund code if needed
+                            if (!isset($matchedItems[$fundCodeId])) {
+                                $matchedItems[$fundCodeId] = [];
+                            }
+                            if (!isset($matchedItems[$fundCodeId][$key])) {
+                                $matchedItems[$fundCodeId][$key] = 0;
+                            }
+                            
+                            // Increment match counter for this item
+                            $matchedItems[$fundCodeId][$key]++;
+                            
+                            // Check if this item exists in original and if we've exceeded the count
+                            $originalCount = $originalBudgetMap[$key] ?? 0;
+                            if ($originalCount === 0 || $matchedItems[$fundCodeId][$key] > $originalCount) {
+                                // Item doesn't exist in original OR we have more instances than original
+                                $shouldHighlight = true;
+                            }
+                          ?>
+                          <tr <?php if ($shouldHighlight): ?>style="background-color: #ffe6e6;"<?php endif; ?>>
+                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($itemName ?: 'N/A'); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($unitCost, 2); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($units, 0); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($days, 0); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($total, 2); ?></td>
+                          </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                <?php endif; ?>
+              <?php endforeach; ?>
+              <div style="background: #d4edda; padding: 8px; border: 1px solid #e5e7eb; border-top: 2px solid #e5e7eb; text-align: right;">
+                <strong>Total: $<?php echo number_format($currentTotal, 2); ?></strong>
+              </div>
             <?php else: ?>
               <div style="color: #64748b;">No budget breakdown available</div>
             <?php endif; ?>
