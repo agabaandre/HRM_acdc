@@ -612,19 +612,118 @@
 
         function updateSubtotal($card) {
             let subtotal = 0;
+            let originalSubtotal = 0;
+            const codeId = $card.data('code');
+            const isChangeRequest = {{ request('change_request') ? 'true' : 'false' }};
+            const fundTypeId = parseInt($('#fund_type').val()) || 0;
+            
+            // Calculate current subtotal from all rows
             $card.find('.budget-items tr').each(function() {
                 subtotal += parseFloat($(this).find('.total').text().replace(/,/g, '')) || 0;
             });
+            
+            // Calculate original subtotal from existing items (for change requests)
+            if (isChangeRequest && existingBudget && existingBudget[codeId]) {
+                existingBudget[codeId].forEach(function(item) {
+                    const unitCost = parseFloat(item.unit_cost) || 0;
+                    const qty = parseFloat(item.qty) || parseFloat(item.units) || 0;
+                    originalSubtotal += unitCost * qty;
+                });
+            }
+            
+            // Get the budget balance for this code
+            const balanceElement = $(`#budget_codes option[value="${codeId}"]`);
+            const budgetBalance = parseFloat(balanceElement.data('balance')) || 0;
+            
+            // If editing, add the current memo's budget for this code to available balance
+            let availableBalance = budgetBalance;
+            let currentMemoBudget = 0;
+            if (existingBudget && existingBudget[codeId]) {
+                existingBudget[codeId].forEach(function(item) {
+                    const unitCost = parseFloat(item.unit_cost) || 0;
+                    const qty = parseFloat(item.qty) || parseFloat(item.units) || 0;
+                    currentMemoBudget += unitCost * qty;
+                });
+                availableBalance = budgetBalance + currentMemoBudget;
+            }
+            
+            // For change requests: only check if NEW items would cause balance to go negative
+            // For regular edits: check if total exceeds available balance
+            let shouldCheckBudget = false;
+            if (isChangeRequest) {
+                // Calculate the difference (new items added)
+                const newItemsTotal = subtotal - originalSubtotal;
+                // Only check if new items would cause the balance to go to 0 or negative
+                // The original items' budget is already allocated, so we only care about new additions
+                if (newItemsTotal > 0) {
+                    // Check if adding new items would exceed the available balance
+                    // budgetBalance is the current balance (excluding this memo's budget)
+                    // We need to check if the new items would cause the balance to go negative
+                    // Formula: budgetBalance - newItemsTotal < 0
+                    const balanceAfterNewItems = budgetBalance - newItemsTotal;
+                    shouldCheckBudget = balanceAfterNewItems < 0;
+                } else {
+                    // If no new items or items were removed, no need to check
+                    shouldCheckBudget = false;
+                }
+            } else {
+                // Regular edit: check if total exceeds available balance
+                shouldCheckBudget = subtotal > availableBalance;
+            }
+            
+            // Format and display subtotal
             $card.find('.subtotal').text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            
+            // Check if budget is exceeded (skip for external source)
+            if (shouldCheckBudget && fundTypeId !== 3) {
+                $card.find('.subtotal').removeClass('text-success').addClass('text-danger fw-bold');
+                
+                // Show warning message
+                let warningDiv = $card.find('.budget-warning');
+                if (warningDiv.length === 0) {
+                    const warningMessage = isChangeRequest 
+                        ? `New items exceed available budget! Available: $${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : `Budget exceeded! Available: $${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    warningDiv = $(`<div class="alert alert-danger mt-2 budget-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${warningMessage}
+                    </div>`);
+                    $card.find('.card-body').append(warningDiv);
+                }
+            } else {
+                $card.find('.subtotal').removeClass('text-danger fw-bold').addClass('text-success');
+                
+                // Remove warning if exists
+                $card.find('.budget-warning').remove();
+            }
         }
 
         function updateGrandTotal() {
             let grandTotal = 0;
+            let hasExceededBudget = false;
+            const fundTypeId = parseInt($('#fund_type').val()) || 0;
+            
             $('.budget-card').each(function() {
-                grandTotal += parseFloat($(this).find('.subtotal').text().replace(/,/g, '')) || 0;
+                const subtotal = parseFloat($(this).find('.subtotal').text().replace(/,/g, '')) || 0;
+                grandTotal += subtotal;
+                
+                // Check if any card has exceeded budget
+                if ($(this).find('.subtotal').hasClass('text-danger')) {
+                    hasExceededBudget = true;
+                }
             });
+            
             $('#grandBudgetTotal').text(grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             $('#grandBudgetTotalInput').val(grandTotal.toFixed(2));
+            
+            // Update submit button state
+            const submitBtn = $('button[type="submit"]');
+            if (hasExceededBudget && fundTypeId !== 3) {
+                submitBtn.prop('disabled', true).addClass('btn-danger').removeClass('btn-success')
+                    .html('<i class="bx bx-x-circle me-1"></i> Budget Exceeded - Cannot Save');
+            } else {
+                submitBtn.prop('disabled', false).removeClass('btn-danger').addClass('btn-success');
+            }
         }
 
         // Attachments handling
