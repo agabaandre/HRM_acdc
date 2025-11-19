@@ -1837,21 +1837,11 @@ class ChangeRequestController extends Controller
         }
 
         if ($changeRequest->has_activity_request_remarks_changed) {
-            $originalRemarks = strip_tags($parentMemo->activity_request_remarks ?? '');
-            
-            // Only add to changes if original remarks exist (not empty)
-            if (!empty(trim($originalRemarks))) {
-                // Truncate if too long
-                if (strlen($originalRemarks) > 200) {
-                    $originalRemarks = substr($originalRemarks, 0, 200) . '...';
-                }
-                
-                $changes[] = [
-                    'type' => 'Request for Approval',
-                    'original' => $originalRemarks,
-                    'changed' => 'Change request for approval'
-                ];
-            }
+            $changes[] = [
+                'type' => 'Request for Approval',
+                'original' => '', // Don't display original remarks
+                'changed' => 'Change request for approval'
+            ];
         }
 
         return $changes;

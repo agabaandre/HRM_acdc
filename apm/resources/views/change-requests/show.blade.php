@@ -854,11 +854,7 @@
                                     <div class="border rounded p-3">
                                         <h6 class="text-muted mb-2 bg-light p-2 rounded"><i class="bx bx-message me-1"></i>Request for Approval</h6>
                                         <div class="row">
-                                            <div class="col-6">
-                                                <small class="text-muted">Original:</small>
-                                                <div class="text-danger">{!! $parentMemo->activity_request_remarks ?? 'N/A' !!}</div>
-                                            </div>
-                                            <div class="col-6">
+                                            <div class="col-12">
                                                 <small class="text-muted">Changed to:</small>
                                                 <div>Change request for approval</div>
                                             </div>
