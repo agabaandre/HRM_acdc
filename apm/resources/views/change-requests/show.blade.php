@@ -905,54 +905,57 @@
                                                 
                                                 @if(count($parentBudgetBreakdown) > 0)
                                                     <div class="table-responsive">
-                                                        <table class="table table-sm table-bordered">
-                                                            <thead class="table-light">
-                                                                <tr>
-                                                                    <th>Fund Code</th>
-                                                                    <th>Item</th>
-                                                                    <th class="text-end">Amount</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                @foreach($parentBudgetBreakdown as $fundCodeId => $items)
-                                                                    @if(is_array($items) && count($items) > 0)
-                                                                        @php
-                                                                            $fundCode = \App\Models\FundCode::find($fundCodeId);
-                                                                            $itemCount = 0;
-                                                                            $firstItem = true;
-                                                                        @endphp
-                                                                        @foreach($items as $item)
-                                                                            @php
-                                                                                $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
-                                                                                $units = floatval($item['units'] ?? 0);
-                                                                                $days = floatval($item['days'] ?? 1);
-                                                                                
-                                                                                // Use days when greater than 1, otherwise just unit_cost * units
-                                                                                if ($days > 1) {
-                                                                                    $total = $unitCost * $units * $days;
-                                                                                } else {
-                                                                                    $total = $unitCost * $units;
-                                                                                }
-                                                                                
-                                                                                $itemCount++;
-                                                                            @endphp
+                                                        @foreach($parentBudgetBreakdown as $fundCodeId => $items)
+                                                            @if(is_array($items) && count($items) > 0)
+                                                                @php
+                                                                    $fundCode = \App\Models\FundCode::find($fundCodeId);
+                                                                @endphp
+                                                                <div class="mb-3">
+                                                                    <div class="bg-light p-2 rounded-top border border-bottom-0">
+                                                                        <strong style="color: #911C39;">{{ $fundCode->code ?? 'N/A' }}</strong>
+                                                                    </div>
+                                                                    <table class="table table-sm table-bordered mb-0">
+                                                                        <thead class="table-light">
                                                                             <tr>
-                                                                                @if($firstItem)
-                                                                                    <td rowspan="{{ count($items) }}" style="vertical-align: middle; font-weight: 600;">{{ $fundCode->code ?? 'N/A' }}</td>
-                                                                                    @php $firstItem = false; @endphp
-                                                                                @endif
-                                                                                <td>{{ $item['cost'] ?? $item['description'] ?? 'N/A' }}</td>
-                                                                                <td class="text-end">${{ number_format($total, 2) }}</td>
+                                                                                <th>Item</th>
+                                                                                <th class="text-end">Unit Cost</th>
+                                                                                <th class="text-end">Units</th>
+                                                                                <th class="text-end">Days</th>
+                                                                                <th class="text-end">Amount</th>
                                                                             </tr>
-                                                                        @endforeach
-                                                                    @endif
-                                                                @endforeach
-                                                                <tr class="table-warning">
-                                                                    <th colspan="2" class="text-end">Total:</th>
-                                                                    <th class="text-end">${{ number_format($parentTotal, 2) }}</th>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            @foreach($items as $item)
+                                                                                @php
+                                                                                    $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                                                                                    $units = floatval($item['units'] ?? 0);
+                                                                                    $days = floatval($item['days'] ?? 1);
+                                                                                    
+                                                                                    // Use days when greater than 1, otherwise just unit_cost * units
+                                                                                    if ($days > 1) {
+                                                                                        $total = $unitCost * $units * $days;
+                                                                                    } else {
+                                                                                        $total = $unitCost * $units;
+                                                                                    }
+                                                                                @endphp
+                                                                                <tr>
+                                                                                    <td>{{ $item['cost'] ?? $item['description'] ?? 'N/A' }}</td>
+                                                                                    <td class="text-end">${{ number_format($unitCost, 2) }}</td>
+                                                                                    <td class="text-end">{{ number_format($units, 0) }}</td>
+                                                                                    <td class="text-end">{{ number_format($days, 0) }}</td>
+                                                                                    <td class="text-end">${{ number_format($total, 2) }}</td>
+                                                                                </tr>
+                                                                            @endforeach
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            @endif
+                                                        @endforeach
+                                                        <div class="table-warning p-2 rounded-bottom border">
+                                                            <div class="d-flex justify-content-end">
+                                                                <strong>Total: ${{ number_format($parentTotal, 2) }}</strong>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 @else
                                                     <div class="text-muted">No budget breakdown available</div>
@@ -971,7 +974,8 @@
                                                     unset($currentBudgetBreakdown['grand_total']);
                                                     
                                                     // Build a map of original budget items for comparison
-                                                    // Key: fundCodeId_itemName, Value: amount
+                                                    // Use a unique signature that includes all item properties to handle duplicates
+                                                    // Key: fundCodeId_itemName_unitCost_units_days, Value: count of occurrences
                                                     $originalBudgetMap = [];
                                                     foreach ($parentBudgetBreakdown as $fundCodeId => $items) {
                                                         if (is_array($items)) {
@@ -981,83 +985,98 @@
                                                                 $units = floatval($item['units'] ?? 0);
                                                                 $days = floatval($item['days'] ?? 1);
                                                                 
-                                                                // Use days when greater than 1, otherwise just unit_cost * units
-                                                                if ($days > 1) {
-                                                                    $amount = $unitCost * $units * $days;
-                                                                } else {
-                                                                    $amount = $unitCost * $units;
+                                                                // Create unique key using all properties to handle duplicate item names
+                                                                $key = $fundCodeId . '_' . md5($itemName . '_' . $unitCost . '_' . $units . '_' . $days);
+                                                                if (!isset($originalBudgetMap[$key])) {
+                                                                    $originalBudgetMap[$key] = 0;
                                                                 }
-                                                                
-                                                                $key = $fundCodeId . '_' . $itemName;
-                                                                $originalBudgetMap[$key] = $amount;
+                                                                $originalBudgetMap[$key]++;
                                                             }
                                                         }
                                                     }
+                                                    
+                                                    // Create a working copy for tracking matches
+                                                    $matchedItems = [];
                                                 @endphp
                                                 
                                                 @if(count($currentBudgetBreakdown) > 0)
                                                     <div class="table-responsive">
-                                                        <table class="table table-sm table-bordered">
-                                                            <thead class="table-light">
-                                                                <tr>
-                                                                    <th>Fund Code</th>
-                                                                    <th>Item</th>
-                                                                    <th class="text-end">Amount</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                @foreach($currentBudgetBreakdown as $fundCodeId => $items)
-                                                                    @if(is_array($items) && count($items) > 0)
-                                                                        @php
-                                                                            $fundCode = \App\Models\FundCode::find($fundCodeId);
-                                                                            $firstItem = true;
-                                                                        @endphp
-                                                                        @foreach($items as $item)
-                                                                            @php
-                                                                                $itemName = $item['cost'] ?? $item['description'] ?? '';
-                                                                                $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
-                                                                                $units = floatval($item['units'] ?? 0);
-                                                                                $days = floatval($item['days'] ?? 1);
-                                                                                
-                                                                                // Use days when greater than 1, otherwise just unit_cost * units
-                                                                                if ($days > 1) {
-                                                                                    $total = $unitCost * $units * $days;
-                                                                                } else {
-                                                                                    $total = $unitCost * $units;
-                                                                                }
-                                                                                
-                                                                                // Check if this budget item should be highlighted
-                                                                                $shouldHighlight = false;
-                                                                                $key = $fundCodeId . '_' . $itemName;
-                                                                                
-                                                                                // Check if it's a new item (not in original)
-                                                                                if (!isset($originalBudgetMap[$key])) {
-                                                                                    $shouldHighlight = true;
-                                                                                } else {
-                                                                                    // Check if amount has changed (with small tolerance for floating point)
-                                                                                    $originalAmount = $originalBudgetMap[$key];
-                                                                                    if (abs($total - $originalAmount) > 0.01) {
+                                                        @foreach($currentBudgetBreakdown as $fundCodeId => $items)
+                                                            @if(is_array($items) && count($items) > 0)
+                                                                @php
+                                                                    $fundCode = \App\Models\FundCode::find($fundCodeId);
+                                                                @endphp
+                                                                <div class="mb-3">
+                                                                    <div class="bg-light p-2 rounded-top border border-bottom-0">
+                                                                        <strong style="color: #911C39;">{{ $fundCode->code ?? 'N/A' }}</strong>
+                                                                    </div>
+                                                                    <table class="table table-sm table-bordered mb-0">
+                                                                        <thead class="table-light">
+                                                                            <tr>
+                                                                                <th>Item</th>
+                                                                                <th class="text-end">Unit Cost</th>
+                                                                                <th class="text-end">Units</th>
+                                                                                <th class="text-end">Days</th>
+                                                                                <th class="text-end">Amount</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            @foreach($items as $item)
+                                                                                @php
+                                                                                    $itemName = $item['cost'] ?? $item['description'] ?? '';
+                                                                                    $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                                                                                    $units = floatval($item['units'] ?? 0);
+                                                                                    $days = floatval($item['days'] ?? 1);
+                                                                                    
+                                                                                    // Use days when greater than 1, otherwise just unit_cost * units
+                                                                                    if ($days > 1) {
+                                                                                        $total = $unitCost * $units * $days;
+                                                                                    } else {
+                                                                                        $total = $unitCost * $units;
+                                                                                    }
+                                                                                    
+                                                                                    // Check if this budget item should be highlighted
+                                                                                    $shouldHighlight = false;
+                                                                                    
+                                                                                    // Create unique key using all properties to match with original
+                                                                                    $key = $fundCodeId . '_' . md5($itemName . '_' . $unitCost . '_' . $units . '_' . $days);
+                                                                                    
+                                                                                    // Initialize matched items counter for this fund code if needed
+                                                                                    if (!isset($matchedItems[$fundCodeId])) {
+                                                                                        $matchedItems[$fundCodeId] = [];
+                                                                                    }
+                                                                                    if (!isset($matchedItems[$fundCodeId][$key])) {
+                                                                                        $matchedItems[$fundCodeId][$key] = 0;
+                                                                                    }
+                                                                                    
+                                                                                    // Increment match counter for this item
+                                                                                    $matchedItems[$fundCodeId][$key]++;
+                                                                                    
+                                                                                    // Check if this item exists in original and if we've exceeded the count
+                                                                                    $originalCount = $originalBudgetMap[$key] ?? 0;
+                                                                                    if ($originalCount === 0 || $matchedItems[$fundCodeId][$key] > $originalCount) {
+                                                                                        // Item doesn't exist in original OR we have more instances than original
                                                                                         $shouldHighlight = true;
                                                                                     }
-                                                                                }
-                                                                            @endphp
-                                                                            <tr @if($shouldHighlight) style="background-color: #ffe6e6;" @endif>
-                                                                                @if($firstItem)
-                                                                                    <td rowspan="{{ count($items) }}" style="vertical-align: middle; font-weight: 600;">{{ $fundCode->code ?? 'N/A' }}</td>
-                                                                                    @php $firstItem = false; @endphp
-                                                                                @endif
-                                                                                <td>{{ $itemName ?: 'N/A' }}</td>
-                                                                                <td class="text-end">${{ number_format($total, 2) }}</td>
-                                                                            </tr>
-                                                                        @endforeach
-                                                                    @endif
-                                                                @endforeach
-                                                                <tr style="background-color: #d4edda;">
-                                                                    <th colspan="2" class="text-end">Total:</th>
-                                                                    <th class="text-end">${{ number_format($currentTotal, 2) }}</th>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
+                                                                                @endphp
+                                                                                <tr @if($shouldHighlight) style="background-color: #ffe6e6;" @endif>
+                                                                                    <td>{{ $itemName ?: 'N/A' }}</td>
+                                                                                    <td class="text-end">${{ number_format($unitCost, 2) }}</td>
+                                                                                    <td class="text-end">{{ number_format($units, 0) }}</td>
+                                                                                    <td class="text-end">{{ number_format($days, 0) }}</td>
+                                                                                    <td class="text-end">${{ number_format($total, 2) }}</td>
+                                                                                </tr>
+                                                                            @endforeach
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            @endif
+                                                        @endforeach
+                                                        <div class="p-2 rounded-bottom border" style="background-color: #d4edda;">
+                                                            <div class="d-flex justify-content-end">
+                                                                <strong>Total: ${{ number_format($currentTotal, 2) }}</strong>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 @else
                                                     <div class="text-muted">No budget breakdown available</div>
