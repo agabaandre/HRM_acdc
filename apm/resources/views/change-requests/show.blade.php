@@ -214,7 +214,7 @@
             </div>
         </div>
 
-        @if($parentMemo && ($parentMemo->background || $parentMemo->activity_request_remarks))
+        {{-- @if($parentMemo && ($parentMemo->background || $parentMemo->activity_request_remarks))
             <div class="mt-4">
                 <h6 class="text-success">Background</h6>
                 <div class="bg-light p-3 rounded">
@@ -232,7 +232,7 @@
                     @endif
                 </div>
             </div>
-        @endif
+        @endif --}}
 
         @if($changeRequest->supporting_reasons)
             <div class="mt-4">
