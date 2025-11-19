@@ -198,9 +198,6 @@
                         @if($changeRequest->has_activity_request_remarks_changed)
                             <span class="badge bg-warning text-dark">Remarks</span>
                         @endif
-                        @if($changeRequest->has_is_single_memo_changed)
-                            <span class="badge bg-warning text-dark">Single Memo Status</span>
-                        @endif
                         @if($changeRequest->has_budget_breakdown_changed)
                             <span class="badge bg-warning text-dark">Budget Breakdown</span>
                         @endif
@@ -849,37 +846,20 @@
                                 </div>
                             @endif
 
-                            @if($changeRequest->has_activity_request_remarks_changed)
+                            @if($changeRequest->has_activity_request_remarks_changed && !empty($changeRequest->activity_request_remarks))
                                 <div class="col-md-12 mb-3">
                                     <div class="border rounded p-3">
                                         <h6 class="text-muted mb-2 bg-light p-2 rounded"><i class="bx bx-message me-1"></i>Request for Approval</h6>
                                         <div class="row">
                                             <div class="col-12">
                                                 <small class="text-muted">Changed to:</small>
-                                                <div>Change request for approval</div>
+                                                <div>{!! $changeRequest->activity_request_remarks !!}</div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             @endif
 
-                            @if($changeRequest->has_is_single_memo_changed)
-                                <div class="col-md-6 mb-3">
-                                    <div class="border rounded p-3">
-                                        <h6 class="text-muted mb-2 bg-light p-2 rounded"><i class="bx bx-check-square me-1"></i>Single Memo Status</h6>
-                                        <div class="row">
-                                            <div class="col-6">
-                                                <small class="text-muted">Original:</small>
-                                                <div class="text-danger">{{ $parentMemo->is_single_memo ? 'Yes' : 'No' }}</div>
-                                            </div>
-                                            <div class="col-6">
-                                                <small class="text-muted">Changed to:</small>
-                                                <div class="text-success">{{ $changeRequest->is_single_memo ? 'Yes' : 'No' }}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
 
                             @if($changeRequest->has_budget_breakdown_changed)
                                 <div class="col-md-12 mb-3">

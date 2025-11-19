@@ -1383,6 +1383,7 @@ class ChangeRequestController extends Controller
      * - Budget changes → workflow_id = 1
      * - Date change only (same quarter) → workflow_id = 6
      * - Date change (different quarter) OR/AND participant replacement → workflow_id = 7
+     * - Other changes → workflow_id = 6
      */
     private function determineWorkflowId(ChangeRequest $changeRequest): int
     {
@@ -1412,8 +1413,8 @@ class ChangeRequestController extends Controller
             return 7;
         }
 
-        // Default workflow (for other changes)
-        return 1;
+        // Default workflow (for other changes) → workflow_id = 6
+        return 6;
     }
 
     /**
@@ -1836,11 +1837,18 @@ class ChangeRequestController extends Controller
             ];
         }
 
-        if ($changeRequest->has_activity_request_remarks_changed) {
+        if ($changeRequest->has_activity_request_remarks_changed && !empty($changeRequest->activity_request_remarks)) {
+            $changedRemarks = strip_tags($changeRequest->activity_request_remarks ?? '');
+            
+            // Truncate if too long
+            if (strlen($changedRemarks) > 200) {
+                $changedRemarks = substr($changedRemarks, 0, 200) . '...';
+            }
+            
             $changes[] = [
                 'type' => 'Request for Approval',
                 'original' => '', // Don't display original remarks
-                'changed' => 'Change request for approval'
+                'changed' => $changedRemarks
             ];
         }
 
