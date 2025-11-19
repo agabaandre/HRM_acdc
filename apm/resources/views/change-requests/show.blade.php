@@ -915,25 +915,41 @@
                                                             </thead>
                                                             <tbody>
                                                                 @foreach($parentBudgetBreakdown as $fundCodeId => $items)
-                                                                    @if(is_array($items))
+                                                                    @if(is_array($items) && count($items) > 0)
+                                                                        @php
+                                                                            $fundCode = \App\Models\FundCode::find($fundCodeId);
+                                                                            $itemCount = 0;
+                                                                            $firstItem = true;
+                                                                        @endphp
                                                                         @foreach($items as $item)
                                                                             @php
-                                                                                $fundCode = \App\Models\FundCode::find($fundCodeId);
-                                                                                $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
-                                                                                $units = $item['units'] ?? $item['days'] ?? 1;
-                                                                                $total = $cost * $units;
+                                                                                $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                                                                                $units = floatval($item['units'] ?? 0);
+                                                                                $days = floatval($item['days'] ?? 1);
+                                                                                
+                                                                                // Use days when greater than 1, otherwise just unit_cost * units
+                                                                                if ($days > 1) {
+                                                                                    $total = $unitCost * $units * $days;
+                                                                                } else {
+                                                                                    $total = $unitCost * $units;
+                                                                                }
+                                                                                
+                                                                                $itemCount++;
                                                                             @endphp
                                                                             <tr>
-                                                                                <td>{{ $fundCode->code ?? 'N/A' }}</td>
+                                                                                @if($firstItem)
+                                                                                    <td rowspan="{{ count($items) }}" style="vertical-align: middle; font-weight: 600;">{{ $fundCode->code ?? 'N/A' }}</td>
+                                                                                    @php $firstItem = false; @endphp
+                                                                                @endif
                                                                                 <td>{{ $item['cost'] ?? $item['description'] ?? 'N/A' }}</td>
-                                                                                <td class="text-end">{{ number_format($total, 2) }}</td>
+                                                                                <td class="text-end">${{ number_format($total, 2) }}</td>
                                                                             </tr>
                                                                         @endforeach
                                                                     @endif
                                                                 @endforeach
                                                                 <tr class="table-warning">
                                                                     <th colspan="2" class="text-end">Total:</th>
-                                                                    <th class="text-end">{{ number_format($parentTotal, 2) }}</th>
+                                                                    <th class="text-end">${{ number_format($parentTotal, 2) }}</th>
                                                                 </tr>
                                                             </tbody>
                                                         </table>
@@ -961,9 +977,17 @@
                                                         if (is_array($items)) {
                                                             foreach ($items as $item) {
                                                                 $itemName = $item['cost'] ?? $item['description'] ?? '';
-                                                                $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
-                                                                $units = $item['units'] ?? $item['days'] ?? 1;
-                                                                $amount = $cost * $units;
+                                                                $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                                                                $units = floatval($item['units'] ?? 0);
+                                                                $days = floatval($item['days'] ?? 1);
+                                                                
+                                                                // Use days when greater than 1, otherwise just unit_cost * units
+                                                                if ($days > 1) {
+                                                                    $amount = $unitCost * $units * $days;
+                                                                } else {
+                                                                    $amount = $unitCost * $units;
+                                                                }
+                                                                
                                                                 $key = $fundCodeId . '_' . $itemName;
                                                                 $originalBudgetMap[$key] = $amount;
                                                             }
@@ -983,14 +1007,24 @@
                                                             </thead>
                                                             <tbody>
                                                                 @foreach($currentBudgetBreakdown as $fundCodeId => $items)
-                                                                    @if(is_array($items))
+                                                                    @if(is_array($items) && count($items) > 0)
+                                                                        @php
+                                                                            $fundCode = \App\Models\FundCode::find($fundCodeId);
+                                                                            $firstItem = true;
+                                                                        @endphp
                                                                         @foreach($items as $item)
                                                                             @php
-                                                                                $fundCode = \App\Models\FundCode::find($fundCodeId);
                                                                                 $itemName = $item['cost'] ?? $item['description'] ?? '';
-                                                                                $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
-                                                                                $units = $item['units'] ?? $item['days'] ?? 1;
-                                                                                $total = $cost * $units;
+                                                                                $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                                                                                $units = floatval($item['units'] ?? 0);
+                                                                                $days = floatval($item['days'] ?? 1);
+                                                                                
+                                                                                // Use days when greater than 1, otherwise just unit_cost * units
+                                                                                if ($days > 1) {
+                                                                                    $total = $unitCost * $units * $days;
+                                                                                } else {
+                                                                                    $total = $unitCost * $units;
+                                                                                }
                                                                                 
                                                                                 // Check if this budget item should be highlighted
                                                                                 $shouldHighlight = false;
@@ -1008,16 +1042,19 @@
                                                                                 }
                                                                             @endphp
                                                                             <tr @if($shouldHighlight) style="background-color: #ffe6e6;" @endif>
-                                                                                <td>{{ $fundCode->code ?? 'N/A' }}</td>
+                                                                                @if($firstItem)
+                                                                                    <td rowspan="{{ count($items) }}" style="vertical-align: middle; font-weight: 600;">{{ $fundCode->code ?? 'N/A' }}</td>
+                                                                                    @php $firstItem = false; @endphp
+                                                                                @endif
                                                                                 <td>{{ $itemName ?: 'N/A' }}</td>
-                                                                                <td class="text-end">{{ number_format($total, 2) }}</td>
+                                                                                <td class="text-end">${{ number_format($total, 2) }}</td>
                                                                             </tr>
                                                                         @endforeach
                                                                     @endif
                                                                 @endforeach
                                                                 <tr style="background-color: #d4edda;">
                                                                     <th colspan="2" class="text-end">Total:</th>
-                                                                    <th class="text-end">{{ number_format($currentTotal, 2) }}</th>
+                                                                    <th class="text-end">${{ number_format($currentTotal, 2) }}</th>
                                                                 </tr>
                                                             </tbody>
                                                         </table>

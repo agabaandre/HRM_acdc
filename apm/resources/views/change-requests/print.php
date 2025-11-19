@@ -595,9 +595,17 @@
           if (is_array($items)) {
               foreach ($items as $item) {
                   $itemName = $item['cost'] ?? $item['description'] ?? '';
-                  $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
-                  $units = $item['units'] ?? $item['days'] ?? 1;
-                  $amount = $cost * $units;
+                  $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                  $units = floatval($item['units'] ?? 0);
+                  $days = floatval($item['days'] ?? 1);
+                  
+                  // Use days when greater than 1, otherwise just unit_cost * units
+                  if ($days > 1) {
+                      $amount = $unitCost * $units * $days;
+                  } else {
+                      $amount = $unitCost * $units;
+                  }
+                  
                   $key = $fundCodeId . '_' . $itemName;
                   $originalBudgetMap[$key] = $amount;
               }
@@ -626,18 +634,31 @@
                 </thead>
                 <tbody>
                   <?php foreach ($parentBudgetBreakdown as $fundCodeId => $items): ?>
-                    <?php if (is_array($items)): ?>
+                    <?php if (is_array($items) && count($items) > 0): ?>
+                      <?php
+                        $fundCode = \App\Models\FundCode::find($fundCodeId);
+                        $firstItem = true;
+                      ?>
                       <?php foreach ($items as $item): ?>
                         <?php
-                          $fundCode = \App\Models\FundCode::find($fundCodeId);
-                          $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
-                          $units = $item['units'] ?? $item['days'] ?? 1;
-                          $total = $cost * $units;
+                          $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                          $units = floatval($item['units'] ?? 0);
+                          $days = floatval($item['days'] ?? 1);
+                          
+                          // Use days when greater than 1, otherwise just unit_cost * units
+                          if ($days > 1) {
+                              $total = $unitCost * $units * $days;
+                          } else {
+                              $total = $unitCost * $units;
+                          }
                         ?>
                         <tr>
-                          <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></td>
+                          <?php if ($firstItem): ?>
+                            <td rowspan="<?php echo count($items); ?>" style="padding: 6px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; font-weight: 600;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></td>
+                            <?php $firstItem = false; ?>
+                          <?php endif; ?>
                           <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($item['cost'] ?? $item['description'] ?? 'N/A'); ?></td>
-                          <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($total, 2); ?></td>
+                          <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($total, 2); ?></td>
                         </tr>
                       <?php endforeach; ?>
                     <?php endif; ?>
@@ -664,14 +685,24 @@
                 </thead>
                 <tbody>
                   <?php foreach ($currentBudgetBreakdown as $fundCodeId => $items): ?>
-                    <?php if (is_array($items)): ?>
+                    <?php if (is_array($items) && count($items) > 0): ?>
+                      <?php
+                        $fundCode = \App\Models\FundCode::find($fundCodeId);
+                        $firstItem = true;
+                      ?>
                       <?php foreach ($items as $item): ?>
                         <?php
-                          $fundCode = \App\Models\FundCode::find($fundCodeId);
                           $itemName = $item['cost'] ?? $item['description'] ?? '';
-                          $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
-                          $units = $item['units'] ?? $item['days'] ?? 1;
-                          $total = $cost * $units;
+                          $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
+                          $units = floatval($item['units'] ?? 0);
+                          $days = floatval($item['days'] ?? 1);
+                          
+                          // Use days when greater than 1, otherwise just unit_cost * units
+                          if ($days > 1) {
+                              $total = $unitCost * $units * $days;
+                          } else {
+                              $total = $unitCost * $units;
+                          }
                           
                           // Check if this budget item should be highlighted
                           $shouldHighlight = false;
@@ -689,9 +720,12 @@
                           }
                         ?>
                         <tr <?php if ($shouldHighlight): ?>style="background-color: #ffe6e6;"<?php endif; ?>>
-                          <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></td>
+                          <?php if ($firstItem): ?>
+                            <td rowspan="<?php echo count($items); ?>" style="padding: 6px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; font-weight: 600;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></td>
+                            <?php $firstItem = false; ?>
+                          <?php endif; ?>
                           <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($itemName ?: 'N/A'); ?></td>
-                          <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($total, 2); ?></td>
+                          <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($total, 2); ?></td>
                         </tr>
                       <?php endforeach; ?>
                     <?php endif; ?>
