@@ -80,10 +80,8 @@ class ApproverDashboardController extends Controller
             // Build the query for approvers with pending counts
             $approversCollection = $this->buildApproverQuery($workflowDefinitionId, $search, $divisionId, $docType, $approvalLevel);
 
-            // Get total count for pagination (before getting counts)
-            $totalCount = $approversCollection->count();
-
             // Get pending counts for ALL approvers first (before pagination)
+            // This will combine approvers by staff_id
             $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId);
 
             // Sort approvers by total_pending (descending) - biggest number first
@@ -91,12 +89,15 @@ class ApproverDashboardController extends Controller
                 return $b['total_pending'] <=> $a['total_pending'];
             });
 
+            // Get total count AFTER combining by staff_id (for correct pagination)
+            $totalCount = count($allApproversWithCounts);
+
             // Apply pagination after sorting
             $approversWithCounts = array_slice($allApproversWithCounts, ($page - 1) * $perPage, $perPage);
 
-            // Handle Excel export
+            // Handle Excel export (use all combined approvers, not paginated)
             if ($request->get('export')) {
-                return $this->exportToExcel($approversWithCounts);
+                return $this->exportToExcel($allApproversWithCounts);
             }
 
             // Get total number of workflows for display
