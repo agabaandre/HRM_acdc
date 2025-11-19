@@ -226,7 +226,7 @@
                     @endif
                     @if($parentMemo->activity_request_remarks)
                         <div>
-                            <strong>Original Activity Remarks:</strong>
+                            <strong>Original Request for Approval:</strong>
                             <div class="mt-1">{!! $parentMemo->activity_request_remarks !!}</div>
                         </div>
                     @endif
@@ -852,7 +852,7 @@
                             @if($changeRequest->has_activity_request_remarks_changed)
                                 <div class="col-md-12 mb-3">
                                     <div class="border rounded p-3">
-                                        <h6 class="text-muted mb-2 bg-light p-2 rounded"><i class="bx bx-message me-1"></i>Activity Remarks</h6>
+                                        <h6 class="text-muted mb-2 bg-light p-2 rounded"><i class="bx bx-message me-1"></i>Request for Approval</h6>
                                         <div class="row">
                                             <div class="col-6">
                                                 <small class="text-muted">Original:</small>
@@ -860,7 +860,7 @@
                                             </div>
                                             <div class="col-6">
                                                 <small class="text-muted">Changed to:</small>
-                                                <div class="text-success">{!! $changeRequest->activity_request_remarks ?? 'N/A' !!}</div>
+                                                <div>Change request for approval</div>
                                             </div>
                                         </div>
                                     </div>

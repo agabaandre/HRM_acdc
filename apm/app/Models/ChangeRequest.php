@@ -355,7 +355,7 @@ class ChangeRequest extends Model
         if ($this->has_memo_date_changed) $changes[] = 'Memo Date';
         if ($this->has_date_stayed_quarter) $changes[] = 'Date Stayed Quarter';
         if ($this->has_activity_title_changed) $changes[] = 'Activity Title';
-        if ($this->has_activity_request_remarks_changed) $changes[] = 'Activity Remarks';
+        if ($this->has_activity_request_remarks_changed) $changes[] = 'Request for Approval';
         if ($this->has_is_single_memo_changed) $changes[] = 'Single Memo Status';
         if ($this->has_budget_breakdown_changed) $changes[] = 'Budget Breakdown';
         if ($this->has_status_changed) $changes[] = 'Status';

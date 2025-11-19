@@ -1838,20 +1838,16 @@ class ChangeRequestController extends Controller
 
         if ($changeRequest->has_activity_request_remarks_changed) {
             $originalRemarks = strip_tags($parentMemo->activity_request_remarks ?? 'N/A');
-            $changedRemarks = strip_tags($changeRequest->activity_request_remarks ?? 'N/A');
             
             // Truncate if too long
             if (strlen($originalRemarks) > 200) {
                 $originalRemarks = substr($originalRemarks, 0, 200) . '...';
             }
-            if (strlen($changedRemarks) > 200) {
-                $changedRemarks = substr($changedRemarks, 0, 200) . '...';
-            }
             
             $changes[] = [
                 'type' => 'Request for Approval',
                 'original' => $originalRemarks,
-                'changed' => $changedRemarks
+                'changed' => 'Change request for approval'
             ];
         }
 
