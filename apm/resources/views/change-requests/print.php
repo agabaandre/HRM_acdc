@@ -166,6 +166,7 @@
   <?php
     // Use centralized PrintHelper
     use App\Helpers\PrintHelper;
+    use Illuminate\Support\Facades\DB;
 
     // Helper function to render approver info
     if (!function_exists('renderApproverInfo')) {
@@ -342,8 +343,16 @@
   </p>
 
   <!-- Changes List -->
-  <?php if (!empty($changes)): ?>
-    <div class="section-label mb-15"><strong>Changes Requested</strong></div>
+  <?php 
+    // Filter out budget and participants from summary table (they'll be shown in detail sections)
+    $summaryChanges = array_filter($changes, function($change) {
+        $type = strtolower($change['type']);
+        return !in_array($type, ['budget', 'internal participants', 'external participants', 'number of participants']);
+    });
+  ?>
+  
+  <?php if (!empty($summaryChanges)): ?>
+    <div class="section-label mb-15" style="margin-top: 15px;"><strong>Changes Requested</strong></div>
     <table class="changes-table">
       <thead>
         <tr>
@@ -353,13 +362,351 @@
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($changes as $change): ?>
+        <?php foreach ($summaryChanges as $change): ?>
           <tr>
             <td><strong><?php echo htmlspecialchars($change['type']); ?></strong></td>
             <td><?php echo htmlspecialchars($change['original']); ?></td>
             <td><?php echo htmlspecialchars($change['changed']); ?></td>
           </tr>
         <?php endforeach; ?>
+      </tbody>
+    </table>
+  <?php endif; ?>
+
+  <!-- Detailed Participants Comparison -->
+  <?php if ($changeRequest->has_internal_participants_changed || $changeRequest->has_participant_days_changed): ?>
+    <div class="section-label mb-15" style="margin-top: <?php echo !empty($summaryChanges) ? '20px' : '15px'; ?>;"><strong>Internal Participants - Detailed Comparison</strong></div>
+    
+    <?php
+      // Get raw JSON from parent memo database to preserve the structure with international_travel
+      $rawParentParticipants = null;
+      if ($parentMemo) {
+          // Get the table name based on model
+          $modelClass = $changeRequest->parent_memo_model;
+          $tableName = (new $modelClass)->getTable();
+          $rawParentParticipants = DB::table($tableName)->where('id', $changeRequest->parent_memo_id)->value('internal_participants');
+      }
+      
+      $parentParticipants = [];
+      
+      if ($rawParentParticipants) {
+          if (is_string($rawParentParticipants)) {
+              // First decode
+              $firstDecode = json_decode($rawParentParticipants, true);
+              // If result is still a string, decode again (double-encoded JSON)
+              if (is_string($firstDecode)) {
+                  $parentParticipants = json_decode($firstDecode, true) ?? [];
+              } elseif (is_array($firstDecode)) {
+                  $parentParticipants = $firstDecode;
+              }
+          } elseif (is_array($rawParentParticipants)) {
+              $parentParticipants = $rawParentParticipants;
+          }
+      } elseif ($parentMemo) {
+          // Fallback to model accessor
+          $fallbackParticipants = $parentMemo->internal_participants ?? [];
+          if (is_string($fallbackParticipants)) {
+              $firstDecode = json_decode($fallbackParticipants, true);
+              if (is_string($firstDecode)) {
+                  $parentParticipants = json_decode($firstDecode, true) ?? [];
+              } elseif (is_array($firstDecode)) {
+                  $parentParticipants = $firstDecode;
+              }
+          } elseif (is_array($fallbackParticipants)) {
+              $parentParticipants = $fallbackParticipants;
+          }
+      }
+      
+      // Ensure it's always an array
+      if (!is_array($parentParticipants)) {
+          $parentParticipants = [];
+      }
+      
+      // Get participants from CHANGE REQUEST
+      $rawParticipants = DB::table('change_request')->where('id', $changeRequest->id)->value('internal_participants');
+      $currentParticipants = [];
+      
+      if ($rawParticipants) {
+          if (is_string($rawParticipants)) {
+              // First decode
+              $firstDecode = json_decode($rawParticipants, true);
+              // If result is still a string, decode again (double-encoded JSON)
+              if (is_string($firstDecode)) {
+                  $currentParticipants = json_decode($firstDecode, true) ?? [];
+              } elseif (is_array($firstDecode)) {
+                  $currentParticipants = $firstDecode;
+              }
+          } elseif (is_array($rawParticipants)) {
+              $currentParticipants = $rawParticipants;
+          }
+      }
+      
+      // Ensure it's always an array
+      if (!is_array($currentParticipants)) {
+          $currentParticipants = [];
+      }
+      
+      // Build a map of original participants for comparison
+      $originalParticipantMap = [];
+      foreach ($parentParticipants as $key => $details) {
+          $originalParticipantMap[$key] = [
+              'days' => $details['participant_days'] ?? 0,
+          ];
+      }
+    ?>
+    
+    <table class="changes-table" style="margin-bottom: 20px;">
+      <thead>
+        <tr>
+          <th style="width: 50%;">Original Participants</th>
+          <th style="width: 50%;">Changed Participants</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="vertical-align: top; padding: 10px;">
+            <?php if (is_array($parentParticipants) && count($parentParticipants) > 0): ?>
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #f9fafb;">
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Name</th>
+                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Days</th>
+                    <th style="padding: 8px; text-align: center; border-bottom: 1px solid #e5e7eb;">Travel</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($parentParticipants as $key => $details): ?>
+                    <?php
+                      $staffName = 'Unknown';
+                      $staffId = $key;
+                      
+                      // Handle different data structures
+                      if (isset($details['staff'])) {
+                          $staffName = $details['staff']->fname . ' ' . $details['staff']->lname;
+                      } elseif (is_numeric($key)) {
+                          $staff = \App\Models\Staff::find($key);
+                          if ($staff) {
+                              $staffName = $staff->fname . ' ' . $staff->lname;
+                          }
+                      }
+                      
+                      // Handle international_travel: can be 1, "1", true, or "true"
+                      $internationalTravel = $details['international_travel'] ?? 0;
+                      $hasInternationalTravel = (intval($internationalTravel) === 1);
+                    ?>
+                    <tr>
+                      <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($staffName); ?></td>
+                      <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo $details['participant_days'] ?? 'N/A'; ?></td>
+                      <td style="padding: 6px; text-align: center; border-bottom: 1px solid #e5e7eb;"><?php echo $hasInternationalTravel ? 'Yes' : 'No'; ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            <?php else: ?>
+              <div style="color: #64748b;">No participants</div>
+            <?php endif; ?>
+          </td>
+          <td style="vertical-align: top; padding: 10px;">
+            <?php if (is_array($currentParticipants) && count($currentParticipants) > 0): ?>
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #f9fafb;">
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Name</th>
+                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Days</th>
+                    <th style="padding: 8px; text-align: center; border-bottom: 1px solid #e5e7eb;">Travel</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($currentParticipants as $key => $details): ?>
+                    <?php
+                      $staffName = 'Unknown';
+                      $staffId = $key;
+                      
+                      // Handle different data structures
+                      if (isset($details['staff'])) {
+                          $staffName = $details['staff']->fname . ' ' . $details['staff']->lname;
+                      } elseif (is_numeric($key)) {
+                          $staff = \App\Models\Staff::find($key);
+                          if ($staff) {
+                              $staffName = $staff->fname . ' ' . $staff->lname;
+                          }
+                      }
+                      
+                      // Handle international_travel: can be 1, "1", true, or "true"
+                      $internationalTravel = $details['international_travel'] ?? 0;
+                      $hasInternationalTravel = (intval($internationalTravel) === 1);
+                      
+                      // Check if this participant should be highlighted
+                      $shouldHighlight = false;
+                      $currentDays = (int)($details['participant_days'] ?? 0);
+                      
+                      // Check if it's a new participant (not in original)
+                      if (!isset($originalParticipantMap[$key])) {
+                          $shouldHighlight = true;
+                      } else {
+                          // Check if days have changed
+                          $originalDays = (int)($originalParticipantMap[$key]['days'] ?? 0);
+                          if ($currentDays != $originalDays) {
+                              $shouldHighlight = true;
+                          }
+                      }
+                    ?>
+                    <tr <?php if ($shouldHighlight): ?>style="background-color: #ffe6e6;"<?php endif; ?>>
+                      <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($staffName); ?></td>
+                      <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo $details['participant_days'] ?? 'N/A'; ?></td>
+                      <td style="padding: 6px; text-align: center; border-bottom: 1px solid #e5e7eb;"><?php echo $hasInternationalTravel ? 'Yes' : 'No'; ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            <?php else: ?>
+              <div style="color: #64748b;">No participants</div>
+            <?php endif; ?>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  <?php endif; ?>
+
+  <!-- Detailed Budget Comparison -->
+  <?php if ($changeRequest->has_budget_breakdown_changed || $changeRequest->has_budget_id_changed): ?>
+    <div style="margin-top: 30px;"></div>
+    <div class="section-label mb-15" style="margin-top: 20px;"><strong>Budget Breakdown - Detailed Comparison</strong></div>
+    
+    <?php
+      $parentBudgetBreakdown = $parentMemo->budget_breakdown ?? [];
+      if (is_string($parentBudgetBreakdown)) {
+          $parentBudgetBreakdown = json_decode($parentBudgetBreakdown, true) ?? [];
+      }
+      $parentTotal = $parentBudgetBreakdown['grand_total'] ?? 0;
+      unset($parentBudgetBreakdown['grand_total']);
+      
+      $currentBudgetBreakdown = $changeRequest->budget_breakdown ?? [];
+      if (is_string($currentBudgetBreakdown)) {
+          $currentBudgetBreakdown = json_decode($currentBudgetBreakdown, true) ?? [];
+      }
+      $currentTotal = $currentBudgetBreakdown['grand_total'] ?? 0;
+      unset($currentBudgetBreakdown['grand_total']);
+      
+      // Build a map of original budget items for comparison
+      // Key: fundCodeId_itemName, Value: amount
+      $originalBudgetMap = [];
+      foreach ($parentBudgetBreakdown as $fundCodeId => $items) {
+          if (is_array($items)) {
+              foreach ($items as $item) {
+                  $itemName = $item['cost'] ?? $item['description'] ?? '';
+                  $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
+                  $units = $item['units'] ?? $item['days'] ?? 1;
+                  $amount = $cost * $units;
+                  $key = $fundCodeId . '_' . $itemName;
+                  $originalBudgetMap[$key] = $amount;
+              }
+          }
+      }
+    ?>
+    
+    <table class="changes-table" style="margin-bottom: 20px;">
+      <thead>
+        <tr>
+          <th style="width: 50%;">Original Budget</th>
+          <th style="width: 50%;">Changed Budget</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="vertical-align: top; padding: 10px;">
+            <?php if (count($parentBudgetBreakdown) > 0): ?>
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #f9fafb;">
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Fund Code</th>
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
+                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($parentBudgetBreakdown as $fundCodeId => $items): ?>
+                    <?php if (is_array($items)): ?>
+                      <?php foreach ($items as $item): ?>
+                        <?php
+                          $fundCode = \App\Models\FundCode::find($fundCodeId);
+                          $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
+                          $units = $item['units'] ?? $item['days'] ?? 1;
+                          $total = $cost * $units;
+                        ?>
+                        <tr>
+                          <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></td>
+                          <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($item['cost'] ?? $item['description'] ?? 'N/A'); ?></td>
+                          <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($total, 2); ?></td>
+                        </tr>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
+                  <?php endforeach; ?>
+                  <tr style="background: #fef3c7;">
+                    <th colspan="2" style="padding: 8px; text-align: right; border-top: 2px solid #e5e7eb;">Total:</th>
+                    <th style="padding: 8px; text-align: right; border-top: 2px solid #e5e7eb;"><?php echo number_format($parentTotal, 2); ?></th>
+                  </tr>
+                </tbody>
+              </table>
+            <?php else: ?>
+              <div style="color: #64748b;">No budget breakdown available</div>
+            <?php endif; ?>
+          </td>
+          <td style="vertical-align: top; padding: 10px;">
+            <?php if (count($currentBudgetBreakdown) > 0): ?>
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #f9fafb;">
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Fund Code</th>
+                    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
+                    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($currentBudgetBreakdown as $fundCodeId => $items): ?>
+                    <?php if (is_array($items)): ?>
+                      <?php foreach ($items as $item): ?>
+                        <?php
+                          $fundCode = \App\Models\FundCode::find($fundCodeId);
+                          $itemName = $item['cost'] ?? $item['description'] ?? '';
+                          $cost = $item['unit_cost'] ?? $item['cost'] ?? 0;
+                          $units = $item['units'] ?? $item['days'] ?? 1;
+                          $total = $cost * $units;
+                          
+                          // Check if this budget item should be highlighted
+                          $shouldHighlight = false;
+                          $key = $fundCodeId . '_' . $itemName;
+                          
+                          // Check if it's a new item (not in original)
+                          if (!isset($originalBudgetMap[$key])) {
+                              $shouldHighlight = true;
+                          } else {
+                              // Check if amount has changed (with small tolerance for floating point)
+                              $originalAmount = $originalBudgetMap[$key];
+                              if (abs($total - $originalAmount) > 0.01) {
+                                  $shouldHighlight = true;
+                              }
+                          }
+                        ?>
+                        <tr <?php if ($shouldHighlight): ?>style="background-color: #ffe6e6;"<?php endif; ?>>
+                          <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($fundCode->code ?? 'N/A'); ?></td>
+                          <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($itemName ?: 'N/A'); ?></td>
+                          <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($total, 2); ?></td>
+                        </tr>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
+                  <?php endforeach; ?>
+                  <tr style="background: #d4edda;">
+                    <th colspan="2" style="padding: 8px; text-align: right; border-top: 2px solid #e5e7eb;">Total:</th>
+                    <th style="padding: 8px; text-align: right; border-top: 2px solid #e5e7eb;"><?php echo number_format($currentTotal, 2); ?></th>
+                  </tr>
+                </tbody>
+              </table>
+            <?php else: ?>
+              <div style="color: #64748b;">No budget breakdown available</div>
+            <?php endif; ?>
+          </td>
+        </tr>
       </tbody>
     </table>
   <?php endif; ?>
