@@ -365,7 +365,13 @@
         <?php foreach ($summaryChanges as $change): ?>
           <tr>
             <td><strong><?php echo htmlspecialchars($change['type']); ?></strong></td>
-            <td><?php echo htmlspecialchars($change['original']); ?></td>
+            <td>
+              <?php if (!empty($change['original']) || strtolower($change['type']) !== 'request for approval'): ?>
+                <?php echo htmlspecialchars($change['original']); ?>
+              <?php else: ?>
+                &nbsp;
+              <?php endif; ?>
+            </td>
             <td><?php echo htmlspecialchars($change['changed']); ?></td>
           </tr>
         <?php endforeach; ?>
