@@ -126,7 +126,7 @@
                                     <span class="badge bg-warning text-dark" title="Fund Type Changed">Fund Type</span>
                                 @endif
                                 @if($changeRequest->has_activity_request_remarks_changed)
-                                    <span class="badge bg-warning text-dark" title="Activity Remarks Changed">Activity Remarks</span>
+                                    <span class="badge bg-warning text-dark" title="Request for Approval Changed">Request for Approval</span>
                                 @endif
                                 @if($changeRequest->has_status_changed)
                                     <span class="badge bg-warning text-dark">Status</span>
