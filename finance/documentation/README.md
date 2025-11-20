@@ -174,9 +174,30 @@ finance/
 
 ## 🔗 Related Resources
 
+### Finance Module
 - Main README: `../README.md`
 - Server README: `../server/README.md`
 - Database README: `../server/database/README.md`
+
+### Platform Documentation
+- **Main Documentation Hub**: [`../../documentation/README.md`](../../documentation/README.md) - Central documentation for the entire CBP platform
+
+### Related Modules
+- **APM (Approvals Management) Documentation**: [`../../apm/documentation/`](../../apm/documentation/) - Complete documentation for the Laravel-based Approvals Management System
+  - [Approval Trail Management](../../apm/documentation/APPROVAL_TRAIL_MANAGEMENT.md)
+  - [Approval Trail Archiving](../../apm/documentation/APPROVAL_TRAIL_ARCHIVING.md)
+  - [Document Numbering System](../../apm/documentation/DOCUMENT_NUMBERING_SYSTEM.md)
+  - [Queue Setup Guide](../../apm/documentation/QUEUE_SETUP_GUIDE.md)
+  - [Systemd Queue Guide](../../apm/documentation/SYSTEMD_QUEUE_GUIDE.md)
+  - [Deployment Guide](../../apm/documentation/DEPLOYMENT.md)
+  - [Cron Setup](../../apm/documentation/CRON_SETUP.md)
+  - [Daily Notifications Setup](../../apm/documentation/DAILY_NOTIFICATIONS_SETUP.md)
+  - [Session Expiry Setup](../../apm/documentation/SESSION_EXPIRY_SETUP.md)
+
+- **Staff Portal Documentation**: 
+  - [Environment Variables](../../assets/ENVIRONMENT_VARIABLES.md) - Configuration guide
+  - [Auth Module Improvements](../../application/modules/auth/README_IMPROVEMENTS.md) - Authentication features
+  - [Shared Header Usage](../../application/modules/templates/views/partials/SHARED_HEADER_USAGE.md) - Component documentation
 
 ## 📞 Support
 
