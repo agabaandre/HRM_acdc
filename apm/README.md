@@ -59,4 +59,44 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+---
+
+# APM (Approvals Management) System
+
+> 📚 **Complete Documentation**: See [documentation/README.md](./documentation/README.md) for all guides, setup instructions, and troubleshooting.
+
+## About APM
+
+The Approvals Management (APM) system is a Laravel-based application for managing approvals, workflows, and document processing within the Africa CDC staff management system.
+
+## Quick Links
+
+### Core Documentation
+
+- **[Approval Trail Management](./documentation/APPROVAL_TRAIL_MANAGEMENT.md)** - Approval trail tracking and management
+- **[Document Numbering System](./documentation/DOCUMENT_NUMBERING_SYSTEM.md)** - Document number generation
+- **[Queue Setup Guide](./documentation/QUEUE_SETUP_GUIDE.md)** - Laravel queue configuration
+- **[Deployment Guide](./documentation/DEPLOYMENT.md)** - Production deployment
+
+### Infrastructure
+
+- **[Cron Setup](./documentation/CRON_SETUP.md)** - Scheduled tasks configuration
+- **[Daily Notifications Setup](./documentation/DAILY_NOTIFICATIONS_SETUP.md)** - Notification system
+- **[Session Expiry Setup](./documentation/SESSION_EXPIRY_SETUP.md)** - Session management
+
+### Related Documentation
+
+- **Finance Module Documentation**: [`../finance/documentation/`](../finance/documentation/) - Node.js/React Finance Management System
+
+## Setup
+
+1. Install dependencies: `composer install`
+2. Copy `.env.example` to `.env` and configure
+3. Generate key: `php artisan key:generate`
+4. Run migrations: `php artisan migrate`
+5. Seed database: `php artisan db:seed`
+
+For detailed setup instructions, see the [documentation](./documentation/README.md).
+
 # hrm_acdc_staff

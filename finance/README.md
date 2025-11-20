@@ -177,3 +177,18 @@ The app uses Bootstrap 5 and custom CSS matching the Laravel/CodeIgniter UI:
 - CORS is enabled for development (configure for production)
 - The app matches the design patterns from `home.php` in the CI app
 
+## 📚 Documentation
+
+> **Complete Documentation**: See [documentation/README.md](./documentation/README.md) for all guides, setup instructions, and troubleshooting.
+
+### Quick Links
+
+- **[Frontend Architecture](./documentation/FRONTEND_ARCHITECTURE.md)** - React app architecture and structure
+- **[Server Architecture](./documentation/SERVER_ARCHITECTURE.md)** - Node.js server architecture and patterns
+- **[Migrations Guide](./documentation/MIGRATIONS.md)** - Database migrations with Sequelize
+- **[Session Implementation](./documentation/SESSION_IMPLEMENTATION.md)** - Session transfer from CI app
+
+### Related Documentation
+
+- **APM (Approvals Management) Documentation**: [`../apm/documentation/`](../apm/documentation/) - Laravel-based Approvals Management System documentation
+
