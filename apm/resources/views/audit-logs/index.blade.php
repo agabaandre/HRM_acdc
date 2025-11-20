@@ -257,14 +257,28 @@
                                                     <i class="bx bx-show"></i>
                                                 </button>
                                                 @if(in_array(91, user_session('permissions')) && in_array($log->action, ['created', 'updated', 'deleted']))
+                                                    @php
+                                                        $actionText = 'Action';
+                                                        $actionIcon = 'bx-undo';
+                                                        if ($log->action === 'created') {
+                                                            $actionText = 'Delete';
+                                                            $actionIcon = 'bx-trash';
+                                                        } elseif ($log->action === 'deleted') {
+                                                            $actionText = 'Recover';
+                                                            $actionIcon = 'bx-refresh';
+                                                        } elseif ($log->action === 'updated') {
+                                                            $actionText = 'Restore';
+                                                            $actionIcon = 'bx-reset';
+                                                        }
+                                                    @endphp
                                                     <button type="button" class="btn btn-sm btn-outline-warning" 
                                                             data-bs-toggle="modal" data-bs-target="#reversalModal"
                                                             data-log-id="{{ $log->id }}"
                                                             data-log-table="{{ $log->source_table }}"
                                                             data-log-action="{{ $log->action }}"
                                                             data-log-entity="{{ $log->entity_id ?? 'N/A' }}"
-                                                            title="Reverse Action">
-                                                        <i class="bx bx-undo"></i>
+                                                            title="{{ $actionText }}">
+                                                        <i class="bx {{ $actionIcon }}"></i>
                                                     </button>
                                                 @endif
                                             </div>
@@ -533,7 +547,7 @@
             <div class="modal-header bg-warning text-dark">
                 <h5 class="modal-title" id="reversalModalLabel">
                     <i class="bx bx-undo me-2"></i>
-                    Reverse Audit Log Action
+                    <span id="reversal-modal-title">Action</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -546,7 +560,7 @@
                 <div id="reversal-log-details" class="mb-3">
                     <div class="card border-primary">
                         <div class="card-header bg-light">
-                            <h6 class="mb-0 text-primary">Log Details to be Reversed</h6>
+                            <h6 class="mb-0 text-primary">Log Details</h6>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -559,7 +573,15 @@
                             </div>
                             <div class="row mt-2">
                                 <div class="col-12">
-                                    <strong>Table:</strong> <span id="reversal-table" class="text-muted">-</span>
+                                    <label for="reversal-model-table" class="form-label"><strong>Model Table:</strong></label>
+                                    <input type="text" class="form-control" id="reversal-model-table" name="model_table" 
+                                           placeholder="e.g., change_requests" required>
+                                    <div class="form-text">The actual database table name for the model (auto-detected from audit table).</div>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <strong>Audit Table:</strong> <span id="reversal-table" class="text-muted">-</span>
                                 </div>
                             </div>
                         </div>
@@ -569,11 +591,34 @@
                 <form id="reversal-form">
                     <input type="hidden" id="reversal-log-id" name="log_id">
                     <input type="hidden" id="reversal-table-name" name="table">
+                    <input type="hidden" id="reversal-log-action" name="log_action">
                     
                     <div class="mb-3">
-                        <label for="reversal-reason" class="form-label">Reason for Reversal <span class="text-danger">*</span></label>
+                        <label class="form-label"><strong>Select Action Type <span class="text-danger">*</span></strong></label>
+                        <div class="card border-primary">
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="action_type" id="action-restore" value="restore" required>
+                                    <label class="form-check-label" for="action-restore">
+                                        <strong class="text-success"><i class="bx bx-refresh me-1"></i> Restore Record</strong>
+                                        <div class="form-text text-muted">Restore/re-insert a deleted record or restore previous values for an updated record.</div>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="action_type" id="action-delete" value="delete" required>
+                                    <label class="form-check-label" for="action-delete">
+                                        <strong class="text-danger"><i class="bx bx-trash me-1"></i> Delete Record</strong>
+                                        <div class="form-text text-muted">Permanently delete a record from the database.</div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reversal-reason" class="form-label">Reason for Action <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="reversal-reason" name="reason" rows="4" 
-                                  placeholder="Please provide a detailed reason for reversing this audit log action..." 
+                                  placeholder="Please provide a detailed reason for this action..." 
                                   minlength="10" maxlength="500" required></textarea>
                         <div class="form-text">Minimum 10 characters, maximum 500 characters.</div>
                     </div>
@@ -591,7 +636,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-warning" id="confirm-reversal-btn" disabled>
-                    <i class="bx bx-undo me-1"></i> Reverse Action
+                    <i class="bx bx-undo me-1" id="reversal-btn-icon"></i> <span id="reversal-btn-text">Action</span>
                 </button>
             </div>
         </div>
@@ -856,6 +901,24 @@ document.getElementById('confirm-cleanup-btn').addEventListener('click', functio
     });
 });
 
+// Function to detect model table name from audit table name
+function detectModelTable(auditTable) {
+    // Remove 'audit_' prefix if present
+    let modelTable = auditTable.replace(/^audit_/, '');
+    // Remove '_logs' suffix if present
+    modelTable = modelTable.replace(/_logs$/, '');
+    
+    // Try to detect common patterns
+    // e.g., audit_change_requests_logs -> change_requests
+    // e.g., audit_change_request_logs -> change_request
+    // e.g., audit_users_logs -> users
+    
+    // If it ends with 's', it might be plural, but we'll keep it as is
+    // The user can edit it if needed
+    
+    return modelTable;
+}
+
 // Reversal Modal Functionality
 document.getElementById('reversalModal').addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
@@ -872,11 +935,56 @@ document.getElementById('reversalModal').addEventListener('show.bs.modal', funct
     document.getElementById('reversal-table').textContent = table;
     document.getElementById('reversal-log-id').value = logId;
     document.getElementById('reversal-table-name').value = table;
+    document.getElementById('reversal-log-action').value = action;
+    
+    // Auto-detect and populate model table name
+    const detectedModelTable = detectModelTable(table);
+    document.getElementById('reversal-model-table').value = detectedModelTable;
+    
+    // Set default action type based on log action
+    // For 'created' logs, default to 'delete' (to delete the created record)
+    // For 'deleted' logs, default to 'restore' (to restore the deleted record)
+    // For 'updated' logs, default to 'restore' (to restore previous values)
+    let defaultActionType = 'restore';
+    if (action === 'created') {
+        defaultActionType = 'delete';
+    }
+    
+    // Set default radio button
+    document.getElementById('action-restore').checked = (defaultActionType === 'restore');
+    document.getElementById('action-delete').checked = (defaultActionType === 'delete');
+    
+    // Update button text and icon based on default selection
+    updateActionButton(defaultActionType);
     
     // Reset form
     document.getElementById('reversal-reason').value = '';
     document.getElementById('confirm-reversal').checked = false;
     document.getElementById('confirm-reversal-btn').disabled = true;
+});
+
+// Function to update action button text and icon based on selected action type
+function updateActionButton(actionType) {
+    const btnText = document.getElementById('reversal-btn-text');
+    const btnIcon = document.getElementById('reversal-btn-icon');
+    const modalTitle = document.getElementById('reversal-modal-title');
+    
+    if (actionType === 'restore') {
+        btnText.textContent = 'Restore';
+        btnIcon.className = 'bx bx-refresh me-1';
+        modalTitle.textContent = 'Restore Record';
+    } else if (actionType === 'delete') {
+        btnText.textContent = 'Delete';
+        btnIcon.className = 'bx bx-trash me-1';
+        modalTitle.textContent = 'Delete Record';
+    }
+}
+
+// Listen for radio button changes (use event delegation since modal content is dynamic)
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.name === 'action_type') {
+        updateActionButton(e.target.value);
+    }
 });
 
 // Enable/disable reversal button based on checkbox and reason
@@ -898,8 +1006,22 @@ document.getElementById('reversal-reason').addEventListener('input', function() 
 document.getElementById('confirm-reversal-btn').addEventListener('click', function() {
     const logId = document.getElementById('reversal-log-id').value;
     const table = document.getElementById('reversal-table-name').value;
+    const modelTable = document.getElementById('reversal-model-table').value.trim();
     const reason = document.getElementById('reversal-reason').value.trim();
     const confirmCheckbox = document.getElementById('confirm-reversal').checked;
+    
+    // Get selected action type
+    const actionTypeRadio = document.querySelector('input[name="action_type"]:checked');
+    if (!actionTypeRadio) {
+        show_notification('Please select an action type (Restore or Delete)', 'warning');
+        return;
+    }
+    const actionType = actionTypeRadio.value;
+    
+    if (!modelTable) {
+        show_notification('Please enter the model table name', 'warning');
+        return;
+    }
     
     if (!confirmCheckbox) {
         show_notification('Please confirm that you understand the consequences', 'warning');
@@ -915,7 +1037,7 @@ document.getElementById('confirm-reversal-btn').addEventListener('click', functi
     const btn = this;
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i> Reversing...';
+    btn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i> Processing...';
     
     // Submit reversal request
     fetch('{{ route("audit-logs.reverse") }}', {
@@ -927,6 +1049,8 @@ document.getElementById('confirm-reversal-btn').addEventListener('click', functi
         body: JSON.stringify({
             log_id: logId,
             table: table,
+            model_table: modelTable,
+            action_type: actionType,
             reason: reason
         })
     })

@@ -342,12 +342,16 @@ class AuditLogsController extends Controller
         $request->validate([
             'log_id' => 'required|integer',
             'table' => 'required|string',
+            'model_table' => 'required|string',
+            'action_type' => 'required|string|in:restore,delete',
             'reason' => 'required|string|min:10|max:500'
         ]);
         
         try {
             $logId = $request->input('log_id');
             $table = $request->input('table');
+            $modelTable = $request->input('model_table'); // Use the editable model table name
+            $actionType = $request->input('action_type'); // 'restore' or 'delete'
             $reason = $request->input('reason');
             
             // Get the original log
@@ -372,7 +376,7 @@ class AuditLogsController extends Controller
             // Create reversal log entry based on table structure
             $reversalData = [
                 'action' => 'reversed',
-                'old_values' => json_encode(['original_log_id' => $logId, 'original_action' => $log->action]),
+                'old_values' => json_encode(['original_log_id' => $logId, 'original_action' => $log->action, 'selected_action_type' => $actionType]),
                 'new_values' => json_encode(['reversal_reason' => $reason]),
                 'causer_type' => 'App\\Models\\Staff',
                 'causer_id' => user_session('staff_id'),
@@ -380,7 +384,8 @@ class AuditLogsController extends Controller
                     'ip' => $request->ip(),
                     'user_agent' => $request->userAgent(),
                     'reversal_timestamp' => now()->toISOString(),
-                    'original_log_created_at' => $log->created_at
+                    'original_log_created_at' => $log->created_at,
+                    'selected_action_type' => $actionType
                 ]),
                 'created_at' => now(),
                 'source' => 'reversal'
@@ -399,7 +404,7 @@ class AuditLogsController extends Controller
                 $reversalData['method'] = 'POST';
                 $reversalData['ip_address'] = $request->ip();
                 $reversalData['user_agent'] = $request->userAgent();
-                $reversalData['description'] = "Reversed audit log action: {$log->action}";
+                $reversalData['description'] = "Reversed audit log action: {$log->action} (User selected: {$actionType})";
             } else {
                 // For audit_funders_logs, audit_users_logs, etc. (standard structure)
                 $reversalData['entity_id'] = $log->entity_id ?? $log->resource_id ?? null;
@@ -408,15 +413,11 @@ class AuditLogsController extends Controller
             // Add the table name to metadata for tracking
             $reversalData['metadata'] = json_encode(array_merge(
                 json_decode($reversalData['metadata'], true),
-                ['reversed_table' => $table]
+                ['reversed_table' => $table, 'model_table' => $modelTable]
             ));
             
-            // Get the actual model table name (remove audit_ prefix)
-            $modelTable = str_replace('audit_', '', $table);
-            $modelTable = str_replace('_logs', '', $modelTable);
-            
-            // Perform actual data reversal based on the original action
-            $reversalResult = $this->performDataReversal($log, $modelTable, $reason);
+            // Perform actual data reversal based on the selected action type
+            $reversalResult = $this->performDataReversal($log, $modelTable, $reason, $actionType);
             
             if (!$reversalResult['success']) {
                 return response()->json([
@@ -459,9 +460,9 @@ class AuditLogsController extends Controller
     }
     
     /**
-     * Perform actual data reversal based on the original audit log action
+     * Perform actual data reversal based on the selected action type
      */
-    private function performDataReversal($log, $modelTable, $reason)
+    private function performDataReversal($log, $modelTable, $reason, $actionType)
     {
         try {
             $entityId = $log->entity_id ?? $log->resource_id ?? null;
@@ -469,39 +470,43 @@ class AuditLogsController extends Controller
             if (!$entityId) {
                 return [
                     'success' => false,
-                    'message' => 'Cannot reverse: No entity ID found'
+                    'message' => 'Cannot perform action: No entity ID found'
                 ];
             }
             
             $oldValues = json_decode($log->old_values ?? '{}', true);
             $newValues = json_decode($log->new_values ?? '{}', true);
             
-            switch ($log->action) {
-                case 'created':
-                    // For created actions, delete the record
-                    $deleted = DB::table($modelTable)->where('id', $entityId)->delete();
-                    if ($deleted) {
-                        return [
-                            'success' => true,
-                            'data_reversal' => "Deleted record with ID: {$entityId}",
-                            'message' => 'Record deleted successfully'
-                        ];
-                    } else {
-                        return [
-                            'success' => false,
-                            'message' => 'Record not found or already deleted'
-                        ];
-                    }
-                    
-                case 'updated':
-                    // For updated actions, restore the old values
-                    if (empty($oldValues)) {
-                        return [
-                            'success' => false,
-                            'message' => 'Cannot reverse: No old values found'
-                        ];
-                    }
-                    
+            // Perform action based on user's selection
+            if ($actionType === 'delete') {
+                // Delete the record
+                $deleted = DB::table($modelTable)->where('id', $entityId)->delete();
+                if ($deleted) {
+                    return [
+                        'success' => true,
+                        'data_reversal' => "Deleted record with ID: {$entityId}",
+                        'message' => 'Record deleted successfully'
+                    ];
+                } else {
+                    return [
+                        'success' => false,
+                        'message' => 'Record not found or already deleted'
+                    ];
+                }
+            } elseif ($actionType === 'restore') {
+                // Restore the record
+                if (empty($oldValues)) {
+                    return [
+                        'success' => false,
+                        'message' => 'Cannot restore: No old values found to restore'
+                    ];
+                }
+                
+                // Check if record exists (for updated actions, restore old values; for deleted actions, re-insert)
+                $existingRecord = DB::table($modelTable)->where('id', $entityId)->first();
+                
+                if ($existingRecord) {
+                    // Record exists, restore old values (for updated actions)
                     // Remove audit-specific fields from old values
                     $cleanOldValues = array_diff_key($oldValues, [
                         'created_at' => '',
@@ -525,16 +530,8 @@ class AuditLogsController extends Controller
                             'message' => 'Failed to restore record'
                         ];
                     }
-                    
-                case 'deleted':
-                    // For deleted actions, restore the record
-                    if (empty($oldValues)) {
-                        return [
-                            'success' => false,
-                            'message' => 'Cannot reverse: No old values found to restore'
-                        ];
-                    }
-                    
+                } else {
+                    // Record doesn't exist, re-insert it (for deleted actions)
                     // Remove audit-specific fields (don't add reversal metadata to primary table)
                     $restoreData = array_diff_key($oldValues, [
                         'created_at' => '',
@@ -551,6 +548,7 @@ class AuditLogsController extends Controller
                     }
                     
                     $restoreData['updated_at'] = now();
+                    $restoreData['created_at'] = $restoreData['created_at'] ?? now();
                     
                     $restoredId = DB::table($modelTable)->insertGetId($restoreData);
                     
@@ -566,12 +564,12 @@ class AuditLogsController extends Controller
                             'message' => 'Failed to restore deleted record'
                         ];
                     }
-                    
-                default:
-                    return [
-                        'success' => false,
-                        'message' => "Cannot reverse action: {$log->action}"
-                    ];
+                }
+            } else {
+                return [
+                    'success' => false,
+                    'message' => "Invalid action type: {$actionType}"
+                ];
             }
             
         } catch (\Exception $e) {
