@@ -765,7 +765,7 @@ if (!function_exists('generate_user_avatar')) {
         if ($colorIndex < 0) $colorIndex = 0;
         $bg_color = $colors[$colorIndex];
 
-        // Check if photo value exists
+        // Check if photo value exists (let browser handle image loading/fallback)
         $has_photo = !empty($photo) && $photo !== null && trim($photo) !== '';
         
         // Clean the image path
@@ -776,23 +776,22 @@ if (!function_exists('generate_user_avatar')) {
         }
 
         if ($has_photo) {
-            // Show photo with fallback avatar - avatar is hidden by default and only shows on image error
+            // Show photo with fallback avatar hidden by default
             return '<div style="position: relative; width: 40px; height: 40px; flex-shrink: 0;">
                         <img src="' . htmlspecialchars($clean_image_path) . '" 
                             class="user-img rounded-circle" 
                             style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 2; cursor: pointer; border: 1px solid #fff; display: block;" 
                             alt="user avatar"
                             onclick="if(typeof openImageModal === \'function\') { openImageModal(\'' . htmlspecialchars($clean_image_path) . '\'); }"
-                            onerror="this.style.display=\'none\'; var avatar = this.nextElementSibling; if(avatar) { avatar.style.display=\'flex\'; avatar.style.zIndex=\'1\'; }"
-                            onload="var avatar = this.nextElementSibling; if(avatar) { avatar.style.display=\'none\'; avatar.style.zIndex=\'0\'; }">
+                            onerror="this.style.display=\'none\'; var next = this.nextElementSibling; if(next) { next.style.display=\'flex\'; next.style.zIndex=\'1\'; }"
+                            onload="var next = this.nextElementSibling; if(next) { next.style.display=\'none\'; }">
                         <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                            id="avatar-fallback-' . uniqid() . '"
-                            style="display: none !important; width: 40px; height: 40px; background-color: ' . $bg_color . '; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 1; border: 1px solid #fff;">
+                            style="display: none; width: 40px; height: 40px; background-color: ' . $bg_color . '; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 1; border: 1px solid #fff;">
                             ' . $initials . '
                         </div>
                     </div>';
         } else {
-            // Show initials avatar only (no photo exists)
+            // Show initials avatar only
             return '<div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
                         style="width: 40px; height: 40px; background-color: ' . $bg_color . '; font-weight: 600; font-size: 14px; border: 1px solid #fff;">
                         ' . $initials . '
