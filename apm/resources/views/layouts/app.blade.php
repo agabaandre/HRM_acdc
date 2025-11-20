@@ -271,6 +271,9 @@
 </head>
 
 <body class="{{ !empty(session('user')) ? 'logged-in' : '' }}">
+    <!-- Google Translate Element (hidden) -->
+    <div id="google_translate_element" style="display: none;"></div>
+    
     @include('layouts.partials.header')
 
     <!-- Include the breadcrumbs partial -->

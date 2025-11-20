@@ -176,20 +176,33 @@
                                 </div>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                               
-                          
-                                @if(session('original_user'))
-                                    <a href="{{ session('user.base_url', '') }}auth/revert" class="btn btn-sm btn-danger">
-                                        <i class="fa fa-undo"></i> Revert to Admin
+                                <li>
+                                    <a class="dropdown-item" href="{{ $staffPortalUrl }}" target="_blank" rel="noopener noreferrer">
+                                        <i class="fas fa-user"></i><span>Profile</span>
                                     </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ $staffBaseUrl }}/auth/users" target="_blank" rel="noopener noreferrer">
+                                        <i class="fas fa-key"></i><span>Change Password</span>
+                                    </a>
+                                </li>
+                                @if(session('original_user'))
                                     <li>
-                                    <div class="dropdown-divider mb-0"></div>
+                                        <div class="dropdown-divider mb-0"></div>
+                                    </li>
+                                    <li>
+                                        <a href="{{ session('user.base_url', '') }}/auth/revert" class="dropdown-item">
+                                            <i class="fa fa-undo"></i><span>Revert to Admin</span>
+                                        </a>
                                     </li>
                                 @endif
-                             
-
-                                <li><a class="dropdown-item" href="{{ session('user.base_url', env('BASE_URL', 'http://localhost/staff')) }}/auth/logout"><i
-                                            class="bx bx-log-out-circle"></i><span>Logout</span></a>
+                                <li>
+                                    <div class="dropdown-divider mb-0"></div>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ session('user.base_url', env('BASE_URL', 'http://localhost/staff')) }}/auth/logout">
+                                        <i class="bx bx-log-out-circle"></i><span>Logout</span>
+                                    </a>
                                 </li>
                             </ul>
                         </div>

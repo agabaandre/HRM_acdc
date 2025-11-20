@@ -85,8 +85,8 @@
 <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-FHgNHNh4rHcmJ8s9jP3J7iYmMOTtMnJ0A2gU2wZSwRPmpZuUMHefPlU+GfNwH3zU" crossorigin="anonymous"></script> -->
 
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-<!-- <script type="text/javascript"
-    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script> -->
+<script type="text/javascript"
+    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
 
 <script src="{{ asset('assets/plugins/notifications/js/notifications.min.js') }}"></script>
@@ -292,9 +292,24 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        // Set default language
+        // Get user's preferred language from session, default to 'en'
+        @php
+            $user = session('user', []);
+            $defaultLangCode = $user['langauge'] ?? 'en';
+            // Map language codes to Google Translate codes
+            $langMap = [
+                'en' => 'en',
+                'fr' => 'fr',
+                'sw' => 'sw',
+                'ar' => 'ar',
+                'pt' => 'pt',
+                'es' => 'es'
+            ];
+            $preferredLang = $langMap[$defaultLangCode] ?? 'en';
+        @endphp
+        const preferredLang = "{{ $preferredLang }}";
         setTimeout(() => {
-            doGTranslate('en');
+            doGTranslate(preferredLang);
         }, 1500); // delay to let Google Translate load
     });
 </script>
