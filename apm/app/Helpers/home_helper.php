@@ -44,10 +44,6 @@ if (!function_exists('user_info')) {
         $photo = $user->photo ?? '';
         $photoData = $user->photo_data ?? null; // Base64 encoded photo from API
         $baseUrl = $user->base_url ?? '';
-        $photoPath = function_exists('public_path') ? public_path('uploads/staff/' . $photo) : __DIR__ . '/../../../public/uploads/staff/' . $photo;
-
-        $showImage = false;
-        $imageSrc = '';
         
         // Generate initials for fallback avatar
         $initials = '';
@@ -65,9 +61,12 @@ if (!function_exists('user_info')) {
         if ($colorIndex < 0) $colorIndex = 0;
         $bgColor = $colors[$colorIndex];
         
+        $hasPhoto = false;
+        $imageSrc = '';
+        
         // First, try to use photo_data (base64) from session if available
         if (!empty($photoData)) {
-            $showImage = true;
+            $hasPhoto = true;
             // Determine image type from base64 data or default to jpeg
             $imageType = 'jpeg';
             if (strpos($photoData, 'data:image/') === 0) {
@@ -90,27 +89,25 @@ if (!function_exists('user_info')) {
                 $imageSrc = 'data:image/' . $imageType . ';base64,' . $photoData;
             }
         } elseif (!empty($photo) && $photo !== null && trim($photo) !== '') {
-            // Check if photo file exists on filesystem
-            if (file_exists($photoPath) && filesize($photoPath) > 100) {
-                $showImage = true;
-                $cleanBaseUrl = rtrim($baseUrl, '/');
-                $imageSrc = htmlspecialchars($cleanBaseUrl . '/uploads/staff/' . $photo);
-            }
+            // Try to show photo from filesystem (let browser handle if file doesn't exist)
+            $hasPhoto = true;
+            $cleanBaseUrl = rtrim($baseUrl, '/');
+            $imageSrc = htmlspecialchars($cleanBaseUrl . '/uploads/staff/' . $photo);
         }
 
         ob_start();
-        if ($showImage) {
+        if ($hasPhoto) {
             // Show photo with fallback avatar hidden by default
             ?>
-            <div style="position: relative; width: 40px; height: 40px;">
+            <div style="position: relative; width: 40px; height: 40px; flex-shrink: 0;">
                 <img src="<?php echo $imageSrc; ?>"
                     class="user-img rounded-circle" 
-                    style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" 
+                    style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 2; display: block;" 
                     alt="user avatar"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';"
-                    onload="this.nextElementSibling.style.display='none';">
+                    onerror="this.style.display='none'; var next = this.nextElementSibling; if(next) { next.style.display='flex'; next.style.zIndex='1'; }"
+                    onload="var next = this.nextElementSibling; if(next) { next.style.display='none'; }">
                 <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                    style="display: none; width: 40px; height: 40px; background-color: <?php echo $bgColor; ?>; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 0;">
+                    style="display: none; width: 40px; height: 40px; background-color: <?php echo $bgColor; ?>; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 1;">
                     <?php echo $initials; ?>
                 </div>
             </div>
