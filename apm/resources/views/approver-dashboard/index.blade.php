@@ -575,7 +575,8 @@ function updateTable(data, pagination) {
                 class="rounded-circle" 
                 style="width: 40px; height: 40px; object-fit: cover;" 
                 alt="${approver.approver_name}"
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                onload="this.nextElementSibling.style.display='none';">
                 <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center" style="display: none; width: 40px; height: 40px;">
                     <i class="bx bx-user text-white"></i>
                 </div>`;
