@@ -4,8 +4,8 @@
   "description": "Finance module Node.js server with React frontend",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "nodemon server/index.js",
+    "start": "node --max-old-space-size=1024 server/index.js",
+    "dev": "nodemon --exec \"node --max-old-space-size=1024\" server/index.js",
     "client": "cd frontend && npm start",
     "client:build": "cd frontend && npm run build",
     "dev:all": "concurrently --names \"SERVER,CLIENT\" --prefix-colors \"blue,green\" \"npm run dev\" \"npm run client\"",
