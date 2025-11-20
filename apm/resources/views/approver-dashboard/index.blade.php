@@ -529,6 +529,11 @@ function loadDashboardData() {
             console.log('API Response:', response);
             if (response.success) {
                 console.log('Data received:', response.data);
+                // Debug: Check first approver's photo data
+                if (response.data && response.data.length > 0) {
+                    console.log('First approver photo:', response.data[0].photo);
+                    console.log('First approver data:', response.data[0]);
+                }
                 updateTable(response.data, response.pagination);
                 updatePagination(response.pagination);
                 updateSummaryStats(response);
@@ -569,36 +574,36 @@ function updateTable(data, pagination) {
         
         // Get photo URL or generate avatar
         let avatarHtml = '';
-        if (approver.photo) {
-            const photoUrl = baseUrl + '/uploads/staff/' + approver.photo;
-            // Generate initials for fallback
-            const firstName = approver.fname || approver.approver_name.split(' ')[0] || 'U';
-            const lastName = approver.lname || approver.approver_name.split(' ')[1] || '';
-            const initials = (firstName[0] + (lastName ? lastName[0] : '')).toUpperCase();
-            const colors = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
-            const colorIndex = (firstName.charCodeAt(0) - 65) % colors.length;
-            const bgColor = colors[colorIndex >= 0 ? colorIndex : 0];
+        // Generate initials for fallback (used in both cases)
+        const firstName = approver.fname || approver.approver_name.split(' ')[0] || 'U';
+        const lastName = approver.lname || approver.approver_name.split(' ')[1] || '';
+        const initials = (firstName[0] + (lastName ? lastName[0] : '')).toUpperCase();
+        const colors = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
+        const colorIndex = (firstName.charCodeAt(0) - 65) % colors.length;
+        const bgColor = colors[colorIndex >= 0 ? colorIndex : 0];
+        
+        // Check if photo exists and is not empty/null
+        const hasPhoto = approver.photo && approver.photo !== null && approver.photo !== '' && approver.photo.trim() !== '';
+        
+        if (hasPhoto) {
+            // Ensure baseUrl doesn't have trailing slash and photo path is correct
+            const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+            const photoUrl = cleanBaseUrl + '/uploads/staff/' + approver.photo;
             
             avatarHtml = `<div style="position: relative; width: 40px; height: 40px;">
                 <img src="${photoUrl}" 
                     class="rounded-circle" 
-                    style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0;" 
+                    style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" 
                     alt="${approver.approver_name}"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';"
                     onload="this.nextElementSibling.style.display='none';">
                 <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                    style="display: none; width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0;">
+                    style="display: none; width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 0;">
                     ${initials}
                 </div>
             </div>`;
         } else {
-            // Generate initials avatar
-            const firstName = approver.fname || approver.approver_name.split(' ')[0] || 'U';
-            const lastName = approver.lname || approver.approver_name.split(' ')[1] || '';
-            const initials = (firstName[0] + (lastName ? lastName[0] : '')).toUpperCase();
-            const colors = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
-            const colorIndex = (firstName.charCodeAt(0) - 65) % colors.length;
-            const bgColor = colors[colorIndex >= 0 ? colorIndex : 0];
+            // Generate initials avatar (no photo available)
             avatarHtml = `<div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
                 style="width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px;">
                 ${initials}
