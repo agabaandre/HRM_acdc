@@ -753,32 +753,49 @@ if (!function_exists('staff_details')) {
 if (!function_exists('generate_user_avatar')) {
     function generate_user_avatar($surname, $other_name, $image_path, $photo = false)
     {
+        // Get the initials (first letter of surname & other name)
+        $surname_initial = !empty($surname) ? strtoupper(substr($surname, 0, 1)) : '';
+        $other_name_initial = !empty($other_name) ? strtoupper(substr($other_name, 0, 1)) : '';
+        $initials = $surname_initial . $other_name_initial;
+        
+        // Generate color for avatar (matching Laravel app logic)
+        $colors = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
+        $firstChar = !empty($other_name) ? strtoupper($other_name[0]) : 'A';
+        $colorIndex = (ord($firstChar) - 65) % count($colors);
+        if ($colorIndex < 0) $colorIndex = 0;
+        $bg_color = $colors[$colorIndex];
 
-        //dd($photo);
+        // Check if photo value exists (let browser handle image loading/fallback)
+        $has_photo = !empty($photo) && $photo !== null && trim($photo) !== '';
+        
+        // Clean the image path
+        $clean_image_path = $image_path;
+        if ($has_photo) {
+            // Ensure the path is properly formatted
+            $clean_image_path = rtrim(base_url(), '/') . '/uploads/staff/' . ltrim($photo, '/');
+        }
 
-        $relative_path = str_replace(base_url(), '', $image_path);
-        $absolute_path = FCPATH . $relative_path;
-
-        if ( is_valid_image($absolute_path)) {
-
-           // echo $absolute_path;
-            return '<img src="' . $image_path . '" class="user-img" alt="user avatar" 
-                        style="cursor:pointer; width:50px; height:50px; border-radius:50%; align-items: center; border: 1px solid #fff;justify-content: center; " 
-                        onclick="openImageModal(\'' . $image_path . '\')">';
+        if ($has_photo) {
+            // Show photo with fallback avatar hidden by default
+            return '<div style="position: relative; width: 40px; height: 40px; flex-shrink: 0;">
+                        <img src="' . htmlspecialchars($clean_image_path) . '" 
+                            class="user-img rounded-circle" 
+                            style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 2; cursor: pointer; border: 1px solid #fff; display: block;" 
+                            alt="user avatar"
+                            onclick="if(typeof openImageModal === \'function\') { openImageModal(\'' . htmlspecialchars($clean_image_path) . '\'); }"
+                            onerror="this.style.display=\'none\'; var next = this.nextElementSibling; if(next) { next.style.display=\'flex\'; next.style.zIndex=\'1\'; }"
+                            onload="var next = this.nextElementSibling; if(next) { next.style.display=\'none\'; }">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                            style="display: none; width: 40px; height: 40px; background-color: ' . $bg_color . '; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 1; border: 1px solid #fff;">
+                            ' . $initials . '
+                        </div>
+                    </div>';
         } else {
-            // Get the initials (first letter of surname & other name)
-            $surname_initial = !empty($surname) ? strtoupper(substr($surname, 0, 1)) : '';
-            $other_name_initial = !empty($other_name) ? strtoupper(substr($other_name, 0, 1)) : '';
-
-            // Generate the initials-based avatar
-            $initials = $surname_initial . $other_name_initial;
-            $bg_color = generate_random_color($surname . $other_name); // Unique background color
-
-            return '<div class="avatar-placeholder" style="background-color:' . $bg_color . '; color: #fff; 
-                                  width: 50px; height: 50px; display: flex; align-items: center; border: 1px solid #fff;
-                                  justify-content: center; border-radius: 50%; font-size: 18px; font-weight: bold;">
-                                      ' . $initials . '
-            </div>';
+            // Show initials avatar only
+            return '<div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                        style="width: 40px; height: 40px; background-color: ' . $bg_color . '; font-weight: 600; font-size: 14px; border: 1px solid #fff;">
+                        ' . $initials . '
+                    </div>';
         }
     }
 
