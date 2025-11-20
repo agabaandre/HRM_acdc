@@ -327,6 +327,42 @@ public function revert()
     $data['module'] = "auth";
     $data['view'] = "profile";
     $data['title'] = "My Profile";
+    
+    // Get current user from session
+    $staff = $this->session->userdata('user');
+    
+    // Get comprehensive contract information
+    $this->load->model('staff/staff_mdl');
+    $contract = $this->staff_mdl->get_latest_contracts($staff->staff_id);
+    
+    // Get supervisor information if available
+    $supervisor = null;
+    if (!empty($contract) && !empty($contract->first_supervisor)) {
+      $this->db->select('staff_id, title, fname, lname, work_email, photo');
+      $this->db->where('staff_id', $contract->first_supervisor);
+      $supervisor = $this->db->get('staff')->row();
+    }
+    
+    // Get second supervisor if available
+    $second_supervisor = null;
+    if (!empty($contract) && !empty($contract->second_supervisor)) {
+      $this->db->select('staff_id, title, fname, lname, work_email, photo');
+      $this->db->where('staff_id', $contract->second_supervisor);
+      $second_supervisor = $this->db->get('staff')->row();
+    }
+    
+    // Get directorate information if available
+    $directorate = null;
+    if (!empty($contract) && !empty($contract->directorate_id)) {
+      $this->db->where('directorate_id', $contract->directorate_id);
+      $directorate = $this->db->get('directorates')->row();
+    }
+    
+    // Pass data to view
+    $data['contract'] = $contract;
+    $data['supervisor'] = $supervisor;
+    $data['second_supervisor'] = $second_supervisor;
+    $data['directorate'] = $directorate;
 
     render("users/profile", $data);
 
