@@ -17,15 +17,15 @@ router.post('/transfer', (req, res) => {
       });
     }
 
-    // Debug logging in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Session transfer - Received session data:', {
-        hasUser: !!sessionData,
-        hasBaseUrl: !!sessionData.base_url,
-        hasPermissions: !!sessionData.permissions,
-        staffId: sessionData.staff_id || sessionData.id || 'N/A'
-      });
-    }
+    // Debug logging (always log in production for troubleshooting)
+    console.log('Session transfer - Received session data:', {
+      hasUser: !!sessionData,
+      hasBaseUrl: !!sessionData.base_url,
+      hasPermissions: !!sessionData.permissions,
+      staffId: sessionData.staff_id || sessionData.id || 'N/A',
+      ip: req.ip,
+      forwardedFor: req.get('X-Forwarded-For')
+    });
 
     // Store session data exactly like Laravel APM does:
     // session(['user' => $json, 'base_url' => $json['base_url'] ?? '', 'permissions' => $json['permissions'] ?? []])

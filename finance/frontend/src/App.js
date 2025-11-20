@@ -10,7 +10,24 @@ import './App.css';
 
 // Configure axios defaults
 axios.defaults.withCredentials = true;
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3003/api';
+
+// Determine API base URL - use relative path in production (works with reverse proxy)
+// In development, use explicit localhost URL
+const getApiBaseUrl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // In production, use relative path which will work with reverse proxy
+    // If accessed at /finance, API will be at /finance/api
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/finance')) {
+      return '/finance/api';
+    }
+    return '/api';
+  }
+  // Development: use explicit URL
+  return process.env.REACT_APP_API_URL || 'http://localhost:3003/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 const CI_BASE_URL = process.env.REACT_APP_CI_BASE_URL || 'http://localhost/staff';
 
 // Determine base path for React Router based on environment

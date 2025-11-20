@@ -1,18 +1,33 @@
 # Reverse Proxy Configuration Fix
 
 ## Issue
-When accessing the finance app through the reverse proxy at `https://cbp.africacdc.org/finance`, the page is blank because:
+When accessing the finance app through the reverse proxy at `https://cbp.africacdc.org/finance`, there are two problems:
 1. The React app is built with `homepage: "/finance"` so assets are referenced as `/finance/static/...`
-2. The reverse proxy strips the `/finance` prefix when forwarding to Node.js
-3. The browser requests assets at `/finance/static/...` but the server serves them at `/static/...`
+2. API calls to `/finance/api/*` need to reach the backend server (port 3003), not the frontend (port 3002)
+3. The reverse proxy only forwards to the frontend, so API calls fail
 
 ## Solution
 
-### Option 1: Update Reverse Proxy to Preserve Path (Recommended)
+### Complete Reverse Proxy Configuration
 
-Update your Apache configuration to preserve the `/finance` path:
+You need to configure the reverse proxy to handle both the frontend (React app) and backend (API server):
 
 ```apache
+# Backend API Server (port 3003) - Handle API routes first
+<Location /finance/api>
+    ProxyPass http://localhost:3003/api
+    ProxyPassReverse http://localhost:3003/api
+
+    # For Node/Express apps
+    ProxyPassReverseCookiePath /finance/api /api
+    ProxyPassReverseCookieDomain localhost cbp.africacdc.org
+
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-For %{REMOTE_ADDR}s
+    RequestHeader set X-Forwarded-Host %{HTTP_HOST}s
+</Location>
+
+# Frontend React App (port 3002) - Handle all other /finance routes
 <Location /finance>
     ProxyPass http://localhost:3002/finance
     ProxyPassReverse http://localhost:3002/finance
@@ -27,7 +42,10 @@ Update your Apache configuration to preserve the `/finance` path:
 </Location>
 ```
 
-**Note:** Change `ProxyPass http://localhost:3002/` to `ProxyPass http://localhost:3002/finance` to preserve the path.
+**Important Notes:**
+1. The `/finance/api` location must come **before** the `/finance` location (Apache processes locations in order)
+2. API calls to `/finance/api/*` will be forwarded to `http://localhost:3003/api/*`
+3. All other `/finance/*` requests will be forwarded to `http://localhost:3002/finance/*`
 
 ### Option 2: Rebuild React App Without Homepage (Alternative)
 

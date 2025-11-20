@@ -76,7 +76,8 @@ module.exports = (app) => {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       sameSite: config.nodeEnv === 'production' ? 'none' : 'lax', // Allow cross-site cookies in production
-      path: '/' // Ensure cookie is available for all paths
+      path: '/' // Ensure cookie is available for all paths (works with reverse proxy)
+      // Note: Don't set domain - let browser handle it based on the request domain
     },
     // Memory-efficient session store settings
     rolling: false, // Don't reset expiration on every request

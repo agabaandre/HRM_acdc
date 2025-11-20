@@ -7,6 +7,12 @@ const db = require('./database');
 
 const app = express();
 
+// Trust proxy - IMPORTANT for reverse proxy to work correctly
+// This tells Express to trust the X-Forwarded-* headers from the proxy
+if (config.nodeEnv === 'production') {
+  app.set('trust proxy', 1); // Trust first proxy (Apache)
+}
+
 // Apply middleware
 middleware(app);
 
@@ -46,6 +52,23 @@ const handleRootRoute = (req, res) => {
         // User doesn't have permission, redirect to CI with error message
         return res.redirect(`${config.ciBaseUrl}/auth?error=no_finance_permission`);
       }
+
+      // Explicitly save session before serving React app
+      req.session.save((err) => {
+        if (err) {
+          console.error('Error saving session in root route:', err);
+          return res.redirect(`${config.ciBaseUrl}/auth?error=session_error`);
+        }
+
+        // Serve React app (which will also handle client-side token processing as backup)
+        if (config.nodeEnv === 'production') {
+          res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+        } else {
+          // In development, redirect to React dev server
+          res.redirect(config.clientUrl);
+        }
+      });
+      return; // Important: return early to prevent double response
     } catch (error) {
       console.error('Token processing error:', error);
       // On error, redirect to CI login
@@ -81,26 +104,23 @@ app.get('/', handleRootRoute);
 // Also handle /finance route for reverse proxy
 app.get('/finance', handleRootRoute);
 
-// API Routes
+// API Routes - handle both /api and /finance/api for reverse proxy
 app.use('/api', routes);
+app.use('/finance/api', routes);
 
   // Serve React app in production (catch-all for SPA routing)
   // This handles all non-API routes for the React SPA
   // Handle both root and /finance paths for reverse proxy
   if (config.nodeEnv === 'production') {
     const serveIndex = (req, res) => {
-      // Skip API routes
-      if (req.path.startsWith('/api')) {
+      // Skip API routes (both /api and /finance/api)
+      if (req.path.startsWith('/api') || req.path.startsWith('/finance/api')) {
         return res.status(404).json({ error: 'Not found' });
       }
       res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
     };
     
-    // Handle root path
-    app.get('/', serveIndex);
-    // Handle /finance path (for reverse proxy)
-    app.get('/finance', serveIndex);
-    // Handle /finance/* paths (for reverse proxy)
+    // Handle /finance/* paths (for reverse proxy) - must come before catch-all
     app.get('/finance/*', serveIndex);
     // Handle all other paths
     app.get('*', serveIndex);
