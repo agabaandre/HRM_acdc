@@ -494,21 +494,37 @@ class AuditLogsController extends Controller
                     ];
                 }
             } elseif ($actionType === 'restore') {
-                // Restore the record
-                if (empty($oldValues)) {
-                    return [
-                        'success' => false,
-                        'message' => 'Cannot restore: No old values found to restore'
-                    ];
+                // Determine which values to use based on the original log action
+                // For 'created' actions, use new_values (the data that was created)
+                // For 'deleted' or 'updated' actions, use old_values (the data to restore)
+                $valuesToUse = [];
+                if ($log->action === 'created') {
+                    // For created actions, use new_values to restore what was created
+                    if (empty($newValues)) {
+                        return [
+                            'success' => false,
+                            'message' => 'Cannot restore: No new values found (record was created but no data available)'
+                        ];
+                    }
+                    $valuesToUse = $newValues;
+                } else {
+                    // For deleted or updated actions, use old_values to restore previous state
+                    if (empty($oldValues)) {
+                        return [
+                            'success' => false,
+                            'message' => 'Cannot restore: No old values found to restore'
+                        ];
+                    }
+                    $valuesToUse = $oldValues;
                 }
                 
-                // Check if record exists (for updated actions, restore old values; for deleted actions, re-insert)
+                // Check if record exists (for updated actions, restore old values; for deleted/created actions, re-insert)
                 $existingRecord = DB::table($modelTable)->where('id', $entityId)->first();
                 
-                if ($existingRecord) {
-                    // Record exists, restore old values (for updated actions)
-                    // Remove audit-specific fields from old values
-                    $cleanOldValues = array_diff_key($oldValues, [
+                if ($existingRecord && $log->action === 'updated') {
+                    // Record exists and was updated, restore old values
+                    // Remove audit-specific fields from values
+                    $cleanValues = array_diff_key($valuesToUse, [
                         'created_at' => '',
                         'updated_at' => '',
                         'id' => ''
@@ -516,7 +532,7 @@ class AuditLogsController extends Controller
                     
                     $updated = DB::table($modelTable)
                         ->where('id', $entityId)
-                        ->update($cleanOldValues);
+                        ->update($cleanValues);
                     
                     if ($updated !== false) {
                         return [
@@ -531,9 +547,9 @@ class AuditLogsController extends Controller
                         ];
                     }
                 } else {
-                    // Record doesn't exist, re-insert it (for deleted actions)
+                    // Record doesn't exist (deleted) or was created, re-insert it
                     // Remove audit-specific fields (don't add reversal metadata to primary table)
-                    $restoreData = array_diff_key($oldValues, [
+                    $restoreData = array_diff_key($valuesToUse, [
                         'created_at' => '',
                         'updated_at' => '',
                         'id' => ''
@@ -553,15 +569,16 @@ class AuditLogsController extends Controller
                     $restoredId = DB::table($modelTable)->insertGetId($restoreData);
                     
                     if ($restoredId) {
+                        $actionDescription = $log->action === 'created' ? 'restored created record' : 'restored deleted record';
                         return [
                             'success' => true,
-                            'data_reversal' => "Restored deleted record with new ID: {$restoredId}",
+                            'data_reversal' => "Restored record with new ID: {$restoredId} ({$actionDescription})",
                             'message' => 'Record restored successfully'
                         ];
                     } else {
                         return [
                             'success' => false,
-                            'message' => 'Failed to restore deleted record'
+                            'message' => 'Failed to restore record'
                         ];
                     }
                 }
