@@ -391,14 +391,10 @@
                     <table class="table table-hover mb-0" id="approverTable">
                         <thead class="table-light">
                             <tr>
-                                <th>Approver & Role</th>
-                                <th>Matrix</th>
-                                <th>Non-Travel</th>
-                                <th>Single Memos</th>
-                                <th>Special</th>
-                                <th>ARF</th>
-                                <th>Requests</th>
-                                <th>Change Requests</th>
+                                <th style="width: 30px;">#</th>
+                                <th>Approver</th>
+                                <th style="width: 15%;">Role</th>
+                                <th>Pending Items</th>
                                 <th>Total Pending</th>
                                 <th>Total Handled</th>
                                 <th>Avg. Time</th>
@@ -406,7 +402,7 @@
                         </thead>
                         <tbody id="approverTableBody">
                             <tr>
-                                <td colspan="12" class="text-center py-4">
+                                <td colspan="7" class="text-center py-4">
                                     <i class="bx bx-loader-alt bx-spin" style="font-size: 2rem;"></i>
                                     <p class="mt-2">Loading approver data...</p>
                                 </td>
@@ -533,7 +529,7 @@ function loadDashboardData() {
             console.log('API Response:', response);
             if (response.success) {
                 console.log('Data received:', response.data);
-                updateTable(response.data);
+                updateTable(response.data, response.pagination);
                 updatePagination(response.pagination);
                 updateSummaryStats(response);
             } else {
@@ -546,7 +542,7 @@ function loadDashboardData() {
     });
 }
 
-function updateTable(data) {
+function updateTable(data, pagination) {
     console.log('updateTable called with data:', data);
     const tbody = $('#approverTableBody');
     tbody.empty();
@@ -554,7 +550,7 @@ function updateTable(data) {
     if (data.length === 0) {
         tbody.append(`
             <tr>
-                <td colspan="11" class="text-center py-4">
+                <td colspan="7" class="text-center py-4">
                     <i class="bx bx-info-circle text-muted" style="font-size: 2rem;"></i>
                     <p class="mt-2 text-muted">No approvers found</p>
                 </td>
@@ -563,72 +559,100 @@ function updateTable(data) {
         return;
     }
     
-    data.forEach(function(approver) {
+    const baseUrl = '{{ user_session("base_url") ?? url("/") }}';
+    const currentPage = pagination ? pagination.current_page : 1;
+    const perPage = pagination ? pagination.per_page : 25;
+    
+    data.forEach(function(approver, index) {
+        // Calculate row number based on current page and per page
+        const rowNumber = (currentPage - 1) * perPage + index + 1;
+        
+        // Get photo URL or generate avatar
+        let avatarHtml = '';
+        if (approver.photo) {
+            const photoUrl = baseUrl + '/uploads/staff/' + approver.photo;
+            avatarHtml = `<img src="${photoUrl}" 
+                class="rounded-circle" 
+                style="width: 40px; height: 40px; object-fit: cover;" 
+                alt="${approver.approver_name}"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center" style="display: none; width: 40px; height: 40px;">
+                    <i class="bx bx-user text-white"></i>
+                </div>`;
+        } else {
+            // Generate initials avatar
+            const firstName = approver.fname || approver.approver_name.split(' ')[0] || 'U';
+            const lastName = approver.lname || approver.approver_name.split(' ')[1] || '';
+            const initials = (firstName[0] + (lastName ? lastName[0] : '')).toUpperCase();
+            const colors = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
+            const colorIndex = (firstName.charCodeAt(0) - 65) % colors.length;
+            const bgColor = colors[colorIndex >= 0 ? colorIndex : 0];
+            avatarHtml = `<div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                style="width: 40px; height: 40px; background-color: ${bgColor}; font-weight: 600; font-size: 14px;">
+                ${initials}
+            </div>`;
+        }
+        
         const row = `
             <tr>
+                <td class="text-center">${rowNumber}</td>
                 <td>
                     <div class="d-flex align-items-center">
-                        <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2">
-                            <i class="bx bx-user text-white"></i>
+                        <div class="me-2">
+                            ${avatarHtml}
                         </div>
                         <div>
                             <div class="fw-semibold">${approver.approver_name}</div>
                             <small class="text-muted">${approver.approver_email}</small>
                             <div class="mt-1">
-                                <div class="mb-1">
-                                    ${approver.roles && approver.roles.length > 0 ? 
-                                        approver.roles.map(role => `<span class="badge bg-info me-1">${role}</span>`).join('') :
-                                        `<span class="badge bg-info">${approver.role || 'N/A'}</span>`
-                                    }
-                                </div>
-                                <div>
-                                    <small class="text-muted">${approver.division_name || 'N/A'}</small>
-                                </div>
+                                <small class="text-muted">${approver.division_name || 'N/A'}</small>
                             </div>
                         </div>
                     </div>
                 </td>
-                <td>
-                    ${approver.pending_counts.matrix > 0 ? 
-                        `<a href="http://localhost/staff/apm/matrices/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.matrix}</a>` : 
-                        `<span class="badge bg-light text-dark">${approver.pending_counts.matrix}</span>`
-                    }
+                <td style="width: 20%;">
+                    <div>
+                        ${approver.roles && approver.roles.length > 0 ? 
+                            approver.roles.map(role => `<span class="badge bg-info me-1 mb-1 d-inline-block">${role}</span>`).join('') :
+                            `<span class="badge bg-info">${approver.role || 'N/A'}</span>`
+                        }
+                    </div>
                 </td>
                 <td>
-                    ${approver.pending_counts.non_travel > 0 ? 
-                        `<a href="http://localhost/staff/apm/non-travel/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.non_travel}</a>` : 
-                        `<span class="badge bg-light text-dark">${approver.pending_counts.non_travel}</span>`
-                    }
-                </td>
-                <td>
-                    ${approver.pending_counts.single_memos > 0 ? 
-                        `<a href="http://localhost/staff/apm/single-memo/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.single_memos}</a>` : 
-                        `<span class="badge bg-light text-dark">${approver.pending_counts.single_memos}</span>`
-                    }
-                </td>
-                <td>
-                    ${approver.pending_counts.special > 0 ? 
-                        `<a href="http://localhost/staff/apm/special-memo/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.special}</a>` : 
-                        `<span class="badge bg-light text-dark">${approver.pending_counts.special}</span>`
-                    }
-                </td>
-                <td>
-                    ${approver.pending_counts.arf > 0 ? 
-                        `<a href="http://localhost/staff/apm/arf/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.arf}</a>` : 
-                        `<span class="badge bg-light text-dark">${approver.pending_counts.arf}</span>`
-                    }
-                </td>
-                <td>
-                    ${approver.pending_counts.requests_for_service > 0 ? 
-                        `<a href="http://localhost/staff/apm/service-requests/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.requests_for_service}</a>` : 
-                        `<span class="badge bg-light text-dark">${approver.pending_counts.requests_for_service}</span>`
-                    }
-                </td>
-                <td>
-                    ${(approver.pending_counts.change_requests || 0) > 0 ? 
-                        `<a href="http://localhost/staff/apm/change-requests/pending-approvals" class="badge bg-warning text-decoration-none" style="cursor: pointer;">${approver.pending_counts.change_requests || 0}</a>` : 
-                        `<span class="badge bg-light text-dark">${approver.pending_counts.change_requests || 0}</span>`
-                    }
+                    <div class="d-flex flex-wrap gap-1">
+                        ${approver.pending_counts.matrix > 0 ? 
+                            `<a href="http://localhost/staff/apm/pending-approvals?category=Matrix" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Matrix">Matrix: ${approver.pending_counts.matrix}</a>` : 
+                            ''
+                        }
+                        ${approver.pending_counts.non_travel > 0 ? 
+                            `<a href="http://localhost/staff/apm/pending-approvals?category=Non-Travel Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Non-Travel Memos">Non-Travel: ${approver.pending_counts.non_travel}</a>` : 
+                            ''
+                        }
+                        ${approver.pending_counts.single_memos > 0 ? 
+                            `<a href="http://localhost/staff/apm/pending-approvals?category=Single Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Single Memos">Single: ${approver.pending_counts.single_memos}</a>` : 
+                            ''
+                        }
+                        ${approver.pending_counts.special > 0 ? 
+                            `<a href="http://localhost/staff/apm/pending-approvals?category=Special Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Special Memos">Special: ${approver.pending_counts.special}</a>` : 
+                            ''
+                        }
+                        ${approver.pending_counts.arf > 0 ? 
+                            `<a href="http://localhost/staff/apm/pending-approvals?category=ARF" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="ARF Requests">ARF: ${approver.pending_counts.arf}</a>` : 
+                            ''
+                        }
+                        ${approver.pending_counts.requests_for_service > 0 ? 
+                            `<a href="http://localhost/staff/apm/pending-approvals?category=Service Request" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Service Requests">Requests: ${approver.pending_counts.requests_for_service}</a>` : 
+                            ''
+                        }
+                        ${(approver.pending_counts.change_requests || 0) > 0 ? 
+                            `<a href="http://localhost/staff/apm/pending-approvals?category=Change Request" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Change Requests">Change: ${approver.pending_counts.change_requests || 0}</a>` : 
+                            ''
+                        }
+                        ${approver.total_pending === 0 ? 
+                            `<span class="badge bg-light text-dark">No pending items</span>` : 
+                            ''
+                        }
+                    </div>
                 </td>
                 <td><span class="badge ${approver.total_pending > 0 ? 'bg-danger' : 'bg-success'}">${approver.total_pending}</span></td>
                 <td><span class="badge bg-primary">${approver.total_handled || 0}</span></td>

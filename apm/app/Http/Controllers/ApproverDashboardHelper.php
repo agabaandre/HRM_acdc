@@ -26,6 +26,7 @@ trait ApproverDashboardHelper
                 's.lname',
                 's.work_email',
                 's.division_id',
+                's.photo',
                 'd.division_name',
                 'wd.approval_order as level_no',
                 'wd.workflow_id',
@@ -84,6 +85,7 @@ trait ApproverDashboardHelper
                     's.fname',
                     's.lname',
                     's.work_email',
+                    's.photo',
                     'd.id as division_id', // Use the division they're assigned to, not their own division
                     'd.division_name',
                     DB::raw("{$role->approval_order} as level_no"),
@@ -150,6 +152,9 @@ trait ApproverDashboardHelper
                     'approver_id' => $approverObj->approver_id,
                     'approver_name' => trim($approverObj->fname . ' ' . $approverObj->lname),
                     'approver_email' => $approverObj->work_email,
+                    'photo' => $approverObj->photo ?? null,
+                    'fname' => $approverObj->fname ?? '',
+                    'lname' => $approverObj->lname ?? '',
                     'division_name' => $approverObj->division_name,
                     'roles' => [],
                     'levels' => [],
@@ -165,7 +170,6 @@ trait ApproverDashboardHelper
                     ],
                     'total_pending' => 0,
                     'total_handled' => 0,
-                    'approval_times' => [],
                 ];
             }
             
@@ -178,54 +182,28 @@ trait ApproverDashboardHelper
                 $approversByStaffId[$staffId]['levels'][] = $approverObj->level_no;
             }
             
-            // Get pending counts for this specific approver/level combination
-            $pendingCounts = $this->getPendingCountsForApprover(
-                $approverObj->approver_id,
-                $approverObj->level_no,
-                $workflowDefinitionId,
-                $docType,
-                $approverObj->division_id
-            );
-
-            // Sum up pending counts across all roles/levels
-            foreach ($approversByStaffId[$staffId]['pending_counts'] as $key => $value) {
-                if (isset($pendingCounts[$key])) {
-                    $approversByStaffId[$staffId]['pending_counts'][$key] += $pendingCounts[$key];
-                }
-            }
-
-            // Calculate average approval time for this specific approver/level
-            $avgApprovalTime = $this->getAverageApprovalTime(
-                $approverObj->staff_id,
-                $approverObj->level_no,
-                $approverObj->workflow_id,
-                $docType
-            );
-            if ($avgApprovalTime > 0) {
-                $approversByStaffId[$staffId]['approval_times'][] = $avgApprovalTime;
-            }
-
-            // Sum up total handled documents
-            $totalHandled = $this->getTotalHandledForApprover(
-                $approverObj->staff_id,
-                $approverObj->level_no,
-                $approverObj->workflow_id,
-                $approverObj->division_id
-            );
-            $approversByStaffId[$staffId]['total_handled'] += $totalHandled;
+            // Note: Pending counts, total handled, and avg approval time are now calculated
+            // across all workflows/levels in the second pass, so we don't need to calculate them per level here
         }
 
         // Second pass: build final array with combined data
+        // Get pending counts across ALL workflows for each approver (matching pending-approvals logic)
         $approversWithCounts = [];
         foreach ($approversByStaffId as $staffId => $data) {
-            // Calculate total pending
-            $totalPending = array_sum(array_diff_key($data['pending_counts'], ['total' => '']));
+            // Get pending counts across ALL workflows using PendingApprovalsService logic
+            $allPendingCounts = $this->getPendingCountsForApproverAll($staffId, $divisionId);
             
-            // Calculate average approval time across all levels
-            $avgApprovalTime = 0;
-            if (!empty($data['approval_times'])) {
-                $avgApprovalTime = round(array_sum($data['approval_times']) / count($data['approval_times']), 2);
-            }
+            // Use the aggregated counts from all workflows
+            $data['pending_counts'] = $allPendingCounts;
+            
+            // Calculate total pending (sum of all pending counts)
+            $totalPending = array_sum(array_diff_key($data['pending_counts'], ['total' => '', 'memos' => '']));
+            
+            // Calculate total handled across ALL workflows and levels for this approver
+            $totalHandled = $this->getTotalHandledForApproverAll($staffId, $divisionId);
+            
+            // Calculate average approval time across ALL workflows and levels using approval_trails
+            $avgApprovalTime = $this->getAverageApprovalTimeAll($staffId, $divisionId);
             
             // Sort roles and levels for display
             sort($data['levels']);
@@ -236,6 +214,9 @@ trait ApproverDashboardHelper
                 'approver_id' => $data['approver_id'],
                 'approver_name' => $data['approver_name'],
                 'approver_email' => $data['approver_email'],
+                'photo' => $data['photo'] ?? null,
+                'fname' => $data['fname'] ?? '',
+                'lname' => $data['lname'] ?? '',
                 'division_name' => $data['division_name'],
                 'roles' => $data['roles'],
                 'levels' => $data['levels'],
@@ -243,7 +224,7 @@ trait ApproverDashboardHelper
                 'level_no' => implode(', ', $data['levels']), // Combined levels for display
                 'pending_counts' => $data['pending_counts'],
                 'total_pending' => $totalPending,
-                'total_handled' => $data['total_handled'],
+                'total_handled' => $totalHandled,
                 'avg_approval_time_hours' => $avgApprovalTime,
                 'avg_approval_time_display' => $this->formatApprovalTime($avgApprovalTime),
             ];
@@ -253,9 +234,11 @@ trait ApproverDashboardHelper
     }
 
     /**
-     * Get pending counts for a specific approver using approval_trails logic.
+     * Get pending counts for a specific approver across ALL workflows (matching pending-approvals logic).
+     * This ensures counts match what's shown in pending-approvals and excludes already handled items.
+     * Uses ApprovalService::canTakeAction to verify the approver can actually approve each item.
      */
-    protected function getPendingCountsForApprover($approverId, $levelNo, $workflowId, $docType = null, $divisionId = null)
+    protected function getPendingCountsForApproverAll($staffId, $divisionId = null)
     {
         $counts = [
             'matrix' => 0,
@@ -268,186 +251,301 @@ trait ApproverDashboardHelper
             'change_requests' => 0,
         ];
 
-        // Build division filter for documents
-        $divisionFilter = '';
-        $divisionParams = [];
+        // Use ApprovalService to check if approver can take action (same logic as PendingApprovalsService)
+        $approvalService = app(\App\Services\ApprovalService::class);
+
+        // Get pending matrices (across all workflows)
+        $query = \App\Models\Matrix::with(['division', 'staff', 'focalPerson', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+        
         if ($divisionId) {
-            // For division filtering, we need to join with the actual document tables
-            // This will be handled in each document type query by joining with the document table
+            $query->where('division_id', $divisionId);
+        }
+        
+        $matrices = $query->get();
+        foreach ($matrices as $matrix) {
+            if ($approvalService->canTakeAction($matrix, $staffId)) {
+                $counts['matrix']++;
+            }
         }
 
-        // Define model types and their corresponding document types
-        $modelMappings = [
-            'App\\Models\\Matrix' => 'matrix',
-            'App\\Models\\NonTravelMemo' => 'non_travel',
-            'App\\Models\\SpecialMemo' => 'special',
+        // Get pending special memos (across all workflows)
+        $query = \App\Models\SpecialMemo::with(['staff', 'division'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+        
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        
+        $memos = $query->get();
+        foreach ($memos as $memo) {
+            if ($approvalService->canTakeAction($memo, $staffId)) {
+                $counts['special']++;
+            }
+        }
+
+        // Get pending non-travel memos (across all workflows)
+        $query = \App\Models\NonTravelMemo::with(['staff', 'division'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+        
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        
+        $memos = $query->get();
+        foreach ($memos as $memo) {
+            if ($approvalService->canTakeAction($memo, $staffId)) {
+                $counts['non_travel']++;
+            }
+        }
+
+        // Get pending single memos (activities with is_single_memo = true, across all workflows)
+        $query = \App\Models\Activity::with(['staff', 'division'])
+            ->where('is_single_memo', true)
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+        
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        
+        $activities = $query->get();
+        foreach ($activities as $activity) {
+            if ($approvalService->canTakeAction($activity, $staffId)) {
+                $counts['single_memos']++;
+            }
+        }
+
+        // Get pending ARF requests (across all workflows)
+        $query = \App\Models\RequestARF::with(['staff', 'division', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+        
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        
+        $arfs = $query->get();
+        foreach ($arfs as $arf) {
+            if ($approvalService->canTakeAction($arf, $staffId)) {
+                $counts['arf']++;
+            }
+        }
+
+        // Get pending service requests (across all workflows)
+        $query = \App\Models\ServiceRequest::with(['staff', 'division', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+        
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        
+        $serviceRequests = $query->get();
+        foreach ($serviceRequests as $serviceRequest) {
+            if ($approvalService->canTakeAction($serviceRequest, $staffId)) {
+                $counts['requests_for_service']++;
+            }
+        }
+
+        // Get pending change requests (uses workflows 1, 6, 7)
+        $query = \App\Models\ChangeRequest::with(['staff', 'division', 'forwardWorkflow'])
+            ->where('overall_status', 'pending')
+            ->where('forward_workflow_id', '!=', null)
+            ->where('approval_level', '>', 0);
+        
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+        
+        $changeRequests = $query->get();
+        foreach ($changeRequests as $changeRequest) {
+            if ($approvalService->canTakeAction($changeRequest, $staffId)) {
+                $counts['change_requests']++;
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Get pending counts for a specific approver at a specific level/workflow (legacy method, kept for compatibility).
+     * This ensures counts match what's shown in pending-approvals and excludes already handled items.
+     * Uses ApprovalService::canTakeAction to verify the approver can actually approve each item.
+     */
+    protected function getPendingCountsForApprover($staffId, $levelNo, $workflowId, $docType = null, $divisionId = null)
+    {
+        $counts = [
+            'matrix' => 0,
+            'non_travel' => 0,
+            'single_memos' => 0,
+            'special' => 0,
+            'memos' => 0,
+            'arf' => 0,
+            'requests_for_service' => 0,
+            'change_requests' => 0,
         ];
 
-        foreach ($modelMappings as $modelType => $docTypeKey) {
-            // Skip if specific doc type is requested and this isn't it
-            if ($docType && $docType !== $docTypeKey) {
-                continue;
+        // Use ApprovalService to check if approver can take action (same logic as PendingApprovalsService)
+        $approvalService = app(\App\Services\ApprovalService::class);
+
+        // Get pending matrices
+        if (!$docType || $docType === 'matrix') {
+            $query = \App\Models\Matrix::with(['division', 'staff', 'focalPerson', 'forwardWorkflow'])
+                ->where('overall_status', 'pending')
+                ->where('forward_workflow_id', '!=', null)
+                ->where('approval_level', '>', 0)
+                ->where('forward_workflow_id', $workflowId)
+                ->where('approval_level', $levelNo);
+            
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
             }
-
-            try {
-                // Find documents that are pending for this approver at this level
-                // Logic: For level 1, find documents submitted (order 0) but not yet approved at level 1
-                // For other levels, find documents approved at previous level but not yet approved at current level
-                if ($levelNo == 1) {
-                    // Level 1: Documents submitted (order 0) but not yet approved at level 1
-                    if ($divisionId && $modelType === 'App\\Models\\Matrix') {
-                        // For matrices, join with matrices table to filter by division
-                        $sql = "
-                            SELECT COUNT(DISTINCT at.model_id) as count
-                            FROM approval_trails at
-                            INNER JOIN matrices m ON at.model_id = m.id
-                            WHERE at.model_type = ?
-                            AND at.forward_workflow_id = ?
-                            AND at.approval_order = 0
-                            AND at.action = 'submitted'
-                            AND m.division_id = ?
-                            AND at.model_id NOT IN (
-                                SELECT DISTINCT at2.model_id 
-                                FROM approval_trails at2 
-                                WHERE at2.model_type = at.model_type 
-                                AND at2.model_id = at.model_id 
-                                AND at2.forward_workflow_id = at.forward_workflow_id
-                                AND at2.approval_order = ?
-                                AND at2.action IN ('approved', 'rejected')
-                            )
-                        ";
-                        $params = [$modelType, $workflowId, $divisionId, $levelNo];
-                    } elseif ($modelType === 'App\\Models\\NonTravelMemo') {
-                        // For non-travel memos, use the approval_level and next_approval_level columns
-                        // Only show pending memos, not drafts
-                        if ($divisionId) {
-                            $sql = "
-                                SELECT COUNT(*) as count
-                                FROM non_travel_memos ntm
-                                WHERE ntm.division_id = ?
-                                AND ntm.approval_level = ?
-                                AND ntm.overall_status = 'pending'
-                            ";
-                            $params = [$divisionId, $levelNo];
-                        } else {
-                            $sql = "
-                                SELECT COUNT(*) as count
-                                FROM non_travel_memos ntm
-                                WHERE ntm.approval_level = ?
-                                AND ntm.overall_status = 'pending'
-                            ";
-                            $params = [$levelNo];
-                        }
-                    } elseif ($divisionId && $modelType === 'App\\Models\\SpecialMemo') {
-                        // For special memos, join with special_memos table to filter by division
-                        $sql = "
-                            SELECT COUNT(DISTINCT at.model_id) as count
-                            FROM approval_trails at
-                            INNER JOIN special_memos sm ON at.model_id = sm.id
-                            WHERE at.model_type = ?
-                            AND at.forward_workflow_id = ?
-                            AND at.approval_order = 0
-                            AND at.action = 'submitted'
-                            AND sm.division_id = ?
-                            AND at.model_id NOT IN (
-                                SELECT DISTINCT at2.model_id 
-                                FROM approval_trails at2 
-                                WHERE at2.model_type = at.model_type 
-                                AND at2.model_id = at.model_id 
-                                AND at2.forward_workflow_id = at.forward_workflow_id
-                                AND at2.approval_order = ?
-                                AND at2.action IN ('approved', 'rejected')
-                            )
-                        ";
-                        $params = [$modelType, $workflowId, $divisionId, $levelNo];
-                    } else {
-                        // No division filter or unsupported model type
-                        $sql = "
-                            SELECT COUNT(DISTINCT at.model_id) as count
-                            FROM approval_trails at
-                            WHERE at.model_type = ?
-                            AND at.forward_workflow_id = ?
-                            AND at.approval_order = 0
-                            AND at.action = 'submitted'
-                            AND at.model_id NOT IN (
-                                SELECT DISTINCT at2.model_id 
-                                FROM approval_trails at2 
-                                WHERE at2.model_type = at.model_type 
-                                AND at2.model_id = at.model_id 
-                                AND at2.forward_workflow_id = at.forward_workflow_id
-                                AND at2.approval_order = ?
-                                AND at2.action IN ('approved', 'rejected')
-                            )
-                        ";
-                        $params = [$modelType, $workflowId, $levelNo];
-                    }
-                } else {
-                    // Other levels: Documents approved at previous level but not yet approved at current level
-                    if ($modelType === 'App\\Models\\NonTravelMemo') {
-                        // For non-travel memos, use the approval_level and next_approval_level columns
-                        // Only show pending memos, not drafts
-                        if ($divisionId) {
-                            $sql = "
-                                SELECT COUNT(*) as count
-                                FROM non_travel_memos ntm
-                                WHERE ntm.division_id = ?
-                                AND ntm.approval_level = ?
-                                AND ntm.overall_status = 'pending'
-                            ";
-                            $params = [$divisionId, $levelNo];
-                        } else {
-                            $sql = "
-                                SELECT COUNT(*) as count
-                                FROM non_travel_memos ntm
-                                WHERE ntm.approval_level = ?
-                                AND ntm.overall_status = 'pending'
-                            ";
-                            $params = [$levelNo];
-                        }
-                    } else {
-                        // For other document types, use approval_trails logic
-                        $sql = "
-                            SELECT COUNT(DISTINCT at.model_id) as count
-                            FROM approval_trails at
-                            WHERE at.model_type = ?
-                            AND at.forward_workflow_id = ?
-                            AND at.approval_order = ?
-                            AND at.action IN ('approved', 'rejected')
-                            AND at.model_id NOT IN (
-                                SELECT DISTINCT at2.model_id 
-                                FROM approval_trails at2 
-                                WHERE at2.model_type = at.model_type 
-                                AND at2.model_id = at.model_id 
-                                AND at2.forward_workflow_id = at.forward_workflow_id
-                                AND at2.approval_order = ?
-                                AND at2.action IN ('approved', 'rejected')
-                            )
-                        ";
-                        $params = [$modelType, $workflowId, $levelNo - 1, $levelNo];
-                    }
+            
+            $matrices = $query->get();
+            foreach ($matrices as $matrix) {
+                if ($approvalService->canTakeAction($matrix, $staffId)) {
+                    $counts['matrix']++;
                 }
-                $result = DB::select($sql, $params);
-                $counts[$docTypeKey] = $result[0]->count ?? 0;
-
-                // Note: 'memos' and 'single_memos' are now separate document types
-                // No need to duplicate counts from other types
-
-            } catch (\Exception $e) {
-                // Log error and continue
-                Log::error('Error getting pending counts for ' . $modelType . ': ' . $e->getMessage());
-                $counts[$docTypeKey] = 0;
             }
         }
 
-        // Handle ARF and Service Requests separately (they might not use approval_trails)
-        // These need to filter by workflow and approval level
-        $arfCount = $this->getPendingCountForARF($workflowId, $levelNo, $divisionId);
-        $serviceCount = $this->getPendingCountForServiceRequests($workflowId, $levelNo, $divisionId);
-        $changeRequestCount = $this->getPendingCountForChangeRequests($workflowId, $levelNo, $divisionId);
-        
-        $counts['arf'] = $arfCount;
-        $counts['requests_for_service'] = $serviceCount;
-        $counts['change_requests'] = $changeRequestCount;
+        // Get pending special memos
+        if (!$docType || $docType === 'special') {
+            $query = \App\Models\SpecialMemo::with(['staff', 'division'])
+                ->where('overall_status', 'pending')
+                ->where('forward_workflow_id', '!=', null)
+                ->where('approval_level', '>', 0)
+                ->where('forward_workflow_id', $workflowId)
+                ->where('approval_level', $levelNo);
+            
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
+            }
+            
+            $memos = $query->get();
+            foreach ($memos as $memo) {
+                if ($approvalService->canTakeAction($memo, $staffId)) {
+                    $counts['special']++;
+                }
+            }
+        }
+
+        // Get pending non-travel memos
+        if (!$docType || $docType === 'non_travel') {
+            $query = \App\Models\NonTravelMemo::with(['staff', 'division'])
+                ->where('overall_status', 'pending')
+                ->where('forward_workflow_id', '!=', null)
+                ->where('approval_level', '>', 0)
+                ->where('forward_workflow_id', $workflowId)
+                ->where('approval_level', $levelNo);
+            
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
+            }
+            
+            $memos = $query->get();
+            foreach ($memos as $memo) {
+                if ($approvalService->canTakeAction($memo, $staffId)) {
+                    $counts['non_travel']++;
+                }
+            }
+        }
+
+        // Get pending single memos (activities with is_single_memo = true)
+        if (!$docType || $docType === 'single_memos') {
+            $query = \App\Models\Activity::with(['staff', 'division'])
+                ->where('is_single_memo', true)
+                ->where('overall_status', 'pending')
+                ->where('forward_workflow_id', '!=', null)
+                ->where('approval_level', '>', 0)
+                ->where('forward_workflow_id', $workflowId)
+                ->where('approval_level', $levelNo);
+            
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
+            }
+            
+            $activities = $query->get();
+            foreach ($activities as $activity) {
+                if ($approvalService->canTakeAction($activity, $staffId)) {
+                    $counts['single_memos']++;
+                }
+            }
+        }
+
+        // Get pending ARF requests
+        if (!$docType || $docType === 'arf') {
+            $query = \App\Models\RequestARF::with(['staff', 'division', 'forwardWorkflow'])
+                ->where('overall_status', 'pending')
+                ->where('forward_workflow_id', '!=', null)
+                ->where('approval_level', '>', 0)
+                ->where('forward_workflow_id', $workflowId)
+                ->where('approval_level', $levelNo);
+            
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
+            }
+            
+            $arfs = $query->get();
+            foreach ($arfs as $arf) {
+                if ($approvalService->canTakeAction($arf, $staffId)) {
+                    $counts['arf']++;
+                }
+            }
+        }
+
+        // Get pending service requests
+        if (!$docType || $docType === 'requests_for_service') {
+            $query = \App\Models\ServiceRequest::with(['staff', 'division', 'forwardWorkflow'])
+                ->where('overall_status', 'pending')
+                ->where('forward_workflow_id', '!=', null)
+                ->where('approval_level', '>', 0)
+                ->where('forward_workflow_id', $workflowId)
+                ->where('approval_level', $levelNo);
+            
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
+            }
+            
+            $serviceRequests = $query->get();
+            foreach ($serviceRequests as $serviceRequest) {
+                if ($approvalService->canTakeAction($serviceRequest, $staffId)) {
+                    $counts['requests_for_service']++;
+                }
+            }
+        }
+
+        // Get pending change requests (uses workflows 1, 6, 7)
+        if (!$docType || $docType === 'change_requests') {
+            $possibleWorkflowIds = [1, 6, 7];
+            $query = \App\Models\ChangeRequest::with(['staff', 'division', 'forwardWorkflow'])
+                ->where('overall_status', 'pending')
+                ->where('forward_workflow_id', '!=', null)
+                ->where('approval_level', '>', 0)
+                ->whereIn('forward_workflow_id', $possibleWorkflowIds)
+                ->where('approval_level', $levelNo);
+            
+            if ($divisionId) {
+                $query->where('division_id', $divisionId);
+            }
+            
+            $changeRequests = $query->get();
+            foreach ($changeRequests as $changeRequest) {
+                if ($approvalService->canTakeAction($changeRequest, $staffId)) {
+                    $counts['change_requests']++;
+                }
+            }
+        }
 
         $counts['total'] = array_sum($counts);
         return $counts;
@@ -748,29 +846,116 @@ trait ApproverDashboardHelper
     }
 
     /**
-     * Get total handled documents for a specific approver.
-     * This counts all documents that have been approved/rejected by this approver.
+     * Get total handled documents for a specific approver across ALL workflows and levels.
+     * This counts all documents that have been approved/rejected by this approver using approval_trails.
      */
-    protected function getTotalHandledForApprover($staffId, $levelNo, $workflowId, $divisionId = null)
+    protected function getTotalHandledForApproverAll($staffId, $divisionId = null)
     {
         try {
-            // Count documents handled by this approver at this level
-            // This includes documents that have been approved or rejected by this specific staff member
-            $sql = "
-                SELECT COUNT(DISTINCT CONCAT(at.model_type, '-', at.model_id)) as total_count
-                FROM approval_trails at
-                WHERE at.staff_id = ?
-                AND at.forward_workflow_id = ?
-                AND at.approval_order = ?
-                AND at.action IN ('approved', 'rejected')
-            ";
-            $params = [$staffId, $workflowId, $levelNo];
+            // Count all documents handled by this approver across all workflows and levels
+            // Using approval_trails where staff_id matches and action is approved/rejected
+            $query = DB::table('approval_trails as at')
+                ->where('at.staff_id', $staffId)
+                ->whereIn('at.action', ['approved', 'rejected'])
+                ->where('at.is_archived', 0); // Only non-archived trails
             
-            $result = DB::select($sql, $params);
-            return $result[0]->total_count ?? 0;
+            // If division filter is applied, we need to join with the document tables
+            // For now, we'll count all handled items regardless of division
+            // (Division filtering is handled at the pending counts level)
+            
+            $result = $query->select(DB::raw('COUNT(DISTINCT CONCAT(at.model_type, "-", at.model_id)) as total_count'))
+                ->first();
+            
+            return $result->total_count ?? 0;
             
         } catch (\Exception $e) {
-            Log::error('Error calculating total handled for approver: ' . $e->getMessage());
+            Log::error('Error calculating total handled for approver (all): ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Get average approval time for a specific approver across ALL workflows and levels.
+     * Calculates time between when item reached approver's level and when they approved it.
+     * Uses approval_trails created_at timestamps.
+     */
+    protected function getAverageApprovalTimeAll($staffId, $divisionId = null)
+    {
+        try {
+            // Get all approval actions by this approver
+            // For each approval, find when the item reached their level (previous approval or submission)
+            $sql = "
+                SELECT 
+                    at.id,
+                    at.model_id,
+                    at.model_type,
+                    at.forward_workflow_id,
+                    at.approval_order,
+                    at.created_at as approval_time,
+                    COALESCE(
+                        -- Previous level approval time
+                        (SELECT MAX(prev_at.created_at)
+                         FROM approval_trails prev_at
+                         WHERE prev_at.model_type = at.model_type
+                           AND prev_at.model_id = at.model_id
+                           AND prev_at.forward_workflow_id = at.forward_workflow_id
+                           AND prev_at.approval_order < at.approval_order
+                           AND prev_at.action IN ('approved', 'rejected', 'submitted')
+                           AND prev_at.is_archived = 0),
+                        -- Or submission time if no previous approval
+                        (SELECT MIN(sub_at.created_at)
+                         FROM approval_trails sub_at
+                         WHERE sub_at.model_type = at.model_type
+                           AND sub_at.model_id = at.model_id
+                           AND sub_at.forward_workflow_id = at.forward_workflow_id
+                           AND sub_at.approval_order = 0
+                           AND sub_at.action = 'submitted'
+                           AND sub_at.is_archived = 0)
+                    ) as received_time
+                FROM approval_trails at
+                WHERE at.staff_id = ?
+                  AND at.action IN ('approved', 'rejected')
+                  AND at.is_archived = 0
+                HAVING received_time IS NOT NULL
+                  AND approval_time >= received_time
+                ORDER BY at.created_at DESC
+            ";
+            
+            $results = DB::select($sql, [$staffId]);
+            
+            if (empty($results)) {
+                return 0;
+            }
+            
+            $totalHours = 0;
+            $count = 0;
+            
+            foreach ($results as $result) {
+                try {
+                    $approvalTime = Carbon::parse($result->approval_time);
+                    $receivedTime = Carbon::parse($result->received_time);
+                    
+                    // Calculate seconds between when item was received at this level and when it was approved
+                    $seconds = abs($approvalTime->getTimestamp() - $receivedTime->getTimestamp());
+                    
+                    // Convert to hours (with decimal precision)
+                    $hours = $seconds / 3600;
+                    
+                    // Only count positive time differences (approval after receipt)
+                    if ($approvalTime->getTimestamp() >= $receivedTime->getTimestamp()) {
+                        $totalHours += $hours;
+                        $count++;
+                    }
+                } catch (\Exception $e) {
+                    // Skip invalid date entries
+                    continue;
+                }
+            }
+            
+            return $count > 0 ? round($totalHours / $count, 2) : 0;
+            
+        } catch (\Exception $e) {
+            Log::error('Error calculating average approval time (all): ' . $e->getMessage());
             return 0;
         }
     }
