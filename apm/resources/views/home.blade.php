@@ -61,7 +61,7 @@ body {
 }
 
 .dashboard-card {
-  height: 280px;
+  height: 295px;
   border-radius: 10px;
   padding: 1.2rem;
   transition: var(--transition);
