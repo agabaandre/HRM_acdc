@@ -49,6 +49,22 @@ if (!function_exists('user_info')) {
         $showImage = false;
         $imageSrc = '';
         
+        // Generate initials for fallback avatar
+        $initials = '';
+        if ($firstName && $lastName) {
+            $initials = strtoupper(substr($firstName, 0, 1) . substr($lastName, 0, 1));
+        } elseif ($firstName) {
+            $initials = strtoupper(substr($firstName, 0, 2));
+        } else {
+            $initials = 'U';
+        }
+        
+        // Generate color for avatar (matching approver dashboard logic)
+        $colors = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
+        $colorIndex = (ord(strtoupper($firstName[0] ?? 'A')) - 65) % count($colors);
+        if ($colorIndex < 0) $colorIndex = 0;
+        $bgColor = $colors[$colorIndex];
+        
         // First, try to use photo_data (base64) from session if available
         if (!empty($photoData)) {
             $showImage = true;
@@ -73,28 +89,38 @@ if (!function_exists('user_info')) {
                 }
                 $imageSrc = 'data:image/' . $imageType . ';base64,' . $photoData;
             }
-        } elseif ($photo && file_exists($photoPath) && filesize($photoPath) > 100) {
-            // Fallback to file system if photo_data is not available
-            $showImage = true;
-            $imageSrc = htmlspecialchars($baseUrl . 'uploads/staff/' . $photo);
+        } elseif (!empty($photo) && $photo !== null && trim($photo) !== '') {
+            // Check if photo file exists on filesystem
+            if (file_exists($photoPath) && filesize($photoPath) > 100) {
+                $showImage = true;
+                $cleanBaseUrl = rtrim($baseUrl, '/');
+                $imageSrc = htmlspecialchars($cleanBaseUrl . '/uploads/staff/' . $photo);
+            }
         }
 
         ob_start();
         if ($showImage) {
+            // Show photo with fallback avatar hidden by default
             ?>
-            <img src="<?php echo $imageSrc; ?>"
-                class="user-img" alt="user avatar">
+            <div style="position: relative; width: 40px; height: 40px;">
+                <img src="<?php echo $imageSrc; ?>"
+                    class="user-img rounded-circle" 
+                    style="width: 40px; height: 40px; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1;" 
+                    alt="user avatar"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.nextElementSibling.style.zIndex='1';"
+                    onload="this.nextElementSibling.style.display='none';">
+                <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                    style="display: none; width: 40px; height: 40px; background-color: <?php echo $bgColor; ?>; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 0;">
+                    <?php echo $initials; ?>
+                </div>
+            </div>
             <?php
         } else {
+            // Show initials avatar only
             ?>
-            <div class="user-avatar <?php echo $avatarColor; ?> text-white d-flex align-items-center justify-content-center" style="font-weight:600; font-size:1.1rem; width:40px; height:40px; border-radius:50%;">
-                <?php if ($firstName && $lastName): ?>
-                    <span><?php echo strtoupper(substr($firstName,0,1)) . strtoupper(substr($lastName,0,1)); ?></span>
-                <?php elseif ($firstName): ?>
-                    <span><?php echo strtoupper(substr($firstName,0,2)); ?></span>
-                <?php else: ?>
-                    <span>U</span>
-                <?php endif; ?>
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                style="width: 40px; height: 40px; background-color: <?php echo $bgColor; ?>; font-weight: 600; font-size: 14px;">
+                <?php echo $initials; ?>
             </div>
             <?php
         }

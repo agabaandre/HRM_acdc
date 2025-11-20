@@ -565,6 +565,8 @@ function updateTable(data, pagination) {
     }
     
     const baseUrl = '{{ user_session("base_url") ?? url("/") }}';
+    // Get the base URL for pending approvals using route helper
+    const pendingApprovalsBaseUrl = '{{ route("pending-approvals.index") }}';
     const currentPage = pagination ? pagination.current_page : 1;
     const perPage = pagination ? pagination.per_page : 25;
     
@@ -638,31 +640,31 @@ function updateTable(data, pagination) {
                 <td>
                     <div class="d-flex flex-wrap gap-1">
                         ${approver.pending_counts.matrix > 0 ? 
-                            `<a href="http://localhost/staff/apm/pending-approvals?category=Matrix" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Matrix">Matrix: ${approver.pending_counts.matrix}</a>` : 
+                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Matrix" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Matrix">Matrix: ${approver.pending_counts.matrix}</a>` : 
                             ''
                         }
                         ${approver.pending_counts.non_travel > 0 ? 
-                            `<a href="http://localhost/staff/apm/pending-approvals?category=Non-Travel Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Non-Travel Memos">Non-Travel: ${approver.pending_counts.non_travel}</a>` : 
+                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Non-Travel Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Non-Travel Memos">Non-Travel: ${approver.pending_counts.non_travel}</a>` : 
                             ''
                         }
                         ${approver.pending_counts.single_memos > 0 ? 
-                            `<a href="http://localhost/staff/apm/pending-approvals?category=Single Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Single Memos">Single: ${approver.pending_counts.single_memos}</a>` : 
+                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Single Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Single Memos">Single: ${approver.pending_counts.single_memos}</a>` : 
                             ''
                         }
                         ${approver.pending_counts.special > 0 ? 
-                            `<a href="http://localhost/staff/apm/pending-approvals?category=Special Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Special Memos">Special: ${approver.pending_counts.special}</a>` : 
+                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Special Memo" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Special Memos">Special: ${approver.pending_counts.special}</a>` : 
                             ''
                         }
                         ${approver.pending_counts.arf > 0 ? 
-                            `<a href="http://localhost/staff/apm/pending-approvals?category=ARF" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="ARF Requests">ARF: ${approver.pending_counts.arf}</a>` : 
+                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=ARF" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="ARF Requests">ARF: ${approver.pending_counts.arf}</a>` : 
                             ''
                         }
                         ${approver.pending_counts.requests_for_service > 0 ? 
-                            `<a href="http://localhost/staff/apm/pending-approvals?category=Service Request" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Service Requests">Requests: ${approver.pending_counts.requests_for_service}</a>` : 
+                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Service Request" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Service Requests">Requests: ${approver.pending_counts.requests_for_service}</a>` : 
                             ''
                         }
                         ${(approver.pending_counts.change_requests || 0) > 0 ? 
-                            `<a href="http://localhost/staff/apm/pending-approvals?category=Change Request" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Change Requests">Change: ${approver.pending_counts.change_requests || 0}</a>` : 
+                            `<a href="${pendingApprovalsBaseUrl}/pending-approvals?category=Change Request" class="badge bg-warning text-decoration-none" style="cursor: pointer;" title="Change Requests">Change: ${approver.pending_counts.change_requests || 0}</a>` : 
                             ''
                         }
                         ${approver.total_pending === 0 ? 
