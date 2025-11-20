@@ -116,7 +116,7 @@ if (!function_exists('user_info')) {
             // Show initials avatar only
             ?>
             <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                style="width: 40px; height: 40px; background-color: <?php echo $bgColor; ?>; font-weight: 600; font-size: 14px;">
+                style="width: 35px; height: 35px; background-color: <?php echo $bgColor; ?>; font-weight: 600; font-size: 14px;">
                 <?php echo $initials; ?>
             </div>
             <?php
