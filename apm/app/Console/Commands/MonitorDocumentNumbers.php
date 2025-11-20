@@ -6,6 +6,7 @@ use App\Jobs\AssignDocumentNumberJob;
 use App\Models\Activity;
 use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
+use App\Models\ChangeRequest;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use Illuminate\Console\Command;
@@ -83,6 +84,11 @@ class MonitorDocumentNumbers extends Command
                 'model' => SpecialMemo::class,
                 'name' => 'Special Memos',
                 'document_type' => 'SPM'
+            ],
+            'change_requests' => [
+                'model' => ChangeRequest::class,
+                'name' => 'Change Requests',
+                'document_type' => 'CR'
             ],
             'service_requests' => [
                 'model' => ServiceRequest::class,

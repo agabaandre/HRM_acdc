@@ -14,8 +14,33 @@ The document numbering system automatically assigns unique document numbers to v
 | Single Memo | SM | Single memo activities | AU/CDC/EPR/IM/SM/005 |
 | Non-Travel Memo | NT | Non-travel memos | AU/CDC/EPR/IM/NT/003 |
 | Special Memo | SPM | Special memos | AU/CDC/EPR/IM/SPM/001 |
+| Change Request | CR | Change requests for activities, memos, and ARFs | AU/CDC/EPR/IM/CR/007 |
 | Service Request | SR | Service requests | AU/CDC/EPR/IM/SR/002 |
 | Request ARF | ARF | Request ARFs | AU/CDC/EPR/IM/ARF/004 |
+
+### Change Request Document Numbers
+
+Change Requests (CR) are automatically assigned document numbers when created. The document number format follows the standard pattern:
+
+```
+AU/CDC/{DIVISION_SHORT_NAME}/IM/CR/{COUNTER}
+```
+
+**Features:**
+- Automatic assignment when a change request is created
+- Division-specific counters (each division has its own sequence)
+- Year-based reset (counters reset to 001 at the beginning of each year)
+- Unique across all document types (no conflicts with other document numbers)
+- Supports all document numbering features (conflict resolution, monitoring, etc.)
+
+**Usage:**
+```bash
+# Assign missing document numbers for change requests
+php artisan assign:missing-document-numbers --table=change_requests --user=558
+
+# Monitor change requests without document numbers
+php artisan monitor:document-numbers --auto-assign --user=558
+```
 
 ## Commands
 
@@ -35,6 +60,7 @@ php artisan assign:missing-document-numbers --dry-run --user=558
 
 # Assign for specific table only
 php artisan assign:missing-document-numbers --table=activities --user=558
+php artisan assign:missing-document-numbers --table=change_requests --user=558
 
 # Force assignment even if document numbers exist
 php artisan assign:missing-document-numbers --force --user=558
