@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const express = require('express');
 const config = require('../config');
+const sessionStore = require('./sessionStore');
+const { securityHeaders, apiLimiter } = require('./security');
 const {
   requestTimeout,
   responseSizeLimit,
@@ -14,6 +16,9 @@ const {
 } = require('./memory');
 
 module.exports = (app) => {
+  // Security headers (apply first)
+  app.use(securityHeaders);
+
   // Memory management middleware (apply early)
   app.use(memoryMonitor({
     threshold: 0.8, // Warn at 80% heap usage
@@ -53,6 +58,10 @@ module.exports = (app) => {
     credentials: true
   }));
 
+  // Rate limiting for API routes
+  app.use('/api', apiLimiter);
+  app.use('/finance/api', apiLimiter);
+
   // Body parsing middleware with limits
   app.use(bodyParser.json({
     limit: '1mb', // Limit JSON body size
@@ -65,11 +74,12 @@ module.exports = (app) => {
   }));
   app.use(cookieParser());
 
-  // Session middleware with memory-efficient settings
+  // Session middleware with MySQL store (production-ready)
   app.use(session({
     secret: config.sessionSecret,
     resave: false,
     saveUninitialized: false,
+    store: sessionStore, // Use MySQL store instead of MemoryStore
     name: 'finance.sid', // Custom session name to avoid conflicts
     cookie: {
       secure: config.nodeEnv === 'production', // Only use secure cookies in production (HTTPS)
@@ -79,7 +89,7 @@ module.exports = (app) => {
       path: '/' // Ensure cookie is available for all paths (works with reverse proxy)
       // Note: Don't set domain - let browser handle it based on the request domain
     },
-    // Memory-efficient session store settings
+    // Session store settings
     rolling: false, // Don't reset expiration on every request
     unset: 'destroy' // Destroy session when unset
   }));

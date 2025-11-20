@@ -2,15 +2,17 @@
  * Error Handler Utility
  * Provides consistent error handling and memory-efficient error responses
  */
+const logger = require('./logger');
 
 /**
  * Standard error response format
  */
 class AppError extends Error {
-  constructor(message, statusCode = 500, code = null) {
+  constructor(message, statusCode = 500, code = null, details = null) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
+    this.details = details;
     this.isOperational = true;
     Error.captureStackTrace(this, this.constructor);
   }
@@ -45,7 +47,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Log error
-  console.error('Error:', {
+  logger.error('Request error', {
     message: error.message,
     statusCode: error.statusCode,
     code: error.code,
@@ -55,17 +57,28 @@ const errorHandler = (err, req, res, next) => {
   });
 
   // Send error response
-  res.status(error.statusCode).json({
+  const errorResponse = {
     success: false,
     error: {
       message: error.message,
-      code: error.code,
-      ...(process.env.NODE_ENV === 'development' && {
-        stack: error.stack,
-        details: error.details
-      })
+      code: error.code || 'INTERNAL_ERROR'
     }
-  });
+  };
+
+  // Add details if available
+  if (error.details) {
+    errorResponse.error.details = error.details;
+  }
+
+  // Add stack trace in development
+  if (process.env.NODE_ENV === 'development') {
+    errorResponse.error.stack = error.stack;
+    if (!error.details) {
+      errorResponse.error.details = err;
+    }
+  }
+
+  res.status(error.statusCode).json(errorResponse);
 };
 
 /**
