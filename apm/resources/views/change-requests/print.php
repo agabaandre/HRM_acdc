@@ -230,10 +230,36 @@
         'from' => 'From:'
     ];
 
-    // Filter out sections that have no approvers
+    // Ensure "from" section always has at least the division head, even if no approvers found
+    if (empty($organizedApprovers['from']) && $changeRequest->division_id) {
+        $division = \App\Models\Division::find($changeRequest->division_id);
+        if ($division && $division->division_head) {
+            $divisionHead = \App\Models\Staff::find($division->division_head);
+            if ($divisionHead) {
+                $organizedApprovers['from'] = [[
+                    'staff' => [
+                        'id' => $divisionHead->id,
+                        'name' => $divisionHead->fname . ' ' . $divisionHead->lname,
+                        'title' => $divisionHead->title,
+                        'work_email' => $divisionHead->work_email,
+                        'signature' => $divisionHead->signature
+                    ],
+                    'oic_staff' => null,
+                    'role' => 'Head of Division',
+                    'order' => 'division_head',
+                    'is_oic' => false
+                ]];
+            }
+        }
+    }
+
+    // Filter out sections that have no approvers (but always include "from" if we have a division)
     $sectionsWithApprovers = [];
     foreach ($sectionOrder as $section) {
         if (isset($organizedApprovers[$section]) && count($organizedApprovers[$section]) > 0) {
+            $sectionsWithApprovers[] = $section;
+        } elseif ($section === 'from' && $changeRequest->division_id) {
+            // Always include "from" section if we have a division, even if empty (will use fallback)
             $sectionsWithApprovers[] = $section;
         }
     }
@@ -241,51 +267,129 @@
     // Calculate total rows needed for rowspan (only for sections with approvers)
     $totalRows = 0;
     foreach ($sectionsWithApprovers as $section) {
-        $totalRows += count($organizedApprovers[$section]);
+        if (isset($organizedApprovers[$section]) && count($organizedApprovers[$section]) > 0) {
+            $totalRows += count($organizedApprovers[$section]);
+        } else {
+            // At least one row per section (for fallback display)
+            $totalRows += 1;
+        }
     }
     $dateFileRowspan = $totalRows;
   ?>
   
   <table class="mb-15">
     <?php if (!empty($sectionsWithApprovers)): ?>
-      <?php foreach ($sectionsWithApprovers as $sectionIndex => $section): ?>
-        <?php foreach ($organizedApprovers[$section] as $index => $approver): ?>
-          <tr>
-                <td style="width: 12%; vertical-align: top;">
-                    <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
-            </td>
-                <td style="width: 30%; vertical-align: top; text-align: left;">
-                    <?php 
-                    // Centralized rendering handles OIC/name/role formatting consistently
-                    renderApproverInfo($approver, $approver['role'] ?? 'Approver', $section, $changeRequest);
-                    ?>
-      </td>
-                <td style="width: 30%; vertical-align: top; text-align: left;">
-                    <?php 
-                    $order = $approver['order'];
-                    if ($order === 'division_head') {
-                        $order = 1; // Use level 1 for division head
-                    }
-                    renderSignature($approver, $order, $crApprovalTrails, $changeRequest); 
-                    ?>
-      </td>
-                <?php if ($sectionIndex === 0 && $index === 0): // Only output the Date/FileNo cell once ?>
-                    <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
-                        <div class="text-right">
-                  <div style="margin-bottom: 20px;">
-                                <strong class="section-label">Date:</strong>
-                                <span style="font-weight: bold;"><?php echo isset($changeRequest->created_at) ? (is_object($changeRequest->created_at) ? $changeRequest->created_at->format('j F Y') : date('j F Y', strtotime($changeRequest->created_at))) : date('j F Y'); ?></span>
+      <?php 
+      $firstRowRendered = false;
+      foreach ($sectionsWithApprovers as $sectionIndex => $section): 
+      ?>
+        <?php if (isset($organizedApprovers[$section]) && count($organizedApprovers[$section]) > 0): ?>
+          <?php foreach ($organizedApprovers[$section] as $index => $approver): ?>
+            <tr>
+                  <td style="width: 12%; vertical-align: top;">
+                      <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
+              </td>
+                  <td style="width: 30%; vertical-align: top; text-align: left;">
+                      <?php 
+                      // Centralized rendering handles OIC/name/role formatting consistently
+                      renderApproverInfo($approver, $approver['role'] ?? 'Approver', $section, $changeRequest);
+                      ?>
+        </td>
+                  <td style="width: 30%; vertical-align: top; text-align: left;">
+                      <?php 
+                      $order = $approver['order'];
+                      if ($order === 'division_head') {
+                          $order = 1; // Use level 1 for division head
+                      }
+                      renderSignature($approver, $order, $crApprovalTrails, $changeRequest); 
+                      ?>
+        </td>
+                  <?php if (!$firstRowRendered): // Only output the Date/FileNo cell once ?>
+                      <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
+                          <div class="text-right">
+                    <div style="margin-bottom: 20px;">
+                                  <strong class="section-label">Date:</strong>
+                                  <span style="font-weight: bold;"><?php echo isset($changeRequest->created_at) ? (is_object($changeRequest->created_at) ? $changeRequest->created_at->format('j F Y') : date('j F Y', strtotime($changeRequest->created_at))) : date('j F Y'); ?></span>
+            </div>
+                    <div>
+                      <br><br>
+                                  <strong class="section-label">File No:</strong><br>
+                                  <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($changeRequest->document_number ?? 'N/A'); ?></span>
+            </div>
           </div>
+        </td>
+              <?php 
+              $firstRowRendered = true;
+              endif; 
+              ?>
+      </tr>
+            <?php endforeach; ?>
+        <?php else: ?>
+          <!-- Fallback: Show section even if no approvers (especially for "from" section) -->
+          <tr>
+            <td style="width: 12%; vertical-align: top;">
+              <strong class="section-label"><?php echo $sectionLabels[$section] ?? (strtoupper($section) . ':'); ?></strong>
+            </td>
+            <td style="width: 30%; vertical-align: top; text-align: left;">
+              <?php if ($section === 'from'): ?>
+                <?php
+                $divisionHeadName = '';
+                $divisionHeadId = null;
+                if ($changeRequest->division && $changeRequest->division->division_head) {
+                    $divisionHeadId = $changeRequest->division->division_head;
+                    $divisionHead = \App\Models\Staff::find($divisionHeadId);
+                    if ($divisionHead) {
+                        $divisionHeadName = $divisionHead->fname . ' ' . $divisionHead->lname;
+                    }
+                }
+                ?>
+                <div class="approver-name"><?php echo htmlspecialchars($divisionHeadName ?: 'Division Head'); ?></div>
+                <div class="approver-title">Head of Division (HOD)</div>
+                <div class="approver-title"><?php echo htmlspecialchars($divisionName); ?></div>
+              <?php else: ?>
+                <div class="approver-name"><?php echo htmlspecialchars(ucfirst($section)); ?></div>
+              <?php endif; ?>
+            </td>
+            <td style="width: 30%; vertical-align: top; text-align: left;">
+              <?php if ($section === 'from'): ?>
+                <?php
+                // Try to render signature for division head
+                if ($divisionHeadId) {
+                    // Look for division head in approval trails
+                    $divisionHeadTrail = null;
+                    foreach ($crApprovalTrails as $trail) {
+                        if (isset($trail->staff_id) && $trail->staff_id == $divisionHeadId) {
+                            $divisionHeadTrail = $trail;
+                            break;
+                        }
+                    }
+                    if ($divisionHeadTrail) {
+                        renderSignature($divisionHeadTrail, 1, $crApprovalTrails, $changeRequest);
+                    }
+                }
+                ?>
+              <?php endif; ?>
+            </td>
+            <?php if (!$firstRowRendered): // Only output the Date/FileNo cell once ?>
+              <td style="width: 28%; vertical-align: top;" rowspan="<?php echo $dateFileRowspan; ?>">
+                <div class="text-right">
+                  <div style="margin-bottom: 20px;">
+                    <strong class="section-label">Date:</strong>
+                    <span style="font-weight: bold;"><?php echo isset($changeRequest->created_at) ? (is_object($changeRequest->created_at) ? $changeRequest->created_at->format('j F Y') : date('j F Y', strtotime($changeRequest->created_at))) : date('j F Y'); ?></span>
+                  </div>
                   <div>
                     <br><br>
-                                <strong class="section-label">File No:</strong><br>
-                                <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($changeRequest->document_number ?? 'N/A'); ?></span>
-          </div>
-        </div>
-      </td>
-            <?php endif; ?>
-    </tr>
-          <?php endforeach; ?>
+                    <strong class="section-label">File No:</strong><br>
+                    <span style="word-break: break-all; font-weight: bold;"><?php echo htmlspecialchars($changeRequest->document_number ?? 'N/A'); ?></span>
+                  </div>
+                </div>
+              </td>
+              <?php 
+              $firstRowRendered = true;
+              endif; 
+              ?>
+          </tr>
+        <?php endif; ?>
       <?php endforeach; ?>
     <?php else: ?>
       <!-- Fallback: If no approvers found, show basic structure with date/file -->
