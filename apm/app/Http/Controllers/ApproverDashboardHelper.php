@@ -214,7 +214,7 @@ trait ApproverDashboardHelper
                 'approver_id' => $data['approver_id'],
                 'approver_name' => $data['approver_name'],
                 'approver_email' => $data['approver_email'],
-                'photo' => $data['photo'] ?? null,
+                'photo' => !empty($data['photo']) ? $data['photo'] : null, // Ensure photo is included
                 'fname' => $data['fname'] ?? '',
                 'lname' => $data['lname'] ?? '',
                 'division_name' => $data['division_name'],
