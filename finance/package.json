@@ -9,20 +9,33 @@
     "client": "cd frontend && npm start",
     "client:build": "cd frontend && npm run build",
     "dev:all": "concurrently --names \"SERVER,CLIENT\" --prefix-colors \"blue,green\" \"npm run dev\" \"npm run client\"",
-    "install:all": "npm install --legacy-peer-deps && cd frontend && npm install --legacy-peer-deps"
+    "install:all": "npm install --legacy-peer-deps && cd frontend && npm install --legacy-peer-deps",
+    "db:migrate": "sequelize-cli db:migrate",
+    "db:migrate:undo": "sequelize-cli db:migrate:undo",
+    "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all",
+    "db:migrate:status": "sequelize-cli db:migrate:status",
+    "db:seed": "sequelize-cli db:seed:all",
+    "db:seed:undo": "sequelize-cli db:seed:undo:all",
+    "db:create": "sequelize-cli db:create",
+    "db:drop": "sequelize-cli db:drop",
+    "model:generate": "sequelize-cli model:generate",
+    "migration:generate": "sequelize-cli migration:generate"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-mysql-session": "^3.0.1",
+    "express-rate-limit": "^8.2.1",
     "express-session": "^1.17.3",
-    "cookie-parser": "^1.4.6",
-    "body-parser": "^1.20.2",
-    "mysql2": "^3.6.5"
+    "mysql2": "^3.6.5",
+    "sequelize": "^6.35.2"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "nodemon": "^3.0.1",
-    "concurrently": "^8.2.2"
+    "sequelize-cli": "^6.6.2"
   }
 }
-

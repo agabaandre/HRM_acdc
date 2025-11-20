@@ -86,35 +86,19 @@ function Header({ user, onLogout }) {
               />
             </div>
           </div>
-          <div className="mobile-toggle-menu">
-            <i className='bx bx-menu'></i>
-          </div>
           <div className="search-bar flex-grow-1" style={{ display: 'none' }}>
             <div className="position-relative search-bar-box">
               <input type="text" className="form-control search-control" placeholder="Type to search..." />
               <span className="position-absolute top-50 search-show translate-middle-y">
-                <i className='bx bx-search'></i>
+                <i className='fas fa-search'></i>
               </span>
               <span className="position-absolute top-50 search-close translate-middle-y">
-                <i className='bx bx-x'></i>
+                <i className='fas fa-times'></i>
               </span>
             </div>
           </div>
-          <div className="top-menu ms-auto me-3">
+          <div className="top-menu">
             <ul className="navbar-nav align-items-center">
-              {/* APM Menu Item */}
-              <li className="nav-item">
-                <a 
-                  className="nav-link" 
-                  href={`${apmUrl}?token=${generateApmToken()}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <i className='fa fa-sitemap' style={{ color: '#FFF' }}></i>
-                  <span className="ms-2 d-none d-md-inline" style={{ color: '#FFF' }}>APM</span>
-                </a>
-              </li>
-              
               {/* Staff Portal Menu Item */}
               <li className="nav-item">
                 <a 
@@ -123,9 +107,48 @@ function Header({ user, onLogout }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <i className='bx bx-user' style={{ color: '#FFF' }}></i>
+                  <i className='fas fa-user' style={{ color: '#FFF', fontSize: '1.1rem' }}></i>
                   <span className="ms-2 d-none d-md-inline" style={{ color: '#FFF' }}>Staff Portal</span>
                 </a>
+              </li>
+              
+              {/* APM Menu Item */}
+              <li className="nav-item">
+                <a 
+                  className="nav-link" 
+                  href={`${apmUrl}?token=${generateApmToken()}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <i className='fas fa-sitemap' style={{ color: '#FFF', fontSize: '1.1rem' }}></i>
+                  <span className="ms-2 d-none d-md-inline" style={{ color: '#FFF' }}>APM</span>
+                </a>
+              </li>
+              
+              {/* Notifications Icon */}
+              <li className="nav-item dropdown" style={{ border: 'none !important' }}>
+                <a 
+                  className="nav-link dropdown-toggle dropdown-toggle-nocaret position-relative"
+                  href="#" 
+                  role="button" 
+                  data-bs-toggle="dropdown" 
+                  aria-expanded="false"
+                >
+                  <span className="alert-count">0</span>
+                  <i className='fas fa-comment-dots' style={{ color: '#FFF', fontSize: '1.1rem' }}></i>
+                </a>
+                <div className="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3" style={{ minWidth: '400px' }}>
+                  <div className="dropdown-header d-flex justify-content-between align-items-center px-3 pt-2">
+                    <span className="fw-semibold">Notifications</span>
+                    <a href="#" className="small text-primary">View All</a>
+                  </div>
+                  <div className="header-message-list ps-2 pe-2 pt-2">
+                    <div className="text-center text-muted py-3">
+                      <i className="fas fa-check-circle fa-2x mb-2"></i>
+                      <div>No notifications</div>
+                    </div>
+                  </div>
+                </div>
               </li>
             </ul>
           </div>
@@ -146,19 +169,19 @@ function Header({ user, onLogout }) {
             <ul className="dropdown-menu dropdown-menu-end">
               <li>
                 <a className="dropdown-item" href={`${baseUrl}/auth/profile`} target="_blank" rel="noopener noreferrer">
-                  <i className="bx bx-user"></i>
+                  <i className="fas fa-user"></i>
                   <span>Profile</span>
                 </a>
               </li>
               <li>
                 <a className="dropdown-item" href={`${apmUrl}?token=${generateApmToken()}`} target="_blank" rel="noopener noreferrer">
-                  <i className="fa fa-sitemap"></i>
+                  <i className="fas fa-sitemap"></i>
                   <span>Approvals Management</span>
                 </a>
               </li>
               <li>
                 <a className="dropdown-item" href={`${baseUrl}/auth/profile`} target="_blank" rel="noopener noreferrer">
-                  <i className="bx bx-home"></i>
+                  <i className="fas fa-home"></i>
                   <span>Staff Portal</span>
                 </a>
               </li>
@@ -167,7 +190,7 @@ function Header({ user, onLogout }) {
               </li>
               <li>
                 <a className="dropdown-item" href="#" onClick={(e) => { e.preventDefault(); onLogout(); }}>
-                  <i className="bx bx-log-out-circle"></i>
+                  <i className="fas fa-sign-out-alt"></i>
                   <span>Logout</span>
                 </a>
               </li>

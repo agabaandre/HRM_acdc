@@ -2,6 +2,8 @@
 
 A Node.js/Express backend with React frontend for the Africa CDC Finance Management System.
 
+> 📚 **Complete Documentation**: See [documentation/README.md](./documentation/README.md) for all guides, setup instructions, and troubleshooting.
+
 ## Project Structure
 
 ```

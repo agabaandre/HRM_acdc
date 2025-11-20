@@ -1,153 +1,44 @@
-const express = require('express');
-const path = require('path');
+const createApp = require('./app');
 const config = require('./config');
-const middleware = require('./middleware');
-const routes = require('./routes');
 const db = require('./database');
+const logger = require('./utils/logger');
 
-const app = express();
-
-// Trust proxy - IMPORTANT for reverse proxy to work correctly
-// This tells Express to trust the X-Forwarded-* headers from the proxy
-if (config.nodeEnv === 'production') {
-  app.set('trust proxy', 1); // Trust first proxy (Apache)
-}
-
-// Apply middleware
-middleware(app);
-
-// Root route handler - matches Laravel APM pattern for token processing
-// This handles direct server-side access (though React app handles it client-side)
-// Also handles /finance route when accessed through reverse proxy
-const handleRootRoute = (req, res) => {
-  // Get token from query parameter (matches Laravel: $request->query('token'))
-  const base64Token = req.query.token;
-
-  if (base64Token) {
-    try {
-      // Decode the base64 token (Laravel: base64_decode($base64Token))
-      // Express automatically URL decodes query params, so we just need base64 decode
-      const decodedToken = Buffer.from(base64Token, 'base64').toString('utf-8');
-      
-      // Parse the JSON data (Laravel: json_decode($decodedToken, true))
-      const json = JSON.parse(decodedToken);
-
-      if (!json) {
-        throw new Error('Invalid token format');
-      }
-
-      // Store session data exactly like Laravel:
-      // session(['user' => $json, 'base_url' => $json['base_url'] ?? '', 'permissions' => $json['permissions'] ?? []])
-      req.session.user = json;
-      req.session.base_url = json.base_url || '';
-      req.session.permissions = json.permissions || [];
-      req.session.authenticated = true;
-      req.session.transferredAt = new Date().toISOString();
-
-      // Check if user has permission 92 (Finance access)
-      const permissions = json.permissions || [];
-      const hasFinanceAccess = permissions.includes('92') || permissions.includes(92);
-      
-      if (!hasFinanceAccess) {
-        // User doesn't have permission, redirect to CI with error message
-        return res.redirect(`${config.ciBaseUrl}/auth?error=no_finance_permission`);
-      }
-
-      // Explicitly save session before serving React app
-      req.session.save((err) => {
-        if (err) {
-          console.error('Error saving session in root route:', err);
-          return res.redirect(`${config.ciBaseUrl}/auth?error=session_error`);
-        }
-
-        // Serve React app (which will also handle client-side token processing as backup)
-        if (config.nodeEnv === 'production') {
-          res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-        } else {
-          // In development, redirect to React dev server
-          res.redirect(config.clientUrl);
-        }
-      });
-      return; // Important: return early to prevent double response
-    } catch (error) {
-      console.error('Token processing error:', error);
-      // On error, redirect to CI login
-      return res.redirect(`${config.ciBaseUrl}/auth`);
-    }
-  } else {
-    // No token provided, check existing session
-    if (req.session && req.session.authenticated) {
-      const permissions = req.session.permissions || [];
-      const hasFinanceAccess = permissions.includes('92') || permissions.includes(92);
-      
-      if (!hasFinanceAccess) {
-        // User doesn't have permission, redirect to CI
-        return res.redirect(`${config.ciBaseUrl}/auth?error=no_finance_permission`);
-      }
-    } else {
-      // No session, redirect to CI login
-      return res.redirect(`${config.ciBaseUrl}/auth`);
-    }
-  }
-
-  // Serve React app (which will handle client-side token processing)
-  if (config.nodeEnv === 'production') {
-    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-  } else {
-    // In development, redirect to React dev server
-    res.redirect(config.clientUrl);
-  }
-};
-
-// Register root route handler
-app.get('/', handleRootRoute);
-// Also handle /finance route for reverse proxy
-app.get('/finance', handleRootRoute);
-
-// API Routes - handle both /api and /finance/api for reverse proxy
-app.use('/api', routes);
-app.use('/finance/api', routes);
-
-  // Serve React app in production (catch-all for SPA routing)
-  // This handles all non-API routes for the React SPA
-  // Handle both root and /finance paths for reverse proxy
-  if (config.nodeEnv === 'production') {
-    const serveIndex = (req, res) => {
-      // Skip API routes (both /api and /finance/api)
-      if (req.path.startsWith('/api') || req.path.startsWith('/finance/api')) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-    };
-    
-    // Handle /finance/* paths (for reverse proxy) - must come before catch-all
-    app.get('/finance/*', serveIndex);
-    // Handle all other paths
-    app.get('*', serveIndex);
-  }
+// Create Express app
+const app = createApp();
 
 // Server reference for graceful shutdown
 let server;
 
 // Initialize database connection
 async function startServer() {
-  // Test database connection
+  // Test database connection (existing module)
   const dbConnected = await db.testConnection();
   if (!dbConnected) {
     console.warn('Warning: Database connection failed. Some features may not work.');
   }
 
+  // Test Sequelize connection
+  const sequelizeDb = require('./models');
+  const sequelizeConnected = await sequelizeDb.testConnection();
+  if (!sequelizeConnected) {
+    console.warn('Warning: Sequelize connection failed. ORM features may not work.');
+  }
+
   // Start server and store reference for graceful shutdown
   server = app.listen(config.port, () => {
-    console.log(`Finance server running on port ${config.port}`);
-    console.log(`Environment: ${config.nodeEnv}`);
-    console.log(`Database: ${config.database.database}@${config.database.host}:${config.database.port}`);
-    console.log(`Assets base path: ${config.assetsBasePath}`);
+    logger.info('Finance server started', {
+      port: config.port,
+      environment: config.nodeEnv,
+      database: `${config.database.database}@${config.database.host}:${config.database.port}`
+    });
     
     // Log initial memory usage
     const { getMemoryUsage, formatBytes } = require('./middleware/memory');
     const memUsage = getMemoryUsage();
-    console.log(`Initial memory usage: ${formatBytes(memUsage.heapUsed)} / ${formatBytes(memUsage.heapTotal)}`);
+    logger.info('Initial memory usage', {
+      heapUsed: formatBytes(memUsage.heapUsed),
+      heapTotal: formatBytes(memUsage.heapTotal)
+    });
   });
   
   // Set server timeout to prevent hanging connections
@@ -158,7 +49,7 @@ async function startServer() {
 
 // Start the server
 startServer().catch(error => {
-  console.error('Failed to start server:', error);
+  logger.error('Failed to start server', { error: error.message, stack: error.stack });
   process.exit(1);
 });
 
@@ -167,7 +58,7 @@ process.setMaxListeners(20);
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
   // Close database connections
   db.close().then(() => {
     process.exit(1);
@@ -178,7 +69,10 @@ process.on('uncaughtException', (error) => {
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('Unhandled Rejection', { 
+    reason: reason?.message || reason, 
+    stack: reason?.stack 
+  });
   // Close database connections
   db.close().then(() => {
     process.exit(1);
@@ -189,20 +83,20 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Graceful shutdown
 const gracefulShutdown = async (signal) => {
-  console.log(`${signal} signal received: closing HTTP server and database connections`);
+  logger.info('Graceful shutdown initiated', { signal });
   
   if (server) {
     server.close(() => {
-      console.log('HTTP server closed');
+      logger.info('HTTP server closed');
     });
   }
   
   try {
     await db.close();
-    console.log('Database connections closed');
+    logger.info('Database connections closed');
     process.exit(0);
   } catch (error) {
-    console.error('Error during shutdown:', error);
+    logger.error('Error during shutdown', { error: error.message });
     process.exit(1);
   }
 };

@@ -12,7 +12,7 @@ function Breadcrumbs({ title }) {
           <ol className="breadcrumb mb-0 p-0">
             <li className="breadcrumb-item">
               <a href="/">
-                <i className="bx bx-home-alt"></i> Home
+                <i className="fas fa-home"></i> Home
               </a>
             </li>
             {location.pathname !== '/' && (
