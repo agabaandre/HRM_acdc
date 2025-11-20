@@ -10,6 +10,7 @@ use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
+use App\Models\ChangeRequest;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -72,6 +73,11 @@ class AssignMissingDocumentNumbers extends Command
                 'model' => SpecialMemo::class,
                 'name' => 'Special Memos',
                 'document_type' => 'SPM'
+            ],
+            'change_requests' => [
+                'model' => ChangeRequest::class,
+                'name' => 'Change Requests',
+                'document_type' => 'CR'
             ],
             'service_requests' => [
                 'model' => ServiceRequest::class,

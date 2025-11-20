@@ -6,6 +6,7 @@ use App\Models\Matrix;
 use App\Models\Activity;
 use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
+use App\Models\ChangeRequest;
 use App\Models\ServiceRequest;
 use App\Models\RequestARF;
 use App\Services\DocumentNumberService;
@@ -50,6 +51,7 @@ class AssignDocumentNumbersToExisting extends Command
             'Activity' => Activity::class,
             'NonTravelMemo' => NonTravelMemo::class,
             'SpecialMemo' => SpecialMemo::class,
+            'ChangeRequest' => ChangeRequest::class,
             'ServiceRequest' => ServiceRequest::class,
             'RequestARF' => RequestARF::class,
         ];
