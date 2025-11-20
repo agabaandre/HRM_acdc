@@ -107,7 +107,7 @@ if (!function_exists('user_info')) {
                     onerror="this.style.display='none'; var next = this.nextElementSibling; if(next) { next.style.display='flex'; next.style.zIndex='1'; }"
                     onload="var next = this.nextElementSibling; if(next) { next.style.display='none'; }">
                 <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                    style="display: none; width: 40px; height: 40px; background-color: <?php echo $bgColor; ?>; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 1;">
+                    style="display: none; width: 35px; height: 35px; background-color: <?php echo $bgColor; ?>; font-weight: 600; font-size: 14px; position: absolute; top: 0; left: 0; z-index: 1;">
                     <?php echo $initials; ?>
                 </div>
             </div>
