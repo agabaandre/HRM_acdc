@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use iamfarhad\LaravelAuditLog\Traits\Auditable;
 
 class ApprovalTrail extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     /**
      * The attributes that are mass assignable.
