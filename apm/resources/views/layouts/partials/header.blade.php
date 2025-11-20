@@ -32,7 +32,7 @@
                                     $staffPortalUrl = $staffBaseUrl . '/auth/profile';
                                     $permissions = session('permissions', []);
                                     
-                                    // Finance URL: Use BASE_URL/finance in production, localhost:3002 in development
+                                    // Finance URL: Use domain/finance in production (reverse proxy), localhost:3002 in development
                                     // Only show Finance link if user has permission 92
                                     $financeUrl = '';
                                     if (in_array(92, $permissions)) {
@@ -41,8 +41,9 @@
                                         if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
                                             $financeUrl = 'http://localhost:3002?token=' . $financeToken;
                                         } else {
-                                            $baseUrl = env('BASE_URL', 'http://localhost/staff');
-                                            $financeUrl = rtrim($baseUrl, '/') . '/finance?token=' . $financeToken;
+                                            // In production, use the domain directly with /finance/ (reverse proxy)
+                                            $scheme = request()->getScheme();
+                                            $financeUrl = $scheme . '://' . $host . '/finance?token=' . $financeToken;
                                         }
                                     }
                                 @endphp

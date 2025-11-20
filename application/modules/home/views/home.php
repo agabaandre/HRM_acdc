@@ -318,13 +318,14 @@ body {
     // Finance Management - Only show if user has permission 92
     if (in_array('92', $permissions)) {
       $token = urlencode(base64_encode(json_encode($session)));
-      // Use PRODUCTION_URL/finance in production, localhost:3002 in development
+      // Use domain/finance in production (reverse proxy), localhost:3002 in development
       $host = $_SERVER['HTTP_HOST'] ?? '';
       if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
         $financeUrl = 'http://localhost:3002?token=' . $token;
       } else {
-        $productionUrl = $_ENV['PRODUCTION_URL'] ?? $session['base_url'];
-        $financeUrl = rtrim($productionUrl, '/') . '/finance?token=' . $token;
+        // In production, use the domain directly with /finance/ (reverse proxy)
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $financeUrl = $scheme . '://' . $host . '/finance?token=' . $token;
       }
       $settings[] = [
         $financeUrl,

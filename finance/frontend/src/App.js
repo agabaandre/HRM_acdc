@@ -13,6 +13,19 @@ axios.defaults.withCredentials = true;
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3003/api';
 const CI_BASE_URL = process.env.REACT_APP_CI_BASE_URL || 'http://localhost/staff';
 
+// Determine base path for React Router based on environment
+// In production behind reverse proxy, use /finance, otherwise use /
+const getBasePath = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // Check if we're behind the reverse proxy
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/finance')) {
+      return '/finance';
+    }
+  }
+  return '/';
+};
+
 function App() {
   const [user, setUser] = useState(null);
   const [permissions, setPermissions] = useState([]);
@@ -190,8 +203,21 @@ function App() {
     return null;
   }
 
+      // Determine base path for React Router based on environment
+      // In production behind reverse proxy, use /finance, otherwise use /
+      const basename = (() => {
+        if (process.env.NODE_ENV === 'production') {
+          // Check if we're behind the reverse proxy
+          const pathname = window.location.pathname;
+          if (pathname.startsWith('/finance')) {
+            return '/finance';
+          }
+        }
+        return '/';
+      })();
+
       return (
-        <Router>
+        <Router basename={basename}>
           <Routes>
             <Route
               path="/"

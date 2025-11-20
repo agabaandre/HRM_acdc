@@ -88,8 +88,13 @@ module.exports = (app) => {
   app.use('/apm/assets', express.static(path.join(config.assetsBasePath, 'apm/public/assets')));
 
   // Serve static files from React app in production
+  // Handle both direct access and reverse proxy access (with /finance prefix)
   if (config.nodeEnv === 'production') {
-    app.use(express.static(path.join(__dirname, '../../frontend/build')));
+    const buildPath = path.join(__dirname, '../../frontend/build');
+    // Serve static files at root (for direct access)
+    app.use(express.static(buildPath));
+    // Also serve static files at /finance (for reverse proxy access)
+    app.use('/finance', express.static(buildPath));
   }
 };
 
