@@ -384,7 +384,7 @@
   <!-- Request for Approval Section (with full HTML content) -->
   <?php if ($changeRequest->has_activity_request_remarks_changed && !empty($changeRequest->activity_request_remarks)): ?>
     <div class="section-label mb-15" style="margin-top: <?php echo !empty($summaryChanges) ? '20px' : '15px'; ?>;"><strong>Request for Approval</strong></div>
-    <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+    <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border: 1px solid #e5e7eb;">
       <?php echo $changeRequest->activity_request_remarks; ?>
     </div>
   <?php endif; ?>
