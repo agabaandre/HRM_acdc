@@ -12,7 +12,8 @@ middleware(app);
 
 // Root route handler - matches Laravel APM pattern for token processing
 // This handles direct server-side access (though React app handles it client-side)
-app.get('/', (req, res) => {
+// Also handles /finance route when accessed through reverse proxy
+const handleRootRoute = (req, res) => {
   // Get token from query parameter (matches Laravel: $request->query('token'))
   const base64Token = req.query.token;
 
@@ -73,22 +74,37 @@ app.get('/', (req, res) => {
     // In development, redirect to React dev server
     res.redirect(config.clientUrl);
   }
-});
+};
+
+// Register root route handler
+app.get('/', handleRootRoute);
+// Also handle /finance route for reverse proxy
+app.get('/finance', handleRootRoute);
 
 // API Routes
 app.use('/api', routes);
 
-// Serve React app in production (catch-all for SPA routing)
-// This handles all non-API routes for the React SPA
-if (config.nodeEnv === 'production') {
-  app.get('*', (req, res) => {
-    // Skip API routes
-    if (req.path.startsWith('/api')) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-  });
-}
+  // Serve React app in production (catch-all for SPA routing)
+  // This handles all non-API routes for the React SPA
+  // Handle both root and /finance paths for reverse proxy
+  if (config.nodeEnv === 'production') {
+    const serveIndex = (req, res) => {
+      // Skip API routes
+      if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+    };
+    
+    // Handle root path
+    app.get('/', serveIndex);
+    // Handle /finance path (for reverse proxy)
+    app.get('/finance', serveIndex);
+    // Handle /finance/* paths (for reverse proxy)
+    app.get('/finance/*', serveIndex);
+    // Handle all other paths
+    app.get('*', serveIndex);
+  }
 
 // Server reference for graceful shutdown
 let server;

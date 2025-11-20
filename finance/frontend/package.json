@@ -2,6 +2,7 @@
   "name": "finance-frontend",
   "version": "0.1.0",
   "private": true,
+  "homepage": "/finance",
   "proxy": "http://localhost:3003",
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.5.1",
