@@ -344,10 +344,12 @@
 
   <!-- Changes List -->
   <?php 
-    // Filter out budget and participants from summary table (they'll be shown in detail sections)
+    // Filter out budget, participants, and "Request for Approval" from summary table
+    // Budget and participants will be shown in detail sections
+    // "Request for Approval" will be shown in a separate section with full HTML
     $summaryChanges = array_filter($changes, function($change) {
         $type = strtolower($change['type']);
-        return !in_array($type, ['budget', 'internal participants', 'external participants', 'number of participants']);
+        return !in_array($type, ['budget', 'internal participants', 'external participants', 'number of participants', 'request for approval']);
     });
   ?>
   
@@ -366,7 +368,7 @@
           <tr>
             <td><strong><?php echo htmlspecialchars($change['type']); ?></strong></td>
             <td>
-              <?php if (!empty($change['original']) || strtolower($change['type']) !== 'request for approval'): ?>
+              <?php if (!empty($change['original'])): ?>
                 <?php echo htmlspecialchars($change['original']); ?>
               <?php else: ?>
                 &nbsp;
@@ -377,6 +379,14 @@
         <?php endforeach; ?>
       </tbody>
     </table>
+  <?php endif; ?>
+
+  <!-- Request for Approval Section (with full HTML content) -->
+  <?php if ($changeRequest->has_activity_request_remarks_changed && !empty($changeRequest->activity_request_remarks)): ?>
+    <div class="section-label mb-15" style="margin-top: <?php echo !empty($summaryChanges) ? '20px' : '15px'; ?>;"><strong>Request for Approval</strong></div>
+    <div style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+      <?php echo $changeRequest->activity_request_remarks; ?>
+    </div>
   <?php endif; ?>
 
   <!-- Detailed Participants Comparison -->
